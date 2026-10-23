@@ -17,6 +17,8 @@
  * „Oblicz" REALNIE i otwiera wyniki jednym jawnym klikiem.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -49,7 +51,8 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
   };
 };
 
@@ -177,6 +180,8 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
@@ -208,7 +213,9 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -267,22 +274,11 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
 
-  const executeResponse = await request.post(
-    `${BACKEND_BASE}/api/execution/runs/${run.id}/execute`,
-    { timeout: 90000 },
-  );
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-
-  // Publiczny indeks wyników gotowy = frontend ma skąd czytać tabelę zwarć.
-  const deadline = Date.now() + 15000;
-  let lastStatus = 0;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) return run.id;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla runu ${run.id} (status=${lastStatus})`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 test('zimny deep-link #analysis?run= ląduje w warsztacie ui2, nie w moście legacy (bramka K3-A1)', async ({ browser, request }) => {
@@ -373,7 +369,7 @@ test('po DONE jawny klik „Wyniki i dowody" ląduje w ui2 z zakładką wg rodza
   // „niedostępny" (regresja dostawcy) ani „pusty" (sieć MA źródło zastępcze,
   // więc rozpływ od sieci nadrzędnej istnieje).
   await expect(page.getByTestId('mvd-zwarcia-rozplyw')).toBeVisible();
-  await expect(page.getByTestId('mvd-zwarcia-rozplyw').locator('table')).toBeVisible({
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw-tabela').locator('table')).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByTestId('mvd-zwarcia-rozplyw-brak')).toHaveCount(0);

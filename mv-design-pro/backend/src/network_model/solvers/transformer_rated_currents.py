@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 
 @dataclass(frozen=True)
 class TransformerRatedCurrentsInput:
@@ -39,11 +41,11 @@ def compute_transformer_rated_currents(
     """
 
     if data.rated_power_kva <= 0:
-        raise ValueError("Moc znamionowa musi byc dodatnia.")
+        raise OdmowaDanychError("Moc znamionowa musi byc dodatnia.")
     if data.primary_voltage_kv <= 0:
-        raise ValueError("Napiecie pierwotne musi byc dodatnie.")
+        raise OdmowaDanychError("Napiecie pierwotne musi byc dodatnie.")
     if data.secondary_voltage_kv <= 0:
-        raise ValueError("Napiecie wtorne musi byc dodatnie.")
+        raise OdmowaDanychError("Napiecie wtorne musi byc dodatnie.")
 
     apparent_va = data.rated_power_kva * 1000.0
     primary_voltage_v = data.primary_voltage_kv * 1000.0

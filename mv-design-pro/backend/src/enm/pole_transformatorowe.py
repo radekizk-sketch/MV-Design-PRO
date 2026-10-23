@@ -58,6 +58,7 @@ from typing import TypeAlias
 from network_model.pochodne.pasma_napieciowe import szyna_poza_pasmem_sn
 
 from .slownik_komunikatow import opis_nazwy
+from .tor_pola import szyny_stacji
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
@@ -154,26 +155,15 @@ class TransformatorBezPolaSN:
 # ---------------------------------------------------------------------------
 
 
-def _szyny_stacji(stacja: ElementEnm, buses: Sequence[ElementEnm]) -> dict[str, ElementEnm]:
-    """Szyny stacji: z `Substation.bus_refs` ORAZ z `Bus.substation_ref`.
+#: Rola katalogowa transformatora blokowego toru DER po stronie SN — zapisuje ją
+#: `enm.domain_operations_v2` przy materializacji toru (``meta.catalog_role``), a operacja NIE
+#: wypełnia wtedy `Generator.blocking_transformer_ref`.
+ROLA_TRANSFORMATORA_BLOKOWEGO_DER = "TRANSFORMATOR_BLOKOWY_DER"
 
-    Oba kanały, bo oba występują w danych: operacje stacyjne wypełniają
-    `bus_refs`, a część importów wiąże szynę od jej strony. Rysunek
-    (`collectStationBusRefs`) czyta tak samo.
-    """
-    refy_stacji = set(_teksty([_tekst(stacja, "ref_id"), _tekst(stacja, "id")]))
-    zadeklarowane = set(_teksty(_lista(stacja, "bus_refs")))
-    wynik: dict[str, ElementEnm] = {}
-    for bus in buses:
-        refy_szyny = _teksty([_tekst(bus, "ref_id"), _tekst(bus, "id")])
-        nalezy = bool(zadeklarowane.intersection(refy_szyny))
-        if _tekst(bus, "substation_ref") in refy_stacji and _tekst(bus, "substation_ref"):
-            nalezy = True
-        if not nalezy:
-            continue
-        for ref in refy_szyny:
-            wynik[ref] = bus
-    return wynik
+
+def _refy(obiekt: ElementEnm) -> set[str]:
+    """Obie referencje elementu (`ref_id`, `id`) — jak `transformerRefs` w rysunku."""
+    return set(_teksty([_pole(obiekt, "ref_id", ""), _pole(obiekt, "id", "")]))
 
 
 def _refy_transformatorow_blokowych(generators: Sequence[ElementEnm]) -> set[str]:
@@ -186,48 +176,56 @@ def _refy_transformatorow_blokowych(generators: Sequence[ElementEnm]) -> set[str
     return refy
 
 
-def _transformatory_stacji(
+def transformator_blokowy_der(transformator: ElementEnm, refy_blokowe: set[str]) -> bool:
+    """JEDYNY filtr transformatora blokowego źródła DER — z jawnych danych, w obu kanałach:
+    wskazanie `Generator.blocking_transformer_ref` albo `meta.catalog_role ==
+    TRANSFORMATOR_BLOKOWY_DER`. Lustro frontu:
+    `frontend/src/ui/shared/transformatoryStacji.ts::transformatorBlokowyDer`."""
+    if _refy(transformator) & refy_blokowe:
+        return True
+    meta = _pole(transformator, "meta", {})
+    return _tekst(meta, "catalog_role") == ROLA_TRANSFORMATORA_BLOKOWEGO_DER
+
+
+def transformatory_stacji(
     stacja: ElementEnm,
     transformers: Sequence[ElementEnm],
-    refy_szyn_stacji: set[str],
-    refy_blokowe: set[str],
+    galezie: Sequence[ElementEnm],
+    generators: Sequence[ElementEnm],
 ) -> list[ElementEnm]:
-    """Transformatory NALEŻĄCE do stacji — lustrzane wobec rysunku.
+    """Transformatory ROZDZIELCZE stacji — JEDNA reguła, lustrzana wobec rysunku
+    (`frontend/src/ui/shared/transformatoryStacji.ts::selectStationDistributionTransformers`,
+    parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`):
 
-    Reguła jest DOKŁADNIE ta sama, co w
-    `frontend/src/ui/network-build/stationTransformerSelection.ts::
-    selectStationDistributionTransformers` (predykaty parami z jednego źródła,
-    reguła KLASA §3):
-
-      1. wskazanie `Generator.blocking_transformer_ref` WYKLUCZA transformator —
+      1. transformator blokowy źródła DER (`transformator_blokowy_der`) jest WYKLUCZONY —
          także wtedy, gdy stacja deklaruje go w `transformer_refs`;
       2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
-      3. przy BRAKU deklaracji schodzimy do dopasowania po szynach stacji.
+      3. przy BRAKU deklaracji — koniec transformatora na szynie stacji
+         (`enm.tor_pola.szyny_stacji`: szyny główne, zaciski pól SN, końce aparatów pól nN).
 
-    GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA. Krok 1 jest szerszy, niż chciałby
-    tego przypadek odwrotny: PV na szynie nN wskazuje przez auto-resolve
-    (V12K-022, `domain_operations_v2.py`) JEDYNY transformator stacji jako swój
-    blokowy. Pomiar pokazał, że OBA kształty są w danych IDENTYCZNE —
-    transformator, na którego szynie dolnej stoi generator deklarujący go jako
-    blokowy. Rozstrzygnięcie wymagałoby NOWEGO pola roli transformatora w
-    modelu; zgadywanie po nazwie albo po liczbie transformatorów byłoby
-    heurystyką, nie regułą. Skutek jest jawny i przypięty wierszem tablicy
-    `pole_transformatorowe_parytet_v1.json` (`tr-stacji-z-der-na-nn`): stacja,
-    której jedyny transformator jest zarazem transformatorem blokowym źródła,
-    NIE dostaje ani ostrzeżenia, ani markera. To ZNANA GRANICA (osobna karta
-    zniesie ją jawną rolą transformatora), nie cichy wyjątek.
+    GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA. Krok 1 jest szerszy, niż chciałby tego przypadek
+    odwrotny: PV na szynie nN wskazuje przez auto-resolve (V12K-022, `domain_operations_v2.py`)
+    JEDYNY transformator stacji jako swój blokowy. Oba kształty są w danych identyczne; skutek
+    jest przypięty wierszem `tr-stacji-z-der-na-nn` tablicy `pole_transformatorowe_parytet_v1.json`
+    (stacja bez ostrzeżenia i bez markera) — ZNANA GRANICA, nie cichy wyjątek.
     """
-    kandydaci = [t for t in transformers if _ref(t) not in refy_blokowe]
+    refy_blokowe = _refy_transformatorow_blokowych(generators)
     zadeklarowane = set(_teksty(_lista(stacja, "transformer_refs")))
-    if zadeklarowane:
-        return [t for t in kandydaci if _ref(t) in zadeklarowane]
-    dopasowane: list[ElementEnm] = []
-    for transformator in kandydaci:
-        hv = _tekst(transformator, "hv_bus_ref")
-        lv = _tekst(transformator, "lv_bus_ref")
-        if hv in refy_szyn_stacji or lv in refy_szyn_stacji:
-            dopasowane.append(transformator)
-    return dopasowane
+    szyny = szyny_stacji(stacja, galezie)
+    wynik: list[ElementEnm] = []
+    for transformator in transformers:
+        if transformator_blokowy_der(transformator, refy_blokowe):
+            continue
+        if zadeklarowane:
+            if _refy(transformator) & zadeklarowane:
+                wynik.append(transformator)
+            continue
+        if (
+            _tekst(transformator, "hv_bus_ref") in szyny
+            or _tekst(transformator, "lv_bus_ref") in szyny
+        ):
+            wynik.append(transformator)
+    return wynik
 
 
 def stacja_ma_pole_transformatorowe(stacja: ElementEnm, bays: Sequence[ElementEnm]) -> bool:
@@ -265,17 +263,22 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
     buses = _lista(enm, "buses")
     bays = _lista(enm, "bays")
     generators = _lista(enm, "generators")
+    galezie = _lista(enm, "branches")
+    szyna_wg_refu = {ref: bus for bus in buses for ref in _refy(bus)}
 
-    refy_blokowe = _refy_transformatorow_blokowych(generators)
     znaleziska: list[TransformatorBezPolaSN] = []
 
     for stacja in substations:
-        szyny = _szyny_stacji(stacja, buses)
+        # SZYNY-STACJI-LUSTRO: szyny stacji z JEDNEJ reguły (`enm.tor_pola.szyny_stacji`) —
+        # dawny drugi kanał `Bus.substation_ref` był martwy (model `Bus` nie ma tego pola).
+        szyny = {
+            ref: szyna_wg_refu[ref] for ref in szyny_stacji(stacja, galezie) if ref in szyna_wg_refu
+        }
         if not szyny:
             continue
         if stacja_ma_pole_transformatorowe(stacja, bays):
             continue
-        for transformator in _transformatory_stacji(stacja, transformers, set(szyny), refy_blokowe):
+        for transformator in transformatory_stacji(stacja, transformers, galezie, generators):
             hv = _tekst(transformator, "hv_bus_ref")
             if not hv or hv not in szyny:
                 continue

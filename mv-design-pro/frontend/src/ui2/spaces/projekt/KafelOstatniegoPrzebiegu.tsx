@@ -13,9 +13,11 @@ import type { RunStatus } from '../../../ui/study-cases/types';
 
 const STATUS_WARIANT: Record<RunStatus, WariantTagu> = {
   PENDING: 'mut',
+  QUEUED: 'mut',
   RUNNING: 'warn',
   DONE: 'ok',
   FAILED: 'err',
+  CANCELLED: 'mut',
 };
 
 export function KafelOstatniegoPrzebiegu({

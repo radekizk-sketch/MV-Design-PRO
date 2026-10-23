@@ -26,7 +26,7 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (
 )
 from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
-from enm.models import Cable, ProtectionAssignment, ProtectionSetting
+from enm.models import Cable, Measurement, ProtectionAssignment, ProtectionSetting
 from enm.store import reset_enm_store, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
@@ -72,16 +72,31 @@ def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = 
     """
     model = build_golden_enm()
     if z_zabezpieczeniem:
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenie kompletne w modelu — przekładnik
+        # sprzęgła 200/5 A, pozycja katalogu z zakresami (REF-OC-200) i próg ze stroną
+        # przekładnika (100 A pierwotne = 0,5 ×In) — jedna ścieżka oceny nastaw.
+        model.measurements.append(
+            Measurement(
+                ref_id="ct_coupler",
+                name="Przekładnik sprzęgła",
+                measurement_type="CT",
+                bus_ref="bus_sn_main",
+                rating={"ratio_primary": 200.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
+            )
+        )
         model.protection_assignments.append(
             ProtectionAssignment(
                 ref_id="prot_coupler",
                 name="Zabezpieczenie sprzegla",
                 breaker_ref="sw_coupler",
+                ct_ref="ct_coupler",
+                catalog_ref="REF-OC-200",
                 device_type="overcurrent",
                 settings=[
                     ProtectionSetting(
                         function_type="overcurrent_51",
                         threshold_a=prog_a,
+                        threshold_unit="A_PIERWOTNY",
                         curve_type="IEC_SI",
                         time_multiplier=0.2,
                     )
@@ -159,8 +174,13 @@ def test_dowod_zaczyna_sie_od_zrodla_czasu_i_niesie_kroki_kryterium() -> None:
     # Numeracja krokow jest ciagla (spis krokow okna dowodu opiera sie na niej).
     assert [krok["step"] for krok in kroki] == list(range(1, len(kroki) + 1))
     # Kazdy krok niesie komplet pol kanonu (puste pole jest dopuszczalne, brak — nie).
+    # Karta DOWOD-CIEPLNY: pole „Podstawienie" ma DWIE postacie kontraktu — LaTeX w
+    # `substitution_latex` albo proza w `substitution`; krok niesie co najmniej jedna,
+    # a LaTeX nigdy nie siedzi w polu prozy.
     for krok in kroki:
-        assert set(krok) >= {"step", "title", "inputs", "substitution", "result", "notes"}
+        assert set(krok) >= {"step", "title", "inputs", "result", "notes"}
+        assert "substitution" in krok or "substitution_latex" in krok, krok["key"]
+        assert "$" not in str(krok.get("substitution", "")), krok["key"]
 
 
 def test_dowod_nieznanej_galezi_jest_bledem_z_komunikatem_po_polsku() -> None:
@@ -238,7 +258,9 @@ def test_brak_pola_wyniku_zwarciowego_podnosi_wyjatek_nie_fabrykuje_zera() -> No
 
     zmutowany = _z_wierszem_wyniku(run, _usun_ikss)
     # Karta #145: odmowa nazywa brakującą WIELKOŚĆ po polsku (nie klucz zapisu `ikss_a`).
-    with pytest.raises(ValueError, match="prąd zwarciowy początkowy I″k") as odmowa:
+    # Partia 13: uszkodzony zapis biegu to niezmiennik programu (AssertionError, strażnik
+    # połykania wyjątków) — intencja bez zmian: wyjątek z nazwą wielkości, nigdy 0 A.
+    with pytest.raises(AssertionError, match="prąd zwarciowy początkowy I″k") as odmowa:
         build_wytrzymalosc_cieplna_view(zmutowany)
     assert "ikss_a" not in str(odmowa.value)
 

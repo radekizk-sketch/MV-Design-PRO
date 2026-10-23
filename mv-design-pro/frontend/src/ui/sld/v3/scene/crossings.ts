@@ -27,6 +27,7 @@
 import { GRID } from '../core/grid';
 import type { RouteVertex } from '../layout/route';
 import type { PreviewSegment } from '../compose/preview';
+import { jestZnacznikiemToru } from './znacznikiToru';
 
 /** Promień mostka półłukowego [px świata] — §22.1: GRID/2. */
 export const BRIDGE_RADIUS = GRID / 2;
@@ -42,6 +43,8 @@ const NON_POWER_KINDS: ReadonlySet<string> = new Set([
   'measurementLink',
   'leader',
   'sheetContinuation',
+  // Znak powiązania (`scene/elementyToru.ts`) — marker na końcu toru, nie tor.
+  'tieMarker',
 ]);
 
 /** Rodzaje segmentów będące SZYNĄ (mostek zakazany — §22.1). */
@@ -263,10 +266,9 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
   const ext = segments.filter(
     (s) =>
       (s.meta?.ownerRef ?? '').startsWith('seg/') &&
-      s.meta?.kind !== 'openTerminal' &&
-      // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) leżą NA torze, ale
-      // nie są torem — nie tworzą węzła T (jak słupek terminalny wyżej).
-      s.meta?.kind !== 'sheetContinuation',
+      // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) i znak powiązania leżą NA
+      // torze, ale nie są torem — nie tworzą węzła T (jak słupek terminalny wyżej).
+      !jestZnacznikiemToru(s),
   );
   const nodes: RouteVertex[] = [];
   const seen = new Set<string>();

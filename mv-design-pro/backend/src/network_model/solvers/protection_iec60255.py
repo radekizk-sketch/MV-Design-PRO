@@ -11,13 +11,18 @@ SOLVER LAYER RULES:
     - Self-contained: imports only from stdlib / numpy
 
 Supported curve types:
-    NI  — Normal Inverse:      t = TMS * 0.14 / ((I/Is)^0.02 - 1)
+    SI  — Standard Inverse:    t = TMS * 0.14 / ((I/Is)^0.02 - 1)
     VI  — Very Inverse:        t = TMS * 13.5 / ((I/Is) - 1)
     EI  — Extremely Inverse:   t = TMS * 80 / ((I/Is)^2 - 1)
-    RI  — RI/Definite Inverse: t = TMS * 120 / ((I/Is) - 1)
+    LTI — Long-Time Inverse:   t = TMS * 120 / ((I/Is) - 1)
     DT  — Definite Time:       t = TMS (constant)
 
-Reference: IEC 60255-151:2009, Table 1 — Standard IDMT characteristics
+Reference (SI/VI/EI): IEC 60255-151:2009, Annex A (normative), Table A.1 — "Constants for
+dependent time operating and reset characteristics". Table 1 of that standard is "Multiplier
+factor on operated time assigned error", not the curve constants (table of contents of the
+publisher's preview, IEC Webstore, info_iec60255-151{ed1.0}b.pdf; decyzja B-01 partii
+integracji 9). LTI (120; 1) is not taken from IEC 60255-151: BS 142 / IEC 255 practice,
+constants per ABB 1MRS756887 rev. Q, Table 1001 (karta PROT-LTI).
 """
 
 from __future__ import annotations
@@ -35,10 +40,12 @@ from typing import Any
 class IEC60255CurveType(StrEnum):
     """IEC 60255-151 standard IDMT curve types."""
 
-    NI = "NI"  # Normal Inverse (Normalna odwrotna)
+    # Jedna nazwa krzywej 0,14/0,02 w produkcie (decyzja B-01 partii integracji 9, O-59):
+    # „SI" = literał modelu ENM `IEC_SI` = kod katalogu IED = adapter `iec_curves`.
+    STANDARD_INVERSE = "SI"  # Standard Inverse (Normalna odwrotna)
     VI = "VI"  # Very Inverse (Bardzo odwrotna)
     EI = "EI"  # Extremely Inverse (Ekstremalnie odwrotna)
-    RI = "RI"  # RI / Definite Inverse (Odwrotna RI / 120)
+    LONG_TIME_INVERSE = "LTI"  # Long-Time Inverse (Odwrotna dlugoczasowa, K = 120)
     DT = "DT"  # Definite Time (Czas niezalezny)
 
 
@@ -46,30 +53,30 @@ class IEC60255CurveType(StrEnum):
 # IEC 60255 CURVE PARAMETERS — CANONICAL TABLE
 # =============================================================================
 
-# (A, B) per IEC 60255-151:2009 Table 1
+# (A, B): SI/VI/EI per IEC 60255-151:2009 Annex A, Table A.1; LTI per ABB 1MRS756887 Table 1001
 # Formula: t = TMS * A / ((I/Is)^B - 1)
 IEC60255_CURVE_PARAMS: dict[IEC60255CurveType, tuple[float, float]] = {
-    IEC60255CurveType.NI: (0.14, 0.02),
+    IEC60255CurveType.STANDARD_INVERSE: (0.14, 0.02),
     IEC60255CurveType.VI: (13.5, 1.0),
     IEC60255CurveType.EI: (80.0, 2.0),
-    IEC60255CurveType.RI: (120.0, 1.0),
+    IEC60255CurveType.LONG_TIME_INVERSE: (120.0, 1.0),
     # DT has no A/B — trip time = TMS directly
 }
 
 IEC60255_CURVE_FORMULAS_LATEX: dict[IEC60255CurveType, str] = {
-    IEC60255CurveType.NI: r"t = \mathrm{TMS} \cdot \frac{0.14}{(I/I_s)^{0.02} - 1}",
+    IEC60255CurveType.STANDARD_INVERSE: r"t = \mathrm{TMS} \cdot \frac{0.14}{(I/I_s)^{0.02} - 1}",
     IEC60255CurveType.VI: r"t = \mathrm{TMS} \cdot \frac{13.5}{(I/I_s) - 1}",
     IEC60255CurveType.EI: r"t = \mathrm{TMS} \cdot \frac{80}{(I/I_s)^{2} - 1}",
-    IEC60255CurveType.RI: r"t = \mathrm{TMS} \cdot \frac{120}{(I/I_s) - 1}",
+    IEC60255CurveType.LONG_TIME_INVERSE: r"t = \mathrm{TMS} \cdot \frac{120}{(I/I_s) - 1}",
     IEC60255CurveType.DT: r"t = \mathrm{TMS}",
 }
 
 IEC60255_CURVE_LABELS_PL: dict[IEC60255CurveType, str] = {
-    IEC60255CurveType.NI: "Normalna odwrotna (NI)",
+    IEC60255CurveType.STANDARD_INVERSE: "Normalna odwrotna (SI)",
     IEC60255CurveType.VI: "Bardzo odwrotna (VI)",
     IEC60255CurveType.EI: "Ekstremalnie odwrotna (EI)",
-    IEC60255CurveType.RI: "Odwrotna RI (120)",
-    IEC60255CurveType.DT: "Czas niezalezny (DT)",
+    IEC60255CurveType.LONG_TIME_INVERSE: "Odwrotna długoczasowa (LTI, 120)",
+    IEC60255CurveType.DT: "Czas niezależny (DT)",
 }
 
 
@@ -384,7 +391,7 @@ def compute_curve_trip_time(
             white_box_trace=trace,
         )
 
-    # --- Inverse-time curves (NI, VI, EI, RI) ---
+    # --- Inverse-time curves (SI, VI, EI, LTI) ---
     A, B = IEC60255_CURVE_PARAMS[curve_type]
 
     if not will_trip:

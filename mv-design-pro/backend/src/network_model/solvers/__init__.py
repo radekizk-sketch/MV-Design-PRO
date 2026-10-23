@@ -47,8 +47,6 @@ from .short_circuit_contributions import (
     SourceType,
 )
 from .short_circuit_iec60909 import (
-    C_MAX,
-    C_MIN,
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
     ShortCircuitResult3PH,
@@ -56,8 +54,6 @@ from .short_circuit_iec60909 import (
 )
 
 __all__ = [
-    "C_MAX",
-    "C_MIN",
     "ShortCircuitIEC60909Solver",
     "ShortCircuitResult",
     "ShortCircuitResult3PH",

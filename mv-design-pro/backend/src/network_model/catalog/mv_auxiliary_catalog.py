@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+
 # Karta NAPRAWA-A (§0.1): dane żyły powrotnej PE/PEN dla WSZYSTKICH 17 pozycji
 # kab_nn_* — brakowały od P0.2 (`return_conductor_r_ohm_per_km_20c`/
 # `return_conductor_x_ohm_per_km` oba `None` dla każdej pozycji), blokując
@@ -524,6 +526,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.95,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
         {
@@ -535,6 +540,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.92,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
         {
@@ -547,6 +555,9 @@ def get_all_load_types() -> list[dict]:
                 "cos_phi": 0.94,
                 "cos_phi_mode": "IND",
                 "manufacturer": "Profil standardowy",
+                "source_reference": ZRODLO_MODELU_REFERENCYJNEGO,
+                "verification_status": "REFERENCYJNY",
+                "catalog_status": "REFERENCYJNY_V1",
             },
         },
     ]
@@ -2205,6 +2216,21 @@ def get_all_protection_curves() -> list[dict]:
 
 
 def get_all_protection_setting_templates() -> list[dict]:
+    def _prad_bez_jednostki(nazwa: str, minimum: float, maksimum: float) -> dict:
+        """Pole prądowe szablonu z zakresem BEZ ustalonej jednostki (PZ-09, karta
+        BIEG-ZABEZPIECZEN-Z-MODELU). Zakres liczbowy pochodzi z szablonu referencyjnego, ale
+        nie ma podstawy, czy są to ampery wtórne, krotność prądu znamionowego wejścia
+        przekaźnika, czy ampery pierwotne (brak karty producenta) — dawna jednostka „A”
+        sugerowała prąd pierwotny i dawała marginesy rzędu 10⁷ %. Szablon nie jest źródłem
+        nastaw oceny (nastawy żyją w modelu, D-21); jednostka jest nazwanym stanem."""
+        return {
+            "name": nazwa,
+            "unit": None,
+            "jednostka_status": "NIEUSTALONA",
+            "min": minimum,
+            "max": maksimum,
+        }
+
     def _template_meta(*, name: str) -> dict:
         return {
             "verification_status": "REFERENCYJNY",
@@ -2224,7 +2250,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-EF-500",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 10.0},
+                    _prad_bez_jednostki("I>", 0.1, 10.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="profilu referencyjnego OC/EF 500 - nadprądowy"),
@@ -2237,9 +2263,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-EF-300",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 12.0},
+                    _prad_bez_jednostki("I>", 0.1, 12.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 80.0},
+                    _prad_bez_jednostki("I>>", 1.0, 80.0),
                 ],
                 **_template_meta(name="profilu referencyjnego OC/EF 300 - nadprądowy"),
             },
@@ -2251,7 +2277,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-100",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 8.0},
+                    _prad_bez_jednostki("I>", 0.1, 8.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="profilu referencyjnego OC 100 - nadprądowy"),
@@ -2264,7 +2290,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_400_V0",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 10.0},
+                    _prad_bez_jednostki("I0>", 0.1, 10.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="e2TANGO-400 - ziemnozwarciowy"),
@@ -2277,9 +2303,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_800_V0",
                 "curve_ref": "curve_ieee_very_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 12.0},
+                    _prad_bez_jednostki("I0>", 0.1, 12.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I0>>", "unit": "A", "min": 1.0, "max": 50.0},
+                    _prad_bez_jednostki("I0>>", 1.0, 50.0),
                 ],
                 **_template_meta(name="e2TANGO-800 - ziemnozwarciowy"),
             },
@@ -2291,9 +2317,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_1250_V0",
                 "curve_ref": "curve_iec_extremely_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 20.0},
+                    _prad_bez_jednostki("I>", 0.1, 20.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 120.0},
+                    _prad_bez_jednostki("I>>", 1.0, 120.0),
                 ],
                 **_template_meta(name="e2TANGO-1250 - nadprądowy"),
             },
@@ -2305,9 +2331,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_1600_V0",
                 "curve_ref": "curve_iec_long_time_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 20.0},
+                    _prad_bez_jednostki("I0>", 0.1, 20.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 8.0},
-                    {"name": "I0>>", "unit": "A", "min": 1.0, "max": 150.0},
+                    _prad_bez_jednostki("I0>>", 1.0, 150.0),
                 ],
                 **_template_meta(name="e2TANGO-1600 - ziemnozwarciowy"),
             },
@@ -2319,11 +2345,107 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_2000_V0",
                 "curve_ref": "curve_ansi_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 30.0},
+                    _prad_bez_jednostki("I>", 0.1, 30.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 8.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 200.0},
+                    _prad_bez_jednostki("I>>", 1.0, 200.0),
                 ],
                 **_template_meta(name="e2TANGO-2000 - nadprądowy"),
             },
         },
     ]
+
+
+# =============================================================================
+# RCD — wyłączniki różnicowoprądowe nN (APARAT_NN_RCD), karta W5-E-TTIT
+# =============================================================================
+
+#: Tabela 1 IEC 61008-1 (kl. 9.9.2) — maksymalne czasy wyłączenia [s] przy I_Δn, 2·I_Δn,
+#: 5·I_Δn (albo 0,25 A dla I_Δn ≤ 0,03 A) dla RCD ogólnego (bezzwłocznego) i typu S oraz
+#: minimalne czasy niezadziałania typu S. Odczyt 2026-09-30 w DWÓCH niezależnych źródłach
+#: pełnotekstowych (nie z podsumowań wyszukiwarki):
+#: (1) raport z badań IECEE CB, formularz TRF No. IEC61008_1H (OVE, master 2015-11), raport
+#:     CN23AWQR 001 z 2023-10-25 (Hunan Electric Research Institute dla Elmark), norma badania
+#:     „IEC 61008-1:2010 +A1:2012 +A2:2013”, s. 37–38 — formularz przepisuje Tabelę 1 normy:
+#:     „General … 0,3 0,15 0,04 0,04 Max. break times”; „S … >0,03 0,5 0,2 0,15 … Max. break
+#:     times”; „0,13 0,06 0,05 … Min. non-actuating times”
+#:     (elmarkholding.eu/wp-content/uploads/2024/03/CB-REPORT-of-RCCB.pdf);
+#: (2) Eaton, katalog xEffect FRBmM CA003014EN, s. 1.2 „Break time and non-actuating time for
+#:     alternating residual currents … for type AC and A RCCB”: „Standard RCD … Max. tripping
+#:     time (s) 0.3 0.15 0.04 0.04”; „RCCB Type S (Selective) … Min. non actuating time(s) /
+#:     Max. tripping time (s) 0.13 0.5 0.06 0.2 0.05 0.15 0.04 0.15”
+#:     (eaton.elektro-team.pl/wp-content/uploads/2024/12/FRBMM-Katalog-2022-en-us.pdf).
+#: Zgodnie także: ABB Technical guide 2CSC420004B0202 (2015) s. 4/9 i BEAMA „The RCD Handbook”
+#: (2020) s. 25 Tab. 4. Pełny tekst IEC 61008-1 nie był dostępny (podglądy VDE kończą się
+#: przed kl. 5.3) — status REFERENCYJNY, flip-to-verified przy dostępie do normy (wzorzec G-D1).
+_RCD_T_A_OGOLNY_S = (0.3, 0.15, 0.04)
+_RCD_T_A_SELEKTYWNY_S = (0.5, 0.2, 0.15)
+_RCD_T_NIEZADZIALANIA_SELEKTYWNY_S = (0.13, 0.06, 0.05)
+
+_RCD_SOURCE_REFERENCE = (
+    "IEC 61008-1 Tabela 1 (kl. 9.9.2): czasy wyłączenia i niezadziałania potwierdzone w "
+    "dwóch niezależnych źródłach (formularz badań IECEE CB TRF IEC61008_1H, raport Elmark "
+    "2023-10-25, s. 37–38; katalog Eaton xEffect FRBmM CA003014EN, s. 1.2), zgodnie z ABB "
+    "2CSC420004B0202 s. 4/9 i BEAMA RCD Handbook 2020 s. 25; pełny tekst normy niedostępny — "
+    "status REFERENCYJNY"
+)
+_RCD_VERIFICATION_NOTE = (
+    "Szeregi I_Δn (0,03 / 0,1 / 0,3 / 0,5 A) i I_n (25 / 40 / 63 / 100 A) rodziny generycznej "
+    "potwierdzono jako wartości wyrobów w katalogach producentów (Eaton FRBmM, Iskra RCCB "
+    "Ver3.1, Terasaki DinSafe); tabela wartości znormalizowanych kl. 5.3.2/5.3.3 IEC 61008-1 "
+    "odczytana w jednym źródle wtórnym (asutpp.com) — bez drugiego źródła, więc rodzina nie "
+    "twierdzi, że jest kompletnym szeregiem normy. Typ S: I_Δn > 0,03 A i I_n ≥ 25 A (TRF, "
+    "BEAMA). Rodzaje F i B (IEC 62423) nie wchodzą do rodziny: Tabela 1 dotyczy AC i A."
+)
+
+#: Rodzina generyczna: rodzaje AC i A (Tabela 1 IEC 61008-1 dotyczy tych rodzajów) ×
+#: I_Δn × I_n; typ S wyłącznie dla I_Δn > 0,03 A (zakres Tabeli 1 dla RCD selektywnego).
+_RCD_TYPY = ("AC", "A")
+_RCD_I_DELTA_N_A = (0.03, 0.1, 0.3, 0.5)
+_RCD_IN_A = (25.0, 40.0, 63.0, 100.0)
+
+
+def get_all_lv_rcd_types() -> list[dict]:
+    """Rodzina generyczna wyłączników różnicowoprądowych nN (RCCB, IEC 61008-1).
+
+    Karta W5-E-TTIT: 2 rodzaje × 4 I_Δn × 4 I_n ogólnych (32) + typ S dla trzech I_Δn > 0,03 A
+    × 4 I_n × 2 rodzaje (24) = 56 rekordów. Wszystkie czasy z ``_RCD_T_A_*`` (dwa źródła,
+    komentarz wyżej); zero wartości z pamięci. Rekordy REFERENCYJNE (jak MCB/wkładki).
+    """
+    records: list[dict] = []
+    for rcd_type in _RCD_TYPY:
+        for i_delta_n in _RCD_I_DELTA_N_A:
+            for in_a in _RCD_IN_A:
+                idn_ma = int(round(i_delta_n * 1000))
+                warianty: list[tuple[bool, str]] = [(False, "")]
+                if i_delta_n > 0.03:
+                    warianty.append((True, "_s"))
+                for selective, sufiks in warianty:
+                    t_a = _RCD_T_A_SELEKTYWNY_S if selective else _RCD_T_A_OGOLNY_S
+                    records.append(
+                        {
+                            "id": f"rcd_nn_{rcd_type.lower()}{sufiks}_{int(in_a)}a_{idn_ma}ma",
+                            "name": (
+                                f"RCCB {rcd_type}{' S' if selective else ''} {int(in_a)} A / "
+                                f"{idn_ma} mA"
+                            ),
+                            "params": {
+                                "u_n_kv": 0.4,
+                                "in_a": in_a,
+                                "i_delta_n_a": i_delta_n,
+                                "rcd_type": rcd_type,
+                                "selective": selective,
+                                "t_a_s": t_a[0],
+                                "t_a_2idn_s": t_a[1],
+                                "t_a_5idn_s": t_a[2],
+                                "t_nieczuly_min_s": (
+                                    _RCD_T_NIEZADZIALANIA_SELEKTYWNY_S[0] if selective else None
+                                ),
+                                "poles": None,
+                                "verification_status": "REFERENCYJNY",
+                                "catalog_status": "REFERENCYJNY_V1",
+                                "source_reference": _RCD_SOURCE_REFERENCE,
+                                "verification_note": _RCD_VERIFICATION_NOTE,
+                            },
+                        }
+                    )
+    return records

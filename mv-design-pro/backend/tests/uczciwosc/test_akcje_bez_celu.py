@@ -117,6 +117,7 @@ def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client
         _operacja,
         _siec_bez_modelu_pv,
     )
+    from tests.golden.enm_builders.dynamika_projektanta import PROFIL_ODBIORU
     from tests.test_dynamika_rms_run import _nowy_przypadek, _uruchom_rozplyw
 
     case_id = _nowy_przypadek(app_client)
@@ -126,6 +127,14 @@ def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client
         case_id,
         "set_der_catalog_bindings",
         {"generator_ref": REFY.pv, "dynamic_model_ref": "default_pv_gfl"},
+    )
+    # Karta modeli odbiorów: każdy odbiór biegu ma model dynamiczny z katalogu profili
+    # odbiorów — wiązany tą samą operacją, co akcja naprawcza ekranu dynamiki.
+    _operacja(
+        app_client,
+        case_id,
+        "set_load_dynamic_binding",
+        {"load_ref": REFY.odbior, "dynamic_model_ref": PROFIL_ODBIORU},
     )
     scenariusz = app_client.post(
         f"/api/dynamika/study-cases/{case_id}/scenariusze",

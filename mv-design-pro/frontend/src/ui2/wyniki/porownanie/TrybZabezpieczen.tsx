@@ -23,13 +23,12 @@
  * `dowodRef` komórki. Kolumny Δ i ranking pozostają bez dowodu — różnica/
  * problem nie mają pojedynczego wywodu WHITE BOX.
  *
- * Zero-state (D2): brak dwóch przebiegów zabezpieczeń do porównania →
- * `fix_navigation` do schematu (SLD), gdzie dziś powstaje bieg zabezpieczeń
- * (obliczenie zwarciowe + „Uruchom Protection", `ui/sld/v2/protection/
- * ProtectionRunButton.tsx`). NIE `useAkcjaUruchomObliczenie`: ta akcja rusza
- * biegi z `ExecutionAnalysisType`, unii BEZ `protection_sn` — bieg zabezpieczeń
- * wymaga uprzedniego biegu zwarciowego i `protection_case_id`, więc jedno
- * kliknięcie „Oblicz" nie ma tu pokrycia w backendzie (zero fabrykacji).
+ * Zero-state (D2): brak dwóch przebiegów zabezpieczeń do porównania → nawigacja do E-28
+ * („Koordynacja zabezpieczeń", sekcja oceny zabezpieczeń na biegu zwarciowym), gdzie
+ * powstaje bieg oceny zabezpieczeń z modelu. NIE `useAkcjaUruchomObliczenie`: ta akcja
+ * rusza biegi z `ExecutionAnalysisType`, unii BEZ `protection_sn` — bieg zabezpieczeń
+ * wymaga uprzedniego biegu zwarciowego, więc jedno kliknięcie „Oblicz" nie ma tu pokrycia
+ * w backendzie (zero fabrykacji).
  *
  * Ślad porównania (White Box): kroki przychodzą z
  * `GET /api/protection-comparisons/{id}/trace`, ładowane NA ŻĄDANIE (pierwsze
@@ -50,7 +49,7 @@ import {
   PrzyciskAkcjiStanu,
   SekcjaZalozen,
   TabelaWynikow,
-  useAkcjaPrzejdzDoSchematu,
+  useAkcjaPrzejdzDoOcenyZabezpieczen,
   useNazwaObiektu,
 } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
@@ -132,10 +131,10 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
     [przypadki],
   );
 
-  // D2 (karta CV-3.3-B2): zero-state „brak przebiegów" nawiguje do schematu —
-  // stąd dziś powstaje bieg zabezpieczeń (SC + „Uruchom Protection"). Zero
-  // fabrykacji: `useAkcjaUruchomObliczenie` nie obsługuje `protection_sn`.
-  const akcjaSchemat = useAkcjaPrzejdzDoSchematu();
+  // Zero-state „brak przebiegów" nawiguje do E-28, gdzie projektant uruchamia ocenę
+  // zabezpieczeń z modelu na biegu zwarciowym. Zero fabrykacji: `useAkcjaUruchomObliczenie`
+  // nie obsługuje `protection_sn`.
+  const akcjaOcena = useAkcjaPrzejdzDoOcenyZabezpieczen();
 
   const [runA, setRunA] = useState('');
   const [runB, setRunB] = useState('');
@@ -223,8 +222,8 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
   const wierszeStanow = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoZmiany ? tylkoZmianyStanowZabezpieczen(wynik.rows) : wynik.rows;
-    return naWierszeStanowZabezpieczen(zrodlo, wagi, nazwaObiektu);
-  }, [wynik, wagi, tylkoZmiany, nazwaObiektu]);
+    return naWierszeStanowZabezpieczen(zrodlo, wagi);
+  }, [wynik, wagi, tylkoZmiany]);
   const wierszeRankingu = useMemo(
     () => (wynik ? naWierszeRankinguZabezpieczen(wynik.ranking, nazwaObiektu) : []),
     [wynik, nazwaObiektu],
@@ -288,7 +287,7 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
           <div className="mvd-por-pusty" data-testid="mvd-porzab-brak-przebiegow">
             <p className="mvd-por-pusty-title">{ZB.brakPrzebiegow}</p>
             <p className="mvd-por-pusty-desc">{ZB.brakPrzebiegowOpis}</p>
-            <PrzyciskAkcjiStanu akcja={akcjaSchemat} testid="mvd-porzab-brak-przebiegow" />
+            <PrzyciskAkcjiStanu akcja={akcjaOcena} testid="mvd-porzab-brak-przebiegow" />
           </div>
         )}
         {stanListy === 'gotowe' && przebiegi.length > 0 && (
@@ -471,14 +470,12 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
             {stanSladu === 'gotowe' && slad && (
               <div data-testid="mvd-porzab-slad">
                 <h3 className="mvd-por-szczegol-tytul">{ZB.sladTytul}</h3>
-                {/* Karta #145: odciski bibliotek, data i kody kroków śladu to metadane —
+                {/* Karta #145: data i kody kroków śladu to metadane —
                     wyłącznie w „Informacjach audytowych" śladu. */}
                 <InformacjeAudytowe
                   trybEkspercki={trybEkspercki}
                   testid="mvd-porzab-slad-informacje-audytowe"
                   wiersze={[
-                    { etykieta: ZB.sladOdciskBibliotekiA, wartosc: slad.library_fingerprint_a ?? ZB.kreska },
-                    { etykieta: ZB.sladOdciskBibliotekiB, wartosc: slad.library_fingerprint_b ?? ZB.kreska },
                     { etykieta: ZB.sladUtworzono, wartosc: slad.created_at },
                     ...slad.steps.map((krok, i) => ({
                       etykieta: `${ZB.sladKrok} (${i + 1})`,

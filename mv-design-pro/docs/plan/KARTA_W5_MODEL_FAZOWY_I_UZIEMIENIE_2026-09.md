@@ -108,14 +108,22 @@ Status: karta architekta (projekt kontraktów i kolejności), 2026-09-16. Nadrz�
    solvera, nie domysł). Ekran E-31 (stan fazowy) dostaje DRUGIE źródło z etykietą „z rozpływu niesymetrycznego"; zdanie
    „ten wskaźnik nie jest dziś liczony" w `strings.ts` zastąpione stanem faktycznym per źródło (odchylenie od średniej z
    `phase_state_sn`, VUF wg składowych z rozpływu niesymetrycznego).
-8. **TT/IT/RCD (W5-E).** Model: `Load` nN / obwód nN dostaje `rcd: RcdSpec | None` (`i_delta_n_a`, `typ ∈ {AC, A, F, B}`,
-   `selektywny: bool`, `catalog_ref`) i `earth_electrode_r_ohm: float | None` (R_A instalacji odbiorczej, TT/IT);
-   `Transformer.lv_neutral.r_ohm` pełni rolę R_B. Katalog RCD typowany, bez domyślnych wartości. Fizyka: solver
-   `fault_loop_iec60364.py` (FROZEN) podnosi `NotImplementedError` dla TT/IT → **OD-25** (B-01): nowy moduł
-   `solvers/petla_zwarcia_tt_it.py` (TT: `R_A · I_Δn ≤ 50 V` i czas wyłączenia wg IEC 60364-4-41 411.5.3 / tab. 41.1; IT:
-   pierwsze zwarcie `R_A · I_d ≤ 50 V` 411.6.2, drugie zwarcie jak TN/TT 411.6.4). Do decyzji: gotowość odmawia nazwanym
-   kodem `fault_loop.tt_it_not_supported` — nigdy domyślnym TN-C-S. `POST /api/fault-loop/compute` (ręczne R+X, 0
-   konsumentów, 0 testów) — kasacja procedurą 7 kroków; żywa trasa `station-fault-loop` (z modelu) zostaje.
+8. **TT/IT/RCD (W5-E) — WYKONANE kartą W5-E-TTIT (decyzja O-59 OD-25, 2026-10-15; commity karty
+   `859234c51`, `7cf006c46`, `c0b5b2ef2`, `a786ecac4`, scalone w partii integracji 9).** Model: RCD jest APARATEM W TORZE (`SwitchBranch`, katalog `APARAT_NN_RCD`: `i_delta_n_a`,
+   `rcd_type ∈ {AC, A, F, B}`, `selective`, czasy `t_a_s` / `t_a_2idn_s` / `t_a_5idn_s`, status REFERENCYJNY z dwóch źródeł
+   wtórnych; operacja `add_nn_rcd` wstawia go przed zaciskami instalacji odbioru), odbiór nN niesie
+   `Load.earth_electrode_r_ohm` (R_A instalacji odbiorczej; addytywne, poza hashem gdy puste), `Transformer.lv_neutral.r_ohm`
+   punktu uziemionego bezpośrednio pełni rolę R_B, pojemność doziemna sieci IT z `b0_siemens_per_km` odcinków. Fizyka:
+   `solvers/petla_zwarcia_tt_it.py` (TT: I_d przez R_A+R_B i U_dotyk = R_A·I_Δn; IT: I_d = 3ωC_e·U_0 z pojemności,
+   drugie zwarcie L-PE-L z Z1 transformatora) wołany WYŁĄCZNIE przez `fault_loop_iec60364.compute_fault_loop`
+   (dyspozycja po układzie, jądro sumowania składowych wspólne z TN — ADR-015, tożsamość bitowa TN przypięta testem).
+   Werdykt SWZ TT/IT = rekord werdyktu wyjaśnialnego (`swz/werdykt_tt_it.py`): czasy wyłączenia WYŁĄCZNIE z tabeli repo
+   (`TABLICA_TT_ODBIORCZE` / `CZAS_TT_ROZDZIELCZY`, stan źródła w wyjaśnieniu); dopuszczalne napięcie dotykowe (§411.5.3 /
+   §411.6) i warunki drugiego zwarcia IT NIE są w repozytorium — kryterium ma status `BRAK_PODSTAWY` z kodem
+   `swz.limit_tt_it_brak_tekstu_normy` do pakietu danych właściciela P-C (tekst normy: wydanie, punkt, cytat); ŻADNA
+   liczba z pamięci. Brak danej = odmowa nazwana (`nn.brak_r_a` / `nn.brak_r_b` / `nn.brak_rcd` /
+   `nn.brak_pojemnosci_doziemnej`, rejestr kodów gotowości), nigdy domyślny TN-C-S. `POST /api/fault-loop/compute`
+   skasowany wcześniej (ENDPOINTY-BEZ-KONSUMENTA); żywa trasa `station-fault-loop` (z modelu) liczy TT/IT.
 9. **Terminale (W5-T; T-2).** Akcesor `enm/topology.terminals(enm) → tuple[Terminal, ...]`,
    `Terminal = (equipment_ref, sequence, cn_ref, phases)`, tożsamość `"{equipment_ref}:t{sequence}"`, wyprowadzany
    deterministycznie z `bus_ref`/`from_bus_ref`/`to_bus_ref` i `Bay.ports` — bez nowego stanu w modelu. `ConnectionNode`
@@ -137,7 +145,9 @@ Status: karta architekta (projekt kontraktów i kolejności), 2026-09-16. Nadrz�
 12. **Decyzje właściciela (B-01) — zapis do mapy §7:** **OD-24** — `solvers/v126_academic.py` (FROZEN): fallbacki
     `neutral_earthing_type` (`petersen_coil`/`petersen_tuned`/`isolated`) i stała `"voltage_unbalance_u2_u1": 0.0` to
     domyślne wartości fizyki w rdzeniu; W5 gwarantuje, że wejście zawsze niesie wartość z modelu (test pinujący), ale kod
-    fallbacku zostaje do zgody właściciela. **OD-25** — nowy moduł solvera pętli zwarcia TT/IT z RCD (p. 8).
+    fallbacku zostaje do zgody właściciela. **OD-25** — nowy moduł solvera pętli zwarcia TT/IT z RCD (p. 8) —
+    ROZSTRZYGNIĘTE O-59 (zgoda: nowy moduł `petla_zwarcia_tt_it.py` wołany przez jedyne wejście `compute_fault_loop`),
+    wykonane kartą W5-E-TTIT.
 
 ## 2. Granice (czego wykonawcy NIE robią)
 - Nie edytują `network_model/solvers/**` (B-01) — `power_flow_unbalanced.py`, `fault_loop_iec60364.py`,
@@ -159,7 +169,8 @@ Status: karta architekta (projekt kontraktów i kolejności), 2026-09-16. Nadrz�
    poprzedni; SLD zmienia stan łącznika naprawdę.
 5. `Load.phases`; bieg `rozplyw_niesymetryczny` end-to-end (model → bieg → wynik → E-31 → dowód White Box), VUF wg
    IEC 61000-4-30 z solvera; e2e klasy D zielone jako bramka CI.
-6. TT/IT/RCD: model + katalog + gotowość nazwana; `/api/fault-loop/compute` skasowany; OD-25 zapisane.
+6. TT/IT/RCD: model + katalog + gotowość nazwana + solver pętli doziemnej + werdykt wyjaśnialny + dowód + ekran nN
+   (W5-E-TTIT, wykonane); `/api/fault-loop/compute` skasowany; OD-25 rozstrzygnięte (O-59).
 7. Terminale: akcesor T-2, `ConnectionNode` i martwa migracja skasowane, E030 domyślnie włączone.
 8. Dokumenty: `CANONICAL_TWIN_ARCHITECTURE.md` §T-2/§F (stan „wdrożone" z odnośnikiem do commitów), mapa §4 wiersz W5 i
    aneks 3a (B5 pozostaje w W4, C2/C4/C8/F9/G6 zamknięte lub nazwane), rejestr konfliktów (wiersz W5), evidence §E/§F.

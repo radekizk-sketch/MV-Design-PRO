@@ -2,12 +2,13 @@
 
 W1 (mapa domknięcia §9): wydzielone z kasowanego `NetworkWizardRepository` — repozytorium
 kreatora legacy na tabelach `network_*` — jako JEDYNA jego część z żywymi konsumentami:
-`api/catalog.py` (`/api/catalog/protection/*`), `application/catalog_governance`
-(import/eksport biblioteki zabezpieczeń) i `application/protection_analysis/catalog_lookup`
-(bieg zabezpieczeń czyta szablon/krzywą/typ urządzenia przez `CatalogRepository`).
+`api/catalog.py` (`/api/catalog/protection/*`) i `application/catalog_governance`
+(import/eksport biblioteki zabezpieczeń). Bieg oceny zabezpieczeń NIE czyta tej biblioteki
+(karta BIEG-ZABEZPIECZEN-Z-MODELU): urządzenia i nastawy żyją w modelu, a zakresy nastaw
+pochodzą z pozycji katalogu, do której przypisanie jest związane operacją domenową.
 
 Tabele: `protection_device_types`, `protection_curves`, `protection_setting_templates`
-(P14a). Tor biegu jest tylko do odczytu; zapis wyłącznie przez import biblioteki
+(P14a). Zapis wyłącznie przez import biblioteki
 (`import_protection_library`). Rekord ma kształt `{id, name_pl, params}` — ten sam, który
 niesie eksport biblioteki, więc import porównuje rekordy bez tłumaczenia pól.
 """

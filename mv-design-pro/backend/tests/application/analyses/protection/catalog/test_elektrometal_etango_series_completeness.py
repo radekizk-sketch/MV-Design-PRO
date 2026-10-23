@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from application.analyses.protection.catalog.catalog_store import list_devices
 
-# Legacy V0 series (NIEWERYFIKOWANY/ANALITYCZNY_V1, IEC_NI only, basic functions)
+# Legacy V0 series (NIEWERYFIKOWANY/ANALITYCZNY_V1, IEC_SI only, basic functions)
 LEGACY_V0_RATED = [400, 600, 800, 1000, 1250, 1600, 2000]
 
 # K30-16 expansion: comprehensive E2Tango z extended functions, multiple curves,
@@ -46,7 +46,7 @@ def test_elektrometal_e2tango_comprehensive_expansion_present() -> None:
         assert "79" in device.functions_supported  # autoreclose
     # Top-tier 1200 must support full IEC + IEEE curves
     e2_1200 = next(d for d in e2_devices if d.meta.get("rated") == 1200)
-    assert "IEC_NI" in e2_1200.curves_supported
+    assert "IEC_SI" in e2_1200.curves_supported
     assert "IEC_VI" in e2_1200.curves_supported
     assert "IEEE_MI" in e2_1200.curves_supported
     # 1200 flagship: includes 87L (line differential), 21 (distance), PMU-ready

@@ -10,16 +10,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
-from api.klucz_twin_dep import KluczTwin
-from domain.study_case import StudyCaseConfig
+from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
+from api.odmowa_http import OdmowaHttpError
 from enm.assembler import zbuduj_graf, zloz_wejscie_rozplywu, zloz_wejscie_zwarcia
 from enm.store import get_enm
 from fastapi import APIRouter, Depends, HTTPException, Path
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel
 from solver_input.builder import build_solver_input
 from solver_input.contracts import (
@@ -74,11 +76,6 @@ def _graph_for_analysis(
             snapshot, sc_options, rozszerzenia_audit2=rozszerzenia_audit2
         ).graph
     return zbuduj_graf(snapshot)
-
-
-def _get_config_for_case(case_id: str) -> StudyCaseConfig:
-    """Stub: retrieve StudyCaseConfig for a given case."""
-    return StudyCaseConfig()
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +170,6 @@ def get_solver_input(
     audit2_payload: dict[str, Any] | None = None
     rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
-        from uuid import UUID
 
         from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
@@ -208,9 +204,11 @@ def get_solver_input(
             solver_options={},
             rozszerzenia_audit2=rozszerzenia_audit2,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    config = _get_config_for_case(case_id)
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=400) from exc
+    # Karta OD-17a (znalezisko uboczne): do tej karty koperta wejścia solvera niosła
+    # `StudyCaseConfig()` (zaślepka) zamiast konfiguracji przypadku z bazy.
+    config = przypadek_z_bazy(case_id, uow_factory).config
     catalog = get_default_mv_catalog()
 
     envelope = build_solver_input(

@@ -55,7 +55,7 @@ export interface UruchomObliczenieProps {
 export function UruchomObliczenie({ testid = 'mvd-uruchom-obliczenie' }: UruchomObliczenieProps) {
   const [rodzaj, setRodzaj] = useState<ExecutionAnalysisType>('SC_3F');
   const [metoda, setMetoda] = useState<MetodaRozplywu>('newton-raphson');
-  const { uruchom, wToku } = useUruchomObliczenie();
+  const { uruchom, anuluj, wToku, biegId } = useUruchomObliczenie();
 
   const jestRozplywem = rodzaj === 'LOAD_FLOW';
   const opisMetody = METODY.find((m) => m.wartosc === metoda)?.opis ?? '';
@@ -112,6 +112,17 @@ export function UruchomObliczenie({ testid = 'mvd-uruchom-obliczenie' }: Uruchom
       >
         {wToku ? T.uruchomWToku : T.uruchom}
       </button>
+      {wToku && biegId !== null && (
+        <button
+          type="button"
+          className="mvd-btn"
+          onClick={anuluj}
+          title={T.uruchomAnulujOpis}
+          data-testid={`${testid}-anuluj`}
+        >
+          {T.uruchomAnuluj}
+        </button>
+      )}
     </div>
   );
 }

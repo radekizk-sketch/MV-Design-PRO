@@ -34,9 +34,35 @@ export const TRASY_KANONICZNE = {};
 
 APPROOT_TSX = """
 import { przejdzDoPrzestrzeni } from './shell/przejsciaPrzestrzeni';
+import { wykonajAkcjeNaprawcza } from './spaces/gotowosc/akcjeNaprawcze';
 const wybierzPrzestrzen = przejdzDoPrzestrzeni;
 export function AppRoot() {
-  return null;
+  return [
+    <PulpitProjektu onAkcjaNaprawcza={wykonajAkcjeNaprawcza} />,
+    <PanelGotowosci onAkcjaNaprawcza={wykonajAkcjeNaprawcza} />,
+  ];
+}
+"""
+
+AKCJE_NAPRAWCZE_TS = """
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { executeFixActionSurface } from './fixActionSurfaceExecutor';
+export function wykonajAkcjeNaprawcza(problem) {
+  przejdzDoPrzestrzeni('schemat');
+  executeFixActionSurface(problem.akcja, {});
+}
+"""
+
+WYKONAWCA_TS = """
+export function executeFixActionSurface(action, deps) {
+  return true;
+}
+"""
+
+PETLA_TS = """
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+export function usePoprawWModelu() {
+  return () => przejdzDoPrzestrzeni('schemat');
 }
 """
 
@@ -51,6 +77,17 @@ def zbuduj_front(tmp_path: Path) -> Path:
     (src / "ui2" / "legacy").mkdir(parents=True)
     (src / "ui2" / "legacy" / "mostObszarow.ts").write_text(MOST_TS, encoding="utf-8")
     (src / "ui2" / "AppRoot.tsx").write_text(APPROOT_TSX, encoding="utf-8")
+    (src / "ui2" / "spaces" / "gotowosc").mkdir(parents=True)
+    (src / "ui2" / "spaces" / "gotowosc" / "akcjeNaprawcze.ts").write_text(
+        AKCJE_NAPRAWCZE_TS, encoding="utf-8"
+    )
+    (src / "ui2" / "spaces" / "gotowosc" / "fixActionSurfaceExecutor.ts").write_text(
+        WYKONAWCA_TS, encoding="utf-8"
+    )
+    (src / "ui2" / "wyniki" / "wzorzec").mkdir(parents=True)
+    (src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts").write_text(
+        PETLA_TS, encoding="utf-8"
+    )
     return src
 
 
@@ -61,6 +98,14 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "PLIK_MOSTU", src / "ui2" / "legacy" / "mostObszarow.ts")
     monkeypatch.setattr(guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx")
     monkeypatch.setattr(guard, "PLIK_APPROOT", src / "ui2" / "AppRoot.tsx")
+    gotowosc = src / "ui2" / "spaces" / "gotowosc"
+    monkeypatch.setattr(guard, "PLIK_AKCJI_NAPRAWCZYCH", gotowosc / "akcjeNaprawcze.ts")
+    monkeypatch.setattr(guard, "PLIK_WYKONAWCY", gotowosc / "fixActionSurfaceExecutor.ts")
+    monkeypatch.setattr(
+        guard,
+        "PLIK_PETLI_WYNIK_MODEL",
+        src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts",
+    )
     monkeypatch.setattr(
         guard,
         "SCIEZKA_REJESTRU_OBSZAROW",
@@ -297,6 +342,92 @@ def test_regula_e_lapie_goly_setter_zamiast_kanonu(tmp_path, monkeypatch) -> Non
     naruszenia = guard.regula_e_wiazanie_pulpitu()
 
     assert any("[pulpit-poza-kanonem]" in wpis for wpis in naruszenia)
+
+
+# --------------------------------------------------------------------------
+# REGULA F — akcja naprawcza jako wykonawca (C-12)
+# --------------------------------------------------------------------------
+
+
+def test_regula_f_czysto_przy_jednym_wykonawcy(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_f_akcja_naprawcza() == []
+
+
+def test_regula_f_lapie_goly_setter_w_wykonawcy(tmp_path, monkeypatch) -> None:
+    # Dokladnie defekt sprzed C-12 w petli wynik->model: goly setter zostawia trase
+    # nadrzedna (`#analysis`), ktora przykrywa „Schemat".
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts").write_text(
+        "export const f = () => useShellStore.getState().setActiveSpace('schemat');\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-goly-setter]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+def test_regula_f_lapie_wykonawce_bez_nawigacji(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "spaces" / "gotowosc" / "akcjeNaprawcze.ts").write_text(
+        "export function wykonajAkcjeNaprawcza(p) { executeFixActionSurface(p, {}); }\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-bez-nawigacji]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+def test_regula_f_lapie_druga_implementacje_w_approot(tmp_path, monkeypatch) -> None:
+    # Stan sprzed C-12: AppRoot mial wlasne `wykonajAkcjeNaprawcza` (selekcja + „Schemat").
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "AppRoot.tsx").write_text(
+        APPROOT_TSX.replace(
+            "import { wykonajAkcjeNaprawcza } from './spaces/gotowosc/akcjeNaprawcze';",
+            "const wykonajAkcjeNaprawcza = (p) => wybierzPrzestrzen('schemat');",
+        ),
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-druga-implementacja]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+def test_regula_f_lapie_niewpieta_droge_naprawy(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "AppRoot.tsx").write_text(
+        APPROOT_TSX.replace(
+            "<PulpitProjektu onAkcjaNaprawcza={wykonajAkcjeNaprawcza} />",
+            "<PulpitProjektu onAkcjaNaprawcza={() => {}} />",
+        ),
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-niewpieta]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+def test_regula_f_lapie_wyspe_wykonawcy_w_ui(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "shared").mkdir(parents=True)
+    (src / "ui" / "shared" / "fixActionSurfaceExecutor.ts").write_text(
+        WYKONAWCA_TS, encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-wyspa-legacy]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+def test_regula_f_lapie_drugiego_wolajacego_wykonawce(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Inny.tsx").write_text(
+        "export const x = () => executeFixActionSurface(a, d);\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[naprawa-wolajacy]" in w for w in guard.regula_f_akcja_naprawcza())
 
 
 def test_guard_zielony_na_repozytorium() -> None:

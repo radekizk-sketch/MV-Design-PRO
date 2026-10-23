@@ -318,6 +318,25 @@ def test_uszkodzony_zapis_w_testach_backendu_czyni_straznika_czerwonym(
     assert main() == 0, "drzewo po sprzątnięciu próbki musi być czyste"
 
 
+def test_plik_nieczytelny_jako_utf8_czyni_straznika_czerwonym(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """Plik w zakresie skanu, ktorego nie da sie zdekodowac jako UTF-8, to czerwien z nazwa
+    pliku (GUARD-BLAD-SKLADNI) — wczesniej `except Exception: continue` pomijal go po cichu."""
+    import utf8_mojibake_guard
+
+    katalog = tmp_path / "mv-design-pro" / "backend" / "tests"
+    katalog.mkdir(parents=True)
+    (katalog / "test_zdrowy.py").write_text('CATALOG_REF = "kabel-240"\n', encoding="utf-8")
+    (katalog / "test_zly_bajt.py").write_bytes(b"X = '\xff\xfe'\n")
+    monkeypatch.setattr(utf8_mojibake_guard, "KORZEN", tmp_path)
+
+    assert main() == 1
+    wyjscie = capsys.readouterr().out
+    assert "test_zly_bajt.py:0" in wyjscie
+    assert "nieczytelny jako UTF-8" in wyjscie
+
+
 # ---------------------------------------------------------------------------
 # WYKRYWANIE — klasy uszkodzeń i poprawna składnia
 # ---------------------------------------------------------------------------

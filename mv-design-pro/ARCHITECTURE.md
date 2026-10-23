@@ -146,11 +146,11 @@ Transparent source tracking via `ParameterSource` enum.
 ## 4. Validation Layer
 
 ```
-NetworkModel ──> NetworkValidator.validate() ──> VALID → Solver allowed
-                                              ──> INVALID → Solver BLOCKED
+ENM ──> enm/validator.py (walidator ENM) ──> CalculationReadinessService ──> READY → bieg dozwolony
+                                                                            ──> kod gotowości z akcją naprawczą → bieg zablokowany
 ```
 
-Implementation: `network_model/validation/validator.py`
+Implementation: `enm/validator.py` + `application/readiness` (`CalculationReadinessService`), wywoływane przez `enm/canonical_analysis` (ADR-025 ACCEPTED 2026-09-30, O-65). Legacy `network_model/validation/validator.py` (`NetworkValidator`) has 0 production consumers (the only import outside the package is `enm/domain_operations.py:11959` `validate_semantic_as_dicts`) and is removed by card GOTOWOSC-JEDEN-REJESTR after a rule-code identity test; the rules listed below migrate to the ENM validator with identical codes.
 
 13 industrial-grade rules with suggested_fix diagnostics:
 1. Empty network check
@@ -191,6 +191,10 @@ class StudyCase:
 ### 5.2 StudyCaseService
 
 Manages CRUD, clone, activate/deactivate, compare (read-only), invalidation.
+
+### 5.3 Protection settings and the Case (ADR-022 ACCEPTED 2026-09-30, O-73)
+
+Base protection settings (IED/`ProtectionDevice`, `ProtectionFunction`, `SettingGroup` 1–4, `TripMatrix`, `CtCore`) are ASSET data of the ENM model, added additively. A Case does not own settings: it SELECTS a setting group or overlays an override as a scenario delta (`OperatingScenario`, ADR-016) resolved in `EffectiveNetworkSnapshot` (ADR-017). Consumers (coordination, TCC, report, SLD drawer) read only `EffectiveNetworkSnapshot`; the V11 write blocks `relay.*`/`field.*` are lifted by one card (V12K-342). Core Rule #4 of `CLAUDE.md` is clarified, not broken.
 
 Implementation: `application/study_case/`, `application/active_case/`
 
@@ -276,11 +280,11 @@ Key components:
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | Protection Analysis | `application/analyses/protection/` | Overcurrent settings, coordination, selectivity |
-| Protection Engine v1 | `domain/protection_engine_v1.py` | ANSI 50/51, IEC IDMT curves (WHITE BOX) |
+| Protection Evaluation Engine | `application/protection_analysis/engine.py` (`ProtectionEvaluationEngine`, tor `protection_sn`) | ANSI 50/51 evaluation; IEC IDMT delegated to the solver kernel `network_model/solvers/protection_iec60255.py::compute_idmt_generic` (WHITE BOX) |
 | Protection Analysis Model | `domain/protection_analysis.py` | Evaluation, trace, summary (interpretation only) |
-| Protection → ResultSet | `application/result_mapping/protection_to_resultset_v1.py` | Mapper to canonical ResultSet |
+| ResultSet v1 producer (all analyses) | `application/result_mapping/canonical_run_to_resultset_v1.py` | Sole producer of `domain.result_contract_v1.ResultSetV1` (SC / PF / Protection), fills `element_ref_id` (V12S-011); guarded by `scripts/resultset_v1_schema_guard.py`. Former `domain/protection_engine_v1.py` and `protection_to_resultset_v1.py` were dead (0 importers) and deleted in card RESULTSET-MARTWE-MAPPERY (2026-09-30, decision O-59) |
 | Protection Library | `application/analyses/protection/catalog/` | Vendor curves (Elektrometal ETango), IDMT |
-| Voltage Analysis | `analysis/voltage/` | Voltage violations, profiles |
+| Voltage Analysis | `analysis/voltage_profile/` | Voltage violations, profiles |
 | Power Flow Interpretation | `analysis/power_flow/` | PF result analysis |
 | Normative Evaluator | `analysis/normative/` | PN-EN compliance rules |
 | Coverage Score | `analysis/coverage_score/` | Analysis completeness assessment |
@@ -409,8 +413,8 @@ User edit (Wizard or SLD)
 
 ```
 User triggers "Calculate"
-    → NetworkValidator.validate()
-    → [VALID] Create NetworkSnapshot (frozen)
+    → enm/validator.py + CalculationReadinessService (ADR-025, O-65)
+    → [READY] Create NetworkSnapshot (frozen)
     → Solver.solve(snapshot) → Result + WhiteBoxTrace
     → Store result, mark Case FRESH
     → [Optional] ProofEngine generates ProofDocument
@@ -437,7 +441,7 @@ backend/src/
 │   ├── core/           Bus, Branch, Switch, Source, Load, Graph, Snapshot
 │   ├── catalog/        Types (Line, Cable, Trafo), Resolver, Governance
 │   ├── solvers/        IEC60909 SC, NR/GS/FD Power Flow, Y-bus
-│   ├── validation/     NetworkValidator
+│   ├── validation/     legacy NetworkValidator (0 production consumers; removed by GOTOWOSC-JEDEN-REJESTR — ADR-025, O-65)
 │   └── whitebox/       WhiteBoxTrace
 ├── analysis/
 │   ├── boundary/       BoundaryIdentifier (BoundaryNode)

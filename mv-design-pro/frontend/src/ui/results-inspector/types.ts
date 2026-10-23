@@ -182,6 +182,53 @@ export interface ShortCircuitBranchFlow {
 }
 
 /**
+ * Wpis zestawienia „wkład pominięty na podstawie tolerancji numerycznej" (karta
+ * PROG-ZERA-WKLADOW) — para źródło×gałąź, której |I| jest poniżej progu rdzenia
+ * (`PROG_WKLADU_POMIJALNEGO_A`, odbicie w `prog_wkladu_pominietego_a` odpowiedzi
+ * rozpływu). Projekcja `_sc_wklady_pominiete` (`enm/canonical_analysis.py`): surowe
+ * |I| obcięte do 3 cyfr znaczących w stronę zera (kA); kąt fazora ZAWSZE `null` — poniżej
+ * progu kąt nie jest określony (fazor to reszta arytmetyki zależna od maszyny, karta
+ * KAT-WKLADU-POMINIETEGO; przyczyna w notatce kroku śladu `wklady_pominiete`), więc
+ * prezentacja pokazuje „nie określono", nigdy liczbę. To NIE jest zero ani wkład z listy — tabela rozpływu go nie
+ * pokazuje; zestawienie stoi osobno.
+ */
+export interface WkladPominietyRozplywu {
+  branch_id: string;
+  branch_name: string;
+  source_id: string;
+  /** Tor rdzenia, którym policzono wkład: sieć zastępcza albo superpozycja falownikowa. */
+  tor: 'thevenin' | 'falownik';
+  i_ka: number;
+  /** Kąt fazora nieokreślony poniżej progu — rdzeń nie publikuje liczby. */
+  kat_deg: null;
+}
+
+/**
+ * Wkład jednego źródła do prądu zwarciowego w punkcie (karta WKLAD-ZRODLA) — rozbicie
+ * części Thevenina na zasilania systemowe, szyny sztywne i maszyny wirujące metodą
+ * zastępczego źródła napięcia (IEC 60909-0:2016 §4.2: I_Q,k = Y_Q,k·Z_kf·I_k''(Th)).
+ * Projekcja `_sc_wklady_zrodel` (`enm/canonical_analysis.py`): odnośnik źródła z modelu,
+ * prąd w kA w miejscu zwarcia i na zaciskach źródła, kąt fazora względem I_k''(Th),
+ * udział względem I_k'' (z falownikami) — z rdzenia, zero fizyki w prezentacji. Klasa
+ * wpisu: `WKLAD`, `POMINIETY` (|I| poniżej progu rdzenia) albo `INNA_WYSPA` (wkład
+ * strukturalnie zerowy, przyczyna w `przyczyna`). Falowniki nie są na tej liście — stoją
+ * per źródło w `contributions` wiersza.
+ */
+export interface WkladZrodlaRozplywu {
+  source_id: string;
+  source_name: string | null;
+  rodzaj: 'siec' | 'szyna_sztywna' | 'maszyna_synchroniczna' | 'maszyna_asynchroniczna';
+  node_id: string;
+  node_name: string;
+  klasa: 'WKLAD' | 'POMINIETY' | 'INNA_WYSPA';
+  i_ka: number;
+  i_zaciski_ka: number;
+  kat_deg: number | null;
+  udzial: number;
+  przyczyna: string | null;
+}
+
+/**
  * Single short-circuit result row.
  */
 export interface ShortCircuitRow {
@@ -203,10 +250,28 @@ export interface ShortCircuitRow {
   xr_ratio?: number | null;
   kappa?: number | null;
   c_factor?: number | null;
+  /**
+   * Podstawa współczynnika c TEGO węzła (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, White Box):
+   * „IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 %, MAX" albo „nadpisanie ręczne: <powód>".
+   * Tekst backendu — UI go nie składa i nie tłumaczy.
+   */
+  c_zrodlo?: string | null;
   un_kv?: number | null;
   tk_s?: number | null;
+  /**
+   * Karta SC-IB-ITH-ZRODLA + TB-WARTOSC-ROBOCZA: czas wyłączenia t_b TEGO punktu zwarcia
+   * (rozstrzygany per punkt: scenariusz projektanta, najkrótszy czas pól lokalnych albo
+   * wartość robocza), prąd wyłączeniowy SYMETRYCZNY I_b (IEC 60909-0 rozdz. 9) i składowa
+   * nieokresowa i_DC(t_b) (rozdz. 10). `null` wyłącznie dla wiersza bez wyniku solvera.
+   */
   tb_s?: number | null;
+  /**
+   * Pochodzenie t_b punktu (karta TB-WARTOSC-ROBOCZA, addytywnie, `exclude_none`): obecne,
+   * gdy t_b NIE pochodzi ze scenariusza projektanta — pola lokalne albo wartość robocza.
+   */
+  tb_zrodlo?: CzasTbPunktu | null;
   ib_ka?: number | null;
+  i_dc_ka?: number | null;
   ik_ka?: number | null;
   ik_thevenin_ka?: number | null;
   ik_inverters_ka?: number | null;
@@ -311,21 +376,78 @@ export interface ZrodloSiecioweSlad {
  */
 export interface ZalozenieBieguSlad {
   code: string;
-  element_ref: string;
+  /**
+   * Element modelu, którego dotyczy założenie; `null` = założenie CAŁEGO biegu (karta
+   * TB-WARTOSC-ROBOCZA: `fault.czas_tb_wartosc_robocza` — t_b części punktów zwarcia jest
+   * wartością roboczą).
+   */
+  element_ref: string | null;
   message_pl: string;
   scenariusz: 'MAX' | 'MIN';
+  /**
+   * Punkty zwarcia, których dotyczy założenie biegu (karta TB-WARTOSC-ROBOCZA: punkty
+   * z t_b roboczym, z t_b i jego źródłem); brak = założenie bez listy punktów.
+   */
+  punkty?: CzasTbPunktuZalozenia[];
+  /**
+   * Pole modelu, którego deklaracja zastąpiłaby wartość roboczą (karta
+   * TOLERANCJA-NN-WARTOSC-ROBOCZA: `lv_voltage_tolerance`) — tylko gdy założenie ma
+   * element, na którym deklarację można położyć; brak = brak akcji „Zmień wartość”.
+   */
+  parametr?: string;
+  /** Rodzaj elementu w modelu (`Transformer` albo `Source`) — razem z `parametr`. */
+  element_type?: string;
 }
 
 /**
- * Współczynnik napięciowy c ZAPISANY na biegu (karta UI2 p.7,
- * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — jawny override
- * (`tryb: 'jawny'`, `wartosc` liczbą) albo dobór automatyczny per węzeł z jego
- * pasma napięciowego (`tryb: 'auto_per_wezel'`, `wartosc: null` — nie ma
- * jednej liczby, więc pole NIE jest fabrykowane).
+ * Pochodzenie czasu wyłączenia t_b punktu zwarcia — 1:1 z backendem
+ * (`network_model/core/czas_wylaczenia.py::CzasWylaczeniaTb.to_dict`). `opis_pl` i
+ * `zrodlo_pl` to tekst backendu — UI go nie składa. `wartosc_robocza` = t_b przyjęty bez
+ * dokumentu (propozycja albo czas pola z czasem własnym wyłącznika przyjętym roboczo).
+ */
+export interface CzasTbPunktu {
+  wartosc_s: number;
+  pochodzenie: 'PROJEKTANT' | 'Z_POL' | 'PROPOZYCJA';
+  wartosc_robocza: boolean;
+  jakosc: 'ESTIMATED' | null;
+  opis_pl: string;
+  /** Źródło normowe wartości roboczej — wyłącznie przy pochodzeniu `PROPOZYCJA`. */
+  zrodlo_pl?: string;
+  /** Rozbicie czasu pola — wyłącznie przy pochodzeniu `Z_POL`. */
+  pole_ref?: string;
+  pole_nazwa?: string | null;
+  zabezpieczenie_ref?: string | null;
+  czlon_nastawczy_s?: number | null;
+  czas_wlasny_s?: number | null;
+  czas_wlasny_pochodzenie?: string | null;
+  prad_zwarciowy_a?: number | null;
+  /**
+   * Wyłącznie w wierszu wyniku: `true` = I_b punktu zawiera zanik prądów maszyn wirujących
+   * (μ, q zależne od t_b), więc wartość robocza t_b stoi także za I_b, nie tylko za i_DC.
+   */
+  ib_z_udzialem_maszyn?: boolean;
+}
+
+/** Punkt zwarcia założenia `fault.czas_tb_wartosc_robocza` (odnośnik szyny + t_b). */
+export interface CzasTbPunktuZalozenia extends CzasTbPunktu {
+  fault_node_id: string;
+  element_id: string | null;
+  nazwa: string;
+}
+
+/**
+ * Tryb współczynnika napięciowego c ZAPISANY na biegu (`voltage_factor.opis_c_biegu`,
+ * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — JEDEN kształt dla wyników
+ * zwarć i proweniencji nastaw (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59):
+ *  - `auto_per_wezel`: c z tabeli 1 IEC 60909-0 dla pasma KAŻDEGO węzła (`wartosc` i
+ *    `uzasadnienie` = `null` — nie ma jednej liczby; podstawa w wierszu: `c_zrodlo`),
+ *  - `nadpisanie`: wartość ręczna RAZEM z uzasadnieniem inżyniera.
+ * Dawny tryb „jawny" (płaska liczba bez uzasadnienia) nie istnieje.
  */
 export interface CFactorBiegu {
-  tryb: 'jawny' | 'auto_per_wezel';
+  tryb: 'auto_per_wezel' | 'nadpisanie';
   wartosc: number | null;
+  uzasadnienie: string | null;
 }
 
 /**
@@ -340,6 +462,17 @@ export interface ThermalTimeBiegu {
 }
 
 /**
+ * Czas wyłączenia t_b ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA,
+ * `api/canonical_run_views.py::_czas_tb_biegu_zwarcia`): z opcji biegu (projekcja scenariusza
+ * zwarciowego) albo — karta TB-WARTOSC-ROBOCZA — `wartosc: null` z pochodzeniem
+ * `punkt_zwarcia`: t_b rozstrzygany w każdym punkcie (pola lokalne, inaczej wartość
+ * robocza), zdanie reguły w `opis_pl` (tekst backendu). Nigdy liczba udająca t_b biegu.
+ */
+export type CzasWylaczeniaBiegu =
+  | { wartosc: number; pochodzenie: 'opcje_biegu' }
+  | { wartosc: null; pochodzenie: 'punkt_zwarcia'; opis_pl: string };
+
+/**
  * Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) — ZAWSZE
  * konfiguracja TEGO biegu (`run.options`), NIGDY aktywnego przypadku
  * obliczeniowego (który może się różnić od przypadku biegu po fakcie).
@@ -348,6 +481,8 @@ export interface ThermalTimeBiegu {
 export interface KonfiguracjaBieguZwarcia {
   c_factor: CFactorBiegu;
   thermal_time_seconds: ThermalTimeBiegu;
+  /** Karta SC-IB-ITH-ZRODLA — addytywne (brak na starszym zapisie). */
+  breaking_time_seconds?: CzasWylaczeniaBiegu;
   metoda: string;
   /**
    * Wariant zwarciowy ZAPISANY na wyniku biegu: `MAX` (selektywność,
@@ -360,6 +495,25 @@ export interface KonfiguracjaBieguZwarcia {
    * MINIMALNY na szynie 15 kV nie różni się progiem `c >= 1` od maksymalnego.
    */
   scenariusz?: 'MAX' | 'MIN' | null;
+  /**
+   * Karta OD-14 (partia integracji 10): impedancja przejścia Z_f ZAPISANA na biegu
+   * (`raw_result.impedancja_zwarcia`, `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`).
+   * Pole obecne WYŁĄCZNIE dla biegu przez Z_f ≠ 0 — bieg metaliczny (także tryb IMPEDANCE
+   * z Z_f = 0) go nie ma. Wynik takiego biegu jest poza zakresem IEC 60909.
+   */
+  impedancja_przejscia?: ImpedancjaPrzejsciaBiegu;
+  /**
+   * Karta TB-WARTOSC-ROBOCZA (addytywnie): scenariusz zwarciowy, z którego powstał bieg —
+   * cel akcji „Zmień wartość" t_b. Brak = bieg przypadku bez scenariusza.
+   */
+  scenariusz_zwarciowy_id?: string;
+}
+
+/** Z_f = R_f + jX_f [Ω] biegu zwarciowego przez impedancję przejścia (karta OD-14). */
+export interface ImpedancjaPrzejsciaBiegu {
+  r_f_ohm: number;
+  x_f_ohm: number;
+  poza_zakresem_iec60909: true;
 }
 
 /**
@@ -547,6 +701,7 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   u_kv: 'Napięcie',
   u_pu: 'Napięcie (j.w.)',
   c_factor: 'Współczynnik napięciowy c',
+  c_zrodlo: 'Podstawa współczynnika c',
   // Power
   sk_mva: 'Moc zwarciowa Sk"',
   p_mw: 'Moc czynna',
@@ -578,6 +733,14 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   direction: 'Kierunek przepływu prądu zwarciowego',
   fraction_sum: 'Suma współczynników gałęzi dopływających do węzła zwarcia',
   sum_into_fault_a: 'Suma prądów gałęzi dopływających do węzła zwarcia',
+  // Krok `wklady_pominiete` (karta PROG-ZERA-WKLADOW): wkład pominięty na podstawie
+  // tolerancji numerycznej — nie zero; próg czytany z kroku (odbicie jedynej definicji
+  // rdzenia), nie ze stałej frontu.
+  prog_a: 'Próg wkładu pominiętego na podstawie tolerancji numerycznej',
+  liczba_pominietych_thevenin: 'Liczba wkładów pominiętych — sieć zastępcza (Thevenin)',
+  liczba_pominietych_falownik: 'Liczba wkładów pominiętych — źródła falownikowe',
+  suma_modulow_pominietych_thevenin_a: 'Suma modułów wkładów pominiętych — sieć zastępcza',
+  suma_modulow_pominietych_falownik_a: 'Suma modułów wkładów pominiętych — źródła falownikowe',
   s_rt_mva: 'Moc znamionowa transformatora SrT',
   u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
   u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
@@ -599,11 +762,24 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   ikss_a: 'Prąd zwarciowy początkowy Ik″',
   rx_ratio: 'Stosunek R/X',
   ip_a: 'Prąd udarowy ip',
+  // Karta SC-IB-ITH-ZRODLA: kroki „Ib" (IEC 60909-0 rozdz. 9) i „iDC" (rozdz. 10) śladu.
   tb_s: 'Czas wyłączenia tb',
-  ta_s: 'Stała czasowa składowej nieokresowej ta',
-  exp_factor: 'Czynnik zaniku e^(−tb/ta)',
-  ib_a: 'Prąd zwarciowy do obliczeń cieplnych Ib',
+  ib_a: 'Prąd wyłączeniowy symetryczny Ib',
+  przypadek: 'Przypadek normy dla Ib',
+  maszyny: 'Zaniki prądów maszyn wirujących',
+  ikss_czesciowy_a: 'Prąd częściowy maszyny Ik″m',
+  ratio_ik_ir: 'Krotność Ik″m/Ir maszyny',
+  mu: 'Współczynnik zaniku μ',
+  q: 'Współczynnik zaniku q (maszyny asynchroniczne)',
+  delta_u_wzgledne: 'Względny spadek napięcia na zaciskach maszyny ΔU″ (w odniesieniu do napięcia źródła zastępczego)',
+  ubytek_a: 'Ubytek prądu wyłączeniowego od maszyny',
+  f_hz: 'Częstotliwość sieci f',
+  wykladnik: 'Wykładnik zaniku 2πf·tb·R/X',
+  wspolczynnik_zaniku: 'Czynnik zaniku e^(−2πf·tb·R/X)',
+  i_dc_a: 'Składowa nieokresowa iDC(tb)',
+  kod: 'Kod odmowy',
   ith_a: 'Prąd zastępczy cieplny Ith',
+  tk_s: 'Czas trwania zwarcia tk',
 };
 
 /**
@@ -616,6 +792,9 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ik_thevenin_a: 'A',
   i_contrib_a: 'A',
   sum_into_fault_a: 'A',
+  prog_a: 'A',
+  suma_modulow_pominietych_thevenin_a: 'A',
+  suma_modulow_pominietych_falownik_a: 'A',
   v_nodes_pu: 'j.w.',
   v_from_pu: 'j.w.',
   v_to_pu: 'j.w.',
@@ -640,7 +819,11 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ib_a: 'A',
   ith_a: 'A',
   tb_s: 's',
-  ta_s: 's',
+  tk_s: 's',
+  i_dc_a: 'A',
+  ikss_czesciowy_a: 'A',
+  ubytek_a: 'A',
+  f_hz: 'Hz',
   sk_mva: 'MVA',
 };
 

@@ -33,8 +33,10 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana, odmowa_rdzenia_b01
 from network_model.solvers.state_estimation_wls import (
     Measurement,
     MeasurementSet,
@@ -87,12 +89,12 @@ _UNITS_NOTE_PL = (
 def _require_power_flow_run(run: CanonicalRun) -> None:
     """Estymacja stanu wymaga gotowego przebiegu rozpływu (topologia + Y-bus)."""
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Estymacja stanu WLS wymaga przebiegu rozpływu mocy (PF); "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "topologia sieci do budowy Y-bus nie jest dostępna."
         )
@@ -115,7 +117,7 @@ def _slack_node_id(graph: NetworkGraph) -> str:
         node_id for node_id, node in graph.nodes.items() if node.node_type == NodeType.SLACK
     )
     if not slack_nodes:
-        raise ValueError("Brak węzła bilansującego SLACK w snapshotcie ENM przebiegu.")
+        raise OdmowaDanychError("Brak węzła bilansującego SLACK w snapshotcie ENM przebiegu.")
     return slack_nodes[0]
 
 
@@ -152,7 +154,13 @@ def _prepare(
     graph = _load_graph(run)
     base_mva = _base_mva(run)
     slack_node_id = _slack_node_id(graph)
-    ybus_pu, node_id_to_index = ybus_from_network_graph(graph, base_mva, slack_node_id)
+    # Estymator WLS jest rdzeniem B-01 — jego odmowy wejścia (przekładnia zaczepu ≤ 0,
+    # nieobserwowalność, pomiar spoza sieci) to goły `ValueError`; granica tłumaczy je na
+    # odmowę danych (karta ODMOWA-DANYCH-422). Tak samo niżej przy każdym wywołaniu rdzenia.
+    # Macierz admitancji buduje rozpływ NR (rdzeń B-01): jego odmowa strukturalna (przekładnia
+    # zaczepu ≤ 0, decyzja O-59) wychodzi ze zdaniem z nazwami z grafu.
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
+        ybus_pu, node_id_to_index = ybus_from_network_graph(graph, base_mva, slack_node_id)
     index_to_node = {index: node_id for node_id, index in node_id_to_index.items()}
     return graph, base_mva, slack_node_id, ybus_pu, node_id_to_index, index_to_node
 
@@ -209,7 +217,7 @@ def _parse_measurements(
     pomiar). Nieznany węzeł / zły typ / brak bus_j → ``ValueError`` (→ 422).
     """
     if not measurements_in:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Brak pomiarów: estymacja stanu WLS wymaga zestawu pomiarów telemetrycznych "
             "(SCADA/PMU). Skorzystaj z /api/quality/state-estimation/requirements, aby "
             "poznać wymagane węzły i minimalną liczbę pomiarów."
@@ -223,11 +231,17 @@ def _parse_measurements(
             meas_type = MeasurementType(raw_type)
         except ValueError as exc:
             allowed = ", ".join(entry["code"] for entry in MEASUREMENT_TYPES)
-            raise ValueError(f"Nieznany typ pomiaru: {raw_type!r} (dozwolone: {allowed}).") from exc
+            raise OdmowaDanychError(
+                f"Nieznany typ pomiaru: {raw_type!r} (dozwolone: {allowed})."
+            ) from exc
 
         bus_i_ref = str(raw.get("bus_ref") or raw.get("bus_i_ref") or "")
         if bus_i_ref not in node_id_to_index:
-            raise ValueError(f"Pomiar odnosi się do nieistniejącego węzła bus_ref={bus_i_ref!r}.")
+            raise OdmowaNazwana(
+                "Pomiar odnosi się do węzła, którego nie ma w modelu sieci.",
+                kod="estymacja.pomiar_wezla_spoza_modelu",
+                dane={"element_ref": bus_i_ref},
+            )
         bus_i = node_id_to_index[bus_i_ref]
 
         bus_j_ref_raw = raw.get("bus_j_ref") or raw.get("bus_j")
@@ -236,23 +250,29 @@ def _parse_measurements(
         if bus_j_ref_raw is not None and str(bus_j_ref_raw) != "":
             bus_j_ref = str(bus_j_ref_raw)
             if bus_j_ref not in node_id_to_index:
-                raise ValueError(
-                    f"Pomiar odnosi się do nieistniejącego węzła bus_j_ref={bus_j_ref!r}."
+                raise OdmowaNazwana(
+                    "Pomiar przepływu odnosi się do węzła końcowego, którego nie ma w modelu "
+                    "sieci.",
+                    kod="estymacja.pomiar_wezla_spoza_modelu",
+                    dane={"element_ref": bus_j_ref},
                 )
             bus_j = node_id_to_index[bus_j_ref]
 
         raw_value = raw.get("value")
         raw_sigma = raw.get("sigma")
         if raw_value is None or raw_sigma is None:
-            raise ValueError("Pomiar wymaga pól 'value' oraz 'sigma'.")
-        value = float(raw_value)
-        sigma = float(raw_sigma)
+            raise OdmowaDanychError("Pomiar wymaga pól 'value' oraz 'sigma'.")
+        try:
+            value = float(raw_value)
+            sigma = float(raw_sigma)
+        except ValueError as exc:  # liczba z żądania projektanta — odmowa danych
+            raise OdmowaDanychError(str(exc)) from exc
         label = raw.get("label")
         label = str(label) if label is not None else None
 
         # Measurement.__post_init__ waliduje sigma>0 i spójność bus_j z typem.
-        measurements.append(
-            Measurement(
+        with odmowa_rdzenia_b01():
+            pomiar = Measurement(
                 meas_type=meas_type,
                 bus_i=bus_i,
                 value=value,
@@ -260,7 +280,7 @@ def _parse_measurements(
                 bus_j=bus_j,
                 label=label,
             )
-        )
+        measurements.append(pomiar)
         descriptors.append(
             {
                 "meas_type": meas_type.value,
@@ -272,7 +292,9 @@ def _parse_measurements(
             }
         )
 
-    return MeasurementSet(tuple(measurements)), descriptors
+    with odmowa_rdzenia_b01():
+        zestaw = MeasurementSet(tuple(measurements))
+    return zestaw, descriptors
 
 
 def _serialize_result(
@@ -431,14 +453,15 @@ def build_state_estimation_view(
     measurement_set, descriptors = _parse_measurements(measurements_in, node_id_to_index)
     slack_index = node_id_to_index[slack_node_id]
 
-    result = estimate_wls(
-        ybus_pu,
-        measurement_set,
-        slack_index,
-        alpha=alpha,
-        lnr_threshold=lnr_threshold,
-        trace=include_trace,
-    )
+    with odmowa_rdzenia_b01():
+        result = estimate_wls(
+            ybus_pu,
+            measurement_set,
+            slack_index,
+            alpha=alpha,
+            lnr_threshold=lnr_threshold,
+            trace=include_trace,
+        )
 
     return _serialize_result(
         result,

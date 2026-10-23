@@ -136,8 +136,9 @@ def test_guard_rejects_public_router_importing_orphaned_result_mapping_cluster(
     `protection_to_overlay_v1.py` i `domain/analysis_kind.py` skasowane —
     jedyny wolajacy w `src/` byl E3/E2-widmo, oba skasowane karta CV-3.3-A.
     `sc_binding_meta.py` i `short_circuit_to_resultset_v1.py`/
-    `protection_to_resultset_v1.py` NIE sa w tej liscie — zostaja, zamrozone
-    przez `resultset_v1_schema_guard.py` (decyzja wlasciciela, B-01)."""
+    `protection_to_resultset_v1.py` NIE sa w tej liscie — skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w O-59), bramka ich
+    wskrzeszenia w `resultset_v1_schema_guard.py`."""
     module_path = write_module(
         tmp_path,
         "resurrected_result_mapping_router.py",
@@ -1140,8 +1141,9 @@ def test_guard_rejects_resurrected_w3a_second_engine_module(tmp_path, monkeypatc
     faktycznie skasowane — `domain/protection_engine_v1.py` (WATCHED_PATHS
     `solver_boundary_guard.py`) i `application/result_mapping/
     protection_to_resultset_v1.py` (PROTECTED_FILES `resultset_v1_schema_
-    guard.py`) ZOSTALY PRZYWROCONE i NIE sa juz w `W3A_LEGACY_RELATIVE_PATHS`
-    (patrz test ponizej, ktory to jawnie pinuje)."""
+    guard.py`) ZOSTALY PRZYWROCONE i NIE sa w `W3A_LEGACY_RELATIVE_PATHS`;
+    skasowane pozniej w karcie RESULTSET-MARTWE-MAPPERY, bramka wskrzeszenia w
+    `resultset_v1_schema_guard.py` (patrz test ponizej)."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir()
     (src / "domain" / "protection_current_source.py").write_text("x = 1\n", encoding="utf-8")
@@ -1205,9 +1207,9 @@ def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypa
 def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monkeypatch) -> None:
     """Zaślepka bez fizyki skasowana z `domain_operations_v2.py`
     (`calculate_tcc_curve`, `tcc.legacy_write_disabled`) — jedyna pozostała
-    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` po B-01 STOP (funkcje
-    `protection_engine_v1.py`/`protection_to_resultset_v1.py` ZOSTAJĄ, patrz
-    test poniżej)."""
+    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` (funkcje skasowanych
+    `protection_engine_v1.py`/`protection_to_resultset_v1.py` pilnuje
+    `resultset_v1_schema_guard.py`, patrz test poniżej)."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "enm").mkdir()
     (src / "enm" / "cokolwiek.py").write_text(
@@ -1221,13 +1223,14 @@ def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monke
 
 
 def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> None:
-    """B-01 STOP jest CELOWY, nie przeoczeniem: `domain/protection_engine_v1.py`
-    i `application/result_mapping/protection_to_resultset_v1.py` istnieją
-    LEGALNIE (chronione, nie skasowane) — ich klasy/funkcje NIE mogą być na
-    listach zakazanych, inaczej ten guard fałszywie zapaliłby się na plikach,
-    które mają prawo istnieć. Deklaracja bez testu = fałszywa pewność
-    (CLAUDE.md, reguła KLASA NIE INSTANCJA pkt 4) — ten test PRZYPINA tę
-    obietnicę z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
+    """Jedna bramka na klasę: `domain/protection_engine_v1.py` i
+    `application/result_mapping/protection_to_resultset_v1.py` (skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY, 2026-09-30) pilnuje WYŁĄCZNIE
+    `resultset_v1_schema_guard.py::check_resultset_dead_mappers_resurrection`
+    (samotest `test_resultset_v1_schema_guard.py`). Bramka W3-A ich nie dubluje —
+    dwa predykaty tej samej klasy w dwóch guardach to dryf oczekujący na dane
+    brzegowe (CLAUDE.md, KLASA NIE INSTANCJA pkt 3). Ten test PRZYPINA brak
+    dublowania z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "domain").mkdir()
     (src / "domain" / "protection_engine_v1.py").write_text(
@@ -1258,9 +1261,9 @@ def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(tmp_path, monke
 def test_guard_does_not_fire_on_w3a_shared_private_helper_names(tmp_path, monkeypatch) -> None:
     """`_build_element_results`/`_build_global_results` (prywatne funkcje
     skasowanego `protection_to_resultset_v1.py`) NIE są na liście zakazanych
-    nazw — te same nazwy żyją w `short_circuit_to_resultset_v1.py` (żywy
-    mapper SC, poza zakresem W3-A); zakaz nazwy złapałby fałsz-pozytyw na
-    module z tej samej rodziny plików, ale INNEGO silnika fizyki."""
+    nazw — to ogólne nazwy prywatnych pomocników (nosił je też skasowany
+    `short_circuit_to_resultset_v1.py`); zakaz nazwy złapałby fałsz-pozytyw na
+    każdym przyszłym module z pomocnikiem o tej nazwie."""
     src = _patch_w3a_tree(monkeypatch, tmp_path)
     (src / "application").mkdir()
     (src / "application" / "short_circuit_to_resultset_v1.py").write_text(
@@ -1948,13 +1951,34 @@ def test_guard_rejects_s3_frontend_island_file(tmp_path, monkeypatch, rel: str) 
 @pytest.mark.parametrize(
     ("nazwa", "definicja"),
     [
-        ("NcRfgComplianceBadge", "export function NcRfgComplianceBadge() { return null; }"),
-        ("evaluateNcRfgCompliance", "export const evaluateNcRfgCompliance = () => null;"),
-        ("DerValidationBanner", "export default function DerValidationBanner() { return null; }"),
-        ("validateDerPowerVsTransformer", "export function validateDerPowerVsTransformer() {}"),
-        ("NcRfgComplianceVerdict", "export type NcRfgComplianceVerdict = 'pass' | 'no_module';"),
-        ("NcRfgComplianceReport", "export interface NcRfgComplianceReport { x: number }"),
-        ("NcRfgComplianceTestResult", "export interface NcRfgComplianceTestResult { x: number }"),
+        (
+            "NcRfgComplianceBadge",
+            "export function NcRfgComplianceBadge() { return null; }",
+        ),
+        (
+            "evaluateNcRfgCompliance",
+            "export const evaluateNcRfgCompliance = () => null;",
+        ),
+        (
+            "DerValidationBanner",
+            "export default function DerValidationBanner() { return null; }",
+        ),
+        (
+            "validateDerPowerVsTransformer",
+            "export function validateDerPowerVsTransformer() {}",
+        ),
+        (
+            "NcRfgComplianceVerdict",
+            "export type NcRfgComplianceVerdict = 'pass' | 'no_module';",
+        ),
+        (
+            "NcRfgComplianceReport",
+            "export interface NcRfgComplianceReport { x: number }",
+        ),
+        (
+            "NcRfgComplianceTestResult",
+            "export interface NcRfgComplianceTestResult { x: number }",
+        ),
     ],
 )
 def test_guard_rejects_resurrected_s3_definition_under_other_path(
@@ -2275,7 +2299,8 @@ def test_pakiet_l_every_deleted_row_has_a_gate_entry() -> None:
 
 def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
     """Pin z POMIARU (karta AB-1a Pakiet D2, 2026-09-23): 244 wpisy Pakietu L + wpisy kasacji
-    B+C (meldunek integracji, (f)2) + wpisy kasacji D2. Zmiana liczby = świadoma zmiana pinu."""
+    B+C (meldunek integracji, (f)2) + wpisy kasacji D2. Zmiana liczby = świadoma zmiana pinu.
+    """
     liczby = {}
     for w in guard.PAKIET_L_WPISY:
         klucz = w.wiersz if w.wiersz in guard.KARTY_WPISOW_SPOZA_INWENTARZA else "L"
@@ -2285,7 +2310,15 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
     # Karta #135 (2026-09-24): +4 wpisy (2 definicje backendu w pliku, 2 wzorce klienta).
     # AB-1a Pakiet 0 (2026-09-24): +49 wpisów (27 definicji backendu, 22 definicje klienta) —
     # werdykty fabrykowane FRT, toru T1, SSCI, LoM, werdyktu projektowego i stabilności.
-    assert liczby == {"L": 244, "BC": 50, "D2": 85, "1B1A": 9, "H0": 1, "135": 4, "P0": 49}
+    assert liczby == {
+        "L": 244,
+        "BC": 50,
+        "D2": 85,
+        "1B1A": 9,
+        "H0": 1,
+        "135": 4,
+        "P0": 49,
+    }
     assert len(guard.PAKIET_L_WPISY) == 244 + 50 + 85 + 9 + 1 + 4 + 49
 
 
@@ -2350,7 +2383,8 @@ def test_guard_rejects_pakiet_l_backend_definition_under_other_path(
 def test_guard_rejects_pakiet_l_backend_definition_as_method(tmp_path, monkeypatch, wpis) -> None:
     """Ta sama zdolnosc w innym ksztalcie skladni: funkcja wraca jako metoda
     (`async def`) klasy — `ast.walk` musi ja zlapac tak samo jak definicje modulowa.
-    Klasy i stale modulowe maja ksztalt metody bezprzedmiotowy (wylaczone z iloczynu)."""
+    Klasy i stale modulowe maja ksztalt metody bezprzedmiotowy (wylaczone z iloczynu).
+    """
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
     _zapisz(
         src / "serwis" / "nowy_serwis.py",
@@ -2448,7 +2482,10 @@ def test_guard_does_not_fire_on_pakiet_l_names_in_comments_or_docstrings(
     for w in _wpisy("frontend", "definicja") + _wpisy("frontend", "wzorzec"):
         if any(w.sciezka == z or w.sciezka.startswith(z + "/") for z in zakazane):
             continue  # plik skasowany — sama jego obecnosc jest naruszeniem (inny test)
-        _zapisz(fe / w.sciezka, f"// {w.symbol} skasowany\n/* export const {w.symbol} = 1; */\n")
+        _zapisz(
+            fe / w.sciezka,
+            f"// {w.symbol} skasowany\n/* export const {w.symbol} = 1; */\n",
+        )
 
     assert guard.check_pakiet_l_resurrection() == []
 
@@ -2486,9 +2523,13 @@ def test_guard_accepts_clean_tree_without_pakiet_l_resurrection(tmp_path, monkey
         "export interface CoordinationResult {}\n",
     )
     _zapisz(
-        fe / "ui2" / "inspector" / "InspectorPanel.tsx", "export function InspectorPanel() {}\n"
+        fe / "ui2" / "inspector" / "InspectorPanel.tsx",
+        "export function InspectorPanel() {}\n",
     )
-    _zapisz(fe / "ui" / "sld" / "v3" / "canvas" / "overlay.ts", "export const overlay = 1;\n")
+    _zapisz(
+        fe / "ui" / "sld" / "v3" / "canvas" / "overlay.ts",
+        "export const overlay = 1;\n",
+    )
 
     assert guard.check_pakiet_l_resurrection() == []
 
@@ -2509,6 +2550,35 @@ def test_guard_rejects_resurrected_abp1_backend_path(tmp_path, monkeypatch, scie
 
     naruszenia = guard.check_abp1_dynamika_resurrection()
     assert any(f"backend/src/{sciezka}" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("sciezka", guard.B01I_SCIEZKI_BACKEND)
+def test_guard_rejects_resurrected_stability_rms_path(tmp_path, monkeypatch, sciezka) -> None:
+    """Pozycja (i) planu A/B §12.2: katalog skasowanego solvera RMS nie wraca."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / sciezka / "engine.py", "X_ZYWE = 1\n")
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f"backend/src/{sciezka}" in n and "pozycja (i)" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("symbol", sorted(guard.B01I_DEFINICJE_BACKEND))
+def test_guard_rejects_stability_rms_definition_under_other_path(
+    tmp_path, monkeypatch, symbol
+) -> None:
+    """Symbol skasowanego solvera wraca pod INNA sciezka (np. `network_model/solvers/rms`)."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "rms" / "silnik.py", _py_definicja(symbol))
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f": {symbol} (" in n and "pozycja (i)" in n for n in naruszenia), naruszenia
+
+
+def test_guard_ignores_orphaned_pycache_only_stability_rms(tmp_path, monkeypatch) -> None:
+    """Katalog z samym `__pycache__` (lokalny klon po kasacji) nie jest nawrotem."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "stability_rms" / "__pycache__" / "engine.pyc", "x")
+    assert guard.check_abp1_dynamika_resurrection() == []
 
 
 @pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_FRONTEND)
@@ -2534,7 +2604,10 @@ def test_guard_rejects_abp1_definition_under_other_path(tmp_path, monkeypatch, s
 def test_guard_abp1_file_scoped_definition(tmp_path, monkeypatch) -> None:
     """`_check_stability` zakazane w bramce gotowosci, dozwolone gdzie indziej."""
     src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
-    _zapisz(src / "analysis" / "ssci_stability" / "ocena.py", _py_definicja("_check_stability"))
+    _zapisz(
+        src / "analysis" / "ssci_stability" / "ocena.py",
+        _py_definicja("_check_stability"),
+    )
     assert guard.check_abp1_dynamika_resurrection() == []
 
     _zapisz(
@@ -2620,10 +2693,14 @@ def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatc
         'class ExecutionAnalysisType:\n    DYNAMIKA_RMS = "DYNAMIKA_RMS"\n',
     )
     _zapisz(
-        src / "api" / "analysis_runs.py", 'TRASA = "/analysis-runs/{run_id}/results/dynamika"\n'
+        src / "api" / "analysis_runs.py",
+        'TRASA = "/analysis-runs/{run_id}/results/dynamika"\n',
     )
     _zapisz(src / "api" / "v126.py", 'KLUCZ = "stabilnosc"\n')
-    _zapisz(fe / "ui2" / "wyniki" / "dynamika" / "api.ts", "export const T = 'DYNAMIKA_RMS';\n")
+    _zapisz(
+        fe / "ui2" / "wyniki" / "dynamika" / "api.ts",
+        "export const T = 'DYNAMIKA_RMS';\n",
+    )
 
     assert guard.check_abp1_dynamika_resurrection() == []
 
@@ -2631,3 +2708,755 @@ def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatc
 def test_guard_accepts_current_repo_state_abp1() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie AB-P1."""
     assert guard.check_abp1_dynamika_resurrection() == []
+
+
+# =============================================================================
+# TORY-TYLKO-W-TESTACH (2026-09-30) — tory obliczen bez konsumenta w produkcie
+# (adapter rozplywu w analizie, `execute_short_circuit`, galaz awaryjna pakietu stanu
+# fazowego SN, pakiet `analysis/machine_short_circuit`) nie wracaja. Iloczyn cech:
+# {sciezka pliku, definicja pod INNA sciezka, definicja per plik, nazwa solvera w
+# pakiecie dowodowym} × {czerwien, para zielona: legalna nazwa w innym pliku}.
+# =============================================================================
+
+
+def _patch_tory_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def _zapisz_tory(src: Path, rel: str, tresc: str) -> None:
+    plik = src / rel
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(tresc, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "analysis/power_flow/solver.py",
+        "analysis/power_flow/analysis.py",
+        "analysis/power_flow/_internal.py",
+        "analysis/machine_short_circuit/__init__.py",
+    ],
+)
+def test_guard_rejects_resurrected_tory_module(tmp_path, monkeypatch, rel) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, rel, "x = 1\n")
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    katalog_albo_plik = rel.removesuffix("/__init__.py")
+    assert any(
+        "[resurrected-module]" in v and f"backend/src/{katalog_albo_plik}" in v for v in violations
+    ), violations
+
+
+@pytest.mark.parametrize(
+    ("rel", "tresc", "nazwa"),
+    [
+        (
+            "analysis/rozplyw/adapter.py",
+            "class PowerFlowSolver:\n    pass\n",
+            "PowerFlowSolver",
+        ),
+        (
+            "analysis/rozplyw/adapter.py",
+            "def solve_power_flow(x):\n    return x\n",
+            "solve_power_flow",
+        ),
+        (
+            "analysis/rozplyw/skladanie.py",
+            "def assemble_power_flow_result(**k):\n    return k\n",
+            "assemble_power_flow_result",
+        ),
+        (
+            "application/zwarcia/wiazanie.py",
+            "def execute_short_circuit(**k):\n    return k\n",
+            "execute_short_circuit",
+        ),
+        (
+            "analysis/maszyny/m.py",
+            "def interpret_machine_contributions(r):\n    return r\n",
+            "interpret_machine_contributions",
+        ),
+        (
+            "application/solvers/short_circuit_binding.py",
+            "def _resolve_c_factor(**k):\n    return k\n",
+            "_resolve_c_factor",
+        ),
+        (
+            "analysis/power_flow/result.py",
+            "def _build_violations(**k):\n    return [], []\n",
+            "_build_violations",
+        ),
+    ],
+)
+def test_guard_rejects_resurrected_tory_definition(
+    tmp_path, monkeypatch, rel, tresc, nazwa
+) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, rel, tresc)
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations), violations
+
+
+def test_guard_accepts_build_violations_outside_power_flow_package(tmp_path, monkeypatch) -> None:
+    """Para zielona: `_build_violations` adekwatnosci mocy biernej jest legalna."""
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(
+        src,
+        "analysis/reactive_adequacy/builder.py",
+        "class B:\n    def _build_violations(self):\n        return []\n",
+    )
+
+    assert guard.check_tory_testowe_resurrection() == []
+
+
+@pytest.mark.parametrize(
+    "tresc",
+    [
+        "from network_model.solvers.phase_state_sn import PhaseStateSNSolver\n",
+        "from network_model.solvers.phase_state_sn import PhaseStateSNSolver as S\n",
+        "import network_model.solvers.phase_state_sn as m\n\nr = m.PhaseStateSNSolver.solve(x)\n",
+        # Karta TORY-POPRAWKI: formy, ktore pierwsza wersja bramki przepuszczala.
+        "import network_model.solvers.phase_state_sn as m\n\n"
+        "S = getattr(m, 'PhaseStateSN' + 'Solver')\n",
+        "import network_model.solvers.phase_state_sn as m\n\nS = vars(m)['PhaseStateSNSolver']\n",
+        "def materialize(solver, data):\n    return solver.solve(data)\n",
+        "from network_model.solvers.phase_state_sn import _validate_input\n",
+    ],
+)
+def test_guard_rejects_solver_in_phase_state_pack(tmp_path, monkeypatch, tresc) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, "application/proof_engine/packs/phase_state_sn.py", tresc)
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    assert any(
+        "[resurrected-name]" in v and "PhaseStateSNSolver" in v for v in violations
+    ), violations
+
+
+def test_guard_accepts_current_repo_state_tory() -> None:
+    assert guard.check_tory_testowe_resurrection() == []
+
+
+# --- Karta AB-1b.3b (2026-09-25): kasacje O-55 w modelu odbioru dynamiki ------------------
+
+
+def _patch_ab1b3b_tree(monkeypatch, tmp_path: Path) -> tuple[Path, Path, Path]:
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    testy = tmp_path / "backend" / "tests"
+    testy.mkdir(parents=True)
+    monkeypatch.setattr(guard, "BACKEND_TESTS_DIR", testy)
+    return src, testy, fe
+
+
+@pytest.mark.parametrize("kod", guard.AB1B3B_KODY)
+@pytest.mark.parametrize("gdzie", ["src", "testy"])
+def test_guard_rejects_ab1b3b_refusal_code_in_backend_code(tmp_path, monkeypatch, kod, gdzie):
+    """Skasowana odmowa wraca jako literal kodu (rejestr kodow, asercja testu)."""
+    src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    katalog = src / "network_model" / "solvers" / "dynamika" if gdzie == "src" else testy
+    _zapisz(katalog / "kody.py", f'KODY = ("{kod}",)\n')
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-string]" in n and repr(kod) in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        'KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "x"\n',
+        "from kontrakty import KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO\n",
+        "def f(k):\n    return k.KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO\n",
+        "def g8_granica_odmowy():\n    return {}\n",
+        "ZAPADY_G8_PU = (0.5, 0.2)\n",
+    ],
+)
+def test_guard_rejects_ab1b3b_identifier(tmp_path, monkeypatch, kod) -> None:
+    """Stala kodu, import, atrybut, bramka G8 i jej zamiatanie — w kazdej postaci."""
+    _src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(testy / "walidacja_fizyczna" / "bramki.py", kod)
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-name]" in n for n in naruszenia), naruszenia
+
+
+def test_guard_rejects_ab1b3b_g8_measurement_key(tmp_path, monkeypatch) -> None:
+    _src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(
+        testy / "walidacja_fizyczna" / "bramki.py", 'PROGI = {"G8_granica_odmowy_zlamana": 0.0}\n'
+    )
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("G8_granica_odmowy_zlamana" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)\n",
+        "STALA_MOC = odbiory.charakterystyka_stalej_mocy(u_min_pu=None)\n",
+        "def charakterystyka_stalej_mocy(*, u_min_pu: float | None):\n    return u_min_pu\n",
+        "def charakterystyka_stalej_mocy(u_min_pu: Optional[float]):\n    return u_min_pu\n",
+    ],
+)
+def test_guard_rejects_ab1b3b_u_min_none_variant(tmp_path, monkeypatch, kod) -> None:
+    """Odbior stalej mocy bez napiecia przejscia: wywolanie z `None` albo sygnatura z `None`."""
+    src, _testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "dynamika" / "odbiory.py", kod)
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("u_min_pu=None" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("kod", guard.AB1B3B_KODY)
+def test_guard_rejects_ab1b3b_refusal_code_in_frontend(tmp_path, monkeypatch, kod) -> None:
+    _src, _testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(fe / "ui2" / "wyniki" / "dynamika" / "strings.ts", f"export const K = '{kod}';\n")
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-pattern]" in n and repr(kod) in n for n in naruszenia), naruszenia
+
+
+def test_guard_does_not_fire_on_ab1b3b_names_in_comments_or_docstrings(tmp_path, monkeypatch):
+    """Dokstring/komentarz OPISUJACY kasacje (test przepisany z intencja) nie jest naruszeniem."""
+    src, testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    wszystko = " ".join(
+        [*guard.AB1B3B_KODY, *sorted(guard.AB1B3B_IDENTYFIKATORY), *guard.AB1B3B_NAPISY_BRAMKI]
+    )
+    tresc = (
+        f'"""Skasowane w AB-1b.3b: {wszystko}, u_min_pu=None."""\n# {wszystko}\n'
+        f'def test_x():\n    """{wszystko}"""\n'
+    )
+    _zapisz(testy / "network_model" / "dynamika" / "test_odbiory.py", tresc)
+    _zapisz(src / "network_model" / "solvers" / "dynamika" / "kontrakty.py", tresc)
+    _zapisz(
+        fe / "ui2" / "wyniki" / "dynamika" / "model.ts", f"// {wszystko}\nexport const x = 1;\n"
+    )
+
+    assert guard.check_ab1b3b_odbiory_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_ab1b3b_resurrection(tmp_path, monkeypatch) -> None:
+    """Zywe sasiedztwo: odbior stalej mocy Z napieciem przejscia, czysta impedancja bez
+    `U_min` (u_min_pu=None w kontrakcie charakterystyki — to nie jest wywolanie
+    `charakterystyka_stalej_mocy`), kody odbiorow dzisiejszego rejestru."""
+    src, testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "network_model" / "solvers" / "dynamika" / "odbiory.py",
+        "def charakterystyka_stalej_mocy(*, u_min_pu: float):\n    return u_min_pu\n",
+    )
+    _zapisz(
+        testy / "walidacja_fizyczna" / "stanowisko.py",
+        "STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=0.25)\n"
+        "CZYSTY_Z = CharakterystykaOdbioru(u_min_pu=None)\n"
+        'KOD = "dynamika.odbior_ponizej_napiecia_przejscia"\n',
+    )
+    _zapisz(
+        fe / "ui2" / "wyniki" / "dynamika" / "strings.ts",
+        "export const K = 'load.dynamika_missing';\n",
+    )
+
+    assert guard.check_ab1b3b_odbiory_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_ab1b3b() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie."""
+    assert guard.check_ab1b3b_odbiory_resurrection() == []
+
+
+# =============================================================================
+# KARTA TORY-POPRAWKI (2026-09-30). Samotesty bramek wskrzeszenia TORY sprawdzaly liste
+# z `check_tory_testowe_resurrection()`, nie kod wyjscia `main()` — wypiecie bramki
+# z `main()` nie zaczerwieniloby zadnego testu. KLASA: kazda bramka `check_*` tego
+# straznika ma pin wpiecia w `main()` (zbior definicji = zbior wywolan) oraz iniekcje
+# TORY przez `main()` na REALNYM drzewie `backend/src` (plik dopisywany i usuwany
+# w `finally`; istniejace pliki nietkniete — pakiet fazowy jest podstawiany sciezka
+# w stalej `TORY_TESTOWE_PAKIET_FAZOWY`).
+# =============================================================================
+
+import ast  # noqa: E402
+
+KATALOG_SKRYPTOW = Path(guard.__file__).resolve().parent
+
+
+def test_kazda_bramka_check_wpieta_w_main() -> None:
+    drzewo = ast.parse((KATALOG_SKRYPTOW / "legacy_public_path_guard.py").read_text("utf-8"))
+    definicje = {
+        w.name
+        for w in drzewo.body
+        if isinstance(w, ast.FunctionDef) and w.name.startswith("check_")
+    }
+    main = next(w for w in drzewo.body if isinstance(w, ast.FunctionDef) and w.name == "main")
+    wywolania = [
+        w.func.id
+        for w in ast.walk(main)
+        if isinstance(w, ast.Call)
+        and isinstance(w.func, ast.Name)
+        and w.func.id.startswith("check_")
+    ]
+
+    assert sorted(wywolania) == sorted(definicje), set(definicje) ^ set(wywolania)
+    assert len(wywolania) == len(set(wywolania)), wywolania
+
+
+import shutil  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def kopia_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Kopia realnego `backend/src` (conftest zabrania zapisu do repo)."""
+    korzen = tmp_path_factory.mktemp("realne_repo")
+    for rel in ("backend/src",):
+        shutil.copytree(
+            guard.ROOT / rel,
+            korzen / rel,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "node_modules"),
+        )
+    return korzen
+
+
+def _przepnij(wartosc: object, stary: Path, nowy: Path) -> object:
+    if isinstance(wartosc, Path):
+        return nowy / wartosc.relative_to(stary) if wartosc.is_relative_to(stary) else wartosc
+    if isinstance(wartosc, tuple | list | set | frozenset):
+        return type(wartosc)(_przepnij(w, stary, nowy) for w in wartosc)
+    if isinstance(wartosc, dict):
+        return {_przepnij(k, stary, nowy): _przepnij(w, stary, nowy) for k, w in wartosc.items()}
+    return wartosc
+
+
+def _main_z_iniekcja(
+    kopia: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    pliki: dict[str, str],
+) -> tuple[int, str]:
+    """`guard.main()` na kopii realnego drzewa z dopisanymi plikami (usuwanymi w `finally`).
+
+    Kazda stala sciezki modulu straznika (takze w krotkach/zbiorach/slownikach) jest
+    przepinana z `ROOT` na kopie — `main()` widzi dokladnie realne drzewo plus iniekcje.
+    """
+    stary = guard.ROOT
+    # Pozostale bramki wylaczone: ich wpiecie w `main()` pilnuje
+    # `test_kazda_bramka_check_wpieta_w_main`, a pelny bieg trwa ~60 s. Ta sama
+    # `main()` (sumowanie, kod wyjscia, wydruk) biegnie z PRAWDZIWA bramka TORY.
+    for nazwa in list(vars(guard)):
+        if nazwa.startswith("check_") and nazwa != "check_tory_testowe_resurrection":
+            monkeypatch.setattr(guard, nazwa, lambda: [])
+    for nazwa, wartosc in list(vars(guard).items()):
+        przepiete = _przepnij(wartosc, stary, kopia)
+        if przepiete is not wartosc and przepiete != wartosc:
+            monkeypatch.setattr(guard, nazwa, przepiete)
+    src = kopia / "backend" / "src"
+    utworzone: list[Path] = []
+    try:
+        for rel, tresc in pliki.items():
+            sciezka = src / rel
+            assert not sciezka.exists(), f"iniekcja nie nadpisuje realnego pliku: {sciezka}"
+            katalog = sciezka.parent
+            brakujace: list[Path] = []
+            while not katalog.exists():
+                brakujace.append(katalog)
+                katalog = katalog.parent
+            for nowy in reversed(brakujace):
+                nowy.mkdir()
+                utworzone.append(nowy)
+            sciezka.write_text(tresc, encoding="utf-8")
+            utworzone.append(sciezka)
+        rc = guard.main()
+    finally:
+        for sciezka in reversed(utworzone):
+            if sciezka.is_dir():
+                sciezka.rmdir()
+            else:
+                sciezka.unlink()
+    return rc, capsys.readouterr().out
+
+
+TORY_PRZEZ_MAIN: list[tuple[str, dict[str, str], str]] = [
+    *(
+        (f"modul-{rel}", {rel: "x = 1\n"}, "[resurrected-module]")
+        for rel in (
+            "analysis/power_flow/solver.py",
+            "analysis/power_flow/analysis.py",
+            "analysis/power_flow/_internal.py",
+            "analysis/machine_short_circuit/__init__.py",
+        )
+    ),
+    *(
+        (f"definicja-{nazwa}", {rel: tresc}, "[resurrected-definition]")
+        for rel, tresc, nazwa in (
+            (
+                "analysis/_iniekcja_tory/a.py",
+                "class PowerFlowSolver:\n    pass\n",
+                "PS",
+            ),
+            (
+                "analysis/_iniekcja_tory/a.py",
+                "def solve_power_flow(x):\n    return x\n",
+                "spf",
+            ),
+            (
+                "analysis/_iniekcja_tory/a.py",
+                "def assemble_power_flow_result(**k):\n    return k\n",
+                "apfr",
+            ),
+            (
+                "application/_iniekcja_tory/a.py",
+                "def execute_short_circuit(**k):\n    return k\n",
+                "esc",
+            ),
+            (
+                "analysis/_iniekcja_tory/a.py",
+                "def interpret_machine_contributions(r):\n    return r\n",
+                "imc",
+            ),
+        )
+    ),
+]
+
+PAKIET_FAZOWY_INIEKCJA = "application/proof_engine/packs/_iniekcja_pakiet_fazowy.py"
+
+PAKIET_FAZOWY_PRZEZ_MAIN: list[tuple[str, str]] = [
+    (
+        "import-nazwy",
+        "from network_model.solvers.phase_state_sn import PhaseStateSNSolver\n",
+    ),
+    (
+        "getattr-napis-skladany",
+        "import network_model.solvers.phase_state_sn as m\n\n"
+        "S = getattr(m, 'PhaseStateSN' + 'Solver')\n",
+    ),
+    (
+        "vars-modulu",
+        "from network_model.solvers import phase_state_sn\n\n"
+        "S = vars(phase_state_sn)['PhaseStateSN' 'Solver']\n",
+    ),
+    (
+        "reeksport-przez-enm",
+        "from enm.canonical_analysis import PhaseStateSNSolver as S\n",
+    ),
+    ("obiekt-modulu-reeksportujacego", "from enm import canonical_analysis\n"),
+    (
+        "solve-na-obiekcie-przekazanym",
+        "def materialize(solver, data):\n    return solver.solve(data)\n",
+    ),
+    (
+        "funkcja-wnetrza-solvera",
+        "from network_model.solvers.phase_state_sn import _validate_input\n",
+    ),
+    (
+        "import-dynamiczny",
+        "import importlib\n\nm = importlib.import_module('network_model.solvers.phase_state_sn')\n",
+    ),
+    ("pakiet-przodek", "import network_model.core.graph\n"),
+]
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "pliki", "znacznik"), TORY_PRZEZ_MAIN, ids=[t[0] for t in TORY_PRZEZ_MAIN]
+)
+def test_tory_iniekcja_przez_main(
+    kopia_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    nazwa: str,
+    pliki: dict[str, str],
+    znacznik: str,
+) -> None:
+    rc, wyjscie = _main_z_iniekcja(kopia_repo, monkeypatch, capsys, pliki)
+
+    assert rc == 1, (nazwa, wyjscie)
+    assert znacznik in wyjscie and "TORY-TYLKO-W-TESTACH" in wyjscie, wyjscie
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "tresc"),
+    PAKIET_FAZOWY_PRZEZ_MAIN,
+    ids=[t[0] for t in PAKIET_FAZOWY_PRZEZ_MAIN],
+)
+def test_pakiet_fazowy_iniekcja_przez_main(
+    kopia_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    nazwa: str,
+    tresc: str,
+) -> None:
+    monkeypatch.setattr(guard, "TORY_TESTOWE_PAKIET_FAZOWY", PAKIET_FAZOWY_INIEKCJA)
+
+    rc, wyjscie = _main_z_iniekcja(kopia_repo, monkeypatch, capsys, {PAKIET_FAZOWY_INIEKCJA: tresc})
+
+    assert rc == 1, (nazwa, wyjscie)
+    assert "[resurrected-name]" in wyjscie and "_iniekcja_pakiet_fazowy.py" in wyjscie, wyjscie
+
+
+def test_pakiet_fazowy_realna_tresc_zielona_przez_main(
+    kopia_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Para zielona: tresc realnego pakietu (typy wejscia/wyniku z listy zamknietej)."""
+    realny = (guard.BACKEND_SRC_DIR / guard.TORY_TESTOWE_PAKIET_FAZOWY).read_text("utf-8")
+    monkeypatch.setattr(guard, "TORY_TESTOWE_PAKIET_FAZOWY", PAKIET_FAZOWY_INIEKCJA)
+
+    rc, wyjscie = _main_z_iniekcja(
+        kopia_repo, monkeypatch, capsys, {PAKIET_FAZOWY_INIEKCJA: realny}
+    )
+
+    assert rc == 0, wyjscie
+
+
+def test_main_zielony_na_kopii_realnego_drzewa(
+    kopia_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Kontrola metody: sama kopia (bez iniekcji) jest zielona — czerwien iniekcji
+    pochodzi z iniekcji, nie z przepiecia sciezek."""
+    rc, wyjscie = _main_z_iniekcja(kopia_repo, monkeypatch, capsys, {})
+
+    assert rc == 0, wyjscie
+
+
+# ---------------------------------------------------------------------------
+# Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30, decyzja K-14/D-41) — jeden eksport
+# modelu sieci (CGMES z backendu). Iniekcje: kazda forma wskrzeszenia osobno.
+# ---------------------------------------------------------------------------
+
+
+def _patch_scl_cim(monkeypatch, tmp_path):
+    frontend_src = tmp_path / "frontend" / "src"
+    backend_src = tmp_path / "backend" / "src"
+    frontend_src.mkdir(parents=True, exist_ok=True)
+    backend_src.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", frontend_src)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", backend_src)
+    return frontend_src, backend_src
+
+
+def test_scl_cim_czysty_stan_bez_naruszen(tmp_path, monkeypatch) -> None:
+    _patch_scl_cim(monkeypatch, tmp_path)
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
+@pytest.mark.parametrize("sciezka", guard.KASACJA_SCL_CIM_SCIEZKI_FRONTEND)
+def test_scl_cim_odtworzony_plik_jest_naruszeniem(tmp_path, monkeypatch, sciezka) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    plik = frontend_src / sciezka
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text("export {};\n", encoding="utf-8")
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any("[resurrected-module]" in v and sciezka in v for v in violations)
+
+
+@pytest.mark.parametrize("nazwa", guard.KASACJA_SCL_CIM_DEFINICJE_FRONTEND)
+def test_scl_cim_definicja_pod_inna_sciezka_jest_naruszeniem(tmp_path, monkeypatch, nazwa) -> None:
+    """Definicja wraca pod INNYM plikiem — guard skanuje caly `frontend/src`."""
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "gdzies").mkdir()
+    (frontend_src / "gdzies" / "nowy.ts").write_text(
+        f"export function {nazwa}() {{ return ''; }}\n", encoding="utf-8"
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations)
+
+
+def test_scl_cim_definicja_lokalna_const_tez_jest_naruszeniem(tmp_path, monkeypatch) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "a.tsx").write_text(
+        "const generateCimRdfXml = () => '<rdf:RDF/>';\n", encoding="utf-8"
+    )
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+    assert any("generateCimRdfXml" in v for v in violations)
+
+
+def test_scl_cim_nazwa_w_komentarzu_i_wywolanie_nie_sa_definicja(tmp_path, monkeypatch) -> None:
+    """Komentarz cytujacy kasacje i sam napis nazwy to nie definicja — guard milczy."""
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "b.ts").write_text(
+        "/** Dawne `generateIec61850Scd` skasowane w karcie. */\n"
+        "// const NAMING_PRESETS = {} — historia\n"
+        "export const opis = 'buildCimInput';\n",
+        encoding="utf-8",
+    )
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
+@pytest.mark.parametrize("format_id", ["iec61850", "cim", "scd"])
+def test_scl_cim_format_modelu_w_rejestrze_menu_jest_naruszeniem(
+    tmp_path, monkeypatch, format_id
+) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    rejestr = frontend_src / guard.KASACJA_SCL_CIM_REJESTR_FORMATOW
+    rejestr.parent.mkdir(parents=True, exist_ok=True)
+    rejestr.write_text(
+        "// dawniej: 'iec61850' i 'cim' (komentarz — nie narusza)\n"
+        f"export type SldExportFormat = 'svg' | '{format_id}';\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert [v for v in violations if "[resurrected-format]" in v] == [
+        f"[resurrected-format] frontend/src/{guard.KASACJA_SCL_CIM_REJESTR_FORMATOW}: "
+        f"format {format_id!r} w rejestrze menu (karta KASACJA-SCL-I-CIM-KLIENT — jedynym "
+        "eksportem modelu sieci jest CGMES z backendu (decyzja K-14/D-41))"
+    ]
+
+
+def test_scl_cim_niebramkowana_droga_do_bajtow_cgmes_jest_naruszeniem(
+    tmp_path, monkeypatch
+) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "eksport.py").write_text(
+        "def export_eq_tp_bytes(enm):\n    return b'', b''\n", encoding="utf-8"
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any(
+        "[resurrected-definition]" in v and "export_eq_tp_bytes" in v and "eksport.py" in v
+        for v in violations
+    )
+
+
+def test_scl_cim_zywe_drzewo_repo_jest_czyste() -> None:
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
+# --- Karta DYNAMIKA-W-TLE (2026-09-30): Celery/Redis/MongoDB ---------------------------------
+
+
+def _patch_dynamika_w_tle_tree(monkeypatch, tmp_path):
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    monkeypatch.setattr(guard, "CELERY_MODULE", src / "api" / "celery_app.py")
+    monkeypatch.setattr(guard, "BACKEND_PYPROJECT", tmp_path / "backend" / "pyproject.toml")
+    monkeypatch.setattr(guard, "DOCKER_COMPOSE", tmp_path / "docker-compose.yml")
+    return src
+
+
+def test_guard_dynamika_w_tle_clean_tree(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "api" / "main.py", "import threading\n")
+    _zapisz(
+        tmp_path / "backend" / "pyproject.toml",
+        '[tool.poetry.dependencies]\nfastapi = "^0.110"\n\n[tool.poetry.group.dev.dependencies]\n',
+    )
+    _zapisz(
+        tmp_path / "docker-compose.yml",
+        "services:\n  backend:\n    image: x\n  postgres:\n    image: y\n",
+    )
+    assert guard.check_dynamika_w_tle_queue_resurrection() == []
+
+
+def test_guard_rejects_resurrected_celery_module(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "api" / "celery_app.py", "X = 1\n")
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any("[resurrected-module]" in n and "celery_app.py" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("modul", guard.FORBIDDEN_QUEUE_IMPORTS)
+def test_guard_rejects_queue_import_anywhere(tmp_path, monkeypatch, modul) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "application" / "nowy.py", f"from {modul}.cos import X\n")
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any(
+        "[resurrected-import]" in n and f"import {modul}.cos" in n for n in naruszenia
+    ), naruszenia
+
+
+def test_guard_ignores_queue_name_in_comment(tmp_path, monkeypatch) -> None:
+    src = _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(src / "application" / "nowy.py", "# dawniej: import celery\nX = 'redis://'\n")
+    assert guard.check_dynamika_w_tle_queue_resurrection() == []
+
+
+@pytest.mark.parametrize("zaleznosc", guard.FORBIDDEN_QUEUE_DEPENDENCIES)
+def test_guard_rejects_queue_dependency_in_pyproject(tmp_path, monkeypatch, zaleznosc) -> None:
+    _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(
+        tmp_path / "backend" / "pyproject.toml",
+        f'[tool.poetry.dependencies]\n{zaleznosc} = "^1.0"\n\n[tool.poetry.group.dev.dependencies]\n{zaleznosc} = "^1.0"\n',
+    )
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert [n for n in naruszenia if "[resurrected-dependency]" in n] == [
+        n for n in naruszenia if f": {zaleznosc} (" in n
+    ]
+    assert len([n for n in naruszenia if "[resurrected-dependency]" in n]) == 1, naruszenia
+
+
+@pytest.mark.parametrize("usluga", guard.FORBIDDEN_COMPOSE_SERVICES)
+def test_guard_rejects_queue_service_in_compose(tmp_path, monkeypatch, usluga) -> None:
+    _patch_dynamika_w_tle_tree(monkeypatch, tmp_path)
+    _zapisz(
+        tmp_path / "docker-compose.yml",
+        f"services:\n  backend:\n    image: x\n  {usluga}:\n    image: y\n",
+    )
+    naruszenia = guard.check_dynamika_w_tle_queue_resurrection()
+    assert any(
+        "[resurrected-service]" in n and f"usługa {usluga} " in n for n in naruszenia
+    ), naruszenia
+
+
+# ---------------------------------------------------------------------------
+# Partia integracji 10 (2026-10-16) — fasada `curve_calculator.py` bez konsumenta
+# skasowana. Iniekcje: plik odtworzony × definicja pod inna sciezka × stan czysty
+# i zywe drzewo repozytorium.
+# ---------------------------------------------------------------------------
+
+
+def test_partia10_czysty_stan_bez_naruszen(tmp_path, monkeypatch) -> None:
+    _patch_scl_cim(monkeypatch, tmp_path)
+    assert guard.check_partia10_kasacja_resurrection() == []
+
+
+def test_partia10_zywe_drzewo_bez_naruszen() -> None:
+    assert guard.check_partia10_kasacja_resurrection() == []
+
+
+@pytest.mark.parametrize("sciezka", guard.PARTIA10_SKASOWANE_SCIEZKI_BACKEND)
+def test_partia10_odtworzony_plik_jest_naruszeniem(tmp_path, monkeypatch, sciezka) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    plik = backend_src / sciezka
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text('"""Pusta fasada."""\n', encoding="utf-8")
+
+    violations = guard.check_partia10_kasacja_resurrection()
+
+    assert any("[resurrected-module]" in v and sciezka in v for v in violations)
+
+
+@pytest.mark.parametrize("nazwa", sorted(guard.PARTIA10_SKASOWANE_DEFINICJE_BACKEND))
+def test_partia10_definicja_pod_inna_sciezka_jest_naruszeniem(tmp_path, monkeypatch, nazwa) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "gdzies").mkdir()
+    (backend_src / "gdzies" / "nowy.py").write_text(f"class {nazwa}:\n    pass\n")
+
+    violations = guard.check_partia10_kasacja_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations)
+
+
+def test_partia10_nazwa_w_komentarzu_nie_jest_definicja(tmp_path, monkeypatch) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "opis.py").write_text(
+        '"""Dawne `calculate_curve_points` skasowane."""\n# CurveDefinition\nX = "CurveStandard"\n'
+    )
+    assert guard.check_partia10_kasacja_resurrection() == []

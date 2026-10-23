@@ -39,6 +39,7 @@ import type {
   EnergyNetworkModel,
   Generator as EnmGenerator,
 } from '../../../types/enm';
+import { stacjaSzyn } from '../../shared/szynyStacji';
 import type { BlockTransformerItem } from './audit2-api';
 import {
   EMPTY_DER_CATALOGS,
@@ -159,8 +160,8 @@ export function snPointKindForBus(
   if (branchPoint) {
     return branchPoint.branch_point_type === 'zksn' ? 'zksn' : 'branch_pole';
   }
-  const station = (snapshot.substations ?? []).find((s) => (s.bus_refs ?? []).includes(busRef));
-  if (station) return 'station_bus';
+  // SZYNY-STACJI-LUSTRO: szyna stacji (także zacisk pola) z jednego lustra `szynyStacji`.
+  if (stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []).has(busRef)) return 'station_bus';
 
   const branchByRef = new Map<string, Branch>(
     (snapshot.branches ?? []).map((branch) => [branch.ref_id, branch]),

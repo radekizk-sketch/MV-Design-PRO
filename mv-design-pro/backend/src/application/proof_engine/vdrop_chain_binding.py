@@ -55,11 +55,12 @@ from application.solvers.voltage_drop_binding import (
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_wezlow_grafu, opis_bez_nazwy
 from network_model.core.branch import BranchType
 from network_model.core.graph import NetworkGraph
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
 
-class BrakLancuchaSpadkuError(ValueError):
+class BrakLancuchaSpadkuError(OdmowaDanychError):
     """Łańcuch odcinków od źródła do punktu nie da się złożyć uczciwie.
 
     Powody: gałąź docelowa nieznana w grafie, ścieżka nieosiągalna w aktywnej
@@ -150,9 +151,7 @@ def lancuch_spadku_napiecia(
     """
     docelowa_galaz = graph.branches.get(docelowa_galaz_id)
     if docelowa_galaz is None:
-        raise BrakLancuchaSpadkuError(
-            f"Gałąź '{docelowa_galaz_id}' nie istnieje w grafie sieci tego przebiegu."
-        )
+        raise BrakLancuchaSpadkuError("Wybrana gałąź nie istnieje w grafie sieci tego przebiegu.")
 
     try:
         path = VoltageProfileSegmentBuilder(graph).build_path(
@@ -191,7 +190,7 @@ def lancuch_spadku_napiecia(
         branch = graph.branches.get(segment.branch_id)
         if branch is None:
             raise BrakLancuchaSpadkuError(
-                f"Gałąź '{segment.branch_id}' na trasie nie istnieje w grafie sieci "
+                "Gałąź na trasie do wybranego punktu nie istnieje w grafie sieci "
                 "(niespójność grafu i dekompozycji ΔU)."
             )
         jest_tr = branch.branch_type == BranchType.TRANSFORMER
@@ -213,7 +212,8 @@ def lancuch_spadku_napiecia(
         fizyka = fizyka_po_id.get(segment.branch_id)
         if fizyka is None:
             raise BrakLancuchaSpadkuError(
-                f"Odcinek '{segment.branch_id}' na trasie do wybranego punktu nie ma "
+                f"{opis_rodzaju_i_nazwy('Odcinek', branch.name)} na trasie do wybranego punktu "
+                "nie ma "
                 "kompletu danych (impedancja jednostkowa, długość, przepływ P/Q) "
                 "potrzebnych do dowodu spadku napięcia — uruchom obliczenie ponownie "
                 "albo uzupełnij dane katalogowe odcinka."

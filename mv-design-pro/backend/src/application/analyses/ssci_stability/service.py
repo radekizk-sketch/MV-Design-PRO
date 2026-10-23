@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import Any
 
 from analysis.ssci_stability import SsciStabilityBuilder, SsciStabilityContext
+from network_model.odmowa_danych import OdmowaDanychError
 
 SSCI_ANALYSIS_TYPE = "ssci_impedance"
 
@@ -98,13 +99,13 @@ def build_ssci_stability_view(
             zawiera zserializowanego payloadu solvera SSCI — komunikat po polsku.
     """
     if run_record.get("analysis_type") != SSCI_ANALYSIS_TYPE:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Werdykt stabilności SSCI wymaga przebiegu oceny interakcji podsynchronicznej "
             "przekształtnika z siecią; wskazany przebieg jest innego rodzaju."
         )
     solver_result = run_record.get("result")
     if not isinstance(solver_result, Mapping):
-        raise ValueError("Przebieg SSCI nie zawiera wyniku solvera.")
+        raise OdmowaDanychError("Przebieg SSCI nie zawiera wyniku solvera.")
     payload = solver_result.get("result")
     if not isinstance(payload, Mapping):
         raise ValueError("Wynik solvera SSCI nie zawiera payloadu analizy (z_grid/z_conv/L).")

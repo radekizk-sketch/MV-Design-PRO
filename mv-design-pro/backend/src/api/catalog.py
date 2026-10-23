@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 from api.dependencies import get_uow_factory
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.protection.catalog.catalog_store import (
     list_devices as list_analytical_protection_devices,
 )
@@ -23,8 +24,9 @@ from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
+from application.parametry_linii_wn import podglad_parametrow_linii
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
-from enm.models import UKLADY_SIECI_NN, UkladSieciNn
+from enm.models import UKLADY_SIECI_NN, GeometriaSlupaLinii, UkladSieciNn
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -52,6 +54,11 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
+from network_model.catalog.wartosci_robocze import (
+    PROPOZYCJE_LINII_WN,
+    propozycje_aparatu_sn,
+    rejestr_maszyn_do_formularza,
+)
 from network_model.core.uziemienie import (
     ROLE_UZIEMNIKA,
     TYPY_PUNKTU_NEUTRALNEGO,
@@ -60,8 +67,9 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mva_na_kva
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +217,42 @@ def list_line_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_line_types()]
 
 
+@router.get("/overhead-conductor-types")
+def list_overhead_conductor_types() -> dict[str, Any]:
+    """Przewody linii napowietrznych 110 kV (karta LINIA-110, przestrzeń PRZEWOD_LINII_WN).
+
+    ``przewody`` — dane wyrobu PN-EN 50182 (bez impedancji linii: R′, X′, B′ i Z′0 liczy solver
+    z geometrii słupa). ``wartosci_robocze`` — czym obliczenie uzupełni składową geometrii,
+    której projekt nie podaje (zasada nr 4): rodzaj źródła, odniesienie, uzasadnienie, wpływ.
+    """
+    return {
+        "przewody": [
+            item.to_dict() for item in get_default_mv_catalog().list_overhead_conductor_types()
+        ],
+        "wartosci_robocze": [p.to_dict() for p in PROPOZYCJE_LINII_WN.values()],
+    }
+
+
+class ZadaniePodgladuLiniiWN(BaseModel):
+    """Geometria słupa z formularza + częstotliwość studium modelu (bez wartości domyślnej)."""
+
+    geometria_slupa: GeometriaSlupaLinii | None = None
+    czestotliwosc_hz: float = Field(gt=0)
+
+
+@router.post("/overhead-conductor-types/{conductor_id}/parametry-linii")
+def preview_overhead_line_parameters(
+    conductor_id: str, zadanie: ZadaniePodgladuLiniiWN
+) -> dict[str, Any]:
+    """Podgląd R′, X′, B′, Z′0 linii 110 kV z przewodu katalogu i geometrii — bez zapisu.
+
+    Ślad White Box każdego kroku, dane przyjęte (``ESTIMATED``) dla składowych bez danych
+    projektu, kompletność dowodu i pasma wiarygodności. Odmowa danych (przewód spoza katalogu,
+    geometria sprzeczna) — 422 z kodem odmowy.
+    """
+    return podglad_parametrow_linii(conductor_id, zadanie.geometria_slupa, zadanie.czestotliwosc_hz)
+
+
 @router.get("/cable-types")
 def list_cable_types() -> list[dict[str, Any]]:
     """List all cable types from the canonical MV catalog."""
@@ -229,8 +273,28 @@ def list_switch_equipment_types() -> list[dict[str, Any]]:
 
 @router.get("/mv-apparatus-types")
 def list_mv_apparatus_types() -> list[dict[str, Any]]:
-    """List all MV apparatus types from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_mv_apparatus_types()]
+    """Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.
+
+    ``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni
+    parametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja
+    katalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.
+    """
+    return [
+        {
+            **item.to_dict(),
+            "wartosci_robocze": [p.to_dict() for p in propozycje_aparatu_sn(item)],
+        }
+        for item in get_default_mv_catalog().list_mv_apparatus_types()
+    ]
+
+
+@router.get("/maszyny-wirujace/wartosci-robocze")
+def rejestr_wartosci_roboczych_maszyn() -> dict[str, Any]:
+    """Parametry zwarciowe maszyn wirujących i ich propozycje wartości roboczych (karta
+    PODSTAWA-Q, zasada nr 4): rodzaj generatora → rodzina, parametry rodziny z nazwą, jednostką
+    i zakresem bramy oraz propozycja, którą obliczenie przyjmie bez tabliczki i bez wartości
+    projektanta. Dostawca sekcji parametrów maszyny w kreatorze edycji parametrów."""
+    return rejestr_maszyn_do_formularza()
 
 
 @router.get("/lv-apparatus-types")
@@ -255,6 +319,12 @@ def list_lv_breaker_mcb_types() -> list[dict[str, Any]]:
 def list_lv_fuse_link_types() -> list[dict[str, Any]]:
     """List all LV gG fuse-link (IEC 60269-1) types from the canonical catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_lv_fuse_link_types()]
+
+
+@router.get("/lv-rcd-types")
+def list_lv_rcd_types() -> list[dict[str, Any]]:
+    """List all LV residual current device (RCCB IEC 61008-1 / RCBO IEC 61009-1) types."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_lv_rcd_types()]
 
 
 @router.get("/load-types")
@@ -902,12 +972,9 @@ def import_protection_library(
             mode=import_mode,
         )
         return report
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         # Conflicts or validation errors detected
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 # =============================================================================
@@ -928,8 +995,9 @@ class AutoPopulateRequest(BaseModel):
     """Cross-section dla cables (50/95/120/150/240/300 mm²)."""
     prefer_manufacturer: str | None = None
     """Preferred manufacturer cascade (ZPUE/Elektrometal/ABB/Siemens)."""
-    prefer_ptpire_certified: bool = True
-    """K30-23: prefer Polish PTPiRE-certified entries by default."""
+    # Dawne pole `prefer_ptpire_certified` usunięte (karta KATALOG-KOMPLETNY-PROWENIENCJA):
+    # żaden tor go nie czytał — certyfikat zawsze wchodzi do klucza sortowania
+    # (`AutoPopulateSuggestion.klucz_sortowania`), więc kontrolka była fantomem.
 
 
 #: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
@@ -1207,7 +1275,11 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
             and req.prefer_manufacturer.lower() in manufacturer.lower()
         ):
             dopasowanie = "PELNE"
-        # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
+        # Polski producent to informacja o pochodzeniu, NIE certyfikat: wykaz PTPiREE
+        # (WiPWC) obejmuje moduły wytwarzania energii, nie przekaźniki zabezpieczeniowe,
+        # a katalog zabezpieczeń nie niesie żadnego dokumentu certyfikatu. Dawne
+        # `certyfikat_ptpiree=is_polish` nadawało flagę certyfikatu z narodowości
+        # producenta (karta KATALOG-KOMPLETNY-PROWENIENCJA: flaga certyfikatu ⇒ źródło).
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
@@ -1227,7 +1299,7 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
                 label_pl=label_pl,
                 manufacturer=manufacturer,
                 dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_polish,
+                certyfikat_ptpiree=False,
                 badge_pl=(
                     "Polski producent"
                     if is_polish

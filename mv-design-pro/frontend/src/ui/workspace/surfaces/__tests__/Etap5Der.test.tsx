@@ -44,6 +44,15 @@ const CONVERTER_FIXTURES = [
   { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, manufacturer: 'SMA' },
   { id: 'pv_inv_huawei_185', name: 'Huawei SUN2000-185KTL', kind: 'PV', un_kv: 0.4, pmax_mw: 0.185, manufacturer: 'Huawei' },
   { id: 'pv_inv_system_1000', name: 'Pakiet katalogowy PV 1000', kind: 'PV', un_kv: 0.69, pmax_mw: 1, manufacturer: 'MV-DESIGN-PRO' },
+  // Karta KATALOG-TURBINY-TOR-V112: rekord w kształcie `GET /api/catalog/converter-types`
+  // dla `vestas_v112_3_3mw_scig` (GS 0034-7282 V04 tab. 3-1/3-2). Brak
+  // `converter_machine_side_voltage_kv` i `generator_rated_power_mw` = dokument ich nie podaje.
+  {
+    id: 'vestas_v112_3_3mw_scig', name: 'Vestas V112-3.3 MW (SCIG 750 V) / 0,65 kV', kind: 'WIND',
+    un_kv: 0.65, sn_mva: 3.824, pmax_mw: 3.3, manufacturer: 'Vestas',
+    generator_machine_type: 'SCIG', converter_topology: 'FULL_CONVERTER',
+    generator_stator_voltage_kv: 0.75, generator_stator_frequency_max_hz: 100,
+  },
 ];
 
 /**
@@ -412,7 +421,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // Nazwa urządzenia przychodzi asynchronicznie z `fetchDerConverterTypes`.
     expect((await screen.findAllByText(/Huawei SUN2000-185KTL/, {}, { timeout: 3000 })).length).toBeGreaterThan(0);
     expect(screen.queryByText('pv_inv_huawei_185')).not.toBeInTheDocument();
-    expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · stacja przelotowa');
+    // Karta ETYKIETA-STACJI-PRZELOTOWEJ: tożsamość stacji z jednego miejsca (`stationPublicIdentity`),
+    // rodzaj z topologii — stacja fikstury nie ma pól liniowych, więc jest końcowa (deklaracja
+    // „inline" rodzaju nie przesądza).
+    expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · Stacja końcowa');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('Stacja inline');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('70a99b32');
   });
@@ -702,6 +714,39 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // z `readiness.ts`) — bez `sn_connection_point_kind` (nieustawiony wyżej)
     // pada odmiana ogólna, nie flat „transformator dedykowany".
     expect(screen.getAllByText('przez transformator dedykowany').length).toBeGreaterThan(0);
+  });
+
+  it('FwSurface pokazuje tor maszyny turbiny: stojan 0,75 kV osobno od strony sieci 0,65 kV', async () => {
+    stubCatalogFetch();
+    useStationDerStore.getState().attachDer({
+      id: 'der_fw_v112',
+      project_id: 'p',
+      station_id: 'station_003',
+      der_kind: 'FW',
+      name: 'FW V112',
+      connection_side: 'dedicated_transformer',
+      bus_przylaczenia_ref: 'pcc_003',
+      transformer_ref: 'tr_dedicated_fw',
+      catalogs: { device_catalog_ref: 'vestas_v112_3_3mw_scig' },
+      profiles: { nc_rfg_profile_ref: 'pse' },
+      nominal_power_kw: 3300,
+      created_at: FROZEN_NOW,
+    });
+
+    render(<FwSurface surface={makeSurface('der_fw_v112')} />);
+    // Ścieżka natywna: klik użytkownika w zakładkę turbin (userEvent, nie syntetyczne zdarzenie).
+    await userEvent.click(screen.getByTestId('der-card-tab-inverters'));
+    expect(await screen.findByText('asynchroniczny klatkowy (SCIG)', {}, { timeout: 3000 })).toBeInTheDocument();
+    const wiersz = (etykieta: string) => screen.getByText(etykieta).nextElementSibling?.textContent;
+    expect(wiersz('Przekształtnik — strona sieci (nN TR)')).toBe('0.65 kV');
+    expect(wiersz('Napięcie stojana generatora')).toBe('0.75 kV');
+    expect(wiersz('Częstotliwość stojana (maks.)')).toBe('100 Hz');
+    expect(wiersz('Przekształtnik')).toBe('pełnej mocy (generator odsprzężony od sieci)');
+    expect(wiersz('Moc turbiny')).toBe('3.3 MW');
+    // Dokument nie podaje — ekran mówi to wprost, nie podstawia napięcia stojana ani mocy turbiny.
+    expect(wiersz('Przekształtnik — strona maszynowa')).toBe('karta producenta nie podaje');
+    expect(wiersz('Moc generatora')).toBe('karta producenta nie podaje');
+    expect(screen.queryByText('Napięcie urządzenia')).not.toBeInTheDocument();
   });
 
   it('breadcrumb pokazuje nazwę stacji i klikalna nawigacja do E-13', () => {

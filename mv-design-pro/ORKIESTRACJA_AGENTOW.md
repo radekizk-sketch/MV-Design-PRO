@@ -33,7 +33,7 @@ Trzy prymitywy Claude Code różnią się tym, **kto trzyma plan**:
 
 ## 2. TWARDE BARIERY — czego orkiestracja NIE może złamać (nadrzędne)
 
-**B-01 — Zakaz dotykania zamrożonego rdzenia.** Subagenty wykonawcze NIE edytują rdzeni zamrożonych z wiążącej listy `scripts/rdzenie_b01.py` (IEC 60909, NR/GS/FD, IEC 60255, NC RfG/PTPiREE z profilami, FRT/HVRT, `stability_rms`, WLS, stan fazowy SN, V12.6); pozostałe pliki `network_model/solvers/**` NIE są rdzeniami B-01 i karta naprawia w nich instancje swojej klasy. Model ENM (`enm/models.py`) i kontrakty API wyników (reguła 6 CLAUDE.md: zmiana addytywna albo z podbiciem wersji) — tylko gdy karta wprost to dopuszcza. Egzekwuj `disallowedTools`/allowlist ścieżek. Zmiany tam — tylko główna sesja z jawną zgodą właściciela.
+**B-01 — Zakaz dotykania zamrożonego rdzenia.** Subagenty wykonawcze NIE edytują rdzeni zamrożonych z wiążącej listy `scripts/rdzenie_b01.py` (IEC 60909, NR/GS/FD, IEC 60255, NC RfG/PTPiREE z profilami, FRT/HVRT, WLS, stan fazowy SN, V12.6); pozostałe pliki `network_model/solvers/**` NIE są rdzeniami B-01 i karta naprawia w nich instancje swojej klasy. Model ENM (`enm/models.py`) i kontrakty API wyników (reguła 6 CLAUDE.md: zmiana addytywna albo z podbiciem wersji) — tylko gdy karta wprost to dopuszcza. Egzekwuj `disallowedTools`/allowlist ścieżek. Zmiany tam — tylko główna sesja z jawną zgodą właściciela.
 
 **B-02 — Gate wizualny (ZASADA NR 2) zostaje przy właścicielu.** Workflow może *wyprodukować* zrzuty (harness Playwright), ale werdykt „≥8/10 / PASS" wystawia człowiek. Każdy etap z oceną wizualną = osobny run ze STOP na zrzucie. Workflow nie przyjmuje wejścia w trakcie runu — ocena musi być POZA runem.
 
@@ -152,18 +152,51 @@ Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
     drzew) z wysiłkiem dobranym do zadania, a po odblokowaniu WZNAWIA tych samych wykonawców
     (`SendMessage` — kontekst i cache zostają) od miejsca przerwania, z opisem stanu z logów. Zakaz
     tworzenia nowych wykonawców do dokończenia cudzej, na wpół naniesionej pracy, gdy da się wznowić.
-16. **Wykonawca weryfikuje celowo, integrator w pełni (2026-09-25).** Wykonawca uruchamia testy
-    celowane warstw dotkniętych (testy modułów zmienionych i testy, które te moduły importują —
-    zbiór wyznaczony grepem i podany w meldunku), `scripts/guardy_z_ci.py`, samotesty zmienionych
-    strażników, type-check, lint, vitest modułów dotkniętych, speki e2e ekranów dotkniętych oraz
-    generatory fikstur, które karta może zmienić. Pełną regresję backendu, pełny vitest i pełne e2e
-    uruchamia integrator raz na partię, na drzewie scalonym, jeden bieg naraz. Powód (pomiar
+16. **Wykonawca weryfikuje celowo, integrator w pełni (2026-09-25; bramka scalenia 2026-10-15).**
+    Wykonawca uruchamia bramkę scalenia `scripts/bramka_scalenia.py --baza <baza karty>` (z
+    `backend/`, interpreterem venv backendu) — jedno polecenie, jeden kod wyjścia, wypisany wybór
+    z uzasadnieniem „który zmieniony plik pociągnął który test”: (a) testy backendu wybrane grafem
+    importów z drzewa składni (nadzbiór w sensie importów: importy bezwzględne, względne, leniwe,
+    `importlib`, ładowanie po ścieżce, `conftest.py`; reguły plików danych; `pyproject.toml`
+    i `poetry.lock` wybierają komplet), (b) rdzeń niezmienników uruchamiany zawsze (katalogi
+    `tests/golden`, `tests/invariants`, marker `determinism`, pliki determinizmu, golden, odcisków
+    i zamrożonych kontraktów ResultSet/OpenAPI), (c) vitest wybrany grafem modułów samego vitest
+    (`vitest related`) w obu krokach — głównym i budżetów czasu, (d) `scripts/guardy_z_ci.py`;
+    testy backendu biegną pod pytest-xdist. Do tego speki e2e ekranów dotkniętych i generatory
+    fikstur, które karta może zmienić. Bramka UZUPEŁNIA pełny bieg, nie zastępuje go: pełna
+    regresja backendu, pełny vitest i pełne e2e zostają w CI po każdym push i przed scaleniem do
+    `main`, bez zmiany zakresu. Integrator przed scaleniem partii uruchamia bramkę na drzewie
+    scalonym względem bazy partii (`--baza <baza> --glowa <czubek karty>` ocenia zmianę jednej
+    karty na drzewie scalonym); pełną regresję backendu (`pytest -n 4 --dist loadfile`), pełny
+    vitest i pełne e2e uruchamia raz na partię, jeden bieg naraz. Zysk zależy od miejsca zmiany
+    w grafie (pomiar 2026-10-15, 4 vCPU): zmiana modułu `application/symphony/prompt.py` wybrała
+    9 z 817 plików testów backendu (+ 42 pliki rdzenia), 1 plik vitest; bramka 452–515 s, z czego
+    pytest 135–141 s, a `guardy_z_ci.py` 288–344 s. Zmiana korzenia grafu (`enm/models.py`,
+    `network_model/pochodne`) wybiera komplet backendu — scalenie PR-478 z katalogiem
+    (`c136c6bb..9d4b1afe`): 817 z 817 plików, 117 z 877 plików vitest i 1 z 8 budżetów; bramka
+    3 211 s (pytest pod xdist 2 393 s, vitest 299 + 12 s, strażniki 456 s) — wtedy bramka kosztuje
+    tyle, co pełny bieg pod xdist plus strażniki. Powód (pomiar
     2026-09-25): cztery równoległe pełne regresje na maszynie z 4 CPU zajęły wszystkie rdzenie,
     każda trwała kilka razy dłużej niż sama, wykonawcy wyglądali na zawieszonych przez wiele godzin,
     a osierocone serwery e2e trzymały porty; pełna regresja w drzewie karty i tak nie jest dowodem
     odbioru, bo nie widzi zmian innych kart partii. Każdy bieg z prywatnym `--basetemp` w katalogu
     karty; katalogów tymczasowych innych biegów się nie kasuje; procesy zabija się po PID, nigdy
     wzorcem `pkill -f` (dopasowuje własną powłokę).
+    Pełną bramkę lokalną integratora (te same zbiory co pełna regresja: pytest backendu, guardy,
+    lint, samotesty guardów, pełny vitest z krokiem budżetów, pełne e2e) uruchamia jedno polecenie
+    `scripts/brama_pelna.py --logi <katalog poza drzewem>` (z `backend/`, interpreterem venv backendu):
+    kroki biegną w jednej puli z budżetem rdzeni, vitest dzieli się na shardy `--shard=k/n` (każdy
+    dalej `--no-file-parallelism`), e2e na shardy LPT z `e2e_shardy.py` (każdy z własnym backendem,
+    portami, bazą i pamięcią podręczną Vite), krok budżetów czasu procesora biegnie sam na końcu;
+    wynik (RC i czas każdego kroku, dowód, że suma testów i speców po podziale równa się zbiorowi
+    przed podziałem) trafia do `<logi>/wynik.txt` i `wynik.json`, a kod wyjścia całości jest
+    niezerowy przy dowolnym kroku czerwonym.
+    Pomiar 2026-10-21 (baza `88a7da204`, 4 vCPU, maszyna współdzielona z dwiema innymi bramkami,
+    load average 9–20): 108 guardów, 6 wywołań lintu, 2 kroki npm, pytest backendu (36 774 testów),
+    samotesty guardów (3 856), vitest 884 pliki w 4 shardach (14 295 testów) i 8 plików budżetów
+    (193), e2e 546 testów w 4 shardach — suma czasu procesora kroków 13 101 s, czyli dolna granica
+    ścienna 3 275 s na 4 rdzeniach; zmierzony czas ścienny 8 076 s wynika z trzykrotnego
+    przeciążenia maszyny obcymi biegami, nie z szeregowości kroków.
 
 ---
 

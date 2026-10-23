@@ -857,8 +857,36 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # („Odcinek /segment" → „Magistrala 01 — odcinek 0N", połówki „… (1)"/„… (2)"); jedyna
     # różnica modelu to nazwy tych 4 odcinków (nazwa ciągu + numer z istniejącej numeracji,
     # karta #144). Wynik kontyngencji identyczny.
-    "gn01_promieniowa": "9a2933f595b709eafedc6d81654218259ad5df7c564bc976c79eb341846cc822",
-    "gn03_pierscien": "a19dcb6d6bdce7b3e5efd580ba70c6fb9c648ca7fb2d86ded961690b59fe5229",
+    # 2026-09-30 (karta POLA-W-TORZE): gn01 9a2933f5… → f1cbcb35…, gn03 a19dcb6d… → 2cacc16c….
+    # Pełne widoki z kodu bazy `e8756f42` (odtwarzają dokładnie poprzednie piny) i po karcie
+    # porównane liść po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Różnica modelu wejściowego: połówki odcinków i strona górna transformatora stacji leżą
+    # na zaciskach pól (aparat pola w torze), pole TR domknięte przy wstawieniu stacji.
+    # Enumeracja kontyngencji, dotkliwości, odbiory bez zasilania i ranking identyczne.
+    # 2026-09-30 (karta ETYKIETA-STACJI-PRZELOTOWEJ): gn01 f1cbcb35… → 5306b64d…. Pełne widoki
+    # z kodu startowego `615f3b24` i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacja
+    # wstawiona w odcinek nie niesie już cienia deklaracji `meta.station_type_sn` /
+    # `meta.station_type_semantic` (deklaracja ma jedno miejsce — `station_type`). gn03 bez zmian.
+    # 2026-10-16 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): gn01 5306b64d… → 99081f49…, gn03
+    # 2cacc16c… → e77ef288…. Pełne widoki z kodu bazy `bd3a87f4` (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacje
+    # sieci referencyjnych deklarują tolerancję napięcia sieci nN
+    # (`Transformer.lv_voltage_tolerance` = PLUS_6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne. Następnie gn01 99081f49… → 881afd52…: stacja „Stacja B1
+    # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
+    # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
+    # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # 2026-10-22 (karta LINIA-110, pkt 2): gn01 881afd52… → f87c9268…, gn03 e77ef288… →
+    # 8c3b0f7e…. Pełne widoki z kodu bazy `04760140e` (odtwarzają dokładnie poprzednie piny)
+    # i po karcie porównane liść po liściu: w widoku różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: kable SN
+    # z katalogu niosą w `materialized_params` mapę `wartosci_robocze` (R′0, X′0, żyła
+    # powrotna — założenia inżynierskie katalogu): 4 gałęzie gn01, 3 gałęzie gn03. Enumeracja
+    # kontyngencji, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "f87c9268d4e98c2e028b9418bb7097f5cad80d4887ddfccf0ea1f7b2b44b50c9",
+    "gn03_pierscien": "8c3b0f7edb9d23b2d67736015074c87e5f2a2444e273e63b0996bd322f824702",
 }
 
 

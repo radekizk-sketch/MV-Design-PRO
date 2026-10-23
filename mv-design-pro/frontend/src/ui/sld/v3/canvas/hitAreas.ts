@@ -241,6 +241,7 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
   const kind = segment.meta?.kind ?? 'sn';
   if (kind === 'bus' || kind === 'busGpz') return 'szyna';
   if (kind === 'sheetContinuation') return 'lacznik-wiersza';
+  // Znak powiązania należy do ODCINKA powiązania (ref właściciela) — trafienie jak tor.
   return 'tor';
 }
 
@@ -301,6 +302,13 @@ export const LABEL_OWNER_ELEMENT_KIND = {
   der: 'der',
   'busbar-voltage': 'bus',
   'no-point': 'apparatus',
+  // Łącznik sekcyjny na torze: na RYSUNKU aparat (symbol `lineSwitch`/`lineBreaker`,
+  // `elementKind: 'apparatus'`, ten sam co jego etykieta), w MODELU gałąź switch/
+  // breaker — rodzaj obiektu bierze się z kotwicy (`galaz`), a rozjazd deklaracja↔
+  // kotwica jest jawnie dopuszczony w inwentarzu `kotwicaJednoZrodlo.contract.test.ts`.
+  // Deklaracja 'segment' byłaby fałszywa: pod tym refem rysunek nie niesie odcinka
+  // (`wlasnoscEtykiet.contract.test.ts` §6a).
+  'lacznik-toru': 'apparatus',
   'branch-point': 'branchPoint',
   protection: 'protectionAnnotation',
   'lv-load': 'bus',

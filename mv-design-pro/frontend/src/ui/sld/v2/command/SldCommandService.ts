@@ -142,6 +142,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
     { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
+    /* W5-E-TTIT: ochrona instalacji odbioru nN w układzie TT — realna operacja
+     * add_nn_rcd (kreator „Wyłącznik różnicowoprądowy nN" wybiera odbiór). */
+    { id: 'add-rcd', labelPl: 'Dodaj wyłącznik różnicowoprądowy nN', group: 'budowa' },
     /* K5-A (H-4): źródła dyspozycyjne nN stacji — realne operacje
      * add_genset_nn / add_ups_nn (kreator „Źródło dyspozycyjne nN"). */
     { id: 'add-genset', labelPl: 'Dodaj agregat prądotwórczy nN', group: 'budowa' },

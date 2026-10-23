@@ -91,6 +91,8 @@ from api_lifecycle_guard import (  # noqa: E402
     _module_level_assignments,
     _reexport_target,
     _route_decorators,
+    modul_api_importu,
+    pakiet_modulu_api,
     read_text,
 )
 
@@ -131,6 +133,10 @@ BUDZET_ODSTAWIONYCH_TRAS = 4
 # Reguła wlasciciela: montowac WYLACZNIE z konsumentem — trasa bez odbiorcy jest
 # fantomem. Wpis, ktory przestal byc prawdziwy (modul zniknal albo zostal wpiety),
 # zapala czerwien: `[router-nieaktualny-wpis]`.
+# K-16 (V12K-346, O-71, 2026-09-30): konsument trasy = wywolanie w sciezce
+# uzytkownika (ekran/akcja UI ALBO narzedzie MCP dzialajace w jego imieniu —
+# ADR-029); narzedzia MCP nie sa APIRouterami i nie podlegaja temu guardowi;
+# zadnej klasy wyjatku „API integracyjne" — wyjatki wylacznie per trasa, tutaj.
 # --------------------------------------------------------------------------
 SWIADOMIE_ODSTAWIONE: dict[str, tuple[tuple[str, ...], str]] = {
     # protection_coordination ZAMONTOWANY (karta ZAB-100-BACKEND, 2026-08-13,
@@ -242,11 +248,11 @@ def _main_aliases(tree: ast.Module) -> dict[str, tuple[str, str]]:
     """Alias w `main.py` -> (modul `api/*`, nazwa symbolu w tym module)."""
     aliases: dict[str, tuple[str, str]] = {}
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom) or not node.module:
+        if not isinstance(node, ast.ImportFrom):
             continue
-        if not node.module.startswith("api."):
+        module = modul_api_importu(node, "api")
+        if module is None:
             continue
-        module = node.module.removeprefix("api.")
         for alias in node.names:
             aliases[alias.asname or alias.name] = (module, alias.name)
     return aliases
@@ -271,7 +277,7 @@ def resolve_chain(
 
     value = assignments.get(symbol)
     if value is None:
-        reexport = _reexport_target(tree, symbol)
+        reexport = _reexport_target(tree, symbol, pakiet_modulu_api(module))
         if reexport is None:
             raise UnresolvedRouter(f"{module}.{symbol} nie jest przypisany na poziomie modulu")
         deeper, target = resolve_chain(reexport[0], reexport[1], api_dir, _depth + 1)

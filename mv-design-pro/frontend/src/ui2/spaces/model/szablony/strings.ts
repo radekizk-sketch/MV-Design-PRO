@@ -28,7 +28,7 @@ export const SZABLONY_STRINGS = {
   liczbaPolSkrot: 'pól SN',
   opisZastosowania: 'Zastosowanie',
   wlasny: 'własny',
-  kafelMoc: 'Moc',
+  kafelMoc: 'Transformator stacji',
   kafelNapiecia: 'Napięcia',
   kafelNapiecieSn: 'Napięcie SN',
   kafelNapiecieSnDowolne: 'dowolne',

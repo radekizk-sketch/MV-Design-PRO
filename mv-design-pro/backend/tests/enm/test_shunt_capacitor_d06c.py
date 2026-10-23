@@ -16,6 +16,7 @@ import math
 
 import pytest
 from enm.assembler import (
+    KOD_BATERIA_DANE_ZNAMIONOWE,
     _build_shunt_specs_from_snapshot,
 )
 from enm.canonical_analysis import (
@@ -27,6 +28,7 @@ from enm.hash import compute_enm_hash, compute_semantic_hash
 from enm.models import EnergyNetworkModel
 from enm.store import reset_enm_store, set_enm
 from enm.validator import ENMValidator
+from network_model.odmowa_danych import OdmowaNazwana
 
 from tests.catalog_test_helpers import gpz_source_record
 
@@ -218,13 +220,26 @@ def test_build_shunt_specs_is_deterministic():
     assert [(s.node_id, s.b_pu) for s in first] == [(s.node_id, s.b_pu) for s in second]
 
 
-def test_build_shunt_specs_missing_rated_mvar_raises():
+@pytest.mark.parametrize("wartosc", [None, 0.0, -1.0], ids=["brak", "zero", "ujemna"])
+@pytest.mark.parametrize(
+    ("pole", "fragment"),
+    [
+        ("rated_mvar", "nie ma dodatniej mocy znamionowej Q_n"),
+        ("rated_kv", "nie ma dodatniego napięcia znamionowego U_n"),
+    ],
+)
+def test_build_shunt_specs_niefizyczne_dane_znamionowe_odmowa_nazwana(pole, fragment, wartosc):
+    """Partia integracji 10: bateria nazwą z migawki, wielkość symbolem; identyfikator
+    w `dane` odmowy nazwanej, klucz pola nigdy w treści. Iloczyn: dana × wartość."""
     payload = _enm_payload_with_inductive_load("map-bad")
     bad = _capacitor_record()
-    bad["rated_mvar"] = 0.0
+    bad[pole] = wartosc
     payload["shunt_capacitors"] = [bad]
-    with pytest.raises(ValueError, match="rated_mvar"):
+    with pytest.raises(OdmowaNazwana) as exc:
         _build_shunt_specs_from_snapshot(payload, BASE_MVA)
+    assert str(exc.value) == f"Bateria kondensatorów „Bateria kondensatorow b2” {fragment}."
+    assert exc.value.kod == KOD_BATERIA_DANE_ZNAMIONOWE
+    assert exc.value.dane == {"element_ref": "cap-1"}
 
 
 # ---------------------------------------------------------------------------

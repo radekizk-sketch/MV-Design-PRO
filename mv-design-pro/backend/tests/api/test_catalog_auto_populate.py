@@ -29,14 +29,13 @@ def test_auto_populate_transformer_voltage_filter() -> None:
 
 
 def test_auto_populate_transformer_ptpire_priority() -> None:
-    """PTPiRE-certified entries ranked higher when prefer_ptpire_certified=true."""
+    """Klucz sortowania: dopasowanie, potem certyfikat PTPiREE (flaga wyłącznie z dokumentu)."""
     client = _make_client()
     response = client.post(
         "/api/catalog/auto-populate/transformer",
         json={
             "voltage_kv": 15.0,
             "expected_power_mva": 0.63,
-            "prefer_ptpire_certified": True,
         },
     )
     assert response.status_code == 200
@@ -59,7 +58,7 @@ def test_auto_populate_cable_cross_section() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["element_type"] == "cable"
-    # Should include YHAKXS 150 (PTPiRE)
+    # Should include a 150 mm² cable (YHAKXS albo bazowy)
     refs = [s["catalog_ref"] for s in data["suggestions"]]
     assert any("yhakxs" in r or "150" in r for r in refs)
 
@@ -189,3 +188,44 @@ def test_pozycja_katalogu_bez_pola_liczbowego_jest_pomijana_nie_zerem(
 def _liczba_pozycji_bez_pol(lista: list[dict], pole: str) -> int:
     """Ile pozycji ORYGINALNEGO katalogu i tak nie ma tego pola (pomiar, nie zalozenie)."""
     return sum(1 for e in lista if not isinstance(e.get("params", {}).get(pole), int | float))
+
+
+#: Typy elementu × żądanie, które dla każdej rodziny daje niepustą listę propozycji.
+_ZADANIA_WSZYSTKICH_RODZIN = [
+    ("transformer", {"voltage_kv": 15.0}),
+    ("cable", {}),
+    ("switch", {"voltage_kv": 15.0}),
+    ("protection", {"prefer_manufacturer": "ELEKTROMETAL"}),
+    ("surge_arrester", {}),
+    # 0,4 kV / 10 kVA: w zasięgu są pozycje POWIAZANE (SMA STP 8.0/10.0, Fronius Symo).
+    ("inverter", {"voltage_kv": 0.4, "expected_power_mva": 0.01}),
+]
+
+
+@pytest.mark.parametrize(("element_type", "zadanie"), _ZADANIA_WSZYSTKICH_RODZIN)
+def test_certyfikat_ptpiree_propozycji_wylacznie_z_dowodu(
+    element_type: str, zadanie: dict[str, object]
+) -> None:
+    """Flaga certyfikatu ⇒ źródło (karta KATALOG-KOMPLETNY-PROWENIENCJA), w KAŻDEJ rodzinie.
+
+    Jedyny dowód certyfikatu PTPiREE w repozytorium to pozycja wykazu WiPWC dopasowana do
+    przekształtnika (`ptpiree_status == "POWIAZANY"`) albo flaga katalogu z dokumentem
+    (reguła przypięta w test_katalog_proweniencja_kompletnosc). Narodowość producenta
+    (dawne `is_polish` zabezpieczeń) ani źródło deklarowane nie są dowodem.
+    """
+    from network_model.catalog.repository import get_default_mv_catalog
+
+    client = _make_client()
+    response = client.post(f"/api/catalog/auto-populate/{element_type}", json=zadanie)
+    assert response.status_code == 200
+    propozycje = response.json()["suggestions"]
+    assert propozycje, element_type
+    if element_type == "inverter":
+        konwertery = get_default_mv_catalog().converter_types
+        for p in propozycje:
+            powiazany = konwertery[p["catalog_ref"]].ptpiree_status == "POWIAZANY"
+            assert p["certyfikat_ptpiree"] is powiazany, p["catalog_ref"]
+        assert any(p["certyfikat_ptpiree"] for p in propozycje)
+    else:
+        # Pomiar 2026-10-15: żadna pozycja tych rodzin nie ma dokumentu certyfikatu.
+        assert not any(p["certyfikat_ptpiree"] for p in propozycje), element_type

@@ -18,8 +18,16 @@ import {
   type CreateFaultScenarioRequest,
   type UpdateFaultScenarioRequest,
 } from './types';
+import { SekcjaWspolczynnikaC } from './SekcjaWspolczynnikaC';
+import {
+  DOMYSLNE_POLA_C,
+  konfiguracjaZwarciaZPol,
+  polaCZKonfiguracji,
+  type PolaWspolczynnikaC,
+  poleCzasuWylaczenia,
+} from './wspolczynnikC';
 
-const FAULT_TYPES: FaultTypeValue[] = ['SC_3F', 'SC_2F', 'SC_1F'];
+const FAULT_TYPES = Object.keys(FAULT_TYPE_LABELS) as FaultTypeValue[];
 const FAULT_MODES: FaultModeValue[] = ['METALLIC', 'IMPEDANCE'];
 const LOCATION_TYPES: LocationType[] = ['NODE', 'BRANCH_POINT'];
 
@@ -41,6 +49,12 @@ export function FaultScenarioModal() {
   const [faultMode, setFaultMode] = useState<FaultModeValue>('METALLIC');
   const [rOhm, setROhm] = useState('');
   const [xOhm, setXOhm] = useState('');
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: scenariusz jest jedynym nośnikiem c i t_k —
+  // bez `config.scenariusz` backend odmawia utworzenia scenariusza (422).
+  const [polaC, setPolaC] = useState<PolaWspolczynnikaC>(DOMYSLNE_POLA_C);
+  const [czasTk, setCzasTk] = useState('1');
+  // Karta SC-IB-ITH-ZRODLA: t_b scenariusza — puste = brak danej (nazwane założenie biegu).
+  const [czasTb, setCzasTb] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,8 +65,11 @@ export function FaultScenarioModal() {
       setLocationType(editingScenario.location.location_type);
       setAlpha(editingScenario.location.position != null ? String(editingScenario.location.position) : '');
       setFaultMode(editingScenario.fault_mode ?? 'METALLIC');
-      setROhm(editingScenario.fault_impedance?.r_ohm != null ? String(editingScenario.fault_impedance.r_ohm) : '');
-      setXOhm(editingScenario.fault_impedance?.x_ohm != null ? String(editingScenario.fault_impedance.x_ohm) : '');
+      setROhm(editingScenario.fault_impedance != null ? String(editingScenario.fault_impedance.r_f_ohm) : '');
+      setXOhm(editingScenario.fault_impedance != null ? String(editingScenario.fault_impedance.x_f_ohm) : '');
+      setPolaC(polaCZKonfiguracji(editingScenario.config));
+      setCzasTk(String(editingScenario.config?.thermal_time_seconds ?? 1));
+      setCzasTb(poleCzasuWylaczenia(editingScenario.config));
     } else {
       setName('');
       setFaultType('SC_3F');
@@ -62,6 +79,9 @@ export function FaultScenarioModal() {
       setFaultMode('METALLIC');
       setROhm('');
       setXOhm('');
+      setPolaC(DOMYSLNE_POLA_C);
+      setCzasTk('1');
+      setCzasTb('');
     }
     setValidationError(null);
   }, [editingScenario, isModalOpen]);
@@ -82,16 +102,32 @@ export function FaultScenarioModal() {
       const r = parseFloat(rOhm);
       const x = parseFloat(xOhm);
       if (isNaN(r) || isNaN(x)) {
-        setValidationError('Impedancja zwarcia (R i X) jest wymagana dla trybu impedancyjnego');
+        setValidationError('Impedancja przejścia Z_f (R_f i X_f) jest wymagana dla trybu impedancyjnego');
         return;
       }
+    }
+
+    const czas = Number(czasTk.replace(',', '.'));
+    if (!Number.isFinite(czas) || czas <= 0) {
+      setValidationError('Czas trwania zwarcia t_k musi być liczbą dodatnią [s]');
+      return;
+    }
+    const konfiguracja = konfiguracjaZwarciaZPol(
+      polaC,
+      czas,
+      editingScenario?.config?.include_branch_contributions ?? false,
+      czasTb,
+    );
+    if (!konfiguracja.ok) {
+      setValidationError(konfiguracja.blad);
+      return;
     }
 
     setValidationError(null);
 
     const position = locationType === 'BRANCH_POINT' ? parseFloat(alpha) : null;
     const faultImpedance = faultMode === 'IMPEDANCE'
-      ? { r_ohm: parseFloat(rOhm), x_ohm: parseFloat(xOhm) }
+      ? { r_f_ohm: parseFloat(rOhm), x_f_ohm: parseFloat(xOhm) }
       : undefined;
 
     try {
@@ -100,6 +136,7 @@ export function FaultScenarioModal() {
           name: name.trim(),
           fault_type: faultType,
           location: { element_ref: elementRef.trim(), location_type: locationType, position },
+          config: konfiguracja.config,
           fault_mode: faultMode,
           fault_impedance: faultImpedance ?? null,
         };
@@ -109,6 +146,7 @@ export function FaultScenarioModal() {
           name: name.trim(),
           fault_type: faultType,
           location: { element_ref: elementRef.trim(), location_type: locationType, position },
+          config: konfiguracja.config,
           fault_mode: faultMode,
           fault_impedance: faultImpedance,
         };
@@ -117,7 +155,7 @@ export function FaultScenarioModal() {
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Wystąpił błąd podczas zapisu scenariusza');
     }
-  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, editingScenarioId, studyCaseId, createScenario, updateScenario]);
+  }, [name, faultType, elementRef, locationType, alpha, faultMode, rOhm, xOhm, polaC, czasTk, czasTb, editingScenario, editingScenarioId, studyCaseId, createScenario, updateScenario]);
 
   if (!isModalOpen) return null;
 
@@ -172,21 +210,21 @@ export function FaultScenarioModal() {
           {/* Impedancja zwarcia Zf (v2) — aktywne tylko dla IMPEDANCE */}
           {faultMode === 'IMPEDANCE' && (
             <div className="p-3 rounded border border-amber-200 bg-amber-50">
-              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja zwarcia Zf</label>
+              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja przejścia Z_f w miejscu zwarcia</label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">R [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5">R_f [Ω]</label>
                   <input
-                    type="number" step="any" value={rOhm} onChange={(e) => setROhm(e.target.value)}
+                    type="number" step="any" min="0" value={rOhm} onChange={(e) => setROhm(e.target.value)}
                     placeholder="0.0"
                     className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-r-ohm-input"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">X [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5">X_f [Ω]</label>
                   <input
-                    type="number" step="any" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
+                    type="number" step="any" min="0" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
                     placeholder="0.0"
                     className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-x-ohm-input"
@@ -239,6 +277,41 @@ export function FaultScenarioModal() {
               </p>
             </div>
           )}
+
+          {/* Współczynnik napięciowy c i czas t_k — nośnik: scenariusz zwarciowy */}
+          <SekcjaWspolczynnikaC
+            pola={polaC}
+            onZmiana={setPolaC}
+            testIdPrefix="fault-scenario"
+            klasaPola="block text-xs text-slate-600 mb-1"
+          />
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Czas trwania zwarcia t_k [s]
+            </label>
+            <input
+              type="number" step="0.1" min="0" value={czasTk}
+              onChange={(e) => setCzasTk(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              data-testid="fault-scenario-tk-input"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="fault-scenario-tb-input">
+              Czas wyłączenia t_b [s]
+            </label>
+            <input
+              id="fault-scenario-tb-input"
+              type="number" step="0.01" min="0" value={czasTb}
+              placeholder="np. 0,1 — zabezpieczenie + czas własny wyłącznika"
+              onChange={(e) => setCzasTb(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-400"
+              data-testid="fault-scenario-tb-input"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Puste pole = t_b w każdym punkcie zwarcia z pól przy jego szynie (nastawy + czas własny wyłącznika), a bez nich wartość robocza z oznaczeniem w wynikach.
+            </p>
+          </div>
 
           {/* Errors */}
           {validationError && (

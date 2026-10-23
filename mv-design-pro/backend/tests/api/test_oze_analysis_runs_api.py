@@ -28,15 +28,23 @@ def _reset() -> None:
     reset_enm_store()
 
 
-def _augmented_enm():
+#: Pozycja z karty producenta (ZWERYFIKOWANY) — granice Q z karty są DATASHEET.
+_KARTA_PRODUCENTA = ("conv-pv-nn-sma-sc2475-0p434kv", 2.475)
+#: Rekord bez karty producenta (SMA SC 2500-EV, źródło deklarowane, NIEWERYFIKOWANY) —
+#: granice Q są ESTIMATED (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15).
+_REKORD_BEZ_KARTY = ("pv_inv_sma_2500", 2.75)
+
+
+def _augmented_enm(pozycja: tuple[str, float] = _KARTA_PRODUCENTA):
+    catalog_ref, sn_mva = pozycja
     enm = build_golden_enm()
     gens = list(enm.generators)
     gens[1] = gens[1].model_copy(
         update={
             "q_mvar": 0.5,
             "limits": GenLimits(q_min_mvar=-0.9, q_max_mvar=0.9),
-            "catalog_ref": "pv_inv_sma_2500",
-            "materialized_params": {"sn_mva": 2.75},
+            "catalog_ref": catalog_ref,
+            "materialized_params": {"sn_mva": sn_mva},
         }
     )
     return enm.model_copy(update={"generators": gens})
@@ -49,8 +57,8 @@ def _sc_run_id():
     ).id
 
 
-def _pf_run_id():
-    set_enm("c-pf", _augmented_enm())
+def _pf_run_id(pozycja: tuple[str, float] = _KARTA_PRODUCENTA):
+    set_enm("c-pf", _augmented_enm(pozycja))
     return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
@@ -103,6 +111,14 @@ def test_reactive_adequacy_endpoint_returns_view(app_client) -> None:
     data = resp.json()
     assert "verdict" in data and "sources" in data
     assert data["provenance"]["worst_quality"] == "DATASHEET"
+
+
+def test_reactive_adequacy_record_without_manufacturer_card_is_estimated(app_client) -> None:
+    """Rekord bez karty producenta nie daje granic Q jakości DATASHEET (ta sama ścieżka)."""
+    run_id = _pf_run_id(_REKORD_BEZ_KARTY)
+    resp = app_client.get(REACTIVE, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    assert resp.json()["provenance"]["worst_quality"] == "ESTIMATED"
 
 
 def test_reactive_adequacy_endpoint_is_deterministic(app_client) -> None:

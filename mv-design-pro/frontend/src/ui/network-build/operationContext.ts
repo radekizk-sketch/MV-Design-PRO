@@ -88,7 +88,7 @@ export function buildOperationContext({
       context.segmentRef = elementId;
       break;
     case 'start_branch_segment_sn': {
-      const branchContext = resolveBranchStartOperationContext(snapshot, elementId, elementType);
+      const branchContext = resolveBranchStartOperationContext(snapshot, logicalViews, elementId, elementType);
       if (branchContext.stationRef && !context.station_ref) {
         context.station_ref = branchContext.stationRef;
       }

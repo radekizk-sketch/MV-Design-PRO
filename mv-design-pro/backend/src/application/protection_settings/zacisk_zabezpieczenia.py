@@ -4,8 +4,7 @@ DLACZEGO. Gałąź z susceptancją albo z przekładnią ma na końcach RÓŻNE p
 więc prąd w miejscu zabezpieczenia to prąd zacisku, przy którym zabezpieczenie stoi — nie
 prąd strony `from` z konwencji rdzenia rozpływu. Pakiet nastaw (orientacja całego pakietu:
 „początek" odcinka = zacisk zabezpieczenia, „koniec" = drugi zacisk, kolejna strefa za
-końcem, prąd obciążenia w miejscu zabezpieczenia) i prąd roboczy urządzeń koordynacji
-czytają zacisk WYŁĄCZNIE stąd.
+końcem, prąd obciążenia w miejscu zabezpieczenia) czyta zacisk WYŁĄCZNIE stąd.
 
 REGUŁA MODELU — KCL NA ŁAŃCUCHU SZEREGOWYM. Przekładnik prądowy przy wyłączniku mierzy
 prąd zacisku gałęzi tylko wtedy, gdy wyłącznik stoi z tym zaciskiem W SZEREGU: od
@@ -31,10 +30,10 @@ HIERARCHIA (bez domysłu):
 3. Model milczy — wymagane jawne wskazanie (`od` / `do`); brak = odmowa.
 4. Wyłącznik w szeregu z oboma zaciskami TEJ SAMEJ gałęzi (pętla) = odmowa zawsze.
 
-MIEJSCE URZĄDZENIA KOORDYNACJI (`miejsce_urzadzenia`, decyzja O-51 pkt 7): ta sama reguła
-dla urządzenia wskazanego w przypadku obliczeniowym — łącznik jako miejsce urządzenia daje
-gałąź i zacisk z łańcucha szeregowego (model), gałąź jako miejsce wymaga wskazania zacisku,
-szyna nie ma zacisków. Prąd roboczy urządzenia = prąd TEGO zacisku z tabeli gałęzi.
+Koordynacja zabezpieczeń (E-28) NIE korzysta z tego resolvera: urządzenia koordynacji są
+urządzeniami modelu przy wyłącznikach, a ich prąd to bilans prądów gałęzi na granicy strefy
+(`application/analyses/protection/ocena_nadpradowa.py`, karta BIEG-ZABEZPIECZEN-Z-MODELU) —
+dawne wskazywanie miejsca urządzenia w przypadku obliczeniowym skasowane.
 
 Zakaz wnioskowania z topologii o „stronie zasilania" czy kierunku przepływu mocy — to
 heurystyka (`protection_no_heuristics_guard`). Kody odmów są w kanonie kodów gotowości
@@ -48,9 +47,8 @@ from typing import Any, Literal
 
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from domain.canonical_operations import READINESS_CODES
-from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
-from enm.slownik_komunikatow import opis_nazwy
-from network_model.catalog.repository import get_default_mv_catalog
+from enm.katalog_projektu import katalog_dla_modelu
+from enm.nazwy_elementow import SPOZA_MODELU
 from network_model.nazwy import nazwa_nadana
 
 Zacisk = Literal["od", "do"]
@@ -63,7 +61,6 @@ KOD_BRAK_WSKAZANIA = "protection.relay_terminal_indication_missing"
 KOD_WYBOR_ZACISKU = "protection.relay_terminal_choice_missing"
 KOD_SPRZECZNY_Z_MODELEM = "protection.relay_terminal_contradicts_model"
 KOD_PETLA_WYLACZNIKA = "protection.relay_terminal_breaker_loop"
-KOD_LACZNIK_POZA_SZEREGIEM = "protection.device_breaker_not_in_series"
 
 #: Rodzaje gałęzi ENM bez impedancji — elementy łączeniowe łańcucha szeregowego.
 RODZAJE_LACZNIKOW: frozenset[str] = frozenset(
@@ -312,7 +309,7 @@ def _zacisk_lacznika(
 
 
 def funkcje_typu_zabezpieczenia(
-    catalog_ref: str | None, catalog_namespace: str | None
+    catalog_ref: str | None, catalog_namespace: str | None, *, migawka: object
 ) -> tuple[str, ...] | None:
     """Funkcje zadeklarowane przez typ katalogowy urządzenia albo `None` (brak danych).
 
@@ -326,7 +323,8 @@ def funkcje_typu_zabezpieczenia(
         PRZESTRZEN_KATALOGU_ZABEZPIECZEN,
     ):
         return None
-    typ = get_default_mv_catalog().get_protection_device_type(catalog_ref)
+    # JEDEN RESOLVER katalogu (`enm.katalog_projektu`): katalog modelu, nie katalog statyczny.
+    typ = katalog_dla_modelu(migawka).get_protection_device_type(catalog_ref)
     if typ is None or not typ.analytical_library_ref:
         return None
     zdolnosc = load_device_capability(typ.analytical_library_ref)
@@ -335,7 +333,7 @@ def funkcje_typu_zabezpieczenia(
     return tuple(zdolnosc.functions_supported)
 
 
-def _urzadzenie_pakietu(przypisanie: dict[str, Any]) -> bool:
+def _urzadzenie_pakietu(przypisanie: dict[str, Any], migawka: dict[str, Any]) -> bool:
     """Czy przypięte urządzenie jest nastawiane przez pakiet (filtr funkcji z katalogu):
     typ deklaruje funkcję z `FUNKCJE_PAKIETU_NASTAW` albo nie ma danych o funkcjach."""
     catalog_ref = przypisanie.get("catalog_ref")
@@ -343,6 +341,7 @@ def _urzadzenie_pakietu(przypisanie: dict[str, Any]) -> bool:
     funkcje = funkcje_typu_zabezpieczenia(
         catalog_ref if isinstance(catalog_ref, str) else None,
         przestrzen if isinstance(przestrzen, str) else None,
+        migawka=migawka,
     )
     return funkcje is None or not FUNKCJE_PAKIETU_NASTAW.isdisjoint(funkcje)
 
@@ -361,7 +360,7 @@ def zaciski_z_przypiec(
     for przypisanie in migawka.get("protection_assignments") or []:
         if not isinstance(przypisanie, dict) or not isinstance(przypisanie.get("breaker_ref"), str):
             continue
-        if not _urzadzenie_pakietu(przypisanie):
+        if not _urzadzenie_pakietu(przypisanie, migawka):
             continue
         zacisk = _zacisk_lacznika(migawka, wezly, przypisanie["breaker_ref"], zaciski)
         if isinstance(zacisk, OdmowaZacisku):
@@ -369,6 +368,38 @@ def zaciski_z_przypiec(
         if zacisk is not None:
             wskazane.add(zacisk)
     return frozenset(wskazane)
+
+
+def przekladnia_zacisku(
+    snapshot: dict[str, Any] | None, galaz_ref: str, zacisk: Zacisk
+) -> tuple[float, float] | None:
+    """Przekładnia (I1n, I2n) przekładnika zabezpieczenia stojącego w szeregu z ``zacisk``.
+
+    Ten sam łańcuch szeregowy co ``zaciski_z_przypiec`` (jedno źródło przypięcia). ``None`` —
+    przy zacisku nie ma zabezpieczenia pakietu z przekładnikiem albo jest ich kilka z różną
+    przekładnią (niejednoznaczność nie jest rozstrzygana domysłem).
+    """
+    migawka = snapshot or {}
+    zaciski = zaciski_galezi(migawka, galaz_ref)
+    if zaciski is None:
+        return None
+    wezly = _przylaczenia(migawka)
+    pomiary = {p.get("ref_id"): p for p in migawka.get("measurements") or [] if isinstance(p, dict)}
+    przekladnie: set[tuple[float, float]] = set()
+    for przypisanie in migawka.get("protection_assignments") or []:
+        if not isinstance(przypisanie, dict) or not isinstance(przypisanie.get("breaker_ref"), str):
+            continue
+        if not _urzadzenie_pakietu(przypisanie, migawka):
+            continue
+        if _zacisk_lacznika(migawka, wezly, przypisanie["breaker_ref"], zaciski) != zacisk:
+            continue
+        ct = pomiary.get(przypisanie.get("ct_ref"))
+        znamionowe = (ct or {}).get("rating") or {}
+        pierwotny = znamionowe.get("ratio_primary")
+        wtorny = znamionowe.get("ratio_secondary")
+        if (ct or {}).get("measurement_type") == "CT" and pierwotny and wtorny:
+            przekladnie.add((float(pierwotny), float(wtorny)))
+    return next(iter(przekladnie)) if len(przekladnie) == 1 else None
 
 
 def rozstrzygnij_zacisk(
@@ -419,149 +450,6 @@ def _rozstrzygniety(
     )
 
 
-# ---------------------------------------------------------------------------
-# Miejsce urządzenia koordynacji (przypadek obliczeniowy) — ten sam resolver
-# ---------------------------------------------------------------------------
-
-RodzajLokalizacji = Literal["galaz", "lacznik", "szyna", "brak"]
-
-
-@dataclass(frozen=True)
-class MiejsceUrzadzenia:
-    """Gałąź i jej zacisk, których prąd płynie przez urządzenie koordynacji (KCL)."""
-
-    galaz_ref: str
-    zacisk: Zacisk
-    zrodlo: ZrodloZacisku
-    zaciski: ZaciskiGalezi
-
-
-def rodzaj_lokalizacji(snapshot: dict[str, Any] | None, lokalizacja_ref: str) -> RodzajLokalizacji:
-    """Rola elementu wskazanego jako lokalizacja urządzenia: gałąź z impedancją (linia,
-    kabel, transformator), łącznik (wyłącznik, łącznik, odłącznik, łącznik szyn,
-    bezpiecznik), szyna albo brak elementu w modelu."""
-    migawka = snapshot or {}
-    for galaz in migawka.get("branches") or []:
-        if isinstance(galaz, dict) and galaz.get("ref_id") == lokalizacja_ref:
-            return "lacznik" if galaz.get("type") in RODZAJE_LACZNIKOW else "galaz"
-    for transformator in migawka.get("transformers") or []:
-        if isinstance(transformator, dict) and transformator.get("ref_id") == lokalizacja_ref:
-            return "galaz"
-    for szyna in migawka.get("buses") or []:
-        if isinstance(szyna, dict) and szyna.get("ref_id") == lokalizacja_ref:
-            return "szyna"
-    return "brak"
-
-
-def miejsce_urzadzenia(
-    snapshot: dict[str, Any] | None,
-    lokalizacja_ref: str,
-    wskazanie: Zacisk | None,
-) -> MiejsceUrzadzenia | OdmowaZacisku | None:
-    """Miejsce prądu urządzenia koordynacji wskazanego w przypadku — TA SAMA hierarchia co
-    pakiet nastaw (decyzja O-51, pkt 7).
-
-    - Lokalizacja = ŁĄCZNIK: gałąź i zacisk z MODELU — łańcuch szeregowy od łącznika
-      (reguła KCL, `_koniec_lancucha`) kończy się zaciskiem gałęzi z impedancją; wskazanie
-      jest zbędne, sprzeczne = odmowa; łańcuch bez zacisku gałęzi (szyna zbiorcza,
-      odbiór, źródło) = odmowa; oba końce łańcucha na TEJ SAMEJ gałęzi = pętla. Oba końce
-      na RÓŻNYCH gałęziach niosą ten sam prąd (węzły stopnia 2 — I prawo Kirchhoffa),
-      więc rozstrzyga koniec strony `from` łącznika (kolejność deterministyczna).
-    - Lokalizacja = GAŁĄŹ (linia, kabel, transformator): model nie wie, przy którym końcu
-      stoi urządzenie — wymagane jawne wskazanie, brak = odmowa.
-    - Lokalizacja = szyna albo element spoza modelu: `None` (brak zacisków — prąd gałęzi
-      nie dotyczy tej lokalizacji).
-    """
-    migawka = snapshot or {}
-    rodzaj = rodzaj_lokalizacji(migawka, lokalizacja_ref)
-    if rodzaj in ("szyna", "brak"):
-        return None
-    if rodzaj == "galaz":
-        zaciski = zaciski_galezi(migawka, lokalizacja_ref)
-        if zaciski is None:
-            return None
-        if wskazanie is None:
-            return _odmowa(
-                KOD_BRAK_WSKAZANIA,
-                f"gałąź {lokalizacja_ref}: {zaciski.etykieta_od_pl} albo "
-                f"{zaciski.etykieta_do_pl}.",
-            )
-        return MiejsceUrzadzenia(
-            galaz_ref=lokalizacja_ref,
-            zacisk=wskazanie,
-            zrodlo="wskazanie",
-            zaciski=zaciski,
-        )
-    lacznik = next(
-        g
-        for g in migawka.get("branches") or []
-        if isinstance(g, dict) and g.get("ref_id") == lokalizacja_ref
-    )
-    wezly = _przylaczenia(migawka)
-    konce: list[tuple[str, Zacisk, ZaciskiGalezi]] = []
-    for szyna in (lacznik.get("from_bus_ref"), lacznik.get("to_bus_ref")):
-        if not isinstance(szyna, str):
-            continue
-        koniec = _koniec_lancucha(wezly, szyna, lokalizacja_ref)
-        if koniec is None:
-            continue
-        zaciski_konca = zaciski_galezi(migawka, koniec[0].element_ref)
-        if zaciski_konca is None:
-            continue  # koniec łańcucha nie jest gałęzią z impedancją (odbiór, źródło…)
-        zacisk: Zacisk = "od" if koniec[1] == zaciski_konca.szyna_od_ref else "do"
-        konce.append((koniec[0].element_ref, zacisk, zaciski_konca))
-    if not konce:
-        return _odmowa(
-            KOD_LACZNIK_POZA_SZEREGIEM,
-            f"łącznik {lokalizacja_ref}: po obu stronach szyna z innymi przyłączeniami, "
-            "odbiór albo źródło.",
-        )
-    if len(konce) == 2 and konce[0][0] == konce[1][0]:
-        return _odmowa(
-            KOD_PETLA_WYLACZNIKA,
-            f"łącznik {lokalizacja_ref} stoi w szeregu z oboma zaciskami gałęzi {konce[0][0]}.",
-        )
-    galaz_ref, zacisk_modelu, zaciski_modelu = konce[0]
-    if wskazanie is not None and wskazanie != zacisk_modelu:
-        return _odmowa(
-            KOD_SPRZECZNY_Z_MODELEM,
-            f"łącznik {lokalizacja_ref} stoi w szeregu z zaciskiem {zacisk_modelu} gałęzi "
-            f"{galaz_ref} ({zaciski_modelu.szyna(zacisk_modelu)}), wskazano {wskazanie}.",
-        )
-    return MiejsceUrzadzenia(
-        galaz_ref=galaz_ref,
-        zacisk=zacisk_modelu,
-        zrodlo="model",
-        zaciski=zaciski_modelu,
-    )
-
-
-def opis_miejsca_urzadzenia(
-    snapshot: dict[str, Any] | None,
-    lokalizacja_ref: str,
-    wskazanie: Zacisk | None,
-) -> dict[str, Any]:
-    """Rekord rozstrzygnięcia miejsca urządzenia dla interfejsu i API (etykiety zacisków
-    z nazwami szyn, odmowa nazwana) — bez własnej logiki: wynik `miejsce_urzadzenia`."""
-    rodzaj = rodzaj_lokalizacji(snapshot, lokalizacja_ref)
-    wynik = miejsce_urzadzenia(snapshot, lokalizacja_ref, wskazanie)
-    zaciski_lokalizacji = zaciski_galezi(snapshot, lokalizacja_ref) if rodzaj == "galaz" else None
-    if isinstance(wynik, MiejsceUrzadzenia):
-        zaciski_opisu: ZaciskiGalezi | None = wynik.zaciski
-    else:
-        zaciski_opisu = zaciski_lokalizacji
-    return {
-        "lokalizacja_ref": lokalizacja_ref,
-        "rodzaj_lokalizacji": rodzaj,
-        "zaciski": zaciski_opisu.to_dict() if zaciski_opisu is not None else None,
-        "galaz_ref": wynik.galaz_ref if isinstance(wynik, MiejsceUrzadzenia) else None,
-        "zacisk": wynik.zacisk if isinstance(wynik, MiejsceUrzadzenia) else None,
-        "zrodlo_zacisku": (wynik.zrodlo if isinstance(wynik, MiejsceUrzadzenia) else None),
-        "wymaga_wskazania_zacisku": rodzaj == "galaz",
-        "odmowa_zacisku": wynik.to_dict() if isinstance(wynik, OdmowaZacisku) else None,
-    }
-
-
 def zaciski_galezi_migawki(snapshot: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     """Etykiety obu zacisków KAŻDEJ gałęzi z impedancją (linia, kabel, transformator)
     migawki — ta sama definicja zacisków co resolver (`zaciski_galezi`); dla formularzy,
@@ -586,126 +474,24 @@ def zaciski_galezi_migawki(snapshot: dict[str, Any] | None) -> dict[str, dict[st
     return wynik
 
 
-def szyny_zwarcia_lokalizacji(
-    snapshot: dict[str, Any] | None,
-    urzadzenia: list[tuple[str, Zacisk | None]],
-) -> tuple[dict[str, str], dict[str, str]]:
-    """Szyna, na której leży prąd zwarciowy urządzenia koordynacji — szyna ZACISKU gałęzi
-    rozstrzygniętego przez `miejsce_urzadzenia` (decyzja O-51 pkt 7; TO SAMO rozstrzygnięcie,
-    z którego ekran koordynacji czyta prąd zwarciowy i roboczy urządzenia).
-
-    Wiersze biegu zwarciowego są per szyna, a kontrakt koordynacji kluczuje prądy
-    lokalizacją urządzenia — dla urządzenia na gałęzi albo łączniku prąd zwarciowy
-    lokalizacji to prąd szyny jego zacisku. Zwraca `(szyny, odmowy)`:
-    - `szyny[lokalizacja]` — szyna zacisku (lokalizacja-gałąź ze wskazaniem, łącznik
-      rozstrzygnięty przez model),
-    - `odmowy[lokalizacja]` — powód, dla którego lokalizacja NIE ma szyny zwarcia: odmowa
-      resolvera (brak wskazania, sprzeczność, łącznik poza szeregiem, pętla) albo dwa
-      urządzenia w tej samej lokalizacji przy RÓŻNYCH szynach (jedna lokalizacja nie
-      może nieść dwóch prądów zwarciowych).
-    Lokalizacja-szyna i element spoza modelu nie trafiają do żadnego słownika (prąd
-    zwarciowy lokalizacji = prąd tej lokalizacji w biegu)."""
-    szyny: dict[str, str] = {}
-    odmowy: dict[str, str] = {}
-    for lokalizacja, wskazanie in urzadzenia:
-        if lokalizacja in odmowy:
-            continue
-        wynik = miejsce_urzadzenia(snapshot, lokalizacja, wskazanie)
-        if wynik is None:
-            continue
-        if isinstance(wynik, OdmowaZacisku):
-            szyny.pop(lokalizacja, None)
-            odmowy[lokalizacja] = wynik.powod_pl
-            continue
-        szyna = wynik.zaciski.szyna(wynik.zacisk)
-        poprzednia = szyny.get(lokalizacja)
-        if poprzednia is not None and poprzednia != szyna:
-            del szyny[lokalizacja]
-            odmowy[lokalizacja] = (
-                f"lokalizacja {lokalizacja}: urządzenia przy dwóch różnych zaciskach "
-                f"(szyny {min(poprzednia, szyna)} i {max(poprzednia, szyna)}) — prąd "
-                "zwarciowy jest kluczowany lokalizacją, więc jedna lokalizacja nie może "
-                "nieść dwóch prądów; wskaż urządzenia przez łączniki pól."
-            )
-            continue
-        szyny[lokalizacja] = szyna
-    return szyny, odmowy
-
-
-#: Prefiks kluczy urządzeń koordynacji w `ProtectionConfig.overrides` przypadku — ten sam,
-#: którym zapisuje je ekran koordynacji (`frontend/…/nastawyPrzypadku.ts`).
-PREFIKS_URZADZENIA_KOORDYNACJI = "coordination_device:"
-
-
-def odmowy_zaciskow_urzadzen(
-    snapshot: dict[str, Any] | None, overrides: dict[str, Any]
-) -> list[str]:
-    """Powody odrzucenia zapisu urządzeń koordynacji przypadku (walidacja ADDYTYWNA pola
-    `zacisk`, decyzja O-51 pkt 7): zacisk spoza {`od`, `do`}, zacisk przy lokalizacji bez
-    zacisków (szyna, element spoza modelu), zacisk sprzeczny z modelem, łącznik poza
-    łańcuchem szeregowym albo pętla. Urządzenie bez pola `zacisk` nie jest sprawdzane —
-    brak wskazania nie blokuje zapisu (prąd roboczy zostaje wtedy nazwanym brakiem).
-    `snapshot` = `None` (przypadek bez modelu) — sprawdzany jest wyłącznie literał."""
-    powody: list[str] = []
-    for klucz in sorted(overrides):
-        urzadzenie = overrides[klucz]
-        if not klucz.startswith(PREFIKS_URZADZENIA_KOORDYNACJI) or not isinstance(urzadzenie, dict):
-            continue
-        zacisk = urzadzenie.get("zacisk")
-        if zacisk is None:
-            continue
-        # Urządzenie nazywa jego nazwa z ekranu koordynacji albo opis braku — nigdy klucz
-        # urządzenia w nastawach przypadku (karta NAZWY-JEDNO-ZRODLO).
-        urzadzenie_pl = opis_nazwy(urzadzenie.get("name"), "Urządzenie")
-        if zacisk not in ZACISKI:
-            powody.append(f"{urzadzenie_pl}: zacisk {zacisk!r} — dozwolone 'od' albo 'do'.")
-            continue
-        if snapshot is None:
-            continue
-        lokalizacja = urzadzenie.get("location_element_id")
-        wynik = (
-            miejsce_urzadzenia(snapshot, lokalizacja, zacisk)
-            if isinstance(lokalizacja, str)
-            else None
-        )
-        if wynik is None:
-            powody.append(
-                f"{urzadzenie_pl}: zacisk podany dla lokalizacji bez zacisków "
-                f"({nazwa_po_identyfikatorze(lokalizacja, snapshot)}) — zacisk dotyczy gałęzi "
-                "albo łącznika."
-            )
-        elif isinstance(wynik, OdmowaZacisku):
-            powody.append(f"{urzadzenie_pl}: {wynik.powod_pl}")
-    return powody
-
-
 __all__ = [
     "FUNKCJE_PAKIETU_NASTAW",
     "KOD_BRAK_WSKAZANIA",
-    "KOD_LACZNIK_POZA_SZEREGIEM",
     "KOD_PETLA_WYLACZNIKA",
     "KOD_SPRZECZNY_Z_MODELEM",
     "KOD_WYBOR_ZACISKU",
     "KOLEKCJE_BEZ_ELEMENTOW_MOCY",
     "KOLEKCJE_GALEZI_MOCY",
     "KOLEKCJE_WEZLOWE_MOCY",
-    "MiejsceUrzadzenia",
     "OdmowaZacisku",
-    "PREFIKS_URZADZENIA_KOORDYNACJI",
     "RODZAJE_LACZNIKOW",
-    "RodzajLokalizacji",
     "ZACISKI",
     "Zacisk",
     "ZaciskZabezpieczenia",
     "ZaciskiGalezi",
     "ZrodloZacisku",
     "funkcje_typu_zabezpieczenia",
-    "miejsce_urzadzenia",
-    "odmowy_zaciskow_urzadzen",
-    "opis_miejsca_urzadzenia",
-    "rodzaj_lokalizacji",
     "rozstrzygnij_zacisk",
-    "szyny_zwarcia_lokalizacji",
     "zacisk_lacznika_w_szeregu",
     "zaciski_galezi",
     "zaciski_galezi_migawki",

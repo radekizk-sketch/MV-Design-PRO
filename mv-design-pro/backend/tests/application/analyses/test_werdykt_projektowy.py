@@ -47,6 +47,7 @@ from application.analyses.werdykt_projektowy import (
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.hash import compute_enm_hash
 from enm.store import get_enm, reset_enm_store, set_enm
+from network_model.odmowa_danych import OdmowaDanychError
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -497,7 +498,9 @@ def test_fabryka_uow_wolajacego_dociera_do_dostawcy_cieplnego(monkeypatch) -> No
 
     def atrapa_dostawcy(bieg, uow_factory=None):
         przechwycone.append(uow_factory)
-        raise ValueError("atrapa dostawcy cieplnego")
+        # Karta ODMOWA-DANYCH-422: „niesprawdzone z powodem" daje wyłącznie nazwana
+        # odmowa danych dostawcy; zwykły `ValueError` to błąd programu (wybucha).
+        raise OdmowaDanychError("atrapa dostawcy cieplnego")
 
     monkeypatch.setattr(modul, "build_wytrzymalosc_cieplna_view", atrapa_dostawcy)
     werdykt = zbuduj_werdykt_projektowy(
@@ -511,6 +514,31 @@ def test_fabryka_uow_wolajacego_dociera_do_dostawcy_cieplnego(monkeypatch) -> No
     pozycja = _pozycje_po_id(werdykt)[KRYTERIUM_PRZEWOD_CIEPLNY]
     assert pozycja.stan == STAN_NIESPRAWDZONE
     assert "atrapa dostawcy cieplnego" in (pozycja.powod_pl or "")
+
+
+@pytest.mark.parametrize("typ", [ValueError, KeyError])
+def test_blad_programu_dostawcy_wybucha_nie_udaje_braku_oceny(
+    monkeypatch, typ: type[Exception]
+) -> None:
+    """Karta ODMOWA-DANYCH-422, iloczyn {odmowa danych, obcy `ValueError`, obcy inny
+    wyjątek} × agregat werdyktu: powód „niesprawdzone" daje wyłącznie nazwana odmowa
+    dostawcy (test wyżej); błąd programu dostawcy dociera do wołającego."""
+    import application.analyses.werdykt_projektowy as modul
+
+    bieg_sc = _bieg("c-uow-blad", "short_circuit_sn")
+
+    def zepsuty_dostawca(bieg, uow_factory=None):
+        raise typ("błąd programu dostawcy")
+
+    monkeypatch.setattr(modul, "build_wytrzymalosc_cieplna_view", zepsuty_dostawca)
+    with pytest.raises(typ, match="błąd programu dostawcy"):
+        zbuduj_werdykt_projektowy(
+            case_id="c-uow-blad",
+            model_hash=compute_enm_hash(get_enm("c-uow-blad")),
+            bieg_pf=None,
+            bieg_sc=bieg_sc,
+            uow_factory=None,
+        )
 
 
 # ---------------------------------------------------------------------------

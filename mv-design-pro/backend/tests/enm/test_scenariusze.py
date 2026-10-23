@@ -191,7 +191,7 @@ def test_scenariusz_zwarciowy_nie_zmienia_migawki_a_daje_opcje_biegu() -> None:
         name="Zwarcie na A",
         fault_type=FaultType.SC_3F,
         location=FaultLocation(element_ref="b_a", location_type="BUS"),
-        config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.5),
+        config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.5),
     )
     scenariusz = _scenariusz(kind=RodzajScenariusza.FAULT_STUDY, fault_spec=spec)
     efektywna = apply_scenario(enm, scenariusz)
@@ -203,7 +203,7 @@ def test_scenariusz_zwarciowy_nie_zmienia_migawki_a_daje_opcje_biegu() -> None:
         "fault_type": "SC_3F",
         "location": {"element_ref": "b_a", "location_type": "BUS", "position": None},
         "config": spec.config.to_dict(),
-        "c_factor": 1.05,
+        "scenario": "min",
         "thermal_time_seconds": 0.5,
     }
     assert opcje_biegu_ze_scenariusza(SCENARIUSZ_NORMALNY) == {}
@@ -438,7 +438,9 @@ def test_brak_adresata_nadpisania_to_blad_z_nazwa_nie_cichy_skip(pola, ref_w_ble
     with pytest.raises(ScenariuszNieprzystajeError) as info:
         apply_scenario(_pierscien(), _scenariusz(**pola))
     assert info.value.ref_id == ref_w_bledzie and info.value.scenario_id == "s-test"
-    assert ref_w_bledzie in str(info.value) and "s-test" in str(info.value)
+    # Partia integracji 10: identyfikatory zostają w polach maszynowych (`ref_id`,
+    # `scenario_id` — nawigacja interfejsu), treść dla projektanta ich nie niesie.
+    assert ref_w_bledzie not in str(info.value) and "s-test" not in str(info.value)
 
 
 def test_kolejnosc_nadpisan_jest_stala_i_zapisana_w_proweniencji() -> None:

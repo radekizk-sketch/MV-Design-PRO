@@ -59,6 +59,8 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
         "add_nn_cable_segment",
         "add_nn_switch_device",
         "add_nn_section_coupler",
+        # Karta W5-E-TTIT: RCD w torze instalacji odbiorczej — pozycja katalogu APARAT_NN_RCD.
+        "add_nn_rcd",
     }
 )
 
@@ -372,6 +374,15 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
+    if operation == "add_nn_rcd":
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace="APARAT_NN_RCD",
+            ref_keys=("catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
     if operation in _OPERACJE_PUNKTU_POSREDNIEGO_SN:
         candidate = _extract_binding_from_container(
             payload,
@@ -675,6 +686,8 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
     PozycjaBramyApi("add_nn_switch_device", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_switch_device", "catalog_binding", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_rcd", "catalog_ref", "APARAT_NN_RCD", True),
+    PozycjaBramyApi("add_nn_rcd", "catalog_binding", "APARAT_NN_RCD", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN (V2) ------------------
@@ -910,8 +923,8 @@ def _blad_pozycji_api(
     wynik = materialize_catalog_binding(CatalogBinding.from_dict(binding_data), katalog_biezacy())
     if wynik.success:
         return None
-    kod = wynik.error_code or "catalog.materialization_failed"
-    komunikat = wynik.error_message_pl or "Błąd materializacji katalogu"
+    kod = wynik.kod_odmowy
+    komunikat = wynik.komunikat_odmowy_pl
     return CatalogPolicyError(
         code=kod,
         message_pl=f"{opis_pl}: {komunikat}",
@@ -1489,8 +1502,8 @@ def validate_and_materialize_catalog_binding(
             return None, {}
         # PARYTET KODU (§2.3 karty U1): nieistniejąca pozycja daje `catalog.item_not_found`
         # niezależnie od przestrzeni katalogu. Punkt pośredni SN był jedynym miejscem
-        # bramy meldującym `catalog.materialization_failed` — a to nie jest awaria
-        # materializacji, tylko brak pozycji, dokładnie jak w każdej innej kategorii.
+        # bramy meldującym osobny kod „awarii materializacji” (skasowany z rejestru — żaden
+        # producent go nie emitował) — a to nie jest awaria materializacji, tylko brak pozycji, dokładnie jak w każdej innej kategorii.
         return (
             CatalogPolicyError(
                 code="catalog.item_not_found",
@@ -1540,12 +1553,12 @@ def validate_and_materialize_catalog_binding(
     if not mat_result.success:
         return (
             CatalogPolicyError(
-                code=mat_result.error_code or "catalog.materialization_failed",
-                message_pl=mat_result.error_message_pl or "Błąd materializacji katalogu",
+                code=mat_result.kod_odmowy,
+                message_pl=mat_result.komunikat_odmowy_pl,
                 errors=[
                     {
-                        "code": mat_result.error_code or "catalog.materialization_failed",
-                        "message_pl": mat_result.error_message_pl or "Błąd materializacji katalogu",
+                        "code": mat_result.kod_odmowy,
+                        "message_pl": mat_result.komunikat_odmowy_pl,
                     }
                 ],
             ),

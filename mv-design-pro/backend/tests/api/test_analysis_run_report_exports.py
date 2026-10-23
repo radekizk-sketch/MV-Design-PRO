@@ -118,7 +118,10 @@ def _build_sc_run() -> CanonicalRun:
                     "ikss_a": 4500.0,
                     "ip_a": 9200.0,
                     "ith_a": 4700.0,
-                    "ib_a": 4100.0,
+                    # Karta SC-IB-ITH-ZRODLA: zwarcie niesymetryczne — I_b = I''k (IEC 60909-0
+                    # rozdz. 9); i_DC(t_b) = 3,2 kA przy t_b = 0,1 s (pole addytywne solvera).
+                    "ib_a": 4500.0,
+                    "i_dc_a": 3200.0,
                     "ik_total_a": 4500.0,
                     "ik_thevenin_a": 4400.0,
                     "ik_inverters_a": 100.0,
@@ -259,7 +262,8 @@ def test_report_payload_short_circuit_rows_carry_full_iec60909_balance() -> None
     assert row["un_kv"] == 15.0
     assert row["tk_s"] == 1.0
     assert row["tb_s"] == 0.1
-    assert row["ib_ka"] == 4.1
+    assert row["ib_ka"] == 4.5
+    assert row["i_dc_ka"] == 3.2
     assert row["ik_ka"] == 4.5
     assert abs(row["i2t_ka2s"] - 22.09) < 1e-9
 
@@ -278,42 +282,14 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
 
     document = _Document(_io.BytesIO(response.body))
     text = "\n".join(paragraph.text for paragraph in document.paragraphs)
-    assert "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.1 kA | Ik=4.5 kA | Sk''=125 MVA" in text
+    assert (
+        "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.5 kA | iDC(tb)=3.2 kA | Ik=4.5 kA | "
+        "Sk''=125 MVA" in text
+    )
     assert (
         "Bilans IEC 60909: Rk=0.5 Ohm | Xk=1.5 Ohm | |Zk|=1.58114 Ohm | X/R=3 | kappa=1.4" in text
     )
     assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
-
-
-def test_export_run_docx_response_shows_missing_fields_as_brak_danych() -> None:
-    """FAB-E (E1): brak pola WYNIKU w DOCX to napis „brak danych", nie 0.
-
-    ``_build_pf_run`` ma podsumowanie BEZ ``total_losses_q_mvar`` i wiersze
-    szyn BEZ ``p_injected_mw``/``q_injected_mvar`` — przed poprawka te
-    kolumny renderowaly sfabrykowane „0.000"/„0" (`.get(pole, 0)`), co w
-    raporcie inzynierskim wygladalo jak realny wynik obliczen.
-    """
-    import dataclasses
-    import io as _io
-
-    from api.analysis_run_exports import export_run_docx_response
-    from docx import Document as _Document
-
-    run = dataclasses.replace(_build_pf_run(), power_flow_trace={})
-    response = export_run_docx_response(run, filename_stem="power_flow")
-
-    document = _Document(_io.BytesIO(response.body))
-    cell_texts = [
-        cell.text for table in document.tables for row in table.rows for cell in row.cells
-    ]
-
-    assert "brak danych" in cell_texts, (
-        "brakujace total_losses_q_mvar/p_injected_mw/q_injected_mvar musza renderowac "
-        "sie jako 'brak danych', nie jako sfabrykowane 0"
-    )
-    # Pole OBECNE (total_losses_p_mw=0.1) MUSI zostac wyswietlone normalnie —
-    # poprawka nie moze ukryc prawdziwych wartosci za "brak danych".
-    assert "0.1" in cell_texts
 
 
 def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:
@@ -543,7 +519,7 @@ def _build_dynamika_run() -> CanonicalRun:
         created_at=datetime.now(UTC),
         snapshot_hash="snapshot-dyn",
         input_hash="hash-dyn",
-        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True),
+        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True, z_modelem_odbioru=True),
         validation={},
         readiness={},
         result_status="VALID",
@@ -571,6 +547,7 @@ def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -
         "dynamika_zdarzenia",
         "dynamika_przekroczenia",
         "dynamika_metryki",
+        "dynamika_zalozenia",
     ]
 
     docx = export_run_report_docx_response(
@@ -590,6 +567,11 @@ def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -
     assert "detektor „Zapad napięcia szyny PV” | Moduł napięcia | " in tekst
     assert "próg 0.8 pu | spadek poniżej progu" in tekst
     assert "u_pu@" not in tekst and "nn_bus" not in tekst
+    # Karta modeli odbiorów (§0 pkt 6): założenia modelu — zdania warstwy aplikacji z rekordów
+    # rdzenia (te same, co ekran dynamiki), po polsku i bez kluczy kodu rekordów.
+    assert "Model RMS składowej zgodnej" in tekst
+    assert "przechodzą w stałą impedancję" in tekst
+    assert "model_odbiorow" not in tekst and "probki_obustronne" not in tekst
 
     pdf = export_run_report_pdf_response(
         run, filename_stem="raport", report_options={"sections": ["results"]}

@@ -8,7 +8,7 @@ Iloczyn cech (KLASA NIE INSTANCJA, CLAUDE.md): {run_id None / pusty / nie-UUID
 / UUID nieistniejący / rodzaju innego / niezakończony / poprawny} x {punkt
 zwarcia istniejący / nieistniejący} x {echo None / zgodne / rozbieżne / pole
 nieznane}; koordynacja: {oba biegi / brak MAX / brak MIN / scenariusz
-zamieniony / migawki różne}.
+zamieniony / scenariusz niezapisany (MAX, MIN) / migawki różne}.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from uuid import UUID, uuid4
 import pytest
 from application.autorytet_biegu_zwarciowego import (
     BiegNiemiarodajnyError,
-    niezgodnosci_pradow_koordynacji,
     wejscie_koordynacji_z_biegow,
     wejscie_zwarciowe_z_biegu,
     wielkosci_kontraktu_klienta,
@@ -237,6 +236,25 @@ def test_echo_rozbiezne_jest_niezgodnoscia_dokladnie_scenariusz_obejscia() -> No
     assert any("liczby wyniku" in n for n in niezgodnosci)
 
 
+def test_echo_niesie_pochodzenie_tb_bez_niezgodnosci_a_podmiana_jest_niezgodnoscia() -> None:
+    """Karta TB-WARTOSC-ROBOCZA — predykaty parami: kontrakt klienta wydaje ``tb_zrodlo``
+    (bieg bez t_b w scenariuszu), więc echo tego kontraktu MUSI przejść; to samo echo
+    z pochodzeniem podmienionym na projektowe (``wartosc_robocza`` False) jest rozbieżnością
+    odcisku, a echo bez pola zachowuje pochodzenie biegu (jak pozostałe pola spoza echa)."""
+    run = _zapisz_bieg(uuid4())
+    punkt = _punkt_zwarcia_biegu(run)
+    wejscie = wejscie_zwarciowe_z_biegu(run_id=str(run.id), punkt_zwarcia=punkt)
+    echo = wielkosci_kontraktu_klienta(wejscie.wielkosci)
+    assert echo["tb_zrodlo"]["wartosc_robocza"] is True
+    assert wejscie.niezgodnosci_z_echem(echo) == ()
+    bez_pochodzenia = {k: v for k, v in echo.items() if k != "tb_zrodlo"}
+    assert wejscie.niezgodnosci_z_echem(bez_pochodzenia) == ()
+    podmienione = {**echo, "tb_zrodlo": {**echo["tb_zrodlo"], "wartosc_robocza": False}}
+    niezgodnosci = wejscie.niezgodnosci_z_echem(podmienione)
+    assert any("liczby wyniku" in n for n in niezgodnosci)
+    assert not any("pola spoza kontraktu" in n for n in niezgodnosci)
+
+
 def test_echo_pole_nieznane_jest_niezgodnoscia() -> None:
     run = _zapisz_bieg(uuid4())
     punkt = _punkt_zwarcia_biegu(run)
@@ -302,51 +320,26 @@ def test_koordynacja_biegi_z_roznych_modeli_odrzucony() -> None:
     assert exc.value.powod == "BIEGI_Z_ROZNYCH_MODELI"
 
 
-def test_koordynacja_para_poprawna_daje_wejscie_z_obu_biegow() -> None:
+def test_koordynacja_para_poprawna_daje_oba_biegi_i_proweniencje() -> None:
     run_max = _zapisz_bieg(uuid4(), scenario="max")
     run_min = _zapisz_bieg(uuid4(), scenario="min")
     wejscie = wejscie_koordynacji_z_biegow(run_id_max=str(run_max.id), run_id_min=str(run_min.id))
-    assert wejscie.wiazanie_max.run_id == str(run_max.id)
-    assert wejscie.wiazanie_min.run_id == str(run_min.id)
-    assert wejscie.prady_max_a
-    assert wejscie.prady_min_a
-    assert wejscie.wartosci_odrzucone == ()
+    assert str(wejscie.bieg_max.id) == str(run_max.id)
+    assert str(wejscie.bieg_min.id) == str(run_min.id)
+    assert wejscie.proweniencja is not None
 
 
-def test_koordynacja_niezgodnosci_prady_zgodne_puste() -> None:
+@pytest.mark.parametrize("ktory", ["max", "min"])
+def test_koordynacja_bieg_bez_zapisanego_scenariusza_odrzucony(ktory: str) -> None:
+    """Brak scenariusza w artefakcie biegu = odmowa nazwana — dawna wartość zastępcza
+    „MAX" robiła z takiego biegu bieg maksymalny (domysł)."""
     run_max = _zapisz_bieg(uuid4(), scenario="max")
     run_min = _zapisz_bieg(uuid4(), scenario="min")
-    wejscie = wejscie_koordynacji_z_biegow(run_id_max=str(run_max.id), run_id_min=str(run_min.id))
-    lokalizacja = next(iter(wejscie.prady_max_a))
-    zadanie = [
-        {
-            "location_id": lokalizacja,
-            "ik_max_3f_a": wejscie.prady_max_a[lokalizacja],
-            "ik_min_3f_a": wejscie.prady_min_a.get(lokalizacja, wejscie.prady_max_a[lokalizacja]),
-        }
-    ]
-    niezgodnosci = niezgodnosci_pradow_koordynacji(wejscie, zadanie)
-    assert niezgodnosci == () or all("bez identyfikatora" not in n for n in niezgodnosci)
-
-
-def test_koordynacja_niezgodnosci_prad_rozbiezny_wykryty() -> None:
-    run_max = _zapisz_bieg(uuid4(), scenario="max")
-    run_min = _zapisz_bieg(uuid4(), scenario="min")
-    wejscie = wejscie_koordynacji_z_biegow(run_id_max=str(run_max.id), run_id_min=str(run_min.id))
-    lokalizacja = next(iter(wejscie.prady_max_a))
-    zadanie = [{"location_id": lokalizacja, "ik_max_3f_a": 999999.0}]
-    niezgodnosci = niezgodnosci_pradow_koordynacji(wejscie, zadanie)
-    assert any(lokalizacja in n and "ik_max_3f_a" in n for n in niezgodnosci)
-
-
-def test_koordynacja_pola_2f_1f_zawsze_niezwiazane() -> None:
-    """Kanoniczny bieg liczy WYŁĄCZNIE 3F — ik_max_2f_a/ik_min_1f_a są zawsze
-    „wielkością niezwiązaną z żadnym biegiem", niezależnie od wartości."""
-    run_max = _zapisz_bieg(uuid4(), scenario="max")
-    run_min = _zapisz_bieg(uuid4(), scenario="min")
-    wejscie = wejscie_koordynacji_z_biegow(run_id_max=str(run_max.id), run_id_min=str(run_min.id))
-    lokalizacja = next(iter(wejscie.prady_max_a))
-    zadanie = [{"location_id": lokalizacja, "ik_max_2f_a": 1.0, "ik_min_1f_a": 1.0}]
-    niezgodnosci = niezgodnosci_pradow_koordynacji(wejscie, zadanie)
-    assert any("ik_max_2f_a" in n and "niezwiązana" in n for n in niezgodnosci)
-    assert any("ik_min_1f_a" in n and "niezwiązana" in n for n in niezgodnosci)
+    bez = run_max if ktory == "max" else run_min
+    assert bez.raw_result is not None
+    bez.raw_result.pop("scenario")
+    with canonical_run_repository_scope() as repository:
+        repository.save(bez)
+    with pytest.raises(BiegNiemiarodajnyError) as exc:
+        wejscie_koordynacji_z_biegow(run_id_max=str(run_max.id), run_id_min=str(run_min.id))
+    assert exc.value.powod == "SCENARIUSZ_BIEGU_NIEUSTALONY"

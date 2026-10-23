@@ -17,10 +17,12 @@ interface CatalogTypeEntry {
 
 const BROWSER_NAMESPACES: readonly CatalogNamespace[] = [
   'LINIA_SN',
+  'PRZEWOD_LINII_WN',
   'KABEL_SN',
   'TRAFO_SN_NN',
   'APARAT_SN',
   'APARAT_NN',
+  'APARAT_NN_RCD',
   'KABEL_NN',
   'CT',
   'VT',
@@ -28,11 +30,13 @@ const BROWSER_NAMESPACES: readonly CatalogNamespace[] = [
 
 const NAMESPACE_ICONS: Record<CatalogNamespace, string> = {
   LINIA_SN: 'LN',
+  PRZEWOD_LINII_WN: 'WN',
   KABEL_SN: 'CB',
   ZRODLO_SN: 'GPZ',
   TRAFO_SN_NN: 'TR',
   APARAT_SN: 'SN',
   APARAT_NN: 'nN',
+  APARAT_NN_RCD: 'RCD',
   KABEL_NN: 'nn',
   CT: 'CT',
   VT: 'VT',
@@ -52,6 +56,14 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
   LINIA_SN: {
     r_ohm_per_km: "R' [Ohm/km]",
     x_ohm_per_km: "X' [Ohm/km]",
+    rated_current_a: 'In [A]',
+  },
+  // Karta LINIA-110: dane wyrobu (PN-EN 50182) — impedancję linii liczy backend z geometrii.
+  PRZEWOD_LINII_WN: {
+    oznaczenie: 'Oznaczenie',
+    przeznaczenie: 'Przeznaczenie',
+    r20_dc_ohm_per_km: 'R20 DC [Ohm/km]',
+    srednica_mm: 'd [mm]',
     rated_current_a: 'In [A]',
   },
   KABEL_SN: {
@@ -80,6 +92,12 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
     u_n_kv: 'Un [kV]',
     i_n_a: 'In [A]',
     breaking_capacity_ka: 'Iwyl [kA]',
+  },
+  APARAT_NN_RCD: {
+    i_delta_n_a: 'IΔn [A]',
+    rcd_type: 'Rodzaj',
+    in_a: 'In [A]',
+    t_a_s: 'ta przy IΔn [s]',
   },
   KABEL_NN: {
     u_n_kv: 'Un [kV]',

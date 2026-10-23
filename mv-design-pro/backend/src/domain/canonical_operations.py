@@ -127,6 +127,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("a_ref", "b_ref"),
         optional_fields=("nop_required",),
     ),
+    "przepnij_element_na_pole": OperationSpec(
+        canonical_name="przepnij_element_na_pole",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny "
+            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("element_ref",),
+        optional_fields=("field_ref",),
+        creates_elements=False,
+    ),
     "set_normal_open_point": OperationSpec(
         canonical_name="set_normal_open_point",
         category=OperationCategory.SN_NETWORK,
@@ -305,6 +317,17 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         creates_elements=False,
     ),
+    # Karta modeli odbiorów (O-56): wiązanie odbioru z profilem modelu dynamicznego katalogu
+    # `load_dynamic` — kopię `Load.dynamika` buduje `enm.dynamika_z_katalogu`. Akcja
+    # naprawcza kodu gotowości `load.dynamika_missing` (ekran dynamiki).
+    "set_load_dynamic_binding": OperationSpec(
+        canonical_name="set_load_dynamic_binding",
+        category=OperationCategory.OZE_NN,
+        description_pl="Wiązanie odbioru z profilem modelu dynamicznego z katalogu",
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref", "dynamic_model_ref"),
+        creates_elements=False,
+    ),
     # Karta AB-H0 §0.7.3: karta widmowa PROJEKTU (dane inżyniera — widmo ręczne albo
     # import raportu badań dla projektu) w sekcji `katalog_projektu.karty_widmowe`.
     "dodaj_karte_widmowa_projektu": OperationSpec(
@@ -315,7 +338,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("karta",),
         creates_elements=False,
     ),
-    # --- Protection (6 operations) ---
+    # --- Protection (5 operations) ---
     # W3-A (2026-09): "calculate_tcc_curve" skasowana razem z zaslepka w
     # enm/domain_operations_v2.py (zwracala wylacznie blad
     # "tcc.legacy_write_disabled", bez fizyki) — rodzina IDMT KLASA-NIE-
@@ -333,6 +356,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
             # W3-B (mapa 4 #3): obwód wtórny — koniec liczenia „na kartce".
             "obwod_wtorny",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: kotwica przy wyłączniku liniowym bez pola.
+            "breaker_ref",
         ),
     ),
     "add_vt": OperationSpec(
@@ -368,31 +393,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie przekaźnika zabezpieczeniowego",
         target_layer="Domain / NetworkModel",
         required_fields=("target_ct_ref",),
-        optional_fields=("relay_type", "manufacturer", "catalog_binding"),
+        optional_fields=(
+            "relay_type",
+            "manufacturer",
+            "catalog_binding",
+            "settings",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik liniowy bez pola jako kotwica.
+            "breaker_ref",
+        ),
     ),
-    "update_relay_settings": OperationSpec(
-        canonical_name="update_relay_settings",
+    "update_protection_settings": OperationSpec(
+        canonical_name="update_protection_settings",
         category=OperationCategory.PROTECTION,
-        description_pl="Aktualizacja nastaw przekaźnika",
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu —
+        # następca skasowanej zaślepki `update_relay_settings`.
+        description_pl="Zapis nastaw zabezpieczenia w modelu sieci",
         target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "settings"),
-        creates_elements=False,
-    ),
-    "link_relay_to_field": OperationSpec(
-        canonical_name="link_relay_to_field",
-        category=OperationCategory.PROTECTION,
-        description_pl="Powiązanie przekaźnika z polem rozdzielczym",
-        target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "field_ref"),
-        creates_elements=False,
-    ),
-    "validate_selectivity": OperationSpec(
-        canonical_name="validate_selectivity",
-        category=OperationCategory.PROTECTION,
-        description_pl="Walidacja selektywności między urządzeniami",
-        target_layer="Analysis / Protection",
-        required_fields=("upstream_ref", "downstream_ref"),
-        mutates_model=False,
+        required_fields=("protection_ref", "settings"),
         creates_elements=False,
     ),
     # --- Universal (4 operations) ---
@@ -629,6 +646,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("from_bus_ref", "to_bus_ref"),
         optional_fields=("device_class", "catalog_ref", "catalog_binding", "name"),
+        creates_elements=True,
+    ),
+    "add_nn_rcd": OperationSpec(
+        canonical_name="add_nn_rcd",
+        category=OperationCategory.NN_NETWORK,
+        description_pl=(
+            "Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji odbioru "
+            "(ochrona przez samoczynne wyłączenie w układzie TT/IT)"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref",),
+        optional_fields=("catalog_ref", "catalog_binding", "name"),
         creates_elements=True,
     ),
     "add_nn_section_coupler": OperationSpec(
@@ -935,6 +964,55 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl="Stacja nie ma wymaganego pola SN",
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
+    # Karta POLE-ZAJĘTE: z jednego pola liniowego SN wychodzi więcej niż jeden odcinek (stan
+    # zastany modelu — operacje odmawiają drugiego kabla kodem `field.line_field_occupied`).
+    # Emiter: `enm/validator.py` E022 przez odwzorowanie w `domain/readiness_bridge.py`.
+    "station.line_field_multiple_segments": ReadinessCodeSpec(
+        code="station.line_field_multiple_segments",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek",
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy —
+    # aparat pola martwy elektrycznie (`enm/tor_pola.py`, walidator W042).
+    "station.element_bypasses_field": ReadinessCodeSpec(
+        code="station.element_bypasses_field",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Element jest przyłączony do szyny głównej stacji z pominięciem pola "
+            "rozdzielnicy — aparat pola nie leży w jego torze prądowym"
+        ),
+        fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
+    ),
+    # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji niezgodna z rodzajem wyprowadzonym
+    # z topologii (`enm/rodzaj_stacji.py`, walidator W043, SLD_CAD_SPEC_V3 §19.3).
+    "station.kind_mismatch": ReadinessCodeSpec(
+        code="station.kind_mismatch",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii "
+            "(liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii"
+        ),
+        fix_navigation={"panel": "inspector", "modal": "update_element_parameters"},
+    ),
+    # Pole rozdzielnicy SN o roli spoza słownika — nie liczy się do rodzaju stacji (W044).
+    "station.field_role_unknown": ReadinessCodeSpec(
+        code="station.field_role_unknown",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono "
+            "bez tego pola"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     # Transformer
     "transformer.catalog_missing": ReadinessCodeSpec(
         code="transformer.catalog_missing",
@@ -1091,6 +1169,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
             "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
+    ),
+    # Karta modeli odbiorów (O-49 pkt 2 i 11, O-56): odbiór bez kopii `Load.dynamika`
+    # (profil modelu dynamicznego z katalogu `load_dynamic`) — bieg `dynamika_rms` odmawia
+    # (`dynamika.odbior_bez_bloku_dynamiki`). Nawigacja prowadzi do WIĄZANIA profilu na
+    # ekranie dynamiki, w tej samej sekcji co modele źródeł (`der.dynamika_missing`);
+    # akcja wykonuje `set_load_dynamic_binding`. Edytora pól ręcznych nie ma (reguła 10
+    # katalogu) — to zastępuje „edytor w AB-1c" z O-49 pkt 11.
+    "load.dynamika_missing": ReadinessCodeSpec(
+        code="load.dynamika_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, "
+            "pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; "
+            "zwiąż odbiór z profilem z katalogu"
         ),
         fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),
@@ -1288,6 +1384,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry"},
     ),
+    # Punkt 1 karty O-53b (rozstrzygnięcie architekta 2026-10-15): kontrola mocy PER
+    # TRANSFORMATOR sumą po grupie źródeł; grupa ma jeden współczynnik jednoczesności
+    # i jedną przeciążalność transformatora — różne jawne wartości w źródłach grupy to
+    # niejednoznaczność nazwana, nie wybór jednej z nich.
+    "converter.power_check_group_ambiguous": ReadinessCodeSpec(
+        code="converter.power_check_group_ambiguous",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Źródła zasilane przez ten sam transformator mają różne jawne wartości "
+            "współczynnika jednoczesności albo przeciążalności transformatora — grupa ma "
+            "jeden współczynnik"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",
@@ -1389,18 +1501,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z "
             "przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi"
-        ),
-        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
-    ),
-    "protection.device_breaker_not_in_series": ReadinessCodeSpec(
-        code="protection.device_breaker_not_in_series",
-        area=ReadinessArea.PROTECTION,
-        priority=3,
-        level=ReadinessLevel.BLOCKER,
-        message_pl=(
-            "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej "
-            "gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej "
-            "zacisk jako miejsce urządzenia"
         ),
         fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
     ),
@@ -1925,6 +2025,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
     ),
+    # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2; zasada nr 4): R′0/X′0 linii
+    # i kabli SN z katalogu są wyprowadzone bez danej producenta (R′0 = 3·R′1, X′0 = 3·X′1,
+    # R′0 = R′1 + R′ żyły powrotnej) — pozycja niesie mapę `wartosci_robocze`, bieg zwarcia
+    # doziemnego i rozpływu niesymetrycznego niesie założenie tego kodu
+    # (`enm.dane_przyjete_galezi.zalozenia_z0_galezi`), a werdykty — daną przyjętą ESTIMATED.
+    # Brak danej producenta NIE blokuje obliczeń.
+    "branch.z0_wartosc_robocza": ReadinessCodeSpec(
+        code="branch.z0_wartosc_robocza",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej "
+            "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
+            "i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+    ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt
     # pośredni na gałęzi wymagałby rozdzielenia jej na dwie impedancje w miejscu
@@ -1940,6 +2058,140 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia "
             "(adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle"
         ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    # Współczynnik napięciowy c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59):
+    # jedynym nośnikiem c jest scenariusz zwarciowy (MAX/MIN → tabela 1 IEC 60909-0
+    # per węzeł); ręczne nadpisanie wyłącznie z uzasadnieniem. Odmowy podnosi
+    # `network_model.core.voltage_factor.NadpisanieC` — jedno miejsce walidacji.
+    "fault.c_nadpisanie_bez_uzasadnienia": ReadinessCodeSpec(
+        code="fault.c_nadpisanie_bez_uzasadnienia",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nadpisanie współczynnika napięciowego c wymaga uzasadnienia (IEC 60909-0 "
+            "dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu)"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    "fault.c_nadpisanie_wartosc_niepoprawna": ReadinessCodeSpec(
+        code="fault.c_nadpisanie_wartosc_niepoprawna",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): wiersz nN tabeli 1 IEC 60909-0
+    # zależy od tolerancji napięcia sieci nN (+6 % / +10 %), deklarowanej na transformatorze
+    # albo źródle sieciowym zasilającym sieć nN (`lv_voltage_tolerance`). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4 kontraktu werdyktu): brak deklaracji
+    # NIE blokuje biegu — sieć nN dostaje wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze.PROPOZYCJA_TOLERANCJI_NN` (+10 %, zachowawcza
+    # w obu kierunkach), a bieg niesie założenie tego kodu
+    # (`enm.tolerancja_nn.zalozenia_tolerancji_nn`) z wyspą, elementem zasilającym i drogą
+    # zmiany wartości. Dawny bloker `fault.c_tolerancja_nn_brak` skasowany.
+    "fault.c_tolerancja_nn_robocza": ReadinessCodeSpec(
+        code="fault.c_tolerancja_nn_robocza",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c "
+            "1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — "
+            "zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest "
+            "inna, i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
+    ),
+    # Karta LINIA-110 (zasada nr 4): linia 110 kV z przewodem z katalogu PRZEWOD_LINII_WN ma
+    # R′, X′, B′ i Z′0 policzone z geometrii słupa; składowe niepodane w projekcie (położenie
+    # faz, przewód odgromowy, rezystywność gruntu) biorą wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze` (jakość ESTIMATED, kompletność NIEPELNY). Brak
+    # geometrii NIE blokuje obliczeń — bieg niesie założenie tego kodu
+    # (`enm.parametry_linii_wn.zalozenia_linii_wn`) z linią i drogą zmiany wartości.
+    "line.geometria_wartosc_robocza": ReadinessCodeSpec(
+        code="line.geometria_wartosc_robocza",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo "
+            "rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i "
+            "przelicz"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "geometria_slupa",
+        },
+    ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
+    # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy
+    # rejestru wartości roboczych (`enm.wartosci_projektanta`). Operacje zapisu jej nie
+    # przyjmują; model z pliku, który ją niesie, nie liczy się z cichym pominięciem — blokada
+    # z naprawą w sekcji wartości projektanta kreatora edycji parametrów.
+    "catalog.wartosc_projektanta_niedopuszczalna": ReadinessCodeSpec(
+        code="catalog.wartosc_projektanta_niedopuszczalna",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo "
+            "dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach "
+            "elementu i zapisz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
+    ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): parametry zwarciowe maszyny wirującej
+    # (S_rG, x″d i cos φ generatora synchronicznego; moc znamionowa P_rM, liczba par biegunów
+    # p, I_LR/I_rM, cos φ i η maszyny asynchronicznej) bez danej tabliczki ani wartości
+    # projektanta NIE blokują biegu —
+    # bieg liczy z propozycją rejestru `network_model.catalog.wartosci_robocze.PROPOZYCJE_MASZYNY`
+    # (założenie inżynierskie, jakość ESTIMATED) i niesie założenie tego kodu
+    # (`zalozenia_parametrow_maszyn`) na każdą maszynę z wartością roboczą; werdykty oparte na
+    # prądach jej wyspy dostają daną przyjętą (`dane_przyjete_maszyn`).
+    "fault.parametry_maszyny_robocze": ReadinessCodeSpec(
+        code="fault.parametry_maszyny_robocze",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Maszyna wirująca liczona z wartością roboczą parametru zwarciowego (propozycja "
+            "rejestru — założenie inżynierskie, nie dana producenta) — wpisz wartość z tabliczki "
+            "maszyny w parametrach generatora, jeśli jest inna, i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
+    ),
+    # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
+    # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER
+    # PUNKT ZWARCIA: scenariusz projektanta > najkrótszy czas wyłączenia pól lokalnych >
+    # wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016). Brak t_b nie blokuje
+    # obliczeń; punkty z t_b roboczym (propozycja albo czas pola z roboczym czasem własnym
+    # wyłącznika) niesie założenie biegu z listą punktów. Wartość niefizyczna projektanta =
+    # odmowa. Jedna reguła danych: `network_model.core.czas_wylaczenia`.
+    "fault.czas_tb_wartosc_robocza": ReadinessCodeSpec(
+        code="fault.czas_tb_wartosc_robocza",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ "
+            "IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — "
+            "prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb "
+            "w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    "fault.czas_tb_niepoprawny": ReadinessCodeSpec(
+        code="fault.czas_tb_niepoprawny",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Czas wyłączenia tb musi być skończoną liczbą dodatnią w sekundach",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
@@ -2059,14 +2311,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
     ),
-    "catalog.materialization_failed": ReadinessCodeSpec(
-        code="catalog.materialization_failed",
-        area=ReadinessArea.CATALOGS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl="Materializacja parametrów z katalogu nie powiodła się",
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
-    ),
     # ------------------------------------------------------------------
     # BRAMY KATALOGOWE — kody odrzucenia operacji (karta W4, dług V12K-317)
     # ------------------------------------------------------------------
@@ -2084,6 +2328,37 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # normatywną (ta sama zasada, co w `domain/readiness_bridge.py`).
     # Kompletność przypina test klasy `tests/domain/test_rejestr_kodow_bram_katalogowych.py`
     # (skan AST kodu bram), więc nowy kod bramy bez wpisu zapala regresję.
+    "catalog.type_incomplete": ReadinessCodeSpec(
+        code="catalog.type_incomplete",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej "
+            "(moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika "
+            "nie wyprowadzono; uzupełnij rekord z karty producenta"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.duplicate_id": ReadinessCodeSpec(
+        code="catalog.duplicate_id",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Karta widmowa występuje w katalogu więcej niż raz — katalog nie wskazuje "
+            "jednoznacznie danych; usuń powtórzoną kartę"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
     "catalog.item_not_found": ReadinessCodeSpec(
         code="catalog.item_not_found",
         area=ReadinessArea.CATALOGS,
@@ -2538,6 +2813,80 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "katalog",
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
+    ),
+    # Karta W5-E-TTIT (2026-09-30): odmowy NAZWANE pętli doziemnej TT/IT, werdyktu SWZ TT/IT,
+    # dowodu i arkusza obwodów nN (`application/analyses/fault_loop/tt_it.py`,
+    # `swz/werdykt_tt_it.py`) — brak danej modelu = kod z nawigacją do pola, nigdy domysł.
+    "nn.brak_r_a": ReadinessCodeSpec(
+        code="nn.brak_r_a",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — "
+            "pętla doziemna i napięcie dotykowe nie są liczone"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "earth_electrode_r_ohm",
+        },
+    ),
+    "nn.brak_r_b": ReadinessCodeSpec(
+        code="nn.brak_r_b",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego "
+            "bezpośrednio z rezystancją uziomu stacji"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
+    ),
+    "nn.brak_rcd": ReadinessCodeSpec(
+        code="nn.brak_rcd",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego "
+            "z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "nn", "modal": "add_nn_rcd"},
+    ),
+    "nn.brak_pojemnosci_doziemnej": ReadinessCodeSpec(
+        code="nn.brak_pojemnosci_doziemnej",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — "
+            "prąd pierwszego zwarcia doziemnego nie jest liczony"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b0_siemens_per_km"},
+    ),
+    "nn.transformer_lv_not_nn_band": ReadinessCodeSpec(
+        code="nn.transformer_lv_not_nn_band",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór "
+            "aparatów nN nie dotyczą tej stacji"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "ulv_kv"},
+    ),
+    "swz.limit_tt_it_brak_tekstu_normy": ReadinessCodeSpec(
+        code="swz.limit_tt_it_brak_tekstu_normy",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w "
+            "repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium "
+            "pozostaje bez podstawy"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     "nn.measurement.required_missing": ReadinessCodeSpec(
         code="nn.measurement.required_missing",

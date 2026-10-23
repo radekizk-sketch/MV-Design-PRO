@@ -5,8 +5,14 @@ Miejsca liczące obciążenie gałęzi z wyniku rozpływu (jedna funkcja
 
 - walidacja energetyczna (`BRANCH_LOADING` dla linii i kabli, `TRANSFORMER_LOADING`),
 - pasma wiarygodności rozpływu (`evaluate_branch_loading`),
-- naruszenia prądowe rozpływu (`analysis/power_flow/analysis.py::_build_violations`),
 - obserwacje gałęzi interpretacji rozpływu (`loading_pct`).
+
+Dawne czwarte miejsce — naruszenia prądowe adaptera rozpływu warstwy analizy
+(`analysis/power_flow/analysis.py::_build_violations`) — skasowane kartą
+TORY-TYLKO-W-TESTACH (2026-09-30): nie miało konsumenta w produkcie (żaden producent nie
+wypełniał limitów `bus_limits`/`branch_limits`, a bieg kanoniczny nie woła adaptera).
+Przeciążenie gałęzi ocenia w produkcie walidacja energetyczna i interpretacja rozpływu —
+oba miejsca są w iloczynie cech tego pliku.
 
 Iloczyn: {linia, kabel z susceptancją, transformator 110/15 kV z przekładnią zespoloną}
 × {decyduje zacisk `od`, `do`} × {próg 100 % poniżej / na / powyżej}. Zmierzone różnice
@@ -34,7 +40,6 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_do_a,
     prad_zacisku_od_a,
 )
-from analysis.power_flow.analysis import _build_violations
 from analysis.power_flow.result import PowerFlowResult
 from analysis.power_flow_interpretation.builder import PowerFlowInterpretationBuilder
 from analysis.sanity_bounds.power_flow_bounds import evaluate_branch_loading
@@ -177,80 +182,6 @@ def test_pasmo_wiarygodnosci(p: Przypadek) -> None:
         assert werdykt.status == OUT_OF_RANGE
     if p.prog == "ponizej" or p.dokladnie_na_progu:
         assert werdykt.status == CREDIBLE
-
-
-@pytest.mark.parametrize("p", PRZYPADKI, ids=IDS)
-def test_naruszenia_pradowe_rozplywu(p: Przypadek) -> None:
-    wynik = _wynik_pf(p)
-    naruszenia, uwagi = _build_violations(
-        node_u_mag_pu={},
-        bus_limits=[],
-        branch_s_from_mva=wynik.branch_s_from_mva,
-        branch_s_to_mva=wynik.branch_s_to_mva,
-        branch_current_ka=wynik.branch_current_ka,
-        node_voltage_kv=wynik.node_voltage_kv,
-        branch_limits=[],
-        graph=_graf(p),
-    )
-    assert uwagi == []
-    pradowe = [n for n in naruszenia if n["type"] == "branch_current"]
-    obciazenie = _obciazenie_referencyjne(p)
-    if obciazenie > 100.0:
-        (naruszenie,) = pradowe
-        assert naruszenie["zacisk"] == p.decyduje
-        assert naruszenie["severity"] == pytest.approx(obciazenie / 100.0, rel=1e-12)
-        prad_a = p.prad_od_a if p.decyduje == "od" else p.prad_do_a
-        assert naruszenie["value"] == pytest.approx(prad_a / 1000.0, rel=1e-9)
-    else:
-        assert pradowe == []
-    if p.prog == "powyzej":
-        assert len(pradowe) == 1
-    if p.prog == "ponizej" or p.dokladnie_na_progu:
-        assert pradowe == []
-    # Jedna definicja obciążenia transformatora: domyślny limit mocy S_n nie jest już
-    # drugą, konkurencyjną miarą (bez jawnego s_max_mva brak naruszeń `branch_loading`).
-    assert [n for n in naruszenia if n["type"] == "branch_loading"] == []
-
-
-def test_jawny_limit_pradowy_transformatora_bez_strony_to_uwaga_nie_cisza() -> None:
-    from network_model.solvers.power_flow_types import BranchLimitSpec
-
-    p = PRZYPADKI[-1]
-    wynik = _wynik_pf(p)
-    naruszenia, uwagi = _build_violations(
-        node_u_mag_pu={},
-        bus_limits=[],
-        branch_s_from_mva=wynik.branch_s_from_mva,
-        branch_s_to_mva=wynik.branch_s_to_mva,
-        branch_current_ka=wynik.branch_current_ka,
-        node_voltage_kv=wynik.node_voltage_kv,
-        branch_limits=[BranchLimitSpec(branch_id="G", i_max_ka=0.001)],
-        graph=_graf(p),
-    )
-    assert [n for n in naruszenia if n["type"] == "branch_current"] == []
-    assert [u["id"] for u in uwagi] == ["G"]
-    assert "bez wskazania strony" in uwagi[0]["powod_pl"]
-
-
-def test_jawny_limit_pradowy_linii_dotyczy_obu_zaciskow() -> None:
-    from network_model.solvers.power_flow_types import BranchLimitSpec
-
-    p = next(x for x in PRZYPADKI if x.rodzaj == "kabel" and x.decyduje == "do")
-    wynik = _wynik_pf(p)
-    limit_ka = (p.prad_do_a * 0.99) / 1000.0  # zacisk `do` o 1 % ponad limit jawny
-    naruszenia, _ = _build_violations(
-        node_u_mag_pu={},
-        bus_limits=[],
-        branch_s_from_mva=wynik.branch_s_from_mva,
-        branch_s_to_mva=wynik.branch_s_to_mva,
-        branch_current_ka=wynik.branch_current_ka,
-        node_voltage_kv=wynik.node_voltage_kv,
-        branch_limits=[BranchLimitSpec(branch_id="G", i_max_ka=limit_ka)],
-        graph=_graf(p),
-    )
-    (naruszenie,) = (n for n in naruszenia if n["type"] == "branch_current")
-    assert naruszenie["zacisk"] == "do"
-    assert naruszenie["limit"] == pytest.approx(limit_ka, rel=1e-12)
 
 
 @pytest.mark.parametrize("p", PRZYPADKI, ids=IDS)

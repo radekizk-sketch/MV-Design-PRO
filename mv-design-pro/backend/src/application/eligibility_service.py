@@ -21,7 +21,11 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
-from application.analyses.fault_loop.service import _transformer_loop_impedance
+from application.analyses.fault_loop.service import (
+    impedancja_transformatora_dla_ukladu,
+    opis_braku_transformatora,
+)
+from application.analyses.fault_loop.tt_it import r_b_transformatora
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
@@ -38,23 +42,53 @@ from enm.models import (
     FuseBranch,
     OverheadLine,
     SwitchBranch,
+    Transformer,
 )
-from enm.slownik_komunikatow import opis_obiektu
+from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
+from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
-from solver_input.uklad_sieci_nn import uklad_tn
 
-# Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
-# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) z
-# `fault_loop.service` i `uklad_tn` z `solver_input` zamiast duplikować tę samą logikę
-# strukturalną pod inną nazwą — DOKŁADNIE ten sam wzorzec reużycia, jaki
-# `swz.service` już stosuje wobec `fault_loop.service` (zob. docstring tamtego
-# modułu, reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera —
-# `_transformer_loop_impedance` jest czystą kontrolą kompletności pól
-# wejściowych, nie wywołaniem fizyki.
+# Karta G-22 / W5-E-TTIT: FAULT_LOOP_NN/SWZ_NN reużywają
+# `impedancja_transformatora_dla_ukladu` (kompletność danych transformatora dla
+# impedancji pętli L-PE/L-PEN w TN/TT i L-PE-L w IT) oraz `r_b_transformatora`
+# (uziom punktu neutralnego R_B dla TT) z `fault_loop.service`/`fault_loop.tt_it`
+# zamiast duplikować tę samą logikę strukturalną pod inną nazwą — DOKŁADNIE ten
+# sam wzorzec reużycia, jaki `swz.service` już stosuje wobec `fault_loop.service`
+# (reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera — oba czytniki
+# są czystą kontrolą kompletności pól wejściowych, nie wywołaniem fizyki.
+
+
+def _opis_galezi(branch: OverheadLine | Cable) -> str:
+    """„Kabel „K-1”", „Linia napowietrzna bez nazwy" — rodzaj gałęzi i nazwa z modelu.
+
+    Treść blokady nazywa element tak, jak projektant go widzi; identyfikator (``ref_id``)
+    wędruje wyłącznie w ``element_ref`` i akcji naprawczej (zasada jednego słownika
+    komunikatów, ``enm/slownik_komunikatow``).
+    """
+    return opis_obiektu(branch, nazwa_rodzaju_galezi(branch.type).capitalize())
+
+
+def _blokada_danych_petli(trafo: Transformer, tresc: str) -> AnalysisEligibilityIssue:
+    """Blokada `ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA` — jedna postać dla braku danych
+    i dla danych sprzecznych (odmowa czytnika impedancji pętli)."""
+    return AnalysisEligibilityIssue(
+        code="ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA",
+        severity=IssueSeverity.BLOCKER,
+        message_pl=tresc,
+        element_ref=trafo.ref_id,
+        element_type="transformer",
+        fix_action=FixAction(
+            action_type="OPEN_MODAL",
+            element_ref=trafo.ref_id,
+            modal_type="TransformerModal",
+            payload_hint={"required": "fault_loop_impedance_data"},
+        ),
+    )
 
 
 class EligibilityService:
@@ -64,7 +98,9 @@ class EligibilityService:
     A. Global gate: readiness.ready == false -> all INELIGIBLE
     B. SC_3F: source + buses + catalog_ref + impedance
     C. SC_1F: SC_3F prereqs + Z0 on branches/sources
-    D. SC_2F: SC_3F prereqs + Z2 data
+    D. SC_2F: SC_3F prereqs — ta sama brama co bieg (`enm.canonical_analysis.ocen_model_biegu`
+       wymaga dla 2F wyłącznie zdolności `short_circuit_3f`; Z2 bierze rdzeń IEC 60909 z modelu
+       sieci). Dawne blokady „brak Z2” (gałęzie, źródła) skasowane przy scaleniu partii 10 i 11.
     E. LOAD_FLOW: source + buses + catalog_ref + loads/generators
     F. FAULT_LOOP_NN (karta G-22): SC_3F prereqs (upstream Thevenin dzieli
        Z-bus z SC_3F) + stacja SN/nN z układem uziemienia nN i transformatorem
@@ -227,15 +263,12 @@ class EligibilityService:
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
 
-        # D1: Z2 (negative sequence) data on branches
-        # Per IEC 60909, for overhead lines Z2 = Z1 is standard, but we
-        # require explicit data — no heuristics (Z2 != Z1 assumption).
-        # Currently the ENM branch model does not have explicit Z2 fields,
-        # so we emit CONTRACT_NOT_READY for all branches.
-        self._check_branch_z2(enm, blockers)
-
-        # D2: Z2 on sources
-        self._check_source_z2(enm, blockers)
+        # Brak bram „Z2": bieg 2F (`create_run` → `ocen_model_biegu`) wymaga tylko zdolności
+        # zwarcia trójfazowego, a rdzeń IEC 60909 składa Z2 z modelu sieci (elementy statyczne
+        # Z2 = Z1, maszyny z danych maszyny). Dawne blokady ELIG_SC2_CONTRACT_NOT_READY
+        # („udostępnione w przyszłej aktualizacji") i ELIG_SC2_MISSING_Z2 mówiły „nie da się",
+        # gdy bieg ze scenariusza liczył 2F — ta sama klasa fantomu, którą partia integracji 10
+        # usunęła z kwalifikowalności scenariusza (`check_scenario_eligibility`).
 
         return build_eligibility_result(
             analysis_type=AnalysisType.SC_2F,
@@ -300,8 +333,8 @@ class EligibilityService:
                         code="ELIG_LF_BUS_NO_VOLTAGE",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Szyna '{bus.ref_id}' nie ma napięcia znamionowego "
-                            f"(voltage_kv <= 0). Rozpływ mocy wymaga napięć na wszystkich szynach."
+                            f"{opis_obiektu(bus, 'Szyna')} nie ma napięcia znamionowego "
+                            "(wartość ≤ 0 kV). Rozpływ mocy wymaga napięć na wszystkich szynach."
                         ),
                         element_ref=bus.ref_id,
                         element_type="bus",
@@ -473,8 +506,8 @@ class EligibilityService:
                         code="ELIG_SC3_MISSING_CATALOG_REF",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Gałąź '{branch.ref_id}' nie ma referencji katalogowej (catalog_ref). "
-                            f"Przypisz element z katalogu."
+                            f"{_opis_galezi(branch)} nie ma typu z katalogu. "
+                            "Przypisz element z katalogu."
                         ),
                         element_ref=branch.ref_id,
                         element_type="branch",
@@ -496,8 +529,8 @@ class EligibilityService:
                         code="ELIG_SC3_MISSING_CATALOG_REF",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}' nie ma referencji katalogowej (catalog_ref). "
-                            f"Przypisz transformator z katalogu."
+                            f"{opis_obiektu(trafo, 'Transformator')} nie ma typu z katalogu. "
+                            "Przypisz transformator z katalogu."
                         ),
                         element_ref=trafo.ref_id,
                         element_type="transformer",
@@ -520,8 +553,8 @@ class EligibilityService:
                         code="ELIG_SC3_MISSING_CATALOG_REF",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma referencji katalogowej (catalog_ref). "
-                            f"Wybierz źródło systemowe z katalogu."
+                            f"{opis_obiektu(source, 'Źródło')} nie ma typu z katalogu. "
+                            "Wybierz źródło systemowe z katalogu."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",
@@ -547,8 +580,8 @@ class EligibilityService:
                             code="ELIG_SC3_MISSING_IMPEDANCE",
                             severity=IssueSeverity.BLOCKER,
                             message_pl=(
-                                f"Gałąź '{branch.ref_id}' ma zerową impedancję "
-                                f"(R=0, X=0 Ω/km). Wprowadź parametry impedancji."
+                                f"{_opis_galezi(branch)} ma zerową impedancję "
+                                "(R = 0, X = 0 Ω/km). Wprowadź parametry impedancji."
                             ),
                             element_ref=branch.ref_id,
                             element_type="branch",
@@ -573,8 +606,8 @@ class EligibilityService:
                         code="ELIG_SC3_MISSING_IMPEDANCE",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}' nie ma napięcia zwarcia "
-                            f"(uk% <= 0). Wprowadź uk%."
+                            f"{opis_obiektu(trafo, 'Transformator')} nie ma napięcia zwarcia "
+                            "(uk ≤ 0 %). Wprowadź uk."
                         ),
                         element_ref=trafo.ref_id,
                         element_type="transformer",
@@ -600,8 +633,8 @@ class EligibilityService:
                         code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma parametrów zwarciowych "
-                            f"(brak Sk'', Ik'' lub R/X). Wprowadź dane."
+                            f"{opis_obiektu(source, 'Źródło')} nie ma parametrów zwarciowych "
+                            "(brak Sk'', Ik'' lub R/X). Wprowadź dane."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",
@@ -631,8 +664,8 @@ class EligibilityService:
                             code="ELIG_SC1_MISSING_Z0",
                             severity=IssueSeverity.BLOCKER,
                             message_pl=(
-                                f"Gałąź '{branch.ref_id}' nie ma danych składowej zerowej (Z₀). "
-                                f"Zwarcie jednofazowe wymaga R₀/X₀."
+                                f"{_opis_galezi(branch)} nie ma danych składowej zerowej (Z₀). "
+                                "Zwarcie jednofazowe wymaga R₀/X₀."
                             ),
                             element_ref=branch.ref_id,
                             element_type="branch",
@@ -657,8 +690,8 @@ class EligibilityService:
                         code="ELIG_SC1_MISSING_Z0",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma danych składowej zerowej (Z₀). "
-                            f"Zwarcie jednofazowe wymaga R₀/X₀ lub stosunku Z₀/Z₁."
+                            f"{opis_obiektu(source, 'Źródło')} nie ma danych składowej zerowej "
+                            "(Z₀). Zwarcie jednofazowe wymaga R₀/X₀ lub stosunku Z₀/Z₁."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",
@@ -736,56 +769,6 @@ class EligibilityService:
             )
 
     # ------------------------------------------------------------------
-    # SC_2F specific checks
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _check_branch_z2(
-        enm: EnergyNetworkModel,
-        blockers: list[AnalysisEligibilityIssue],
-    ) -> None:
-        """Check Z2 (negative sequence) data availability on branches.
-
-        The ENM branch model does not yet have explicit Z2 fields.
-        Per the spec: no heuristics (do NOT assume Z2=Z1).
-        Emit CONTRACT_NOT_READY if any line/cable branches exist.
-        """
-        has_line_branches = any(isinstance(branch, OverheadLine | Cable) for branch in enm.branches)
-        if has_line_branches:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_SC2_CONTRACT_NOT_READY",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Kontrakt solver-input nie zawiera pól składowej ujemnej (Z₂) "
-                        "dla gałęzi. Zwarcie dwufazowe wymaga rozszerzenia kontraktu danych. "
-                        "Zostanie udostępnione w przyszłej aktualizacji."
-                    ),
-                )
-            )
-
-    @staticmethod
-    def _check_source_z2(
-        enm: EnergyNetworkModel,
-        blockers: list[AnalysisEligibilityIssue],
-    ) -> None:
-        """Check Z2 data on sources.
-
-        Sources also lack explicit Z2 fields in current model.
-        """
-        if enm.sources:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_SC2_MISSING_Z2",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Źródła nie posiadają danych składowej ujemnej (Z₂). "
-                        "Zwarcie dwufazowe wymaga parametrów Z₂ dla źródeł."
-                    ),
-                )
-            )
-
-    # ------------------------------------------------------------------
     # FAULT_LOOP_NN / SWZ_NN specific checks (karta G-22)
     # ------------------------------------------------------------------
 
@@ -796,14 +779,17 @@ class EligibilityService:
     ) -> None:
         """Warunek P0.6: stacja SN/nN musi deklarować układ uziemienia sieci
         nN i mieć transformator z kompletem danych do impedancji pętli
-        L-PE/L-PEN (reuse `fault_loop.service._transformer_loop_impedance` —
+        L-PE/L-PEN (reuse `fault_loop.service.impedancja_transformatora_dla_ukladu` —
         JEDNA ścieżka fizyki, ta sama, której używa sam solver pętli
         zwarcia; ta kontrola NIE liczy Z-bus, tylko sprawdza kompletność
         danych WEJŚCIOWYCH tej funkcji, dla KAŻDEJ stacji SN/nN w modelu —
         tak samo jak `_check_transformer_uk` blokuje SC_3F dla KAŻDEGO
         transformatora bez uk%, nie tylko dla pierwszego napotkanego).
         """
-        mv_lv_stations = [s for s in enm.substations if s.station_type == "mv_lv"]
+        # Stacja SN/nN = deklaracja funkcji `mv_lv` ALBO rodzaj topologiczny (`TYPY_STACJI_SN_NN`)
+        # — operacja wcięcia zapisuje rodzaj, więc sam `mv_lv` gubił stacje przelotowe,
+        # odgałęźne, końcowe i sekcyjne (fałszywa blokada braku stacji SN/nN).
+        mv_lv_stations = [s for s in enm.substations if s.station_type in TYPY_STACJI_SN_NN]
         if not mv_lv_stations:
             blockers.append(
                 AnalysisEligibilityIssue(
@@ -833,9 +819,9 @@ class EligibilityService:
                     code="ELIG_FLNN_MISSING_EARTHING_SYSTEM",
                     severity=IssueSeverity.BLOCKER,
                     message_pl=(
-                        f"Transformator '{trafo_bez_ukladu.ref_id}' stacji '{station.ref_id}' "
-                        f"nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT). "
-                        f"Pętla zwarcia nN wymaga tej informacji."
+                        f"{opis_obiektu(trafo_bez_ukladu, 'Transformator')} "
+                        f"({opis_obiektu(station, 'stacja')}) nie deklaruje układu uziemienia "
+                        "sieci nN (TN-S/TN-C-S/TN-C/TT/IT). Pętla zwarcia nN wymaga tej informacji."
                     ),
                     element_ref=trafo_bez_ukladu.ref_id,
                     element_type="transformer",
@@ -863,9 +849,9 @@ class EligibilityService:
                         code="ELIG_FLNN_MISSING_TRANSFORMER",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Stacja '{station.ref_id}' nie ma przypisanego "
-                            f"transformatora SN/nN. Pętla zwarcia nN wymaga "
-                            f"transformatora."
+                            f"{opis_obiektu(station, 'Stacja')} nie ma przypisanego "
+                            "transformatora SN/nN. Pętla zwarcia nN wymaga "
+                            "transformatora."
                         ),
                         element_ref=station.ref_id,
                         element_type="station",
@@ -907,31 +893,53 @@ class EligibilityService:
                 continue
 
             uklad = trafo.lv_earthing_system
-            if uklad is not None and not uklad_tn(uklad):
-                # TT/IT: solver pętli TN uczciwie zwraca "nie dotyczy" — dla
-                # TEJ stacji dalsze dane transformatora nie są wymagane.
-                continue
+            if uklad == "TT":
+                # Karta W5-E-TTIT: pętla doziemna TT domyka się przez uziom punktu
+                # neutralnego R_B (`Transformer.lv_neutral`, uziemiony bezpośrednio)
+                # — ten sam czytnik, którego używa analiza (`tt_it.r_b_transformatora`).
+                r_b, powod_r_b = r_b_transformatora(trafo)
+                if r_b is None:
+                    blockers.append(
+                        AnalysisEligibilityIssue(
+                            code="ELIG_FLNN_MISSING_TRANSFORMER_R_B",
+                            severity=IssueSeverity.BLOCKER,
+                            message_pl=powod_r_b or "",
+                            element_ref=trafo.ref_id,
+                            element_type="transformer",
+                            fix_action=FixAction(
+                                action_type="OPEN_MODAL",
+                                element_ref=trafo.ref_id,
+                                modal_type="TransformerModal",
+                                payload_hint={"required": "lv_neutral"},
+                            ),
+                        )
+                    )
 
-            _, missing = _transformer_loop_impedance(trafo)
+            # Impedancja transformatora WŁAŚCIWA dla układu (TN/TT: z0 grupy połączeń,
+            # IT: Z1 dla drugiego zwarcia L-PE-L) — ten sam czytnik co analiza pętli.
+            # Dane sprzeczne (uziemienie punktu neutralnego na uzwojeniu bez wyprowadzonego
+            # punktu albo bez impedancji uziemiającej — E-W5-03/E-W5-01 walidatora) czytnik
+            # odmawia odmową nazwaną. Macierz zgłasza ją jako blokadę TEJ stacji — odmowa nie
+            # może przerwać macierzy całego modelu (wtedy żadna analiza nie dostaje statusu).
+            try:
+                _, missing = impedancja_transformatora_dla_ukladu(trafo, uklad or "TN-S")
+            except OdmowaDanychError as odmowa:
+                blockers.append(
+                    _blokada_danych_petli(
+                        trafo,
+                        f"{odmowa} Pętla zwarcia nN ({opis_obiektu(station, 'stacja')}) "
+                        "wymaga spójnych danych transformatora.",
+                    )
+                )
+                continue
             if missing:
                 blockers.append(
-                    AnalysisEligibilityIssue(
-                        code="ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA",
-                        severity=IssueSeverity.BLOCKER,
-                        message_pl=(
-                            f"Transformator '{trafo.ref_id}' (stacja "
-                            f"'{station.ref_id}') nie ma kompletu danych do "
-                            f"impedancji pętli zwarcia nN (brak: "
-                            f"{', '.join(missing)})."
-                        ),
-                        element_ref=trafo.ref_id,
-                        element_type="transformer",
-                        fix_action=FixAction(
-                            action_type="OPEN_MODAL",
-                            element_ref=trafo.ref_id,
-                            modal_type="TransformerModal",
-                            payload_hint={"required": "fault_loop_impedance_data"},
-                        ),
+                    _blokada_danych_petli(
+                        trafo,
+                        f"{opis_obiektu(trafo, 'Transformator')} "
+                        f"({opis_obiektu(station, 'stacja')}) nie ma kompletu danych do "
+                        "impedancji pętli zwarcia nN (brak: "
+                        f"{'; '.join(opis_braku_transformatora(kod) for kod in missing)}).",
                     )
                 )
 
@@ -984,9 +992,9 @@ class EligibilityService:
                         code="ELIG_FLNN_MISSING_NN_CATALOG_REF",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Odcinek nN '{cable.ref_id}' nie ma referencji "
-                            f"katalogowej. Pętla zwarcia wymaga danych "
-                            f"katalogowych (przekrój, żyła powrotna)."
+                            f"{opis_obiektu(cable, 'Odcinek kablowy nN')} nie ma typu "
+                            "z katalogu. Pętla zwarcia wymaga danych "
+                            "katalogowych (przekrój, żyła powrotna)."
                         ),
                         element_ref=cable.ref_id,
                         element_type="branch",
@@ -1007,9 +1015,9 @@ class EligibilityService:
                         code="ELIG_FLNN_MISSING_RETURN_CONDUCTOR",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Odcinek nN '{cable.ref_id}' nie ma danych żyły "
-                            f"powrotnej (PE/PEN). Pętla zwarcia wymaga R/X "
-                            f"żyły powrotnej wg układu uziemienia."
+                            f"{opis_obiektu(cable, 'Odcinek kablowy nN')} nie ma danych "
+                            "żyły powrotnej (PE/PEN). Pętla zwarcia wymaga R/X "
+                            "żyły powrotnej wg układu uziemienia."
                         ),
                         element_ref=cable.ref_id,
                         element_type="branch",
@@ -1030,8 +1038,9 @@ class EligibilityService:
         """Warunek P0.6 (G-06): SWZ ocenia Ik_min względem parametrów aparatu
         zabezpieczającego odpływu (`swz.service._aparat_from_branch` —
         namespace ``APARAT_NN_MCB``/``WKLADKA_NN`` + ``materialized_params``,
-        Catalog Binding Rule) — bez wiązania katalogowego werdykt SWZ nie ma
-        z czego liczyć progu wyłączenia.
+        Catalog Binding Rule; w układzie TT/IT także ``APARAT_NN_RCD`` —
+        wyłącznik różnicowoprądowy z I_Δn, karta W5-E-TTIT) — bez wiązania
+        katalogowego werdykt SWZ nie ma z czego liczyć progu wyłączenia.
         """
         apparatus_with_data = [
             b
@@ -1039,7 +1048,7 @@ class EligibilityService:
             if isinstance(b, SwitchBranch | FuseBranch)
             and isinstance(b.materialized_params, dict)
             and b.materialized_params
-            and b.catalog_namespace in {"APARAT_NN_MCB", "WKLADKA_NN"}
+            and b.catalog_namespace in {"APARAT_NN_MCB", "WKLADKA_NN", "APARAT_NN_RCD"}
         ]
         if not apparatus_with_data:
             blockers.append(

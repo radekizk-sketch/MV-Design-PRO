@@ -26,10 +26,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/fk7');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/fk7'));
 const THEMES = ['light', 'dark'] as const;
 
 /** Twarda bramka sceny: zero błędów konsoli/strony. */
@@ -100,6 +102,7 @@ test.describe('fk7-dobor:screenshot', () => {
       });
       await expect(page.getByText(/WARUNKÓW KATALOGOWYCH/)).toBeVisible();
       await page.waitForTimeout(250);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({
         path: path.join(OUTPUT_DIR, `fk7_dobor_katalogowe_${theme}.png`),
       });
@@ -110,6 +113,7 @@ test.describe('fk7-dobor:screenshot', () => {
       await expect(page.getByText(/Obciążalność po korekcie/)).toBeVisible({ timeout: 20000 });
       await expect(page.getByText(/Obciążalność skorygowana dla warunków/)).toBeVisible();
       await page.waitForTimeout(250);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({
         path: path.join(OUTPUT_DIR, `fk7_dobor_ziemia_${theme}.png`),
       });

@@ -337,7 +337,13 @@ class TestE2E1MultiObjectFeeder:
 
 class TestE2E2BranchFromStation:
     def test_branch_from_station_branch_port(self) -> None:
-        """from_bus_ref-only nie moze tworzyc odgalezienia bez jawnego portu pola."""
+        """from_bus_ref-only wskazuje pole liniowe szyny stacji WYŁĄCZNIE, gdy jest ono jednoznaczne.
+
+        POLA-W-TORZE (przepisany do kanonu z zachowaniem intencji): kandydatami są WOLNE pola
+        liniowe szyny — pole wyjściowe stacji odgałęźnej niesie dalszą połówkę odcinka, więc
+        jedynym wolnym polem jest pole odgałęźne i odgałęzienie wychodzi z JEGO zacisku. Dwa
+        wolne pola bez jawnego portu = niejednoznaczność = odmowa (intencja pierwotna testu).
+        """
         s = _empty_enm()
         s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
         s = op(
@@ -354,16 +360,14 @@ class TestE2E2BranchFromStation:
 
         seg_id = _find_segment(s, "cable")
         s = _insert_station(s, seg_id, "Stacja Odgałęźna A", "branch")
+        sub = s.get("substations", [])[-1]
+        branch_bus = sub["bus_refs"][0]
+        pole_odg = next(
+            spec
+            for spec in sub["meta"]["field_specs"]
+            if str(spec.get("bay_role")).upper() == "FEEDER"
+        )
 
-        # Znajdź szynę stacji, żeby zacząć odgałęzienie
-        subs = s.get("substations", [])
-        assert len(subs) >= 1
-        sub = subs[-1]
-        # Odgałęzienie przez from_bus_ref (szyna stacji)
-        branch_bus = sub.get("bus_refs", [None])[0] if sub.get("bus_refs") else None
-
-        assert branch_bus is not None
-        baseline = copy.deepcopy(s)
         result = execute_domain_operation(
             s,
             "start_branch_segment_sn",
@@ -372,12 +376,46 @@ class TestE2E2BranchFromStation:
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
             },
         )
+        assert result.get("snapshot") is not None, result.get("error")
+        odgalezienie = next(
+            b for b in result["snapshot"]["branches"] if "branch_segment" in b["ref_id"]
+        )
+        assert odgalezienie["from_bus_ref"] == pole_odg["meta"]["terminal_bus_ref"]
+
+        # Dwa WOLNE pola odgałęźne na szynie — bez jawnego portu odmowa (niejednoznaczność).
+        s2 = op(
+            _empty_enm(),
+            "add_grid_source_sn",
+            {"voltage_kv": 15.0, "sk3_mva": 250.0},
+        )
+        s2 = op(
+            s2,
+            "continue_trunk_segment_sn",
+            {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": CATALOG_CABLE_70}},
+        )
+        s2 = op(
+            s2,
+            "insert_station_on_segment_sn",
+            {
+                "segment_id": _find_segment(s2, "cable"),
+                "name": "Stacja Odgałęźna B",
+                "station_type": "branch",
+                "sn_fields": ["LINIA_IN", "LINIA_OUT", "LINIA_ODG", "LINIA_ODG"],
+                **_STATION_CATALOG_PAYLOAD,
+            },
+        )
+        baseline = copy.deepcopy(s2)
+        result = execute_domain_operation(
+            s2,
+            "start_branch_segment_sn",
+            {
+                "from_bus_ref": s2["substations"][-1]["bus_refs"][0],
+                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
+            },
+        )
         assert result.get("snapshot") is None
         assert result.get("error_code") == "branch_connection.source_not_branch_capable"
-        assert s == baseline
-        return
-        assert result.get("snapshot") is None
-        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
+        assert s2 == baseline
 
     def test_branch_from_station_ref_is_rejected(self) -> None:
         """Odgałęzienie nie może startować z abstrakcyjnej stacji."""

@@ -8,7 +8,7 @@
  * pochodzą wyłącznie z backendu.
  */
 
-import { createRun, executeRun, getRunResults } from '../../../ui/study-cases/api';
+import { createRun, executeRunAndWait, getRunResults } from '../../../ui/study-cases/api';
 import type { KrokWywodu } from '../wzorzec';
 import { OLTC_BADANIA_STRINGS as T } from './strings';
 
@@ -185,8 +185,9 @@ export async function uruchomBadanie(
     analysis_type: 'LOAD_FLOW',
     solver_input: zbudujSolverInput(params),
   });
-  const executed = await executeRun(run.id);
-  if (executed.status === 'FAILED') {
+  // Karta DYNAMIKA-W-TLE: zlecenie (202) + odpytywanie do stanu końcowego.
+  const executed = await executeRunAndWait(run.id);
+  if (executed.status !== 'DONE') {
     throw new Error(executed.error_message || 'Przebieg zakończył się błędem.');
   }
   const results = await getRunResults(run.id);

@@ -11,16 +11,16 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from api.odmowa_http import OdmowaHttpError
+from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
 from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
+    CanonicalRun,
     build_execution_result_set,
 )
 from enm.canonical_analysis import (
     create_run as create_canonical_run,
-)
-from enm.canonical_analysis import (
-    execute_run as execute_canonical_run,
 )
 from enm.canonical_analysis import (
     get_run as get_canonical_run,
@@ -30,6 +30,7 @@ from enm.canonical_analysis import (
 )
 from enm.scenariusze import ScenariuszNieistniejeError, wczytaj_scenariusz
 from fastapi import APIRouter, HTTPException, Request, status
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
@@ -70,6 +71,19 @@ class RunResponse(BaseModel):
     model_revision: int | None = None
     created_at: str | None = None
     snapshot_hash: str | None = None
+    # Karta DYNAMIKA-W-TLE: postęp biegu w toku (pomiar wykonawcy w tle; `None` — bieg
+    # nie jest liczony w tym procesie albo jego wykonawca nie mierzy postępu).
+    postep: PostepResponse | None = None
+
+
+class PostepResponse(BaseModel):
+    """Postęp biegu w toku: co policzono z czego (jednostka nazwana), ułamek 0–1."""
+
+    wykonane: float
+    razem: float
+    jednostka: str
+    krok: int
+    ulamek: float
 
 
 class RunListResponse(BaseModel):
@@ -131,21 +145,21 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
     if value == ExecutionAnalysisType.DYNAMIKA_RMS:
         return "dynamika_rms"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
-    # bo wymaga sc_run_id + protection_case_id). Realny silnik za
-    # POST /protection-runs to application.protection_analysis.engine (tor
-    # "protection_sn") — `domain.protection_engine_v1` to drugi, MARTWY
-    # silnik fizyki (0 konsumentow produkcyjnych, zweryfikowane karta W3-A,
-    # 2026-09) chroniony jako WATCHED_PATHS w
-    # scripts/solver_boundary_guard.py — kasacja wymaga jawnej sankcji
-    # wlasciciela (SANCTIONED_CHANGES), NIE wykonana w tej karcie (B-01 STOP).
+    # bo wymaga sc_run_id + protection_case_id). Realna ocena za
+    # POST /protection-runs to application.analyses.protection.ocena_nadpradowa (tor
+    # "protection_sn"). Drugi, martwy silnik `domain.protection_engine_v1`
+    # (0 konsumentow produkcyjnych) skasowany w karcie RESULTSET-MARTWE-MAPPERY
+    # (2026-09-30, zgoda B-01 w O-59); bramka wskrzeszenia w
+    # scripts/resultset_v1_schema_guard.py.
     if value == ExecutionAnalysisType.PROTECTION:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 "Analiza PROTECTION wymaga osobnego endpoint-u "
                 "POST /api/projects/{project_id}/protection-runs "
-                "(wymaga sc_run_id z poprzedniej analizy SC + protection_case_id "
-                "z study_case.protection_config). Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
+                "(wymaga sc_run_id zakończonego biegu zwarciowego 3F albo 2F i "
+                "protection_case_id przypadku, którego model niesie nastawy zabezpieczeń). "
+                "Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
             ),
         )
     raise HTTPException(
@@ -213,11 +227,8 @@ def create_run(
             scenariusz=scenariusz,
         )
         return run.to_execution_dict()
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 @router.get(
@@ -233,11 +244,22 @@ def list_runs(case_id: str) -> dict[str, Any]:
     }
 
 
+def _stan_biegu_z_postepem(run: CanonicalRun) -> dict[str, Any]:
+    """Kontrakt HTTP biegu + postęp z wykonawcy w tle (karta DYNAMIKA-W-TLE)."""
+    postep = wykonawca_biegow.postep_biegu(run.id)
+    return {**run.to_execution_dict(), "postep": None if postep is None else postep.to_dict()}
+
+
 @router.post(
     "/api/execution/runs/{run_id}/execute",
     response_model=RunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
+    # Karta DYNAMIKA-W-TLE: bieg NIE wykonuje się w żądaniu — trafia do kolejki
+    # wykonawcy w tle (jeden ciężki bieg naraz), odpowiedź 202 niesie stan QUEUED
+    # (albo stan bieżący, gdy bieg był już zlecony/zakończony), a klient odpytuje
+    # `GET /api/execution/runs/{run_id}` do stanu końcowego (DONE/FAILED/CANCELLED).
     # CV-4.2b: bieg wykonuje się TĄ SAMĄ fabryką `UnitOfWork`, którą widzi reszta
     # żądania — bieg zabezpieczeń (konfiguracja przypadku) i rozpływ/zwarcie z
     # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
@@ -246,20 +268,38 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
     parsed_run_id = _parse_uuid(run_id, "run_id")
 
     try:
-        run = execute_canonical_run(
+        run = wykonawca_biegow.zlec_bieg(
             parsed_run_id,
             uow_factory=getattr(http_request.app.state, "uow_factory", None),
         )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_404_NOT_FOUND) from exc
 
     # CV-2-W: po biegu NIE przestawiamy zadnego stanu na przypadku. Status wynikow
     # jest wyprowadzany z biegow przypadku i koperty rewizji, wiec zakonczony bieg
     # sam w sobie zmienia werdykt — nie ma czego zapisywac (i nie ma jak zapomniec).
-    return run.to_execution_dict()
+    return _stan_biegu_z_postepem(run)
+
+
+@router.post(
+    "/api/execution/runs/{run_id}/cancel",
+    response_model=RunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def cancel_run(run_id: str) -> dict[str, Any]:
+    # Karta DYNAMIKA-W-TLE: bieg w kolejce jest anulowany od razu (CANCELLED z
+    # wyjaśnieniem); bieg w toku dostaje żądanie przerwania sprawdzane w punktach
+    # przerwania wykonawcy (bieg czasowy: po każdym kroku całkowania; zwarcie: między
+    # punktami zwarcia) — odpowiedź niesie stan bieżący, klient odpytuje do CANCELLED.
+    # Bieg zakończony albo w toku bez punktów przerwania → 409 z nazwanym powodem.
+    parsed_run_id = _parse_uuid(run_id, "run_id")
+    try:
+        run = wykonawca_biegow.anuluj_bieg(parsed_run_id)
+    except BiegNieDoAnulowaniaError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_404_NOT_FOUND) from exc
+    return _stan_biegu_z_postepem(run)
 
 
 @router.get(
@@ -274,7 +314,7 @@ def get_run(run_id: str) -> dict[str, Any]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Nie znaleziono obliczenia {run_id}",
         )
-    return run.to_execution_dict()
+    return _stan_biegu_z_postepem(run)
 
 
 @router.get(

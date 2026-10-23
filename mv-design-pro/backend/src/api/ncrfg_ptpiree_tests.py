@@ -38,6 +38,7 @@ from catalog.profiles.nc_rfg import (
 )
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
+from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
 
@@ -86,13 +87,9 @@ def klasyfikuj_modul_ncrfg(p_max_kw: float, napiecie_kv: float) -> dict[str, Any
     Punkt wejścia kreatora DER i szuflady SLD (klasa pokazywana przed zapisem). Moc w kW.
     Wartość nieskończona, nieliczbowa albo ujemna → 422 z komunikatem klasyfikacji.
     """
-    try:
-        return klasyfikacja_modulu(p_max_kw, napiecie_kv).model_dump(mode="json")
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    with odmowa_rdzenia_b01():
+        klasyfikacja = klasyfikacja_modulu(p_max_kw, napiecie_kv)
+    return klasyfikacja.model_dump(mode="json")
 
 
 @router.get("/cases/{case_id}/compliance", response_model=NcRfgCaseComplianceResponse)
@@ -140,7 +137,7 @@ def run_ncrfg_ptpiree_tests(request: NcRfgPtpireeRunRequest) -> NcRfgPtpireeRunR
     """
     try:
         return bieg_ncrfg(request, zrodlo_danych="ZADANIE_KLIENTA")
-    except (FileNotFoundError, ValueError) as exc:
+    except FileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

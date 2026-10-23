@@ -745,6 +745,26 @@ def test_martwy_wpis_wykluczen_jest_naruszeniem(tmp_path, monkeypatch, capsys) -
     assert "WYKLUCZENIA_SKANERA" in wyjscie
 
 
+def test_martwe_zrodlo_kontraktu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Wpis CONTRACT_SOURCES wskazujacy plik, ktorego nie ma, byl po cichu pomijany (dwa
+    wpisy-widma przezyly kasacje swoich plikow — karta RESULTSET-MARTWE-MAPPERY)."""
+    root = _drzewo(tmp_path, {"solver_input/kontrakt.py": "class K:\n    x: float\n"})
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "domain/zniknal.py"))
+    monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
+    kod = guard.main()
+    wyjscie = capsys.readouterr().out
+    assert kod == 1, wyjscie
+    assert "zrodla kontraktu wskazuja pliki, ktorych nie ma" in wyjscie
+    assert "domain/zniknal.py — zdejmij wpis z CONTRACT_SOURCES" in wyjscie
+
+
+def test_realne_zrodla_kontraktu_istnieja() -> None:
+    brak = [rel for rel in guard.CONTRACT_SOURCES if not (guard.BACKEND_SRC / rel).exists()]
+    assert brak == []
+
+
 def test_dlug_i_wykluczenie_razem_w_jednym_pliku_dzialaja_niezaleznie(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -975,8 +995,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # {load_flow_to_resultset_v1,protection_to_overlay_v1}.py` (-2 pliki,
     # -6 pol: `LoadFlowResultSetV1`/`LoadFlowNodeResult`/`LoadFlowBranchResult`/
     # `LoadFlowTotals`) i `domain/analysis_kind.py` (poza zakresem skanu);
-    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTAJA
-    # (zamrozone przez `resultset_v1_schema_guard.PROTECTED_FILES`, B-01);
+    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTALY wtedy
+    # (skasowane pozniej w karcie RESULTSET-MARTWE-MAPPERY, 2026-09-30);
     # dlug/wykluczenia bez zmian.
     # 3599 pol / 576 plikow / application 320 / dlug 63 plikow suma 312 /
     # wykluczenia 17 plikow suma 49 (CV-3.3-B, 2026-09-05): porownania A/B
@@ -1713,7 +1733,246 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `tap_changer_specs`, `vt_grounding_specs` — usunieta koncowka surowych specyfikacji).
     # Partia integracji 5 (AB-P1 + PROOFPACK-KONTRAKT na jednym drzewie): 4108 - 11 + 7 = 4104 —
     # zbiory zmian obu kart rozlaczne; POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4104." in wyjscie, wyjscie
+    # Karta POLE-ZAJĘTE (2026-09-25): 4108 -> 4117 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +9 (`attachment_bus_ref`,
+    # `corridor_refs`, `field_ref`, `line_fields`, `occupied`, `segment_refs` — kontrakt widoku
+    # zajetosci pol `LineFieldV1`/`LogicalViewsV1` w `enm/domain_ops_models.py`; `korytarze`,
+    # `odcinki_fizyczne`, `wlasny_zacisk` — `ZajetoscPola` w `enm/zajetosc_pol.py`), -0.
+    # PASS niezmieniony (zero podstawien).
+    # Partia integracji 6 (POLE-ZAJĘTE na partii 5): 4104 + 9 - 0 = 4113 — zbior zmian karty
+    # rozlaczny z partia 5; POMIAR guardem na drzewie partii.
+    # Karta POLA-W-TORZE (2026-09-30): 4113 -> 4116 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
+    # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
+    # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
+    # Karta modeli odbiorow AB-1b.3b (2026-09-29): 4097 -> 4105 — POMIAR `contract_fields()` na
+    # `509c4776` i na drzewie karty, roznica zbiorow: -0, +8 (katalog profili modelu
+    # dynamicznego odbiorow `network_model/catalog/load_dynamic`: `podstawa_t_pomiaru_pl`,
+    # `podstawa_u_min_pl`, `t_pomiaru_czestotliwosci_s`; stan kopii odbioru
+    # `enm/dynamika_z_katalogu.py`: `czuly_czestotliwosciowo`; stan modelu odbioru w rdzeniu
+    # `dynamika/odbiory.py`: `estymator_wyzerowany`, `tryb_poza_obwodem`; `dynamika/silnik.py`:
+    # `reset_estymatorow`; kontrakt wyniku `resultset_dynamic_v2`: `zalozenia_rdzenia`). PASS
+    # bramki niezmieniony (zero podstawien).
+    # Przeniesienie AB-1b.3b na czubek partii 5 z poprawkami chwili zero (karta
+    # AB-1b.3b-NA-CZUBKU, 2026-09-30): 4104 + 8 = 4112 — zbiory zmian rozlaczne; POMIAR guardem.
+    # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6, 2026-09-30):
+    # 4116 + 8 = 4124 — zbiory zmian rozlaczne; POMIAR guardem na drzewie karty.
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 4104 -> 4105 — POMIAR guardem (roznica
+    # zbiorow `contract_fields()` baza `3840e239` vs drzewo karty): +63 (kontrakty jednej
+    # sciezki oceny `ocena_nadpradowa` — `stopnie`, `prog_pierwotny_a`, `prog_wtorny_a`,
+    # `przekladnia_a`, `jednostka_progu`, `threshold_unit`, `wiarygodnosc*`, `krotnosc_m*`,
+    # `bilans_pradu`, `klaster_zacisku`, `wezel_zacisku`, `strefy`, `oceny`; koordynacja z
+    # biegow — `ocena_max/min`, `pary`, `odmowy_par`, `prady_robocze`, `prady_punktow_max/min`,
+    # `bezpieczniki`, `required_ratio`, `ratio`, `najmniejszy_*`; porownanie —
+    # `unreliable_count(_delta)`, `nazwa_urzadzenia_pl`, `nazwa_punktu_pl`), -62 (skasowany
+    # model urzadzenia koordynacji `stage_50/51/50n/51n`, `curve_settings`, `fault_currents`,
+    # `operating_currents`, `location_*`, werdykty `overall_verdict*`, `*_pass/_fail/_margin_*`,
+    # szablon przypadku `template_fingerprint`, `library_*`, `invalid_count(_delta)`, rejestr
+    # krzywych producentow `vendor_curve_code`, `maps_to_iec`, `iec_variant`). PASS bez zmian.
+    # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (przeniesienie powyzszej na czubek partii 6): 4116 + 1
+    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; dalej +1
+    # `punkt_wyniku_ref` (`PunktZwarciaStrefy` w `ocena_nadpradowa.py` — punkt zwarcia na
+    # zacisku pola raportowany pod szyna pola) = 4118. POMIAR guardem na drzewie przeniesienia.
+    # Partia integracji 7 (AB-1b.3b-NA-PARTII-6 + BIEG-ZABEZPIECZEN-NA-PARTII-6 na partii 6):
+    # 4124 (z AB-1b.3b) + 2 = 4126 (pole `punkt_wyniku_ref` jest juz w `9d7e4968`, wiec
+    # `df8ac6dd` nie zmienia liczby) — POMIAR guardem na drzewie partii (zbiory zmian obu kart
+    # rozlaczne).
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 4116 -> 4122 — POMIAR `contract_fields()`
+    # na drzewie karty i na drzewie startowym `615f3b24`, roznica zbiorow: +6 (`deklaracja`,
+    # `pola_liniowe`, `pola_nierozpoznane`, `rola`, `sprzeglo`, `wyprowadzenia_polaczone` —
+    # `RodzajStacji`/`PoleNierozpoznane` w `enm/rodzaj_stacji.py`, jedna regula rodzaju stacji
+    # dla walidatora W043/W044), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 4126 + 6 = 4132 — POMIAR
+    # guardem na drzewie partii.
+    # dla walidatora W043/W044), -7 (`bay_template_id`, `construction_type_default`,
+    # `feeders_count`, `lv_voltage_kv`, `nn_switchgears`, `nominal_power_kva`,
+    # `topological_type` — skasowany osierocony `network_model/catalog/station_templates.py`,
+    # druga deklaracja rodzaju stacji bez konsumenta produkcyjnego) = 4115. PASS niezmieniony.
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 4132 - 7 (skasowany
+    # `network_model/catalog/station_templates.py`) = 4125 — POMIAR guardem na drzewie partii.
+    # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 4116 -> 4098 — POMIAR `contract_fields()`
+    # na drzewie karty i na bazie `f3c435b6`, roznica zbiorow: +0, -18 — wylacznie pola klas
+    # skasowanych w karcie: `domain/protection_engine_v1.py` (`attached_cb_id`, `f50`, `f51`,
+    # `function_results`, `i_a_primary`, `i_a_secondary`, `max_time_s`, `per_test_point`,
+    # `pickup_a_secondary`, `point_id`, `primary_a`, `relay_id`, `relay_results`, `relays`,
+    # `secondary_a`, `test_points`) i `ShortCircuitBindingResult` (`solver_result`,
+    # `c_factor_auto`). PASS niezmieniony (zero podstawien).
+    # Partia integracji 8 (2026-10-15, + RESULTSET-MARTWE-MAPPERY na gałęzi integracji): POMIAR
+    # guardem na drzewie partii — baza integracji 4143 (pin 4125 był nieaktualny po kartach
+    # katalogu i PR-478), po kasacji martwych mapperów 4124 (-19: 18 pól z meldunku karty
+    # i `ct_ratio` z `RelayV1` — na bazie karty pole miał też skasowany od tego czasu
+    # `domain/protection_vendors.py`, więc karta go nie liczyła). Zbiory porównane, +0.
+    # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW: W10-2a i OD-17a): 4124 + 34 = 4158 — nowe
+    # kontrakty cennika, wyceny/LCC i odmowy braku pakietu danych (`capex`, `lcc`,
+    # `stopa_dyskontowa`, `straty_roczne_mwh`, `braki_pakietow`, `certyfikaty_brakujace`,
+    # `odmowa_widma` i pozostałe); zbiory porównane, -0. POMIAR guardem na drzewie partii.
+    # Karta DYNAMIKA-W-TLE (2026-10-15): 4116 -> 4126 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`f3c435b6`), roznica zbiorow: +10 (`wykonane`, `razem`,
+    # `ulamek` — `PostepBiegu`; `czy_anulowano`, `zglos_postep` — `KontekstWykonania`
+    # w `domain/execution.py`; `anulowanie`, `w_toku`, `wykonaj`, `postep` — rekord zlecenia
+    # wykonawcy w `application/execution/wykonawca.py`; `nadzorca` — pole `SilnikDynamiki`,
+    # punkt przerwania po kroku calkowania), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 8 (+ DYNAMIKA-W-TLE po CENNIK-ODMOWY-PAKIETOW): 4158 + 10 = 4168 — pola
+    # karty (PostepBiegu, KontekstWykonania, rekord zlecenia wykonawcy, `nadzorca` silnika)
+    # rozlaczne ze zbiorem partii. POMIAR guardem na drzewie partii.
+    # Partia integracji 8 (+ czubek integracji 91d769420, karta KATALOG-TURBINY-TOR-V112):
+    # 4168 - 4 = 4164 — POMIAR `contract_fields()` na drzewie partii przed i po scaleniu,
+    # roznica zbiorow: -10 (skasowany katalog turbin `network_model/catalog/wind_turbines/**`
+    # i pola przeniesione na typ przeksztaltnika: `converter_type`, `cut_in_wind_speed_m_s`,
+    # `cut_out_wind_speed_m_s`, `fault_current_contribution_pu`, `hub_height_m`,
+    # `p_f_droop_capable`, `rated_wind_speed_m_s`, `rotor_diameter_m`,
+    # `short_circuit_current_pu`, `voltage_control_capable`), +6 (tor generator →
+    # przeksztaltnik na typie przeksztaltnika: `converter_machine_side_voltage_kv`,
+    # `converter_topology`, `generator_machine_type`, `generator_rated_power_mw`,
+    # `generator_stator_frequency_max_hz`, `generator_stator_voltage_kv`). Gałąź bramki
+    # scalenia (SZYBKIE-TESTY, pin 4143 z PR-478) nie wnosi pól — jej historia pinu jest
+    # już ujęta wyżej. PASS niezmieniony.
+    # Karta W5-E-TTIT (2026-10-15): 4116 -> 4151 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym `f3c435b6`, roznica zbiorow: +35 (petla doziemna TT/IT i jej wejscie:
+    # `DaneTtIt`/`WynikTtIt`/`PojemnoscDoziemnaOdcinka` w `solvers/petla_zwarcia_tt_it.py` —
+    # `r_a_ohm`, `r_b_ohm`, `rcd`, `i_delta_n_a`, `u_dotyk_v`, `i_d_pierwsze_zwarcie_a`,
+    # `u_dotyk_pierwsze_zwarcie_v`, `i_d2_min_a`, `i_d2_max_a`, `u_ll_v`, `b_e_s`, `c_e_f`,
+    # `rodzaj_pradu_pl`, `odcinki_pojemnosci`, `pojemnosci`, `uziom`, `tt_it`, `dane_tt_it`;
+    # katalog RCD `LVRcdType` — `rcd_type`, `selective`, `t_a_s`, `t_a_2idn_s`, `t_a_5idn_s`,
+    # `t_nieczuly_min_s`, oraz `lv_rcd_types` repozytorium katalogu; `Load.earth_electrode_r_ohm`;
+    # `pominiete_load_refs` uziomu instalacji (`fault_loop/tt_it.py`); `load_ref` operacji
+    # `add_nn_rcd`; wejscie dowodu i werdyktu — `swz_tt_it`, `wymaganie`, `kod_odmowy`,
+    # `kod_odmowy_limitu`, `dane_punktu`, `phase_component`, `return_component`), -0. PASS
+    # niezmieniony (zero podstawien).
+    # Partia integracji 9 (+ W5-E-TTIT): 4164 + 35 = 4199 — zbiór pól karty rozłączny ze zbiorem
+    # partii 8. POMIAR guardem na drzewie partii.
+    # Karta B01-RUNDA-3 (2026-09-30, O-59): 4116 -> 4118 — POMIAR `contract_fields()` na drzewie
+    # karty i na drzewie bazowym (`git archive aa89f63a`), roznica zbiorow: +2 (`odwolania`,
+    # `tresc` — rekord odmowy wejscia rdzenia `RekordOdmowy` w `network_model/odmowa_danych.py`;
+    # `kod`, `rodzaj`, `ref` juz byly w zbiorze), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 9 (+ B01-RUNDA-3): 4199 + 2 (`odwolania`, `tresc` rekordu odmowy) = 4201.
+    # POMIAR guardem na drzewie partii.
+    # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK, 2026-10-16): 4201 -> 4209 — POMIAR
+    # `contract_fields()` na drzewie partii i na bazie `9d5168ea3`, roznica zbiorow: +12
+    # (`block_transformer_lv_voltage_tolerance`, `c_zrodlo`, `c_zrodlo_max`, `c_zrodlo_min`,
+    # `dobor_c`, `lv_voltage_tolerance`, `nadpisanie_c`, `rozszerzenia_audit2`, `tolerancja_nn`,
+    # `tolerancja_nn_dolna`, `voltage_factor_zrodlo`, `zasilajacy` — jeden nosnik c i tolerancji
+    # nN), -4 (`c_factor_explicit`, `c_factor_max`, `c_factor_min`, `c_factor_override` — plaskie
+    # pola c skasowane z kontraktu wejscia 2.0). PASS niezmieniony (zero podstawien).
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` (`git archive`) = 4219
+    # (pin 4209 byl czerwony na bazie — samotest nie przechodzil); drzewo karty 4232, roznica
+    # zbiorow `contract_fields()`: +13 (`breaking_time_seconds`, `delta_u_wzgledne`, `i_dc_a`,
+    # `i_dc_ka`, `ikss_czesciowy_a`, `ikss_zaciski_a`, `krok_ib`, `krok_idc`, `norma`,
+    # `skladowa_dc`, `wspolczynnik_zaniku`, `wykladnik`, `zaniki` — t_b biegu, I_b sieci
+    # oczkowej z zanikiem maszyn, i_DC), -0. PASS niezmieniony (zero podstawien).
+    # Karta WARTOSC-ROBOCZA-1 (2026-10-21): 4209 -> 4228 — POMIAR `contract_fields()` na trzech
+    # drzewach. (a) Pin zastany na bazie karty `6c83bce89` byl nieaktualny: baza mierzy 4219, a
+    # drzewo partii 11 (`7f0ff978f`, ostatnie przypiecie) 4209; roznica zbiorow +16
+    # (`PROOF_EQUATIONS_AUDIT_IMPEDANCJA`, `definite_time_s`, `efektywna`, `ikss_metaliczny_a`,
+    # `impedancja_zwarcia`, `nasycenie_ct`, `opcje`, `poza_zakresem_iec60909`, `punkt_nazwa`,
+    # `short_circuit_run_id`, `wejscie_nasycenia`, `z_equiv_metaliczne`, `z_f`, `z_f_ohm`,
+    # `z_petli_ohm`, `zkk_metaliczne_ohm` — impedancja przejscia Z_f partii 10, prad i czas pola
+    # oraz nasycenie przekladnika partii 12), -6 (`arc_params`, `enm_liczony`,
+    # `fault_impedance_type`, `i_peak_ka`, `i_thermal_ka`, `z0_bus_data`). (b) Rejestr wartosci
+    # roboczych (`network_model/catalog/wartosci_robocze.py`) wzgledem bazy: +9
+    # (`dopuszczalne_do`, `dopuszczalne_od`, `pochodzenie`, `pochodzenie_karty`,
+    # `powod_projektanta_pl`, `propozycja`, `rodzaj_zrodla`, `wartosci_projektanta`, `wplyw_pl`),
+    # -0. PASS niezmieniony (zero podstawien).
+    # Scalenie partii 13 (SC-IB-ITH-ZRODLA + WARTOSC-ROBOCZA-1, 2026-10-21): POMIAR guardem na
+    # drzewie scalenia = 4242 (4219 bazy + 13 karty Ib + 9 rejestru wartosci roboczych + 1 pole
+    # scalonego modulu wytrzymalosci aparatury; pierwszy pomiar 4241 byl na module z bledem skladni).
+    # Karta TB-WARTOSC-ROBOCZA (2026-10-21): 4241 -> 4273 — POMIAR `contract_fields()` na bazie
+    # karty `5517d6eff` (4242: pin zastany nieaktualny o +1 na bazie) i na drzewie karty (4273).
+    # Roznica zbiorow +31, -0: nosnik t_b punktu (`czas_tb`, `robocza`, `wartosc_s`,
+    # `tb_projektanta_s`, `tb_zrodlo`, rozbicie pola `pole_ref`, `pole_nazwa`,
+    # `zabezpieczenie_ref`, `czlon_nastawczy_s`, `czas_wlasny_s`, `czas_wlasny_pochodzenie`,
+    # pola lokalne `bay`, `core`, rdzen `ikss_thevenin_a`, `tlumienie_petli`) oraz porownanie
+    # biegow (`ib_ka_a/b`, `i_dc_ka_a/b`, `tb_s_a/b`, `delta_ib_ka`, `delta_ib_percent`,
+    # `delta_i_dc_ka`, `delta_i_dc_percent`, `delta_tb_s`, `delta_tb_percent`,
+    # `tb_pochodzenie_a/b`, `tb_wartosc_robocza_a/b`). PASS niezmieniony (zero podstawien).
+    # Karta MU-INTERPOLACJA (2026-10-21): 4273 -> 4280 — POMIAR `contract_fields()` na bazie
+    # karty `6eb958fbb` (`git archive`: 4273, pin zgodny) i na drzewie karty (4280). Roznica
+    # zbiorow +7, -0: slad krzywych zaniku μ i q (`slad_mu`, `slad_q` wkladu maszyny; wezly
+    # `wezel_dolny`, `wezel_gorny` z `wartosc_surowa`; `waga` interpolacji; `argument` =
+    # I″k/I_r albo m). PASS niezmieniony (zero podstawien).
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (2026-10-21, przeniesiona na czubek partii 13
+    # `37d46c74b`): 4280 -> 4284 — POMIAR `contract_fields()` na bazie (`git archive`: 4280,
+    # pin zgodny) i na drzewie karty (4284). Roznica zbiorow +4 (`dane_przyjete_ik1_min` —
+    # dane przyjete Ik1_min doboru aparatu nN, `powod_propozycji` i `rozstrzygniecie` —
+    # rozstrzygniecie tolerancji sieci nN per wyspa, `tolerancja_nn_robocza` — znacznik wiersza
+    # wyniku SC), -0. PASS niezmieniony (zero podstawien).
+    # Karta PROG-ZERA-WKLADOW (2026-10-21): 4284 -> 4286 — POMIAR `contract_fields()` na bazie
+    # karty `8f20bdd3c` (`git archive`: 4284, pin zgodny) i na drzewie karty (4286). Roznica
+    # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
+    # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
+    # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
+    # Karta WKLAD-ZRODLA (2026-10-22, zgoda B-01 architekta): 4286 -> 4292 — POMIAR
+    # `contract_fields()` na bazie karty `f121c5e79` (`git archive`: 4286, pin zgodny) i na
+    # drzewie karty (4292). Roznica zbiorow +6 (`wklady_zrodel`, `wklady_zrodel_slad` —
+    # addytywne pola wyniku SC z wkladem kazdego zrodla i jego sladem, `wklady_zrodel_json`,
+    # `wklady_zrodel_slad_json` — kolumny artefaktu rozplywu, `i_zaciski_a` — prad wkladu na
+    # zaciskach zrodla `WkladZrodla`, `y_pu` — admitancja bocznika zrodla `BocznikZrodla`),
+    # -0. Nowa nazwa `i_zaciski_a` odslonila zastany odczyt `detale.get("i_zaciski_a", 0.0)`
+    # w `machine_sc_iec60909.py` (wywod maszyny) — naprawiony u zrodla (prad na zaciskach
+    # podawany jawnie przez wolajacego). PASS niezmieniony (zero podstawien).
+    # Karta LINIA-110 (2026-10-22): 4286 -> 4339 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4339). Roznica zbiorow
+    # +53, -0: katalog przewodow linii 110 kV (`overhead_conductor_types`, `przeznaczenie`,
+    # `srednica_mm`, `r20_dc_ohm_per_km`, `alfa_1_per_k`, `gmr_mm`, `warstwy_al`,
+    # `srednica_drutu_al_mm`, `srednica_drutu_st_mm`, `srednica_rdzenia_mm`,
+    # `liczba_drutow_st`, `przekroj_stali_mm2`, `masa_kg_per_km`, `wytrzymalosc_kn`), geometria
+    # slupa w modelu (`geometria_slupa`, `fazy`, `odgromowe`, `x_m`, `y_m`, `liczba_w_wiazce`,
+    # `odstep_wiazki_m`, `przewod_odgromowy_ref`, `rezystywnosc_gruntu_ohm_m`), proweniencja
+    # i wynik solvera parametrow linii (`parametry_z_geometrii`, `r1_ohm_per_km`,
+    # `x1_ohm_per_km`, `b1_s_per_km`, `b0_s_per_km`, `r1_temperatura_ohm_per_km`,
+    # `r0_bez_odgromowych_ohm_per_km`, `x0_bez_odgromowych_ohm_per_km`,
+    # `x1_kontrolne_ohm_per_km`, `gmd_m`, `gmr_fazy_m`, `gmr_przewodu_m`,
+    # `promien_zastepczy_fazy_m`, `glebokosc_wnikania_m`, `liczba_odgromowych`,
+    # `temperatura_przewodu_c`, `wersja_metody`, `podstawienie_latex`, `wynik_latex`,
+    # `przewod_fazowy`, `przewod_odgromowy`, `geometria`, `rezystywnosc_gruntu`, `tabliczka`,
+    # `wartosci_robocze`, `nazwa_linii`, `zgodny_z_modelem`) oraz pasma wiarygodnosci
+    # (`ocena_wiarygodnosci`, `w_pasmie`, `wyjasnienie_pl`). PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji (2026-10-22, scalenie LINIA-110 na partie zwarc): 4292 -> 4350 —
+    # POMIAR `contract_fields()` na szczycie partii zwarc `6646e4d05` (4292) i na drzewie
+    # scalonym (4350). Roznica zbiorow +58, -0: 53 pola opisane wyzej (commit `04760140e`)
+    # oraz 5 pol drugiego commita karty `dda21faa1`, ktory pinu nie podniosl (samotest byl
+    # czerwony na szczycie karty: pomiar 4344 przy pinie 4339): `dane_galezi` (dane przyjete
+    # galezi w autorytecie biegu zwarciowego i w ocenach), `dane_przyjete_linii_wn` (wynik
+    # petli zwarcia IEC 60364), `skladowe_zerowe` (assembler — zrodlo skladowej zerowej
+    # galezi) oraz stale klasowe importera XLSX `_KOLUMNY_Z_GEOMETRII_WN`,
+    # `_POLA_KRZYZOWE_PRZEWODU_WN` (arkusz przewodow 110 kV). PASS niezmieniony (zero
+    # podstawien).
+    # Karta PODSTAWA-Q (2026-10-22): 4286 -> 4287 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4287). Roznica zbiorow
+    # +1 (`skrot_pl` — krotka postac podstawy reguly krzywej zaniku μ/q w
+    # `PodstawaRegulyKrzywej`, tekst do dowodu SC3F i rejestru rownan; pozostale pola rekordu
+    # — `rodzaj_zrodla`, `norma`, `opis_pl` — juz byly w zbiorze), -0. PASS niezmieniony
+    # (zero podstawien).
+    # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 4287 -> 4291 — POMIAR
+    # `contract_fields()` na drzewie pierwszego commitu karty `aa856bb8b` (4287, pin zgodny)
+    # i na drzewie drugiego commitu (4291). Roznica zbiorow +4 (`zalozenia_zaniku` — addytywne
+    # pole wyniku SC z krzywymi μ/q o podstawie zalozenia inzynierskiego, zgoda B-01;
+    # `parametry_robocze_maszyn` — wpisy wartosci roboczych maszyn wirujacych wiersza;
+    # `liczba_jednostek` — liczba jednostek grupy maszyn asynchronicznych, m = P_rM/p jednej
+    # maszyny wg IEC 60909-0 pkt 9.1.2; `calkowita` — znacznik parametru rejestru o wartosci
+    # calkowitej, brama liczby par biegunow p), -0.
+    # PASS niezmieniony (zero podstawien; podstawienie `wpis.get(..., 0.0)` w
+    # `machine_sc_iec60909.zdanie_zalozenia_krzywej_pl` wykryte guardem i naprawione u zrodla).
+    # Karta PODSTAWA-Q, trzeci commit (2026-10-22): 4291 -> 4292 — POMIAR `contract_fields()`
+    # na drzewie drugiego commitu karty `0a90bbc97` (`git archive`: 4291, pin zgodny) i na
+    # drzewie trzeciego commitu (4292). Roznica zbiorow +1 (`sr_mva_tabliczki` — moc pozorna
+    # znamionowa S_rM grupy maszyn asynchronicznych z tabliczki, do Z_M wprost wg IEC 60909-0
+    # pkt 6.7; brak tabliczki = S_rM z P_rM/(eta_r*cos phi_r)), -0. PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, scalenie PODSTAWA-Q (2026-10-22): 4350 -> 4356 — POMIAR
+    # `contract_fields()` na drzewie po scaleniu LINIA-110 (4350) i na drzewie po scaleniu
+    # PODSTAWA-Q (4356). Roznica zbiorow +6, -0 — dokladnie szesc pol opisanych wyzej dla trzech
+    # commitow karty PODSTAWA-Q (`skrot_pl`, `zalozenia_zaniku`, `parametry_robocze_maszyn`,
+    # `liczba_jednostek`, `calkowita`, `sr_mva_tabliczki`). PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, uzgodnienie wkladow (2026-10-22): 4356 -> 4357 — POMIAR
+    # `contract_fields()` z `short_circuit_binding.py` w wersji scalenia (4356) i po uzgodnieniu
+    # (4357). Roznica zbiorow +1 (`dane_przyjete_galezi` — `GrafIDoborC` niesie dane przyjete
+    # galezi punktu z tych samych zalozen wejscia co wiersz biegu, odpowiedz wkladow
+    # `sc3f/contributions` sklada z nich jedna liste danych przyjetych), -0; drugie nowe pole
+    # `tolerancja_nn_robocza` bylo juz w zbiorze (wezel grafu). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4357." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1880,7 +2139,111 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # odmowa „zasobu nie ma" dla 404, liść stdlib-only). POMIAR guardem.
         # Partia integracji 5 z karta #151: 556 + 1 (`network_model/brak_zasobu.py`) = 557.
         # POMIAR guardem na drzewie partii.
-        "Przeskanowano 557 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta POLE-ZAJĘTE (2026-09-25): 552 -> 553 (+1 `enm/zajetosc_pol.py` — jedno zrodlo
+        # zajetosci pol liniowych SN). POMIAR guardem na drzewie karty.
+        # Partia integracji 6: 557 + 1 (`enm/zajetosc_pol.py`) = 558. POMIAR guardem na drzewie
+        # partii.
+        # Karta POLA-W-TORZE (2026-09-30): 558 -> 559 (+1 `enm/tor_pola.py` — zasada toru pola
+        # stacji, przynaleznosc szyn do stacji, wezel elektryczny). POMIAR guardem na drzewie karty.
+        # Karta DOWOD-CIEPLNY: +1 (`application/slad_kroku.py`, zero wpisow). Partia integracji 6
+        # po POLE-ZAJETE i POLA-W-TORZE: 559 + 1 = 560. POMIAR guardem na drzewie partii.
+        # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
+        # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
+        # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): 555 -> 558 (+1 `network_model/catalog/
+        # load_dynamic/__init__.py` — katalog profili modelu dynamicznego odbiorow, +2
+        # `application/dynamika/{zalozenia,odmowy}.py` — zdania zalozen z rekordow rdzenia
+        # i komunikaty odmow z nazwami); zero plikow skasowanych, zapadka dlugu i
+        # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Przeniesienie AB-1b.3b na czubek partii 5: 557 + 3 = 560. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): 561 + 3 = 564.
+        # POMIAR guardem na drzewie karty.
+        # Karta B01-RUNDA-1 (2026-09-30, decyzja B-01 pozycja (i)): 561 -> 558 (-3 skasowany
+        # solver `network_model/solvers/stability_rms/{__init__,contracts,engine}.py`).
+        # POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6 na partii 6): 561 - 3 + 3 =
+        # 561. POMIAR guardem na drzewie partii.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): 557 -> 559 (+2 enm: `nastawy_zabezpieczen.py`,
+        # `wylaczniki_liniowe.py`; application +3/-3 — patrz pin per korzen). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: 561 + 2 (`enm/nastawy_zabezpieczen.py`,
+        # `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): 561 + 2 (`enm/nastawy_
+        # zabezpieczen.py`, `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie partii.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 561 -> 562 (+1 `enm/rodzaj_stacji.py` —
+        # jedna regula rodzaju stacji z topologii). POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 563 + 1 (`enm/rodzaj_
+        # stacji.py`) = 564. POMIAR guardem na drzewie partii.
+        # jedna regula rodzaju stacji z topologii), -1 (skasowany osierocony
+        # `network_model/catalog/station_templates.py`) = 561. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): 564 - 1 = 563. POMIAR.
+        # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 561 -> 558 (-3 skasowane martwe mappery
+        # `application/result_mapping/{short_circuit,protection}_to_resultset_v1.py`,
+        # `sc_binding_meta.py`; zero wpisow). POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): baza integracji 564, -3 skasowane
+        # martwe mappery = 561. POMIAR guardem na drzewie partii.
+        # Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): 561 -> 562 (+1
+        # `application/cgmes/kompletnosc.py` — bramka kompletnosci eksportu CGMES, zero
+        # wpisow dlugu; application 30 plikow/suma 91 bez zmian). POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
+        # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): 562 + 7 = 569 (network_model +3
+        # `odmowa_pakietu.py`, `catalog/indeks_typow.py`, `pochodne/koszty.py`; enm +1
+        # `odmowy_pakietow_danych.py`; application +3 `koszty/**`); dlug bez zmian (podstawienie
+        # `else 0.0` w `koszty/wycena.py` naprawione u źródła). POMIAR guardem na drzewie partii.
+        # Karta DYNAMIKA-W-TLE (2026-10-15): 561 -> 563 (+1 `network_model/solvers/dynamika/
+        # przerwanie.py`, +2 `application/execution/{__init__,wykonawca}.py`, -1 `api/celery_app.py`
+        # — martwa konfiguracja Celery skasowana z bramka wskrzeszenia). POMIAR guardem.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): 569 + 2 = 571 (network_model +1
+        # `solvers/dynamika/przerwanie.py`; application +2 wykonawca biegow `application/execution/**`;
+        # api -1 skasowany `api/celery_app.py`). POMIAR guardem na drzewie partii.
+        # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 571 - 2 = 569 (skasowane
+        # `network_model/catalog/wind_turbines/__init__.py` i `catalog.py`). POMIAR guardem.
+        # Karta W5-E-TTIT (2026-10-15): 561 -> 565 (+4: `network_model/solvers/
+        # petla_zwarcia_tt_it.py`, `enm/uziom_instalacji.py`, `application/analyses/fault_loop/
+        # tt_it.py`, `application/analyses/swz/werdykt_tt_it.py`). POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): 569 + 4 = 573. POMIAR guardem na drzewie partii.
+        # Karta B01-RUNDA-3 (2026-09-30, O-59): 558 -> 559 (+1 `enm/zdania_odmow_rdzenia.py` —
+        # zdanie odmowy rdzenia z nazwami z modelu, zero wpisow). POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ B01-RUNDA-3): 573 + 1 (`enm/zdania_odmow_rdzenia.py`) = 574. POMIAR.
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): 574 + 1 (`enm/tolerancja_nn.py` —
+        # predykat tolerancji napiecia sieci nN per wyspa galwaniczna) = 575. POMIAR.
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` = 577 (pin 575
+        # byl czerwony na bazie); karta +1 `network_model/core/czas_wylaczenia.py` = 578. POMIAR.
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): 575 -> 578. Pin zastany na bazie karty
+        # `6c83bce89` byl nieaktualny (baza mierzy 577: partia 10 dodala
+        # `network_model/core/impedancja_przejscia.py` i `api/odmowa_http.py` bez przypiecia),
+        # karta +1 `network_model/catalog/wartosci_robocze.py` (jeden rejestr wartosci roboczych
+        # parametrow urzadzenia, zero wpisow w zapadce i wykluczeniach). POMIAR guardem na
+        # drzewie partii 11 (`7f0ff978f`: 575), na bazie (577) i na drzewie karty (578).
+        # Scalenie partii 13 (2026-10-21): 577 bazy + `core/czas_wylaczenia.py` +
+        # `catalog/wartosci_robocze.py` + 1 plik application wniesiony partia 12 bez przypiecia
+        # = 580. POMIAR guardem na drzewie scalenia.
+        # Karta LINIA-110 (2026-10-22): 580 -> 585 (+2 network_model:
+        # `solvers/parametry_linii_napowietrznej.py`, `catalog/hv_overhead_conductor_catalog.py`;
+        # +1 enm: `enm/parametry_linii_wn.py`; +2 application netto: `parametry_linii_wn.py`,
+        # `proof_engine/packs/parametry_linii_110kv.py`, `proof_engine/registries/
+        # ohl_equations.py` dodane, `proof_engine/registries/ls_equations.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na bazie `f121c5e79` (`git archive`:
+        # 580, pin zgodny) i na drzewie karty (585).
+        # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 580 -> 582 (+2
+        # `enm/maszyny_robocze.py` — wpisy wartosci roboczych maszyn punktu zwarcia,
+        # `enm/wartosci_projektanta.py` — jedna brama wartosci projektanta; zero wpisow
+        # w zapadce i wykluczeniach). POMIAR guardem na `aa856bb8b` (580) i na drzewie karty (582).
+        # Partia 2 integracji (2026-10-22, scalenie LINIA-110 i PODSTAWA-Q na partie zwarc):
+        # 580 -> 588 = +5 LINIA-110 opisane wyzej, +1 `enm/dane_przyjete_galezi.py` (drugi commit
+        # karty LINIA-110 `dda21faa1` dolozyl plik bez podniesienia pinu: pomiar 586 przy pinie
+        # 585 na drzewie po pierwszym scaleniu), +2 PODSTAWA-Q opisane wyzej. POMIAR guardem na
+        # drzewie scalonym (588); dlug i wykluczenia BEZ ZMIAN.
+        # Partia zwarc, naprawa CI (2026-10-23): 580 -> 581 (+1 `network_model/core/
+        # modul_zespolony.py` — jedno zrodlo modulu liczby zespolonej niezalezne od libm; zero
+        # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie partii (`2e5b06ad9`).
+        # Partia 2 integracji po scaleniu naprawy CI partii zwarc (2026-10-23): 588 -> 589 =
+        # +8 kart partii 2 opisane wyzej (588 wzgledem 580) +1 `core/modul_zespolony.py`. POMIAR
+        # guardem na drzewie scalonym (589); dlug i wykluczenia BEZ ZMIAN.
+        # Karta DETERMINIZM-HISTORII-PROCESU (2026-10-23): +1 `network_model/watki_blas.py`
+        # (jedna polityka watkow BLAS procesu). Partia 2 po scaleniu programu `d543faf3c`:
+        # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1937,8 +2300,28 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zwarciowego i czasu wylaczenia w dowodzie wytrzymalosci) zdjety razem z petla — pakiet
     # sklada `application/proof_engine/packs/audit2_skladanie.py` z typowanej konfiguracji.
     # Partia integracji 5: oba wpisy zdjete — 54/244 -> 52/240. POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 52 plikow, suma 240." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zapadka 52/240 -> 51/236 — wpis
+    # `application/protection_read_model.py` ("A:or:setting.threshold_a": 2, ciche 0 A progu
+    # krzywej I-t) zdjety razem z zerem; `enm/domain_operations_v2.py` -2
+    # (`ds_settings/us_settings.time_dial` — mnoznik 1,0 za brak nastawy) zdjety razem ze
+    # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
+    # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
+    # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): 51/236 -> 50/233 — wpisy
+    # `F:dictget:run.c_factor` (`application/proof_engine/pakiet_biegu.py`,
+    # `application/proof_engine/pakiet_nastaw.py` — plik wypada z zapadki) i
+    # `F:dictget:kotwica.c_factor` (`application/protection_settings/batch_run.py`) zdjete
+    # razem z opcja biegu `c_factor` (c dobiera `voltage_factor.dobierz_c`). Budzet zmalal
+    # juz w commitach 1–3/n karty, pin nie zostal wtedy utrwalony (czerwien na bazie
+    # `bd3a87f4`). POMIAR guardem na drzewie karty.
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): 50/233 -> 47/225 — zdjete wpisy
+    # `B:ifexp:result.m_factor/n_factor` w `packs/sc_symmetrical.py`, `packs/sc_asymmetrical.py`
+    # (oba pliki wypadaja z zapadki) i `proof_generator.py` (domyslne m/n za brak = druga
+    # definicja I_th) oraz `B:ifexp:m.ir_a` (2) w `solvers/machine_sc_iec60909.py` (plik
+    # wypada; krotnosc 0 za niefizyczny prad znamionowy -> odmowa). POMIAR guardem na drzewie
+    # karty.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 225." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
         # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
@@ -2002,8 +2385,58 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia integracji 5: network_model pliki 181 + 1 (#151) = 182, dlug 11/69 (AB-P1).
         # POMIAR guardem na drzewie partii.
-        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
-        "wykluczenia=3 plikow/suma 6",
+        # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): network_model 181 -> 182 (+1
+        # `catalog/load_dynamic/__init__.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 5: network_model 182 + 1 = 183. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): network_model
+        # 183 (z `odmowa_danych.py`) + 1 (`catalog/load_dynamic/__init__.py`) = 184 — literal 183
+        # obu stron scalil sie bez konfliktu, ale blednie. POMIAR guardem na drzewie karty.
+        # Karta B01-RUNDA-1 (decyzja B-01 pozycja (i)): network_model 183 -> 180 (-3 skasowany
+        # `stability_rms/**`); dlug i wykluczenia BEZ ZMIAN (pakiet nie mial wpisow). POMIAR.
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6): network_model 183 - 3 + 1 =
+        # 181. POMIAR guardem na drzewie partii.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wykluczenia 3/6 -> 1/2 (wpisy raportow DOCX/PDF
+        # koordynacji zdjete). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: 183 plikow (partia 6), wykluczenia 1/2 (karta).
+        # POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): network_model 181 (B01-RUNDA-1
+        # -3, AB-1b.3b +1), wykluczenia 1/2 (karta zabezpieczen). POMIAR guardem na drzewie partii.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ: network_model 183 -> 182 (-1 skasowany osierocony
+        # `catalog/station_templates.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 3): network_model 181 - 1
+        # (`catalog/station_templates.py`) = 180. POMIAR guardem na drzewie partii.
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): network_model 180 + 3 = 183. POMIAR.
+        # Karta DYNAMIKA-W-TLE (2026-10-15): network_model 183 -> 184 (+1 `solvers/dynamika/
+        # przerwanie.py` — protokol nadzorcy biegu i wyjatek przerwania); dlug i wykluczenia
+        # BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): network_model 183 + 1 = 184; wykluczenia 1/2
+        # (stan gałęzi integracji — wykluczenia 3/6 karty pochodziły z jej starszej bazy). POMIAR.
+        # Partia integracji 8 (+ KATALOG-TURBINY-TOR-V112): 184 - 2 = 182 (katalog turbin
+        # skasowany). POMIAR guardem na drzewie partii.
+        # Karta W5-E-TTIT: network_model 183 -> 184 (+1 `solvers/petla_zwarcia_tt_it.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): network_model 182 + 1 = 183; wykluczenia 1/2
+        # (stan gałęzi integracji — 3/6 karty pochodziły z jej starszej bazy). POMIAR.
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): pomiar bazy karty `4ccfa9320` = 184 (pin 183
+        # byl czerwony na bazie — samotest nie przechodzil); karta +1 `core/czas_wylaczenia.py`
+        # = 185; dlug 11/69 -> 10/67 (wpis `machine_sc_iec60909.py` zdjety). POMIAR guardem
+        # na bazie (archiwum `git archive`) i na drzewie karty.
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): network_model 183 -> 185 (+1 zastany na bazie
+        # `6c83bce89`: `core/impedancja_przejscia.py` partii 10 bez przypiecia; +1 karty:
+        # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
+        # 10/67 (zdjecie wpisu karty Ib). POMIAR.
+        # Karta LINIA-110: 186 -> 188 (+2, patrz pin plikow wyzej). POMIAR.
+        # Partia zwarc, naprawa CI (2026-10-23): network_model 186 -> 187 (+1
+        # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia 2 po scaleniu naprawy CI partii zwarc: 186 + 2 (LINIA-110) + 1
+        # (`core/modul_zespolony.py`) = 189. POMIAR guardem.
+        # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
+        # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
+        "  network_model: pliki_skanowane=190, dlug=10 plikow/suma 67, "
+        "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
         # plik skasowany w karcie AB-1a Pakiet C — wpis nizej).
@@ -2040,7 +2473,35 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1b.3a (2026-09-25): enm dlug 7/71 -> 7/69 (`topology_ops.py`: `data.p_mw`
         # 2 -> 1, `data.q_mvar` zdjety). POMIAR guardem na drzewie partii.
         # Karta AB-P1 na partii 4: enm 55 -> 56 (+1 `enm/dynamika_z_katalogu.py`); zero wpisow.
-        "  enm: pliki_skanowane=56, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta POLE-ZAJĘTE (2026-09-25): enm 55 -> 56 (`zajetosc_pol.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 6: enm 56 + 1 (`zajetosc_pol.py`) = 57; dlug/wykluczenia BEZ ZMIANY.
+        # POMIAR guardem na drzewie partii.
+        # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: enm 56 -> 58 (+2 `enm/nastawy_zabezpieczen.py` —
+        # jedna regula zapisu nastaw, `enm/wylaczniki_liniowe.py` — kotwica wylacznika
+        # liniowego); dlug 7/69 -> 7/67 (`time_dial` w skasowanej `validate_selectivity`).
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: enm 58 (partia 6) + 2 (karta) = 60; dlug 7/67
+        # (karta). POMIAR guardem na drzewie przeniesienia.
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): enm 58 -> 59 (+1 `enm/rodzaj_stacji.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): enm 61 + 1 = 62. POMIAR.
+        # Karta W5-E-TTIT: enm 58 -> 59 (+1 `enm/uziom_instalacji.py`); dlug/wykluczenia BEZ
+        # ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ W5-E-TTIT): enm 62 + 1 = 63; dlug 7/67 (gałąź integracji). POMIAR.
+        # Karta B01-RUNDA-3 (2026-09-30): enm 58 -> 59 (+1 `enm/zdania_odmow_rdzenia.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 9 (+ B01-RUNDA-3): enm 63 + 1 = 64. POMIAR guardem na drzewie partii.
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
+        # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
+        # Karta LINIA-110: enm 65 -> 66 (+1 `enm/parametry_linii_wn.py`). POMIAR.
+        # Karta PODSTAWA-Q (2026-10-22): enm 65 -> 67 (+2 `enm/maszyny_robocze.py`,
+        # `enm/wartosci_projektanta.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR jak wyzej.
+        # Partia 2 integracji: enm 65 -> 69 (+1 `enm/parametry_linii_wn.py`, +1
+        # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
+        "  enm: pliki_skanowane=69, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2097,9 +2558,57 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 3/6 -> 2/3 (wpis `api/audit2_station_config.py` zdjety). POMIAR guardem.
         # Partia integracji 5: application 242 + 1 (AB-P1) + 1 (PROOFPACK) = 244; api pliki 64
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=244, dlug=30 plikow/suma 91, "
+        # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
+        # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): application 243 -> 245 (+2
+        # `application/dynamika/{zalozenia,odmowy}.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR.
+        # Przeniesienie AB-1b.3b na czubek partii 5: application 244 + 2 = 246. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): application
+        # 245 + 2 = 247. POMIAR guardem na drzewie karty.
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: application 244 bez zmiany liczby (+3
+        # `analyses/protection/ocena_nadpradowa.py`, `coordination/z_biegow.py`,
+        # `catalog/zakresy.py`; -3 skasowany `application/protection_analysis/**`); dlug
+        # 30/91 -> 29/89 (wpis `protection_read_model.py` zdjety). api wykluczenia 6/15 ->
+        # 5/13 (wpis `api/protection_coordination.py` zdjety). POMIAR guardem.
+        # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: application 245 (partia 6, liczba bez zmiany
+        # przez karte), dlug 29/89 (karta). POMIAR guardem na drzewie przeniesienia.
+        # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): application 247 (AB-1b.3b +2),
+        # dlug 29/89 (karta zabezpieczen). POMIAR guardem na drzewie partii.
+        # Karta RESULTSET-MARTWE-MAPPERY: application 245 -> 242 (-3 skasowane martwe mappery);
+        # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ RESULTSET-MARTWE-MAPPERY): application na bazie integracji 248,
+        # -3 skasowane martwe mappery = 245; dlug 30/90 (pomiar bazy; pin 29/89 był nieaktualny).
+        # Karta KASACJA-SCL-I-CIM-KLIENT: application 245 -> 246 (+1
+        # `application/cgmes/kompletnosc.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Partia integracji 8 (+ KASACJA-SCL-I-CIM-KLIENT po RESULTSET-MARTWE-MAPPERY): +1
+        # `application/cgmes/kompletnosc.py`; dlug application 30/90 (pomiar). POMIAR guardem na drzewie partii.
+        # Partia integracji 8 (+ CENNIK-ODMOWY-PAKIETOW): application 246 + 3 = 249. POMIAR.
+        # Partia integracji 8: api dlug 2/3 -> 1/2 — POMIAR guardem na drzewie bazy integracji
+        # (53551167b, przed scaleniami partii); pin 2/3 był nieaktualny na bazie.
+        # Karta DYNAMIKA-W-TLE (2026-10-15): application 245 -> 247 (+2 `application/execution/
+        # {__init__,wykonawca}.py` — wykonawca biegow w procesie); dlug i wykluczenia BEZ ZMIAN.
+        # Karta DYNAMIKA-W-TLE (2026-10-15): api 64 -> 63 (-1 `api/celery_app.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Partia integracji 8 (+ DYNAMIKA-W-TLE): application 249 + 2 = 251, dlug 30/90; api 64 - 1
+        # = 63 (skasowany `api/celery_app.py`), dlug 1/2 i wykluczenia 5/13 gałęzi integracji (dlug 2/3
+        # i wykluczenia 6/15 karty pochodziły z jej starszej bazy). POMIAR guardem na drzewie partii.
+        # Karta W5-E-TTIT: application 245 -> 247 (+2 `analyses/fault_loop/tt_it.py`,
+        # `analyses/swz/werdykt_tt_it.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 9 (+ W5-E-TTIT): application 251 + 2 = 253; dlug 30/90 (gałąź
+        # integracji). POMIAR guardem na drzewie partii.
+        # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): dlug 30/90 -> 29/87 (zdjete wpisy
+        # `run.c_factor` w `pakiet_biegu.py` i `pakiet_nastaw.py` oraz `kotwica.c_factor`
+        # w `batch_run.py` — c z jednego nosnika). POMIAR guardem na drzewie partii.
+        # Karta SC-IB-ITH-ZRODLA (2026-10-21): application dlug 29/87 -> 27/81 (zdjete
+        # domyslne m/n w trzech plikach dowodu zwarciowego); api: pomiar bazy karty
+        # `4ccfa9320` = 64 pliki (pin 63 byl czerwony na bazie), karta pliku nie dodaje.
+        # Scalenie partii 13: application 253 -> 254 (plik partii 12 bez przypiecia). POMIAR.
+        # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
+        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
+        # Karta WARTOSC-ROBOCZA-1 (2026-10-21): api 63 -> 64 (+1 zastany na bazie `6c83bce89`:
+        # `api/odmowa_http.py` partii 10 bez przypiecia); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
@@ -2229,7 +2738,8 @@ def test_wylaczenie_wygrywa_z_pokryciem_prefiksem() -> None:
     zbiory byly ROZLACZNE: wykluczony modul nie mogl byc objety zadnym wpisem
     `CONTRACT_SOURCES`. Bylo to prawda, dopoki wykluczenie dzialalo „przez
     nieobecnosc". Po dolozeniu `network_model/solvers` jako CALOSCI wykluczony
-    `stability_rms/contracts.py` LEZY pod pokrytym prefiksem — i tak ma byc:
+    `stability_rms/contracts.py` (skasowany w karcie B01-RUNDA-1) LEZAL pod pokrytym
+    prefiksem:
     wykluczenie stalo sie jawnym odjeciem stosowanym w `contract_fields()`.
     Rozlacznosc nazw przestala byc wiec wlasciwym niezmiennikiem; wlasciwym jest
     SKUTECZNOSC odjecia, ktora pilnuje `test_wylaczenie_korzenia_dziala_takze_na_mape_pol`.
@@ -2363,7 +2873,7 @@ def test_kazdy_skanowany_korzen_jest_zrodlem_pol() -> None:
     )
 
 
-def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
+def test_wylaczenie_korzenia_dziala_takze_na_mape_pol(tmp_path, monkeypatch) -> None:
     """PREDYKATY PARAMI (regula KLASA §3) — jedno zrodlo prawdy dla wejscia i wyjscia.
 
     Do rundy 4 `MODEL_ROOTS_POZA_MAPA` bylo czytane WYLACZNIE przez pin mapy,
@@ -2373,28 +2883,41 @@ def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
     `stability_rms/contracts.py` wrocil do mapy tylnymi drzwiami i przywrocil
     8 kolizji `real`/`imag`. Ten test pilnuje, ze wykluczenie znaczy to samo
     w obu miejscach.
+
+    Od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i)) solver `stability_rms`
+    jest skasowany, a rejestr wykluczen PUSTY — mechanizm cwiczony na module syntetycznym
+    pod pokrytym prefiksem, DWUSTRONNIE: bez wpisu pola wchodza do mapy, z wpisem nie.
     """
-    wykluczone = set(guard.MODEL_ROOTS_POZA_MAPA)
-    assert wykluczone, "Brak wykluczen — test bezprzedmiotowy, sprawdz konfiguracje."
-    pola = guard.contract_fields()
-    for rel in wykluczone:
-        sciezka = guard.BACKEND_SRC / rel
-        if not sciezka.is_file():
-            continue
-        wlasne = set()
-        drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
-        for node in ast.walk(drzewo):
-            if isinstance(node, ast.ClassDef):
-                for stmt in node.body:
-                    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                        wlasne.add(stmt.target.id)
-        # Pola WYLACZNIE tego modulu nie moga trafic do mapy przez zaden inny korzen.
-        tylko_tam = {"real", "imag"} & wlasne
-        assert tylko_tam, f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
-        assert not (tylko_tam & pola), (
-            f"{rel}: pola {sorted(tylko_tam & pola)} wrocily do mapy mimo wykluczenia — "
-            "warunek wejscia i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
-        )
+    root = tmp_path / "src"
+    katalog = root / "network_model" / "solvers" / "fazor"
+    katalog.mkdir(parents=True)
+    (katalog / "contracts.py").write_text(
+        "from pydantic import BaseModel\n\n\n"
+        "class Fazor(BaseModel):\n    real: float\n    imag: float\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("network_model/solvers",))
+
+    monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
+    assert {"real", "imag"} <= guard.contract_fields(), "Kontrola dwustronna: bez wpisu pola sa."
+
+    monkeypatch.setattr(
+        guard,
+        "MODEL_ROOTS_POZA_MAPA",
+        {"network_model/solvers/fazor/contracts.py": "powod syntetyczny samotestu " * 4},
+    )
+    assert not ({"real", "imag"} & guard.contract_fields()), (
+        "pola wykluczonego modulu wrocily do mapy mimo wykluczenia — warunek wejscia "
+        "i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
+    )
+
+
+def test_rejestr_wykluczen_pusty_po_kasacji_stability_rms() -> None:
+    """Pozycja (i) planu A/B §12.2: jedyny wpis (`stability_rms/contracts.py`) zdjety razem
+    z solverem, a kolizje `real`/`imag` nie wracaja z zadnego innego kontraktu."""
+    assert guard.MODEL_ROOTS_POZA_MAPA == {}
+    assert not ({"real", "imag"} & guard.contract_fields())
 
 
 def test_jawna_nie_liczba_nie_jest_podstawieniem() -> None:

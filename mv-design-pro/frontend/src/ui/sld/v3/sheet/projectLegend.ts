@@ -75,12 +75,20 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
   const lineEntries: SheetLegendEntry[] = [];
   const hasPowerSegment = scene.segments.some((s) => POWER_SEGMENT_KINDS.has(s.meta?.kind ?? 'sn'));
   if (hasPowerSegment) lineEntries.push({ kind: 'line', id: 'cable', labelPl: 'Kabel' });
+  const hasTieMarker = scene.segments.some((s) => s.meta?.kind === 'tieMarker');
   const hasOpenTerminal = scene.segments.some((s) => s.meta?.kind === 'openTerminal');
   if (hasOpenTerminal) {
     lineEntries.push({
       kind: 'line',
       id: 'openTerminal',
       labelPl: 'Koniec otwarty (słupek — tor bez kontynuacji; to nie NO)',
+    });
+  }
+  if (hasTieMarker) {
+    lineEntries.push({
+      kind: 'line',
+      id: 'tieMarker',
+      labelPl: 'Powiązanie (koniec połączony odcinkiem powiązania — odsyłacz)',
     });
   }
 

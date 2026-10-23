@@ -53,8 +53,10 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 DEFAULT_STEP_MW = 0.5
 DEFAULT_MAX_STEPS = 40
@@ -319,19 +321,19 @@ def build_hosting_capacity_view(
             istnieje albo brak węzłów-kandydatów — komunikaty w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Zdolność przyłączeniowa wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if step_mw <= 0.0:
-        raise ValueError("Krok mocy musi być dodatni [MW].")
+        raise OdmowaDanychError("Krok mocy musi być dodatni [MW].")
     if max_steps < 1:
-        raise ValueError("Limit kroków musi wynosić co najmniej 1.")
+        raise OdmowaDanychError("Limit kroków musi wynosić co najmniej 1.")
 
     snapshot = run.snapshot or {}
     bus_names = _bus_index(snapshot)
@@ -339,17 +341,21 @@ def build_hosting_capacity_view(
     if candidate_bus_refs is None:
         candidates = _default_candidates(snapshot)
         if not candidates:
-            raise ValueError(
+            raise OdmowaDanychError(
                 "Brak węzłów-kandydatów: w modelu nie ma źródeł OZE (generatorów); "
                 "wskaż węzeł jawnie parametrem candidate_bus_refs."
             )
     else:
         candidates = sorted(set(candidate_bus_refs))
         if not candidates:
-            raise ValueError("Lista węzłów-kandydatów jest pusta.")
+            raise OdmowaDanychError("Lista węzłów-kandydatów jest pusta.")
         unknown = [ref for ref in candidates if ref not in bus_names]
         if unknown:
-            raise ValueError("Wskazane węzły nie istnieją w modelu: " + ", ".join(unknown) + ".")
+            raise OdmowaNazwana(
+                f"Wskazane węzły-kandydaci nie istnieją w modelu (liczba: {len(unknown)}).",
+                kod="hosting_capacity.wezly_spoza_modelu",
+                dane={"elementy_ref": tuple(unknown)},
+            )
 
     # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
@@ -364,6 +370,7 @@ def build_hosting_capacity_view(
     return {
         "analysis": "hosting_capacity",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "step_mw": step_mw,
             "max_steps": max_steps,

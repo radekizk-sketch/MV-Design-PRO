@@ -32,6 +32,10 @@
  *  - odsyłacze procesu (karty, audyty, sondy, daty prac) — lista fraz niżej,
  *  - słowa polskie zapisane bez polskich znaków — lista słów niżej (zdanie dla
  *    inżyniera jest po polsku, nie w transliteracji z kodu).
+ *  - treść matematyczna (karta DOWOD-CIEPLNY): wzór spadły do postaci awaryjnej
+ *    `MathRenderer` (`math-fallback`) i surowy zapis LaTeX w widocznym tekście
+ *    (`$$`, `\nazwa`, `_{`, `^{`) — ta sama reguła co bramka specy zrzutowych
+ *    (`trescMatematyczna.ts`) i strażnik kontraktu kroku śladu backendu.
  *
  * Prawdziwy backend nie jest potrzebny scenom liczonym z fikstur; bieg „co-jeśli"
  * macierzy NC RfG idzie do backendu biegu (tak jak w `dowody-ncrfg-screenshot`).
@@ -43,6 +47,7 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { parametrySceny, wypelnijUziomIPotwierdz } from './formularzV126';
 import { wybierzElementOdbioru } from './odbiorPomiary';
+import { naruszeniaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -469,11 +474,18 @@ async function rozwinWszystko(page: Page): Promise<void> {
 
 interface Pomiar {
   readonly teksty: { etap: string; tekst: string }[];
+  /** Naruszenia treści matematycznej (wzór niewyrenderowany, surowy LaTeX) per etap. */
+  tresc?: Naruszenie[];
 }
 
 async function zbierz(page: Page, pomiar: Pomiar, etap: string): Promise<void> {
   await rozwinWszystko(page);
   pomiar.teksty.push({ etap, tekst: await tekstPierwszegoPlanu(page) });
+  const tresc = await naruszeniaTresciMatematycznej(page, '[data-testid="creator-harness-root"]');
+  if (tresc.length > 0) {
+    const lista = (pomiar.tresc ??= []);
+    tresc.forEach((n) => lista.push({ etap, wzorzec: n.rodzaj, trafienie: n.tresc, linia: n.tresc }));
+  }
 }
 
 /**
@@ -532,8 +544,8 @@ const FRT_PRZEBIEG = fixtura<{ id: string }>('frt_scena_przebieg_zwarciowy');
 const MACIERZ_MIGAWKA = fixtura<{ generators: { ref_id: string; gen_type: string }[] }>('macierz_scena_migawka');
 const WNIOSEK_ZADANIE = fixtura<{ bus_ref: string }>('wniosek_scena_magazyn_zadanie');
 const WNIOSEK_BRAKI_ZADANIE = fixtura<{ bus_ref: string }>('wniosek_scena_macierz_zadanie');
-const KOORDYNACJA_MIEJSCA = fixtura<{ urzadzenia_sceny: { lokalizacja: string; zacisk: 'od' | 'do' }[] }>(
-  'koordynacja_scena_miejsca',
+const KOORDYNACJA_OCENA = fixtura<{ evaluations: { device_id: string; fault_target_id: string }[] }>(
+  'koordynacja_scena_ocena',
 );
 const AKADEMICKIE_BIEGI = fixtura<{ biegi: Record<string, unknown> }>('akademickie_scena_biegi');
 const KATALOG_V126 = fixtura<{ items: { kod: string; prezentowany: boolean }[] }>('katalog_analiz_v126');
@@ -551,6 +563,7 @@ const SCENY: Record<string, Prowadzenie> = {
     }
   },
   zwarcia: zwykla,
+  'zwarcia-tolerancja-robocza': zwykla,
   'zwarcia-rozplyw': zwykla,
   porownanie: async (page, pomiar) => {
     await page.getByTestId('mvd-por-select-a').selectOption(POROWNANIE_PF.run_a_id);
@@ -647,15 +660,20 @@ const SCENY: Record<string, Prowadzenie> = {
   'pulpit-oze': zwykla,
   koordynacja: async (page, pomiar) => {
     await expect(page.getByTestId('protection-coordination-page')).toBeVisible();
-    await zbierz(page, pomiar, 'przed konfiguracją');
-    for (const { lokalizacja, zacisk } of KOORDYNACJA_MIEJSCA.urzadzenia_sceny) {
-      await page.getByTitle('Zastosuj szablon').click();
-      await page.locator('div.fixed.inset-0').getByText('Przekaźnik 50/51 (typowy)').click();
-      await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
-      await page.getByTestId('device-location-select').selectOption(lokalizacja);
-      await page.getByTestId(`device-terminal-${zacisk}`).click();
-      await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
+    await zbierz(page, pomiar, 'przed oceną');
+    // Urządzenia i nastawy są w MODELU sceny (sieć złota z wyłącznikami liniowymi) — ekran
+    // niczego nie konfiguruje. Ocena zabezpieczeń na biegu zwarciowym, potem koordynacja.
+    const ocen = page.getByTestId('mvd-ocena-zabezpieczen-uruchom');
+    await expect(ocen).toBeEnabled({ timeout: 15000 });
+    await ocen.click();
+    await expect(page.getByTestId('mvd-ocena-zabezpieczen-wynik')).toBeVisible({ timeout: 15000 });
+    for (const o of KOORDYNACJA_OCENA.evaluations) {
+      await expect(
+        page.getByTestId(`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`),
+      ).toBeVisible();
     }
+    await zbierz(page, pomiar, 'ocena zabezpieczeń');
+    await expect(page.getByTestId('coordination-run-min')).toContainText('✓', { timeout: 15000 });
     await page.getByTestId('run-analysis-button').click();
     await page.getByTestId('tab-selectivity').click();
     await expect(page.getByTestId('selectivity-table')).toBeVisible({ timeout: 15000 });
@@ -728,6 +746,16 @@ const SCENY: Record<string, Prowadzenie> = {
   // i wariant z odmową modelu przed biegiem (brak modelu dynamicznego źródła).
   'wyniki-dynamika': zwykla,
   'wyniki-dynamika-brak': zwykla,
+  // Karta modeli odbiorów: odbiór bez modelu dynamicznego — akcja naprawcza w sekcji modeli.
+  'wyniki-dynamika-odbior-brak': zwykla,
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: lista scenariuszy zwarciowych (MAX/MIN, nadpisanie c
+  // z uzasadnieniem) — pokazuje wartości c i ich podstawę, więc mierzona na pierwszym planie.
+  'panel-scenariuszy': zwykla,
+  // Karta przypadku obliczeniowego: konfiguracja, status i aktualność wyników przypadku.
+  'karta-przypadku': zwykla,
+  // Formularz edycji parametrów otwarty z akcji naprawczej bramki tolerancji napięcia nN —
+  // treść bramki i pola z jednostkami trafiają do inżyniera, więc mierzona.
+  'edycja-tolerancja-nn': zwykla,
 };
 
 /**
@@ -832,7 +860,10 @@ function zbierajWyjatki(page: Page): string[] {
 }
 
 function wynikScen(scena: string, pomiar: Pomiar): Naruszenie[] {
-  const naruszenia = pomiar.teksty.flatMap(({ etap, tekst }) => naruszeniaTekstu(etap, tekst));
+  const naruszenia = [
+    ...pomiar.teksty.flatMap(({ etap, tekst }) => naruszeniaTekstu(etap, tekst)),
+    ...(pomiar.tresc ?? []),
+  ];
   if (KATALOG_ZRZUTU) {
     fs.mkdirSync(KATALOG_ZRZUTU, { recursive: true });
     fs.writeFileSync(

@@ -62,7 +62,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -70,7 +70,7 @@
       "cross_section_mm2": 120.0,
       "endpoint_a_port": null,
       "endpoint_b_port": null,
-      "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_terminal/001",
       "id": "1633beb2-9f90-5080-b64a-569ff67c5360",
       "insulation": "XLPE",
       "ith_1s_a": null,
@@ -101,14 +101,17 @@
         "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
         "trade_name": "YAKXS 3x120/16",
         "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
       "meta": {
-        "catalog_item_version": "legacy",
-        "origin_apparatus_kind": "cable_head",
-        "origin_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
-        "origin_port_role": "OUTGOING_HEAD"
+        "catalog_item_version": "legacy"
       },
       "n_parallel": null,
       "name": "Magistrala wytwórcy (2)",
@@ -224,7 +227,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -263,6 +266,12 @@
         "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
         "trade_name": "YAKXS 3x120/16",
         "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
@@ -298,7 +307,7 @@
       "status": "closed",
       "tags": [],
       "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-      "to_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "to_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_terminal/000",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
@@ -624,7 +633,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cee84244191f794010dae6127b3fe884c979d472473d3e9fe2314e56bd60b065",
+    "hash_sha256": "6dcb766394b3e51ee752a07e399fafe3ae555052640a4c48edadab4750e957d4",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -655,13 +664,15 @@
       "bus_ref": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "c596504c-1330-582c-bf04-ae94acf26eba",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -678,7 +689,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -687,7 +698,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/adba9f4bf0ca9ef07987fad098c413cd/nn",
       "source_mode": "KATALOG",
@@ -731,12 +742,25 @@
       "settings": [
         {
           "curve_type": null,
+          "function_type": "overfrequency_81O",
+          "is_directional": false,
+          "threshold_a": null,
+          "threshold_deg": null,
+          "threshold_hz": 51.5,
+          "threshold_hz_s": null,
+          "threshold_unit": null,
+          "time_delay_s": 0.5,
+          "time_multiplier": null
+        },
+        {
+          "curve_type": null,
           "function_type": "rocof_81R",
           "is_directional": false,
           "threshold_a": null,
           "threshold_deg": null,
           "threshold_hz": null,
           "threshold_hz_s": 1.0,
+          "threshold_unit": null,
           "time_delay_s": 0.2,
           "time_multiplier": null
         },
@@ -748,17 +772,7 @@
           "threshold_deg": null,
           "threshold_hz": 47.5,
           "threshold_hz_s": null,
-          "time_delay_s": 0.5,
-          "time_multiplier": null
-        },
-        {
-          "curve_type": null,
-          "function_type": "overfrequency_81O",
-          "is_directional": false,
-          "threshold_a": null,
-          "threshold_deg": null,
-          "threshold_hz": 51.5,
-          "threshold_hz_s": null,
+          "threshold_unit": null,
           "time_delay_s": 0.5,
           "time_multiplier": null
         }
@@ -775,14 +789,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -988,7 +1001,9 @@
             "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
             "equipment_refs": [],
             "field_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_main_breaker",
-            "meta": {},
+            "meta": {
+              "transformer_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/transformer"
+            },
             "name": "Wyłącznik główny nN",
             "protection_ref": null,
             "tags": [
@@ -1022,9 +1037,7 @@
             ]
           }
         ],
-        "nn_fields_promoted": true,
-        "station_type_semantic": "B",
-        "station_type_sn": "B"
+        "nn_fields_promoted": true
       },
       "name": "Stacja wytwórcy",
       "nn_sections": [],
@@ -1048,6 +1061,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1093,13 +1107,14 @@
     {
       "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-04-2000kva-dyn11",
-      "hv_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "hv_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_terminal/002",
       "hv_neutral": null,
       "i0_percent": 0.8,
       "id": "d670fdec-4794-5660-ac27-8e7219b5ba77",
-      "lv_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
+      "lv_bus_ref": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-2000kva-dyn11",
         "catalog_item_version": "legacy",

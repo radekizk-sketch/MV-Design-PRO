@@ -59,6 +59,7 @@ class IssueCode(StrEnum):
     INVALID_STATE = "INVALID_STATE"  # Invalid evaluation state in one or both
     MARGIN_DECREASED = "MARGIN_DECREASED"  # Safety margin decreased
     MARGIN_INCREASED = "MARGIN_INCREASED"  # Safety margin increased
+    UNRELIABLE_RESULT = "UNRELIABLE_RESULT"  # Wynik poza granicą wiarygodności (ALF przekładnika)
 
 
 class IssueSeverity(int, Enum):
@@ -83,6 +84,7 @@ class IssueSeverity(int, Enum):
 ISSUE_SEVERITY_MAP: dict[IssueCode, IssueSeverity] = {
     IssueCode.TRIP_LOST: IssueSeverity.CRITICAL,
     IssueCode.INVALID_STATE: IssueSeverity.MAJOR,
+    IssueCode.UNRELIABLE_RESULT: IssueSeverity.MAJOR,
     IssueCode.DELAY_INCREASED: IssueSeverity.MODERATE,
     IssueCode.MARGIN_DECREASED: IssueSeverity.MODERATE,
     IssueCode.TRIP_GAINED: IssueSeverity.MINOR,
@@ -96,9 +98,16 @@ ISSUE_DESCRIPTIONS_PL: dict[IssueCode, str] = {
     IssueCode.TRIP_GAINED: "Pojawienie się zadziałania zabezpieczenia",
     IssueCode.DELAY_INCREASED: "Wydłużenie czasu zadziałania",
     IssueCode.DELAY_DECREASED: "Skrócenie czasu zadziałania",
-    IssueCode.INVALID_STATE: "Nieprawidłowy stan ewaluacji",
-    IssueCode.MARGIN_DECREASED: "Zmniejszenie marginesu bezpieczeństwa",
-    IssueCode.MARGIN_INCREASED: "Zwiększenie marginesu bezpieczeństwa",
+    IssueCode.INVALID_STATE: (
+        "Brak oceny w jednym z biegów — ocena urządzenia wstrzymana brakami danych albo "
+        "punkt zwarcia poza jego strefą"
+    ),
+    IssueCode.MARGIN_DECREASED: "Zmniejszenie zapasu czułości zabezpieczenia",
+    IssueCode.MARGIN_INCREASED: "Zwiększenie zapasu czułości zabezpieczenia",
+    IssueCode.UNRELIABLE_RESULT: (
+        "Wynik oceny niewiarygodny — prąd poza granicą dokładności przekładnika, czasu i "
+        "zapasu czułości nie porównuje się"
+    ),
 }
 
 
@@ -151,6 +160,15 @@ class ProtectionComparisonRow:
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: StateChange
+    #: Nazwy z modelu (karta #144/#145 — nigdy identyfikatory na pierwszym planie) i stan
+    #: wiarygodności wyniku każdego biegu (``WIARYGODNY``/``NIEWIARYGODNY``/``NIEUSTALONA``;
+    #: pusty napis = brak oceny w biegu). Addytywne.
+    nazwa_urzadzenia_pl: str = ""
+    nazwa_punktu_pl: str = ""
+    krotnosc_m_a: float | None = None
+    krotnosc_m_b: float | None = None
+    wiarygodnosc_a: str = ""
+    wiarygodnosc_b: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -170,6 +188,12 @@ class ProtectionComparisonRow:
             "margin_percent_a": self.margin_percent_a,
             "margin_percent_b": self.margin_percent_b,
             "state_change": self.state_change.value,
+            "nazwa_urzadzenia_pl": self.nazwa_urzadzenia_pl,
+            "nazwa_punktu_pl": self.nazwa_punktu_pl,
+            "krotnosc_m_a": self.krotnosc_m_a,
+            "krotnosc_m_b": self.krotnosc_m_b,
+            "wiarygodnosc_a": self.wiarygodnosc_a,
+            "wiarygodnosc_b": self.wiarygodnosc_b,
         }
 
     @classmethod
@@ -205,6 +229,16 @@ class ProtectionComparisonRow:
                 else None
             ),
             state_change=StateChange(data["state_change"]),
+            nazwa_urzadzenia_pl=str(data.get("nazwa_urzadzenia_pl", "")),
+            nazwa_punktu_pl=str(data.get("nazwa_punktu_pl", "")),
+            krotnosc_m_a=(
+                float(data["krotnosc_m_a"]) if data.get("krotnosc_m_a") is not None else None
+            ),
+            krotnosc_m_b=(
+                float(data["krotnosc_m_b"]) if data.get("krotnosc_m_b") is not None else None
+            ),
+            wiarygodnosc_a=str(data.get("wiarygodnosc_a", "")),
+            wiarygodnosc_b=str(data.get("wiarygodnosc_b", "")),
         )
 
 
@@ -440,8 +474,6 @@ class ProtectionComparisonTrace:
         comparison_id: ID of the comparison
         run_a_id: First protection run ID
         run_b_id: Second protection run ID
-        library_fingerprint_a: Library fingerprint from Run A
-        library_fingerprint_b: Library fingerprint from Run B
         steps: Sequence of comparison steps
         created_at: Trace creation timestamp
     """
@@ -449,8 +481,6 @@ class ProtectionComparisonTrace:
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    library_fingerprint_a: str | None
-    library_fingerprint_b: str | None
     steps: tuple[ProtectionComparisonTraceStep, ...]
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -460,8 +490,6 @@ class ProtectionComparisonTrace:
             "comparison_id": self.comparison_id,
             "run_a_id": self.run_a_id,
             "run_b_id": self.run_b_id,
-            "library_fingerprint_a": self.library_fingerprint_a,
-            "library_fingerprint_b": self.library_fingerprint_b,
             "steps": [s.to_dict() for s in self.steps],
             "created_at": self.created_at.isoformat(),
         }
@@ -473,8 +501,6 @@ class ProtectionComparisonTrace:
             comparison_id=str(data["comparison_id"]),
             run_a_id=str(data["run_a_id"]),
             run_b_id=str(data["run_b_id"]),
-            library_fingerprint_a=data.get("library_fingerprint_a"),
-            library_fingerprint_b=data.get("library_fingerprint_b"),
             steps=tuple(ProtectionComparisonTraceStep.from_dict(s) for s in data.get("steps", [])),
             created_at=(
                 datetime.fromisoformat(data["created_at"])

@@ -78,10 +78,11 @@ def test_compute_adjustments_block_transformer_z():
     }
     adj = compute_audit2_adjustments(extensions)
     z = adj.block_transformer_z_pu["der_001"]
-    # btr_pv_15_069_2500 -> typ tr-sn-nn-15-0p69-2p5mva-dyn11-inverter:
-    # uk=6%, pk=26,25 kW, sn=2500 kVA -> uR=26,25/2500=1,05%, uX≈√(36-1,1)≈5,91%
-    assert abs(z["r_pu"] - 0.0105) < 0.001
-    assert 0.05 < z["x_pu"] < 0.07  # ≈0.0592
+    # btr_pv_15_069_2500 -> typ tr-sn-nn-15-0p69-2p5mva-dyn11-inverter (normatywny):
+    # uk=6% (GEAFOL), pk=19,0 kW (pulap Tier 2 tab. I.2 sucha 2500 kVA), sn=2500 kVA
+    # -> uR=19,0/2500=0,76%, uX=√(36-0,5776)≈5,95%. (Do 2026-10-15 szacunek pk=26,25 kW.)
+    assert abs(z["r_pu"] - 0.0076) < 1e-6
+    assert abs(z["x_pu"] - 0.0595168) < 1e-5
 
 
 def test_etykieta_uziemienia_nie_wyznacza_juz_stosunku_z0_z1():

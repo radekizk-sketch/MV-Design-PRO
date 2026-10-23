@@ -106,15 +106,21 @@ from application.analyses.warunki_przylaczenia import (
     build_warunki_przylaczenia_view,
 )
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.nazwy_elementow import opis_bez_nazwy
 from enm.store import get_enm
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import format_liczba
 
 # --- Stany kryterium ---------------------------------------------------------
+
+#: Kompletność dowodu kontraktu werdyktu (§3) — wartość jedyna, którą agregat emituje
+#: (dowód pełny = brak klucza: słowniki werdyktu na danych projektu bez zmian).
+KOMPLETNOSC_NIEPELNA = "NIEPELNY"
 
 STAN_SPELNIONE = "SPELNIONE"
 STAN_NARUSZONE = "NARUSZONE"
@@ -520,6 +526,10 @@ class OcenaElementu:
     wniosek_pl: str = ""
     #: Odwolanie do dowodu obliczeniowego: bieg + element (``None`` = brak biegu).
     dowod: dict[str, str] | None = None
+    #: Dane przyjęte widoku dostawcy (wartości robocze: tolerancja sieci nN, linie 110 kV
+    #: z wartością roboczą geometrii), na których stoi liczba elementu — kontrakt werdyktu §3:
+    #: ocena na nich ma kompletność dowodu ``NIEPELNY`` (nie potwierdzony dowód zgodności).
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -539,6 +549,16 @@ class OcenaElementu:
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wniosek_pl": self.wniosek_pl,
             "dowod": self.dowod,
+            # Addytywnie, WYŁĄCZNIE przy danych przyjętych — element na danych projektu
+            # ma słownik bit w bit jak przed kartą LINIA-110.
+            **(
+                {
+                    "dane_przyjete": [dict(d) for d in self.dane_przyjete],
+                    "kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA,
+                }
+                if self.dane_przyjete
+                else {}
+            ),
         }
 
 
@@ -581,9 +601,17 @@ class PozycjaWerdyktu:
                 "powod_pl": self.powod_pl,
                 "run_id": self.run_id,
                 "elementy": [element.to_dict() for element in self.elementy],
+                # Agregat nie zastępuje składowych (kontrakt werdyktu §2.3): pozycja, której
+                # którykolwiek element stoi na danej przyjętej, ma dowód niepełny.
+                **({"kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA} if self.dowod_niepelny else {}),
             }
         )
         return payload
+
+    @property
+    def dowod_niepelny(self) -> bool:
+        """Czy którykolwiek element pozycji stoi na danej przyjętej (jedno źródło: elementy)."""
+        return any(element.dane_przyjete for element in self.elementy)
 
 
 @dataclass(frozen=True)
@@ -674,6 +702,13 @@ class WerdyktProjektowy:
                 "ocena": self.ocena,
                 "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
                 "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
+                # Werdykt całościowy na danych przyjętych jest dowodem niepełnym (§2.3, §3) —
+                # addytywnie, WYŁĄCZNIE gdy którakolwiek pozycja ma dowód niepełny.
+                **(
+                    {"kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA}
+                    if any(pozycja.dowod_niepelny for pozycja in self.pozycje)
+                    else {}
+                ),
             }
         )
         return kontrakt
@@ -860,7 +895,15 @@ def _ocena_elementu(
     uwaga_pl: str | None = None,
     uzasadnienie_pl: str | None = None,
     run_id: str | None = None,
+    dane_przyjete: Sequence[Mapping[str, Any]] = (),
+    zrodlo_liczb_pl: str = "Wielkości",
 ) -> OcenaElementu:
+    dane = tuple(dict(d) for d in dane_przyjete)
+    # Uwaga przy SPEŁNIA: „spełnia" nazywa daną przyjętą (kontrakt werdyktu §3) — obok
+    # uwagi dostawcy (np. pasmo ostrzegawcze), nigdy zamiast niej.
+    if dane:
+        uwaga_danych = _uwaga_danych_przyjetych(dane, zrodlo_liczb_pl)
+        uwaga_pl = f"{uwaga_pl.rstrip('.')}. {uwaga_danych}" if uwaga_pl else uwaga_danych
     jedn = jednostka if jednostka is not None else definicja.jednostka
     wart = _liczba(wartosc)
     odn = _liczba(odniesienie)
@@ -908,7 +951,23 @@ def _ocena_elementu(
         uzasadnienie_pl=uzasadnienie_pl,
         wniosek_pl=wniosek,
         dowod=dowod,
+        dane_przyjete=dane,
     )
+
+
+def _uwaga_danych_przyjetych(dane: Sequence[Mapping[str, Any]], zrodlo_liczb_pl: str) -> str:
+    """JEDNO zdanie uwagi o danych przyjętych dla każdego dostawcy (cieplny, wiarygodność Ik″,
+    warunki przyłączenia, walidacja energetyczna)."""
+    return (
+        f"{zrodlo_liczb_pl} liczone z daną przyjętą (wartość robocza): "
+        + "; ".join(str(d.get("nazwa_pl")) for d in dane)
+        + " — ocena na danej przyjętej, nie potwierdzony dowód zgodności"
+    )
+
+
+def _dane_przyjete_widoku(widok: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    """Dane przyjęte widoku dostawcy (``dane_przyjete`` — kształt wspólny widoków biegu)."""
+    return tuple(d for d in (widok.get("dane_przyjete") or []) if isinstance(d, Mapping))
 
 
 # Mapy „status dostawcy -> wynik elementu" — JEDNA na dostawce, bo dostawcy maja rozna
@@ -1036,6 +1095,8 @@ def _pozycje_warunkow_przylaczenia(
             jednostka=str(surowa.get("jednostka") or definicja.jednostka),
             uzasadnienie_pl=opis,
             run_id=run_id,
+            dane_przyjete=_dane_przyjete_widoku(widok),
+            zrodlo_liczb_pl="Wielkości rozpływu",
         )
         # Stan pozycji z TEJ SAMEJ agregacji co u pozostalych dostawcow (jedno zrodlo).
         bez_podstaw = element.wynik == WYNIK_BRAK_PODSTAW
@@ -1109,7 +1170,9 @@ def _pozycje_walidacji_energetycznej(
         wiodacy = _wiodacy_wiersz_walidacji(naruszenia or niesprawdzone or ostrzezenia)
         definicja = _definicja(kryterium_id)
         elementy = tuple(
-            _element_walidacji(definicja, wiersz, run_id=run_id)
+            _element_walidacji(
+                definicja, wiersz, run_id=run_id, dane_przyjete=_dane_przyjete_widoku(widok)
+            )
             for wiersz in _posortowane_wiersze_walidacji(wiersze)
         )
         pozycje.append(
@@ -1166,7 +1229,11 @@ def _posortowane_wiersze_walidacji(
 
 
 def _element_walidacji(
-    definicja: DefinicjaKryterium, wiersz: Mapping[str, Any], *, run_id: str
+    definicja: DefinicjaKryterium,
+    wiersz: Mapping[str, Any],
+    *,
+    run_id: str,
+    dane_przyjete: Sequence[Mapping[str, Any]] = (),
 ) -> OcenaElementu:
     """Pozycja walidacji energetycznej → ocena elementu (liczby 1:1 z dostawcy).
 
@@ -1203,6 +1270,8 @@ def _element_walidacji(
         uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
         uzasadnienie_pl=uzasadnienie,
         run_id=run_id,
+        dane_przyjete=dane_przyjete,
+        zrodlo_liczb_pl="Wielkości rozpływu",
     )
 
 
@@ -1243,6 +1312,9 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     niesprawdzone = [w for (wynik, _), w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW]
     wiodacy = _wiodaca_galaz(naruszenia or niesprawdzone)
     definicja = _definicja(KRYTERIUM_PRZEWOD_CIEPLNY)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA i LINIA-110: prądy biegu na danej przyjętej
+    # (``dane_przyjete`` widoku dostawcy) — „spełnia" nazywa daną przyjętą.
+    dane_przyjete = _dane_przyjete_widoku(widok)
     elementy = tuple(
         _ocena_elementu(
             definicja,
@@ -1255,6 +1327,8 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
             margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
             uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
+            dane_przyjete=dane_przyjete,
+            zrodlo_liczb_pl="Prądy zwarciowe",
         )
         for (wynik, uzasadnienie), wiersz in sorted(
             wynik_wiersza,
@@ -1359,6 +1433,8 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             odniesienie_dolne=wiersz.get("lower_ka"),
             uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
+            dane_przyjete=_dane_przyjete_widoku(wiersz),
+            zrodlo_liczb_pl="Prąd zwarciowy",
         )
         for (wynik, uzasadnienie), wiersz in sorted(
             wynik_wiersza,
@@ -1571,16 +1647,17 @@ def _kryteria_zrodla(rodzaj: str) -> tuple[str, ...]:
 def _bezpiecznie(
     budowniczy: Callable[[CanonicalRun], dict[str, Any]], bieg: CanonicalRun
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """Zbuduj widok dostawcy, zamieniajac jego ``ValueError`` na powod braku oceny.
+    """Zbuduj widok dostawcy, zamieniajac jego odmowe danych na powod braku oceny.
 
     Awaria JEDNEGO dostawcy nie moze wywalic calego werdyktu — inaczej brak jednej
     danej ukrylby wszystkie pozostale kryteria, czyli agregat bylby krucha wyspa.
-    ``ValueError`` to kanoniczny sposob, w jaki widoki analiz zglaszaja brak
-    podstawy do oceny (zly rodzaj biegu, brak wiersza wyniku).
+    ``OdmowaDanychError`` to kanoniczny sposob, w jaki widoki analiz zglaszaja brak
+    podstawy do oceny (zly rodzaj biegu, brak wiersza wyniku). Zwykly ``ValueError``
+    to blad programu i nie staje sie powodem braku oceny (karta ODMOWA-DANYCH-422).
     """
     try:
         return budowniczy(bieg), None
-    except ValueError as blad:
+    except OdmowaDanychError as blad:
         return None, str(blad)
 
 
@@ -1768,6 +1845,11 @@ def _najnowszy_bieg(biegi: Sequence[CanonicalRun], rodzaj: str) -> CanonicalRun 
     w toku) zamiast ogolnego „brak biegu".
     """
     kandydaci = [bieg for bieg in biegi if bieg.analysis_type == rodzaj]
+    if rodzaj == ZRODLO_SC:
+        # Karta OD-14: werdykt projektowy ocenia dobór i wytrzymałość prądem zwarcia
+        # METALICZNEGO — bieg przez impedancję przejścia Z_f (poza zakresem IEC 60909) nie jest
+        # kandydatem „najnowszego biegu zwarciowego" (ten sam predykat co proweniencja).
+        kandydaci = [bieg for bieg in kandydaci if bieg_w_zakresie_iec60909(bieg)]
     if not kandydaci:
         return None
     zakonczone = [bieg for bieg in kandydaci if bieg.status == "FINISHED"]

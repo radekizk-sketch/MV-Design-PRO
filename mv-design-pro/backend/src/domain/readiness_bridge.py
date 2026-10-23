@@ -45,10 +45,21 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E009": "catalog.binding_missing",
     # „Stacja przelotowa: pola IN/OUT" == brak wymaganego pola SN stacji.
     "E021": "station.required_field_missing",
+    # „Z jednego pola liniowego wychodzi więcej niż jeden odcinek" == ten sam warunek
+    # (jedno źródło prawdy zajętości pól `enm/zajetosc_pol.py`, karta POLE-ZAJĘTE).
+    "E022": "station.line_field_multiple_segments",
     # „Transformator na szynie SN bez pola roli TR" == brak konfiguracji pola
     # transformatorowego (KOMPLETNOSC-POLA-TR — ten sam warunek, jedno zrodlo
     # predykatu `enm/pole_transformatorowe.py`).
     "W041": "transformer.bay_missing",
+    # „Element przyłączony do szyny głównej stacji z pominięciem pola" == ten sam warunek
+    # (jedno źródło predykatu `enm/tor_pola.py::naruszenia_zasady_toru`, karta POLA-W-TORZE).
+    "W042": "station.element_bypasses_field",
+    # „Deklaracja rodzaju stacji niezgodna z topologią" == ten sam warunek (jedno źródło
+    # `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ).
+    "W043": "station.kind_mismatch",
+    # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
+    "W044": "station.field_role_unknown",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
@@ -87,6 +98,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
     "E063": "transformer.lv_earthing_system_missing",
+    # „Wartość projektanta spoza bramy rejestru wartości roboczych" == ten sam warunek (jedna
+    # brama `enm/wartosci_projektanta.py`, karta PODSTAWA-Q).
+    "E011": "catalog.wartosc_projektanta_niedopuszczalna",
     # Konfiguracja punktu neutralnego niespojna (rezystor bez R_N, dlawik bez X_N,
     # izolowany ze skonczona Z0) — zrodlo i transformator, jeden predykat.
     "E-W5-01": "earthing.neutral_grounding_inconsistent",
@@ -116,6 +130,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E007": "Kanon nie ma kodu dla niespójności stron HV/LV transformatora.",
     "E010": "Kanon nie ma kodu dla nadpisań (overrides) bez podstawy katalogowej.",
     "E020": "Kanon nie ma kodu dla gałęzi łączącej różne pasma napięciowe.",
+    "E023": (
+        "Kanon nie ma kodu dla napięcia znamionowego strony transformatora w innym paśmie "
+        "napięć niż szyna, do której ta strona jest przyłączona."
+    ),
     "E028": "Kanon nie ma kodu dla braku danych DER wymaganych przez walidację D1.",
     "E029": "Kanon nie ma kodu dla niespójności parametrów falownika.",
     "E030": "Kanon nie ma kodu dla braku wskazanego portu połączenia.",
@@ -317,6 +335,7 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "ring.nop_required": "Emiter przez odwzorowanie kodu walidatora I005 (nie literał w kodzie).",
     "station.nn_outgoing_min_1": "Brak emitera: liczba odpływów nN nie jest sprawdzana.",
     "station.required_field_missing": "Emiter przez odwzorowanie kodu walidatora E021.",
+    "station.line_field_multiple_segments": "Emiter przez odwzorowanie kodu walidatora E022.",
     "station.type_invalid": "Brak emitera: typ stacji walidowany kontraktem operacji, nie kodem gotowości.",
     "study_case.missing_base_snapshot": "Brak emitera: warunek pilnowany wyjątkiem warstwy przypadku.",
     "transformer.connection_missing": "Brak emitera: połączenie transformatora walidowane kontraktem operacji.",

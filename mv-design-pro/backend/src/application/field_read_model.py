@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
+from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
 from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
 from enm.models import (
@@ -25,7 +26,6 @@ from enm.models import (
     BayShortCircuitSourceContribution,
     BaySourceEndpoint,
     BaySwitchState,
-    BayVerificationResult,
     Branch,
     EnergyNetworkModel,
     Generator,
@@ -39,8 +39,13 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nastawy_zabezpieczen import (
+    ETYKIETY_JEDNOSTEK_PROGU_PL,
+    JEDNOSTKA_PROGU_NIEUSTALONA_PL,
+)
 from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from enm.zajetosc_pol import zacisk_pola
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.nazwy import nazwa_nadana
 
@@ -127,8 +132,16 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     generators_by_bus = _group_generators_by_bus(enm.generators)
 
     finished_runs = [run for run in list_runs_for_case(case_id) if run.status == "FINISHED"]
+    # Karta OD-14: wynik pola wiąże najnowszy bieg zwarcia METALICZNEGO (IEC 60909); bieg przez
+    # impedancję przejścia Z_f nie jest „wynikiem zwarciowym pola" (ten sam predykat co
+    # proweniencja biegu, `bieg_w_zakresie_iec60909`).
     latest_sc_run = next(
-        (run for run in finished_runs if run.analysis_type == "short_circuit_sn"), None
+        (
+            run
+            for run in finished_runs
+            if run.analysis_type == "short_circuit_sn" and bieg_w_zakresie_iec60909(run)
+        ),
+        None,
     )
     latest_pf_run = next((run for run in finished_runs if run.analysis_type == "PF"), None)
 
@@ -382,6 +395,19 @@ def _group_measurements_by_bay(measurements: list[Measurement]) -> dict[str, lis
     return grouped
 
 
+def punkt_przylaczenia_pola(bay: Bay) -> str:
+    """Punkt, w którym pole przyłącza element, któremu służy (POLA-W-TORZE): WŁASNY zacisk
+    pola (aparat pola w torze), a dla pola bez własnego zacisku — szyna pola. Zacisk z tej
+    samej funkcji, co zajętość pól (`enm.zajetosc_pol.zacisk_pola`)."""
+    meta = bay.meta or {}
+    szablon = meta.get("sn_field_template")
+    # Rekord pola (`bays`, stacja końca ciągu) niesie specyfikację pola w `sn_field_template`.
+    zacisk = zacisk_pola({"meta": meta}) or (
+        zacisk_pola(szablon) if isinstance(szablon, dict) else None
+    )
+    return zacisk or bay.bus_ref
+
+
 def _group_transformers_by_bus(transformers: list[Transformer]) -> dict[str, list[Transformer]]:
     grouped: dict[str, list[Transformer]] = {}
     for transformer in transformers:
@@ -453,7 +479,9 @@ def _build_primary_devices(
         devices.append(_measurement_to_primary_device(measurement))
 
     if canonical_role == "TRANSFORMATOROWE":
-        transformers = transformers_by_bus.get(bay.bus_ref, [])
+        # POLA-W-TORZE: transformator leży na ZACISKU pola transformatorowego (aparat pola
+        # w torze) — pole bez własnego zacisku (dane zastane) wskazuje szynę pola.
+        transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
         if transformers:
             transformer = transformers[0]
             devices.append(
@@ -875,7 +903,13 @@ def _setting_to_function_state(
             ProtectionSettingValue(
                 key="prog",
                 value=threshold_value,
-                unit="A",
+                # Strona przekładnika zadeklarowana w nastawie (PZ-09) — „A" bez strony byłoby
+                # dwuznaczne (1,5 A wtórne ≠ 1,5 A pierwotne).
+                unit=(
+                    ETYKIETY_JEDNOSTEK_PROGU_PL[setting.threshold_unit]
+                    if setting.threshold_unit is not None
+                    else JEDNOSTKA_PROGU_NIEUSTALONA_PL
+                ),
                 quality="reczne",
             )
         )
@@ -1149,12 +1183,6 @@ def _build_project_results(
         main_power_flow_results_ref=latest_pf_run_id,
         source_contributions_sc=sc_contributions,
         source_contributions_pf=pf_contributions,
-        verification=BayVerificationResult(
-            ct_ok=True if measurement_chain and measurement_chain.ct_refs else None,
-            vt_ok=True if measurement_chain and measurement_chain.vt_refs else None,
-            cable_head_ok=None,
-            whole_power_path_ok=bool(bay.equipment_refs),
-        ),
         earth_fault_path=earth_fault_path,
         proof_binding=proof_binding,
     )
@@ -1307,7 +1335,7 @@ def _build_earth_fault_path(
 ) -> BayEarthFaultPath | None:
     if measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
         return None
-    transformers = transformers_by_bus.get(bay.bus_ref, [])
+    transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
     return BayEarthFaultPath(
         neutral_grounding_mode=_resolve_neutral_grounding_mode(
             sources=sources_by_bus.get(bay.bus_ref, []),

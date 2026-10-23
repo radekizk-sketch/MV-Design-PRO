@@ -72,14 +72,11 @@ class VariantConfigDelta:
 
 # Polish labels for StudyCaseConfig fields
 CONFIG_FIELD_LABELS: dict[str, tuple[str, str]] = {
-    "c_factor_max": ("Współczynnik c (max)", ""),
-    "c_factor_min": ("Współczynnik c (min)", ""),
     "base_mva": ("Moc bazowa", "MVA"),
     "max_iterations": ("Maks. iteracji", ""),
     "tolerance": ("Tolerancja zbieżności", ""),
     "include_motor_contribution": ("Wkład silników", ""),
     "include_inverter_contribution": ("Wkład falowników", ""),
-    "thermal_time_seconds": ("Czas cieplny", "s"),
 }
 
 

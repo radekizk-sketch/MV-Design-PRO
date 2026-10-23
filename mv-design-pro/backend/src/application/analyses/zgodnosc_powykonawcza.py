@@ -53,6 +53,7 @@ from enm.canonical_analysis import (
     build_bus_results,
 )
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from network_model.odmowa_danych import OdmowaDanychError
 
 # Dozwolone wielkości pomiarowe i ich jednostki kanoniczne.
 _WIELKOSCI: tuple[str, ...] = ("U", "P", "Q")
@@ -106,7 +107,7 @@ def parse_measurements_csv(csv_text: str) -> list[dict[str, Any]]:
     """
     tekst = csv_text.lstrip("﻿")
     if not tekst.strip():
-        raise ValueError("Plik CSV jest pusty.")
+        raise OdmowaDanychError("Plik CSV jest pusty.")
 
     naglowek_linia = next((linia for linia in tekst.splitlines() if linia.strip()), "")
     if ";" in naglowek_linia:
@@ -114,18 +115,18 @@ def parse_measurements_csv(csv_text: str) -> list[dict[str, Any]]:
     elif "," in naglowek_linia:
         delimiter, przecinek_dziesietny = ",", False
     else:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Nagłówek CSV nie zawiera separatora ';' ani ','; "
             f"oczekiwano: {';'.join(_CSV_NAGLOWEK)}."
         )
 
     wiersze = list(csv.reader(io.StringIO(tekst), delimiter=delimiter))
     if not wiersze or not any(cell.strip() for cell in wiersze[0]):
-        raise ValueError("Plik CSV nie zawiera nagłówka.")
+        raise OdmowaDanychError("Plik CSV nie zawiera nagłówka.")
 
     naglowek = tuple(cell.strip().lower() for cell in wiersze[0])
     if naglowek != _CSV_NAGLOWEK:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Nagłówek CSV musi mieć kolumny "
             f"'{';'.join(_CSV_NAGLOWEK)}'; otrzymano: '{delimiter.join(wiersze[0])}'."
         )
@@ -135,7 +136,7 @@ def parse_measurements_csv(csv_text: str) -> list[dict[str, Any]]:
         if not any(cell.strip() for cell in wiersz):
             continue
         if len(wiersz) != len(_CSV_NAGLOWEK):
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Wiersz {indeks} CSV: oczekiwano {len(_CSV_NAGLOWEK)} kolumn, "
                 f"otrzymano {len(wiersz)}."
             )
@@ -144,7 +145,7 @@ def parse_measurements_csv(csv_text: str) -> list[dict[str, Any]]:
         try:
             wartosc = float(wartosc_norm)
         except ValueError as exc:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Wiersz {indeks} CSV: wartość '{wartosc_s}' nie jest liczbą."
             ) from exc
         out.append(
@@ -158,7 +159,7 @@ def parse_measurements_csv(csv_text: str) -> list[dict[str, Any]]:
             }
         )
     if not out:
-        raise ValueError("Plik CSV nie zawiera żadnych pomiarów (tylko nagłówek).")
+        raise OdmowaDanychError("Plik CSV nie zawiera żadnych pomiarów (tylko nagłówek).")
     return out
 
 
@@ -175,7 +176,7 @@ def _normalize_measurements(pomiary: list[dict[str, Any]]) -> list[dict[str, Any
             wielkością lub wartość nieliczbowa (z numerem wiersza gdy dostępny).
     """
     if not pomiary:
-        raise ValueError("Brak pomiarów: lista pomiarów jest pusta.")
+        raise OdmowaDanychError("Brak pomiarów: lista pomiarów jest pusta.")
 
     out: list[dict[str, Any]] = []
     for pozycja, raw in enumerate(pomiary, start=1):
@@ -184,11 +185,11 @@ def _normalize_measurements(pomiary: list[dict[str, Any]]) -> list[dict[str, Any
         wielkosc = str(raw.get("wielkosc") or "").strip().upper()
         jednostka = str(raw.get("jednostka") or "").strip()
         if not element_ref:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: brak identyfikatora elementu (element_ref)."
             )
         if wielkosc not in _WIELKOSCI:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: nieznana wielkość "
                 f"'{raw.get('wielkosc')}' (dozwolone: U, P, Q)."
             )
@@ -196,23 +197,23 @@ def _normalize_measurements(pomiary: list[dict[str, Any]]) -> list[dict[str, Any
         try:
             wartosc = float(wartosc_raw)
         except (TypeError, ValueError) as exc:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: wartość '{wartosc_raw}' nie jest liczbą."
             ) from exc
         if jednostka.lower() != _JEDNOSTKA_KEY[wielkosc]:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: jednostka '{jednostka}' niezgodna "
                 f"z wielkością {wielkosc} (oczekiwano {_JEDNOSTKA_LABEL[wielkosc]})."
             )
         zacisk_raw = raw.get("zacisk")
         zacisk = str(zacisk_raw).strip() if zacisk_raw is not None else ""
         if wielkosc == "U" and zacisk:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: napięcie mierzy się w węźle — zacisk "
                 f"'{zacisk}' dotyczy wyłącznie mocy gałęzi (P, Q)."
             )
         if zacisk and zacisk not in _ZACISKI:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Pomiar w wierszu {etykieta}: zacisk '{zacisk}' — dozwolone 'od' "
                 "(zacisk początkowy gałęzi) albo 'do' (zacisk końcowy)."
             )
@@ -496,12 +497,12 @@ def build_zgodnosc_powykonawcza_view(
             pomiaru lub brak jawnej tolerancji dla mierzonej wielkości (422 PL).
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Raport zgodności powykonawczej wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
@@ -513,13 +514,13 @@ def build_zgodnosc_powykonawcza_view(
 
     obecne = {p["wielkosc"] for p in znormalizowane}
     if "U" in obecne and napiecie_pct is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Brak jawnej tolerancji napięcia (tolerancje.napiecie_pct). Nie przyjęto "
             "wartości domyślnej — brak udokumentowanego źródła normatywnego; podaj "
             "tolerancję jawnie."
         )
     if (obecne & {"P", "Q"}) and moc_pct is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Brak jawnej tolerancji mocy (tolerancje.moc_pct). Nie przyjęto wartości "
             "domyślnej — brak udokumentowanego źródła normatywnego; podaj tolerancję "
             "jawnie."

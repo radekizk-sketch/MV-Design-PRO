@@ -22,6 +22,7 @@ import hashlib
 from pathlib import Path
 
 import pytest
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -279,7 +280,8 @@ def test_no_any_in_domain_types():
     # We allow justified Any usages at serialization boundaries
     # (canonicalize, stable_sort_key, to_dict/from_dict, protection interop)
     # but flag excessive use beyond the baseline
-    max_allowed = 30
+    # Pomiar 2026-10-22 (karta LINIA-110): 29 — zapadka tylko w dół.
+    max_allowed = 29
     if len(violations) > max_allowed:
         violation_text = "\n".join(violations[:20])
         pytest.fail(
@@ -637,6 +639,7 @@ def test_solver_whitebox_completeness_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # White-box trace must be non-empty
@@ -684,16 +687,16 @@ def test_solver_whitebox_completeness_pf():
 
     WHITE BOX Rule: Power flow solver must expose ybus_trace and nr_trace.
     """
-    from analysis.power_flow import (
-        PowerFlowInput,
-        PowerFlowOptions,
-        PowerFlowSolver,
-        PQSpec,
-        SlackSpec,
-    )
     from network_model.core.branch import BranchType, LineBranch
     from network_model.core.graph import NetworkGraph
     from network_model.core.node import Node, NodeType
+    from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+    from network_model.solvers.power_flow_types import (
+        PowerFlowInput,
+        PowerFlowOptions,
+        PQSpec,
+        SlackSpec,
+    )
 
     graph = NetworkGraph()
     graph.add_node(
@@ -739,19 +742,19 @@ def test_solver_whitebox_completeness_pf():
         options=PowerFlowOptions(max_iter=50),
     )
 
-    result = PowerFlowSolver().solve(pf_input)
+    # Karta TORY-TYLKO-W-TESTACH (2026-09-30): dawny adapter warstwy analizy
+    # (`analysis.power_flow.PowerFlowSolver`) skasowany — nie miał konsumenta w produkcie.
+    # Intencja bez zmian: WHITE BOX solvera NR (Y-bus + ślad iteracji) sprawdzany wprost
+    # na rozwiązaniu solvera, z którego bieg kanoniczny składa wynik.
+    solution = PowerFlowNewtonSolver().solve(pf_input)
 
-    assert result.converged, "Power flow did not converge"
+    assert solution.converged, "Power flow did not converge"
 
     # White-box trace must contain Y-bus information
-    trace = result.white_box_trace
-    assert trace is not None, "white_box_trace is None"
-    assert "ybus" in trace, f"Missing 'ybus' in white_box_trace. Found keys: {list(trace.keys())}"
+    assert solution.ybus_trace, "Missing Y-bus trace in the solver solution"
 
     # Must contain Newton-Raphson iteration trace
-    assert (
-        "nr_iterations" in trace
-    ), f"Missing 'nr_iterations' in white_box_trace. Found keys: {list(trace.keys())}"
+    assert solution.nr_trace, "Missing Newton-Raphson iteration trace in the solver solution"
 
 
 # ===========================================================================
@@ -903,6 +906,7 @@ def test_determinism_same_input_same_output_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # Run 2 — fresh graph, identical parameters
@@ -911,6 +915,7 @@ def test_determinism_same_input_same_output_sc():
         fault_node_id="MV",
         c_factor=1.1,
         tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
     )
 
     # Verify bit-identical scalar results
@@ -945,16 +950,16 @@ def test_determinism_same_input_same_output_pf():
     """
     Run PF solver twice with identical input, verify bit-identical results.
     """
-    from analysis.power_flow import (
-        PowerFlowInput,
-        PowerFlowOptions,
-        PowerFlowSolver,
-        PQSpec,
-        SlackSpec,
-    )
     from network_model.core.branch import BranchType, LineBranch
     from network_model.core.graph import NetworkGraph
     from network_model.core.node import Node, NodeType
+    from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+    from network_model.solvers.power_flow_types import (
+        PowerFlowInput,
+        PowerFlowOptions,
+        PQSpec,
+        SlackSpec,
+    )
 
     def build_pf_graph() -> NetworkGraph:
         g = NetworkGraph()
@@ -1003,7 +1008,9 @@ def test_determinism_same_input_same_output_pf():
             options=PowerFlowOptions(max_iter=50),
         )
 
-    solver = PowerFlowSolver()
+    # Karta TORY-TYLKO-W-TESTACH (2026-09-30): determinizm sprawdzany na solverze NR
+    # wprost (dawny adapter warstwy analizy skasowany — bez konsumenta w produkcie).
+    solver = PowerFlowNewtonSolver()
     result1 = solver.solve(build_input())
     result2 = solver.solve(build_input())
 
@@ -1011,10 +1018,10 @@ def test_determinism_same_input_same_output_pf():
     assert result1.iterations == result2.iterations
 
     # Verify voltage magnitudes are identical
-    for node_id in result1.node_u_mag_pu:
-        assert result1.node_u_mag_pu[node_id] == result2.node_u_mag_pu[node_id], (
+    for node_id in result1.node_u_mag:
+        assert result1.node_u_mag[node_id] == result2.node_u_mag[node_id], (
             f"Voltage magnitude for {node_id} not deterministic: "
-            f"{result1.node_u_mag_pu[node_id]} vs {result2.node_u_mag_pu[node_id]}"
+            f"{result1.node_u_mag[node_id]} vs {result2.node_u_mag[node_id]}"
         )
 
     # Verify branch currents are identical

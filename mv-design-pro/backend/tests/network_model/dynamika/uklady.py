@@ -29,6 +29,7 @@ from network_model.solvers.dynamika import (
     WejscieDynamiki,
     WezelDynamiki,
 )
+from network_model.solvers.dynamika.kontrakty import CharakterystykaOdbioru
 from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.urzadzenia import (
     MaszynaKlasyczna,
@@ -37,9 +38,12 @@ from network_model.solvers.dynamika.urzadzenia import (
     zbuduj_szyne_sztywna,
 )
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+from tests.walidacja_fizyczna.stanowisko import U_MIN_TESTOWE_PU
+
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 S_BAZOWA_MVA = 100.0
 F_BAZOWA_HZ = 50.0
@@ -53,6 +57,32 @@ U_GENERATORA_PU = 1.05
 P_GENERATORA_PU = 0.8
 H_MASZYNY_S = 3.5
 X_PRIM_MASZYNY_PU = 0.3
+
+#: Czulosc czestotliwosciowa i stala pomiaru odbioru ze STANEM (estymator czestotliwosci
+#: widzianej, karta AB-1b.3b) — dane testu, te same rzedy co w `test_estymator_odbioru.py`.
+K_PF_CZULY = 2.0
+K_QF_CZULY = 1.5
+T_F_CZULY_S = 0.05
+
+
+def charakterystyka_czula(
+    *, k_pf: float = K_PF_CZULY, k_qf: float = K_QF_CZULY, t_f_s: float = T_F_CZULY_S
+) -> CharakterystykaOdbioru:
+    """Odbior stalej mocy CZULY czestotliwosciowo: jeden stan (`kat_pomiaru_rad`)."""
+    return CharakterystykaOdbioru(
+        a_p=0.0,
+        b_p=0.0,
+        c_p=1.0,
+        a_q=0.0,
+        b_q=0.0,
+        c_q=1.0,
+        v0_pu=None,
+        k_pf=k_pf,
+        k_qf=k_qf,
+        f0_hz=F_BAZOWA_HZ,
+        u_min_pu=U_MIN_TESTOWE_PU,
+        t_pomiaru_czestotliwosci_s=t_f_s,
+    )
 
 
 @dataclass(frozen=True)
@@ -172,17 +202,25 @@ def zbuduj_smib_dwutorowy(*, d_pu: float = 0.0) -> UkladSmib:
     )
 
 
-def zbuduj_smib_z_odbiorem(*, p_odbioru_pu: float = 0.2, d_pu: float = 0.0) -> UkladSmib:
-    """SMIB z odbiorem o stalej mocy na szynie generatora.
+def zbuduj_smib_z_odbiorem(
+    *,
+    p_odbioru_pu: float = 0.2,
+    q_odbioru_pu: float = 0.0,
+    d_pu: float = 0.0,
+    charakterystyka: CharakterystykaOdbioru = STALA_MOC,
+) -> UkladSmib:
+    """SMIB z odbiorem na szynie generatora (domyslnie o stalej mocy).
 
     Punkt pracy liczony dokladnie: prad linii wyznacza sie z napiec, a moc
-    generatora jest suma mocy linii i mocy odbioru (bilans wezla GEN).
+    generatora jest suma mocy linii i mocy odbioru (bilans wezla GEN). Odbior czuly
+    czestotliwosciowo (`charakterystyka_czula`) ma w punkcie pracy moc BAZOWA: w `t = 0`
+    estymator widzi czestotliwosc znamionowa, wiec czynnik czestotliwosciowy jest 1.
     """
     podstawa = zbuduj_smib(d_pu=d_pu)
     napiecie_gen = podstawa.punkt_pracy.napiecia_pu["GEN"]
     napiecie_sys = podstawa.punkt_pracy.napiecia_pu["SYS"]
     prad_linii = (napiecie_gen - napiecie_sys) / complex(0.0, X_LINII_PU)
-    moc_odbioru = complex(p_odbioru_pu, 0.0)
+    moc_odbioru = complex(p_odbioru_pu, q_odbioru_pu)
     prad_odbioru = moc_odbioru.conjugate() / napiecie_gen.conjugate()
     moc_generatora = napiecie_gen * (prad_linii + prad_odbioru).conjugate()
     return UkladSmib(
@@ -190,7 +228,11 @@ def zbuduj_smib_z_odbiorem(*, p_odbioru_pu: float = 0.2, d_pu: float = 0.0) -> U
         galezie=podstawa.galezie,
         odbiory=(
             OdbiorDynamiki(
-                ident="ODB1", wezel="GEN", p_pu=p_odbioru_pu, q_pu=0.0, charakterystyka=STALA_MOC
+                ident="ODB1",
+                wezel="GEN",
+                p_pu=p_odbioru_pu,
+                q_pu=q_odbioru_pu,
+                charakterystyka=charakterystyka,
             ),
         ),
         maszyna=podstawa.maszyna,

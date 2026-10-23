@@ -14,7 +14,10 @@ Two paths:
      (source_mode="MIGRACJA", parameter_source="MANUAL_EQUIVALENT", catalog_ref=
      None) and the import reports CATALOG_MAPPING_REQUIRED with
      elements_without_catalog populated. Per-km parameters are recovered by
-     dividing the SI totals by the (preserved) Conductor.length.
+     dividing the SI totals by the (preserved) Conductor.length. Two-winding
+     PowerTransformers come back with their canonical tap changer
+     (RatioTapChanger + TapChangerControl -> ``Transformer.tap_changer``; the
+     field mapping and the named losses live in ``cgmes_exporter``).
 
 After loading, the ENMValidator is always run and its status surfaced.
 
@@ -25,9 +28,12 @@ the CIM name. ZERO physics; imports neither solvers nor analysis.
 
 from __future__ import annotations
 
+import functools
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any, Literal
 
 from enm.models import (
     Bus,
@@ -35,16 +41,32 @@ from enm.models import (
     EnergyNetworkModel,
     ENMHeader,
     FuseBranch,
+    Generator,
     Load,
     OverheadLine,
+    ShuntCapacitor,
     Source,
     SwitchBranch,
+    TapChanger,
+    Transformer,
 )
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
 from enm.validator import ENMValidator, ValidationResult
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
-from network_model.pochodne import m_na_km
+from network_model.pochodne import (
+    impedancja_odniesiona_do_napiecia_ohm,
+    impedancja_z_napiecia_i_mocy_ohm,
+    m_na_km,
+    moc_bierna_z_susceptancji_mvar,
+    mw_na_kw,
+)
 
+from .mrid import KLASY_OBIEKTOW_GLOWNYCH, mrid_for
+from .parametry_maszyn import (
+    ATRYBUT_MOCY_MECHANICZNEJ,
+    moc_mechaniczna_z_cim,
+    tabliczka_maszyny_z_cim,
+)
 from .profiles import NS_CIM, NS_RDF
 from .refmap import CgmesRefMap
 from .units import (
@@ -52,6 +74,7 @@ from .units import (
     total_ohm_to_per_km,
     total_siemens_to_per_km,
     v_to_kv,
+    va_to_mva,
     w_to_mw,
 )
 
@@ -170,7 +193,7 @@ def import_from_eq_tp(
     tp_root = ET.fromstring(tp_bytes)
 
     # ref_id recovery: side-car map (mrid -> ref) if available, else CIM name.
-    mrid_to_ref = dict(refmap.mrid_to_ref) if refmap else {}
+    mrid_to_ref = _odwrotna_mapa_tozsamosci(refmap) if refmap else {}
 
     # Index EQ objects by local class name.
     by_class: dict[str, list[ET.Element]] = {}
@@ -420,12 +443,52 @@ def import_from_eq_tp(
         )
         elements_no_catalog.append(ref)
 
+    # Transformers -> PowerTransformer + PowerTransformerEnd (+ RatioTapChanger,
+    # TapChangerControl). Stan PRZED karty OLTC-U-DOCELOWE/C: tor obcy nie czytał
+    # transformatorów WCALE — sieć SN/nN wracała bez transformatorów, a regulator
+    # zaczepów (nastawa napięcia docelowego, pasmo, tryb) znikał po cichu.
+    ostrzezenia_transformatorow: list[str] = []
+    transformers = _importuj_transformatory(
+        by_class,
+        ref_of=ref_of,
+        bus_ref_for_terminal=bus_ref_for_terminal,
+        ostrzezenia=ostrzezenia_transformatorow,
+    )
+    elements_no_catalog.extend(t.ref_id for t in transformers)
+
+    # Generatory i kondensatory (karta OLTC-U-DOCELOWE/C2). Stan PRZED: tor obcy nie
+    # czytał ich wcale — źródła wytwórcze i kompensacja znikały po cichu.
+    ostrzezenia_elementow: list[str] = []
+    generators = _importuj_generatory(
+        by_class,
+        ref_of=ref_of,
+        endpoint_bus_refs=endpoint_bus_refs,
+        ostrzezenia=ostrzezenia_elementow,
+    )
+    elements_no_catalog.extend(g.ref_id for g in generators)
+    shunt_capacitors = _importuj_kondensatory(
+        by_class,
+        ref_of=ref_of,
+        endpoint_bus_refs=endpoint_bus_refs,
+        ostrzezenia=ostrzezenia_elementow,
+    )
+    stacje = by_class.get("Substation", [])
+    if stacje:
+        ostrzezenia_elementow.append(
+            f"Stacje nieodtworzone ({len(stacje)}): profil EQ nie niesie rodzaju stacji "
+            "(station_type) ani przynależności szyn do stacji — model wymaga obu; "
+            "stacje trzeba zdefiniować po imporcie."
+        )
+
     enm = EnergyNetworkModel(
         header=ENMHeader(name=model_name),
         buses=buses,
         branches=branches,
+        transformers=transformers,
         loads=loads,
         sources=sources,
+        generators=generators,
+        shunt_capacitors=shunt_capacitors,
     )
     validation = ENMValidator().validate(enm)
     needs_mapping = bool(elements_no_catalog)
@@ -440,10 +503,531 @@ def import_from_eq_tp(
         warnings=_ostrzezenia_importu(
             elements_no_catalog=elements_no_catalog,
             odbiory_bez_stanu_ustalonego=odbiory_bez_stanu_ustalonego,
-        ),
+        )
+        + ostrzezenia_transformatorow
+        + ostrzezenia_elementow,
         elements_without_catalog=sorted(set(elements_no_catalog)),
         catalog_mapping_required=needs_mapping,
         used_side_car=False,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Identity recovery (side-car present, EQ+TP path)
+# ---------------------------------------------------------------------------
+
+
+def _odwrotna_mapa_tozsamosci(refmap: CgmesRefMap) -> dict[str, str]:
+    """mRID -> ref_id dla KAŻDEGO obiektu głównego, który eksporter mógł wystawić.
+
+    mRID jest czystą funkcją (klasa CIM, ref_id) (``mrid.mrid_for``), więc importer nie
+    musi polegać na tym, pod jaką klasą side-car zarejestrował element. Stan PRZED:
+    odwzorowanie brało wyłącznie ``refmap.mrid_to_ref`` — szyny (rejestrowane pod
+    ConnectivityNode, budowane z TopologicalNode), kondensatory (niezarejestrowane)
+    i generator SCIG (zarejestrowany pod klasą, której eksporter już nie emituje)
+    wracały z NAZWĄ zamiast ``ref_id``. Wpisy jawne side-cara mają pierwszeństwo.
+    """
+    refy: set[str] = set(refmap.ref_to_mrid)
+    for wartosc in refmap.enm.values():
+        if isinstance(wartosc, list):
+            refy.update(
+                str(e["ref_id"]) for e in wartosc if isinstance(e, dict) and e.get("ref_id")
+            )
+    mapa = {mrid_for(klasa, ref): ref for ref in sorted(refy) for klasa in KLASY_OBIEKTOW_GLOWNYCH}
+    mapa.update(refmap.mrid_to_ref)
+    return mapa
+
+
+# ---------------------------------------------------------------------------
+# Generators + shunt capacitors (third-party EQ+TP path)
+# ---------------------------------------------------------------------------
+
+#: Klasa jednostki ``PowerElectronicsUnit`` -> rodzaj generatora ENM. Typ z KLASY CIM,
+#: nigdy z nazwy. ``PowerElectronicsWindUnit`` nie odróżnia typu 3 (DFIG) od typu 4
+#: (to niesie profil DY) — rodzaj ogólny ``wind_inverter`` z nazwanym ostrzeżeniem.
+_RODZAJ_Z_JEDNOSTKI: dict[str, str] = {
+    "PhotoVoltaicUnit": "pv_inverter",
+    "BatteryUnit": "bess",
+    "PowerElectronicsWindUnit": "wind_inverter",
+}
+
+#: Wynik ``_rodzaj_generatora``: obiekt CIM nie jest generatorem (np. silnik).
+_POMIN = "__pomin__"
+
+
+def _importuj_generatory(
+    by_class: dict[str, list[ET.Element]],
+    *,
+    ref_of: Callable[[str | None, str | None], str],
+    endpoint_bus_refs: Callable[[str], tuple[str | None, str | None]],
+    ostrzezenia: list[str],
+) -> list[Generator]:
+    """SynchronousMachine / AsynchronousMachine / PowerElectronicsConnection -> Generator.
+
+    Para eksportu: ``cgmes_exporter._emit_generator`` (tabela pól tam). Moc ``p``/``q``
+    w konwencji odbiorczej CIM -> wytwarzanie ENM (znak odwrócony). ``ratedS``/``ratedU``
+    -> ``materialized_params`` ``sn_mva``/``un_kv`` (jedna jednostka: ratedS to moc całej
+    instalacji), ``AsynchronousMachine.ratedMechanicalPower`` -> ``pr_mw`` (ta sama konwencja),
+    bez atrybutu = klucz nieobecny. Parametry zwarciowe maszyn wirujących
+    (``parametry_maszyn.ATRYBUTY_MASZYNY_CIM``) -> klucze rejestru wartości roboczych. Brak ``p`` = 0 MW z NAZWANYM ostrzeżeniem
+    (wzorzec odbiorów wyżej; ``Generator.p_mw`` nie przyjmuje braku).
+    """
+    jednostki: dict[str, list[str]] = {}
+    for klasa_jednostki in _RODZAJ_Z_JEDNOSTKI:
+        for unit in by_class.get(klasa_jednostki, []):
+            pec = _resource(unit, "PowerElectronicsUnit.PowerElectronicsConnection")
+            if pec:
+                jednostki.setdefault(pec, []).append(klasa_jednostki)
+
+    generatory: list[Generator] = []
+    bez_mocy: list[str] = []
+    for klasa in ("SynchronousMachine", "AsynchronousMachine", "PowerElectronicsConnection"):
+        wlasciciel = (
+            "PowerElectronicsConnection"
+            if klasa == "PowerElectronicsConnection"
+            else "RotatingMachine"
+        )
+        for elem in by_class.get(klasa, []):
+            mrid = _mrid_of(elem)
+            if not mrid:
+                continue
+            name = _text(elem, "IdentifiedObject.name") or mrid
+            szyna, _ = endpoint_bus_refs(mrid)
+            if szyna is None:
+                ostrzezenia.append(f"Generator {name}: brak zacisku z węzłem — pominięty.")
+                continue
+            rodzaj = _rodzaj_generatora(klasa, elem, jednostki.get(mrid, []), name, ostrzezenia)
+            if rodzaj == _POMIN:
+                continue
+            p_w = _float(_text(elem, f"{wlasciciel}.p"))
+            q_w = _float(_text(elem, f"{wlasciciel}.q"))
+            s_va = _float(_text(elem, f"{wlasciciel}.ratedS"))
+            u_v = _float(_text(elem, f"{wlasciciel}.ratedU"))
+            tabliczka: dict[str, float] = {}
+            if s_va is not None:
+                tabliczka["sn_mva"] = va_to_mva(s_va)
+            if u_v is not None:
+                tabliczka["un_kv"] = v_to_kv(u_v)
+            # Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej (x″d, cos φ, p, I_LR/I_rM,
+            # η) — ta sama tabela co eksport; brak atrybutu = wartość robocza przy obliczeniu.
+            tabliczka.update(tabliczka_maszyny_z_cim(klasa, functools.partial(_text, elem)))
+            if klasa == "AsynchronousMachine":
+                # P_rM całej maszyny (jedna jednostka — konwencja ``ratedS``).
+                tabliczka.update(moc_mechaniczna_z_cim(_text(elem, ATRYBUT_MOCY_MECHANICZNEJ)))
+            if p_w is None:
+                bez_mocy.append(name)
+            generatory.append(
+                Generator(
+                    ref_id=ref_of(mrid, name),
+                    name=name,
+                    bus_ref=szyna,
+                    p_mw=0.0 - w_to_mw(p_w) if p_w is not None else 0.0,
+                    q_mvar=0.0 - w_to_mw(q_w) if q_w is not None else None,
+                    gen_type=rodzaj,  # type: ignore[arg-type]
+                    materialized_params=tabliczka or None,
+                    catalog_ref=None,
+                    source_mode="MIGRACJA",
+                )
+            )
+    if bez_mocy:
+        ostrzezenia.append(
+            f"Brak mocy czynnej w profilu stanu ustalonego dla {len(bez_mocy)} generator(ów) "
+            f"— wniesione jako 0 MW: {', '.join(sorted(bez_mocy))}."
+        )
+    return generatory
+
+
+def _rodzaj_generatora(
+    klasa: str,
+    elem: ET.Element,
+    klasy_jednostek: list[str],
+    name: str,
+    ostrzezenia: list[str],
+) -> str | None:
+    """Rodzaj generatora z KLASY CIM; ``_POMIN`` = element nie jest generatorem."""
+    if klasa == "SynchronousMachine":
+        return "synchronous"
+    if klasa == "AsynchronousMachine":
+        rodzaj_maszyny = _enum_literal(elem, "AsynchronousMachine.asynchronousMachineType")
+        if rodzaj_maszyny != "generator":
+            ostrzezenia.append(
+                f"Maszyna asynchroniczna {name}: rodzaj „{rodzaj_maszyny or 'brak'}” zamiast "
+                "generatora — model nie ma silnika jako elementu; pominięta."
+            )
+            return _POMIN
+        return "fw_scig"
+    rodzaje = sorted(set(klasy_jednostek))
+    if len(rodzaje) != 1:
+        ostrzezenia.append(
+            f"Przekształtnik {name}: jednostki {', '.join(rodzaje) or 'brak'} — rodzaj źródła "
+            "nieokreślony (gen_type puste), uzupełnij przed obliczeniami."
+        )
+        return None
+    if rodzaje[0] == "PowerElectronicsWindUnit":
+        ostrzezenia.append(
+            f"Przekształtnik wiatrowy {name}: profil EQ nie odróżnia typu 3 (DFIG) od typu 4 "
+            "— przyjęto przekształtnik pełny (wind_inverter); zweryfikuj rodzaj turbiny."
+        )
+    return _RODZAJ_Z_JEDNOSTKI[rodzaje[0]]
+
+
+def _importuj_kondensatory(
+    by_class: dict[str, list[ET.Element]],
+    *,
+    ref_of: Callable[[str | None, str | None], str],
+    endpoint_bus_refs: Callable[[str], tuple[str | None, str | None]],
+    ostrzezenia: list[str],
+) -> list[ShuntCapacitor]:
+    """LinearShuntCompensator -> ShuntCapacitor (bateria stała, wszystkie sekcje razem).
+
+    Moc znamionowa Q = B·N·U_n² (U_n = ``nomU``, B = ``bPerSection``, N =
+    ``maximumSections``) — ``pochodne.moc_bierna_z_susceptancji_mvar``, para funkcji
+    eksportu ``susceptancja_z_mocy_biernej_s``. Status z
+    ``sections``: 0 = otwarta, N = załączona. Czego model stałej baterii nie wyrazi
+    (dławik B < 0, częściowe załączenie, brak nomU/bPerSection/sections, straty G ≠ 0),
+    jest NAZWANE; element niewyrażalny pominięty — nigdy liczba zastępcza.
+    """
+    kondensatory: list[ShuntCapacitor] = []
+    for elem in by_class.get("LinearShuntCompensator", []):
+        mrid = _mrid_of(elem)
+        if not mrid:
+            continue
+        name = _text(elem, "IdentifiedObject.name") or mrid
+        szyna, _ = endpoint_bus_refs(mrid)
+        b_s = _float(_text(elem, "LinearShuntCompensator.bPerSection"))
+        u_v = _float(_text(elem, "ShuntCompensator.nomU"))
+        sekcje_max = _int(_text(elem, "ShuntCompensator.maximumSections"))
+        sekcje = _float(_text(elem, "ShuntCompensator.sections"))
+        if szyna is None or b_s is None or u_v is None or sekcje_max is None or sekcje is None:
+            brak = [
+                etykieta
+                for etykieta, wartosc in (
+                    ("zacisk", szyna),
+                    ("bPerSection", b_s),
+                    ("nomU", u_v),
+                    ("maximumSections", sekcje_max),
+                    ("sections", sekcje),
+                )
+                if wartosc is None
+            ]
+            ostrzezenia.append(f"Bateria {name}: brak {', '.join(brak)} — pominięta.")
+            continue
+        if b_s <= 0 or u_v <= 0 or sekcje_max < 1:
+            ostrzezenia.append(
+                f"Bateria {name}: bPerSection={b_s} S, nomU={u_v} V, maximumSections="
+                f"{sekcje_max} — model przyjmuje wyłącznie baterię kondensatorów; pominięta."
+            )
+            continue
+        if sekcje not in (0.0, float(sekcje_max)):
+            ostrzezenia.append(
+                f"Bateria {name}: załączone {sekcje:g} z {sekcje_max} sekcji — model stałej "
+                "baterii nie wyraża załączenia częściowego; pominięta."
+            )
+            continue
+        g_s = _float(_text(elem, "LinearShuntCompensator.gPerSection"))
+        if g_s:
+            ostrzezenia.append(
+                f"Bateria {name}: konduktancja gPerSection={g_s} S pominięta — model baterii "
+                "nie niesie strat."
+            )
+        rated_kv = v_to_kv(u_v)
+        kondensatory.append(
+            ShuntCapacitor(
+                ref_id=ref_of(mrid, name),
+                name=name,
+                bus_ref=szyna,
+                rated_kv=rated_kv,
+                rated_mvar=moc_bierna_z_susceptancji_mvar(b_s * sekcje_max, rated_kv),
+                status="open" if sekcje == 0.0 else "closed",
+                catalog_ref=None,
+                source_mode="MIGRACJA",
+                parameter_source="MANUAL_EQUIVALENT",
+            )
+        )
+    return kondensatory
+
+
+# ---------------------------------------------------------------------------
+# Transformers + canonical tap changer (third-party EQ+TP path)
+# ---------------------------------------------------------------------------
+
+
+def _int(value: str | None) -> int | None:
+    """Liczba całkowita z tekstu CIM; wartość niecałkowita (np. ciągła pozycja
+    ``TapChanger.step``) = ``None`` — nie zaokrąglamy po cichu."""
+    liczba = _float(value)
+    if liczba is None or not liczba.is_integer():
+        return None
+    return int(liczba)
+
+
+def _bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    return value.strip().lower() == "true"
+
+
+def _enum_literal(elem: ET.Element, local_name: str) -> str | None:
+    """Literał enumeracji CIM (``...#Klasa.literal`` -> ``literal``)."""
+    for child in elem:
+        if _local(child.tag) == local_name:
+            res = child.get(_RDF_RESOURCE)
+            if res:
+                return res.rpartition(".")[2]
+    return None
+
+
+#: Mnożnik jednostki ``RegulatingControl.targetValueUnitMultiplier`` -> napięcie w kV.
+#: Tylko literały, które dla trybu ``voltage`` mają jednoznaczne przeliczenie na kV;
+#: inny albo brak mnożnika = nastawa NIEODCZYTANA (ostrzeżenie), nigdy domysł jednostki.
+_MNOZNIK_NA_KV: dict[str, Callable[[float], float]] = {"k": float, "none": v_to_kv}
+
+
+def _importuj_transformatory(
+    by_class: dict[str, list[ET.Element]],
+    *,
+    ref_of: Callable[[str | None, str | None], str],
+    bus_ref_for_terminal: Callable[[str | None], str | None],
+    ostrzezenia: list[str],
+) -> list[Transformer]:
+    """PowerTransformer (2 końce) -> ``Transformer`` w trybie MIGRACJA.
+
+    Impedancja zwarciowa: suma R/X obu końców odniesiona do napięcia końca 1
+    (``impedancja_odniesiona_do_napiecia_ohm``), uk% = 100·|Z|/Z_b, ΔP_Cu = R/Z_b·S_n,
+    gdzie Z_b = U_1²/S_n (``impedancja_z_napiecia_i_mocy_ohm``) — odwrotność eksportu.
+    Koniec o numerze 1 = strona GN (konwencja CGMES: numeracja końców od najwyższego
+    napięcia; eksporter pisze tak samo). Grupa połączeń NIE jest odtwarzana: CIM niesie
+    ``connectionKind`` i ``phaseAngleClock``, ale eksport nie niesie informacji
+    o wyprowadzonym punkcie neutralnym („n"), więc złożenie „Dy11" z „Dyn11" byłoby
+    zmianą fizyki składowej zerowej — pole zostaje ``None`` i jest NAZWANE
+    w ostrzeżeniu. Każdy pominięty transformator też jest nazwany.
+    """
+    konce_wg_transformatora: dict[str, list[ET.Element]] = {}
+    for koniec in by_class.get("PowerTransformerEnd", []):
+        wlasciciel = _resource(koniec, "PowerTransformerEnd.PowerTransformer")
+        if wlasciciel:
+            konce_wg_transformatora.setdefault(wlasciciel, []).append(koniec)
+    rtc_wg_konca: dict[str, ET.Element] = {}
+    for rtc in by_class.get("RatioTapChanger", []):
+        koniec_mrid = _resource(rtc, "RatioTapChanger.TransformerEnd")
+        if koniec_mrid:
+            rtc_wg_konca[koniec_mrid] = rtc
+    sterowania = {
+        mrid: ctrl
+        for ctrl in by_class.get("TapChangerControl", [])
+        if (mrid := _mrid_of(ctrl)) is not None
+    }
+
+    transformatory: list[Transformer] = []
+    bez_grupy: list[str] = []
+    for pt in by_class.get("PowerTransformer", []):
+        mrid = _mrid_of(pt)
+        if not mrid:
+            continue
+        name = _text(pt, "IdentifiedObject.name") or mrid
+        ref = ref_of(mrid, name)
+        konce = sorted(
+            konce_wg_transformatora.get(mrid, []),
+            key=lambda k: _int(_text(k, "TransformerEnd.endNumber")) or 0,
+        )
+        if len(konce) != 2:
+            ostrzezenia.append(
+                f"Transformator {name}: {len(konce)} końców PowerTransformerEnd — model "
+                "przyjmuje wyłącznie transformatory dwuuzwojeniowe; element pominięty."
+            )
+            continue
+        gn, dn = konce
+        szyna_gn = bus_ref_for_terminal(_resource(gn, "TransformerEnd.Terminal"))
+        szyna_dn = bus_ref_for_terminal(_resource(dn, "TransformerEnd.Terminal"))
+        s_va = _float(_text(gn, "PowerTransformerEnd.ratedS"))
+        u_gn_v = _float(_text(gn, "PowerTransformerEnd.ratedU"))
+        u_dn_v = _float(_text(dn, "PowerTransformerEnd.ratedU"))
+        brak = [
+            etykieta
+            for etykieta, wartosc in (
+                ("zacisk strony GN", szyna_gn),
+                ("zacisk strony DN", szyna_dn),
+                ("ratedS", s_va),
+                ("ratedU strony GN", u_gn_v),
+                ("ratedU strony DN", u_dn_v),
+            )
+            if wartosc is None
+        ]
+        if brak or not s_va or not u_gn_v or not u_dn_v:
+            ostrzezenia.append(
+                f"Transformator {name}: brak danych {', '.join(brak) or 'niezerowych'} "
+                "— element pominięty (bez domysłu parametrów znamionowych)."
+            )
+            continue
+        assert szyna_gn is not None and szyna_dn is not None
+        sn_mva = va_to_mva(s_va)
+        uhv_kv = v_to_kv(u_gn_v)
+        ulv_kv = v_to_kv(u_dn_v)
+        z_dn = complex(
+            _float(_text(dn, "PowerTransformerEnd.r")) or 0.0,
+            _float(_text(dn, "PowerTransformerEnd.x")) or 0.0,
+        )
+        z_zwarcia = complex(
+            _float(_text(gn, "PowerTransformerEnd.r")) or 0.0,
+            _float(_text(gn, "PowerTransformerEnd.x")) or 0.0,
+        ) + impedancja_odniesiona_do_napiecia_ohm(z_dn, ulv_kv, uhv_kv)
+        z_bazowa = impedancja_z_napiecia_i_mocy_ohm(uhv_kv, sn_mva)
+
+        pola_zaczepow = _zaczepy_transformatora(
+            name=name,
+            konce=(gn, dn),
+            rtc_wg_konca=rtc_wg_konca,
+            sterowania=sterowania,
+            bus_ref_for_terminal=bus_ref_for_terminal,
+            ostrzezenia=ostrzezenia,
+        )
+        transformatory.append(
+            Transformer(
+                ref_id=ref,
+                name=name,
+                hv_bus_ref=szyna_gn,
+                lv_bus_ref=szyna_dn,
+                sn_mva=sn_mva,
+                uhv_kv=uhv_kv,
+                ulv_kv=ulv_kv,
+                uk_percent=100.0 * abs(z_zwarcia) / z_bazowa,
+                pk_kw=mw_na_kw(z_zwarcia.real / z_bazowa * sn_mva),
+                catalog_ref=None,
+                source_mode="MIGRACJA",
+                **pola_zaczepow,
+            )
+        )
+        bez_grupy.append(name)
+    if bez_grupy:
+        ostrzezenia.append(
+            f"Grupa połączeń nieodtworzona dla {len(bez_grupy)} transformator(ów): "
+            f"{', '.join(sorted(bez_grupy))} — profil nie niesie punktu neutralnego "
+            "uzwojeń; uzupełnij grupę połączeń przed obliczeniami składowej zerowej."
+        )
+    return transformatory
+
+
+def _zaczepy_transformatora(
+    *,
+    name: str,
+    konce: tuple[ET.Element, ET.Element],
+    rtc_wg_konca: dict[str, ET.Element],
+    sterowania: dict[str, ET.Element],
+    bus_ref_for_terminal: Callable[[str | None], str | None],
+    ostrzezenia: list[str],
+) -> dict[str, Any]:
+    """Pola zaczepów transformatora z ``RatioTapChanger`` (+ ``TapChangerControl``).
+
+    Para predykatu eksportu ``cgmes_exporter.regulator_kanoniczny``: obecność
+    ``TapChanger.ltcFlag`` = regulator KANONICZNY (``tap_changer``, V12K-045); brak =
+    przełącznik legacy (pola ``tap_min/tap_max/tap_position/tap_step_percent``, dawny
+    eksport bez ``ltcFlag``). Brak danej = pole ``None``/regulator pominięty
+    z ostrzeżeniem — nigdy liczba zastępcza (O-59: brak nastawy przy regulacji
+    automatycznej ma być widoczny jako brak, nie wymyślony).
+    """
+    rtc: ET.Element | None = None
+    uzwojenie: Literal["HV", "LV"] = "HV"
+    strony: tuple[Literal["HV", "LV"], Literal["HV", "LV"]] = ("HV", "LV")
+    for numer, koniec in zip(strony, konce, strict=True):
+        koniec_mrid = _mrid_of(koniec)
+        if koniec_mrid is not None and koniec_mrid in rtc_wg_konca:
+            rtc, uzwojenie = rtc_wg_konca[koniec_mrid], numer
+            break
+    if rtc is None:
+        return {}
+
+    ltc = _bool(_text(rtc, "TapChanger.ltcFlag"))
+    if ltc is None:
+        return {
+            "tap_min": _int(_text(rtc, "TapChanger.lowStep")),
+            "tap_max": _int(_text(rtc, "TapChanger.highStep")),
+            "tap_position": _int(_text(rtc, "TapChanger.normalStep")),
+            "tap_step_percent": _float(_text(rtc, "RatioTapChanger.stepVoltageIncrement")),
+        }
+
+    pozycja = _int(_text(rtc, "TapChanger.step"))
+    if pozycja is None:
+        pozycja = _int(_text(rtc, "TapChanger.normalStep"))
+    dolna = _int(_text(rtc, "TapChanger.lowStep"))
+    gorna = _int(_text(rtc, "TapChanger.highStep"))
+    neutralna = _int(_text(rtc, "TapChanger.neutralStep"))
+    krok = _float(_text(rtc, "RatioTapChanger.stepVoltageIncrement"))
+    if pozycja is None or dolna is None or gorna is None or neutralna is None or krok is None:
+        brak = [
+            nazwa
+            for nazwa, wartosc in (
+                ("lowStep", dolna),
+                ("highStep", gorna),
+                ("neutralStep", neutralna),
+                ("step/normalStep", pozycja),
+                ("stepVoltageIncrement", krok),
+            )
+            if wartosc is None
+        ]
+        ostrzezenia.append(
+            f"Transformator {name}: regulator zaczepów bez {', '.join(brak)} — regulator "
+            "pominięty (bez domysłu pozycji i kroku)."
+        )
+        return {}
+
+    ctrl_mrid = _resource(rtc, "TapChanger.TapChangerControl")
+    ctrl = sterowania.get(ctrl_mrid) if ctrl_mrid else None
+    wlaczona = _bool(_text(rtc, "TapChanger.controlEnabled"))
+    if wlaczona is None and ctrl is not None:
+        wlaczona = _bool(_text(ctrl, "RegulatingControl.enabled"))
+    nastawa_kv: float | None = None
+    pasmo_kv: float | None = None
+    szyna_regulowana: str | None = None
+    if ctrl is not None:
+        szyna_regulowana = bus_ref_for_terminal(_resource(ctrl, "RegulatingControl.Terminal"))
+        nastawa_kv, pasmo_kv = _nastawa_i_pasmo_kv(name, ctrl, ostrzezenia)
+
+    tap_changer = TapChanger(
+        regulation_type="OLTC" if ltc else "DETC",
+        regulated_winding=uzwojenie,
+        neutral_position=neutralna,
+        current_position=pozycja,
+        min_position=dolna,
+        max_position=gorna,
+        step_percent=krok,
+        control_mode="AUTOMATIC" if wlaczona else "MANUAL",
+        voltage_setpoint_kv=nastawa_kv,
+        deadband_kv=pasmo_kv,
+        controlled_bus_ref=szyna_regulowana,
+    )
+    return {"tap_changer": tap_changer}
+
+
+def _nastawa_i_pasmo_kv(
+    name: str, ctrl: ET.Element, ostrzezenia: list[str]
+) -> tuple[float | None, float | None]:
+    """``targetValue``/``targetDeadband`` sterowania napięciowego -> (kV, kV).
+
+    Odczyt tylko dla ``RegulatingControl.mode = voltage`` i jednoznacznego mnożnika
+    (``k`` albo ``none``); inaczej nastawa i pasmo zostają ``None`` z ostrzeżeniem.
+    """
+    nastawa = _float(_text(ctrl, "RegulatingControl.targetValue"))
+    pasmo = _float(_text(ctrl, "RegulatingControl.targetDeadband"))
+    if nastawa is None and pasmo is None:
+        return None, None
+    tryb = _enum_literal(ctrl, "RegulatingControl.mode")
+    if tryb != "voltage":
+        ostrzezenia.append(
+            f"Transformator {name}: sterowanie regulatora w trybie {tryb or 'nieokreślonym'} "
+            "zamiast napięciowego — nastawa i pasmo nieodczytane."
+        )
+        return None, None
+    mnoznik = _enum_literal(ctrl, "RegulatingControl.targetValueUnitMultiplier")
+    przelicz = _MNOZNIK_NA_KV.get(mnoznik or "")
+    if przelicz is None:
+        ostrzezenia.append(
+            f"Transformator {name}: nastawa regulatora bez jednoznacznego mnożnika jednostki "
+            f"({mnoznik or 'brak targetValueUnitMultiplier'}) — nastawa i pasmo nieodczytane."
+        )
+        return None, None
+    return (
+        przelicz(nastawa) if nastawa is not None else None,
+        przelicz(pasmo) if pasmo is not None else None,
     )
 
 

@@ -1,0 +1,46 @@
+{
+  "branches": [],
+  "line_fields": [
+    {
+      "attachment_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "bay_role": "FEEDER",
+      "corridor_refs": [],
+      "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation"
+    }
+  ],
+  "secondary_connectors": [],
+  "terminals": [
+    {
+      "branch_id": null,
+      "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+      "port_id": "trunk_out",
+      "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+      "status": "OTWARTY",
+      "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
+    }
+  ],
+  "trunks": [
+    {
+      "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_ref": null,
+      "segments": [],
+      "terminals": [
+        {
+          "branch_id": null,
+          "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+          "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+          "port_id": "trunk_out",
+          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "status": "OTWARTY",
+          "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
+        }
+      ]
+    }
+  ]
+}

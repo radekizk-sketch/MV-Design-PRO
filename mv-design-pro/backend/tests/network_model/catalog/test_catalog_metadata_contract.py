@@ -14,6 +14,7 @@ def _catalog_groups() -> dict[str, list[object]]:
     repo = get_default_mv_catalog()
     return {
         "LINIA_SN": repo.list_line_types(),
+        "PRZEWOD_LINII_WN": repo.list_overhead_conductor_types(),
         "KABEL_SN": repo.list_cable_types(),
         "TRAFO_SN_NN": repo.list_transformer_types(),
         "APARAT_SN": repo.list_switch_equipment_types(),

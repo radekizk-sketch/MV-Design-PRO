@@ -9,9 +9,15 @@
  * (WHITE BOX: „Document assumptions"), z kodem i uzasadnieniem. Gdy właściciel
  * doprecyzuje inaczej, zmiana jest lokalna do jednej funkcji tutaj.
  */
-import type { ConductingEdge, TerminalGraph } from './terminalGraph';
+import type {
+  ConductingEdge,
+  LeafTerminalKind,
+  TerminalGraph,
+  UnresolvedReferenceOwnerKind,
+} from './terminalGraph';
 import { nonTransformerComponents } from './terminalGraph';
 import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { opisElementu } from '../../core/opisElementu';
 
 export type InvariantCode =
   | 'EDGE_VOLTAGE_MISMATCH'
@@ -44,6 +50,42 @@ export interface GraphValidationResult {
  * nie tylko na podziale SN/nN. Para `wPasmieNn` / `powyzejPasmaNn` pochodzi z
  * jednego źródła, więc szyna niefizyczna (U ≤ 0) nie trafia do żadnej strony. */
 
+/** Rodzaj elementu-właściciela nierozwiązanej referencji → słowo dla projektanta. */
+const RODZAJ_WLASCICIELA_PL: Readonly<Record<UnresolvedReferenceOwnerKind, string>> = {
+  branch_from: 'Gałąź',
+  branch_to: 'Gałąź',
+  transformer_hv: 'Transformator',
+  transformer_lv: 'Transformator',
+  load: 'Odbiór',
+  generator: 'Źródło',
+  source: 'Źródło zasilania',
+};
+/** Strona elementu, której referencja jest nierozwiązana (pusty napis — element jednozaciskowy). */
+const STRONA_WLASCICIELA_PL: Readonly<Record<UnresolvedReferenceOwnerKind, string>> = {
+  branch_from: 'na początku ',
+  branch_to: 'na końcu ',
+  transformer_hv: 'po stronie górnego napięcia ',
+  transformer_lv: 'po stronie dolnego napięcia ',
+  load: '',
+  generator: '',
+  source: '',
+};
+/** Rodzaj elementu-liścia grafu terminali → słowo dla projektanta. */
+const RODZAJ_LISCIA_PL: Readonly<Record<LeafTerminalKind, string>> = {
+  load: 'Odbiór',
+  generator: 'Źródło',
+  source: 'Źródło zasilania',
+};
+
+/** Szyna nazwą z grafu terminali (`przypadek` — słowo rodzaju w potrzebnym przypadku, pusty
+ *  napis: sama nazwa), nigdy identyfikatorem (partia integracji 10). */
+function opisSzyny(graph: TerminalGraph, busRef: string, przypadek: string): string {
+  const nazwa = graph.nodes.get(busRef)?.name;
+  if (przypadek) return opisElementu(przypadek, nazwa);
+  const nadana = (nazwa ?? '').trim();
+  return nadana ? `„${nadana}”` : 'szyna bez nazwy';
+}
+
 function busVoltageKv(graph: TerminalGraph, busRef: string): number | null {
   return graph.nodes.get(busRef)?.voltageKv ?? null;
 }
@@ -73,7 +115,7 @@ function edgeVoltageCompatibilityViolations(graph: TerminalGraph): InvariantViol
       violations.push({
         code: 'EDGE_VOLTAGE_MISMATCH',
         messagePl:
-          `Gałąź „${edge.name}" (${edge.ref}) łączy dwie różne domeny napięciowe ` +
+          `${opisElementu('Gałąź', edge.name)} łączy dwie różne domeny napięciowe ` +
           `(${from.voltageKv} kV ↔ ${to.voltageKv} kV) bez pośrednictwa transformatora — ` +
           'niedozwolone dla gałęzi innej niż transformator.',
         elementRefs: [edge.ref, edge.fromBusRef, edge.toBusRef],
@@ -99,7 +141,7 @@ function transformerVoltageBoundaryViolations(graph: TerminalGraph): InvariantVi
       violations.push({
         code: 'TRANSFORMER_NOT_CROSSING_DOMAIN',
         messagePl:
-          `Transformator „${tr.name}" (${tr.ref}) ma terminal HV i LV w TEJ SAMEJ ` +
+          `${opisElementu('Transformator', tr.name)} ma terminal HV i LV w TEJ SAMEJ ` +
           `domenie napięciowej (${tr.hvTerminal.voltageKv} kV) — nie pełni roli granicy ` +
           'między domenami.',
         elementRefs: [tr.ref, tr.hvTerminal.busRef, tr.lvTerminal.busRef],
@@ -129,7 +171,7 @@ function busVoltageConsistencyViolations(graph: TerminalGraph): InvariantViolati
     if (!Number.isFinite(node.voltageKv) || node.voltageKv <= 0) {
       violations.push({
         code: 'BUS_VOLTAGE_INCONSISTENT',
-        messagePl: `Szyna „${node.name}" (${node.busRef}) ma niepoprawne napięcie znamionowe (${node.voltageKv} kV) — musi być liczbą dodatnią.`,
+        messagePl: `${opisElementu('Szyna', node.name)} ma niepoprawne napięcie znamionowe (${node.voltageKv} kV) — musi być liczbą dodatnią.`,
         elementRefs: [node.busRef],
       });
     }
@@ -145,9 +187,9 @@ function busVoltageConsistencyViolations(graph: TerminalGraph): InvariantViolati
         violations.push({
           code: 'BUS_VOLTAGE_INCONSISTENT',
           messagePl:
-            `Transformator „${tr.name}" (${tr.ref}): napięcie znamionowe uzwojenia ${side} ` +
-            `(${terminal.ratedKv} kV) odbiega o ${(deviation * 100).toFixed(1)}% od napięcia szyny ` +
-            `${terminal.busRef} (${terminal.voltageKv} kV) — powyżej tolerancji ${BUS_TRANSFORMER_RATED_TOLERANCE * 100}%.`,
+            `${opisElementu('Transformator', tr.name)}: napięcie znamionowe uzwojenia ${side} ` +
+            `(${terminal.ratedKv} kV) odbiega o ${(deviation * 100).toFixed(1)}% od napięcia ` +
+            `${opisSzyny(graph, terminal.busRef, 'szyny')} (${terminal.voltageKv} kV) — powyżej tolerancji ${BUS_TRANSFORMER_RATED_TOLERANCE * 100}%.`,
           elementRefs: [tr.ref, terminal.busRef],
         });
       }
@@ -172,8 +214,8 @@ function deviceTerminalConsistencyViolations(graph: TerminalGraph): InvariantVio
   return graph.unresolvedReferences.map((ref) => ({
     code: 'DEVICE_TERMINAL_UNRESOLVED' as const,
     messagePl:
-      `Element „${ref.ownerRef}" (${ref.ownerKind}) wskazuje na szynę „${ref.danglingBusRef}", ` +
-      'której nie ma w modelu.',
+      `${opisElementu(RODZAJ_WLASCICIELA_PL[ref.ownerKind], ref.ownerName)} ` +
+      `${STRONA_WLASCICIELA_PL[ref.ownerKind]}wskazuje szynę, której nie ma w modelu.`,
     elementRefs: [ref.ownerRef, ref.danglingBusRef],
   }));
 }
@@ -200,8 +242,9 @@ function danglingEnergizedTerminalViolations(graph: TerminalGraph): InvariantVio
       violations.push({
         code: 'DANGLING_ENERGIZED_TERMINAL',
         messagePl:
-          `Terminal „${leaf.name}" (${leaf.ref}, ${leaf.kind}) siedzi na szynie „${leaf.busRef}", ` +
-          'która nie ma ŻADNEJ innej krawędzi (gałęzi ani transformatora) — terminal jest odizolowany.',
+          `${opisElementu(RODZAJ_LISCIA_PL[leaf.kind], leaf.name)} siedzi na ` +
+          `${opisSzyny(graph, leaf.busRef, 'szynie')}, która nie ma ŻADNEJ innej krawędzi ` +
+          '(gałęzi ani transformatora) — element jest odizolowany.',
         elementRefs: [leaf.ref, leaf.busRef],
       });
     }
@@ -235,7 +278,7 @@ function crossVoltageConductorViolations(graph: TerminalGraph): InvariantViolati
         code: 'CROSS_VOLTAGE_CONDUCTOR',
         messagePl:
           `Składowa spójności grafu bez transformatorów obejmuje ${levelIds.size} różne domeny ` +
-          `napięciowe (szyny: ${busRefs.join(', ')}) — istnieje ścieżka przewodząca między domenami ` +
+          `napięciowe (szyny: ${busRefs.map((ref) => opisSzyny(graph, ref, '')).join(', ')}) — istnieje ścieżka przewodząca między domenami ` +
           'z pominięciem transformatora/konwertera.',
         elementRefs: busRefs,
       });
@@ -260,7 +303,7 @@ function crossVoltageConductorViolations(graph: TerminalGraph): InvariantViolati
 // jest AKTYWNA (`status==='closed'` — w torze), to HARD ERROR (plan: „nigdy
 // element w aktywnym torze").
 // ---------------------------------------------------------------------------
-export type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'UNRESOLVED' | null;
+export type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'CATALOG_MISSING' | 'UNRESOLVED' | null;
 
 /**
  * T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3): EXPORTOWANA (T0 była
@@ -278,6 +321,14 @@ export function resolveNnApparatusKind(edge: ConductingEdge): NnApparatusResolut
   const deviceKind = readMaterializedString(edge, 'device_kind');
   if (deviceKind === 'WYLACZNIK_GLOWNY' || deviceKind === 'WYLACZNIK_ODPLYWOWY') return 'MCB';
   if (deviceKind === 'ROZLACZNIK_BEZPIECZNIKOWY') return 'FUSE_SWITCH';
+  // Karta SLD-SUBSTRAT (kontynuacja): aparat BEZ wiązania katalogowego nie jest
+  // „nierozpoznany" — model jawnie deklaruje brak katalogu, a backend nazywa go
+  // pozycją gotowości (E061, a dla aparatu z automigracji pól nN — W061) z akcją
+  // naprawczą wskazującą aparat i pole. Brak katalogu blokuje analizy czytające
+  // dane aparatu, nie rysunek: to nie jest naruszenie grafu elektrycznego.
+  // UNRESOLVED zostaje dla aparatu, który MA wiązanie, a katalog nie pozwala
+  // rozstrzygnąć jego rodzaju (sprzeczność danych, nie brak).
+  if (edge.catalogRef == null) return 'CATALOG_MISSING';
   return 'UNRESOLVED';
 }
 
@@ -292,9 +343,9 @@ function unresolvedActiveApparatusViolations(graph: TerminalGraph): InvariantVio
       violations.push({
         code: 'UNRESOLVED_ACTIVE_APPARATUS',
         messagePl:
-          `Gałąź „${edge.name}" (${edge.ref}) w aktywnym torze nN niesie aparat (switch/breaker), ` +
-          'którego rodzaju katalog nie rozpoznaje (brak kategorii katalogu/device_kind rozpoznawalnego) — ' +
-          'model niekompletny, SLD INVALID.',
+          `${opisElementu('Gałąź', edge.name)} w aktywnym torze nN niesie łącznik z typem ` +
+          'katalogowym, którego rodzaju katalog nie rozpoznaje (typ bez rozpoznawalnej ' +
+          'kategorii aparatu) — dane sprzeczne, schemat niepoprawny.',
         elementRefs: [edge.ref],
       });
     }
@@ -330,14 +381,14 @@ function lvFeederOnMvBusViolations(graph: TerminalGraph): InvariantViolation[] {
     if (powyzejPasmaNn(fromKv)) {
       violations.push({
         code: 'LV_FEEDER_ON_MV_BUS',
-        messagePl: `Aparat klasy nN „${edge.name}" (${edge.ref}) dotyka szyny SN „${edge.fromBusRef}" (${fromKv} kV).`,
+        messagePl: `${opisElementu('Aparat klasy nN', edge.name)} dotyka szyny SN (${opisSzyny(graph, edge.fromBusRef, '')}, ${fromKv} kV).`,
         elementRefs: [edge.ref, edge.fromBusRef],
       });
     }
     if (powyzejPasmaNn(toKv)) {
       violations.push({
         code: 'LV_FEEDER_ON_MV_BUS',
-        messagePl: `Aparat klasy nN „${edge.name}" (${edge.ref}) dotyka szyny SN „${edge.toBusRef}" (${toKv} kV).`,
+        messagePl: `${opisElementu('Aparat klasy nN', edge.name)} dotyka szyny SN (${opisSzyny(graph, edge.toBusRef, '')}, ${toKv} kV).`,
         elementRefs: [edge.ref, edge.toBusRef],
       });
     }
@@ -354,14 +405,14 @@ function mvFieldOnLvBusViolations(graph: TerminalGraph): InvariantViolation[] {
     if (wPasmieNn(fromKv)) {
       violations.push({
         code: 'MV_FIELD_ON_LV_BUS',
-        messagePl: `Aparat klasy SN „${edge.name}" (${edge.ref}) dotyka szyny nN „${edge.fromBusRef}" (${fromKv} kV).`,
+        messagePl: `${opisElementu('Aparat klasy SN', edge.name)} dotyka szyny nN (${opisSzyny(graph, edge.fromBusRef, '')}, ${fromKv} kV).`,
         elementRefs: [edge.ref, edge.fromBusRef],
       });
     }
     if (wPasmieNn(toKv)) {
       violations.push({
         code: 'MV_FIELD_ON_LV_BUS',
-        messagePl: `Aparat klasy SN „${edge.name}" (${edge.ref}) dotyka szyny nN „${edge.toBusRef}" (${toKv} kV).`,
+        messagePl: `${opisElementu('Aparat klasy SN', edge.name)} dotyka szyny nN (${opisSzyny(graph, edge.toBusRef, '')}, ${toKv} kV).`,
         elementRefs: [edge.ref, edge.toBusRef],
       });
     }

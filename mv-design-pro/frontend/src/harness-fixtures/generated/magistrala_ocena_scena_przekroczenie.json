@@ -6,8 +6,8 @@
       "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
       "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków."
     ],
-    "delta_u_pct": 0.5291085880165685,
-    "delta_u_v": 79.36628820248526,
+    "delta_u_pct": 0.529108588017,
+    "delta_u_v": 79.3662882025,
     "dlugosc_m": 500.0,
     "formula_ref": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100",
     "liczba_odcinkow": 1
@@ -216,7 +216,7 @@
           "jednostka": "A",
           "wartosc": -90.0
         },
-        "wzgledny": -0.2903225806451613
+        "wzgledny": -0.290322580645
       },
       "niepewnosc": {
         "metoda_pl": null,
@@ -448,10 +448,10 @@
       "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
       "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe)."
     ],
-    "delta_u_pct": 0.5291085880165685,
-    "delta_u_reactive_v": 11.573819594239406,
-    "delta_u_resistive_v": 67.79246860824585,
-    "delta_u_v": 79.36628820248526,
+    "delta_u_pct": 0.529108588017,
+    "delta_u_reactive_v": 11.5738195942,
+    "delta_u_resistive_v": 67.7924686082,
+    "delta_u_v": 79.3662882025,
     "formula_ref": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)",
     "prad_obliczeniowy_a": 400.0,
     "prad_z_obciazalnosci": false,

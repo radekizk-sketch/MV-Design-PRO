@@ -15,7 +15,7 @@ INVARIANTS:
 ALIGNMENT with existing:
 - AnalysisEligibilityMatrix (eligibility_models.py) — per-analysis eligibility (BLOCKER/WARNING)
 - FixAction (enm/fix_actions.py) — UI suggestion (OPEN_MODAL, NAVIGATE_TO_ELEMENT, etc.)
-- FieldDeviceFixActionV1 (frontend) — SLD-level fix actions
+- TopologyFixAction (frontend, `ui/sld/core/topologyInputReader.ts`) — braki topologii rysunku
 ReadinessProfileV1 AGGREGATES all of these into a single per-project readiness view.
 """
 

@@ -8,6 +8,8 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
@@ -15,7 +17,7 @@ _DATA_IMAGE_URL_RE = re.compile(r"^data:(image/[A-Za-z0-9.+-]+);base64,(.*)$", r
 _EMPTY_DATA_IMAGE_IN_TEXT_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,(?=$|[\s)'\"\]>}])")
 
 
-class ImageAttachmentError(ValueError):
+class ImageAttachmentError(OdmowaDanychError):
     """Local error raised before an invalid image attachment reaches an API request."""
 
     def __init__(

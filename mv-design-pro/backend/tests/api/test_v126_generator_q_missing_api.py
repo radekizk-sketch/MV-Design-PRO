@@ -51,6 +51,8 @@ from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
 
+from tests.utils.biegi import uruchom_v126
+
 _SZYNA_A = "BUS_A"
 _SZYNA_B = "BUS_B"
 
@@ -112,10 +114,7 @@ def test_reliability_contingency_bez_q_generatora_zwraca_422_nie_liczy_po_cichu(
     """PIN NA DEFEKT: przed naprawą brak Q wchodziłby do solvera jako 0,0."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-            json={"parameters": _ODBIORCY},
-        )
+        resp = uruchom_v126(client, case_id, "reliability_contingency", _ODBIORCY)
     assert resp.status_code == 422, resp.text
     assert "generator.q_missing" in resp.text
     assert "GEN-1" in resp.text
@@ -127,10 +126,7 @@ def test_reliability_contingency_bez_liczby_odbiorcow_zwraca_422() -> None:
     NIE jest przebrana za brak Q (Q jawne)."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator={**_GENERATOR_BEZ_Q, "q_mvar": 0.0}))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-            json={"parameters": {}},
-        )
+        resp = uruchom_v126(client, case_id, "reliability_contingency", {})
     assert resp.status_code == 422, resp.text
     assert "parametr.customer_counts" in resp.text
     assert "generator.q_missing" not in resp.text
@@ -140,11 +136,8 @@ def test_reliability_contingency_z_jawnym_q_liczy_normalnie() -> None:
     """Kontrola dwustronna: Q jawne (nawet gdyby było 0.0) przechodzi."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator={**_GENERATOR_BEZ_Q, "q_mvar": 0.0}))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-            json={"parameters": _ODBIORCY},
-        )
-    assert resp.status_code == 200, resp.text
+        resp = uruchom_v126(client, case_id, "reliability_contingency", _ODBIORCY)
+    assert resp.status_code == 202, resp.text
     result = client.get(resp.json()["result_url"])
     assert result.status_code == 200
 
@@ -158,11 +151,8 @@ def test_inna_analiza_v126_nie_jest_blokowana_brakiem_q_generatora() -> None:
     ich użycie dowodziłoby innej odmowy, nie „bramka Q nie blokuje"."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/uncertainty_sensitivity",
-            json={"parameters": {}},
-        )
-    assert resp.status_code == 200, resp.text
+        resp = uruchom_v126(client, case_id, "uncertainty_sensitivity", {})
+    assert resp.status_code == 202, resp.text
 
 
 def test_reliability_contingency_z_q_set_pointem_karty_liczy_normalnie() -> None:
@@ -175,11 +165,8 @@ def test_reliability_contingency_z_q_set_pointem_karty_liczy_normalnie() -> None
     }
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=generator))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-            json={"parameters": _ODBIORCY},
-        )
-    assert resp.status_code == 200, resp.text
+        resp = uruchom_v126(client, case_id, "reliability_contingency", _ODBIORCY)
+    assert resp.status_code == 202, resp.text
 
 
 _PRZEKSZTALTNIK_BEZ_Q = {
@@ -208,10 +195,7 @@ def test_ssci_impedance_bez_q_przeksztaltnika_zwraca_422_nie_liczy_po_cichu() ->
     zanim payload trafi do solvera (ta sama regula wyboru przeksztaltnika co solver)."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=_PRZEKSZTALTNIK_BEZ_Q))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
-            json={"parameters": {}},
-        )
+        resp = uruchom_v126(client, case_id, "ssci_impedance", {})
     assert resp.status_code == 422, resp.text
     assert "generator.q_missing" in resp.text
     assert "PV-1" in resp.text
@@ -230,9 +214,6 @@ def test_ssci_impedance_z_q_set_pointem_karty_nie_jest_blokowana() -> None:
     }
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=przeksztaltnik))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
-            json={"parameters": {}},
-        )
-    assert resp.status_code == 200, resp.text
+        resp = uruchom_v126(client, case_id, "ssci_impedance", {})
+    assert resp.status_code == 202, resp.text
     assert "generator.q_missing" not in resp.text

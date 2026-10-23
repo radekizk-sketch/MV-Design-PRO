@@ -39,12 +39,18 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './query-client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
 import type { ThemeMode } from './ui2/theme/themeMode';
-import type { SldV3Overlay, SegmentFlowOverlay } from './ui/sld/v3/canvas/overlay';
+import {
+  orientedSegmentRefs,
+  zwrotGrotuWzdluzRysunku,
+  type SldV3Overlay,
+  type SegmentFlowOverlay,
+} from './ui/sld/v3/canvas/overlay';
 import type { SceneLod } from './ui/sld/v3/scene/buildScene';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
 import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuitFlowOverlayAdapter';
 import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
+import { indeksGaleziPolNn, szynyStacji } from './ui/shared/szynyStacji';
 
 const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
   trunks: [],
@@ -189,8 +195,10 @@ function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkM
   for (const ref of companion.open_point_branch_refs) energizedByOwnerRef[ref] = false;
   const energizedBuses = new Set(companion.energized_bus_refs);
   const deEnergizedBuses = new Set(companion.de_energized_bus_refs);
+  const indeksPolNn = indeksGaleziPolNn(enm.branches ?? []);
   for (const station of enm.substations ?? []) {
-    const busRefs = station.bus_refs ?? [];
+    // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji`.
+    const busRefs = [...szynyStacji(station, enm.branches ?? [], indeksPolNn)];
     if (busRefs.length === 0) continue;
     if (busRefs.every((ref) => deEnergizedBuses.has(ref))) {
       energizedByOwnerRef[station.ref_id] = false;
@@ -199,14 +207,24 @@ function overlayFromCompanion(companion: PowerFlowCompanion, enm: EnergyNetworkM
     }
   }
   const flowByOwnerRef: Record<string, SegmentFlowOverlay> = {};
+  // KARTA R10-E2E-CZERWONE: ta sama bramka orientacji co nakładka produktu
+  // (`buildFlowOverlayFromScene`, S9-2) — wpis kierunku WYŁĄCZNIE dla odcinka, którego
+  // rysunek ma udowodnioną orientację from→to (`orientedSegmentRefs`), a zwrot złożony
+  // z orientacją jedną regułą (`zwrotGrotuWzdluzRysunku`). Harness bez tej bramki był
+  // drugą prawdą: kierunek dostawała też gałąź narysowana wyłącznie znakami powiązania
+  // (rezerwa pierścieniowa, `scene/elementyToru.ts`), a grot na kresce poprzecznej
+  // wskazywał kierunek kreski, nie przepływu.
+  const orientacja = orientedSegmentRefs(enm);
   for (const [ref, flow] of Object.entries(companion.branch_flow)) {
     // `direction: "none"` (P≈0, np. za punktem NO) = BRAK przepływu — gałąź
     // nie dostaje wpisu (zero grota, zero data-flow-direction); binarne
     // `forward:false` fałszowałoby ją jako przepływ wsteczny.
     if (flow.direction !== 'forward' && flow.direction !== 'reverse') continue;
+    const orientacjaZgodna = orientacja.get(ref);
+    if (orientacjaZgodna === undefined) continue;
     flowByOwnerRef[ref] = {
       ownerRef: ref,
-      forward: flow.direction === 'forward',
+      forward: zwrotGrotuWzdluzRysunku(flow.direction === 'forward', orientacjaZgodna),
       p: { value: Math.abs(flow.p_from_mw), unit: 'MW' },
     };
   }

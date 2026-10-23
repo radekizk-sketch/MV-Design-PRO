@@ -44,21 +44,7 @@ export type {
   SymbolPosition,
 } from './commands/SymbolMoveCommand';
 
-// Pakiet H — cross-case run history + change audit
-export { RunListView } from './RunListView';
-export type { RunListViewProps } from './RunListView';
-export {
-  PROOF_TYPE_LABELS_PL,
-  RUN_STATUS_LABELS_PL,
-  filterRuns,
-  sortRunsDescByDate,
-} from './runListTypes';
-export type {
-  ProofType,
-  RunListEntry,
-  RunListFilter,
-  RunStatus,
-} from './runListTypes';
+// Pakiet H — audyt zmian
 export {
   AUDIT_ACTION_LABELS_PL,
   ChangeAuditTrailPanel,

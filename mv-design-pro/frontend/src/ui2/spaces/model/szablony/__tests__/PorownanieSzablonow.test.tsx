@@ -30,7 +30,7 @@ describe('zbudujWierszePorownania — funkcja czysta (karta §4.3)', () => {
     const wiersze = zbudujWierszePorownania(a, b);
     const wierszDer = wiersze.find((w) => w.cecha === SZABLONY_STRINGS.porownanieWierszDer)!;
     expect(wierszDer.wartoscA).toBe('—');
-    expect(wierszDer.wartoscB).toContain('Falownik PV SN przez block TR');
+    expect(wierszDer.wartoscB).toContain('Falownik PV przez własny transformator blokowy nN/SN');
   });
 
   it('wiersz DER szablonu hybrydowego zawiera oba rodzaje (PV + BESS)', () => {
@@ -38,8 +38,8 @@ describe('zbudujWierszePorownania — funkcja czysta (karta §4.3)', () => {
     const b = szablonHybrydowy();
     const wiersze = zbudujWierszePorownania(a, b);
     const wierszDer = wiersze.find((w) => w.cecha === SZABLONY_STRINGS.porownanieWierszDer)!;
-    expect(wierszDer.wartoscB).toContain('Falownik PV SN przez block TR');
-    expect(wierszDer.wartoscB).toContain('Magazyn BESS SN przez block TR');
+    expect(wierszDer.wartoscB).toContain('Falownik PV przez własny transformator blokowy nN/SN');
+    expect(wierszDer.wartoscB).toContain('Magazyn BESS przez własny transformator blokowy nN/SN');
   });
 
   it('zwraca komplet wierszy: pola, role pól, transformator, odpływy, DER, aparaty, zabezpieczenia', () => {

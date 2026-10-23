@@ -458,7 +458,7 @@ const biblioteka = vi.hoisted(() => {
   });
   const wgKategorii: Record<string, ReturnType<typeof szablon>[]> = {
     typowa_sn_nn: [szablon('tpl_typowa_400', 'Typowa 400 kVA', 'typowa_sn_nn')],
-    farma_pv: [szablon('tpl_farma_pv_1mw', 'Farma PV 1 MW', 'farma_pv')],
+    farma_pv: [szablon('tpl_farma_pv_0p99mw', 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1', 'farma_pv')],
   };
   /** Gdy ustawione — odpowiedź czeka na ręczne zwolnienie (`zwolnij`). */
   let wstrzymaj: (() => void) | null = null;
@@ -472,6 +472,8 @@ const biblioteka = vi.hoisted(() => {
       });
     },
     oczekujace: null as Promise<void> | null,
+    /** Gdy ustawione — podgląd szablonu odpowiada odmową (np. HTTP 422 z kodem odmowy). */
+    odmowaPodgladu: null as string | null,
     zwolnij(): void {
       wstrzymaj?.();
       wstrzymaj = null;
@@ -489,7 +491,7 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
   fetchStationTemplate: (id: string) =>
     Promise.resolve({
       id,
-      name_pl: 'Farma PV 1 MW',
+      name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       description_pl: 'Szablon testowy',
       use_case_pl: '',
@@ -524,9 +526,11 @@ vi.mock('../../../../ui/network-build/station-templates/api', () => ({
       },
     }),
   previewStationTemplate: () =>
-    Promise.resolve({
-      template_id: 'tpl_farma_pv_1mw',
-      template_name_pl: 'Farma PV 1 MW',
+    biblioteka.odmowaPodgladu !== null
+      ? Promise.reject(new Error(biblioteka.odmowaPodgladu))
+      : Promise.resolve({
+      template_id: 'tpl_farma_pv_0p99mw',
+      template_name_pl: 'Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1',
       category: 'farma_pv',
       nc_rfg_type: 'B',
       station_type: 'inline',
@@ -776,8 +780,53 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
 
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
-    expect(payload.nn_earthing).toEqual({ lv_system: 'IT', neutral_point: 'isolated' });
+    expect(payload.nn_earthing).toEqual({
+      lv_system: 'IT',
+      lv_voltage_tolerance: 'PLUS_10',
+      neutral_point: 'isolated',
+    });
   });
+
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN obok „Układ sieci nN" —
+  // iloczyn {+6 %, +10 %} × {układ TN-C-S, TT}, natywny wybór w kroku uziemienia.
+  it.each([
+    ['PLUS_6', 'TN-C-S'],
+    ['PLUS_6', 'TT'],
+    ['PLUS_10', 'TN-C-S'],
+    ['PLUS_10', 'TT'],
+  ] as const)(
+    'krok uziemienia: tolerancja %s × układ %s → nn_earthing.lv_voltage_tolerance w payloadzie',
+    async (tolerancja, uklad) => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorStacjiSnNn />);
+
+      await przejdzDoTransformatora();
+      await wybierzTyp();
+      await przejdzIWybierzRozdzielnice();
+      await przejdzDoKroku('Uziemienie i punkt neutralny');
+      await waitFor(() => {
+        expect(screen.getByTestId('mvd-kreator-stacja-tolerancja-nn')).toBeInTheDocument();
+      });
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-uklad-nn'), uklad);
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-tolerancja-nn'), tolerancja);
+      // Partia integracji 11: układ TT z punktem uziemionym bezpośrednio wymaga rezystancji
+      // uziomu stacji R_B (W5-E-TTIT, błąd walidacji przy polu) — bez niej zapis jest
+      // zablokowany, więc scenariusz TT podaje R_B natywnie i sprawdza, że trafia do payloadu.
+      if (uklad === 'TT') {
+        await userEvent.type(screen.getByTestId('mvd-kreator-stacja-rezystancja-uziomu-stacji'), '2');
+      }
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+      expect(payload.nn_earthing).toMatchObject({ lv_system: uklad, lv_voltage_tolerance: tolerancja });
+      if (uklad === 'TT') {
+        expect(payload.nn_earthing).toMatchObject({ lv_r_ohm: 2 });
+      } else {
+        expect(payload.nn_earthing).not.toHaveProperty('lv_r_ohm');
+      }
+    },
+  );
 
   it('honoruje wybór typu stacji zmieniony natywnie w kroku 1', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
@@ -1127,14 +1176,14 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
       expect(screen.getByTestId('mvd-kreator-stacja-szablon-laduje')).toBeInTheDocument();
     });
     expect(wybor.querySelector('option[value="tpl_typowa_400"]')).toBeNull();
-    expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).toBeNull();
+    expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).toBeNull();
     // Ładowanie ≠ pustka: komunikat „ta kategoria nie zawiera szablonów" nie
     // może paść, zanim odpowiedź przyjdzie.
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-pusty')).toBeNull();
 
     biblioteka.zwolnij();
     await waitFor(() => {
-      expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).not.toBeNull();
+      expect(wybor.querySelector('option[value="tpl_farma_pv_0p99mw"]')).not.toBeNull();
     });
     expect(screen.queryByTestId('mvd-kreator-stacja-szablon-laduje')).toBeNull();
   });
@@ -1234,7 +1283,11 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     expect(polaTr[0].apparatus_catalog_ref).toBe('sw-fuse-eti-vv-17kv-63a');
   });
 
-  it('rezygnacja z pola TR: usunięcie pola → jawny komunikat skutków + operacja BEZ roli TR', async () => {
+  it('usunięcie pola TR: jawny komunikat skutków i ZABLOKOWANY zapis (POLA-W-TORZE)', async () => {
+    // Intencja KOMPLETNOSC-POLA-TR zostaje: kreator NAZYWA skutek braku pola TR zamiast
+    // milczeć. Zmienił się skutek (karta POLA-W-TORZE): transformator leży na zacisku pola
+    // transformatorowego, a operacja bez wspólnego aparatu pól odmawia domknięcia pola —
+    // zapis bez pola TR nie jest już stanem roboczym, tylko odmową, więc kreator go blokuje.
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorStacjiSnNn />);
 
@@ -1242,22 +1295,66 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     await wybierzTyp();
     await przejdzIWybierzRozdzielnice();
 
-    // Usunięcie pola transformatorowego natywnym klikiem.
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
 
-    // Kreator NAZYWA skutek rezygnacji (marker na schemacie, ostrzeżenie gotowości,
-    // zamknięta droga do dokumentacji wykonawczej) — zamiast milczeć.
     const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pola-tr');
-    expect(panel.textContent).toMatch(/znacznik braku pola/);
-    expect(panel.textContent).toMatch(/dokumentacji wykonawczej/);
+    expect(panel.textContent).toMatch(/odłącza transformator/);
+    expect(panel.textContent).toMatch(/nie da się zapisać/);
 
-    // Zapis JEST możliwy — to legalny stan roboczy, nie błąd.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
-    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
-    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
-    const role = (payload.sn_fields as Array<{ field_role: string }>).map((f) => f.field_role);
-    expect(role).not.toContain('TRANSFORMATOROWE');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    // tryb × usunięte pole (numer wiersza w domyślnym składzie) × czy pole należy do toru
+    ['podział odcinka', 'SPLIT', 1, 'LINIA_IN', true],
+    ['podział odcinka', 'SPLIT', 2, 'LINIA_OUT', true],
+    ['podział odcinka', 'SPLIT', 3, 'LINIA_ODG', false],
+    ['koniec odcinka', 'ENDPOINT_APPEND', 1, 'LINIA_IN', true],
+  ] as const)(
+    '%s: usunięcie pola %s (%s) — pole toru blokuje zapis i wraca jednym kliknięciem na swoje miejsce',
+    async (_opis, tryb, numer, rola, wToru) => {
+      context =
+        tryb === 'SPLIT'
+          ? { segment_id: 'seg-1', position_on_segment: 0.5 }
+          : { placement_mode: 'ENDPOINT_APPEND', endpoint_bus_ref: 'bus-end', run_ref: 'run-1' };
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorStacjiSnNn />);
+
+      await przejdzDoTransformatora();
+      await wybierzTyp();
+      await przejdzIWybierzRozdzielnice();
+      await userEvent.click(screen.getByTestId(`mvd-kreator-stacja-pole-usun-${numer}`));
+
+      if (!wToru) {
+        // Pole spoza toru (odgałęźne) usuwa się bez skutku dla zapisu.
+        expect(screen.queryByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeNull();
+        await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+        return;
+      }
+
+      const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pol-toru');
+      expect(panel.textContent).toMatch(/nie da się zapisać/);
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
+
+      await userEvent.click(screen.getByTestId(`mvd-kreator-stacja-dodaj-pole-toru-${rola}`));
+      await waitFor(() => expect(screen.queryByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeNull());
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+      const pola = payload.sn_fields as Array<{ field_role: string; apparatus_catalog_ref: string }>;
+      // Kolejność toru: wejściowe na początku, wyjściowe zaraz za wejściowym.
+      expect(pola.map((f) => f.field_role)).toEqual(
+        tryb === 'SPLIT'
+          ? ['LINIA_IN', 'LINIA_OUT', 'LINIA_ODG', 'TRANSFORMATOROWE']
+          : ['LINIA_IN', 'TRANSFORMATOROWE'],
+      );
+      expect(pola.every((f) => Boolean(f.apparatus_catalog_ref))).toBe(true);
+    },
+  );
 
   it('brak readoutu zawężenia ról NIE kasuje katalogu aparatów (degradacja proporcjonalna)', async () => {
     // Backend bez końcówki `/bay-apparatus-kinds` (starsza wersja, błąd sieci):
@@ -1311,14 +1408,14 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
     await waitFor(() => {
       expect(screen.getByTestId('mvd-kreator-stacja-gotowosc').textContent).toMatch(
-        /Brak — konfiguracja niekompletna/,
+        /Brak — wymagane do zapisu/,
       );
     });
 
     // Krok zmieniony na inny — stan pola TR NADAL widoczny (stała kolumna).
     await przejdzDoKroku('Blok nN');
     expect(screen.getByTestId('mvd-kreator-stacja-gotowosc').textContent).toMatch(
-      /Brak — konfiguracja niekompletna/,
+      /Brak — wymagane do zapisu/,
     );
   });
 
@@ -1483,6 +1580,32 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     });
   });
 
+  /**
+   * Karta GPT-478 pkt 7.3 — odmowa podglądu szablonu (np. niedobór transformatora stacji)
+   * dochodzi do projektanta. Dawniej `catch(() => null)` wypełniało formularz bez doboru
+   * transformatora i bez słowa wyjaśnienia.
+   */
+  it('odmowa podglądu szablonu jest pokazana, a nie połknięta', async () => {
+    biblioteka.odmowaPodgladu =
+      'Transformator stacji 100 kVA nie pokrywa mocy wymaganej 105 kVA.';
+    try {
+      render(<KreatorStacjiSnNn />);
+      const wybor = (await screen.findByTestId(
+        'mvd-kreator-stacja-szablon-wybor',
+      )) as HTMLSelectElement;
+      await waitFor(() => {
+        expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull();
+      });
+      await userEvent.selectOptions(wybor, 'tpl_typowa_400');
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zastosuj'));
+      const blad = await screen.findByTestId('mvd-kreator-stacja-szablon-blad');
+      expect(blad.textContent).toContain('Podgląd szablonu odrzucony');
+      expect(blad.textContent).toContain('nie pokrywa mocy wymaganej 105 kVA');
+    } finally {
+      biblioteka.odmowaPodgladu = null;
+    }
+  });
+
   it('rodziny NIEDOSTĘPNE są WIDOCZNE i wyłączone — z jawnym powodem', async () => {
     render(<KreatorStacjiSnNn />);
     await przejdzDoTransformatora();
@@ -1644,8 +1767,9 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       factory_configuration_ref?: string;
       factory_unit_index?: number;
     }>;
+    // Tor bloku (POLA-W-TORZE): pierwsza jednostka liniowa jest polem wejściowym stacji.
     expect(pola.map((f) => f.field_role)).toEqual([
-      'LINIA_OUT',
+      'LINIA_IN',
       'LINIA_OUT',
       'TRANSFORMATOROWE',
     ]);
@@ -1679,13 +1803,15 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       expect(screen.queryByTestId('mvd-kreator-stacja-blok-jednostka-3')).toBeNull(),
     );
 
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
-    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
-    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
-
-    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
-    const pola = payload.sn_fields as Array<{ field_role: string }>;
-    expect(pola.map((f) => f.field_role)).toEqual(['LINIA_OUT', 'LINIA_OUT']);
+    // Blok L-L nie ma jednostki transformatorowej, a kreator zawsze tworzy transformator:
+    // transformator nie miałby pola, w którego torze leży (POLA-W-TORZE) — zapis
+    // zablokowany, komunikat kieruje do bloku z jednostką transformatorową, a przycisku
+    // dostawienia pola w torze blokowym nie ma (to byłby inny wyrób).
+    const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pola-tr');
+    expect(panel.textContent).toMatch(/blok z jednostką transformatorową/);
+    expect(screen.queryByTestId('mvd-kreator-stacja-przywroc-pole-tr')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
   /**

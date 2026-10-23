@@ -551,6 +551,11 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
                     temp_poczatkowa_c: 70,
                     temp_koncowa_c: 200,
                     zrodlo_pl: 'PN-E-05115 / IEC 61936-1; k wg IEC 60949 § 3',
+                    // Pełny kontrakt `UzasadnienieK` (V12K-224): k = Jth(1 s) z karty
+                    // katalogowej, więc pochodzenie KATALOG i brak wyprowadzenia.
+                    zrodlo_k: 'KATALOG' as const,
+                    zrodlo_k_pl: 'wartość katalogowa producenta',
+                    wyprowadzenie_k: null,
                     braki_pl: [],
                     kompletne: true,
                   },

@@ -1,6 +1,10 @@
 import type { ElementType } from '../types';
 import type { BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } from '../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
+import { poleLinioweWolne } from './zajetoscPol';
+import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
+import { zaciskPola, zaciskRekorduPola } from '../shared/zaciskPola';
+import { stationRefOfTransformer } from '../shared/transformatoryStacji';
 
 export interface BranchSourceDisplayContext {
   fromRef: string;
@@ -266,9 +270,20 @@ function findStationRefByBus(snapshot: EnergyNetworkModel | null, busRef: string
     return null;
   }
 
-  return snapshot.substations.find((station) => (
-    Array.isArray(station.bus_refs) && station.bus_refs.includes(busRef)
-  ))?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO: szyna (także zacisk pola, szyna za aparatem pola nN) → stacja
+  // z jednego lustra `szynyStacji`.
+  return stacjaSzyn(snapshot.substations, snapshot.branches).get(busRef) ?? null;
+}
+
+/** Szyny strony SN stacji z jednego lustra przynależności (`szynyStacji`): szyny główne SN
+ *  i zaciski pól SN — odcinek przyłączony zasadą toru kończy się na zacisku pola. */
+function findStationSnBusRefs(
+  snapshot: EnergyNetworkModel,
+  station: EnergyNetworkModel['substations'][number],
+): string[] {
+  return [...szynyStacji(station, snapshot.branches)]
+    .sort()
+    .filter((ref) => isSnBusVoltage(findBus(snapshot, ref)?.voltage_kv));
 }
 
 function findStationRefByTransformer(snapshot: EnergyNetworkModel | null, transformerRef: string | null): string | null {
@@ -276,7 +291,8 @@ function findStationRefByTransformer(snapshot: EnergyNetworkModel | null, transf
     return null;
   }
 
-  return snapshot.substations.find((station) => station.transformer_refs.includes(transformerRef))?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+  return stationRefOfTransformer(snapshot, transformerRef);
 }
 
 function findBusRefsForStation(station: EnergyNetworkModel['substations'][number] | null | undefined): string[] {
@@ -319,10 +335,6 @@ function isBranchStartBayRole(role: unknown): boolean {
   return String(role ?? '').toUpperCase() === 'FEEDER';
 }
 
-function isTerrainSegmentType(type: unknown): boolean {
-  return type === 'cable' || type === 'line_overhead';
-}
-
 function fieldSpecsForStation(station: EnergyNetworkModel['substations'][number] | null): Array<Record<string, unknown>> {
   const meta = station?.meta;
   if (!meta || typeof meta !== 'object') return [];
@@ -330,31 +342,6 @@ function fieldSpecsForStation(station: EnergyNetworkModel['substations'][number]
   return Array.isArray(specs)
     ? specs.filter((spec): spec is Record<string, unknown> => spec != null && typeof spec === 'object')
     : [];
-}
-
-function fieldTerminalBusRef(spec: Record<string, unknown>): string | null {
-  const meta = spec.meta;
-  const metaRecord = meta && typeof meta === 'object' ? meta as Record<string, unknown> : null;
-  const template = metaRecord?.sn_field_template;
-  const templateRecord = template && typeof template === 'object' ? template as Record<string, unknown> : null;
-  const templateMeta = templateRecord?.meta;
-  const templateMetaRecord = templateMeta && typeof templateMeta === 'object' ? templateMeta as Record<string, unknown> : null;
-  const candidates: unknown[] = [
-    templateMetaRecord?.field_terminal_bus_ref,
-    metaRecord?.field_terminal_bus_ref,
-    (spec as { field_terminal_bus_ref?: unknown }).field_terminal_bus_ref,
-    templateRecord?.field_terminal_bus_ref,
-    templateMetaRecord?.terminal_bus_ref,
-    metaRecord?.terminal_bus_ref,
-    (spec as { terminal_bus_ref?: unknown }).terminal_bus_ref,
-    templateRecord?.terminal_bus_ref,
-  ];
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate.trim();
-    }
-  }
-  return null;
 }
 
 function fieldRef(spec: Record<string, unknown>): string {
@@ -391,6 +378,7 @@ function findStationFieldSpec(
 
 function findBranchCapableStationField(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   stationRef: string | null,
   preferredBusRef?: string | null,
 ): { station: EnergyNetworkModel['substations'][number]; spec: Record<string, unknown> } | null {
@@ -401,9 +389,10 @@ function findBranchCapableStationField(
     .filter((spec) => (
       fieldRef(spec).length > 0
       && isBranchStartBayRole(spec.bay_role)
-      && fieldTerminalBusRef(spec)
-      && (!preferredBusRef || spec.bus_ref === preferredBusRef || fieldTerminalBusRef(spec) === preferredBusRef)
-      && terrainSegmentCountOnBus(snapshot, fieldTerminalBusRef(spec)) === 0
+      && zaciskPola(spec)
+      && (!preferredBusRef || spec.bus_ref === preferredBusRef || zaciskPola(spec) === preferredBusRef)
+      // Karta POLE-ZAJĘTE: zajętość z modelu odczytu backendu, nie z własnego licznika.
+      && poleLinioweWolne(logicalViews, fieldRef(spec))
     ))
     .sort((left, right) => {
       return lineFieldRoleRank(left.bay_role) - lineFieldRoleRank(right.bay_role)
@@ -419,14 +408,6 @@ function lineFieldRoleRank(role: unknown): number {
   if (normalized === 'FEEDER') return 0;
   if (normalized === 'OUT') return 1;
   return 9;
-}
-
-function terrainSegmentCountOnBus(snapshot: EnergyNetworkModel | null, busRef: string | null): number {
-  if (!snapshot || !busRef) return 0;
-  return (snapshot.branches ?? []).filter((branch) => (
-    isTerrainSegmentType(branch.type)
-    && (branch.from_bus_ref === busRef || branch.to_bus_ref === busRef)
-  )).length;
 }
 
 function formatElementContextLabel(
@@ -678,6 +659,7 @@ export function resolveElementNetworkContext(
 
 export function resolveBranchSourceRef(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   elementId: string | null,
   stationRef: string | null,
   busRef: string | null,
@@ -723,14 +705,14 @@ export function resolveBranchSourceRef(
   if (
     selectedStationField
     && isBranchStartBayRole(selectedStationField.spec.bay_role)
-    && fieldTerminalBusRef(selectedStationField.spec)
-    && terrainSegmentCountOnBus(snapshot, fieldTerminalBusRef(selectedStationField.spec)) === 0
+    && zaciskPola(selectedStationField.spec)
+    && poleLinioweWolne(logicalViews, fieldRef(selectedStationField.spec))
   ) {
     return `${fieldRef(selectedStationField.spec)}.BRANCH`; // ui-terminology-ignore
   }
 
   if (effectiveStationRef) {
-    const stationField = findBranchCapableStationField(snapshot, effectiveStationRef, busRef);
+    const stationField = findBranchCapableStationField(snapshot, logicalViews, effectiveStationRef, busRef);
     if (stationField) {
       return `${fieldRef(stationField.spec)}.BRANCH`; // ui-terminology-ignore
     }
@@ -784,7 +766,7 @@ export function resolveBranchSourceContext(
 
   const stationField = findStationFieldSpec(snapshot, elementRef);
   if (stationField && isLineContinuationBayRole(stationField.spec.bay_role)) {
-    const sourceBusRef = fieldTerminalBusRef(stationField.spec) ?? '';
+    const sourceBusRef = zaciskPola(stationField.spec) ?? '';
     const sourceBus = findBus(snapshot, sourceBusRef);
     return {
       fromRef,
@@ -859,11 +841,18 @@ export function resolveBranchSourceContext(
 
 export function resolveBranchStartOperationContext(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   elementId: string,
   elementType: ElementType,
 ): BranchStartOperationContext {
   const networkContext = resolveElementNetworkContext(snapshot, elementId, elementType);
-  const fromRef = resolveBranchSourceRef(snapshot, elementId, networkContext.stationRef, networkContext.busRef) ?? '';
+  const fromRef = resolveBranchSourceRef(
+    snapshot,
+    logicalViews,
+    elementId,
+    networkContext.stationRef,
+    networkContext.busRef,
+  ) ?? '';
   const display = resolveBranchSourceContext(snapshot, fromRef);
 
   return {
@@ -978,10 +967,7 @@ function findTrunkTerminalForStation(
     return null;
   }
 
-  const stationSnBusRefs = findBusRefsForStation(station)
-    .map((ref) => findBus(snapshot, ref))
-    .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-    .map((bus) => bus.ref_id);
+  const stationSnBusRefs = findStationSnBusRefs(snapshot, station);
 
   if (stationSnBusRefs.length === 0) {
     return null;
@@ -1022,12 +1008,7 @@ function findCorridorEndpointForStation(
     return null;
   }
 
-  const stationSnBusRefs = new Set(
-    findBusRefsForStation(station)
-      .map((ref) => findBus(snapshot, ref))
-      .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
+  const stationSnBusRefs = new Set(findStationSnBusRefs(snapshot, station));
   if (stationSnBusRefs.size === 0) {
     return null;
   }
@@ -1073,12 +1054,7 @@ function findCorridorRefForStation(
 ): string {
   if (!snapshot) return '';
 
-  const stationSnBusRefs = new Set(
-    findBusRefsForStation(station)
-      .map((ref) => findBus(snapshot, ref))
-      .filter((bus): bus is NonNullable<typeof bus> => bus != null && isSnBusVoltage(bus.voltage_kv))
-      .map((bus) => bus.ref_id),
-  );
+  const stationSnBusRefs = new Set(findStationSnBusRefs(snapshot, station));
 
   for (const corridor of snapshot.corridors ?? []) {
     const hasStationSegment = corridor.ordered_segment_refs
@@ -1114,7 +1090,7 @@ function findStationLineFieldEndpoint(
       || knownFieldRefs.has(bayFieldRef)
       || knownFieldRefs.has(bay.ref_id)
     ) continue;
-    const terminalBusRef = fieldTerminalBusRef(bay as unknown as Record<string, unknown>);
+    const terminalBusRef = zaciskRekorduPola(bay as unknown as Record<string, unknown>);
     if (!terminalBusRef) continue;
     stationFieldSpecs.push({
       field_ref: bayFieldRef,
@@ -1129,7 +1105,7 @@ function findStationLineFieldEndpoint(
   const fieldEndpoint = stationFieldSpecs
     .map((spec) => {
       const lineFieldRef = fieldRef(spec);
-      const terminalBusRef = fieldTerminalBusRef(spec);
+      const terminalBusRef = zaciskPola(spec);
       const terminal = findTerminal(logicalViews, lineFieldRef);
       return {
         fieldRef: lineFieldRef,
@@ -1142,7 +1118,8 @@ function findStationLineFieldEndpoint(
       candidate.fieldRef.length > 0
       && candidate.terminalBusRef
       && isLineContinuationBayRole(candidate.bayRole)
-      && terrainSegmentCountOnBus(snapshot, candidate.terminalBusRef) === 0
+      // Karta POLE-ZAJĘTE: wolne = potwierdzone przez model odczytu backendu.
+      && poleLinioweWolne(logicalViews, candidate.fieldRef)
     ))
     .sort((left, right) => left.fieldRef.localeCompare(right.fieldRef))[0];
 
@@ -1193,7 +1170,7 @@ export function resolveContinueTrunkSelection(
   const terminalId = terminal?.element_id ?? corridorEndpoint?.terminalId ?? '';
   const terminalBay = findBay(snapshot, terminal?.element_id ?? null);
   const terminalBayBusRef = terminalBay
-    ? fieldTerminalBusRef(terminalBay as unknown as Record<string, unknown>)
+    ? zaciskRekorduPola(terminalBay as unknown as Record<string, unknown>)
     : null;
   const terminalBusRef =
     (typeof terminalBayBusRef === 'string' && terminalBayBusRef.trim() ? terminalBayBusRef.trim() : '')

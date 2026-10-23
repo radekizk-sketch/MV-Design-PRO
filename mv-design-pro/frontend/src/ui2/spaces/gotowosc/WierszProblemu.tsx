@@ -4,8 +4,13 @@
  * dymku (`title`) i — dodatkowo jako widoczny tekst — w trybie eksperckim
  * (ten sam wzorzec co `SzczegolyTechniczne` w `ui2/inspector/InspectorPanel.tsx`,
  * MODEL_INTERAKCJI §2 reguła 7 / karta §2.7). W pełni sterowany propsami.
+ *
+ * C-12: co pokazuje miejsce akcji (przycisk formularza, przycisk przejścia do
+ * przestrzeni albo nazwana odmowa) rozstrzyga `rozwiazAkcjeNaprawcza` — TA SAMA
+ * funkcja, którą wykonuje klik (`wykonajAkcjeNaprawcza`); wiersz nie ma własnego warunku.
  */
 
+import { etykietaAkcji, rozwiazAkcjeNaprawcza } from './akcjeNaprawcze';
 import type { ProblemGotowosci } from './grupowanieCelow';
 import { GOTOWOSC_STRINGS } from './strings';
 
@@ -14,6 +19,10 @@ interface WierszProblemuProps {
   trybEkspercki: boolean;
   onKlikWiersza: (elementRef: string) => void;
   onNaprawa: (problem: ProblemGotowosci) => void;
+  /** Nazwa elementu z migawki modelu (to samo źródło co schemat). Karta
+   *  ETYKIETA-STACJI-PRZELOTOWEJ: wiersz pokazywał identyfikator maszynowy elementu
+   *  („Element: stn/…") w tekście dla projektanta. */
+  nazwaElementu: (elementRef: string) => string;
 }
 
 /** Tag wagi problemu — lokalny (bez zależności od innej przestrzeni ui2). */
@@ -28,8 +37,11 @@ export function WierszProblemu({
   trybEkspercki,
   onKlikWiersza,
   onNaprawa,
+  nazwaElementu,
 }: WierszProblemuProps) {
-  const { elementRef, opisPl, waga, code, fixAction } = problem;
+  const { elementRef, opisPl, waga, code } = problem;
+  const akcja = rozwiazAkcjeNaprawcza(problem);
+  const etykieta = akcja ? etykietaAkcji(akcja) : null;
 
   return (
     <div
@@ -47,7 +59,7 @@ export function WierszProblemu({
         <span className="mvd-problem-desc">{opisPl}</span>
         {elementRef && (
           <span className="mvd-problem-element">
-            {GOTOWOSC_STRINGS.element}: <span className="mvd-num">{elementRef}</span>
+            {GOTOWOSC_STRINGS.element}: <span>{nazwaElementu(elementRef)}</span>
           </span>
         )}
       </button>
@@ -62,14 +74,20 @@ export function WierszProblemu({
         </span>
       )}
 
-      {fixAction ? (
+      {akcja && etykieta ? (
         <button
           type="button"
           className="mvd-btn mvd-problem-napraw"
+          data-testid={`mvd-problem-napraw-${code}-${elementRef ?? 'brak'}`}
+          title={akcja.rodzaj === 'przestrzen' ? akcja.powodPl : undefined}
           onClick={() => onNaprawa(problem)}
         >
-          {GOTOWOSC_STRINGS.napraw}
+          {etykieta}
         </button>
+      ) : akcja?.rodzaj === 'odmowa' ? (
+        <span className="mvd-problem-brak-akcji" data-testid={`mvd-problem-odmowa-${code}`}>
+          {akcja.powodPl}
+        </span>
       ) : (
         elementRef && <span className="mvd-problem-brak-akcji">{GOTOWOSC_STRINGS.wymagaInterwencji}</span>
       )}

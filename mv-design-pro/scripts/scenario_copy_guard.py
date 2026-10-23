@@ -35,6 +35,13 @@ CO WYKRYWA (analiza skladni AST, nie dopasowanie tekstu) — cztery reguly:
                          (`nazwa[...] = …`) — plytka kopia POD MUTACJE. Sama
                          plytka kopia bez zapisu (obrona przed `None`, kopia do
                          odczytu) nie jest scenariuszem i nie jest trafieniem.
+  RK IMPORT_PONAD_KORZEN — import wzgledny wychodzacy ponad korzen drzewa importow
+                         (interpreter: `ImportError`); bramka nie zgaduje jego celu.
+
+IMPORTY WZGLEDNE sa rozwiazywane wg semantyki interpretera (`scripts/importy_ast.py`,
+jedno zrodlo prawdy bramek): `from .canonical_analysis import _execute_power_flow`
+w `enm/**` to ta sama droga co `from enm.canonical_analysis import …` (do 2026-09-30
+bramka czytala samo `module` i przepuszczala forme wzgledna).
 
 ZASIEG: `backend/src/application/**`, `backend/src/api/**`, `backend/src/enm/**`
 z wylaczeniem `enm/scenariusze.py` (dom `apply_scenario`) i `enm/canonical_analysis.py`
@@ -52,6 +59,10 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
@@ -63,12 +74,13 @@ FUNKCJE_PRYWATNE = frozenset({"_execute_power_flow", "_execute_short_circuit"})
 NAZWA_BIEGU = "CanonicalRun"
 TOKENY_MIGAWKI = ("snapshot", "migawk")
 
-R1, R2, R3, R4 = "R1", "R2", "R3", "R4"
+R1, R2, R3, R4, RK = "R1", "R2", "R3", "R4", "RK"
 OPISY = {
     R1: "import prywatnego wykonawcy z enm.canonical_analysis — uzyj wykonaj_bieg_w_pamieci",
     R2: "konstrukcja CanonicalRun poza fabryka — uzyj enm.canonical_analysis.bieg_wariantu",
     R3: "gleboka kopia migawki pod mutacje — uzyj enm.scenariusze.apply_scenario",
     R4: "plytka kopia migawki (dict) pod mutacje — uzyj enm.scenariusze.apply_scenario",
+    RK: "import wzgledny ponad korzen drzewa importow — bramka nie rozstrzyga celu",
 }
 
 #: ZAPADKA zastanych trafien. Pomiar 2026-09-05 przed migracja rodzin D1–D6:
@@ -103,20 +115,37 @@ def _wyglada_na_migawke(expr: ast.expr) -> bool:
     return any(token in nazwa for token in TOKENY_MIGAWKI)
 
 
-def _nazwy_importow(tree: ast.AST) -> tuple[set[str], set[str], set[str]]:
+def _modul_importu(pakiet: str, node: ast.ImportFrom) -> str | None:
+    """Pelna nazwa modulu `from ... import` albo `None` dla wyjscia ponad korzen (RK)."""
+    try:
+        return modul_bazowy(pakiet, node)
+    except ImportPonadKorzen:
+        return None
+
+
+def _adresuje_modul_analizy(sciezka: str, moduly: set[str]) -> bool:
+    """Czy kropkowana sciezka adresuje modul analizy — JEDEN predykat dla R1 (dostep
+    atrybutowy) i R2 (konstrukcja przez modul). Do 2026-09-30 R2 sprawdzal wylacznie
+    pierwszy czlon sciezki, wiec `import enm.canonical_analysis` +
+    `enm.canonical_analysis.CanonicalRun(...)` nie bylo trafieniem."""
+    return sciezka in moduly or sciezka.endswith("canonical_analysis")
+
+
+def _nazwy_importow(tree: ast.AST, pakiet: str = "") -> tuple[set[str], set[str], set[str]]:
     """(lokalne nazwy prywatnych wykonawcow, lokalne nazwy modulu analizy,
     lokalne nazwy klasy CanonicalRun) — z importow pliku."""
     prywatne: set[str] = set()
     moduly: set[str] = set()
     biegi: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == MODUL_ANALIZY:
+        modul = _modul_importu(pakiet, node) if isinstance(node, ast.ImportFrom) else None
+        if modul == MODUL_ANALIZY:
             for alias in node.names:
                 if alias.name in FUNKCJE_PRYWATNE:
                     prywatne.add(alias.asname or alias.name)
                 if alias.name == NAZWA_BIEGU:
                     biegi.add(alias.asname or alias.name)
-        elif isinstance(node, ast.ImportFrom) and node.module == "enm":
+        elif modul == "enm":
             for alias in node.names:
                 if alias.name == "canonical_analysis":
                     moduly.add(alias.asname or alias.name)
@@ -127,24 +156,29 @@ def _nazwy_importow(tree: ast.AST) -> tuple[set[str], set[str], set[str]]:
     return prywatne, moduly, biegi
 
 
-def zbierz_naruszenia(tree: ast.AST) -> list[tuple[str, int, str]]:
-    """Lista (regula, linia, opis) dla drzewa jednego pliku."""
-    prywatne, moduly, biegi = _nazwy_importow(tree)
+def zbierz_naruszenia(tree: ast.AST, pakiet: str = "") -> list[tuple[str, int, str]]:
+    """Lista (regula, linia, opis) dla drzewa jednego pliku. `pakiet` = `__package__`
+    pliku (rozwiazywanie importow wzglednych; pusty = modul najwyzszego poziomu)."""
+    prywatne, moduly, biegi = _nazwy_importow(tree, pakiet)
     naruszenia: list[tuple[str, int, str]] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == MODUL_ANALIZY:
-            for alias in node.names:
-                if alias.name in FUNKCJE_PRYWATNE:
-                    naruszenia.append((R1, node.lineno, f"import {alias.name}"))
+        if isinstance(node, ast.ImportFrom):
+            modul = _modul_importu(pakiet, node)
+            if modul is None:
+                opis = f"from {'.' * node.level}{node.module or ''} import …"
+                naruszenia.append((RK, node.lineno, opis))
+            elif modul == MODUL_ANALIZY:
+                for alias in node.names:
+                    if alias.name in FUNKCJE_PRYWATNE:
+                        naruszenia.append((R1, node.lineno, f"import {alias.name}"))
         elif isinstance(node, ast.Attribute) and node.attr in FUNKCJE_PRYWATNE:
-            if _sciezka_kropkowana(node.value) in moduly or _sciezka_kropkowana(
-                node.value
-            ).endswith("canonical_analysis"):
+            if _adresuje_modul_analizy(_sciezka_kropkowana(node.value), moduly):
                 naruszenia.append((R1, node.lineno, f"dostep {node.attr}"))
         elif isinstance(node, ast.Call):
             nazwa = _sciezka_kropkowana(node.func)
             if nazwa in biegi or (
-                nazwa.endswith(f".{NAZWA_BIEGU}") and nazwa.split(".")[0] in moduly
+                nazwa.endswith(f".{NAZWA_BIEGU}")
+                and _adresuje_modul_analizy(nazwa.rsplit(".", 1)[0], moduly)
             ):
                 naruszenia.append((R2, node.lineno, f"{NAZWA_BIEGU}(...)"))
             elif nazwa in {"copy.deepcopy", "deepcopy"} and node.args:
@@ -230,7 +264,7 @@ def zmierz(src: Path = BACKEND_SRC) -> dict[str, dict[str, int]]:
     pomiar: dict[str, dict[str, int]] = {}
     for plik in pliki_w_zasiegu(src):
         tree = ast.parse(plik.read_text(encoding="utf-8"), filename=str(plik))
-        naruszenia = zbierz_naruszenia(tree)
+        naruszenia = zbierz_naruszenia(tree, pakiet_pliku(plik, src))
         if naruszenia:
             liczby = Counter(regula for regula, _, _ in naruszenia)
             pomiar[plik.relative_to(src).as_posix()] = {k: liczby[k] for k in sorted(liczby)}

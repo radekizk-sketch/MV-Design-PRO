@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 from enm.hash import compute_enm_hash
 from enm.kompilator_grafu import (
+    BenchmarkBuildError,
     BladGrafuWejsciowego,
     EdgeSpec,
     GrafDoKompilacji,
@@ -21,6 +22,7 @@ from enm.kompilator_grafu import (
     kompiluj_graf,
 )
 from enm.models import EnergyNetworkModel
+from enm.tolerancja_nn import tolerancje_wezlow_nn
 from enm.validator import ENMValidator
 
 KABEL = "cable-tfk-yakxs-3x120"
@@ -241,3 +243,99 @@ def test_transformator_dostaje_nazwe_z_grafu_w_obu_torach() -> None:
     )
     model = _model(kompiluj_graf(graf))
     assert sorted(t.name for t in model.transformers) == ["Trafo rezerwowy", "Trafo stacyjny"]
+
+
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN z grafu wejściowego trafia na
+# OBA nośniki (transformator — strona dolna, źródło na szynie nN) każdym torem kompilatora:
+# {transformator: krawędź drzewa od strony HV, krawędź drzewa od strony LV, krawędź
+# zamykająca} × {źródło na szynie nN} × {PLUS_6, PLUS_10, brak}.
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+def test_tolerancja_nn_trafia_na_transformator_w_obu_torach(tolerancja) -> None:
+    graf = GrafDoKompilacji(
+        name="tolerancja-trafo",
+        szyny=_szyny(("B1", 15.0), ("B2", 15.0), ("B3", 0.4)),
+        odcinki=(EdgeSpec("L1", "B1", "B2", KABEL, 1000.0, "KABEL"),),
+        transformatory=(
+            TransformatorSpec("T-drzewo", "B2", "B3", TRAFO_SN_NN, lv_voltage_tolerance=tolerancja),
+            TransformatorSpec(
+                "T-zamykajacy", "B2", "B3", TRAFO_SN_NN, lv_voltage_tolerance=tolerancja
+            ),
+        ),
+        zrodla=(_zrodlo(),),
+    )
+    wynik = kompiluj_graf(graf)
+    model = _model(wynik)
+    assert [t.lv_voltage_tolerance for t in model.transformers] == [tolerancja, tolerancja]
+    # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    assert tolerancje_wezlow_nn(model)[wynik.bus_map["B3"]] == (tolerancja or "PLUS_10")
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+def test_tolerancja_nn_zrodla_na_szynie_nn_i_transformatora_od_strony_lv(tolerancja) -> None:
+    """Źródło wprost na szynie nN (sieć nN z drugim zasilaniem z SN przez transformator, do
+    którego przegląd dochodzi od strony LV): obaj zasilający wyspę deklarują tę samą wartość."""
+    graf = GrafDoKompilacji(
+        name="tolerancja-zrodlo",
+        szyny=_szyny(("N", 0.4), ("S", 15.0)),
+        transformatory=(
+            TransformatorSpec("T", "S", "N", TRAFO_SN_NN, lv_voltage_tolerance=tolerancja),
+        ),
+        zrodla=(_zrodlo("N", sk3_mva=10.0, lv_voltage_tolerance=tolerancja),),
+    )
+    wynik = kompiluj_graf(graf)
+    model = _model(wynik)
+    (zrodlo,) = model.sources
+    (trafo,) = model.transformers
+    assert zrodlo.lv_voltage_tolerance == tolerancja
+    assert trafo.lv_voltage_tolerance == tolerancja
+    assert trafo.lv_bus_ref == wynik.bus_map["N"]
+    # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    assert tolerancje_wezlow_nn(model)[wynik.bus_map["N"]] == (tolerancja or "PLUS_10")
+
+
+@pytest.mark.parametrize(
+    ("graf", "operacja", "fragment"),
+    [
+        (
+            GrafDoKompilacji(
+                name="tolerancja-trafo-sn",
+                szyny=_szyny(("A", 15.0), ("H", 110.0)),
+                transformatory=(
+                    TransformatorSpec(
+                        "T110",
+                        "H",
+                        "A",
+                        "tr-wn-sn-110-15-25mva-yd11",
+                        lv_voltage_tolerance="PLUS_6",
+                    ),
+                ),
+                zrodla=(_zrodlo("A"),),
+            ),
+            "add_transformer_sn_nn",
+            "Tolerancję napięcia sieci nN deklaruje transformator",
+        ),
+        (
+            GrafDoKompilacji(
+                name="tolerancja-zrodlo-sn",
+                szyny=_szyny(
+                    ("A", 15.0),
+                ),
+                zrodla=(_zrodlo("A", lv_voltage_tolerance="PLUS_6"),),
+            ),
+            "add_grid_source_sn",
+            "Tolerancję napięcia sieci nN deklaruje źródło",
+        ),
+    ],
+)
+def test_tolerancja_nn_na_elemencie_bez_sieci_nn_to_odmowa_operacji(
+    graf, operacja: str, fragment: str
+) -> None:
+    """Ta sama odmowa co w kreatorze (predykat zapisu operacji domenowej): deklaracja na
+    elemencie, którego szyna nie leży w paśmie nN, nie wybierałaby wiersza tabeli 1.
+
+    Partia integracji 10: nazwa operacji domenowej jest polem `operacja` odmowy, nie
+    przedrostkiem zdania dla projektanta."""
+    with pytest.raises(BenchmarkBuildError, match=fragment) as blad:
+        kompiluj_graf(graf)
+    assert blad.value.operacja == operacja
+    assert operacja not in str(blad.value)

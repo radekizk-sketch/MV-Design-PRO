@@ -20,6 +20,8 @@ DOMAIN_EVENT_TYPES: list[str] = [
     "BRANCH_CREATED",
     "SWITCH_INSERTED",
     "RING_CONNECTED",
+    # POLA-W-TORZE: element przepięty z szyny głównej stacji na zacisk pola (akcja W042)
+    "ELEMENT_REATTACHED_TO_FIELD",
     "NOP_SET",
     "TRANSFORMER_CREATED",
     "CATALOG_ASSIGNED",

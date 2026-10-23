@@ -31,10 +31,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/dowody');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/dowody'));
 const THEMES = ['light', 'dark'] as const;
 
 async function otworzScene(page: Page, theme: string): Promise<void> {
@@ -74,6 +76,7 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       await expect(page.getByText('Kabel SN 1').first()).toBeVisible();
       await expect(page.getByText('Linia SN 1').first()).toBeVisible();
       await expect(page.getByText('Założenie przypadku').first()).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_ocena_${theme}.png`),
         fullPage: true,
@@ -87,6 +90,7 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       await expect(
         page.getByText('Czas trwania zwarcia z założenia przypadku').first(),
       ).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_dowod_${theme}.png`),
         fullPage: true,
@@ -99,6 +103,7 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       await expect(
         page.getByText('Rachunku cieplnego nie przeprowadzono').first(),
       ).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_dowod_pelny_${theme}.png`),
         fullPage: true,

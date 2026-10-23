@@ -38,6 +38,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'start_branch_segment_sn',
   'insert_section_switch_sn',
   'connect_secondary_ring_sn',
+  // POLA-W-TORZE: akcja naprawcza kontroli W042 — element z szyny głównej stacji na zacisk pola.
+  'przepnij_element_na_pole',
   'set_normal_open_point',
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
@@ -58,6 +60,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_nn_switch_device',
   'add_nn_section_coupler',
   'set_nn_cable_laying_conditions',
+  // W5-E-TTIT: wyłącznik różnicowoprądowy (RCD) w torze instalacji odbiorczej nN —
+  // operacja ISTNIEJE w backendzie (enm/domain_operations_v2.py::add_nn_rcd).
+  'add_nn_rcd',
   // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
   // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
   // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
@@ -66,8 +71,17 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ct',
   'add_vt',
   'add_relay',
+  // Karta CT-JEDEN-WERDYKT: zapis obwodu wtórnego ISTNIEJĄCEGO przekładnika (edytor nastaw
+  // zabezpieczenia) — operacja w V2_CANONICAL_OPS backendu od W3-B; bez wpisu tutaj sekcja
+  // obwodu byłaby martwa (assertCanonicalOpName), a wiarygodność punktu oceny nieustalona.
+  'set_measurement_secondary_circuit',
+  // Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
+  'update_protection_settings',
   // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)
   'set_connection_conditions',
+  // Karta modeli odbiorów: wiązanie odbioru z profilem modelu dynamicznego (ekran dynamiki,
+  // akcja naprawcza `load.dynamika_missing`) — operacja w V2_CANONICAL_OPS backendu.
+  'set_load_dynamic_binding',
   // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',
@@ -362,6 +376,15 @@ export interface AddNNSwitchDevicePayload {
   from_bus_ref: string;
   to_bus_ref: string;
   device_class?: NNSwitchDeviceClass;
+  catalog_binding?: CatalogBindingPayload | null;
+  catalog_ref?: string | null;
+  name?: string | null;
+}
+
+/** W5-E-TTIT: lustro `enm/domain_operations_v2.py::add_nn_rcd` — RCD wstawiany w tor
+ *  zasilania instalacji odbioru nN (`load_ref`), pozycja katalogu `APARAT_NN_RCD`. */
+export interface AddNNRcdPayload {
+  load_ref: string;
   catalog_binding?: CatalogBindingPayload | null;
   catalog_ref?: string | null;
   name?: string | null;

@@ -34,6 +34,7 @@ import type {
 } from '../../../ui/catalog/BayTemplatePicker';
 import {
   CONSTRUCTION_LABELS_PL,
+  czyRodzinaDoBudowania,
   type FactoryConfigurationUnitWire,
   type FactoryConfigurationWire,
   type SwitchgearFamily,
@@ -73,18 +74,6 @@ export function torRodziny(rodzina: SwitchgearFamily | null | undefined): TorKon
 }
 
 // --------------------------------------- Oferta rodzin producenta (widok)
-
-/**
- * Statusy rodziny, przy których katalog POZWALA budować konfigurację —
- * odwzorowanie `POTWIERDZONE_STATUSY_RODZINY` z pakietu katalogu
- * (`switchgear/families.py`, polityka `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`).
- * `requires_catalog` i `deprecated` są POZA tym zbiorem.
- */
-const STATUSY_POZWALAJACE_BUDOWAC: ReadonlySet<SwitchgearFamily['status']> = new Set([
-  'verified',
-  'repo_verified',
-  'user_defined',
-]);
 
 /** Powód, dla którego rodziny katalogu NIE MOŻNA dziś użyć (albo `null`). */
 export type PowodNiedostepnosci = 'WYMAGA_KARTY' | 'WYCOFANA' | 'INNA_KLASA_NAPIECIOWA';
@@ -159,10 +148,12 @@ function powodNiedostepnosci(
   snVoltageKv: number,
 ): PowodNiedostepnosci | null {
   if (rodzina.status === 'deprecated') return 'WYCOFANA';
-  if (!STATUSY_POZWALAJACE_BUDOWAC.has(rodzina.status)) return 'WYMAGA_KARTY';
+  // Statusy dopuszczające budowę — jeden predykat frontu (`czyRodzinaDoBudowania`, lustro
+  // `POTWIERDZONE_STATUSY_RODZINY` z `switchgear/families.py`, parytet przypięty testem).
+  if (!czyRodzinaDoBudowania(rodzina)) return 'WYMAGA_KARTY';
   // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
   // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
-  if (rodzina.status !== 'user_defined' && rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
+  if (rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
   if (!rodzinaObslugujeNapiecie(rodzina, snVoltageKv)) return 'INNA_KLASA_NAPIECIOWA';
   return null;
 }
@@ -439,13 +430,28 @@ export interface JednostkaRozlozona {
   readonly pozycja: number;
 }
 
-/** Rozkłada blok fabryczny na jednostki z rolami kontraktu (kolejność wyrobu). */
+/**
+ * Rozkłada blok fabryczny na jednostki z rolami kontraktu (kolejność wyrobu).
+ *
+ * TOR BLOKU (karta POLA-W-TORZE): jednostki liniowe bloku RMU są symetryczne — katalog
+ * klasyfikuje je jako `liniowe_odplywowe`, bo to ten sam wyrób po obu stronach. Kierunek
+ * zasilania wynika z umiejscowienia stacji, nie z wyrobu, a operacja stacyjna przyłącza
+ * odcinek od strony zasilania do zacisku pola WEJŚCIOWEGO. Blok bez jednostki dopływowej
+ * oddaje więc rolę wejściową PIERWSZEJ jednostce liniowej w sekwencji wyrobu (ta sama
+ * pozycja, na której operacja domyka pole wejściowe); pozostałe zostają odpływowe.
+ * Projektant nadal widzi rolę każdej jednostki na karcie bloku.
+ */
 export function rozlozBlok(blok: BlokFabryczny | null | undefined): JednostkaRozlozona[] {
-  return (blok?.units ?? []).map((jednostka, index) => ({
+  const jednostki = (blok?.units ?? []).map((jednostka, index) => ({
     jednostka,
     rola: ROLA_Z_FUNKCJI_POLA[jednostka.bay_kind],
     pozycja: index + 1,
   }));
+  if (!jednostki.some((wpis) => wpis.rola === 'LINIA_IN')) {
+    const pierwszaLiniowa = jednostki.find((wpis) => wpis.rola === 'LINIA_OUT');
+    if (pierwszaLiniowa) pierwszaLiniowa.rola = 'LINIA_IN';
+  }
+  return jednostki;
 }
 
 /**
@@ -471,7 +477,10 @@ export function polaZBloku(
     .map((wpis) => ({
       id: `blok-${blok?.configuration_ref ?? ''}-${wpis.pozycja}-${wpis.jednostka.unit_code}`,
       field_role: wpis.rola,
-      bay_template_ref: szablonDlaRoli(wpis.rola),
+      // Karta katalogowa z FUNKCJI jednostki (wyrobu), nie z roli toru: jednostka liniowa
+      // w roli wejściowej to nadal ta sama celka rodziny (operacja sprawdza zgodność slotu
+      // z polem wyliczonym z jednostki bloku).
+      bay_template_ref: szablonDlaRoli(ROLA_Z_FUNKCJI_POLA[wpis.jednostka.bay_kind] ?? wpis.rola),
       apparatus_catalog_ref: aparatDlaRoli(wpis.rola),
       // Tożsamość wyrobu jedzie NA WPISIE pola, nie obok listy: operacja
       // stacyjna materializuje pole z JEDNOSTKI bloku (blok CCF z rozłącznikiem

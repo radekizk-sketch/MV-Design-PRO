@@ -59,6 +59,10 @@ Odniesienie architektoniczne: `mv-design-pro/ARCHITECTURE.md` (v4.0),
 | Status         | **NAPRAWIONE**                                                               |
 | Weryfikacja    | `cardAnalysisResults.test.ts` -- testy renderowania sekcji wynikow, CI green.|
 
+> Korekta 2026-10-22 (karta LINIA-110): `cardAnalysisResults.test.ts` skasowany — testował
+> wyłącznie lokalne kopie funkcji, nie kod kart; `LineSegmentCard.tsx` skasowana (zero
+> konsumentów produkcyjnych). Opis wyżej jest stanem z 2026-03-28, nie bieżącym dowodem.
+
 ---
 
 ## 2. WAZNE

@@ -272,7 +272,7 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
   const palette = useSldPalette();
   const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
-  if (props.id === 'openTerminal') {
+  if (props.id === 'openTerminal' || props.id === 'tieMarker') {
     // Recenzja NO-GO 2026-07-17 pkt 11: próbka „koniec otwarty" = odcinek
     // toru zakończony PROSTOPADŁYM słupkiem (ta sama geometria co
     // `emitOpenTerminalTick`, scene/buildScene.ts §16-v3) — bez niej wpis

@@ -54,6 +54,7 @@ from werdykt import (
 from werdykt.kontrakt import METODY_WYKAZANIA, METODY_WYNIKU
 from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 
+from tests.utils.importy_ast_skryptow import importy_ast
 from tests.werdykt import fabryki as f
 
 KATALOG_PAKIETU = Path(werdykt.__file__).parent
@@ -1190,15 +1191,47 @@ _ZAKAZANE_KORZENIE = {
 }
 
 
-def _moduly_importowane(sciezka: Path) -> list[str]:
+def _moduly_importowane(sciezka: Path, korzen: Path | None = None) -> list[str]:
+    """Moduły sprowadzane przez plik pakietu — importy względne rozwiązane wg semantyki
+    interpretera (`scripts/importy_ast.py`): `from .kontrakt import X` to `werdykt.kontrakt`
+    (do 2026-09-30 test czytał samo `module` i odrzucał taki import jako moduł `kontrakt`
+    spoza liścia), a `from . import x` to `werdykt.x` (wcześniej pomijany). Import względny
+    ponad korzeń drzewa rzuca `ImportPonadKorzen` — test pada, nie przepuszcza."""
     drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
+    pakiet = importy_ast.pakiet_pliku(sciezka, korzen or KATALOG_PAKIETU.parent)
     moduly: list[str] = []
     for wezel in ast.walk(drzewo):
         if isinstance(wezel, ast.Import):
             moduly.extend(alias.name for alias in wezel.names)
-        elif isinstance(wezel, ast.ImportFrom) and wezel.module is not None:
-            moduly.append(wezel.module)
+        elif isinstance(wezel, ast.ImportFrom):
+            moduly.extend(importy_ast.cele_importu(pakiet, wezel))
     return moduly
+
+
+@pytest.mark.parametrize(
+    ("tresc", "oczekiwane"),
+    [
+        ("from .kontrakt import X\n", ["werdykt.kontrakt"]),
+        ("from . import decyzja, kontrakt\n", ["werdykt.decyzja", "werdykt.kontrakt"]),
+        ("from werdykt.kontrakt import X\n", ["werdykt.kontrakt"]),
+        ("import enm.models\n", ["enm.models"]),
+    ],
+)
+def test_skan_importow_liscia_rozwiazuje_formy_wzgledne(
+    tmp_path: Path, tresc: str, oczekiwane: list[str]
+) -> None:
+    plik = tmp_path / "werdykt" / "modul.py"
+    plik.parent.mkdir()
+    plik.write_text(tresc, encoding="utf-8")
+    assert _moduly_importowane(plik, tmp_path) == oczekiwane
+
+
+def test_skan_importow_liscia_import_ponad_korzen_pada(tmp_path: Path) -> None:
+    plik = tmp_path / "werdykt" / "modul.py"
+    plik.parent.mkdir()
+    plik.write_text("from ..enm import models\n", encoding="utf-8")
+    with pytest.raises(importy_ast.ImportPonadKorzen):
+        _moduly_importowane(plik, tmp_path)
 
 
 @pytest.mark.parametrize("plik", sorted(KATALOG_PAKIETU.glob("*.py")), ids=lambda p: p.name)

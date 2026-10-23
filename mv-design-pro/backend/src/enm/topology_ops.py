@@ -40,12 +40,15 @@ from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_w
 from network_model.nazwy import jest_nazwa
 
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
+from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
     NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
     opis_elementu,
+    opis_obiektu,
 )
+from .wartosci_projektanta import blad_wartosci_projektanta_elementu
 
 # ---------------------------------------------------------------------------
 # Operation Result
@@ -307,6 +310,20 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 # ---------------------------------------------------------------------------
 
 
+def _odmowa_wartosci_projektanta(
+    kolekcja: str, element: dict[str, Any], rodzaj: str
+) -> OpIssue | None:
+    """Wartości projektanta elementu (stan KOŃCOWY po operacji) przez tę samą bramę co
+    operacja domenowa i walidator E011 (``enm.wartosci_projektanta``) — ta droga zapisu nie
+    może przemycić do modelu wartości, której obliczenie nie przyjmie."""
+    blad = blad_wartosci_projektanta_elementu(
+        kolekcja, element, opis_pl=opis_obiektu(element, rodzaj)
+    )
+    if blad is None:
+        return None
+    return OpIssue("OP_OVERRIDE_INVALID", "BLOCKER", blad, element.get("ref_id"))
+
+
 def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     """Utwórz nową gałąź (linia/kabel/łącznik). MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
@@ -415,6 +432,13 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "n_parallel",
             # W5-A (F9): uklad uziemienia ekranu kabla — dana projektowa.
             "screen_bonding",
+            # Karta LINIA-110: geometria słupa (dana projektu) i proweniencja R′/X′/B′/Z′0
+            # policzonych z geometrii. Biała lista gubiła je, gdy operacja buduje odcinek
+            # z danych istniejącej linii (podział odcinka: `_copy_split_segment_fields` →
+            # `create_branch`) — połówki traciły geometrię projektu, a uzupełnienie katalogu
+            # przeliczało je z wartości roboczej (fałszywa dana przyjęta zamiast danej projektu).
+            "geometria_slupa",
+            "parametry_z_geometrii",
         ):
             if key in data:
                 branch_data[key] = data[key]
@@ -427,6 +451,9 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             if key in data:
                 branch_data[key] = data[key]
 
+    odmowa = _odmowa_wartosci_projektanta("branches", branch_data, "Aparat łączeniowy SN")
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "create_branch", [*issues, odmowa])
     enm.setdefault("branches", []).append(branch_data)
     return TopologyOpResult(True, enm, "create_branch", issues, ref_id)
 
@@ -446,9 +473,13 @@ def update_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_branch", issues)
 
-    for key, val in data.items():
-        if key not in ("ref_id", "type"):  # type is immutable
-            enm["branches"][idx][key] = val
+    zmiany = {key: val for key, val in data.items() if key not in ("ref_id", "type")}
+    odmowa = _odmowa_wartosci_projektanta(
+        "branches", {**enm["branches"][idx], **zmiany}, "Aparat łączeniowy SN"
+    )
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "update_branch", [odmowa])
+    enm["branches"][idx].update(zmiany)  # type is immutable
     return TopologyOpResult(True, enm, "update_branch", issues, ref_id)
 
 
@@ -604,6 +635,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "hv_neutral",
             "lv_neutral",
             "lv_earthing_system",
+            "lv_voltage_tolerance",
             "n_parallel",
             "tap_position",
             "tap_min",
@@ -723,6 +755,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         }
         if "limits" in data:
             gen_data["limits"] = data["limits"]
+        odmowa = _odmowa_wartosci_projektanta("generators", gen_data, "Źródło")
+        if odmowa is not None:
+            return TopologyOpResult(False, enm, "create_device", [*issues, odmowa])
         enm.setdefault("generators", []).append(gen_data)
         return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
@@ -781,9 +816,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "r0_ohm",
             "x0_ohm",
             "z0_z1_ratio",
-            "c_max",
-            "c_min",
             "neutral_grounding",
+            "lv_voltage_tolerance",
         ):
             if opt in data:
                 src_data[opt] = data[opt]
@@ -839,9 +873,13 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_device", issues)
 
-    for key, val in data.items():
-        if key not in ("ref_id", "device_type"):
-            enm[coll][idx][key] = val
+    zmiany = {key: val for key, val in data.items() if key not in ("ref_id", "device_type")}
+    # Stan końcowy generatora (rodzaj i lista po zmianie): zmiana samego `gen_type` przy
+    # zapisanych wartościach projektanta sprawdza je względem rodziny NOWEGO rodzaju.
+    odmowa = _odmowa_wartosci_projektanta(coll, {**items[idx], **zmiany}, "Źródło")
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "update_device", [odmowa])
+    enm[coll][idx].update(zmiany)
     return TopologyOpResult(True, enm, "update_device", issues, ref_id)
 
 
@@ -1050,6 +1088,12 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
             )
         )
 
+    # Nastawy przez JEDNĄ regułę zapisu (karta BIEG-ZABEZPIECZEN-Z-MODELU): niekompletne
+    # przechodzą (brak gotowości nazywa ocena), sprzeczne są odrzucane.
+    ustawienia = data.get("settings", [])
+    for blad in bledy_nastaw(ustawienia):
+        issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
+
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "attach_protection", issues)
 
@@ -1061,7 +1105,7 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         "vt_ref": data.get("vt_ref"),
         "device_type": device_type,
         "catalog_ref": data.get("catalog_ref"),
-        "settings": data.get("settings", []),
+        "settings": normalizuj_nastawy(ustawienia),
         "is_enabled": data.get("is_enabled", True),
         "tags": data.get("tags", []),
         "meta": data.get("meta", {}),
@@ -1100,11 +1144,17 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
                 )
             )
 
+    if "settings" in data:
+        for blad in bledy_nastaw(data["settings"]):
+            issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
+
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "update_protection", issues)
 
     for key, val in data.items():
-        if key not in ("ref_id",):
+        if key == "settings":
+            enm["protection_assignments"][idx][key] = normalizuj_nastawy(val)
+        elif key not in ("ref_id",):
             enm["protection_assignments"][idx][key] = val
     return TopologyOpResult(True, enm, "update_protection", issues, ref_id)
 

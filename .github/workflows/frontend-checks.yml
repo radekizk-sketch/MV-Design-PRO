@@ -25,21 +25,29 @@ jobs:
       - name: Lint
         working-directory: mv-design-pro/frontend
         run: npm run lint
+      # Karta SZYBKIE-TESTY (2026-09-30): jeden bieg, pliki rownolegle w puli PROCESOW
+      # (`pool: 'forks'` w vite.config.ts — proces na plik, wiec pamiec nie narasta miedzy
+      # plikami, co wczesniej wymuszalo 12 shardow uruchamianych po kolei).
       - name: Run tests
         working-directory: mv-design-pro/frontend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
-        run: |
-          for shard in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            echo "Running Vitest shard ${shard}/12"
-            npx vitest run --no-file-parallelism --shard=${shard}/12
-          done
+        run: npx vitest run
+      # Karta SZYBKIE-TESTY (2026-10-15): testy budzetu czasu procesora (kazdy plik importujacy
+      # `src/test/czasProcesora.ts`, zbior wyznacza `plikiBudzetuCzasu` w vite.config.ts) biegna
+      # OSOBNO, jeden plik naraz — w puli rownoleglej sasiednie procesy zawyzaly ich czas
+      # procesora (pomiar: 31,6 s przy 3 procesach wobec zielonego biegu samego pliku).
+      - name: Run CPU-time budget tests (sequential)
+        working-directory: mv-design-pro/frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npx vitest run --mode budzety
       - name: Run audit2 frontend integration tests (Phase 8-30)
         working-directory: mv-design-pro/frontend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
-          npx vitest run --no-file-parallelism \
+          npx vitest run \
             src/ui/network-build/station-der/__tests__/audit2-api.test.ts \
             src/ui/network-build/station-der/__tests__/audit2-hooks.test.tsx \
             src/ui/network-build/station-configurator/cards/__tests__/audit-round3-wiring.test.tsx \
@@ -104,3 +112,10 @@ jobs:
       - name: Werdykt Wyjasnialny Guard
         working-directory: mv-design-pro
         run: python scripts/werdykt_wyjasnialny_guard.py
+      # Karta DOWOD-CIEPLNY: kontrakt kroku sladu WHITE BOX — pole prozy (`substitution`,
+      # `notes`, `title`, `symbol`, `*_pl`) bez zapisu LaTeX, pola `*_latex` bez `$$`.
+      # Korpus: wyjscie generatorow fikstur frontu (JSON + moduly GENERATED TS); lista
+      # dozwolona pusta. Przebieg producentow: backend/tests/ci/test_slad_proza_bez_latex.py.
+      - name: Slad Proza Bez LaTeX Guard
+        working-directory: mv-design-pro
+        run: python scripts/slad_proza_bez_latex_guard.py

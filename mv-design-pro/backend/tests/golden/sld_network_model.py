@@ -15,6 +15,7 @@ from collections import deque
 from typing import Any
 
 from enm.nazwy_elementow import nazwa_elementu
+from enm.tor_pola import szyny_stacji
 
 from .wymagane import pole_wymagane
 
@@ -46,10 +47,12 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     transformers = {t["ref_id"]: t for t in enm.get("transformers", [])}
 
     # bus_ref → owning substation ref
+    # POLA-W-TORZE: zaciski pól SN i szyny za aparatami pól nN należą do stacji (jedno źródło
+    # przynależności `enm.tor_pola.szyny_stacji`).
     bus_owner: dict[str, str] = {}
     for s in subs:
-        for r in s.get("bus_refs", []):
-            bus_owner[r] = s["ref_id"]
+        for r in sorted(szyny_stacji(s, enm.get("branches", []))):
+            bus_owner.setdefault(r, s["ref_id"])
 
     # Undirected bus adjacency from cable/line/switch branches (structure ⇒ all, any status).
     adj: dict[str, list[str]] = {}
@@ -271,8 +274,7 @@ def render_sld_network_fixture(model: dict[str, Any]) -> str:
     porownujacego artefakt z generatorem, wiec reczna edycja rozjezdzala go
     z modelem bez jednego czerwonego testu.
     """
-    import json
+    from tests.golden.zapis_fikstur import json_fikstury
 
-    return (
-        _NAGLOWEK_FIXTURY + json.dumps(model, indent=2, sort_keys=True, ensure_ascii=False) + ";\n"
-    )
+    # Regula zapisu liczb wspolna dla wszystkich fikstur (``zapis_fikstur``).
+    return _NAGLOWEK_FIXTURY + json_fikstury(model).removesuffix("\n") + ";\n"

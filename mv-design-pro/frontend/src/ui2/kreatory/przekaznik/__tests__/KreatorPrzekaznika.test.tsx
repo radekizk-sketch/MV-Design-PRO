@@ -17,7 +17,11 @@ const centerSldOnElementMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let activeForm: { op: string; context?: Record<string, unknown> } | null = { op: 'add_relay', context: {} };
-const snapshotState = { error: null as string | null, snapshot: null, executeDomainOperation: executeDomainOperationMock };
+const snapshotState = {
+  error: null as string | null,
+  snapshot: null as unknown,
+  executeDomainOperation: executeDomainOperationMock,
+};
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -106,6 +110,7 @@ describe('KreatorPrzekaznika — realna ścieżka', () => {
     appState.activeCaseId = 'case-1';
     activeForm = { op: 'add_relay', context: {} };
     snapshotState.error = null;
+    snapshotState.snapshot = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
@@ -165,6 +170,68 @@ describe('KreatorPrzekaznika — realna ścieżka', () => {
 
   it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
     appState.activeCaseId = null;
+    render(<KreatorPrzekaznika />);
+    await pickCatalog();
+    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Kotwica „wyłącznik liniowy" (karta BIEG-ZABEZPIECZEN-Z-MODELU): wejście z ekranu
+ * „Zabezpieczenia i automatyka" z kontekstem `{kotwica: 'wylacznik', breaker_ref}` — wyłącznik
+ * w torze odcinka, bez pola rozdzielnicy. Iloczyn cech: {przekładnik przy wyłączniku: jest,
+ * brak, przekładnik innego wyłącznika} × {wyłącznik w modelu: jest, brak}.
+ */
+describe('KreatorPrzekaznika — kotwica wyłącznika liniowego', () => {
+  const WYLACZNIK = { ref_id: 'q-1', name: 'Wyłącznik odcinka 1', type: 'breaker' };
+  const ct = (breakerRef: string) => ({
+    ref_id: `ct-${breakerRef}`,
+    measurement_type: 'CT',
+    meta: { breaker_ref: breakerRef },
+  });
+
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    snapshotState.error = null;
+    closeFormMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    selectElementMock.mockReset();
+    activeForm = { op: 'add_relay', context: { kotwica: 'wylacznik', breaker_ref: 'q-1' } };
+  });
+
+  afterEach(() => cleanup());
+
+  it('przekładnik przy wyłączniku — payload z breaker_ref (bez pola), bez ostrzeżenia o CT', async () => {
+    snapshotState.snapshot = { branches: [WYLACZNIK], measurements: [ct('q-1')] };
+    executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: 'relay-q' } });
+    render(<KreatorPrzekaznika />);
+    expect(screen.getByTestId('mvd-kreator-przekaznik-pole')).toHaveTextContent('Wyłącznik odcinka 1');
+    expect(screen.queryByTestId('mvd-kreator-przekaznik-bay')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-przekaznik-brak-ct')).not.toBeInTheDocument();
+    await pickCatalog();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, operacja, ladunek] = executeDomainOperationMock.mock.calls[0];
+    expect(operacja).toBe('add_relay');
+    expect(ladunek).toMatchObject({ breaker_ref: 'q-1', relay_type: 'NADPRADOWY', catalog_ref: 'relay-1' });
+    expect(ladunek).not.toHaveProperty('bay_ref');
+    expect(closeFormMock).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['brak przekładnika', [] as ReturnType<typeof ct>[]],
+    ['przekładnik innego wyłącznika', [ct('q-inny')]],
+  ])('%s — ostrzeżenie o braku CT (przypisanie dozwolone, brak nazwany)', async (_opis, pomiary) => {
+    snapshotState.snapshot = { branches: [WYLACZNIK], measurements: pomiary };
+    render(<KreatorPrzekaznika />);
+    expect(screen.getByTestId('mvd-kreator-przekaznik-brak-ct')).toBeInTheDocument();
+    await pickCatalog();
+    expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeEnabled();
+  });
+
+  it('wyłącznika nie ma w modelu — zapis zablokowany, operacja nie wychodzi', async () => {
+    snapshotState.snapshot = { branches: [], measurements: [] };
     render(<KreatorPrzekaznika />);
     await pickCatalog();
     expect(screen.getByTestId('mvd-kreator-przekaznik-zapisz')).toBeDisabled();

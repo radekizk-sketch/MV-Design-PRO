@@ -36,6 +36,105 @@ export interface LineType extends CatalogType {
 }
 
 /**
+ * Karta LINIA-110: przewód linii napowietrznej 110 kV (przestrzeń PRZEWOD_LINII_WN).
+ * Dane WYROBU wg PN-EN 50182 — bez impedancji linii: R′, X′, B′ i Z′0 liczy backend
+ * z geometrii słupa (`POST /api/catalog/overhead-conductor-types/{id}/parametry-linii`).
+ * Źródło: backend `OverheadConductorType.to_dict`.
+ */
+export interface OverheadConductorType extends CatalogType {
+  oznaczenie: string;
+  przeznaczenie: 'FAZOWY' | 'ODGROMOWY';
+  conductor_material: string;
+  cross_section_mm2: number;
+  przekroj_stali_mm2: number | null;
+  srednica_mm: number;
+  warstwy_al: number[];
+  liczba_drutow_al: number;
+  liczba_drutow_st: number | null;
+  srednica_drutu_al_mm: number;
+  srednica_drutu_st_mm: number | null;
+  srednica_rdzenia_mm: number;
+  r20_dc_ohm_per_km: number;
+  alfa_1_per_k: number;
+  /** null = tablica wyrobu nie podaje GMR; backend wyznacza go z budowy przewodu. */
+  gmr_mm: number | null;
+  masa_kg_per_km: number | null;
+  wytrzymalosc_kn: number | null;
+  voltage_rating_kv: number;
+  max_temperature_c: number;
+  /** null = obciążalność nie dotyczy (przewód odgromowy). */
+  rated_current_a: number | null;
+  jth_1s_a_per_mm2: number;
+  short_circuit_temperature_c: number;
+  thermal_source_reference: string;
+  standard: string;
+  source_reference: string;
+}
+
+/** Karta LINIA-110: propozycja wartości roboczej składowej danych linii 110 kV (zasada nr 4). */
+export interface PropozycjaDanejLiniiWn {
+  parametr: 'fazy' | 'odgromowe' | 'przewod_odgromowy_ref' | 'rezystywnosc_gruntu_ohm_m';
+  nazwa_pl: string;
+  rodzaj_zrodla: string;
+  odniesienie: string;
+  uzasadnienie_pl: string;
+  wplyw_pl: string;
+}
+
+/** Odpowiedź `GET /api/catalog/overhead-conductor-types`. */
+export interface KatalogPrzewodowLiniiWn {
+  przewody: OverheadConductorType[];
+  wartosci_robocze: PropozycjaDanejLiniiWn[];
+}
+
+/** Pasmo wiarygodności parametru linii 110 kV (warstwa interpretacji backendu). */
+export interface PasmoParametruLiniiWn {
+  parametr: string;
+  nazwa_pl: string;
+  wartosc: number | null;
+  jednostka: string;
+  dolna: number;
+  gorna: number;
+  w_pasmie: boolean;
+  ocena_wiarygodnosci: string;
+  wyjasnienie_pl: string;
+  podstawa_pl: string;
+}
+
+/** Składowa danych linii po rozstrzygnięciu: dana projektu albo wartość robocza. */
+export interface SkladowaDanychLiniiWn {
+  parametr: PropozycjaDanejLiniiWn['parametr'];
+  nazwa_pl: string;
+  pochodzenie: 'PROJEKT' | 'PROPOZYCJA';
+  wartosc_robocza: boolean;
+  opis_zrodla_pl: string;
+}
+
+/**
+ * Odpowiedź podglądu parametrów linii 110 kV
+ * (`POST /api/catalog/overhead-conductor-types/{id}/parametry-linii`) — liczby z solvera,
+ * UI ich nie przelicza.
+ */
+export interface PodgladParametrowLiniiWn {
+  przewod: { oznaczenie: string | null; przekroj_mm2: number | null; zrodlo: string | null };
+  parametry: {
+    metoda: string;
+    wersja_metody: string;
+    r1_ohm_per_km: number;
+    x1_ohm_per_km: number;
+    b1_s_per_km: number;
+    r0_ohm_per_km: number;
+    x0_ohm_per_km: number;
+    b0_s_per_km: number;
+    r1_temperatura_ohm_per_km: number;
+    temperatura_przewodu_c: number;
+    kompletnosc_dowodu: 'PELNY' | 'NIEPELNY';
+  };
+  dane_linii: { skladowe: SkladowaDanychLiniiWn[] };
+  pasma_wiarygodnosci: PasmoParametruLiniiWn[];
+}
+
+/**
  * Cable Type (underground cable).
  * Source: backend CableType dataclass.
  */
@@ -119,7 +218,23 @@ export interface SwitchEquipmentType extends CatalogType {
  */
 export interface ConverterType extends CatalogType {
   kind: 'PV' | 'WIND' | 'BESS';
+  /**
+   * Napięcie przekształtnika po stronie SIECI [kV] = uzwojenie nN transformatora
+   * blokowego. Dla turbiny NIE jest to napięcie generatora (to niesie
+   * `generator_stator_voltage_kv`).
+   */
   un_kv: number;
+  /**
+   * Tor maszyny turbiny wiatrowej (tylko `kind: 'WIND'`, KAT-T-042…044). Brak pola =
+   * dokument nie podaje wartości — nigdy domyślka.
+   */
+  generator_machine_type?: 'PMSG' | 'SCIG' | 'DFIG' | null;
+  converter_topology?: 'FULL_CONVERTER' | 'DFIG_ROTOR_CONVERTER' | null;
+  generator_rated_power_mw?: number | null;
+  generator_stator_voltage_kv?: number | null;
+  /** Maksymalna częstotliwość stojana za przekształtnikiem [Hz] — nie częstotliwość sieci. */
+  generator_stator_frequency_max_hz?: number | null;
+  converter_machine_side_voltage_kv?: number | null;
   sn_mva: number;
   pmax_mw: number;
   qmin_mvar?: number;
@@ -230,14 +345,75 @@ export interface MVApparatusType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — WYŁĄCZNIE dane karty, z pochodzeniem;
+   *  `null` = karta danej nie podaje (wartość roboczą niesie `wartosci_robocze`). */
   i_th_ka?: number | null;
   i_th_duration_s?: number | null;
   i_th_pochodzenie?: string | null;
   i_dyn_ka?: number | null;
   i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  /** Czas własny aparatu [s] — dana karty producenta (IEC 62271-100); `null` = brak w karcie. */
   break_time_s?: number | null;
+  /** Propozycje wartości roboczych dla parametrów, których karta nie podaje (zasada nr 4,
+   *  V12K-351) — `GET /api/catalog/mv-apparatus-types`; rejestr backendu jest jedynym źródłem. */
+  wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
+}
+
+/** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
+export type RodzajZrodlaWartosciRoboczej = 'PROFIL_URZADZENIA' | 'NORMA' | 'ZALOZENIE_INZYNIERSKIE';
+
+/** Propozycja wartości roboczej: liczba, jednostka, źródło, uzasadnienie i wpływ na ocenę. */
+export interface PropozycjaWartosciRoboczej {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly wartosc: number;
+  readonly jednostka: string;
+  readonly rodzaj_zrodla: RodzajZrodlaWartosciRoboczej;
+  readonly odniesienie: string;
+  readonly uzasadnienie_pl: string;
+  readonly wplyw_pl: string;
+}
+
+/** Rodzina maszyny wirującej rejestru (`RodzinaMaszyny`, `network_model/catalog/wartosci_robocze.py`). */
+export type RodzinaMaszyny = 'MASZYNA_SYNCHRONICZNA' | 'MASZYNA_ASYNCHRONICZNA';
+
+/**
+ * Propozycja rejestru dla parametru maszyny wirującej. `wartosc: null` — liczba zależy od
+ * elementu (moc znamionowa z punktu pracy elementu); regułę podaje `uzasadnienie_pl`.
+ */
+export interface PropozycjaParametruMaszyny extends Omit<PropozycjaWartosciRoboczej, 'wartosc'> {
+  readonly wartosc: number | null;
+}
+
+/**
+ * Parametr, który obliczenie wyznacza z innej danej tabliczki, gdy tabliczka nie podaje go wprost
+ * (moc znamionowa P_rM z mocy pozornej S_rM, IEC 60909-0 pkt 6.7) — klucz tej danej i opis reguły.
+ */
+export interface WyznaczenieZTabliczki {
+  readonly klucz_tabliczki: string;
+  readonly opis_pl: string;
+}
+
+/** Parametr zwarciowy maszyny wirującej: opis, zakres bramy wartości i propozycja rejestru. */
+export interface ParametrMaszynyRejestru {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly symbol: string;
+  readonly jednostka: string;
+  readonly dopuszczalne_od: number;
+  readonly dopuszczalne_do: number;
+  readonly calkowita: boolean;
+  readonly propozycja: PropozycjaParametruMaszyny;
+  readonly wyznaczenie_z_tabliczki: WyznaczenieZTabliczki | null;
+}
+
+/**
+ * Rejestr parametrów maszyn wirujących (`GET /api/catalog/maszyny-wirujace/wartosci-robocze`,
+ * karta PODSTAWA-Q): rodzaj generatora → rodzina i parametry rodziny w kolejności rejestru.
+ */
+export interface RejestrMaszynWirujacych {
+  readonly rodzaj_generatora: Readonly<Record<string, RodzinaMaszyny>>;
+  readonly rodziny: Readonly<Record<RodzinaMaszyny, readonly ParametrMaszynyRejestru[]>>;
 }
 
 /**
@@ -269,6 +445,46 @@ export interface LVApparatusType extends CatalogType {
   ii_range?: [number, number] | null;
   tr_range?: [number, number] | null;
   tsd_range?: [number, number] | null;
+}
+
+/** Rodzaj prądu różnicowego RCD — słownik `RODZAJE_PRADU_ROZNICOWEGO_RCD` backendu. */
+export type RodzajPraduRoznicowegoRcd = 'AC' | 'A' | 'F' | 'B';
+
+/**
+ * LV RCD Type (APARAT_NN_RCD) — wyłącznik różnicowoprądowy nN (RCCB IEC 61008-1 / RCBO
+ * IEC 61009-1). Lustro 1:1 `LVRcdType.to_dict()` (network_model/catalog/types.py, karta
+ * W5-E-TTIT), łącznie z metadanymi wiarygodności pozycji. Interfejs samodzielny (nie
+ * `extends CatalogType`), bo backend serwuje `manufacturer: null`, czego `CatalogType`
+ * (`manufacturer?: string`) nie wyraża.
+ */
+export interface LVRcdType {
+  id: string;
+  name: string;
+  /** Prąd znamionowy In [A]. */
+  in_a: number;
+  /** Prąd różnicowy znamionowy zadziałania I_Δn [A]. */
+  i_delta_n_a: number;
+  rcd_type: RodzajPraduRoznicowegoRcd;
+  /** `true` = typ S (selektywny, zwłoczny). */
+  selective: boolean;
+  /** Maksymalny czas wyłączenia przy I_Δn [s]. */
+  t_a_s: number;
+  /** Maksymalny czas wyłączenia przy 2·I_Δn [s]. */
+  t_a_2idn_s: number | null;
+  /** Maksymalny czas wyłączenia przy 5·I_Δn [s]. */
+  t_a_5idn_s: number | null;
+  /** Minimalny czas niezadziałania [s] (tylko typ S). */
+  t_nieczuly_min_s: number | null;
+  /** Napięcie znamionowe Un [kV]. */
+  u_n_kv: number;
+  poles: number | null;
+  manufacturer: string | null;
+  verification_status: string;
+  source_reference: string;
+  catalog_status: string;
+  contract_version: string;
+  /** Obecne wyłącznie, gdy backend niesie notę weryfikacji. */
+  verification_note?: string;
 }
 
 /**
@@ -473,22 +689,6 @@ export interface BranchPointCatalogType extends CatalogType {
   catalog_namespace?: 'mv_branch_points';
 }
 
-export interface MVApparatusCatalogType extends CatalogType {
-  device_kind: string;
-  u_n_kv: number;
-  i_n_a: number;
-  breaking_capacity_ka?: number;
-  making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
-  i_th_ka?: number | null;
-  i_th_duration_s?: number | null;
-  i_th_pochodzenie?: string | null;
-  i_dyn_ka?: number | null;
-  i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
-  break_time_s?: number | null;
-}
-
 /**
  * Catalog Binding — links element to catalog item with version.
  * Source: backend CatalogBinding / CatalogBindingPayload.
@@ -507,10 +707,12 @@ export interface CatalogBinding {
 export type CatalogNamespace =
   | 'KABEL_SN'
   | 'LINIA_SN'
+  | 'PRZEWOD_LINII_WN'
   | 'ZRODLO_SN'
   | 'TRAFO_SN_NN'
   | 'APARAT_SN'
   | 'APARAT_NN'
+  | 'APARAT_NN_RCD'
   | 'KABEL_NN'
   | 'CT'
   | 'VT'
@@ -528,9 +730,9 @@ export type CatalogNamespace =
 /**
  * Union of all catalog type categories.
  */
-export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
+export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
-  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
+  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 

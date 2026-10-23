@@ -251,7 +251,7 @@ def _nastawy_z_awaria(monkeypatch: pytest.MonkeyPatch, ktory: int, typ: type[Exc
 
     monkeypatch.setattr(batch_run, "wykonaj_bieg_w_pamieci", _wykonaj)
     return batch_run.zbuduj_wejscie_nastaw(
-        _kotwica(), line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        _kotwica(), line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
 
 

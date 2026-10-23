@@ -24,7 +24,6 @@ from enm.canonical_analysis import (  # noqa: E402
     pobierz_rozplyw_biegu,
     pobierz_slad_rozplywu_biegu,
     reset_canonical_runs,
-    run_short_circuit_now,
     wiersze_swiezego_biegu_bez_rozplywu,
 )
 from enm.models import EnergyNetworkModel  # noqa: E402
@@ -33,12 +32,15 @@ from infrastructure.persistence.db import create_engine_from_url, init_db  # noq
 from infrastructure.persistence.models import CanonicalRunBranchFlowORM  # noqa: E402
 from infrastructure.persistence.repositories.canonical_run_repository import (  # noqa: E402
     KLUCZE_ROZPLYWU,
+    KLUCZE_SLADU_ROZPLYWU,
+    KOLUMNY_ROZPLYWU,
     canonical_run_repository_scope,
     get_canonical_run_session_factory,
 )
 from sqlalchemy import inspect, select, text  # noqa: E402
 
 from tests.catalog_test_helpers import gpz_source_record  # noqa: E402
+from tests.utils.biegi import run_short_circuit_now  # noqa: E402
 
 
 def _seed_enm(case_id: str) -> None:
@@ -420,9 +422,83 @@ def test_czyszczenie_biegow_usuwa_rozplyw() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_klasa_rozplywu_ma_dwa_klucze() -> None:
-    """Deklaracja klasy jest przypięta testem (zmiana zbioru = świadoma decyzja)."""
-    assert KLUCZE_ROZPLYWU == ("branch_contributions", "branch_flow_trace")
+def test_klasa_rozplywu_ma_piec_kluczy_i_kazdy_ma_kolumne() -> None:
+    """Deklaracja klasy jest przypięta testem (zmiana zbioru = świadoma decyzja).
+
+    Karta PROG-ZERA-WKLADOW dołożyła zestawienie wkładów pominiętych na podstawie
+    tolerancji numerycznej (`wklady_pominiete`) — ten sam iloczyn źródło×gałąź co wkłady,
+    więc ten sam mechanizm „wytnij z wiersza / oddaj na żądanie". Karta WKLAD-ZRODLA
+    dołożyła wkłady źródeł i ich ślad (liczone z tej samej macierzy punktu, w tym samym
+    trybie). Mapa klucz → kolumna jest JEDYNYM źródłem dróg zapisu i odczytu, więc każda
+    jej kolumna MUSI istnieć w ORM i być addytywna (nullable) poza wkładami gałęziowymi."""
+    assert KLUCZE_ROZPLYWU == (
+        "branch_contributions",
+        "branch_flow_trace",
+        "wklady_pominiete",
+        "wklady_zrodel",
+        "wklady_zrodel_slad",
+    )
+    assert tuple(KOLUMNY_ROZPLYWU) == KLUCZE_ROZPLYWU
+    assert KLUCZE_SLADU_ROZPLYWU == ("branch_flow_trace", "wklady_zrodel_slad")
+    kolumny_orm = CanonicalRunBranchFlowORM.__table__.columns
+    for klucz, kolumna in KOLUMNY_ROZPLYWU.items():
+        assert kolumna in kolumny_orm, kolumna
+        assert kolumny_orm[kolumna].nullable is (klucz != "branch_contributions"), kolumna
+
+
+def _rozplyw_z_tabeli(run_id: UUID, punkt: str) -> dict[str, Any] | None:
+    with canonical_run_repository_scope() as repository:
+        return repository.get_rozplyw_punktu(run_id, punkt)
+
+
+def test_cala_klasa_rozplywu_bajtowo_ta_sama_w_pamieci_w_tabeli_i_na_zadanie() -> None:
+    """KAŻDY klucz klasy (także wkłady źródeł i ich ślad) przechodzi trzy drogi bez zmian.
+
+    Iloczyn: klucz klasy × droga {bieg `in_run` w pamięci, tabela zasilona przy zapisie,
+    tabela zasilona na żądanie, widok API punktu}. Ślady przechodzą granicę kontraktu pól
+    kroku (`kroki_zwarcia_w_kontrakcie`) w obu trybach z TEJ SAMEJ krotki kluczy.
+    """
+    w_biegu = _swiezy_bieg()
+    na_zadanie = _bieg_na_zadanie()
+    zapisany_na_zadanie = get_run(na_zadanie.id)
+    assert zapisany_na_zadanie is not None
+    punkty = [
+        item["fault_node_id"]
+        for item in w_biegu.raw_result["results"]
+        if item.get("branch_contributions") is not None
+    ]
+    assert punkty
+    for item in w_biegu.raw_result["results"]:
+        punkt = item["fault_node_id"]
+        if punkt not in punkty:
+            continue
+        assert item.get("wklady_zrodel"), "sieć testowa ma zasilanie GPZ — wkład źródła istnieje"
+        assert item.get("wklady_zrodel_slad")
+        z_tabeli_in_run = _rozplyw_z_tabeli(w_biegu.id, punkt)
+        assert z_tabeli_in_run is not None
+        # Odczyt na żądanie utrwala punkt w tabeli biegu domyślnego.
+        widok = build_short_circuit_rozplyw(zapisany_na_zadanie, punkt)
+        z_tabeli_na_zadanie = _rozplyw_z_tabeli(na_zadanie.id, punkt)
+        assert z_tabeli_na_zadanie is not None
+        for klucz in KLUCZE_ROZPLYWU:
+            assert _kanonicznie(z_tabeli_in_run[klucz]) == _kanonicznie(item.get(klucz)), klucz
+            assert _kanonicznie(z_tabeli_na_zadanie[klucz]) == _kanonicznie(item.get(klucz)), klucz
+        assert _kanonicznie(widok["wklady_zrodel_slad"]) == _kanonicznie(item["wklady_zrodel_slad"])
+        assert [w["source_id"] for w in widok["wklady_zrodel"]] == ["src-grid"]
+        assert widok["wklady_zrodel"][0]["i_ka"] == pytest.approx(
+            item["wklady_zrodel"][0]["i_a"] / 1000.0, rel=1e-15
+        )
+    assert _rozplyw_z_tabeli(w_biegu.id, "nie-ma-takiego-punktu") is None
+
+
+def test_zapis_rozplywu_odmawia_klucza_spoza_klasy() -> None:
+    """Klucz spoza `KOLUMNY_ROZPLYWU` to błąd wołającego — jawny, nie cicha utrata danych."""
+    bieg = _swiezy_bieg()
+    with pytest.raises(ValueError, match="spoza klasy"):
+        with canonical_run_repository_scope() as repository:
+            repository.zapisz_rozplyw_punktu(
+                bieg.id, "punkt-nowy", {"branch_contributions": [], "obcy_klucz": []}
+            )
 
 
 def test_slad_solvera_towarzyszy_wkladom() -> None:
@@ -523,12 +599,31 @@ def _kolumny(engine: Any, tabela: str) -> set[str]:
     return {kolumna["name"] for kolumna in inspect(engine).get_columns(tabela)}
 
 
-def test_init_db_doklada_kolumne_addytywna_do_istniejacej_bazy(tmp_path: Any) -> None:
+#: Kolumny addytywne klasy ładunku rozpływu (nullable) — z mapy `KOLUMNY_ROZPLYWU` i ORM,
+#: nie z listy pisanej ręcznie: każda kolumna dołożona do klasy dostaje dowód dołożenia do
+#: istniejącej bazy (karta WKLAD-ZRODLA dołożyła `wklady_zrodel_json`,
+#: `wklady_zrodel_slad_json`; `wklady_pominiete_json` nie miała dotąd tego dowodu).
+KOLUMNY_ADDYTYWNE_ROZPLYWU = tuple(
+    kolumna
+    for kolumna in KOLUMNY_ROZPLYWU.values()
+    if CanonicalRunBranchFlowORM.__table__.c[kolumna].nullable
+)
+
+
+def test_kolumny_addytywne_rozplywu_to_cala_klasa_poza_wkladami() -> None:
+    assert set(KOLUMNY_ADDYTYWNE_ROZPLYWU) == set(KOLUMNY_ROZPLYWU.values()) - {
+        "contributions_json"
+    }
+
+
+@pytest.mark.parametrize("kolumna", KOLUMNY_ADDYTYWNE_ROZPLYWU)
+def test_init_db_doklada_kolumne_addytywna_do_istniejacej_bazy(tmp_path: Any, kolumna: str) -> None:
     """Baza z tabelą sprzed dodania kolumny: `init_db` dokłada kolumnę, dane zostają.
 
     `create_all` tworzy tylko brakujące TABELE — bez tego kroku pierwszy zapis
     rozpływu kończył się `OperationalError: no column named branch_flow_trace_json`
-    na każdej istniejącej bazie deweloperskiej/e2e.
+    na każdej istniejącej bazie deweloperskiej/e2e. Iloczyn: każda kolumna addytywna
+    klasy ładunku rozpływu.
     """
     import sqlite3
 
@@ -538,9 +633,7 @@ def test_init_db_doklada_kolumne_addytywna_do_istniejacej_bazy(tmp_path: Any) ->
     engine = create_engine_from_url(f"sqlite+pysqlite:///{tmp_path / 'stara.db'}")
     init_db(engine)
     with engine.begin() as polaczenie:
-        polaczenie.execute(
-            text("ALTER TABLE canonical_run_branch_flows DROP COLUMN branch_flow_trace_json")
-        )
+        polaczenie.execute(text(f"ALTER TABLE canonical_run_branch_flows DROP COLUMN {kolumna}"))
         # Wiersz tabeli rozpływu bez wiersza biegu: SQLite nie egzekwuje kluczy
         # obcych bez `PRAGMA foreign_keys=ON` (silnik go nie włącza), a test
         # sprawdza WYŁĄCZNIE dołożenie kolumny i przetrwanie danych w tej tabeli.
@@ -550,15 +643,15 @@ def test_init_db_doklada_kolumne_addytywna_do_istniejacej_bazy(tmp_path: Any) ->
                 "contributions_json) VALUES ('00000000000000000000000000000abc', 'bus-1', '[]')"
             )
         )
-    assert "branch_flow_trace_json" not in _kolumny(engine, "canonical_run_branch_flows")
+    assert kolumna not in _kolumny(engine, "canonical_run_branch_flows")
 
     init_db(engine)
-    assert "branch_flow_trace_json" in _kolumny(engine, "canonical_run_branch_flows")
+    assert kolumna in _kolumny(engine, "canonical_run_branch_flows")
     # Idempotencja: kolejne wywołanie niczego nie dokłada i nie psuje.
     init_db(engine)
     with engine.connect() as polaczenie:
         wiersze = polaczenie.execute(
-            text("SELECT fault_node_id, branch_flow_trace_json FROM canonical_run_branch_flows")
+            text(f"SELECT fault_node_id, {kolumna} FROM canonical_run_branch_flows")
         ).all()
     assert wiersze == [("bus-1", None)]
     engine.dispose()

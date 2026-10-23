@@ -41,6 +41,7 @@ from application.proof_engine.proof_pack import (
     zbuduj_zip_zbiorczy,
 )
 from application.proof_engine.types import ProofDocument
+from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import v_na_kv
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     compute_sc1_asymmetrical_quantities,
@@ -66,6 +67,9 @@ class SCAsymmetricalPackInput:
     u_n_kv: float
     c_factor: float
     u_prefault_kv: float
+    #: Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): `voltage_factor.DoborC.zrodlo` —
+    #: tabela 1 IEC 60909-0 dla pasma węzła i scenariusza albo nadpisanie z uzasadnieniem.
+    c_zrodlo: str
 
     # Impedancje składowe (wymagane dla wszystkich typów)
     z1_ohm: complex
@@ -75,10 +79,14 @@ class SCAsymmetricalPackInput:
     # Operator Fortescue (domyślnie a = e^{j120°})
     a_operator: complex
 
-    # Post-fault parameters
-    tk_s: float = 1.0
-    m_factor: float = 1.0
-    n_factor: float = 0.0
+    #: Czas trwania zwarcia t_k [s] — dana biegu (scenariusz), nie stała pakietu. Z niego
+    #: i z κ KAŻDEGO typu zwarcia rdzeń liczy m, n i I_th (karta SC-IB-ITH-ZRODLA); dawne
+    #: pola m_factor/n_factor (m, n wyniku 1F-Z podawane także 2F i 2F-Z) skasowane.
+    tk_s: float
+
+    #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
+    #: zwarcie metaliczne IEC 60909 (dowody bit w bit jak przed kartą).
+    z_f_ohm: complex | None = None
 
 
 @dataclass(frozen=True)
@@ -149,8 +157,8 @@ class SCAsymmetricalProofPack:
                 z2_ohm=data.z2_ohm,
                 z0_ohm=data.z0_ohm,
                 a_operator=data.a_operator,
-                m_factor=data.m_factor,
-                n_factor=data.n_factor,
+                tk_s=data.tk_s,
+                z_f_ohm=data.z_f_ohm,
             )
             sc1_input = SC1Input(
                 project_name=data.project_name,
@@ -161,15 +169,16 @@ class SCAsymmetricalProofPack:
                 solver_version=data.solver_version,
                 u_n_kv=data.u_n_kv,
                 c_factor=data.c_factor,
+                c_zrodlo=data.c_zrodlo,
                 u_prefault_kv=data.u_prefault_kv,
                 z1_ohm=data.z1_ohm,
                 z2_ohm=data.z2_ohm,
                 z0_ohm=data.z0_ohm,
                 a_operator=data.a_operator,
-                tk_s=data.tk_s,
-                m_factor=data.m_factor,
-                n_factor=data.n_factor,
                 quantities=quantities,
+                # Z_f po regule solvera (Z_f = 0 → zwarcie metaliczne) — dowód opisuje TĘ
+                # impedancję, z którą liczono wielkości, nie surowe wejście pakietu.
+                z_f_ohm=quantities.z_f_ohm,
             )
             proofs[fault_type] = ProofGenerator.generate_sc1_proof(sc1_input, artifact_id)
 
@@ -220,8 +229,11 @@ class SCAsymmetricalProofPack:
         case_name: str,
         run_timestamp: datetime,
         solver_version: str,
-        c_factor: float = 1.10,
-        tk_s: float = 1.0,
+        scenariusz: Scenario,
+        nadpisanie_c: NadpisanieC | None,
+        tk_s: float,
+        rozszerzenia_audit2: dict[str, Any] | None = None,
+        z_f_ohm: complex | None = None,
     ) -> SCAsymmetricalPackInput:
         """Zbuduj wejście pakietu z KANONICZNEGO SNAPSHOTU ENM (ZERO fizyki u klienta).
 
@@ -243,6 +255,10 @@ class SCAsymmetricalProofPack:
         tylko go opisuje, zgodnie z rolą Proof Engine (interpretacja, nie produkcja
         liczb). Wcześniejsza wersja liczyła to sama i zapalała
         ``no_direct_fault_params_guard``.
+
+        ``z_f_ohm`` (karta OD-14) — impedancja przejścia biegu: impedancje składowe Z1/Z2/Z0
+        sieci od niej nie zależą (wynik 1F liczony metalicznie daje te same Z1/Z2/Z0), więc
+        Z_f idzie wprost do wielkości dowodu (``compute_sc1_asymmetrical_quantities``).
         """
         from application.solvers.short_circuit_binding import wynik_zwarcia_1f_ze_snapshotu
         from network_model.solvers.short_circuit_asymmetrical_quantities import (
@@ -250,12 +266,19 @@ class SCAsymmetricalProofPack:
             napiecie_fazowe_przedzwarciowe_kv,
         )
 
-        result = wynik_zwarcia_1f_ze_snapshotu(
+        zwarcie = wynik_zwarcia_1f_ze_snapshotu(
             snapshot=snapshot,
             fault_node_id=fault_node_id,
-            c_factor=c_factor,
+            scenariusz=scenariusz,
+            nadpisanie_c=nadpisanie_c,
             tk_s=tk_s,
+            # Pakiet bierze z wyniku 1F wyłącznie impedancje składowe Z1/Z2/Z0 sieci; prąd
+            # wyłączeniowy zwarć niesymetrycznych to I_b = I″k (IEC 60909-0 rozdz. 9), więc
+            # t_b nie wpływa na żadną wielkość tego pakietu.
+            tb_s=None,
+            rozszerzenia_audit2=rozszerzenia_audit2,
         )
+        result = zwarcie.wynik
         if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
             raise ValueError(
                 "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
@@ -270,6 +293,7 @@ class SCAsymmetricalProofPack:
             solver_version=solver_version,
             u_n_kv=u_n_kv,
             c_factor=result.c_factor,
+            c_zrodlo=zwarcie.dobor_c.zrodlo,
             u_prefault_kv=napiecie_fazowe_przedzwarciowe_kv(
                 u_n_kv=u_n_kv, c_factor=result.c_factor
             ),
@@ -278,12 +302,7 @@ class SCAsymmetricalProofPack:
             z0_ohm=result.z0_ohm,
             a_operator=OPERATOR_FORTESCUE_A,
             tk_s=result.tk_s,
-            # Audyt fizyki: m/n FAKTYCZNIE użyte przez solver do I_th (IEC 60909-0
-            # §4.7/§12) — niesione z wyniku, żeby dowód podstawiał liczby spójne
-            # z wynikiem biegu. Uczciwy zapas (1,0; 0,0) tylko dla starszych
-            # wyników solvera sprzed delty (m_factor=None) — bez zmyślania.
-            m_factor=result.m_factor if result.m_factor is not None else 1.0,
-            n_factor=result.n_factor if result.n_factor is not None else 0.0,
+            z_f_ohm=z_f_ohm,
         )
 
     @classmethod

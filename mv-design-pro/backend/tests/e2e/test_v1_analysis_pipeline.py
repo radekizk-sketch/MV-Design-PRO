@@ -27,6 +27,7 @@ import json
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     solve_power_flow_physics,
@@ -152,7 +153,11 @@ def _build_v1_network() -> dict:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-            "sn_fields": ["IN", "OUT"],
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
+            # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte), więc
+            # odgałęzienie z tej stacji wychodzi z WOLNEGO pola odgałęźnego.
+            "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
                 "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
@@ -336,6 +341,7 @@ class TestV1ShortCircuitPipeline:
                 fault_node_id=node_id,
                 c_factor=1.1,
                 tk_s=1.0,
+                czas_tb=czas_tb_roboczy(),
             )
             results.append(sc)
 
@@ -360,6 +366,7 @@ class TestV1ShortCircuitPipeline:
             fault_node_id=node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         # WHITE BOX trace musi istnieć
@@ -384,6 +391,7 @@ class TestV1ShortCircuitPipeline:
             fault_node_id=node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert sc.contributions is not None, "Brak contributions"
@@ -542,6 +550,7 @@ class TestV1PipelineDeterminism:
                 fault_node_id=node_id,
                 c_factor=1.1,
                 tk_s=1.0,
+                czas_tb=czas_tb_roboczy(),
             )
 
             h = _sha256(_serialize_sc_result(sc))

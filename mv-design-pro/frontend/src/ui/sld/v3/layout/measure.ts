@@ -611,7 +611,9 @@ export function stationSnColumnLayout(
   const unresolved: StationTransformerUnit[] = [];
   const resolvedRefs = new Set<string>();
   implicitTr.forEach((unit) => {
-    const anchorBay = unit.hvBusRef != null ? lastBayOfSection.get(unit.hvBusRef) : undefined;
+    // SZYNY-STACJI-LUSTRO: sekcja = szyna główna pola strony górnej (`hvSekcjaBusRef`), nie
+    // zacisk pola — pola deklarują sekcje szynami głównymi (`bay.busRef`).
+    const anchorBay = unit.hvSekcjaBusRef != null ? lastBayOfSection.get(unit.hvSekcjaBusRef) : undefined;
     if (anchorBay != null) {
       const bucket = afterBayIndex.get(anchorBay);
       if (bucket) bucket.push(unit);

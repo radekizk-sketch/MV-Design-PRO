@@ -7,7 +7,13 @@ Format arkusza (uzgodniony z operatorami sieci):
                                  + DOKŁADNIE JEDNA droga do typu przewodu (W1):
                                  (a) typ_katalogowy — identyfikator typu z katalogu
                                      statycznego; wartości podane obok (R_ohm_km, X_ohm_km,
-                                     I_dop_A, Un_kV) muszą się z nim zgadzać (jedna prawda),
+                                     I_dop_A, Un_kV) muszą się z nim zgadzać (jedna prawda);
+                                     typ z katalogu przewodów linii 110 kV
+                                     (`PRZEWOD_LINII_WN`, karta LINIA-110) wiąże przewód
+                                     fazowy: R′, X′, B′ i Z′0 liczy solver z geometrii słupa
+                                     (wartość robocza do czasu podania geometrii projektu),
+                                     więc kolumn R_ohm_km/X_ohm_km/B_uS_km/C_nF_km nie wolno
+                                     podać obok niego,
                                  (b) pełna tabliczka przewodu: rodzaj (LINIA|KABEL), R_ohm_km,
                                      X_ohm_km, Un_kV, I_dop_A oraz dla LINIA: B_uS_km
                                      [T_max_C, przekroj_mm2 mogą być puste — dana nieznana
@@ -18,12 +24,20 @@ Format arkusza (uzgodniony z operatorami sieci):
                                  (b) tabliczka: Sn_MVA, uk_pct, Pk_kW, grupa, zaczep_min,
                                  zaczep_max, zaczep_krok_pct [U_HV_kV, U_LV_kV — puste =
                                  napięcia szyn; przyjęcie nazwane w ostrzeżeniu i w rekordzie
-                                 typu, nigdy ciche]
+                                 typu, nigdy ciche] [tolerancja_nN — tolerancja napięcia sieci
+                                 nN zasilanej z transformatora: PLUS_6 (+6 %) albo PLUS_10
+                                 (+10 %), wiersz nN tabeli 1 IEC 60909-0; tylko dla strony LV
+                                 w paśmie nN; puste = brak deklaracji, a zwarcie w sieci nN
+                                 liczy wartość roboczą rejestru z założeniem biegu
+                                 `fault.c_tolerancja_nn_robocza` i akcją zmiany wartości]
 - Arkusz "Źródła"   (opcjonalny): id, szyna, typ, RX_ratio + (Sk_MVA i/lub Ik_kA — co
                                  najmniej jedna z tych dwu kolumn scenariusza MAX) [opcjonalnie
                                  scenariusz MIN wg IEC 60909-0:2016 §6.2.1 eq. 6 z c_min —
                                  CV-4.3 K7: Sk_min_MVA, Ik_min_kA, RX_min; U_pu — napięcie
-                                 zadane szyny bilansującej w p.u. (0,8–1,2), puste = 1,0]
+                                 zadane szyny bilansującej w p.u. (0,8–1,2), puste = 1,0;
+                                 tolerancja_nN — jak w arkuszu "Trafo", dla źródła
+                                 przyłączonego wprost do szyny nN (sieć nN bez transformatora
+                                 w modelu); tylko dla szyny w paśmie nN]
 - Arkusz "Odbiory"  (opcjonalny): id, szyna, P_MW, Q_Mvar
 
 ZASADY:
@@ -72,7 +86,10 @@ from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_AR
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.catalog.types import CatalogNamespace, OverheadConductorType
+from network_model.core.voltage_factor import TOLERANCJE_NAPIECIA_NN
 from network_model.pochodne import km_na_m
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
 # Nazwy arkuszy i kolumn — jedyne zrodlo prawdy formatu (uzywane tez przez API/dokumentacje).
 ARKUSZ_SZYNY = "Szyny"
@@ -105,14 +122,20 @@ class BladArkusza:
     komunikat: str
     wiersz: int | None = None
     kolumna: str | None = None
+    #: Kod maszynowy zastrzeżenia (np. kod walidatora modelu) — w POLU, nigdy w `komunikat`
+    #: (partia integracji 10). `None` dla zastrzeżeń parsera bez kodu; klucz pomijany.
+    kod: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "arkusz": self.arkusz,
             "wiersz": self.wiersz,
             "kolumna": self.kolumna,
             "komunikat": self.komunikat,
         }
+        if self.kod is not None:
+            wynik["kod"] = self.kod
+        return wynik
 
     def jako_tekst(self) -> str:
         czesci = [f"Arkusz '{self.arkusz}'"]
@@ -229,6 +252,9 @@ class XlsxNetworkImporter:
         "zaczep_krok_pct": float,
         "U_HV_kV": float,  # puste = napięcie szyny HV (przyjęcie nazwane w rekordzie typu)
         "U_LV_kV": float,  # puste = napięcie szyny LV (j.w.)
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (PLUS_6 / PLUS_10)
+        # — ten sam nośnik co w kreatorze (`Transformer.lv_voltage_tolerance`).
+        "tolerancja_nN": str,
     }
     SOURCE_COLUMNS: dict[str, type] = {
         "id": str,
@@ -247,6 +273,9 @@ class XlsxNetworkImporter:
         "RX_min": float,
         # Napięcie zadane szyny bilansującej [p.u. Un szyny]; puste = 1,0 (znamionowe).
         "U_pu": float,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło wprost na szynie nN jest drugim nośnikiem
+        # tolerancji napięcia sieci nN (`Source.lv_voltage_tolerance`).
+        "tolerancja_nN": str,
     }
     LOAD_COLUMNS: dict[str, type] = {
         "id": str,
@@ -603,6 +632,51 @@ class XlsxNetworkImporter:
 
         return bledy
 
+    @staticmethod
+    def _waliduj_tolerancje_nn(
+        rekord: dict[str, Any],
+        szyny: list[dict[str, Any]],
+        *,
+        arkusz: str,
+        kolumna_szyny: str,
+        nosnik_pl: str,
+    ) -> list[BladArkusza]:
+        """Kolumna `tolerancja_nN` (arkusz "Trafo": szyna LV, arkusz "Źródła": szyna źródła):
+        wartość ze słownika tabeli 1 IEC 60909-0 i szyna w paśmie nN — ten sam warunek co zapis
+        tolerancji operacją domenową (`enm.domain_operations._powod_odmowy_tolerancji_nn`);
+        deklaracja na elemencie bez sieci nN nie wybierałaby żadnego wiersza tabeli, więc jest
+        błędem wiersza."""
+        tolerancja = rekord.get("tolerancja_nN")
+        if tolerancja is None:
+            return []
+        if tolerancja not in TOLERANCJE_NAPIECIA_NN:
+            return [
+                BladArkusza(
+                    arkusz=arkusz,
+                    wiersz=rekord["_wiersz"],
+                    kolumna="tolerancja_nN",
+                    komunikat=(
+                        f"Tolerancja napięcia sieci nN '{tolerancja}' spoza słownika tabeli 1 "
+                        "IEC 60909-0 (dopuszczalne: PLUS_6 dla +6 % albo PLUS_10 dla +10 %)"
+                    ),
+                )
+            ]
+        napiecia = {s["id"]: s["napięcie_kV"] for s in szyny}
+        u_szyny = napiecia.get(rekord[kolumna_szyny])
+        if isinstance(u_szyny, int | float) and not w_pasmie_nn(float(u_szyny)):
+            return [
+                BladArkusza(
+                    arkusz=arkusz,
+                    wiersz=rekord["_wiersz"],
+                    kolumna="tolerancja_nN",
+                    komunikat=(
+                        f"Tolerancję napięcia sieci nN deklaruje tylko {nosnik_pl} — szyna "
+                        f"'{rekord[kolumna_szyny]}' ma {u_szyny:g} kV"
+                    ),
+                )
+            ]
+        return []
+
     def _waliduj_wartosci(
         self,
         szyny: list[dict[str, Any]],
@@ -725,6 +799,15 @@ class XlsxNetworkImporter:
                         ),
                     )
                 )
+            bledy.extend(
+                self._waliduj_tolerancje_nn(
+                    transformator,
+                    szyny,
+                    arkusz=ARKUSZ_TRAFO,
+                    kolumna_szyny="szyna_LV",
+                    nosnik_pl="transformator zasilający sieć nN (szyna LV)",
+                )
+            )
             if transformator["szyna_HV"] == transformator["szyna_LV"]:
                 bledy.append(
                     BladArkusza(
@@ -822,6 +905,15 @@ class XlsxNetworkImporter:
                         ),
                     )
                 )
+            bledy.extend(
+                self._waliduj_tolerancje_nn(
+                    zrodlo,
+                    szyny,
+                    arkusz=ARKUSZ_ZRODLA,
+                    kolumna_szyny="szyna",
+                    nosnik_pl="źródło przyłączone do szyny nN",
+                )
+            )
         return bledy
 
     # ------------------------------------------------------------------
@@ -875,6 +967,87 @@ class XlsxNetworkImporter:
     def _rowne(a: float, b: float) -> bool:
         return abs(float(a) - float(b)) <= 1e-6 * max(1.0, abs(float(b)))
 
+    #: Kolumny tabliczki, których NIE wolno podać obok przewodu linii 110 kV: R′, X′ i B′ linii
+    #: wynikają z geometrii słupa (solver ``parametry_linii_napowietrznej``), nie z wiersza.
+    _KOLUMNY_Z_GEOMETRII_WN: tuple[str, ...] = ("R_ohm_km", "X_ohm_km", "B_uS_km", "C_nF_km")
+    #: Kolumny krzyżowe przewodu 110 kV (dane wyrobu z tablicy normy) — jedna prawda.
+    _POLA_KRZYZOWE_PRZEWODU_WN: tuple[tuple[str, str], ...] = (
+        ("I_dop_A", "rated_current_a"),
+        ("Un_kV", "voltage_rating_kv"),
+        ("T_max_C", "max_temperature_c"),
+        ("przekroj_mm2", "cross_section_mm2"),
+    )
+
+    def _waliduj_przewod_wn(
+        self, linia: dict[str, Any], typ_katalogowy: str, przewod: OverheadConductorType
+    ) -> list[BladArkusza]:
+        """Odcinek z przewodem z katalogu linii 110 kV (karta LINIA-110).
+
+        Przewód wiąże dane WYROBU, a parametry jednostkowe linii liczy solver z geometrii
+        słupa — wartość R/X/B/C w wierszu byłaby drugą prawdą obok geometrii (błąd wiersza,
+        nie ciche pominięcie). Przewód odgromowy nie jest przewodem fazowym odcinka.
+        """
+        bledy: list[BladArkusza] = []
+        wiersz = linia["_wiersz"]
+        rodzaj = self._rodzaj_linii(linia)
+        if rodzaj is not None and rodzaj != "LINIA":
+            bledy.append(
+                BladArkusza(
+                    arkusz=ARKUSZ_LINIE,
+                    wiersz=wiersz,
+                    kolumna="rodzaj",
+                    komunikat=(
+                        f"Arkusz podaje rodzaj {rodzaj}, a typ katalogowy '{typ_katalogowy}' "
+                        "to przewód linii napowietrznej 110 kV (LINIA)"
+                    ),
+                )
+            )
+        if przewod.przeznaczenie != "FAZOWY":
+            bledy.append(
+                BladArkusza(
+                    arkusz=ARKUSZ_LINIE,
+                    wiersz=wiersz,
+                    kolumna="typ_katalogowy",
+                    komunikat=(
+                        f"Typ '{typ_katalogowy}' to przewód odgromowy — odcinek wiąże przewód "
+                        "fazowy; przewód odgromowy podaje się w geometrii słupa linii"
+                    ),
+                )
+            )
+        for kolumna in self._KOLUMNY_Z_GEOMETRII_WN:
+            if linia.get(kolumna) is not None:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=wiersz,
+                        kolumna=kolumna,
+                        komunikat=(
+                            f"Typ katalogowy '{typ_katalogowy}' to przewód linii 110 kV — "
+                            "rezystancję, reaktancję i susceptancję linii liczy system z "
+                            "geometrii słupa; usuń wartość z arkusza (jedna prawda)"
+                        ),
+                    )
+                )
+        for kolumna, pole in self._POLA_KRZYZOWE_PRZEWODU_WN:
+            wartosc = linia.get(kolumna)
+            z_katalogu = getattr(przewod, pole)
+            if wartosc is None or z_katalogu is None:
+                continue
+            if not self._rowne(wartosc, z_katalogu):
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=wiersz,
+                        kolumna=kolumna,
+                        komunikat=(
+                            f"Arkusz podaje {wartosc:g}, a typ katalogowy "
+                            f"'{typ_katalogowy}' ma {float(z_katalogu):g} — jedna prawda: "
+                            "usuń wartość z arkusza albo wskaż inny typ"
+                        ),
+                    )
+                )
+        return bledy
+
     def _waliduj_typy(
         self, linie: list[dict[str, Any]], trafo: list[dict[str, Any]]
     ) -> list[BladArkusza]:
@@ -922,6 +1095,10 @@ class XlsxNetworkImporter:
                 )
                 continue
             if typ_katalogowy:
+                przewod_wn = katalog.overhead_conductor_types.get(typ_katalogowy)
+                if przewod_wn is not None:
+                    bledy.extend(self._waliduj_przewod_wn(linia, typ_katalogowy, przewod_wn))
+                    continue
                 w_liniach = typ_katalogowy in katalog.line_types
                 w_kablach = typ_katalogowy in katalog.cable_types
                 if not (w_liniach or w_kablach):
@@ -1157,9 +1334,14 @@ class XlsxNetworkImporter:
         galezie: list[dict[str, Any]] = []
         for linia in linie:
             typ_katalogowy = linia.get("typ_katalogowy") or None
+            # Karta LINIA-110: przewód z katalogu linii 110 kV wiąże się w swojej kategorii
+            # katalogu (operacja budowy odcinka dostaje ją w `catalog_binding`).
+            kategoria: str | None = None
             if typ_katalogowy:
                 rodzaj = "KABEL" if typ_katalogowy in katalog.cable_types else "LINIA"
                 catalog_ref = typ_katalogowy
+                if typ_katalogowy in katalog.overhead_conductor_types:
+                    kategoria = CatalogNamespace.PRZEWOD_LINII_WN.value
             else:
                 rodzaj = self._rodzaj_linii(linia) or "LINIA"
                 nazwa_typu = self._nazwa_typu_projektu(linia)
@@ -1188,6 +1370,7 @@ class XlsxNetworkImporter:
                     "dlugosc_m": km_na_m(float(linia["długość_km"])),
                     "catalog_ref": catalog_ref,
                     "rodzaj": rodzaj,
+                    **({"catalog_namespace": kategoria} if kategoria is not None else {}),
                     "wiersz": linia["_wiersz"],
                 }
             )
@@ -1251,6 +1434,11 @@ class XlsxNetworkImporter:
                     "lv_ref": transformator["szyna_LV"],
                     "catalog_ref": catalog_ref,
                     "wiersz": transformator["_wiersz"],
+                    **(
+                        {"lv_voltage_tolerance": transformator["tolerancja_nN"]}
+                        if transformator.get("tolerancja_nN") is not None
+                        else {}
+                    ),
                 }
             )
 
@@ -1270,6 +1458,11 @@ class XlsxNetworkImporter:
                 **({"rx_ratio_min": float(zrodlo["RX_min"])} if "RX_min" in zrodlo else {}),
                 # Napięcie zadane szyny bilansującej (MATPOWER `Vm` slack) — puste = 1,0.
                 **({"u_set_pu": float(zrodlo["U_pu"])} if "U_pu" in zrodlo else {}),
+                **(
+                    {"lv_voltage_tolerance": zrodlo["tolerancja_nN"]}
+                    if zrodlo.get("tolerancja_nN") is not None
+                    else {}
+                ),
                 "wiersz": zrodlo["_wiersz"],
             }
             for zrodlo in zrodla

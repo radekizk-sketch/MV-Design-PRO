@@ -22,6 +22,28 @@ from typing import Any
 
 import numpy as np
 from network_model.catalog.types import ConverterKind
+from network_model.catalog.wartosci_robocze import (
+    OPISY_PARAMETROW_MASZYNY,
+    PARAMETR_COS_PHI_MASZYNY,
+    PARAMETR_KROTNOSC_I_LR,
+    PARAMETR_MOC_POZORNA_MASZYNY,
+    PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
+    PARAMETR_PARY_BIEGUNOW,
+    PARAMETR_SPRAWNOSC,
+    PARAMETR_XD,
+    PARY_BIEGUNOW_MAX,
+    RODZINA_MASZYNA_ASYNCHRONICZNA,
+    RODZINA_MASZYNA_SYNCHRONICZNA,
+    RODZINA_MASZYNY_WG_GEN_TYPE,
+    WIELKOSC_TYLKO_IB,
+    WIELKOSCI_ZWARCIOWE,
+    WartoscRozstrzygnieta,
+    moc_pozorna_tabliczki_maszyny_mva,
+    moc_znamionowa_z_mocy_pozornej,
+    rozstrzygnij_parametry_maszyny,
+    wartosci_projektanta_maszyny,
+    wpis_parametru_maszyny,
+)
 from network_model.core.branch import (
     BranchType,
     LineBranch,
@@ -38,7 +60,12 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.voltage_factor import Scenario, c_for_node
+from network_model.core.voltage_factor import (
+    Scenario,
+    TolerancjaNapieciaNn,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_NIEPOPRAWNE,
@@ -46,10 +73,12 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
     kv_na_v,
+    moc_pozorna_z_czynnej_mva,
     moc_zwarciowa_z_pradu_mva,
     prad_znamionowy_a,
     simens_na_mikrosimens,
@@ -74,7 +103,14 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .slownik_komunikatow import opis_elementu, opis_obiektu
+from .tolerancja_nn import WyspaNn, wyspy_wezlow_nn
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
+
+#: Kody odmów nazwanych mapowania ENM → graf (identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10).
+KOD_DWA_GENERATORY_REGULACJI_NAPIECIA = "mapping.dwa_generatory_regulacji_napiecia"
+KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = "mapping.szyna_bilansujaca_z_regulacja_napiecia"
 
 
 def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
@@ -125,6 +161,16 @@ def ref_to_graph_id(ref_id: str) -> str:
 
 # Alias historyczny uzywany wewnatrz tego modulu (jedna implementacja powyzej).
 _ref_to_uuid = ref_to_graph_id
+
+
+def grid_source_graph_id(source_ref_id: str) -> str:
+    """Identyfikator zasilania systemowego (``GridShortCircuitSource``) w grafie domenowym.
+
+    JEDNA regula dla mapowania modelu na graf (``add_grid_sc_source`` nizej) i dla projekcji
+    wyniku, ktora wiaze wpis rdzenia (``source_id`` wkladu zrodla, karta WKLAD-ZRODLA)
+    z ``ref_id`` zrodla modelu ENM — bez drugiej kopii przedrostka.
+    """
+    return ref_to_graph_id(f"_zsrc_{source_ref_id}")
 
 
 def _map_tap_changer(
@@ -187,8 +233,15 @@ def impedancja_zasilania_systemowego(
     sk3_min_mva: float | None = None,
     ik3_min_ka: float | None = None,
     rx_ratio_min: float | None = None,
+    tolerancja_nn: TolerancjaNapieciaNn | None = None,
+    tolerancja_nn_robocza: bool = False,
 ) -> tuple[complex, dict[str, Any]] | None:
     """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
+
+    ``tolerancja_nn`` — klasa tolerancji sieci nN węzła Q (``enm.tolerancja_nn``); czytana
+    wyłącznie dla węzła Q w paśmie nN (wiersz nN tabeli 1), dla SN/WN bez znaczenia.
+    ``tolerancja_nn_robocza`` — klasa jest wartością roboczą rejestru (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA): podstawa c w śladzie mówi to wprost, a ślad niesie znacznik.
 
     IEC 60909-0:2016 §6.2.1 eq. (6): Z_Q = c·U_nQ / (√3·I''_kQ) = c·U_nQ²/S''_kQ —
     współczynnik napięciowy c (Tab. 1, pasmo napięcia węzła przyłączenia Q,
@@ -253,7 +306,7 @@ def impedancja_zasilania_systemowego(
     if uzyj_min:
         assert tryb_min is not None
         tryb_uzyty = tryb_min
-        c = c_for_node(u_nq_kv, "MIN")
+        c = c_for_node(u_nq_kv, "MIN", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_min_mva, ik3_min_ka
         etykieta = f"{tryb_uzyty.value}_MIN"
         if dodatnia(rx_ratio_min):
@@ -267,7 +320,7 @@ def impedancja_zasilania_systemowego(
             )
     else:
         tryb_uzyty = tryb
-        c = c_for_node(u_nq_kv, "MAX")
+        c = c_for_node(u_nq_kv, "MAX", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
         etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
         if dodatnia(rx_ratio):
@@ -300,6 +353,12 @@ def impedancja_zasilania_systemowego(
         **({"ik3_ka": ik} if ik is not None else {}),
         "c": c,
         "pasmo_c": "SN/WN" if powyzej_pasma_nn(u_nq_kv) else "nN",
+        "c_zrodlo": zrodlo_c_z_tabeli(
+            u_nq_kv,
+            "MIN" if uzyj_min else "MAX",
+            tolerancja_nn=tolerancja_nn,
+            tolerancja_nn_robocza=tolerancja_nn_robocza,
+        ),
         "rx_ratio": rx,
         "rx_ratio_zrodlo": rx_zrodlo,
         "z_q_abs_ohm": z_abs,
@@ -311,6 +370,8 @@ def impedancja_zasilania_systemowego(
             + "); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
         ),
     }
+    if tolerancja_nn_robocza and not powyzej_pasma_nn(u_nq_kv):
+        slad["tolerancja_nn_robocza"] = True
     if scenario == "MIN" and not uzyj_min:
         slad["zalozenie"] = KOD_SK_MIN_BRAK
         slad["zalozenie_opis"] = (
@@ -322,9 +383,18 @@ def impedancja_zasilania_systemowego(
 
 
 def impedancja_zrodla_sieciowego(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
+    tolerancja_nn_robocza: bool = False,
 ) -> tuple[complex, dict[str, Any]] | None:
-    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
+    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``.
+
+    ``tolerancja_nn`` — klasa tolerancji sieci nN szyny źródła (``enm.tolerancja_nn``:
+    deklaracja albo wartość robocza, ``tolerancja_nn_robocza``), jawnie podawana przez
+    wołającego (``None`` poza pasmem nN)."""
     return impedancja_zasilania_systemowego(
         ref_id=source.ref_id,
         r_ohm=source.r_ohm,
@@ -337,19 +407,42 @@ def impedancja_zrodla_sieciowego(
         sk3_min_mva=source.sk3_min_mva,
         ik3_min_ka=source.ik3_min_ka,
         rx_ratio_min=source.rx_ratio_min,
+        tolerancja_nn=tolerancja_nn,
+        tolerancja_nn_robocza=tolerancja_nn_robocza,
     )
 
 
+def _tolerancje_nn(wyspy_nn: dict[str, WyspaNn]) -> dict[str, TolerancjaNapieciaNn]:
+    """Klasa tolerancji sieci nN per szyna nN — z jednej mapy wysp (``wyspy_wezlow_nn``)."""
+    return {ref: wyspa.tolerancja for ref, wyspa in wyspy_nn.items()}
+
+
+def _robocza_nn(wyspy_nn: dict[str, WyspaNn], bus_ref: str) -> bool:
+    """Czy klasa tolerancji szyny jest wartością roboczą — ta sama mapa wysp co klasa."""
+    wyspa = wyspy_nn.get(bus_ref)
+    return wyspa is not None and wyspa.robocza
+
+
 def _source_positive_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
-    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv, scenario)
+    wynik = impedancja_zrodla_sieciowego(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     return None if wynik is None else wynik[0]
 
 
 def _source_zero_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Z0 źródła: jawne R0/X0 (fizyczne, bez scenariusza) albo (Z0/Z1)·Z_Q(scenariusz)."""
     if source.r0_ohm is not None and source.x0_ohm is not None:
@@ -357,7 +450,9 @@ def _source_zero_impedance_ohm(
     if not dodatnia(source.z0_z1_ratio):
         return None
     assert source.z0_z1_ratio is not None
-    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+    z1 = _source_positive_impedance_ohm(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     if z1 is None:
         return None
     return z1 * source.z0_z1_ratio
@@ -396,13 +491,17 @@ def _assemble_zero_sequence_y0(
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
 
+    tolerancje_nn = _tolerancje_nn(wyspy_wezlow_nn(enm))
+
     from .zero_sequence_transformer import (
         ZeroSeqConnection,
         build_transformer_zero_seq_model,
     )
 
     builder = AdmittanceMatrixBuilder(graph)
-    builder.build()
+    # Sieć zwarciowa składowej zgodnej: z niej bierze się mapa węzłów scalonych, na której
+    # składa się Y0 — te same indeksy co w Z_1/Z_2 tego samego biegu zwarciowego.
+    builder.build(siec_zwarciowa=True)
     node_index = builder.node_id_to_index
     size = len(set(node_index.values()))
     y0_bus = np.zeros((size, size), dtype=complex)
@@ -425,7 +524,7 @@ def _assemble_zero_sequence_y0(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
         if from_id not in node_index or to_id not in node_index:
             continue
         from_idx = node_index[from_id]
@@ -457,9 +556,17 @@ def _assemble_zero_sequence_y0(
         )
 
         # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
-        # bocznik do ziemi w modelu π (jak susceptancja zgodna w Y1 — patrz
-        # AdmittanceMatrixBuilder._get_branch_admittances_pu, split /2 na
-        # każdy koniec). Przed tą kartą B0 było CAŁKOWICIE pomijane w sieci
+        # bocznik do ziemi w modelu π (podział /2 na każdy koniec — ten sam co
+        # dla susceptancji zgodnej w `AdmittanceMatrixBuilder._get_branch_admittances_pu`).
+        # Sieć zgodna i przeciwna zwarć NIE ma tej susceptancji (karta BEZ-POJEMNOSCI,
+        # `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`: IEC 60909-0:2016 pkt 5.2 f)),
+        # więc B0 tutaj jest JEDYNĄ pojemnością linii w obliczeniu zwarciowym. B0 wchodzi
+        # dziś BEZWARUNKOWO; pkt 5.2 f) każe uwzględniać pojemności linii w składowej
+        # zerowej w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia
+        # doziemnego > 1,4 (ustalenie właściciela 2026-10-22) — ten warunek wdroży karta
+        # rdzenia ZEROWA-POJEMNOSCI; do tego czasu B0 stoi tu dla każdego sposobu
+        # uziemienia punktu neutralnego.
+        # Przed kartą fali F B0 było CAŁKOWICIE pomijane w sieci
         # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
         # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ
         # drogą powrotu prądu doziemnego (fizycznie: prąd pojemnościowy,
@@ -501,7 +608,7 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
-            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
         # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
         # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
         # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
@@ -531,7 +638,9 @@ def _assemble_zero_sequence_y0(
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
-        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv, scenario)
+        z0_source_ohm = _source_zero_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
@@ -564,7 +673,9 @@ def _assemble_zero_sequence_y0(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
+            )
         if hv_id not in node_index or lv_id not in node_index:
             continue
         model = build_transformer_zero_seq_model(trafo)
@@ -621,8 +732,14 @@ def build_zero_sequence_zbus(
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
     _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    if size == 0:
+        # Graf bez węzłów (sieć pusta albo bez węzła z odniesieniem) — macierz 0x0 jest
+        # odwrotnością samej siebie. ``matrix_rank`` na tablicy zerowego rozmiaru rzucał
+        # surowy ``ValueError`` numpy (pomiar partii integracji 11: koperta wejścia zwarcia
+        # 1F pustego przypadku kończyła się 500 zamiast kopertą z pustym payloadem, jak 3F).
+        return np.zeros((0, 0), dtype=complex)
     if np.linalg.matrix_rank(y0_bus) < size:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
             "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
             "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
@@ -632,7 +749,29 @@ def build_zero_sequence_zbus(
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
-        raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+        raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+
+
+def skladowe_sieci_zerowej(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+) -> dict[str, int]:
+    """Numer składowej spójnej SIECI SKŁADOWEJ ZEROWEJ każdego węzła grafu.
+
+    Z TEJ SAMEJ macierzy Y0 co ``build_zero_sequence_zbus`` (``_assemble_zero_sequence_y0``):
+    dwa węzły leżą w jednej składowej, gdy łączy je droga elementów szeregowych sieci zerowej
+    (linia/kabel z Z0, transformator z drogą HV↔LV). Impedancja zerowa gałęzi wpływa na prąd
+    zwarcia doziemnego w węźle wtedy i tylko wtedy, gdy gałąź i węzeł leżą w jednej składowej —
+    np. Z0 kabla SN nie wchodzi do zwarcia 1F po stronie nN transformatora Dyn (karta LINIA-110,
+    pkt 2: dane przyjęte składowej zerowej per punkt zwarcia, nie per bieg).
+    """
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    _, node_index, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    if size == 0:
+        return {}
+    _, etykiety = connected_components(csr_matrix(y0_bus != 0), directed=False)
+    return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(node_index.items())}
 
 
 def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
@@ -657,7 +796,8 @@ FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
     "wind_inverter": ConverterKind.WIND,
     "fw_pmsg": ConverterKind.WIND,  # full-converter (Type 4) PMSG wind
 }
-# gen_type → wind_type_3 flag (DFIG crowbar relabelling; §6.7 math unchanged).
+# gen_type → wind_type_3 flag (DFIG crowbar relabelling; §6.7 math unchanged). Keys = the
+# asynchronous family of `RODZINA_MASZYNY_WG_GEN_TYPE` (pinned by a test, predicates in pairs).
 _ASYNC_GEN_TYPES: dict[str, bool] = {
     "fw_dfig": True,  # Type 3 DFIG: crowbar → induction machine
     "fw_scig": False,  # squirrel-cage induction generator
@@ -677,14 +817,14 @@ def _gen_quantity(gen: Generator) -> int:
     return liczba_jednostek_zrodla(gen)
 
 
-def _gen_rated_apparent_mva(
-    gen: Generator, mp: dict, *, cos_phi_fallback: float = 1.0
-) -> float | None:
-    """Total rated apparent power S_r [MVA] of the installation for SC.
+def _gen_rated_apparent_mva(gen: Generator, mp: dict) -> float | None:
+    """Total rated apparent power S_r [MVA] of a CONVERTER installation for SC (I_n for k_sc).
 
     Prefers the catalog per-unit ``sn_mva`` × parallel count; otherwise falls back
-    to |p_mw|/cosφ (|p_mw| is already the installation total). Returns None when no
+    to |p_mw| (cos φ = 1; |p_mw| is already the installation total). Returns None when no
     positive rating can be established (→ the source is skipped, never fabricated).
+    Rotating machines do NOT use this: their rated power is resolved by the working-value
+    register (``rozstrzygnij_parametry_maszyny``, karta PODSTAWA-Q) with explicit provenance.
     """
     sn = mp.get("sn_mva")
     if isinstance(sn, int | float) and sn > 0:
@@ -696,8 +836,7 @@ def _gen_rated_apparent_mva(
     p = abs(gen.p_mw)
     if p <= 0:
         return None
-    cf = cos_phi_fallback if cos_phi_fallback and cos_phi_fallback > 0 else 1.0
-    return p / cf
+    return p
 
 
 def _gen_rated_voltage_kv(
@@ -725,9 +864,12 @@ def _add_generator_sc_sources(
     generator becomes the IEC-correct SC source for its ``gen_type``.
 
     Zero fabrication: a source is built ONLY from a real nameplate (rated power +
-    voltage). The decay/reactance factor x″d uses the domain models' documented
-    IEC-typical default (``core/machine.py``) — WHITE BOX, the same defaulting
-    pattern as the external-source ``rx`` ratio.
+    voltage). Machine parameters the nameplate does not carry (x″d, cos φ_r, I_LR/I_rM,
+    η_r, pole pairs p) come from the working-value register
+    (``network_model.catalog.wartosci_robocze``, zasada nr 4: designer value on
+    ``Generator.overrides`` > nameplate > register proposal); every working value is
+    recorded in ``graph.wartosci_robocze_maszyn`` (run assumption + accepted data of
+    the verdicts), never silently defaulted.
 
     ``k_sc`` (udział zwarciowy falownika wg IEC 60909) — karta S-2 AUTORYTET
     (dyrektywa właściciela 2026-09-16: „K_sc pozostaje DEFAULT_FORBIDDEN"):
@@ -763,13 +905,17 @@ def _add_generator_sc_sources(
 
     tracer = WhiteBoxTracer()
     bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G maszyny synchronicznej z tabeli 1
+    # dla tolerancji sieci nN szyny maszyny — ten sam predykat co węzły grafu.
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         gen_type = gen.gen_type
         if gen_type is None:
             continue
         node_id = ref_to_node_id.get(gen.bus_ref)
         if node_id is None:
-            raise ValueError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
         mp = gen.materialized_params or {}
         un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
         if un_kv is None:
@@ -813,48 +959,186 @@ def _add_generator_sc_sources(
                     result={"k_sc": zrodlo_sc.k_sc_efektywny},
                     notes=_k_sc_notatka_zalozenia(zrodlo_sc.wklad_zrodlo),
                 )
-        elif gen_type == "synchronous":
-            cos_phi = mp.get("cos_phi") or mp.get("cos_phi_r")
-            cos_phi_r = (
-                float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+        elif RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_SYNCHRONICZNA:
+            # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): S_rG, x″d i cos φ_rG —
+            # projektant (`Generator.overrides`) > tabliczka elementu > propozycja rejestru
+            # wartości roboczych (S_rG: z punktu pracy elementu, jawnie jako wartość robocza).
+            # Wartość robocza idzie do grafu jako wpis danych przyjętych.
+            rodzina_s = RODZINA_MASZYNA_SYNCHRONICZNA
+            liczba_s = _gen_quantity(gen)
+            parametry_s = rozstrzygnij_parametry_maszyny(
+                rodzina_s,
+                tabliczka=mp,
+                wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_s, gen.overrides),
+                moc_czynna_punktu_pracy_mw=gen.p_mw,
+                liczba_jednostek=liczba_s,
             )
-            sr_mva = _gen_rated_apparent_mva(gen, mp, cos_phi_fallback=cos_phi_r)
-            if sr_mva is None or sr_mva <= 0:
+            moc_pozorna = parametry_s[PARAMETR_MOC_POZORNA_MASZYNY]
+            if moc_pozorna.wartosc is None:
                 continue
-            xd = mp.get("xd_subtransient_pu")
-            sync_kwargs: dict = {
-                "id": gen.ref_id,
-                "name": gen.name,
-                "node_id": node_id,
-                "sr_mva": sr_mva,
-                "ur_kv": un_kv,
-                "cos_phi_r": cos_phi_r,
-            }
-            if isinstance(xd, int | float) and xd > 0:
-                sync_kwargs["xd_subtransient_pu"] = float(xd)
-            graph.add_synchronous_machine_source(SynchronousMachineSource(**sync_kwargs))
-        elif gen_type in _ASYNC_GEN_TYPES:
-            # Rated mechanical power P_rM is approximated by the electrical |p_mw|
-            # (they differ by η·cosφ). Acceptable for F1 with IEC-typical model
-            # defaults; a dedicated catalog nameplate (P_rM, I_LR, pole pairs) is
-            # F-follow. AsynchronousMachineSource derives S_rM = P_rM/(η·cosφ).
-            pr_mw = abs(gen.p_mw)
-            if pr_mw <= 0:
+            cos_phi_r = _wartosc_parametru(parametry_s, PARAMETR_COS_PHI_MASZYNY)
+            graph.add_synchronous_machine_source(
+                SynchronousMachineSource(
+                    id=gen.ref_id,
+                    name=gen.name,
+                    node_id=node_id,
+                    sr_mva=_moc_grupy(
+                        moc_pozorna,
+                        liczba_s,
+                        moc_grupy_z_punktu_pracy=moc_pozorna_z_czynnej_mva(
+                            abs(gen.p_mw), cos_phi_r
+                        ),
+                    ),
+                    ur_kv=un_kv,
+                    xd_subtransient_pu=_wartosc_parametru(parametry_s, PARAMETR_XD),
+                    cos_phi_r=cos_phi_r,
+                    tolerancja_nn=tolerancje_nn.get(gen.bus_ref),
+                    tolerancja_nn_robocza=_robocza_nn(wyspy_nn, gen.bus_ref),
+                )
+            )
+            _zapisz_wartosci_robocze_maszyny(
+                graph, gen, parametry_s, wielkosci_wg_parametru=dict.fromkeys(parametry_s, None)
+            )
+        elif RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_ASYNCHRONICZNA:
+            # Karta PODSTAWA-Q (decyzja architekta do meldunku 0a90bbc97): moc znamionowa P_rM
+            # (IEC 60909-0:2016 pkt 6.7, m = P_rM/p pkt 9.1.2) to dana MASZYNY, nie punkt pracy
+            # |p_mw|. Rejestr wartości roboczych: projektant > tabliczka `pr_mw` > P_rM z mocy
+            # pozornej tabliczki S_rM·η_r·cos φ_r > propozycja z punktu pracy (jawna wartość
+            # robocza). Moc pozorna S_rM tabliczki wchodzi do Z_M wprost. Liczba par biegunów p,
+            # I_LR/I_rM, cos φ_rM i η_rM — ten sam rejestr.
+            rodzina_a = RODZINA_MASZYNA_ASYNCHRONICZNA
+            liczba_a = _gen_quantity(gen)
+            parametry_a = rozstrzygnij_parametry_maszyny(
+                rodzina_a,
+                tabliczka=mp,
+                wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_a, gen.overrides),
+                moc_czynna_punktu_pracy_mw=gen.p_mw,
+                liczba_jednostek=liczba_a,
+            )
+            moc_znamionowa = parametry_a[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]
+            if moc_znamionowa.wartosc is None:
                 continue
-            i_lr = mp.get("i_lr_ratio")
-            async_kwargs: dict = {
-                "id": gen.ref_id,
-                "name": gen.name,
-                "node_id": node_id,
-                "pr_mw": pr_mw,
-                "ur_kv": un_kv,
-                "wind_type_3": _ASYNC_GEN_TYPES[gen_type],
-            }
-            if isinstance(i_lr, int | float) and i_lr > 0:
-                async_kwargs["i_lr_ratio"] = float(i_lr)
-            graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
+            moc_pozorna_jednostki = moc_pozorna_tabliczki_maszyny_mva(mp)
+            maszyna = AsynchronousMachineSource(
+                id=gen.ref_id,
+                name=gen.name,
+                node_id=node_id,
+                pr_mw=_moc_grupy(moc_znamionowa, liczba_a, moc_grupy_z_punktu_pracy=abs(gen.p_mw)),
+                ur_kv=un_kv,
+                sr_mva_tabliczki=(
+                    None if moc_pozorna_jednostki is None else moc_pozorna_jednostki * liczba_a
+                ),
+                cos_phi_r=_wartosc_parametru(parametry_a, PARAMETR_COS_PHI_MASZYNY),
+                efficiency=_wartosc_parametru(parametry_a, PARAMETR_SPRAWNOSC),
+                i_lr_ratio=_wartosc_parametru(parametry_a, PARAMETR_KROTNOSC_I_LR),
+                pole_pairs=int(_wartosc_parametru(parametry_a, PARAMETR_PARY_BIEGUNOW)),
+                liczba_jednostek=liczba_a,
+                wind_type_3=_ASYNC_GEN_TYPES[gen_type],
+            )
+            graph.add_asynchronous_machine_source(maszyna)
+            _zapisz_wartosci_robocze_maszyny(
+                graph,
+                gen,
+                parametry_a,
+                wielkosci_wg_parametru=_wielkosci_parametrow_asynchronicznej(maszyna, parametry_a),
+            )
 
     return tracer.to_list()
+
+
+def _wartosc_parametru(parametry: dict[str, WartoscRozstrzygnieta], parametr: str) -> float:
+    """Wartość rozstrzygniętego parametru maszyny — rejestr ma propozycję dla każdego z nich."""
+    wartosc = parametry[parametr].wartosc
+    if wartosc is None:
+        raise AssertionError(f"Rejestr wartości roboczych nie rozstrzygnął parametru {parametr!r}.")
+    return wartosc
+
+
+def _moc_grupy(
+    moc: WartoscRozstrzygnieta, liczba_jednostek: int, *, moc_grupy_z_punktu_pracy: float
+) -> float:
+    """Moc znamionowa CAŁEJ grupy jednakowych maszyn z mocy rozstrzygniętej dla jednej.
+
+    Dana tabliczki, projektanta i wyznaczona z tabliczki dotyczą jednej maszyny — grupa to
+    × liczba jednostek. Propozycja jest określona na CAŁYM elemencie (punkt pracy), więc grupa
+    bierze ją wprost z punktu pracy (bez dzielenia i mnożenia przez liczbę jednostek — ta sama
+    liczba zmiennoprzecinkowa, którą obliczenie przyjmowało przed kartą).
+    """
+    if moc.pochodzenie == "PROPOZYCJA":
+        return moc_grupy_z_punktu_pracy
+    return _wartosc_parametru({moc.parametr: moc}, moc.parametr) * liczba_jednostek
+
+
+def _wielkosci_parametrow_asynchronicznej(
+    maszyna: AsynchronousMachineSource, parametry: dict[str, WartoscRozstrzygnieta]
+) -> dict[str, tuple[str, ...] | None]:
+    """Wielkości zwarciowe, na które wpływa KAŻDY parametr maszyny asynchronicznej.
+
+    ``None`` — wszystkie prądy punktu (parametr zmienia impedancję Z_M), ``WIELKOSC_TYLKO_IB``
+    — wyłącznie I_b (parametr zmienia tylko moc na parę biegunów m = P_rM/p, krzywa q pkt
+    9.1.2), ``()`` — żadna (parametr nie wchodzi do obliczenia). Parametr zmieniający m daje
+    wszystkie prądy, gdy w zakresie jego bramy wartości zmienia wiersz R_M/X_M maszyny SN
+    (predykat z modelu maszyny — jedno źródło progu tabeli). Przy S_rM z tabliczki Z_M nie
+    zależy od P_rM, η_r ani cos φ_r; η_r i cos φ_r wpływają wtedy na m tylko przez P_rM
+    wyznaczoną z S_rM (pkt 6.7), a przy P_rM podanej wprost — na nic.
+    """
+
+    def wg_m(m_od_mw: float, m_do_mw: float) -> tuple[str, ...] | None:
+        return (
+            None if maszyna.r_over_x_zalezy_od_mocy_na_pare(m_od_mw, m_do_mw) else WIELKOSC_TYLKO_IB
+        )
+
+    def zakres(parametr: str) -> tuple[float, float]:
+        opis = OPISY_PARAMETROW_MASZYNY[parametr]
+        return opis.dopuszczalne_od, opis.dopuszczalne_do
+
+    wielkosci: dict[str, tuple[str, ...] | None] = dict.fromkeys(parametry, None)
+    moc_jednostki = maszyna.moc_jednostki_mw
+    wielkosci[PARAMETR_PARY_BIEGUNOW] = wg_m(moc_jednostki / PARY_BIEGUNOW_MAX, moc_jednostki)
+    if maszyna.sr_mva_tabliczki is None:
+        return wielkosci
+    pary = max(1, maszyna.pole_pairs)
+    p_od, p_do = zakres(PARAMETR_MOC_ZNAMIONOWA_MASZYNY)
+    wielkosci[PARAMETR_MOC_ZNAMIONOWA_MASZYNY] = wg_m(p_od / pary, p_do / pary)
+    for parametr in (PARAMETR_SPRAWNOSC, PARAMETR_COS_PHI_MASZYNY):
+        if not moc_znamionowa_z_mocy_pozornej(parametry[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]):
+            wielkosci[parametr] = ()
+            continue
+        od, do = zakres(parametr)
+        wartosc = _wartosc_parametru(parametry, parametr)
+        m = maszyna.p_per_pole_mw
+        wielkosci[parametr] = wg_m(m * od / wartosc, m * do / wartosc)
+    return wielkosci
+
+
+def _zapisz_wartosci_robocze_maszyny(
+    graph: NetworkGraph,
+    gen: Generator,
+    parametry: dict[str, WartoscRozstrzygnieta],
+    *,
+    wielkosci_wg_parametru: dict[str, tuple[str, ...] | None],
+) -> None:
+    """Wpisy wartości roboczych maszyny do grafu (``graph.wartosci_robocze_maszyn``).
+
+    ``None`` w ``wielkosci_wg_parametru`` = parametr wpływa na wszystkie prądy zwarciowe
+    punktu (impedancja maszyny), ``()`` = parametr nie wchodzi do obliczenia (wartość robocza
+    bez wpływu nie jest daną przyjętą). Maszyna wyłącznie z danymi tabliczki nie dostaje wpisu.
+    """
+    wpisy = []
+    for parametr, rozstrzygniecie in parametry.items():
+        wielkosci = wielkosci_wg_parametru[parametr]
+        if not rozstrzygniecie.robocza or wielkosci == ():
+            continue
+        wpisy.append(
+            wpis_parametru_maszyny(
+                rozstrzygniecie,
+                source_id=gen.ref_id,
+                source_name=nazwa_elementu(gen, "generators"),
+                wielkosci=WIELKOSCI_ZWARCIOWE if wielkosci is None else wielkosci,
+            )
+        )
+    if wpisy:
+        graph.wartosci_robocze_maszyn[gen.ref_id] = tuple(wpisy)
 
 
 def _k_sc_substytucja_zalozenia(zrodlo: InverterSource, catalog_ref: str | None) -> str:
@@ -949,12 +1233,20 @@ def build_grid_source_trace(
     ma bocznika Y_Q w grafie (``map_enm_to_network_graph``): jeden predykat.
     """
     napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
     slad: list[dict[str, Any]] = []
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         u_kv = napiecie.get(source.bus_ref, 0.0)
         if u_kv <= 0:
             continue
-        wynik = impedancja_zrodla_sieciowego(source, u_kv, scenario)
+        wynik = impedancja_zrodla_sieciowego(
+            source,
+            u_kv,
+            scenario,
+            tolerancja_nn=tolerancje_nn.get(source.bus_ref),
+            tolerancja_nn_robocza=_robocza_nn(wyspy_nn, source.bus_ref),
+        )
         if wynik is None or wynik[0] == 0:
             continue
         slad.append(wynik[1])
@@ -979,6 +1271,11 @@ def map_enm_to_network_graph(
     This is a pure, deterministic function: same ENM → same NetworkGraph.
     """
     graph = NetworkGraph()
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN per szyna — JEDEN predykat
+    # (`enm.tolerancja_nn`); węzły nN niosą ją do doboru c, źródła nN do Z_Q (eq. 6). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa i jej pochodzenie z TEJ SAMEJ wyspy.
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
 
     # Collect source bus refs for SLACK identification
     source_bus_refs: set[str] = {s.bus_ref for s in enm.sources}
@@ -1044,11 +1341,15 @@ def map_enm_to_network_graph(
         if not generator_reguluje_napiecie(gen):
             continue
         if gen.bus_ref in bus_voltage_control_gen_ref:
-            raise ValueError(
-                f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
-                f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
-                f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
-                "napięcia na węzeł."
+            pierwszy_ref = bus_voltage_control_gen_ref[gen.bus_ref]
+            # Partia integracji 10: nazwy z modelu w treści, identyfikatory w `dane`.
+            raise OdmowaNazwana(
+                f"{opis_elementu(enm, gen.bus_ref, 'Szyna')} ma więcej niż jeden generator "
+                f"w trybie regulacji napięcia ({opis_elementu(enm, pierwszy_ref, 'generator')}"
+                f" i {opis_obiektu(gen, 'generator')}) — kontrakt rozpływu dopuszcza jedną "
+                "nastawę napięcia na węzeł.",
+                kod=KOD_DWA_GENERATORY_REGULACJI_NAPIECIA,
+                dane={"element_ref": gen.bus_ref, "generatory_ref": (pierwszy_ref, gen.ref_id)},
             )
         u_set_raw = meta.get("u_set_pu")
         bus_voltage_control[gen.bus_ref] = (
@@ -1085,17 +1386,22 @@ def map_enm_to_network_graph(
             # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
             # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
             if has_voltage_control:
-                raise ValueError(
-                    f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
-                    f"węzłem regulacji napięcia generatora "
-                    f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
-                    "już zadane napięcie źródła zasilania."
+                generator_ref = bus_voltage_control_gen_ref[bus.ref_id]
+                raise OdmowaNazwana(
+                    f"{opis_obiektu(bus, 'Szyna bilansująca')} nie może być jednocześnie "
+                    "węzłem regulacji napięcia "
+                    f"({opis_elementu(enm, generator_ref, 'generator')}) — szyna SLACK ma "
+                    "już zadane napięcie źródła zasilania.",
+                    kod=KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA,
+                    dane={"element_ref": bus.ref_id, "generator_ref": generator_ref},
                 )
             node = Node(
                 id=node_id,
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.SLACK,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 voltage_magnitude=1.0,
                 voltage_angle=0.0,
                 active_power=p if p != 0.0 else None,
@@ -1117,6 +1423,8 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PV,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 voltage_magnitude=bus_voltage_control[bus.ref_id],
                 active_power=p,
                 reactive_power=q if q != 0.0 else None,
@@ -1127,6 +1435,8 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PQ,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 active_power=p,
                 reactive_power=q,
                 zip_coeffs=bus_zip,
@@ -1141,7 +1451,7 @@ def map_enm_to_network_graph(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
@@ -1192,7 +1502,7 @@ def map_enm_to_network_graph(
                 # Konsumenci grafu juz umieja czytac 0.0 jako „wielkosc nieznana,
                 # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
                 # (pozycja NOT_COMPUTED z powodem `POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL`),
-                # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
+                # `application/sld/overlay_builder.py`
                 # i `backend/tests/reference_networks/station_archetype_substrate.py`
                 # (przeniesiony z `application/reference_networks/` karta K2,
                 # 2026-09-09) bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
@@ -1273,7 +1583,9 @@ def map_enm_to_network_graph(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
+            )
 
         tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
@@ -1310,6 +1622,10 @@ def map_enm_to_network_graph(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
             ),
             tap_changer=tap_changer,
+            # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z klasy tolerancji SIECI nN tej
+            # strony — ten sam predykat (`enm.tolerancja_nn`), z którego węzły nN biorą c
+            # (deklaracja wyspy albo wartość robocza; wejście i wyjście z jednego źródła).
+            tolerancja_nn_dolna=tolerancje_nn.get(trafo.lv_bus_ref),
         )
         graph.add_branch(tb)
 
@@ -1325,7 +1641,7 @@ def map_enm_to_network_graph(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
 
         # Find bus voltage
         bus_voltage_kv = 0.0
@@ -1341,13 +1657,15 @@ def map_enm_to_network_graph(
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+        z_ohm = _source_positive_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z_ohm is None or z_ohm == 0:
             continue
 
         graph.add_grid_sc_source(
             GridShortCircuitSource(
-                id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
+                id=grid_source_graph_id(source.ref_id),
                 name=nazwa_elementu(source, "sources"),
                 node_id=bus_node_id,
                 z_ohm=z_ohm,

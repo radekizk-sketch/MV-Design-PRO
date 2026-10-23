@@ -38,25 +38,40 @@ from typing import Any, Final
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType, StanBiegu, stan_biegu
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Statusy POZYCJI serii — DOKLADNIE slownik `CanonicalRun.status`
 #: (`enm/canonical_analysis.py`, typ `domain.execution.StanBiegu`), zero nowego
 #: rownoleglego slownika.
 ITEM_STATUS_CREATED: Final = "CREATED"
+ITEM_STATUS_QUEUED: Final = "QUEUED"
 ITEM_STATUS_RUNNING: Final = "RUNNING"
 ITEM_STATUS_FINISHED: Final = "FINISHED"
 ITEM_STATUS_FAILED: Final = "FAILED"
+#: Pozycja NIEWYKONANA, bo seria zostala anulowana przez uzytkownika (karta DYNAMIKA-W-TLE).
+ITEM_STATUS_CANCELLED: Final = "CANCELLED"
+
 #: Stany KONCOWE pozycji — po ktorych `finalize_batch_status` moze rozstrzygnac.
-ITEM_STATUSES_TERMINALNE = frozenset({ITEM_STATUS_FINISHED, ITEM_STATUS_FAILED})
+ITEM_STATUSES_TERMINALNE = frozenset(
+    {ITEM_STATUS_FINISHED, ITEM_STATUS_FAILED, ITEM_STATUS_CANCELLED}
+)
 
 
 class RunBatchStatus(StrEnum):
-    """Cykl zycia serii — slownik `CanonicalRun.status` + PARTIAL (karta §0 C1)."""
+    """Cykl zycia serii — slownik `CanonicalRun.status` + PARTIAL (karta §0 C1).
+
+    Karta DYNAMIKA-W-TLE: seria wykonuje sie w tle TYM SAMYM wykonawca co pojedynczy
+    bieg — `QUEUED` = przyjeta do kolejki (jeden ciezki bieg naraz), `CANCELLED` =
+    anulowana przez uzytkownika (z kolejki albo miedzy pozycjami; pozycje juz
+    policzone zachowuja wyniki, niewykonane dostaja CANCELLED z wyjasnieniem).
+    """
 
     CREATED = "CREATED"
+    QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     FINISHED = "FINISHED"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
     #: Czesc pozycji FAILED, reszta FINISHED — NIGDY cicho FINISHED (karta §0 C1).
     PARTIAL = "PARTIAL"
 
@@ -118,12 +133,16 @@ def finalize_batch_status(items: tuple[RunBatchItem, ...]) -> RunBatchStatus:
     if any(s not in ITEM_STATUSES_TERMINALNE for s in statusy):
         raise ValueError(
             "finalize_batch_status wymaga, żeby każda pozycja była w stanie końcowym "
-            f"(FINISHED/FAILED); otrzymano: {sorted(set(statusy))}"
+            f"(FINISHED/FAILED/CANCELLED); otrzymano: {sorted(set(statusy))}"
         )
     if all(s == ITEM_STATUS_FINISHED for s in statusy):
         return RunBatchStatus.FINISHED
     if all(s == ITEM_STATUS_FAILED for s in statusy):
         return RunBatchStatus.FAILED
+    if any(s == ITEM_STATUS_CANCELLED for s in statusy):
+        # Anulowanie przez uzytkownika jest decyzja, nie awaria: seria z pozycja
+        # niewykonana z tego powodu jest CANCELLED, nie „czesciowo udana".
+        return RunBatchStatus.CANCELLED
     return RunBatchStatus.PARTIAL
 
 
@@ -229,6 +248,24 @@ class RunBatch:
     def mark_running(self) -> RunBatch:
         return replace(self, status=RunBatchStatus.RUNNING)
 
+    def with_status(self, status: RunBatchStatus) -> RunBatch:
+        return replace(self, status=status)
+
+    def with_unfinished_items(self, status: StanBiegu, error_message: str) -> RunBatch:
+        """Kazda pozycja NIEZAKONCZONA dostaje `status` z wyjasnieniem (anulowanie,
+        osierocenie po restarcie) — pozycje zakonczone zachowuja swoj wynik."""
+        return replace(
+            self,
+            items=tuple(
+                (
+                    pozycja
+                    if pozycja.status in ITEM_STATUSES_TERMINALNE
+                    else replace(pozycja, status=status, error_message=error_message)
+                )
+                for pozycja in self.items
+            ),
+        )
+
     def finalize(self, *, finished_at: datetime) -> RunBatch:
         """Rozstrzygnij status koncowy z pozycji (FINISHED/FAILED/PARTIAL)."""
         return replace(
@@ -293,7 +330,7 @@ def new_run_batch(
     if len(scenario_ids) != len(scenario_content_hashes):
         raise ValueError("scenario_ids i scenario_content_hashes muszą mieć tę samą długość")
     if len(set(scenario_ids)) != len(scenario_ids):
-        raise ValueError("scenario_ids zawiera duplikaty")
+        raise OdmowaDanychError("scenario_ids zawiera duplikaty")
 
     pary = sorted(
         zip(scenario_ids, scenario_content_hashes, strict=False),

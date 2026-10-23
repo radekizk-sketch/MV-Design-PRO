@@ -106,6 +106,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'domkniecie',
   ),
   entry(
+    'przepnij_element_na_pole',
+    'KreatorPrzepieciaNaPole',
+    'Przepnij element na pole stacji',
+    'E-13',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    'rozdzielnia-sn',
+  ),
+  entry(
     'set_normal_open_point',
     'KreatorPierscienia',
     'Ustaw punkt normalnie otwarty',
@@ -137,6 +148,22 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'expand_workspace',
     false,
     'dane',
+  ),
+  // W5-E-TTIT: akcja naprawcza `nn.brak_rcd` (modal `add_nn_rcd`) otwiera ten kreator —
+  // bez wpisu tutaj wykonawca akcji naprawczej meldował „brak aktywnej karty", a każde
+  // otwarcie formularza dostawało tytuł z surowego identyfikatora operacji. Pozostałe
+  // kreatory nN mają wpisy z karty C-12 na końcu rejestru (jeden wpis na operację —
+  // `modalRegistryCompleteness.test.ts`).
+  entry(
+    'add_nn_rcd',
+    'KreatorRcdNn',
+    'Dodaj wyłącznik różnicowoprądowy nN',
+    'E-19',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    null,
   ),
   entry(
     'add_shunt_compensator_sn',
@@ -302,6 +329,65 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'replace_right_panel',
     true,
     'przekladniki',
+  ),
+  // C-12: operacje z formularzem w `OPERATION_FORM_REGISTRY` bez wpisu powierzchni —
+  // panel dostawał tytuł z surowej nazwy operacji, a wykonawca akcji naprawczej
+  // odmawiał („brak formularza"). Parytet obu rejestrów przypina
+  // `modalRegistryCompleteness.test.ts`.
+  entry(
+    'append_station_on_endpoint',
+    'KreatorStacjiSnNn',
+    'Dołącz stację SN/nN na końcu odcinka',
+    'E-13',
+    'B',
+    'manual',
+    'expand_workspace',
+    true,
+    'typ-topologiczny',
+  ),
+  entry(
+    'add_nn_cable_segment',
+    'KreatorOdcinkaNn',
+    'Dodaj odcinek nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_distribution_board',
+    'KreatorRozdzielnicyNn',
+    'Dodaj rozdzielnicę nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_section_coupler',
+    'KreatorRozdzielnicyNn',
+    'Dodaj sekcję rozdzielnicy nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_switch_device',
+    'KreatorAparatuNn',
+    'Dodaj aparat nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
   ),
 ] as const;
 

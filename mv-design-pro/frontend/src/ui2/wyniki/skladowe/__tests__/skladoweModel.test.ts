@@ -21,6 +21,7 @@ import {
   werdyktPL,
   wybierzPrzebiegNiesymetryczny,
 } from '../model';
+import { SKLADOWE_STRINGS } from '../strings';
 
 const WIERSZ: ShortCircuitRow = {
   target_id: 'node-1',
@@ -38,6 +39,7 @@ const WIERSZ: ShortCircuitRow = {
   xr_ratio: 2.41,
   kappa: 1.602,
   c_factor: 1.1,
+  c_zrodlo: 'IEC 60909-0 tab. 1, pasmo SN, MAX',
   tk_s: 1.0,
   reporting_status: 'reportable',
   reporting_status_pl: 'raportowalny',
@@ -57,7 +59,7 @@ const SLAD: ExtendedTrace = {
       target_id: 'node-1',
       title: 'Impedancja zastępcza w punkcie zwarcia',
       formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      substitution: '\\left(0.1 + j 0.4\\right) + \\left(0.1 + j 0.4\\right) + \\left(0.3 + j 0.9\\right)',
+      substitution_latex: '\\left(0.1 + j 0.4\\right) + \\left(0.1 + j 0.4\\right) + \\left(0.3 + j 0.9\\right)',
       inputs: {
         z1_ohm: { re: 0.1, im: 0.4 },
         z2_ohm: { re: 0.1, im: 0.4 },
@@ -138,6 +140,17 @@ describe('skladoweZeSladu — krok "Zk" śladu WHITE BOX (read-only)', () => {
     expect(skladowe?.z0).toEqual({ re: 0.3, im: -0.9 });
     expect(skladowe?.formulaLatex).toBe('Z_k = Z_1 + Z_2 + Z_0');
     expect(skladowe?.substitutionLatex).toContain('0.3');
+  });
+
+  it('proza `substitution` nie jest brana za LaTeX (kontrakt pól kroku, karta DOWOD-CIEPLNY)', () => {
+    const krok = SLAD.white_box_trace[0];
+    const bezLatex = {
+      ...SLAD,
+      white_box_trace: [
+        { ...krok, substitution_latex: undefined, substitution: 'Opis metody prozą.' },
+      ],
+    };
+    expect(skladoweZeSladu(bezLatex, 'node-1')?.substitutionLatex).toBeNull();
   });
 
   it('brak kroku dla punktu / brak śladu → null (zero fabrykacji)', () => {
@@ -241,10 +254,31 @@ describe('naZalozeniaSkladowych / naWierszeSkladowych / werdyktPL', () => {
     expect(zalozenia.map((z) => String(z.wartosc))).toEqual([
       'zwarcie jednofazowe (doziemne)',
       'IEC 60909',
-      '1,10',
+      '1,10 (IEC 60909-0 tab. 1, pasmo SN, MAX)',
       '1,00',
       '1',
     ]);
+  });
+
+  it('c różne per węzeł (SN i nN) → brak jednej liczby; kolumny c i podstawa c w wierszach', () => {
+    const nN = {
+      ...WIERSZ,
+      target_id: 'node-nn',
+      c_factor: 1.05,
+      c_zrodlo: 'IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX',
+    };
+    const zalozenia = naZalozeniaSkladowych([WIERSZ, nN]);
+    expect(zalozenia[2].wartosc).toBe(SKLADOWE_STRINGS.zalWspolczynnikCPerWezel);
+    const [wSn, wNn] = naWierszeSkladowych([WIERSZ, nN]);
+    expect(wSn.c.wartosc).toBe('1,10');
+    expect(wSn.cZrodlo.wartosc).toBe('IEC 60909-0 tab. 1, pasmo SN, MAX');
+    expect(wNn.c.wartosc).toBe('1,05');
+    expect(wNn.cZrodlo.wartosc).toBe('IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX');
+  });
+
+  it('wiersz bez podstawy c (starszy zapis) → kreska w kolumnie, nie domysł', () => {
+    const [w] = naWierszeSkladowych([{ ...WIERSZ, c_zrodlo: undefined }]);
+    expect(w.cZrodlo.wartosc).toBe('—');
   });
 
   it('wiersz tabeli: bilans Zk + werdykt raportowalności PL', () => {

@@ -58,11 +58,13 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   stationLabel: () => stationMockValue?.name ?? '-',
 }));
 
+const KATALOG_KABLI = [{ id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4 }];
+const KATALOG_APARATOW = [{ id: 'aparat-nn-1', name: 'Sprzęgło nN 250A', device_kind: 'WYLACZNIK_GLOWNY', u_n_kv: 0.4, i_n_a: 250 }];
+let katalogKabli: unknown[] = KATALOG_KABLI;
+let katalogAparatow: unknown[] = KATALOG_APARATOW;
 vi.mock('../../../../ui/catalog/api', () => ({
-  fetchLvCableTypes: () =>
-    Promise.resolve([{ id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4 }]),
-  fetchLvApparatusTypes: () =>
-    Promise.resolve([{ id: 'aparat-nn-1', name: 'Sprzęgło nN 250A', device_kind: 'WYLACZNIK_GLOWNY', u_n_kv: 0.4, i_n_a: 250 }]),
+  fetchLvCableTypes: () => Promise.resolve(katalogKabli),
+  fetchLvApparatusTypes: () => Promise.resolve(katalogAparatow),
   getCatalogErrorMessage: (e: unknown) => (e instanceof Error ? e.message : 'Błąd katalogu'),
 }));
 
@@ -72,6 +74,8 @@ describe('KreatorRozdzielnicyNn — realna ścieżka', () => {
     context = {};
     stationRefMockValue = null;
     stationMockValue = null;
+    katalogKabli = KATALOG_KABLI;
+    katalogAparatow = KATALOG_APARATOW;
     snapshotState.error = null;
     snapshotState.snapshot.substations = [];
     closeFormMock.mockReset();
@@ -124,6 +128,14 @@ describe('KreatorRozdzielnicyNn — realna ścieżka', () => {
       });
     });
 
+    it('pusty katalog kabli zasilenia: pole gotowe (bez wiecznego „Ładowanie katalogu…”)', async () => {
+      katalogKabli = [];
+      render(<KreatorRozdzielnicyNn />);
+      await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zasil-przelacznik'));
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel')).not.toBeDisabled());
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-kabel')).not.toHaveTextContent('Ładowanie');
+    });
+
     it('blokuje zapis, gdy zasilenie włączone, ale kabel nie wybrany', async () => {
       render(<KreatorRozdzielnicyNn />);
       await userEvent.click(screen.getByTestId('mvd-kreator-rozdzielnica-nn-zasil-przelacznik'));
@@ -156,6 +168,13 @@ describe('KreatorRozdzielnicyNn — realna ścieżka', () => {
         );
       });
       expect(closeFormMock).toHaveBeenCalled();
+    });
+
+    it('pusty katalog aparatów sprzęgła: pole gotowe (bez wiecznego „Ładowanie katalogu…”)', async () => {
+      katalogAparatow = [];
+      render(<KreatorRozdzielnicyNn />);
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-sprzeglo')).not.toBeDisabled());
+      expect(screen.getByTestId('mvd-kreator-rozdzielnica-nn-sprzeglo')).not.toHaveTextContent('Ładowanie');
     });
 
     it('nie pokazuje pól rozdzielnicy (napięcie/nazwa) w trybie sekcji', async () => {

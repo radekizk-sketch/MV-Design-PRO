@@ -26,12 +26,17 @@ Usage:
 import math
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.wartosci_robocze import (
+    KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+    pochodzenie_danej_karty,
+)
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
@@ -64,6 +69,11 @@ class CatalogNamespace(Enum):
     # wyzwolenia/krzywa topikowa zamiast breaking_capacity_ka ogólnego aparatu).
     APARAT_NN_MCB = "APARAT_NN_MCB"
     WKLADKA_NN = "WKLADKA_NN"
+    # Karta W5-E-TTIT: wyłącznik różnicowoprądowy nN (IEC 61008-1 / IEC 61009-1) —
+    # osobny kontrakt materializacji (I_Δn, rodzaj prądu różnicowego, czasy wyłączenia
+    # i niezadziałania), bo ocena SWZ w układzie TT porównuje czas wyłączenia RCD z
+    # tabelą czasów, a nie prąd zadziałania z prądem pętli.
+    APARAT_NN_RCD = "APARAT_NN_RCD"
     CT = "CT"
     VT = "VT"
     OGRANICZNIK_SN = "OGRANICZNIK_SN"
@@ -100,6 +110,13 @@ class CatalogNamespace(Enum):
     #: (`network_model/catalog/karty_widmowe/`); karta projektu żyje w modelu
     #: (`EnergyNetworkModel.katalog_projektu.karty_widmowe`).
     KARTA_WIDMOWA = "KARTA_WIDMOWA"
+    #: Karta LINIA-110: przewód linii napowietrznej 110 kV (fazowy albo odgromowy) — dane
+    #: WYROBU wg PN-EN 50182 (przekrój, budowa, średnica, R20 DC, α). ODRĘBNA przestrzeń od
+    #: LINIA_SN, bo niesie inny kontrakt materializacji: typ linii SN wiąże gotowe R′/X′/B′,
+    #: a przewód 110 kV wiąże WYŁĄCZNIE przewód — R′, X′, B′ i Z′0 linii liczy solver
+    #: `network_model.solvers.parametry_linii_napowietrznej` z geometrii słupa (standard ENEA
+    #: Operator linii 110 kV §7.1 lit. j: parametry wyznaczane obliczeniowo dla projektu).
+    PRZEWOD_LINII_WN = "PRZEWOD_LINII_WN"
 
 
 #: Kategoria katalogu → nazwa grupy katalogu w treści dla projektanta (karta #142).
@@ -117,6 +134,7 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "APARAT_NN": "Typy aparatury nN",
     "APARAT_NN_MCB": "Typy wyłączników instalacyjnych nN",
     "WKLADKA_NN": "Typy wkładek topikowych nN",
+    "APARAT_NN_RCD": "Typy wyłączników różnicowoprądowych nN",
     "KABEL_NN": "Typy kabli nN",
     "CT": "Typy przekładników prądowych",
     "VT": "Typy przekładników napięciowych",
@@ -132,6 +150,7 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "CONVERTER": "Typy konwerterów",
     "GENERATOR_SN": "Typy generatorów synchronicznych SN",
     "KARTA_WIDMOWA": "Karty widmowe urządzeń",
+    "PRZEWOD_LINII_WN": "Typy przewodów linii napowietrznych 110 kV",
     "mv_branch_points": "Typy punktów rozgałęzienia SN",
 }
 
@@ -538,7 +557,8 @@ def _pola_karty_projekcji_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
     """Walidacja pól karty wspólnych dla `ConverterType` i projekcji PV/BESS — JEDNO
     ciało reguł (krzywa P-Q KAT-T-004…008, `flicker_c` KAT-T-011, statyzmy KAT-T-012/013,
-    `k_sc` KAT-T-003): projekcja niosąca pole karty waliduje je tak samo jak typ źródłowy."""
+    `k_sc` KAT-T-003): projekcja niosąca pole karty waliduje je tak samo jak typ źródłowy.
+    """
     if obiekt.pq_curve is not None:
         _validate_pq_curve(obiekt.pq_curve)
     if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
@@ -559,6 +579,119 @@ def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
             "KAT-T-013",
             "Statyzm Q/U przekształtnika grid-forming (droop_q_u_percent) musi być > 0, "
             f"otrzymano {obiekt.droop_q_u_percent} ({kontekst}).",
+        )
+
+
+# =============================================================================
+# TOR MASZYNY TURBINY WIATROWEJ (karta KATALOG-TURBINY-TOR-V112, 2026-10-15)
+# =============================================================================
+#
+# Turbina z przekształtnikiem ma DWA napięcia, których nie wolno utożsamiać: stojan
+# generatora (np. V112: 710 V PMSG / 750 V SCIG, częstotliwość zmienna) i strona sieci
+# przekształtnika (V112: 650 V, częstotliwość sieci). Strona sieci przekształtnika jest
+# JEDNYM polem `ConverterType.un_kv` — to ono wiąże się z uzwojeniem nN transformatora
+# blokowego (`der.inverter_voltage_mismatch`) i wchodzi do rozpływu i zwarć. Pola toru
+# maszyny opisują to, co jest ZA przekształtnikiem: żaden solver ich nie czyta, bo
+# przekształtnik pełnej mocy odsprzęga maszynę od sieci (udział zwarciowy pochodzi
+# z przekształtnika — `k_sc` — nigdy z impedancji maszyny). Napięcie strony WN
+# transformatora blokowego nie jest daną turbiny: należy do typu transformatora
+# wybranego w torze DER-SN (dokument V112 podaje zakres 10–35 kV).
+
+#: Rodzaj maszyny → topologia przekształtnika, którą ta maszyna wymaga. JEDNO źródło
+#: dla obu stron predykatu (rodzaj maszyny ⇔ topologia): generator synchroniczny
+#: z magnesami trwałymi i generator klatkowy pracują za przekształtnikiem pełnej mocy,
+#: generator dwustronnie zasilany — za przekształtnikiem w obwodzie wirnika.
+TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY: dict[str, str] = {
+    "PMSG": "FULL_CONVERTER",
+    "SCIG": "FULL_CONVERTER",
+    "DFIG": "DFIG_ROTOR_CONVERTER",
+}
+TOPOLOGIE_PRZEKSZTALTNIKA: frozenset[str] = frozenset(TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY.values())
+
+#: Pola liczbowe toru maszyny (wartość skończona > 0, gdy podana).
+_POLA_LICZBOWE_TORU_MASZYNY: tuple[str, ...] = (
+    "generator_rated_power_mw",
+    "generator_stator_voltage_kv",
+    "generator_stator_frequency_max_hz",
+    "converter_machine_side_voltage_kv",
+)
+
+#: Wszystkie pola toru maszyny — materializowane do elementu i serializowane WYŁĄCZNIE,
+#: gdy obecne (pozycja bez nich zachowuje `to_dict` i tabliczkę bajtowo identyczne).
+POLA_TORU_MASZYNY: tuple[str, ...] = (
+    "generator_machine_type",
+    "converter_topology",
+    *_POLA_LICZBOWE_TORU_MASZYNY,
+)
+
+
+def pola_toru_maszyny_obecne(zrodlo: Any) -> dict[str, Any]:
+    """Pola `POLA_TORU_MASZYNY` o wartości różnej od `None` — z mapy albo z obiektu typu."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_TORU_MASZYNY:
+        wartosc = zrodlo.get(nazwa) if isinstance(zrodlo, dict) else getattr(zrodlo, nazwa, None)
+        if wartosc is not None:
+            wynik[nazwa] = wartosc
+    return wynik
+
+
+def _pola_toru_maszyny_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Odczyt pól toru maszyny (round-trip `pola_toru_maszyny_obecne`)."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_TORU_MASZYNY:
+        wartosc = data.get(nazwa)
+        if wartosc is None:
+            wynik[nazwa] = None
+        elif nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
+            wynik[nazwa] = float(wartosc)
+        else:
+            wynik[nazwa] = str(wartosc)
+    return wynik
+
+
+def _waliduj_tor_maszyny(obiekt: Any) -> None:
+    """Reguły toru maszyny (KAT-T-042…044) — jedno ciało dla wszystkich pozycji."""
+    obecne = pola_toru_maszyny_obecne(obiekt)
+    if not obecne:
+        return
+    if obiekt.kind is not ConverterKind.WIND:
+        odmowa_twarda(
+            "KAT-T-042",
+            f"Pola toru maszyny ({', '.join(sorted(obecne))}) dotyczą wyłącznie turbin "
+            f"wiatrowych, a pozycja '{obiekt.id}' jest rodzaju {obiekt.kind.value}.",
+        )
+    for nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
+        wartosc = obecne.get(nazwa)
+        if wartosc is not None and (not math.isfinite(wartosc) or wartosc <= 0):
+            odmowa_twarda(
+                "KAT-T-043",
+                f"Pole toru maszyny {nazwa} musi być liczbą skończoną > 0, otrzymano "
+                f"{wartosc!r} (pozycja '{obiekt.id}').",
+            )
+    maszyna = obiekt.generator_machine_type
+    topologia = obiekt.converter_topology
+    if maszyna is not None and maszyna not in TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY:
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Nieznany rodzaj maszyny {maszyna!r} (pozycja '{obiekt.id}'); dozwolone: "
+            f"{', '.join(sorted(TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY))}.",
+        )
+    if topologia is not None and topologia not in TOPOLOGIE_PRZEKSZTALTNIKA:
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Nieznana topologia przekształtnika {topologia!r} (pozycja '{obiekt.id}'); "
+            f"dozwolone: {', '.join(sorted(TOPOLOGIE_PRZEKSZTALTNIKA))}.",
+        )
+    if (
+        maszyna is not None
+        and topologia is not None
+        and TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY[maszyna] != topologia
+    ):
+        odmowa_twarda(
+            "KAT-T-044",
+            f"Maszyna {maszyna} wymaga topologii "
+            f"{TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY[maszyna]}, a pozycja '{obiekt.id}' "
+            f"deklaruje {topologia}.",
         )
 
 
@@ -777,6 +910,14 @@ class MaterializationContract:
         }
 
 
+def wartosci_robocze_z_danych(data: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Mapa ``wartosci_robocze`` pozycji (pole → założenie) w postaci niezmiennej i posortowanej."""
+    surowe = data.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not isinstance(surowe, Mapping):
+        return ()
+    return tuple(sorted((str(pole), str(zalozenie)) for pole, zalozenie in surowe.items()))
+
+
 @dataclass(frozen=True)
 class LineType:
     """
@@ -838,6 +979,9 @@ class LineType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -902,6 +1046,9 @@ class LineType:
             "thermal_source_reference": self.thermal_source_reference,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -957,9 +1104,214 @@ class LineType:
             thermal_source_reference=data.get("thermal_source_reference"),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60287 / IEC 60949",
+                default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
+                default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
+            ),
+        )
+
+
+#: Przeznaczenie przewodu linii napowietrznej 110 kV.
+PrzeznaczeniePrzewodu = Literal["FAZOWY", "ODGROMOWY"]
+PRZEZNACZENIA_PRZEWODU: tuple[str, ...] = ("FAZOWY", "ODGROMOWY")
+
+#: Dopuszczalna względna różnica średnicy wynikającej z budowy (rdzeń + 2·warstwy·drut) i
+#: średnicy z tablicy wyrobu. Tablica PN-EN 50182 podaje średnicę zaokrągloną do 0,1 mm,
+#: a druty — do 0,01 mm; 1 % pokrywa oba zaokrąglenia z zapasem (pomiar katalogu karty
+#: LINIA-110: największa różnica 0,23 % dla 243-AL1/39-ST1A).
+TOLERANCJA_SREDNICY_Z_BUDOWY = 0.01
+
+
+@dataclass(frozen=True)
+class OverheadConductorType:
+    """Przewód linii napowietrznej 110 kV — dane WYROBU (karta LINIA-110).
+
+    Typ wiąże przewód, nie linię: R′, X′, B′ i Z′0 linii zależą od geometrii słupa i liczy je
+    solver ``network_model.solvers.parametry_linii_napowietrznej``. Tu żyją wyłącznie dane
+    z tablicy normy wyrobu (PN-EN 50182) i budowa potrzebna do wyznaczenia GMR.
+
+    Attributes:
+        oznaczenie: Oznaczenie wg PN-EN 50182 (np. ``243-AL1/39-ST1A``).
+        przeznaczenie: ``FAZOWY`` albo ``ODGROMOWY``.
+        cross_section_mm2: Przekrój części aluminiowej [mm²] (przekrój przewodzący).
+        przekroj_stali_mm2: Przekrój rdzenia stalowego [mm²].
+        srednica_mm: Średnica zewnętrzna przewodu [mm] (tablica wyrobu).
+        warstwy_al: Liczba drutów aluminiowych w kolejnych warstwach od rdzenia.
+        srednica_drutu_al_mm / srednica_drutu_st_mm: Średnice drutów [mm].
+        srednica_rdzenia_mm: Średnica rdzenia stalowego [mm].
+        r20_dc_ohm_per_km: Rezystancja prądu stałego w 20 °C [Ω/km] (tablica wyrobu).
+        alfa_1_per_k: Temperaturowy współczynnik rezystancji [1/K].
+        gmr_mm: GMR z tablicy wyrobu [mm] — ``None``, gdy tablica go nie podaje (solver
+            wyznacza go z budowy).
+        rated_current_a: Obciążalność prądowa długotrwała [A] (warunki z tablicy wyrobu);
+            ``None`` dla przewodu odgromowego (tablica jej nie podaje).
+        max_temperature_c: Temperatura dopuszczalna długotrwale przewodu [°C].
+    """
+
+    id: str
+    name: str
+    oznaczenie: str
+    przeznaczenie: str
+    conductor_material: str
+    cross_section_mm2: float
+    przekroj_stali_mm2: float
+    srednica_mm: float
+    warstwy_al: tuple[int, ...]
+    liczba_drutow_st: int
+    srednica_drutu_al_mm: float
+    srednica_drutu_st_mm: float
+    srednica_rdzenia_mm: float
+    r20_dc_ohm_per_km: float
+    alfa_1_per_k: float
+    masa_kg_per_km: float
+    wytrzymalosc_kn: float
+    voltage_rating_kv: float
+    max_temperature_c: float
+    rated_current_a: float | None = None
+    gmr_mm: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_reference: str | None = None
+    standard: str | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+    source_reference: str = "PN-EN 50182"
+    catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.przeznaczenie not in PRZEZNACZENIA_PRZEWODU:
+            odmowa_twarda(
+                "KAT-T-048",
+                f"{self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
+                f"{', '.join(PRZEZNACZENIA_PRZEWODU)}.",
+            )
+        dodatnie = {
+            "cross_section_mm2": self.cross_section_mm2,
+            "srednica_mm": self.srednica_mm,
+            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
+            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
+            "alfa_1_per_k": self.alfa_1_per_k,
+            "max_temperature_c": self.max_temperature_c,
+        }
+        for nazwa, wartosc in dodatnie.items():
+            if not (math.isfinite(wartosc) and wartosc > 0):
+                odmowa_twarda(
+                    "KAT-T-048",
+                    f"{self.id}: {nazwa} musi być dodatnie i skończone (jest {wartosc}).",
+                )
+        if self.gmr_mm is not None and not (0 < self.gmr_mm < self.srednica_mm / 2.0):
+            odmowa_twarda(
+                "KAT-T-048",
+                f"{self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
+            )
+        if not self.warstwy_al or any(w <= 0 for w in self.warstwy_al):
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
+            )
+        srednica_budowy = self.srednica_rdzenia_mm + 2.0 * len(self.warstwy_al) * (
+            self.srednica_drutu_al_mm
+        )
+        if abs(srednica_budowy / self.srednica_mm - 1.0) > TOLERANCJA_SREDNICY_Z_BUDOWY:
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
+                f"{self.srednica_rdzenia_mm} mm + {len(self.warstwy_al)} warstw drutów "
+                f"{self.srednica_drutu_al_mm} mm) nie zgadza się ze średnicą przewodu "
+                f"{self.srednica_mm} mm.",
+            )
+
+    @property
+    def liczba_drutow_al(self) -> int:
+        return sum(self.warstwy_al)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "oznaczenie": self.oznaczenie,
+            "przeznaczenie": self.przeznaczenie,
+            "conductor_material": self.conductor_material,
+            "cross_section_mm2": self.cross_section_mm2,
+            "przekroj_stali_mm2": self.przekroj_stali_mm2,
+            "srednica_mm": self.srednica_mm,
+            "warstwy_al": list(self.warstwy_al),
+            "liczba_drutow_al": self.liczba_drutow_al,
+            "liczba_drutow_st": self.liczba_drutow_st,
+            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
+            "srednica_drutu_st_mm": self.srednica_drutu_st_mm,
+            "srednica_rdzenia_mm": self.srednica_rdzenia_mm,
+            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
+            "alfa_1_per_k": self.alfa_1_per_k,
+            "gmr_mm": self.gmr_mm,
+            "masa_kg_per_km": self.masa_kg_per_km,
+            "wytrzymalosc_kn": self.wytrzymalosc_kn,
+            "voltage_rating_kv": self.voltage_rating_kv,
+            "max_temperature_c": self.max_temperature_c,
+            "rated_current_a": self.rated_current_a,
+            "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
+            "thermal_source_reference": self.thermal_source_reference,
+            "standard": self.standard,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "OverheadConductorType":
+        kontekst = "OverheadConductorType"
+        warstwy = data.get("warstwy_al")
+        if not isinstance(warstwy, list | tuple):
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{data.get('id')}: brak budowy przewodu (lista `warstwy_al`).",
+            )
+
+        def opcjonalny(klucz: str) -> float | None:
+            wartosc = data.get(klucz)
+            return float(wartosc) if wartosc is not None else None
+
+        return cls(
+            id=wymagany_str(data, "id", context=kontekst),
+            name=wymagany_str(data, "name", context=kontekst),
+            oznaczenie=wymagany_str(data, "oznaczenie", context=kontekst),
+            przeznaczenie=wymagany_str(data, "przeznaczenie", context=kontekst),
+            conductor_material=wymagany_str(data, "conductor_material", context=kontekst),
+            cross_section_mm2=wymagany_float(data, "cross_section_mm2", context=kontekst),
+            przekroj_stali_mm2=wymagany_float(data, "przekroj_stali_mm2", context=kontekst),
+            srednica_mm=wymagany_float(data, "srednica_mm", context=kontekst),
+            warstwy_al=tuple(int(w) for w in warstwy),
+            liczba_drutow_st=wymagany_int(data, "liczba_drutow_st", context=kontekst),
+            srednica_drutu_al_mm=wymagany_float(data, "srednica_drutu_al_mm", context=kontekst),
+            srednica_drutu_st_mm=wymagany_float(data, "srednica_drutu_st_mm", context=kontekst),
+            srednica_rdzenia_mm=wymagany_float(data, "srednica_rdzenia_mm", context=kontekst),
+            r20_dc_ohm_per_km=wymagany_float(data, "r20_dc_ohm_per_km", context=kontekst),
+            alfa_1_per_k=wymagany_float(data, "alfa_1_per_k", context=kontekst),
+            masa_kg_per_km=wymagany_float(data, "masa_kg_per_km", context=kontekst),
+            wytrzymalosc_kn=wymagany_float(data, "wytrzymalosc_kn", context=kontekst),
+            voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context=kontekst),
+            max_temperature_c=wymagany_float(data, "max_temperature_c", context=kontekst),
+            rated_current_a=opcjonalny("rated_current_a"),
+            gmr_mm=opcjonalny("gmr_mm"),
+            jth_1s_a_per_mm2=opcjonalny("jth_1s_a_per_mm2"),
+            short_circuit_temperature_c=opcjonalny("short_circuit_temperature_c"),
+            thermal_source_reference=data.get("thermal_source_reference"),
+            standard=data.get("standard"),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="PN-EN 50182",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -1036,6 +1388,9 @@ class CableType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     def susceptancja_us_per_km(self, czestotliwosc_hz: float) -> float:
         """Susceptancja z pojemności jednostkowej kabla: B = 2π·f·C [µS/km].
@@ -1139,6 +1494,9 @@ class CableType:
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -1217,6 +1575,7 @@ class CableType:
             ),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60502-2 / IEC 60287 / IEC 60949",
@@ -1480,6 +1839,10 @@ class ConverterType:
         dynamic_profile_id: Dynamic model profile reference (optional).
         droop_p_f_percent: Grid-forming P/f droop statism [%] (optional).
         droop_q_u_percent: Grid-forming Q/U droop statism [%] (optional).
+        generator_machine_type / converter_topology / generator_rated_power_mw /
+        generator_stator_voltage_kv / generator_stator_frequency_max_hz /
+        converter_machine_side_voltage_kv: machine path behind the converter of a
+            wind turbine (optional, WIND only). ``un_kv`` is the grid-side voltage.
     """
 
     id: str
@@ -1584,6 +1947,17 @@ class ConverterType:
     # grid-forming (VSM/droop control), w %. Karta katalogowa producenta.
     # Zrodlo `V126ConverterInput.droop_q_u_percent`, jak wyzej.
     droop_q_u_percent: float | None = None
+    # Tor maszyny turbiny wiatrowej (karta KATALOG-TURBINY-TOR-V112): co jest ZA
+    # przekształtnikiem — rodzaj maszyny, napięcie i częstotliwość stojana, moc
+    # znamionowa generatora (≠ moc turbiny `pmax_mw`), topologia przekształtnika i jego
+    # napięcie po stronie maszyny. Strona sieci przekształtnika = `un_kv` (jedno pole).
+    # Wyłącznie rodzaj WIND (KAT-T-042); emitowane tylko, gdy podane.
+    generator_machine_type: str | None = None
+    converter_topology: str | None = None
+    generator_rated_power_mw: float | None = None
+    generator_stator_voltage_kv: float | None = None
+    generator_stator_frequency_max_hz: float | None = None
+    converter_machine_side_voltage_kv: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1609,8 +1983,10 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate optional additive fields (P-Q curve, flicker coefficient, droops, k_sc)."""
+        """Validate optional additive fields (P-Q curve, flicker coefficient, droops, k_sc,
+        machine path of a wind turbine)."""
         _waliduj_pola_karty_przeksztaltnika(self, kontekst="ConverterType")
+        _waliduj_tor_maszyny(self)
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1678,6 +2054,9 @@ class ConverterType:
                 if self.droop_q_u_percent is not None
                 else {}
             ),
+            # Tor maszyny turbiny: emitowany WYŁĄCZNIE, gdy podany (pozostałe pozycje
+            # bajtowo identyczne).
+            **pola_toru_maszyny_obecne(self),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1735,6 +2114,7 @@ class ConverterType:
             flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
             droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
             droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
+            **_pola_toru_maszyny_kwargs(data),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -2748,34 +3128,10 @@ class SynchronousGeneratorType:
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
 
-#: Znormalizowany stosunek prądu dynamicznego (szczytowego) do prądu
-#: wytrzymywanego krótkotrwale dla APARATURY ROZDZIELCZEJ SN przy 50 Hz:
-#: I_dyn = 2,5 · I_th (IEC 62271-1 § 4.101 / PN-EN 62271-200 — szereg
-#: wytrzymałości rozdzielnicy SN; ta sama relacja, którą katalog CT stosuje na
-#: podstawie IEC 61869-2, ale wyprowadzona z INNEJ normy i dlatego zapisana
-#: osobno — dwie liczby 2,5 o różnych podstawach normatywnych nie mogą dzielić
-#: jednej stałej, bo cytat przestałby być prawdziwy).
-#:
-#: Dzięki tej relacji I_dyn NIE JEST daną do zgadywania: pozycja bez jawnej
-#: wartości producenta dostaje wartość WYPROWADZONĄ, oznaczoną pochodzeniem
-#: ``derived_iec62271`` (KD-6 poz. 1). Brak I_th ⇒ brak I_dyn (``None``).
-WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN: float = 2.5
-
-#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN.
-POCHODZENIE_PRODUCENT = "producent"
-POCHODZENIE_REFERENCYJNY = "referencyjny"
-POCHODZENIE_DERYWACJA_IEC62271 = "derived_iec62271"
-
-
-def idyn_aparatu_sn_z_ith(ith_ka: float | None) -> float | None:
-    """Prąd dynamiczny aparatu SN wyprowadzony z prądu wytrzymywanego krótkotrwale.
-
-    ``None`` na wejściu daje ``None`` na wyjściu: brak danej nie zamienia się
-    w wartość (ta sama zasada, co ``idyn_ct_z_ith`` dla przekładników).
-    """
-    if ith_ka is None or ith_ka <= 0:
-        return None
-    return round(ith_ka * WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN, 3)
+#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN — JEDNA reguła w rejestrze wartości
+#: roboczych (``wartosci_robocze.pochodzenie_danej_karty``). Relacja normowa I_p = 2,5·I_k NIE
+#: żyje w pozycji katalogu: wartość pochodna innego pola karty jest PROPOZYCJĄ wartości
+#: roboczej, nie daną producenta (kontrakt werdyktu §3c pkt 1 i 4, V12K-351).
 
 
 @dataclass(frozen=True)
@@ -2793,8 +3149,9 @@ class MVApparatusType:
         manufacturer: Manufacturer (optional).
         i_th_ka: Prąd wytrzymywany krótkotrwale [kA] — DANA TABLICZKOWA aparatu.
         i_th_duration_s: Czas odniesienia prądu cieplnego [s] (zwykle 1 s).
-        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — jawna wartość producenta;
-            ``None`` ⇒ wyprowadzenie normowe 2,5 · I_th w ``to_dict``.
+        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — wyłącznie jawna wartość karty;
+            ``None`` = karta jej nie podaje (propozycję 2,5·I_th niesie rejestr wartości
+            roboczych, nie pozycja katalogu).
     """
 
     id: str
@@ -2809,18 +3166,24 @@ class MVApparatusType:
     #: TABLICZKOWE (karta katalogowa producenta), więc ich miejscem jest pozycja
     #: katalogu, nie konfiguracja stacji: bez nich pole z aparatem z modelu nie
     #: dawało się sprawdzić i cały tor kończył się „nieustalone".
-    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i MUSI zostać
-    #: ``None`` — przelicznik z prądu łączeniowego (``ik_ka``) byłby zgadywaniem.
+    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i ZOSTAJE ``None`` — katalog
+    #: niesie wyłącznie dane ze źródłem. Brak danej nie blokuje jednak obliczeń (zasada nr 4,
+    #: V12K-351): wartość ROBOCZĄ z jawnym źródłem (profil, norma, założenie) proponuje rejestr
+    #: ``network_model/catalog/wartosci_robocze.py``, a projektant może nadać własną na
+    #: elemencie modelu. Wartość robocza nigdy nie jest zapisywana w tej pozycji.
     i_th_ka: float | None = None
     i_th_duration_s: float | None = None
     i_dyn_ka: float | None = None
     #: KD-6 poz. 3 — CZAS WŁASNY aparatu [s] (rated break time, IEC 62271-100
     #: § 3.7.145: od pobudzenia wyzwalacza do przerwania łuku we wszystkich
     #: biegunach). Składnik czasu wyłączenia zwarcia obok członu nastawczego
-    #: zabezpieczenia. Dana WYŁĄCZNIE producencka — normy podają szereg wartości
-    #: znamionowych, ale NIE przypisują ich modelowi, więc wyprowadzić się jej
-    #: nie da. `None` = karta katalogowa tej danej jeszcze nie wniosła; wtedy
-    #: czas wyłączenia niesie sam człon nastawczy z JAWNYM założeniem.
+    #: zabezpieczenia. Dana producencka — IEC 62271-100 definiuje czas wyłączania, ale nie
+    #: przypisuje mu wartości, więc pole pozycji zostaje `None`, dopóki karta producenta jej
+    #: nie wniesie. Czasu wyłączenia to jednak nie blokuje (zasada nr 4, V12K-351): człon
+    #: nastawczy powiększa WARTOŚĆ ROBOCZA czasu własnego z rejestru
+    #: `wartosci_robocze.py` (profil typowy wyłącznika próżniowego SN) albo wartość nadana
+    #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
+    #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
@@ -2829,24 +3192,12 @@ class MVApparatusType:
     verification_note: str | None = None
 
     def pochodzenie_i_th(self) -> str | None:
-        """Skąd pochodzi I_th tej pozycji (``None`` = danej nie ma).
-
-        Rekord z NAZWANYM producentem niesie odczyt z karty katalogowej;
-        rekord bez producenta (szereg generyczny PN-EN 62271) niesie wartość
-        REFERENCYJNĄ normy. Rozróżnienie jest odczytem metadanych pozycji, nie
-        oceną — dlatego wolno je wyprowadzić.
-        """
-        if self.i_th_ka is None:
-            return None
-        return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+        """Skąd pochodzi I_th tej pozycji (``None`` = karta tej danej nie niesie)."""
+        return None if self.i_th_ka is None else pochodzenie_danej_karty(self.manufacturer)
 
     def pochodzenie_i_dyn(self) -> str | None:
-        """Skąd pochodzi I_dyn tej pozycji (``None`` = danej nie da się ustalić)."""
-        if self.i_dyn_ka is not None:
-            return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
-        if idyn_aparatu_sn_z_ith(self.i_th_ka) is None:
-            return None
-        return POCHODZENIE_DERYWACJA_IEC62271
+        """Skąd pochodzi I_dyn tej pozycji (``None`` = karta tej danej nie niesie)."""
+        return None if self.i_dyn_ka is None else pochodzenie_danej_karty(self.manufacturer)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2858,15 +3209,12 @@ class MVApparatusType:
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "making_capacity_ka": self.making_capacity_ka,
             "manufacturer": self.manufacturer,
-            # Znamiona wytrzymałości: wartość producenta ma pierwszeństwo, w jej
-            # braku wyprowadzenie normowe 2,5 · I_th (IEC 62271-1) — z JAWNYM
-            # pochodzeniem, żeby odbiorca wiedział, co czyta.
+            # Znamiona wytrzymałości: WYŁĄCZNIE dane karty z pochodzeniem. Wartości
+            # robocze (np. I_p = 2,5·I_k) niesie rejestr `wartosci_robocze`, nie pozycja.
             "i_th_ka": self.i_th_ka,
             "i_th_duration_s": self.i_th_duration_s,
             "i_th_pochodzenie": self.pochodzenie_i_th(),
-            "i_dyn_ka": (
-                self.i_dyn_ka if self.i_dyn_ka is not None else idyn_aparatu_sn_z_ith(self.i_th_ka)
-            ),
+            "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
             **_catalog_metadata_to_dict(
@@ -2903,16 +3251,7 @@ class MVApparatusType:
             i_th_duration_s=(
                 float(data["i_th_duration_s"]) if data.get("i_th_duration_s") is not None else None
             ),
-            # Wartość WYPROWADZONA nie wraca jako wartość producenta: zapis
-            # `to_dict` niesie wynik derywacji razem z jej pochodzeniem, więc
-            # przy odczycie odrzucamy go i pozwalamy wyprowadzić się na nowo
-            # (inaczej obieg zapis→odczyt awansowałby derywację na tabliczkę).
-            i_dyn_ka=(
-                float(data["i_dyn_ka"])
-                if data.get("i_dyn_ka") is not None
-                and data.get("i_dyn_pochodzenie") != POCHODZENIE_DERYWACJA_IEC62271
-                else None
-            ),
+            i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
             ),
@@ -3280,6 +3619,147 @@ class LVFuseLinkType:
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="IEC 60269-1 (wartości znamionowe normatywne)",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# LV RCD TYPE (APARAT_NN_RCD) — wyłącznik różnicowoprądowy nN (RCCB IEC 61008-1,
+# RCBO IEC 61009-1). Karta W5-E-TTIT (docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md
+# p. 8, decyzje OD-25 + D-11 + O-68).
+# =============================================================================
+
+#: Rodzaje prądu różnicowego wykrywanego przez RCD (IEC 61008-1: AC, A; IEC 62423: F, B).
+RODZAJE_PRADU_ROZNICOWEGO_RCD: tuple[str, ...] = ("AC", "A", "F", "B")
+
+
+@dataclass(frozen=True)
+class LVRcdType:
+    """Immutable LV residual current device (RCD) type — RCCB (IEC 61008-1) / RCBO (IEC 61009-1).
+
+    Namespace ODDZIELONY od APARAT_NN_MCB/WKLADKA_NN: ochrona przeciwporażeniowa w układzie
+    TT (IEC 60364-4-41 §411.5) opiera się na prądzie różnicowym znamionowym I_Δn i CZASIE
+    wyłączenia RCD, nie na prądzie zadziałania aparatu nadprądowego. Werdykt SWZ TT/IT
+    (``application/analyses/swz/werdykt_tt_it.py``) czyta ``i_delta_n_a`` (napięcie
+    dotykowe U_dotyk = R_A·I_Δn liczy solver ``petla_zwarcia_tt_it``) i ``t_a_s`` (czas
+    wyłączenia przy I_Δn, porównywany z tabelą czasów Tab. 41.1 repo).
+
+    ZERO FABRYKACJI: czasy pochodzą z Tabeli 1 IEC 61008-1 (kl. 9.9.2), odczytanej w DWÓCH
+    niezależnych źródłach publicznych (patrz ``mv_auxiliary_catalog.get_all_lv_rcd_types``);
+    pełny tekst normy nie był dostępny — status REFERENCYJNY, flip-to-verified przy dostępie
+    do kopii normy (wzorzec G-D1).
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "RCCB A 40 A / 30 mA").
+        in_a: Rated current In [A].
+        i_delta_n_a: Rated residual operating current I_Δn [A].
+        rcd_type: Rodzaj prądu różnicowego — "AC" | "A" | "F" | "B".
+        selective: ``True`` = typ S (selektywny, zwłoczny), ``False`` = ogólny (bezzwłoczny).
+        t_a_s: Maksymalny czas wyłączenia przy I_Δn [s] (Tabela 1 IEC 61008-1).
+        t_a_2idn_s: Maksymalny czas wyłączenia przy 2·I_Δn [s].
+        t_a_5idn_s: Maksymalny czas wyłączenia przy 5·I_Δn (albo 0,25 A dla I_Δn ≤ 0,03 A) [s].
+        t_nieczuly_min_s: Minimalny czas niezadziałania [s] (tylko typ S; ``None`` dla ogólnego).
+        u_n_kv: Rated voltage [kV] (typically 0.4).
+        poles: Number of poles (optional).
+        manufacturer: Manufacturer (optional).
+    """
+
+    id: str
+    name: str
+    in_a: float
+    i_delta_n_a: float
+    rcd_type: str
+    selective: bool
+    t_a_s: float
+    t_a_2idn_s: float | None = None
+    t_a_5idn_s: float | None = None
+    t_nieczuly_min_s: float | None = None
+    u_n_kv: float = 0.4
+    poles: int | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "IEC 61008-1 Tabela 1 (czasy wyłączenia, wartości normatywne)"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.rcd_type not in RODZAJE_PRADU_ROZNICOWEGO_RCD:
+            odmowa_twarda(
+                "KAT-T-045",
+                f"RCD '{self.id}': rodzaj prądu różnicowego {self.rcd_type!r} spoza słownika "
+                f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
+            )
+        for nazwa, wartosc in (
+            ("in_a", self.in_a),
+            ("i_delta_n_a", self.i_delta_n_a),
+            ("t_a_s", self.t_a_s),
+        ):
+            if wartosc <= 0:
+                odmowa_twarda(
+                    "KAT-T-046",
+                    f"RCD '{self.id}': pole {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
+                    "bez niego werdykt SWZ TT nie ma z czego liczyć.",
+                )
+        if self.selective and self.t_nieczuly_min_s is None:
+            odmowa_twarda(
+                "KAT-T-047",
+                f"RCD '{self.id}' typu S bez minimalnego czasu niezadziałania — Tabela 1 "
+                "IEC 61008-1 definiuje go dla każdego RCD selektywnego.",
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "in_a": self.in_a,
+            "i_delta_n_a": self.i_delta_n_a,
+            "rcd_type": self.rcd_type,
+            "selective": self.selective,
+            "t_a_s": self.t_a_s,
+            "t_a_2idn_s": self.t_a_2idn_s,
+            "t_a_5idn_s": self.t_a_5idn_s,
+            "t_nieczuly_min_s": self.t_nieczuly_min_s,
+            "u_n_kv": self.u_n_kv,
+            "poles": self.poles,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LVRcdType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            in_a=wymagany_float(data, "in_a", context="LVRcdType"),
+            i_delta_n_a=wymagany_float(data, "i_delta_n_a", context="LVRcdType"),
+            rcd_type=wymagany_str(data, "rcd_type", context="LVRcdType"),
+            selective=bool(data.get("selective", False)),
+            t_a_s=wymagany_float(data, "t_a_s", context="LVRcdType"),
+            t_a_2idn_s=(float(data["t_a_2idn_s"]) if data.get("t_a_2idn_s") is not None else None),
+            t_a_5idn_s=(float(data["t_a_5idn_s"]) if data.get("t_a_5idn_s") is not None else None),
+            t_nieczuly_min_s=(
+                float(data["t_nieczuly_min_s"])
+                if data.get("t_nieczuly_min_s") is not None
+                else None
+            ),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVRcdType"),
+            poles=(int(data["poles"]) if data.get("poles") is not None else None),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference=(
+                    "IEC 61008-1 Tabela 1 (czasy wyłączenia, wartości normatywne)"
+                ),
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -4114,7 +4594,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): pola wyprowadzone bez danej producenta
+            # (R′0, X′0, żyła powrotna) — gałąź niesie założenie, wyniki daną przyjętą.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
@@ -4154,7 +4638,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "thermal_source_reference",
             "source_reference",
             "trade_name",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): R′0/X′0 wyprowadzone bez danej producenta.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
@@ -4162,6 +4649,49 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("rated_current_a", "In [A]", "A"),
             ("cross_section_mm2", "Przekrój", "mm²"),
             ("jth_1s_a_per_mm2", "Jth(1 s)", "A·√s/mm²"),
+        ),
+    ),
+    CatalogNamespace.PRZEWOD_LINII_WN.value: MaterializationContract(
+        namespace=CatalogNamespace.PRZEWOD_LINII_WN.value,
+        # Karta LINIA-110: przewód linii 110 kV wiąże DANE WYROBU, nie impedancję linii.
+        # Brak kluczy `r_ohm_per_km`/`x_ohm_per_km`/`b_us_per_km` jest celowy — materializacja
+        # nie może wpisać do gałęzi rezystancji przewodu jako rezystancji linii; R′, X′, B′
+        # i Z′0 wpisuje operacja domenowa z wyniku solvera `parametry_linii_napowietrznej`
+        # (geometria słupa projektu albo wartość robocza rejestru).
+        solver_fields=(
+            "oznaczenie",
+            "przeznaczenie",
+            "conductor_material",
+            "cross_section_mm2",
+            "srednica_mm",
+            "warstwy_al",
+            "srednica_drutu_al_mm",
+            "srednica_rdzenia_mm",
+            "r20_dc_ohm_per_km",
+            "alfa_1_per_k",
+            "gmr_mm",
+            "voltage_rating_kv",
+            "rated_current_a",
+            "max_temperature_c",
+            "jth_1s_a_per_mm2",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
+            "source_reference",
+        ),
+        ui_fields=(
+            ("oznaczenie", "Oznaczenie PN-EN 50182", ""),
+            ("cross_section_mm2", "Przekrój Al", "mm²"),
+            ("srednica_mm", "Średnica", "mm"),
+            ("r20_dc_ohm_per_km", "R20 DC", "Ω/km"),
+            ("rated_current_a", "In [A]", "A"),
+            ("max_temperature_c", "θ dopuszczalna", "°C"),
+        ),
+        pola_opcjonalne=(
+            "gmr_mm",
+            "rated_current_a",
+            "jth_1s_a_per_mm2",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
         ),
     ),
     CatalogNamespace.TRAFO_SN_NN.value: MaterializationContract(
@@ -4304,6 +4834,28 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("in_a", "In [A]", "A"),
             ("fuse_class", "Klasa", ""),
             ("size", "Wielkość", ""),
+        ),
+    ),
+    # Karta W5-E-TTIT: RCD — I_Δn i czasy wyłączenia czyta werdykt SWZ TT/IT
+    # (`application/analyses/swz/werdykt_tt_it.py`) z `materialized_params` gałęzi.
+    CatalogNamespace.APARAT_NN_RCD.value: MaterializationContract(
+        namespace=CatalogNamespace.APARAT_NN_RCD.value,
+        solver_fields=(
+            "u_n_kv",
+            "in_a",
+            "i_delta_n_a",
+            "rcd_type",
+            "selective",
+            "t_a_s",
+            "t_a_2idn_s",
+            "t_a_5idn_s",
+            "t_nieczuly_min_s",
+        ),
+        ui_fields=(
+            ("in_a", "In [A]", "A"),
+            ("i_delta_n_a", "IΔn [A]", "A"),
+            ("rcd_type", "Rodzaj", ""),
+            ("t_a_s", "t przy IΔn [s]", "s"),
         ),
     ),
     CatalogNamespace.CT.value: MaterializationContract(
@@ -4593,6 +5145,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pq_curve",
             "card_field_status",
             "dynamic_profile_id",
+            # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny (za przekształtnikiem).
+            *POLA_TORU_MASZYNY,
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
@@ -4610,6 +5164,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pq_curve",
             "card_field_status",
             "dynamic_profile_id",
+            *POLA_TORU_MASZYNY,
         ),
     ),
     CatalogNamespace.KARTA_WIDMOWA.value: MaterializationContract(

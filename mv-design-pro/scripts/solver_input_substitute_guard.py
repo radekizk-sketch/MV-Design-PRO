@@ -150,9 +150,10 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
    skanu (`power_flow_newton.py`): `gen.internal_impedance_pu or float("inf")`,
    a nastepnie `1.0 / impedancja` daje `0.0`, dla ktorego `math.isfinite` jest
    prawda — czyli liczbe udajaca pomiar, przepuszczana przez `_finite`. Bramka
-   meldowala wtedy RC=0. Ten sam wzorzec zyje w repozytorium: tabela wspolczynnika
-   mu w `machine_sc_iec60909.py` (w. 75) uzywa `float("inf")` tam, gdzie
-   `e^{-0.38 I''_k/I_r}` daje 0,0. Zawezenie kosztowalo ZERO nowych pozycji
+   meldowala wtedy RC=0. Ten sam wzorzec zyl w repozytorium: tabela wspolczynnika
+   mu w `machine_sc_iec60909.py` miala `float("inf")` jako prog ostatniej krzywej
+   (zdjete karta MU-INTERPOLACJA — tablica wezlow t_min bez nieskonczonosci,
+   interpolacja liniowa miedzy wezlami). Zawezenie kosztowalo ZERO nowych pozycji
    budzetu — zadne zywe `or float("inf")` na polu kontraktu nie istnieje.
    Pomiar tej granicy: bez warunku liczbowosci skan warstwy solverow daje 40
    trafien, z czego 26 to formy UCZCIWE albo niefizyczne (`... else None`, nazwa
@@ -260,6 +261,12 @@ import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
+
+from guard_parsowanie import czytaj_tekst, sparsuj_plik, sparsuj_tekst, uruchom  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import moduly_dotkniete, pakiet_pliku  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
@@ -442,7 +449,8 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # strength/models.py` — SCR/WSCR sieci, wskazniki mocy zwarciowej), `f50`/`f51`
     # (`domain/protection_engine_v1.py` — obiekty ustawien funkcji zabezpieczeniowej
     # ANSI 50/51, NIE liczby — galaz zapasowa liczbowa nie moze sie z nimi
-    # skladniowo polaczyc). Decyzja "do mapy" dla wszystkich 53: kazdy jest
+    # skladniowo polaczyc; plik skasowany w karcie RESULTSET-MARTWE-MAPPERY
+    # 2026-09-30 i zdjety z listy ponizej). Decyzja "do mapy" dla wszystkich 53: kazdy jest
     # WYNIKIEM/KONTRAKTEM analizy albo domeny czytanym PRZEZ warstwe objeta
     # skanem (nie kolekcja atrybutow wbudowanego typu jak `complex.real/imag`),
     # wiec zaden nie kwalifikuje sie do wykluczenia wg precedensu jedynego
@@ -459,6 +467,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # prad_znamionowy_do_a, prad_znamionowy_od_a); zadne nie jest atrybutem typu
     # wbudowanego, wiec nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA.
     "analysis/obciazenie_galezi.py",
+    # Karta LINIA-110 (2026-10-22): pasma wiarygodnosci parametrow linii 110 kV
+    # (`PasmoParametruLinii`, `OcenaParametruLinii` — dataclassy WYNIKU interpretacji)
+    # czytane przez `application/parametry_linii_wn.py` (warstwa objeta skanem). Kazde pole
+    # jest polem oceny (wartosc, granice, status, wyjasnienie), nie atrybutem typu
+    # wbudowanego — nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA. PASS niezmieniony.
+    "analysis/sanity_bounds/parametry_linii_bounds.py",
     # Karta W3-J (2026-09-16): jedno zrodlo kryteriow napieciowych — dataclass
     # WYNIKU/KONTRAKTU (`KryteriaNapieciowe`, komplet stalych normatywnych),
     # importowana bezposrednio przez `application/analyses/voltage_profile_view.py`
@@ -514,10 +528,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/project_archive.py",
     "domain/protection_analysis.py",
     "domain/protection_comparison.py",
-    "domain/protection_current_source.py",
     "domain/protection_device.py",
-    "domain/protection_engine_v1.py",
-    "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",
@@ -528,7 +539,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "infrastructure/cgmes/refmap.py",
     "infrastructure/cloud_backup.py",
     "infrastructure/persistence/repositories/document_store_repository.py",
-    "protection/curves/curve_calculator.py",
     "protection/curves/iec_curves.py",
     "protection/curves/ieee_curves.py",
     # Karta AB-H0 (2026-09-23) — pin mapy zazadal decyzji dla pieciu korzeni po
@@ -583,18 +593,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
 #: albo TUTAJ. Nowy solver na nowym kontrakcie nie moze wiec po cichu wypasc poza
 #: zasieg reguly — musi dostac DECYZJE. Ten sam wzorzec, co
 #: „prezentowane + nieprezentowane = komplet kontraktu".
-MODEL_ROOTS_POZA_MAPA: dict[str, str] = {
-    "network_model/solvers/stability_rms/contracts.py": (
-        "Deklaruje pola `real` i `imag` (fazor jako model danych), a to sa NAZWY "
-        "ATRYBUTOW WBUDOWANEGO typu `complex`. Mapa pol jest plaskim zbiorem NAZW, "
-        "wiec wlaczenie tego korzenia zamienia kazdy odczyt `z.real` / `z.imag` "
-        "w warstwie solverow w trafienie: pomiar dal 8 falszywych alarmow "
-        "(`losses_total.real`, `loss_total.imag`, `voltage.imag`, `z.imag`), czyli "
-        "kolizje nazw, a nie odczyty danych modelu. Zamrozenie ich w budzecie "
-        "byloby dokladnie tym halasem, przed ktorym bronila runda 2. Pola tego "
-        "modulu nie sa danymi wejsciowymi fizyki — to postac wyniku."
-    ),
-}
+MODEL_ROOTS_POZA_MAPA: dict[str, str] = {}
+# Rejestr PUSTY od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i) planu A/B §12.2):
+# jedyny wpis, `network_model/solvers/stability_rms/contracts.py` (pola `real`/`imag` —
+# nazwy atrybutow wbudowanego `complex`, 8 falszywych alarmow przy wlaczeniu do mapy),
+# zdjety razem ze skasowanym solverem. Mechanizm zostaje: samotest cwiczy go na module
+# syntetycznym i pilnuje, ze `real`/`imag` nie wracaja do mapy z innego kontraktu.
 
 #: Wywolania, ktore na pewno daja liczbe — galaz zapasowa z nimi jest zastepnikiem.
 _NUMERIC_CALLS: frozenset[str] = frozenset(
@@ -688,22 +692,9 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     "api/power_flow_comparisons.py": {
         "F:dictget:summary.total_issues": 1,
     },
-    # Liczba URZADZEN i liczba SPRAWDZEN koordynacji zabezpieczen — bookkeeping
-    # raportu (ile pozycji zestawiono), nie nastawa/prad/czas zabezpieczenia
-    # (te zostaja fizyczne gdzie indziej). Ten sam wzorzec w API i w dwoch
-    # generatorach raportu DOCX/PDF.
-    "api/protection_coordination.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_docx.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
-    "network_model/reporting/protection_report_pdf.py": {
-        "F:dictget:summary.total_checks": 1,
-        "F:dictget:summary.total_devices": 1,
-    },
+    # Wpisy „liczba URZADZEN / SPRAWDZEN koordynacji" (API koordynacji i raporty DOCX/PDF)
+    # zdjete w karcie BIEG-ZABEZPIECZEN-Z-MODELU: podsumowanie koordynacji podaje najmniejsze
+    # wielkosci liczbowe (zakaz P-06), a API i raporty czytaja je bez wartosci zastepczych.
     "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
     # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
     # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
@@ -863,21 +854,21 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # zamrozone jako MERYTORYCZNIE uzasadnione (nie dlug).
         "G:dictifexp:trace.total_switch_count": 1,
     },
-    # Prad znamionowy maszyny w mianowniku ilorazu I_p/I_r: przy braku danej
-    # (`ir_a <= 0`) iloraz przyjmuje 0,0 i tak wchodzi do `mu_factor`, czyli do
-    # wspolczynnika wygaszania IEC 60909 §6.6/§6.7 — a wiec ZMIENIA WYNIK, a nie
-    # tylko zabezpiecza dzielenie. DLUG NAZWANY: maszyna bez pradu znamionowego
-    # powinna zostac POMINIETA z meldunkiem braku (wzorzec
-    # `_grid_source_shunt_admittance`), a nie liczona ze wspolczynnikiem z zera.
-    # Ujawnione w rundzie 4 razem z wlasnymi deklaracjami warstwy.
-    "network_model/solvers/machine_sc_iec60909.py": {
-        "B:ifexp:m.ir_a": 2,
-    },
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): wpis `network_model/solvers/machine_sc_iec60909.py`
+    # (`B:ifexp:m.ir_a`, 2) ZNIKA. Dawne `ratio = ip / m.ir_a if m.ir_a > 0 else 0.0`
+    # wpychalo krotnosc 0 do krzywej μ (μ = 1) za niefizyczny prad znamionowy — teraz jedna
+    # funkcja `wklad_maszyny` odmawia (`ValueError` z nazwa maszyny), a krotnosc liczy sie
+    # z pradu NA ZACISKACH maszyny (ten sam poziom napiecia co I_r).
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
     # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
-    # „plaski start" metody Newtona: wynik ZBIEZNY nie zalezy od punktu startowego,
-    # zmienia sie tylko droga do niego. Forma jest ta sama, co w defekcie, wiec
+    # „plaski start" metody Newtona: start plaski 1,0 pu lezy w basenie galezi roboczej
+    # (zmierzone na szynach obciazonych w pasmie startow testu). Korekta zakresu z
+    # diagnozy OD-19 (karta PF-OD19, partia integracji 7): twierdzenie „wynik zbiezny
+    # nie zalezy od startu" jest FALSZYWE dla szyny PQ o zerowej mocy i dla startu
+    # bliskiego zera szyny obciazonej (dwa rozwiazania zbiezne — przypiete w
+    # `test_od19_diagnoza_rozwiazania_zerowego.py`); wpis budzetu stoi na basenie startu
+    # plaskiego, nie na jednoznacznosci rozwiazania. Forma jest ta sama, co w defekcie, wiec
     # rozstrzyga merytoryka — i dlatego twierdzenie MA PRZYPIETY TEST (regula
     # „deklaracja bez testu = falszywa pewnosc"):
     # `backend/tests/network_model/solvers/test_punkt_startowy_nie_zmienia_wyniku.py`
@@ -1312,21 +1303,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # sprawdz_moc_generatora`, a liczbe jednostek bierze z modelu
         # (`enm/models.liczba_jednostek_zrodla`, ta sama regula co solver), nie
         # z surowego payloadu z jedynka zastepcza. Dlug USUNIETY, nie zmalal cicho.
-        # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
-        # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
-        # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
-        # dolozeniu `domain/protection_engine_v1.py` do CONTRACT_SOURCES (pole
-        # `time_dial` nie bylo wczesniej zadeklarowanym polem zadnej klasy w
-        # zasiegu). DLUG NAZWANY, NIE falszywy alarm: nastawa TMS (Time
-        # Multiplier/Dial Setting) przekaznika wchodzi WPROST do
-        # `_compute_tcc_point(ik/ipickup, tms, curve)`, czyli do czasu
-        # zadzialania krzywej TCC wg IEC 60255 — brakujaca nastawa powinna
-        # przerywac walidacje selektywnosci kodem bledu, nie liczyc sie z
-        # domyslnym mnoznikiem 1,0.
-        "F:dictget:ds_settings.time_dial": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,
         "F:dictget:payload.active_power_kw": 1,
-        "F:dictget:us_settings.time_dial": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,
     },
     "api/power_flow_comparisons.py": {
@@ -1363,9 +1341,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dedykowana karte konsolidacyjna — patrz meldunek koncowy). Nastawy
     # przekaznika (i_pickup_51/i_inst_50/tms_51 z wariantem doziemnym `_51n`/
     # `_50n`) w bibliotece katalogowej `protection/catalog/*`; wspolczynniki
-    # asymetrii `m_factor`/`n_factor` wg IEC 60909 w piatciu niezaleznych
-    # proof-packach (sc_symmetrical/sc_asymmetrical/proof_generator — TA SAMA
-    # para pol w trzech plikach, kolejny kandydat KLASA NIE INSTANCJA);
+    # asymetrii `m_factor`/`n_factor` — trzy wpisy `B:ifexp:result.m_factor/n_factor`
+    # (sc_symmetrical/sc_asymmetrical/proof_generator) ZDJETE karta SC-IB-ITH-ZRODLA
+    # (2026-10-21): domyslne (1, 0)/(0, 0) za brak m/n byly druga definicja I_th; teraz
+    # brak m/n w wyniku = `ValueError`, a I_th niesymetrycznych liczy jedno zrodlo
+    # `short_circuit_core.compute_post_fault_quantities` per rodzaj zwarcia;
     # `threshold_a` (nastawa progu prądowego zabezpieczenia) w read-modelu;
     # `i_fault_a` w porownaniu A/B ewaluacji zabezpieczen. `bramka_
     # konwencjonalna.inf_a` (SWZ/D2): dzielenie przez prad nietopliwosci
@@ -1386,7 +1366,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dotad mialo zaszyte `cos_phi=0.95` (liczba niewidoczna dla skanera — dlug ukryty,
     # teraz objety tym jednym wpisem). Funkcja przyjmuje nosnik z polem `cos_phi`, zeby
     # forma B pozostala widoczna dla skanera (parametr skalarny wypadlby ze wzorca).
-    "api/grid_source_preview.py": {
+    # Karta GPT-478 (2026-10-15): klucz pliku "api/grid_source_preview.py" ->
+    # "application/analyses/dobor_toru_der_sn.py" (budzet BEZ ZMIANY, 1). Kaskada doboru toru
+    # DER-SN (TR blokowy -> kabel -> pole) przeniesiona z modulu API do JEDNEJ orkiestracji
+    # aplikacyjnej `cos_phi_doboru_kabla`/`dobierz_tor_der_sn`, wolanej przez podglad kreatora,
+    # odstepstwa dokumentu DER-SN i szablony stacji — to samo jedno podstawienie.
+    "application/analyses/dobor_toru_der_sn.py": {
         "B:ifexp:zrodlo.cos_phi": 1,
     },
     "application/analyses/fault_loop/route.py": {
@@ -1461,16 +1446,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:data.cross_section_mm2": 1,
         "B:ifexp:data.ik2_min_end_a": 1,
     },
-    "application/proof_engine/packs/sc_asymmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
-    "application/proof_engine/packs/sc_symmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): `F:dictget:run.c_factor` (1) ZNIKA —
+    # pakiet biegu nie czyta liczby c z opcji (dawne `options.get("c_factor", 1.10)`),
+    # tylko scenariusz i nadpisanie z uzasadnieniem; c dobiera `voltage_factor.dobierz_c`.
     "application/proof_engine/pakiet_biegu.py": {
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.thermal_time_seconds": 1,
     },
     # Karta W3-C1 (2026-09-09): `dostepnosc_pakietu_nastaw` (bramka dostepnosci
@@ -1493,24 +1472,19 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # OBU stron pary — w tym wnetrza `zbuduj_wejscie_nastaw`, ktorego ta karta
     # NIE dotyka (poza dokladce `oblicz_nastawy` na koncu pliku, patrz diff) —
     # i jest poza jej zakresem; nazwane w meldunku karty, nie ukryte.
-    "application/proof_engine/pakiet_nastaw.py": {
-        "F:dictget:run.c_factor": 1,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): wpis `pakiet_nastaw.py`
+    # (`F:dictget:run.c_factor`, 1) ZNIKA — gałąź maksymalną rozstrzyga przełącznik
+    # scenariusza zapisany na wyniku (`kotwica_jest_scenariuszem_max`), nie liczba c.
     "application/proof_engine/proof_generator.py": {
         "A:or:data.sn_mva": 2,
         "B:ifexp:entry.u_secondary_kv": 1,
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
     },
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,
         "F:dictget:payload.total_steps": 1,
     },
-    "application/protection_read_model.py": {
-        "A:or:setting.threshold_a": 2,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `F:dictget:kotwica.c_factor` (1) ZNIKA (jak wyżej).
     "application/protection_settings/batch_run.py": {
-        "F:dictget:kotwica.c_factor": 1,
         "F:dictget:kotwica.thermal_time_seconds": 1,
     },
     # Karta GUARD-SUB-2 (2026-09-05), forma H: `ik_max = inp.ik3_max_beginning_a`
@@ -1724,7 +1698,7 @@ def contract_fields() -> set[str]:
     w `CONTRACT_SOURCES`. Dwa niezaleznie utrzymywane warunki, ktore „dzis sie
     zgadzaja", sa defektem czekajacym na dane brzegowe: gdy runda 4 dolozyla
     `network_model/solvers` jako calosc, wykluczony `stability_rms/contracts.py`
-    WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
+    (skasowany w karcie B01-RUNDA-1) WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
     Teraz wejscie i wyjscie ze zbioru pochodza z JEDNEGO zrodla prawdy.
     """
     fields: set[str] = set()
@@ -1735,10 +1709,7 @@ def contract_fields() -> set[str]:
             rel = path.relative_to(BACKEND_SRC).as_posix()
             if rel in MODEL_ROOTS_POZA_MAPA:
                 continue
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ClassDef):
                     continue
@@ -1755,10 +1726,7 @@ def declares_model_fields(path: Path) -> bool:
     Obejmuje pydantic i dataclass bez rozrozniania — z punktu widzenia tej bramki
     obie sa tym samym: nosnikiem pola, ktore mozna podstawic liczba.
     """
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    except (OSError, SyntaxError, UnicodeDecodeError):
-        return False
+    tree = sparsuj_plik(path)
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             for stmt in node.body:
@@ -1783,6 +1751,15 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
     Zwraca {sciezka modulu wzgledem BACKEND_SRC -> zbior plikow, ktore go importuja}.
     Wyrocznia mapy pol jest wyprowadzana Z KODU (z importow), a nie z listy pisanej
     recznie — inaczej nastepny solver na nowym kontrakcie powtorzylby luke rundy 3.
+
+    Importy sa rozwiazywane wg semantyki interpretera (`scripts/importy_ast.py`):
+    forma wzgledna i nazwa sprowadzona z pakietu (`from . import siec`) licza sie jak
+    import modulu. Do 2026-09-30 wyrocznia czytala wylacznie `ImportFrom.module`
+    importow bezwzglednych — pomiar: 278 korzeni zamiast 318, 40 modeli czytanych
+    wylacznie importem wzglednym (m.in. caly rdzen dynamiki) bylo dla niej
+    niewidocznych (wszystkie mialy juz decyzje w mapie albo poza nia). Import wzgledny
+    ponad korzen drzewa (interpreter: `ImportError`) konczy sie wyjatkiem
+    `ImportPonadKorzen` — wyrocznia nie zgaduje jego celu (fail-closed).
     """
     found: dict[str, set[str]] = {}
     for root_name in SCAN_ROOTS:
@@ -1790,16 +1767,12 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
+            pakiet = pakiet_pliku(path, BACKEND_SRC)
             modules: set[str] = set()
             for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-                    modules.add(node.module)
-                elif isinstance(node, ast.Import):
-                    modules.update(alias.name for alias in node.names)
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    modules.update(moduly_dotkniete(pakiet, node))
             for module in modules:
                 target = _module_to_path(module)
                 if target is None or not declares_model_fields(target):
@@ -2015,9 +1988,9 @@ def is_not_a_number_literal(expr: ast.expr) -> bool:
 
     Bramka meldowala RC=0. Zero jako „impedancja wewnetrzna nieobecna" jest
     dokladnie ta klasa, ktora ta bramka zwalcza — liczba udajaca pomiar.
-    Ten sam wzorzec zyje w repozytorium: `machine_sc_iec60909.py` w. 75 uzywa
-    `float("inf")` w tabeli wspolczynnika mu, gdzie `e^{-0.38 I''_k/I_r}` przy
-    nieskonczonosci daje 0,0 — wartosc skonczona i uzyta dalej.
+    Ten sam wzorzec zyl w repozytorium: `machine_sc_iec60909.py` mial
+    `float("inf")` jako prog ostatniej krzywej w tabeli wspolczynnika mu (zdjete
+    karta MU-INTERPOLACJA: tablica wezlow t_min bez nieskonczonosci).
 
     Przypiete `test_solver_input_substitute_guard.py` (NaN uczciwy / inf gryzie).
 
@@ -2575,15 +2548,8 @@ def apply_ratchet(
 
 def check_file(path: Path, fields: set[str]) -> list[str]:
     """Naruszenia w jednym pliku (pusta lista = plik czysty)."""
-    try:
-        source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return []
-    try:
-        tree = ast.parse(source, filename=str(path))
-    except SyntaxError as exc:
-        print(f"WARN: {path}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-        return []
+    source = czytaj_tekst(path)
+    tree = sparsuj_tekst(source, str(path))
 
     rel = path.relative_to(BACKEND_SRC).as_posix()
     findings = collect_findings(tree, fields)
@@ -2638,12 +2604,22 @@ def main() -> int:
     # rejestr moze tylko malec, wiec nieaktualny wpis jest bledem, nie ozdoba.
     martwe_dlug = [rel for rel in ZASTANE_ZASTEPNIKI if not (BACKEND_SRC / rel).is_file()]
     martwe_wykl = [rel for rel in WYKLUCZENIA_SKANERA if not (BACKEND_SRC / rel).is_file()]
+    # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): zrodlo kontraktu wskazujace plik,
+    # ktorego nie ma, bylo po cichu pomijane (`collect_input_fields` bierze tylko
+    # istniejace) — dwa wpisy-widma przezyly kasacje swoich plikow
+    # (`domain/protection_current_source.py` od W3-A, `domain/protection_engine_v1.py`).
+    martwe_zrodla = [rel for rel in CONTRACT_SOURCES if not (BACKEND_SRC / rel).exists()]
+    if martwe_zrodla:
+        print("FAIL: zrodla kontraktu wskazuja pliki, ktorych nie ma:")
+        for rel in sorted(martwe_zrodla):
+            print(f"  {rel} — zdejmij wpis z CONTRACT_SOURCES.")
     if martwe_dlug or martwe_wykl:
         print("FAIL: zapadka/wykluczenia wskazuja pliki, ktorych nie ma:")
         for rel in sorted(martwe_dlug):
             print(f"  {rel} — zdejmij wpis z ZASTANE_ZASTEPNIKI.")
         for rel in sorted(martwe_wykl):
             print(f"  {rel} — zdejmij wpis z WYKLUCZENIA_SKANERA.")
+    if martwe_zrodla or martwe_dlug or martwe_wykl:
         return 1
 
     # Sumy per korzen — PRZYPIETE testem (`test_biezacy_stan_repozytorium_...`),
@@ -2681,4 +2657,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

@@ -20,6 +20,28 @@ from __future__ import annotations
 
 import uuid
 
+#: Klasy CIM obiektów GŁÓWNYCH (mRID bez sufiksu), które eksporter wystawia dla elementu
+#: ENM — importer odtwarza z nich ``ref_id`` (``cgmes_importer._odwrotna_mapa_tozsamosci``).
+#: Test ``test_cgmes_generatory_kondensatory`` pilnuje, że każda klasa główna z członu EQ
+#: eksportu jest na tej liście.
+KLASY_OBIEKTOW_GLOWNYCH: tuple[str, ...] = (
+    "ConnectivityNode",
+    "TopologicalNode",
+    "ACLineSegment",
+    "Breaker",
+    "Disconnector",
+    "LoadBreakSwitch",
+    "Fuse",
+    "PowerTransformer",
+    "ExternalNetworkInjection",
+    "SynchronousMachine",
+    "AsynchronousMachine",
+    "PowerElectronicsConnection",
+    "EnergyConsumer",
+    "LinearShuntCompensator",
+    "Substation",
+)
+
 
 def mrid_for(cim_class: str, ref_id: str, suffix: str | None = None) -> str:
     """Return a deterministic mRID (uuid5 string) for a CIM object.

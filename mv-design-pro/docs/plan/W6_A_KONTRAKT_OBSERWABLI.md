@@ -62,11 +62,94 @@ u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
 >
 > Po poprawce komparator fikstur nie widzi żadnej różnicy między 12 wariantami, a największy
 > względny rozrzut `u_f_est_hz` po wszystkich próbkach spadł z $5{,}7\cdot10^{-3}$ do
-> $7{,}2\cdot10^{-7}$. Testy: `tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py`
+> $9{,}6\cdot10^{-7}$ (pomiar po reinicjalizacji urządzeń; wcześniejszy zapis $7{,}2\cdot10^{-7}$
+> pochodził z drzewa bez niej). Testy: `tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py`
 > (próbka zero w iloczynie {sieć} × {punkt dokładny, zaburzony} × {próbka C, para L/P}; krok
 > różnicy na rzeczywistej ścieżce biegu; odporność `u_V̇` na jednostkę zaokrąglenia) oraz scena
 > w iloczynie {jądro domyślne, Prescott} × {1, 2 wątki}; mutacje M70 (próbka zero bez korekty),
 > M71 (różnica pochodnej bez wydłużenia kroku) i M72 (stan `t = 0` bez reinicjalizacji urządzeń).
+>
+> **KOREKTA 2026-09-30, cz. 2 (ta sama karta — estymata na progu części pewnej residuum).**
+> Rozgałęzienie „`J⁻¹r` przy residuum znaczącym, `J⁻¹ρ` na dnie” z korekty 2026-09-29 było
+> **nieciągłe na progu** i tuż nad nim schodziło **głęboko pod dno** zaokrągleń. Przesunięcie
+> napięcia węzła próbki leżącej na dnie o 1–7 kolejnych liczb zmiennoprzecinkowych wyprowadza
+> jedną składową residuum ponad granicę, reszta residuum pozostaje szumem, a `|J⁻¹r|` spada
+> do 1,4–7,4 % propagacji granicy. W SO-1a (próbka 372 drzewa bez reinicjalizacji urządzeń)
+> `u_f` wyniosło $4{,}6\cdot10^{-15}$ Hz wobec $1{,}1\cdot10^{-10}$ Hz propagacji granicy; na
+> drzewie `2be588ea` w czterech jądrach OpenBLAS próbka 350 węzła przyłącza dała
+> $1{,}59\cdot10^{-11}$ Hz (jądro domyślne, gałąź $J^{-1}r$) i $1{,}80\cdot10^{-9}$ Hz (pozostałe
+> jądra, dno) — to, po której stronie progu wypadła próbka, zależało od jądra BLAS. Po
+> poprawce rozrzut `u_f` SO-1a między jądrami jest ograniczony do 27,6 % (próbki przy dnie),
+> kody jakości są identyczne, a żadna estymata nie schodzi poniżej propagacji granicy. Estymata rozkłada teraz residuum na część **pewnie obecną**
+> $\psi(r) = \operatorname{sign}(r)\max(|r| - \rho, 0)$ (`siec.czesc_pewna_residuum` — jedno
+> źródło także dla predykatu korekty `t = 0`) i resztę mieszczącą się w $\rho$:
+> $u_V = |J_y^{-1}\psi(r)| + |J_y^{-1}\rho|$, a $u_{\dot V}$ to suma różnic skończonych
+> wzdłuż obu składników, każda z krokiem co najmniej $\sqrt u$ względnie. Suma jest ciągła
+> w $r$ ($\psi$ jest 1-lipschitzowska), nigdy nie schodzi poniżej $|J_y^{-1}\rho|$, na dnie
+> ($\psi = 0$) jest dokładnie propagacją granicy, a daleko nad dnem — krokiem Newtona
+> $|J_y^{-1}r|$ z dokładnością do $\rho$. Testy:
+> `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py` (próg części pewnej
+> wyznaczony spacerem po liczbach zmiennoprzecinkowych z próbek rzeczywistego biegu; estymata
+> przy residuum znaczącym) i `test_przenosnosc_estymaty_niepewnosci.py` (krok każdej z różnic
+> w obu reżimach residuum); mutacje M73 (estymata napięcia bez propagacji dna nad progiem)
+> i M74 (niepewność pochodnej bez różnicy wzdłuż dna nad progiem).
+>
+> **KOREKTA 2026-09-30, cz. 3 (karta AB-1b.3b-NA-CZUBKU — odbiory ze stanem).** Obie poprawki
+> chwili zero powstały na zbiorze elementów bez odbiorów stanowych; odbiór czuły
+> częstotliwościowo (AB-1b.3b) ma stan — kąt estymatora częstotliwości widzianej
+> $x' = e/T_f$, $e = \arg(V e^{-jx})$ — i zasięg niezmienników rozszerzono na tę klasę:
+>
+> 1. **Granica $\rho$ i residuum z jednego źródła.** Składniki wiersza KCL (odbiory Z OBWODEM
+>    przy SWOIM stanie estymatora, urządzenia o sprzężeniu prądowym, bez wierszy ograniczenia)
+>    daje jedna funkcja `siec.skladniki_wstrzykniec`, z której liczy się zarówno
+>    `residuum_algebry`, jak i `granica_zaokraglen_residuum` (wiersze ograniczenia —
+>    `siec.napiecia_narzucone`). Po scaleniu obu kart granica liczyła prąd odbioru
+>    z charakterystyki bez częstotliwości widzianej i sumowała odbiory bez obwodu, których
+>    w residuum nie ma — dwa warunki „dziś zgodne” (reguła predykatów parami). Test:
+>    `test_niepewnosc_na_granicy_zaokraglen.py::test_granica_zaokraglen_to_suma_modulow_skladnikow_wiersza`
+>    w iloczynie {odbiór bez stanu, ze stanem przyłączony, ze stanem odłączony zdarzeniem} ×
+>    {estymator w równowadze, za fazą szyny}; mutacje M77 (granica z prądu odbioru przy $f_n$
+>    zamiast przy stanie estymatora) i M78 (granica sumująca odbiory bez obwodu).
+> 2. **Spójna inicjalizacja algebry `t = 0` z odbiorami ze stanem.** Równowagą estymatora jest
+>    $x = \arg V$ ($e = 0$), więc stan $x(0) = \arg V_{pf}$ przestaje nią być w punkcie
+>    skorygowanym, a prąd odbioru przy trzymanym $x$ zależy od przesunięcia fazy. Algebra
+>    korekty liczy odbiory na ROZMAITOŚCI RÓWNOWAGI estymatora
+>    (`ModelOdbioru.w_rownowadze_estymatora`: $\hat f = f_n$ niezależnie od napięcia — ten sam
+>    mechanizm, co algebra chwili ponownego zasilenia szyny), a stan odbioru dostaje
+>    $x := \arg V_0$ tym samym konstruktorem `stan_poczatkowy_odbioru`, co w `t = 0` z rozpływu:
+>    prąd odbioru jest tym, przy którym algebra zbiegła, pochodna stanu zerowa, a
+>    częstotliwość widziana w próbce zero — dokładnie $f_n$. Reinicjalizacja odbiorów i urządzeń
+>    ma JEDEN predykat: korekta się wykonała (`residuum_ponad_granica_zaokraglen`) i napięcie
+>    węzła elementu się zmieniło — odbiór w obszarze beznapięciowym ($V = 0$ z wiersza
+>    ograniczenia) zachowuje stan bitowo. Ślad `korekta_algebry` niesie
+>    `max_zmiana_kata_estymatorow_rad` (klucz wyłącznie przy odbiorach ze stanem — ślad biegu
+>    bez nich jest bitowo dawny). Bramka równowagi na stanie `t = 0` obejmuje stany odbiorów
+>    (norma `max |f|`, adresy `odbiór.kat_pomiaru_rad`, skończoność — `KontekstKroku.adresy_stanow`).
+>    Testy: `test_przenosnosc_estymaty_niepewnosci.py::test_probka_zero_lezy_na_algebrze_rdzenia`
+>    w iloczynie {sieć: SMIB z odbiorem stałej mocy, gałąź ślepa, SMIB z odbiorem czułym, ten
+>    sam z szyną odciętą i odbiorem czułym w obszarze beznapięciowym} × {punkt dokładny,
+>    zaburzony} × {próbka C, para L/P}; `test_chwila_zero_rodziny_urzadzen.py` — ten sam
+>    niezmiennik dla KAŻDEJ rodziny urządzeń (maszyna klasyczna i synchroniczna w siedmiu
+>    konfiguracjach regulacji, GFL ×4, GFM ×4, magazyn ×5, turbina ×3) × {bez odbioru, z odbiorem
+>    czułym na szynie urządzenia}, równowaga mierzona względem odchyłki, którą korekta
+>    wywołałaby bez reinicjalizacji (pętla synchronizacji ma w obu punktach szum pochodnej
+>    rzędu 1e-14…1e-13 1/s); `test_silnik.py` — stan odbioru nieskończony w punkcie
+>    rozpływu i po reinicjalizacji, prąd odbioru nieskończony (odbiór bez stanu, ze stanem);
+>    mutacje M75 (stan `t = 0` odbioru bez reinicjalizacji), M76 (algebra korekty przy
+>    trzymanym stanie estymatora) i M79 (bramka równowagi sprawdza skończoność wyłącznie stanów
+>    urządzeń).
+> 3. **`f_odbioru_hz@` i `kat_pomiaru_rad@` nie mają estymaty niepewności ani kodu jakości —
+>    i to jest kontrakt, nie luka.** To wyjścia MODELU odbioru (stan całkowany i faza napięcia
+>    szyny), tak jak stany urządzeń (`x(t)`, §2), a nie obserwabla `f_hz@` szyny: rdzeń nie
+>    publikuje dla nich `u_f_est_hz@` ani `jakosc_f@`, a konsument nie może traktować braku
+>    kodu jakości jako „rozróżnialna”. Błąd rozwiązania algebry przenosi się na nie przez fazę
+>    napięcia: $|\delta e| \le \arcsin(u_V/|V|)$, czyli
+>    $|\delta \hat f| \le \arcsin(u_V/|V|)/(2\pi T_f)$ — w próbce zero po korekcie
+>    $\hat f = f_n$ dokładnie; błąd całkowania stanu nie jest estymowany (jak dla każdego stanu,
+>    §„CZEGO `u_f_est_hz` NIE OBEJMUJE”). Gdyby rdzeń kiedyś publikował estymatę dla tych
+>    kanałów, liczy ją tą samą częścią pewną residuum (`siec.czesc_pewna_residuum`). Zamknięty
+>    zestaw kanałów odbioru przypina
+>    `test_estymator_odbioru.py::test_kanaly_odbioru_bez_estymaty_niepewnosci_ani_kodu_jakosci`.
 
 $$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
 \;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
@@ -248,11 +331,19 @@ kontraktu obserwabli**, nie adnotacją interfejsu.
 
 Obie niepewności są dziś **mierzone**, każda z wielkości, które solver i tak ma:
 
-$$u_V = \left| J_y^{-1} r \right| \text{ na węźle}, \qquad
-u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
+$$u_V = \left| J_y^{-1} \psi(r) \right| + \left| J_y^{-1} \rho \right| \text{ na węźle},
+\qquad
+u_{\dot V} = \sum_{d \,\in\, \{J_y^{-1}\psi(r),\; J_y^{-1}\rho\}}
+\frac{\left| \dot V(y - s_d\, d) - \dot V(y) \right|}{s_d}$$
 
-Rozkład LU jest ten sam, którym liczona jest pochodna, więc `u_V` kosztuje jedno dodatkowe
-podstawienie; `u_V̇` wymaga drugiej faktoryzacji (pomiar narzutu: §15 raportu domknięcia).
+gdzie $\psi(r) = \operatorname{sign}(r)\max(|r| - \rho, 0)$ to część residuum pewnie obecna
+ponad granicą błędu jego obliczenia $\rho$ (`siec.granica_zaokraglen_residuum`), a
+$s_d \ge 1$ wydłuża krok do $\sqrt u$ względnie (korekty 2026-09-29 i 2026-09-30 na początku
+dokumentu; daleko nad dnem zaokrągleń $u_V$ to wciąż krok Newtona $|J_y^{-1} r|$).
+
+Rozkład LU jest ten sam, którym liczona jest pochodna, więc `u_V` kosztuje dwa dodatkowe
+podstawienia; `u_V̇` wymaga jednej faktoryzacji na niezerowy składnik — jednej na dnie
+zaokrągleń, dwóch przy residuum z częścią pewną (pomiar narzutu: §15 raportu domknięcia).
 Propagacja jest **wyprowadzona**, nie dobrana:
 
 $$u_{\dot\theta} \le \frac{u_{\dot V}}{|V|} + 3\,\frac{|\dot V|\,u_V}{|V|^2},
@@ -507,7 +598,7 @@ z punktem pracy, od którego bieg wystartował, to cała reszta przebiegu opisuj
 |---|---|---|
 | **OD-35** | Tor statyczny rozpływu wystawia `branch_current_pu` = prąd JEDNEJ strony pod nazwą sugerującą wielkość gałęzi (`power_flow_newton_internal.py:1116`). Kontrakt dynamiczny tego nie powtarza, więc powstaną dwa różne znaczenia tej samej nazwy w produkcie | plik jest w zbiorze FROZEN (`scripts/solver_diff_guard.py:39-47`) — korekta wymaga bramki B-01. Warianty: (a) rozszerzyć wynik statyczny o drugą stronę pod bramką B-01; (b) zostawić i nazwać różnicę w prezentacji; (c) wystawić drugą stronę w warstwie odczytu bez zmiany rdzenia. Rekomendacja: **(c)** — pełna informacja bez ruszania zamrożonego rdzenia |
 | | **Rozstrzygnięcie OD-35 (2026-09-23, decyzja O-46, karta AB-1b.1 P9): wariant (c)** — `build_branch_results` wystawia `i_do_a` (prąd zacisku końcowego z mocy strony `to` i napięcia węzła `to`), etykietę strony dla `i_a` i obciążenie z większego zacisku; rdzeń FROZEN nietknięty. | — |
-| **OD-36** | Żądana dokładność kąta `Δθ_dop`, z której wynika granica domeny ważności `f_i` (§4) | to wielkość inżynierska, nie numeryczna: określa, od jakiego zapadu przestajemy orzekać o częstotliwości. Rekomendacja: podać ją jako jawne pole nastaw biegu z wartością wymaganą, nie domyślną |
+| **OD-36** | Żądana dokładność kąta `Δθ_dop`, z której wynika granica domeny ważności `f_i` (§4) | to wielkość inżynierska, nie numeryczna: określa, od jakiego zapadu przestajemy orzekać o częstotliwości. Rekomendacja: podać ją jako jawne pole nastaw biegu z wartością wymaganą, nie domyślną. **ROZSTRZYGNIĘTE 2026-09-30 (O-70):** wymagane pole `dokladnosc_kata_dop_rad` w `NastawySolvera`, `WERSJA_NASTAW_SOLVERA = 2`, karta W6-A-OD36 — szczegóły `FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §7.2 |
 | **OD-37** | Silnik indukcyjny jako rodzina dynamiczna — patrz `docs/audit/DYSPOZYCJA_STABILITY_RMS.md` | duże silniki SN decydują o stabilności napięciowej po zwarciu (zapad, zatrzymanie, prąd rozruchowy przy odbudowie). Rodzina jest wymieniona w martwym module, **nie ma jej** w bibliotece W6-3A i nie ma jej w zamrożonej macierzy. To rozszerzenie celu, więc decyzja właściciela |
 
 ---
@@ -605,9 +696,12 @@ gdzie `u_V` jest **zmierzoną** estymatą błędu napięcia.
 
 **Co to znaczy:** polityka chroni przed **numeryczną** bezsensownością kąta i nic ponad to.
 **Nie orzeka**, od jak głębokiego zapadu inżynier ma przestać mówić o częstotliwości węzła.
-Ta druga, **fizyczna** granica wymaga polityki wyprowadzonej i **zwalidowanej** — i pozostaje
-jawną luką przypisaną do fali walidacyjnej. Nie zastępujemy jej progiem przyjętym z góry, bo
-to jest dokładnie to, co OD-36 odrzuca.
+Ta druga, **fizyczna** granica jest wyprowadzona z żądanej dokładności kąta: u_θ(|V|) =
+arcsin(min(1, u_V/|V|)) w `obserwable.py`, porównana z wymaganym polem nastaw
+`dokladnosc_kata_dop_rad` (OD-36 ROZSTRZYGNIĘTE 2026-09-30, O-70; karta W6-A-OD36 po
+spełnieniu warunku wejścia §5 FINAL_DYNAMICS). Powód domeny rozróżnia granicę numeryczną od
+fizycznej; `NIEDOSTEPNA` nigdy nie jest zastępowana f_n. Nie zastępujemy jej progiem przyjętym
+z góry, bo to jest dokładnie to, co OD-36 odrzuca.
 
 Wartość przy stanie `NIEDOSTEPNA` niesie niepewność równą **całej częstotliwości znamionowej** —
 konsument ignorujący kod jakości widzi wtedy, że liczba nie niesie treści.
@@ -897,6 +991,13 @@ Wykonanie: `tests/e2e/test_so1a_scenariusz_odniesienia.py` (10 testów).
    dotyczy odbioru BEZ zadeklarowanego `U_min` (tak przychodzą dziś odbiory z modelu sieci
    — blok danych dynamicznych odbioru wchodzi w AB-1b.3b). Wartość `R_f` zostaje zamrożona
    scenariuszem; jej przesłankę przepisuje AB-1b.3b razem z nową bazą SO-1A.
+   *Stan po AB-1b.3b (2026-09-25):* każdy odbiór biegu ma model dynamiczny z katalogu
+   profili odbiorów (napięcie przejścia `U_min`, w sieciach wzorcowych 0,7 pu), więc
+   granica opisana wyżej nie istnieje dla żadnego odbioru — zapad dowolnej głębokości, także
+   zwarcie metaliczne, liczy się w gałęzi stałej impedancji. `R_f = 0,5 Ω` NIE jest już
+   warunkiem zbieżności: zostaje wyłącznie jako dana scenariusza SO-1A (łuk ~0,3 m przy
+   prądzie kilku kA), zamrożona razem z bazą przypadku; odbiory SO-1A przy tym zapadzie
+   wchodzą w gałąź stałej impedancji (nowa baza SO-1A — tabela przed/po w meldunku karty).
 2. **Topologia pierścieniowa.** Wariant promieniowy (stacja zasilana wyłącznie przez
    wyłącznik) po jego otwarciu zostawia podsieć bez źródła albo — gdy OZE jest za
    wyłącznikiem — **wyspę**. Jedno i drugie to zdolność **D11, przypisana w zamrożeniu do

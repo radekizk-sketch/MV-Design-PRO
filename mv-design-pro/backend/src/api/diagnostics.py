@@ -32,13 +32,15 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.diagnoza_przebiegu import zbuduj_diagnoze_dla_biegu
 from diagnostics.engine import DiagnosticEngine
 from diagnostics.preflight import build_preflight_from_diagnostic_report
 from enm.mapping import map_enm_to_network_graph
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import OdmowaDanychError
 
 router = APIRouter(prefix="/api", tags=["diagnostics"])
 
@@ -103,5 +105,5 @@ def get_run_diagnostics(run_id: UUID) -> dict[str, Any]:
     """
     try:
         return zbuduj_diagnoze_dla_biegu(run_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=404) from exc

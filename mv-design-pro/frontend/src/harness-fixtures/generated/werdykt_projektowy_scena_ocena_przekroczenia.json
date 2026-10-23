@@ -1,7 +1,7 @@
 {
   "werdykt": "NARUSZONE",
   "case_id": "case-demo",
-  "model_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727",
+  "model_hash": "b01c08cbb350fb1297dcd457ea88a2611636275b3265f98d3fe677c8ebfd6dc5",
   "pozycje": [
     {
       "kryterium_id": "pwp.moc_przylaczeniowa",
@@ -527,13 +527,43 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": null,
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
           "uzasadnienie_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "dowod": {
             "run_id": "run-sc-scena-przekroczenia",
             "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
-          }
+          },
+          "dane_przyjete": [
+            {
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 2.5,
+                "jednostka": "MVA"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 0.15,
+                "jednostka": "p.u. (S_rG, U_rG)"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 0.8,
+                "jednostka": "1"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "jakosc": "ESTIMATED"
+            }
+          ],
+          "kompletnosc_dowodu": "NIEPELNY"
         },
         {
           "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
@@ -548,15 +578,46 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": null,
-          "uzasadnienie_pl": "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
-          "wniosek_pl": "Wymaganie spełnione: Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
+          "uzasadnienie_pl": "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
+          "wniosek_pl": "Wymaganie spełnione: Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "dowod": {
             "run_id": "run-sc-scena-przekroczenia",
             "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
-          }
+          },
+          "dane_przyjete": [
+            {
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 2.5,
+                "jednostka": "MVA"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 0.15,
+                "jednostka": "p.u. (S_rG, U_rG)"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+              "wartosc": {
+                "wartosc": 0.8,
+                "jednostka": "1"
+              },
+              "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "jakosc": "ESTIMATED"
+            }
+          ],
+          "kompletnosc_dowodu": "NIEPELNY"
         }
-      ]
+      ],
+      "kompletnosc_dowodu": "NIEPELNY"
     },
     {
       "kryterium_id": "wynik.wiarygodnosc_zwarciowa",
@@ -591,7 +652,7 @@
           "element_nazwa": "Szyna SN",
           "element_rodzaj": "szyna",
           "wynik": "SPELNIA",
-          "wartosc": 8.96999734,
+          "wartosc": 8.97007921,
           "odniesienie": 50.0,
           "odniesienie_dolne": 0.1,
           "odniesienie_ostrzegawcze": null,
@@ -612,7 +673,7 @@
           "element_nazwa": "GPZ 110 kV",
           "element_rodzaj": "szyna",
           "wynik": "SPELNIA",
-          "wartosc": 13.9866218,
+          "wartosc": 13.9866315,
           "odniesienie": 63.0,
           "odniesienie_dolne": 0.5,
           "odniesienie_ostrzegawcze": null,
@@ -633,7 +694,7 @@
           "element_nazwa": "Szyna nN",
           "element_rodzaj": "szyna",
           "wynik": "SPELNIA",
-          "wartosc": 21.0925978,
+          "wartosc": 21.0926096,
           "odniesienie": 150.0,
           "odniesienie_dolne": 0.05,
           "odniesienie_ostrzegawcze": null,
@@ -654,7 +715,7 @@
           "element_nazwa": "Stacja B SN",
           "element_rodzaj": "szyna",
           "wynik": "SPELNIA",
-          "wartosc": 8.96999734,
+          "wartosc": 8.97007921,
           "odniesienie": 50.0,
           "odniesienie_dolne": 0.1,
           "odniesienie_ostrzegawcze": null,
@@ -675,7 +736,7 @@
           "element_nazwa": "Stacja C SN",
           "element_rodzaj": "szyna",
           "wynik": "SPELNIA",
-          "wartosc": 4.61150717,
+          "wartosc": 4.61155761,
           "odniesienie": 50.0,
           "odniesienie_dolne": 0.1,
           "odniesienie_ostrzegawcze": null,
@@ -728,7 +789,7 @@
       "rodzaj": "PF",
       "run_id": "run-pf-scena-przekroczenia",
       "wykonano": "2026-09-10T08:00:00+00:00",
-      "snapshot_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727",
+      "snapshot_hash": "b01c08cbb350fb1297dcd457ea88a2611636275b3265f98d3fe677c8ebfd6dc5",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null
@@ -737,7 +798,7 @@
       "rodzaj": "short_circuit_sn",
       "run_id": "run-sc-scena-przekroczenia",
       "wykonano": "2026-09-10T08:00:00+00:00",
-      "snapshot_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727",
+      "snapshot_hash": "b01c08cbb350fb1297dcd457ea88a2611636275b3265f98d3fe677c8ebfd6dc5",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null
@@ -746,7 +807,7 @@
       "rodzaj": "model",
       "run_id": null,
       "wykonano": null,
-      "snapshot_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727",
+      "snapshot_hash": "b01c08cbb350fb1297dcd457ea88a2611636275b3265f98d3fe677c8ebfd6dc5",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null
@@ -818,5 +879,6 @@
       "etap": "E3",
       "powod_pl": "Kryterium niewiążące (optymalizacja kosztowa); brak danych ekonomicznych w modelu, więc ocena byłaby zgadywaniem."
     }
-  ]
+  ],
+  "kompletnosc_dowodu": "NIEPELNY"
 }

@@ -57,6 +57,8 @@ from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import odmowa_rdzenia_b01
+from network_model.odmowa_pakietu import RekordBrakuPakietu
 from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -91,8 +93,9 @@ BRAK_URZADZEN_TYPU_PL = (
     "w modelu przypadku nie ma urządzenia tego typu katalogowego — brak tabliczki do "
     "weryfikacji w wykazie PTPiREE"
 )
-#: Weryfikacja certyfikatu urządzenia modelu: (element, dowód | odrzucenie | brak wskazania).
-WeryfikacjaUrzadzenia = tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None]
+#: Weryfikacja certyfikatu urządzenia modelu: (element, dowód | odrzucenie | nazwana odmowa
+#: braku certyfikatu — karta OD-17a).
+WeryfikacjaUrzadzenia = tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | RekordBrakuPakietu]
 
 
 class DokumentStudiumIdentyfikacja(BaseModel):
@@ -260,7 +263,9 @@ def _klasa_nc_rfg(max_moc_mw: float | None, napiecie_kv: float | None) -> dict[s
             "podstawa": None,
             "podstawa_pl": None,
         }
-    klasyfikacja = klasyfikacja_modulu(mw_na_kw(max_moc_mw), napiecie_kv)
+    moc_kw = mw_na_kw(max_moc_mw)
+    with odmowa_rdzenia_b01():  # rdzeń B-01 (klasyfikacja NC RfG) — odmowa danych
+        klasyfikacja = klasyfikacja_modulu(moc_kw, napiecie_kv)
     return {
         "modul": klasyfikacja.modul,
         "powod_pl": klasyfikacja.powod_pl,
@@ -478,16 +483,19 @@ def build_dokument_studium_view(
 
 
 def _urzadzenie(
-    der_ref: str, weryfikacja: DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None
+    der_ref: str, weryfikacja: DowodCertyfikatu | NcRfgCertyfikatOdrzucony | RekordBrakuPakietu
 ) -> dict[str, Any]:
-    """Pozycja urządzenia w sekcji dowodu: rekord wykazu albo powód odrzucenia i wiersze."""
+    """Pozycja urządzenia w sekcji dowodu: rekord wykazu, powód odrzucenia albo nazwana odmowa
+    braku certyfikatu (karta OD-17a) i wiersze."""
     dowod = weryfikacja if isinstance(weryfikacja, DowodCertyfikatu) else None
     odrzucony = weryfikacja if isinstance(weryfikacja, NcRfgCertyfikatOdrzucony) else None
+    brak = weryfikacja if isinstance(weryfikacja, RekordBrakuPakietu) else None
     return {
         "der_ref": der_ref,
         "dowod": dowod.model_dump(mode="json") if dowod is not None else None,
         "odrzucony": odrzucony.model_dump(mode="json") if odrzucony is not None else None,
-        "wiersze": [p.model_dump(mode="json") for p in wiersze_dowodu(dowod, odrzucony)],
+        "brak_certyfikatu": brak.model_dump(mode="json") if brak is not None else None,
+        "wiersze": [p.model_dump(mode="json") for p in wiersze_dowodu(dowod, odrzucony, brak)],
     }
 
 

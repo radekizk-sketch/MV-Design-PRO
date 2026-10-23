@@ -43,6 +43,7 @@ from enum import StrEnum
 from typing import Any, NoReturn
 
 from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 class KlasaNiezmiennika(StrEnum):
@@ -121,7 +122,7 @@ class BladRejestruNiezmiennikow(ValueError):
     """
 
 
-class OdmowaKatalogu(ValueError):
+class OdmowaKatalogu(OdmowaDanychError):
     """Twarda odmowa rekordu katalogu z NAZWANA regula (`.kod`).
 
     Dziedziczy po `ValueError`, bo tym byla kazda z 33 bramek przed ta karta i
@@ -695,6 +696,116 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "Bez dokumentu karta w katalogu statycznym byłaby widmem „typowym” podanym jako "
             "dana urządzenia — dokładnie fabrykacja, której katalog zabrania. Skrót SHA-256 "
             "wiąże rekord z konkretnym wyciągiem, więc podmiana dokumentu jest wykrywalna."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-042",
+        nazwa="Tor maszyny wyłącznie dla turbiny wiatrowej",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Karta KATALOG-TURBINY-TOR-V112: pola toru maszyny opisują generator za "
+            "przekształtnikiem turbiny (`ConverterType.kind == WIND`)"
+        ),
+        uzasadnienie=(
+            "Falownik PV i PCS magazynu nie mają maszyny wirującej — generator i napięcie "
+            "stojana przy takiej pozycji byłyby daną bez fizycznego odpowiednika."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-043",
+        nazwa="Wielkości toru maszyny dodatnie i skończone",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja mocy, napięcia i częstotliwości znamionowej maszyny",
+        uzasadnienie=(
+            "Moc, napięcie stojana, częstotliwość stojana i napięcie przekształtnika po "
+            "stronie maszyny równe zeru, ujemne albo nieskończone opisują maszynę, która "
+            "nie istnieje."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-044",
+        nazwa="Rodzaj maszyny zgodny z topologią przekształtnika",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Budowa turbin typu 3 i 4 wg IEC 61400-27-1 (DFIG — przekształtnik w obwodzie "
+            "wirnika; PMSG i generator klatkowy z przekształtnikiem — przekształtnik pełnej "
+            "mocy); jedna mapa `TOPOLOGIA_PRZEKSZTALTNIKA_WG_MASZYNY`"
+        ),
+        uzasadnienie=(
+            "Generator klatkowy albo synchroniczny z magnesami trwałymi za przekształtnikiem "
+            "w obwodzie wirnika nie istnieje (nie ma uzwojenia wirnika do zasilenia), a "
+            "maszyna dwustronnie zasilana za przekształtnikiem pełnej mocy przestaje być "
+            "maszyną dwustronnie zasilaną — para sprzeczna opisuje urządzenie niemożliwe."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-045",
+        nazwa="Rodzaj prądu różnicowego RCD ze słownika AC / A / F / B",
+        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
+        podstawa=(
+            "IEC 61008-1 i IEC 61009-1 (rodzaje AC i A), IEC 62423 (rodzaje F i B) — "
+            "słownik `RODZAJE_PRADU_ROZNICOWEGO_RCD`"
+        ),
+        uzasadnienie=(
+            "Rodzaj prądu różnicowego decyduje, jakie prądy doziemne RCD w ogóle wykrywa; "
+            "rekord spoza słownika nie ma zdefiniowanego zachowania, więc werdykt SWZ TT "
+            "nie miałby czego cytować."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-046",
+        nazwa="Prąd znamionowy, prąd różnicowy znamionowy i czas wyłączenia RCD dodatnie",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja wielkości znamionowych aparatu (prąd i czas są dodatnie)",
+        uzasadnienie=(
+            "Zerowy albo ujemny I_n, I_Δn lub czas wyłączenia opisuje aparat, który nie "
+            "istnieje; napięcie dotykowe R_A·I_Δn i porównanie czasu z tablicą czasów "
+            "wyłączenia nie miałyby sensu fizycznego."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-047",
+        nazwa="RCD selektywny (typ S) z minimalnym czasem niezadziałania",
+        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
+        podstawa=(
+            "IEC 61008-1 Tabela 1 (kl. 9.9.2) — wiersz typu S definiuje minimalny czas "
+            "niezadziałania"
+        ),
+        uzasadnienie=(
+            "Selektywność RCD typu S wobec RCD ogólnego opiera się właśnie na czasie "
+            "niezadziałania; rekord typu S bez tej wartości twierdziłby selektywność bez danej, "
+            "która ją definiuje."
+        ),
+    ),
+    # Karta LINIA-110 — przewód linii napowietrznej 110 kV (`OverheadConductorType`).
+    RegulaKatalogu(
+        kod="KAT-T-048",
+        nazwa="Przewód linii napowietrznej: przeznaczenie ze słownika, wymiary i rezystancja dodatnie",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Definicja wielkości wyrobu PN-EN 50182 (przekrój, średnica, rezystancja prądu "
+            "stałego, współczynnik temperaturowy są dodatnie); GMR przewodu jest mniejszy od "
+            "jego promienia (definicja średniej geometrycznej odległości)"
+        ),
+        uzasadnienie=(
+            "Przewód o zerowym przekroju, średnicy albo rezystancji nie istnieje, a GMR "
+            "większy od promienia dawałby ujemną indukcyjność wewnętrzną — obliczenie "
+            "parametrów linii z geometrii nie miałoby sensu fizycznego."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-049",
+        nazwa="Budowa przewodu zgodna ze średnicą zewnętrzną",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Przewód o budowie koncentrycznej (PN-EN 50182): średnica = rdzeń + 2·liczba "
+            "warstw·średnica drutu, z tolerancją zaokrągleń tablicy "
+            "`TOLERANCJA_SREDNICY_Z_BUDOWY`"
+        ),
+        uzasadnienie=(
+            "GMR przewodu wyznaczany z budowy (położenie drutów aluminiowych) jest wiarygodny "
+            "tylko wtedy, gdy budowa odtwarza wymiar z tablicy wyrobu; rekord sprzeczny opisuje "
+            "przewód, którego nie da się zbudować."
         ),
     ),
     # -----------------------------------------------------------------------

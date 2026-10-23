@@ -5,6 +5,7 @@ from typing import Any
 
 from application.analyses.kanon_json import canonicalize_json
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+from werdykt import DanaPrzyjeta
 
 
 @dataclass(frozen=True)
@@ -24,9 +25,14 @@ class DeviceRating:
     #: dowodzie jest stanem "NIE_DOTYCZY" (jawny, nie FAIL) czy "brak danej"
     #: (FAIL — aparat POWINIEN miec te zdolnosc, ale karta jej nie wniosla).
     i_cu_not_applicable: bool = False
+    #: Karta SC-IB-ITH-ZRODLA: True dla bezpiecznika (katalog: ``FUSE`` SN albo
+    #: ``ROZLACZNIK_BEZPIECZNIKOWY`` nN). Bezpiecznik ograniczający przerywa prąd przed
+    #: pierwszym szczytem, więc jego zdolność wyłączania porównuje się z prądem
+    #: SPODZIEWANYM I_k'', nie z I_b (`application.equipment_proof.wielkosc_wylaczania`).
+    bezpiecznik: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "device_id": self.device_id,
             "name_pl": self.name_pl,
             "type_ref": self.type_ref,
@@ -38,6 +44,11 @@ class DeviceRating:
             "meta": self.meta,
             "i_cu_not_applicable": self.i_cu_not_applicable,
         }
+        # Pole addytywne: zapisywane tylko dla bezpiecznika — odcisk dowodu każdego innego
+        # aparatu pozostaje bajt w bajt taki sam jak przed kartą (determinizm istniejących
+        # pakietów dowodowych).
+        if self.bezpiecznik:
+            payload["bezpiecznik"] = True
         return canonicalize_json(payload)
 
 
@@ -65,9 +76,24 @@ class EquipmentProofInput:
     proweniencja: ProweniencjaWynikuZwarciowego = field(
         default_factory=ProweniencjaWynikuZwarciowego.bez_sladu
     )
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt zabudowy w sieci nN liczonej z wartością
+    #: roboczą tolerancji napięcia (znacznik wiersza biegu, `wejscie_zwarciowe_z_biegu`) —
+    #: wymagane wielkości zwarciowe stoją na danej przyjętej.
+    tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
+    #: Karta LINIA-110: dane przyjęte gałęzi, których impedancja z wartości roboczej wchodzi do
+    #: prądu punktu zabudowy (linia 110 kV z geometrii roboczej, R′0/X′0 z założenia katalogu —
+    #: znacznik wiersza biegu) — wymagane wielkości stoją na danej przyjętej.
+    dane_galezi: tuple[DanaPrzyjeta, ...] = field(default=(), kw_only=True)
+    #: Karta PODSTAWA-Q: krzywe zaniku μ/q maszyn punktu wyznaczone na założeniu inżynierskim
+    #: (pole wiersza biegu ``zalozenia_zaniku``, `wejscie_zwarciowe_z_biegu`) — uwaga
+    #: kryterium wyłączania I_b ≤ I_cu nazywa założenie.
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = field(default=(), kw_only=True)
+    #: Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy
+    #: punktu (pole wiersza biegu ``parametry_robocze_maszyn``) — dane przyjęte dowodu.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(default=(), kw_only=True)
 
     def to_dict(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "project_id": self.project_id,
             "case_id": self.case_id,
             "run_id": self.run_id,
@@ -75,6 +101,19 @@ class EquipmentProofInput:
             "device": self.device.to_dict(),
             "required_fault_results": self.required_fault_results,
         }
+        # Pole addytywne: wyłącznie przy wartości roboczej — wejście na deklaracji ma odcisk
+        # bajt w bajt taki sam jak przed kartą (determinizm istniejących pakietów).
+        if self.tolerancja_nn_robocza:
+            payload["tolerancja_nn_robocza"] = True
+        if self.dane_galezi:
+            payload["dane_przyjete_galezi"] = [d.model_dump(mode="json") for d in self.dane_galezi]
+        # Karta PODSTAWA-Q: addytywnie, wyłącznie gdy I_b stoi na założeniu krzywej zaniku.
+        if self.zalozenia_zaniku:
+            payload["zalozenia_zaniku"] = [dict(wpis) for wpis in self.zalozenia_zaniku]
+        if self.parametry_robocze_maszyn:
+            payload["parametry_robocze_maszyn"] = [
+                dict(wpis) for wpis in self.parametry_robocze_maszyn
+            ]
         return canonicalize_json(payload)
 
 
@@ -115,9 +154,12 @@ class EquipmentProofResult:
     checks: tuple[EquipmentProofCheckResult, ...]
     key_results: dict[str, str]
     required_fault_results: dict[str, Any]
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte, na których stoją wymagane wielkości
+    #: zwarciowe (wartość robocza tolerancji sieci nN) — addytywnie, w zapisie WYŁĄCZNIE gdy są.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
-    def to_dict(self) -> dict[str, Any]:
-        payload = {
+    def _payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "project_id": self.project_id,
             "case_id": self.case_id,
             "run_id": self.run_id,
@@ -129,20 +171,13 @@ class EquipmentProofResult:
             "key_results": self.key_results,
             "required_fault_results": self.required_fault_results,
         }
-        return canonicalize_json(payload)
+        if self.dane_przyjete:
+            payload["status_danych"] = "UNVALIDATED_INPUT"
+            payload["dane_przyjete"] = [d.model_dump(mode="json") for d in self.dane_przyjete]
+        return payload
+
+    def to_dict(self) -> dict[str, Any]:
+        return canonicalize_json(self._payload())
 
     def white_box_trace(self) -> dict[str, Any]:
-        return canonicalize_json(
-            {
-                "project_id": self.project_id,
-                "case_id": self.case_id,
-                "run_id": self.run_id,
-                "connection_node_id": self.connection_node_id,
-                "device_id": self.device_id,
-                "overall_status": self.overall_status,
-                "failed_checks": self.failed_checks,
-                "checks": [check.to_dict() for check in self.checks],
-                "key_results": self.key_results,
-                "required_fault_results": self.required_fault_results,
-            }
-        )
+        return canonicalize_json(self._payload())

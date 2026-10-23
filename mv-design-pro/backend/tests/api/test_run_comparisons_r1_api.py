@@ -33,11 +33,13 @@ from typing import Any
 
 import pytest
 
+from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen
+
 pytest.importorskip("fastapi")
 
 
 # =============================================================================
-# WSPOLNE POMOCE (ten sam wzorzec co tests/api/test_protection_overlay_swiezosc.py)
+# WSPOLNE POMOCE (ten sam wzorzec co tests/api/test_protection_runs_swiezosc.py)
 # =============================================================================
 
 
@@ -71,7 +73,7 @@ def _utworz_bieg(
 
 
 def _wykonaj(app_client, run_id: str) -> dict[str, Any]:
-    wykonanie = app_client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     payload = wykonanie.json()
     assert payload["status"] == "DONE", payload
@@ -108,11 +110,17 @@ def _zwieksz_obciazenie(app_client, case_id: str, p_mw: float) -> None:
 
 
 def _skonfiguruj_zabezpieczenia(app_client, case_id: str) -> None:
-    config = app_client.put(
-        f"/api/study-cases/{case_id}/protection-config",
-        json={"template_ref": "template_ref_oc_100"},
+    """Model przypadku = sieć złota G08 — urządzenia i nastawy zabezpieczeń żyją w MODELU
+    (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21); przypadek nie przechowuje nastaw."""
+    del app_client
+    from enm.store import set_enm
+
+    from tests.golden.enm_builders.zabezpieczenia_magistrali import (
+        build_zabezpieczenia_magistrali_enm,
     )
-    assert config.status_code == 200, config.text
+    from tests.test_execution_api import _klucz_modelu
+
+    set_enm(_klucz_modelu(case_id), build_zabezpieczenia_magistrali_enm())
 
 
 def _bieg_zabezpieczen(app_client, project_id: str, case_id: str, sc_run_id: str) -> str:
@@ -123,7 +131,7 @@ def _bieg_zabezpieczen(app_client, project_id: str, case_id: str, sc_run_id: str
     assert utworzenie.status_code == 201, utworzenie.text
     run_id = str(utworzenie.json()["id"])
 
-    wykonanie = app_client.post(f"/api/protection-runs/{run_id}/execute")
+    wykonanie = wykonaj_bieg_zabezpieczen(app_client, run_id)
     assert wykonanie.status_code == 200, wykonanie.text
     assert wykonanie.json()["status"] == "FINISHED", wykonanie.json()
     return run_id

@@ -17,6 +17,7 @@ export type {
   ReferenceComplianceCheck,
   ReferencePackComplianceReport,
   ReferenceComplianceReport,
+  RekordBrakuPakietu,
 } from '../../ui/enm-inspector/types';
 export { REFERENCE_PACK_KIND_LABELS_PL } from '../../ui/enm-inspector/types';
 export { fetchReferenceCompliance } from '../../ui/enm-inspector/api';

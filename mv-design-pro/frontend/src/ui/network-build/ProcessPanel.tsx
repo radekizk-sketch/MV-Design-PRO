@@ -16,7 +16,7 @@ import type {
 import type { BranchViewV1, TerminalRef, TrunkViewV1 } from '../../types/enm';
 import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
 import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
-import { formatStationTypeShortLabelPl } from '../shared/stationTypeLabels';
+import { skrotRodzajuStacjiPl } from '../shared/rodzajStacji';
 import {
   buildControlDeviceOptions,
   measurementCountsForField,
@@ -425,10 +425,11 @@ function TrunksSection({
 function StationsSection({ stations }: { stations: StationSummary[] }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
 
   const branchContextForStation = useCallback(
     (stationId: string): Record<string, unknown> | null => {
-      const fromRef = resolveBranchSourceRef(snapshot, stationId, stationId, null);
+      const fromRef = resolveBranchSourceRef(snapshot, logicalViews, stationId, stationId, null);
       if (!fromRef) return null;
 
       const sourceContext = resolveBranchSourceContext(snapshot, fromRef);
@@ -444,7 +445,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
         source_port_label: sourceContext.portLabel,
       };
     },
-    [snapshot],
+    [logicalViews, snapshot],
   );
 
   const handleStartBranch = useCallback(
@@ -479,7 +480,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
                     station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
                   )}
                 >
-                  {formatStationTypeShortLabelPl(station.stationType)}
+                  {station.rodzaj ? skrotRodzajuStacjiPl(station.rodzaj) : 'Rozdz. nN'}
                 </span>
                 <span className="flex-1 truncate">{station.name}</span>
                 {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
@@ -607,6 +608,11 @@ function TransformersSection({
     openForm('add_nn_load', { station_ref: stationRefForNn });
   }, [openForm, stationRefForNn]);
 
+  // W5-E-TTIT: ochrona instalacji odbioru nN w układzie TT — kreator wybiera odbiór z listy.
+  const handleAddNnRcd = useCallback(() => {
+    openForm('add_nn_rcd', stationRefForNn ? { station_ref: stationRefForNn } : {});
+  }, [openForm, stationRefForNn]);
+
   return (
     <div className="px-3 py-2 space-y-2">
       {transformers.length === 0 ? (
@@ -676,6 +682,13 @@ function TransformersSection({
         testId="btn-add-nn-load"
         testIdScope={testIdScope}
         disabled={!stationForNn?.hasNnPart}
+      />
+      <ActionButton
+        label="+ Dodaj wyłącznik różnicowoprądowy nN"
+        onClick={handleAddNnRcd}
+        testId="btn-add-nn-rcd"
+        testIdScope={testIdScope}
+        disabled={loads.length === 0}
       />
     </div>
   );

@@ -96,6 +96,8 @@ def build_golden_enm() -> EnergyNetworkModel:
                 # (dawniej `substation.meta.nn_earthing_system`) — na transformatorze.
                 lv_neutral=GroundingConfig(type="directly_grounded"),
                 lv_earthing_system="TN-S",
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN +6 % (c 1,05/0,95 tabeli 1 IEC 60909-0).
+                lv_voltage_tolerance="PLUS_6",
                 catalog_ref="tr-15-04-630kva-dyn11",
                 catalog_namespace="TRAFO_SN_NN",
                 parameter_source="CATALOG",

@@ -12,6 +12,9 @@ Sprawdza:
 from __future__ import annotations
 
 import pytest
+from domain.study_case import StudyCaseConfig
+
+from tests.utils.biegi import wykonaj_bieg
 
 pytest.importorskip("fastapi")
 
@@ -111,7 +114,7 @@ def _build_minimal_network(client, case_id: str) -> None:
                         "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.95},
                         # Uklad uziemienia sieci nN — wymagany przez bramke gotowosci
                         # rozplywu mocy dla stacji zasilajacej odbiory nN.
-                        "nn_earthing": {"lv_system": "TN-S"},
+                        "nn_earthing": {"lv_system": "TN-S", "lv_voltage_tolerance": "PLUS_6"},
                     },
                     "sn_fields": ["IN", "OUT", "FEEDER", "TR"],
                     "transformer": {
@@ -138,7 +141,7 @@ def _create_and_execute_load_flow_run(client, case_id: str, solver_input: dict) 
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     return execute.json()
 
@@ -489,7 +492,7 @@ def _create_and_execute_run(client, case_id: str, analysis_type: str, solver_inp
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     return execute.json()
 
@@ -537,3 +540,79 @@ def test_audit2_half_pair_fails_run_with_explicit_reason(app_client):
     executed = _create_and_execute_run(app_client, case_id, "LOAD_FLOW", {"audit2_project_id": pid})
     assert executed["status"] == "FAILED", executed
     assert "połową pary" in (executed.get("error_message") or "")
+
+
+@pytest.mark.parametrize(
+    ("config", "analiza", "scenariusz", "oczekiwane"),
+    [
+        (
+            {"include_inverter_contribution": False},
+            "short_circuit_3f",
+            "MAX",
+            {"include_inverter_contribution": False, "scenario": "MAX"},
+        ),
+        (
+            {"sc_simplified_sk_mva": 250.0, "sc_simplified_r_x_ratio": 0.2},
+            "short_circuit_3f",
+            "MIN",
+            {"simplified_grid_source": {"sk_mva": 250.0, "r_x_ratio": 0.2}, "scenario": "MIN"},
+        ),
+        (
+            {"base_mva": 10.0, "max_iterations": 17, "tolerance": 1e-8},
+            "load_flow",
+            "MAX",
+            {"base_mva": 10.0, "max_iterations": 17, "tolerance": 1e-8},
+        ),
+    ],
+)
+def test_koperta_wejscia_niesie_konfiguracje_przypadku_nie_domyslna(
+    app_client, config: dict, analiza: str, scenariusz: str, oczekiwane: dict
+):
+    """Karta OD-17a (znalezisko uboczne): koperta wejścia solvera czytała konfigurację z
+    zaślepki `StudyCaseConfig()` — każdy przypadek dostawał współczynniki domyślne niezależnie
+    od własnej konfiguracji. Test przez realną ścieżkę: przypadek z konfiguracją z API.
+
+    Partia integracji 11 (scalenie WSPOLCZYNNIK-C-JEDEN-NOSNIK): kontrakt wejścia 2.0 nie niesie
+    płaskiego `c_factor` ani `thermal_time_seconds` — c jest per szyna (tabela 1 IEC 60909-0
+    dla pasma i scenariusza), t_k niesie scenariusz zwarciowy. Intencja testu bez zmian: każde
+    pole konfiguracji PRZYPADKU, które kontrakt 2.0 nadal przenosi (zwarcie w scenariuszu MAX
+    i MIN oraz rozpływ), dociera do koperty z wartością przypadku, nie domyślną."""
+    domyslne = StudyCaseConfig()
+    for klucz, wartosc in config.items():
+        assert getattr(domyslne, klucz) != wartosc, f"{klucz}: wartość testu równa domyślnej"
+    pid = _create_project(app_client)
+    res = app_client.post(
+        "/api/study-cases",
+        json={"project_id": pid, "name": "Konfiguracja przypadku", "config": config},
+    )
+    assert res.status_code == 201, res.text
+    case_id = str(res.json()["id"])
+    # Sieć minimalna (GPZ + magistrala): rozpływ pustego przypadku to odmowa nazwana braku
+    # węzła bilansującego, a koperta ma nieść konfigurację biegu, który da się policzyć.
+    _build_minimal_network(app_client, case_id)
+    odp = app_client.get(
+        f"/api/cases/{case_id}/analysis/solver-input/{analiza}",
+        params={"scenario": scenariusz},
+    )
+    assert odp.status_code == 200, odp.text
+    opcje = odp.json()["payload"]
+    for klucz, wartosc in oczekiwane.items():
+        assert opcje[klucz] == wartosc, (klucz, opcje)
+    for klucz_usuniety in ("c_factor", "thermal_time_seconds"):
+        assert klucz_usuniety not in opcje, (klucz_usuniety, opcje)
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_koperta_zwarcia_1f_pustego_przypadku_bez_bledu_serwera(app_client, scenariusz: str):
+    """Partia integracji 11 (znalezisko uboczne): koperta wejścia zwarcia 1F przypadku bez
+    sieci kończyła się 500 — ``matrix_rank`` numpy na macierzy Y0 zerowego rozmiaru rzucał
+    surowy ``ValueError``. Pusta sieć to koperta z pustym payloadem, tak jak dla zwarcia 3F."""
+    pid = _create_project(app_client)
+    case_id = _create_case(app_client, pid)
+    for analiza in ("short_circuit_1f", "short_circuit_3f"):
+        odp = app_client.get(
+            f"/api/cases/{case_id}/analysis/solver-input/{analiza}",
+            params={"scenario": scenariusz},
+        )
+        assert odp.status_code == 200, (analiza, odp.text)
+        assert odp.json()["payload"]["buses"] == [], (analiza, odp.json()["payload"])

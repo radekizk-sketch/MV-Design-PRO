@@ -2,6 +2,7 @@
 Testy jednostkowe dla AdmittanceMatrixBuilder (Y-bus).
 """
 
+import inspect
 import math
 
 import numpy as np
@@ -10,6 +11,7 @@ from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def create_pq_node(node_id: str) -> Node:
@@ -88,7 +90,7 @@ def test_ybus_single_line_between_two_nodes():
     graph.add_branch(line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series = line.get_series_admittance() * z_base
@@ -105,6 +107,56 @@ def test_ybus_single_line_between_two_nodes():
     np.testing.assert_allclose(y_bus, expected)
 
 
+def test_build_wymaga_jawnej_reprezentacji() -> None:
+    """``siec_zwarciowa`` bez wartości domyślnej: wołający, który nie nazwie reprezentacji
+    (sieć zwarciowa IEC 60909 czy model π), dostaje błąd, nie cichą sieć zwarciową."""
+    parametr = inspect.signature(AdmittanceMatrixBuilder.build).parameters["siec_zwarciowa"]
+    assert parametr.default is inspect.Parameter.empty
+    assert parametr.kind is inspect.Parameter.KEYWORD_ONLY
+    graph = NetworkGraph()
+    graph.add_node(create_pq_node("A"))
+    with pytest.raises(TypeError, match="siec_zwarciowa"):
+        AdmittanceMatrixBuilder(graph).build()  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize("b_us_per_km", [0.0, 5.0, 250.0])
+def test_ybus_siec_zwarciowa_pomija_admitancje_poprzeczna_linii(b_us_per_km: float) -> None:
+    """IEC 60909-0:2016 pkt 5.2 f) (karta BEZ-POJEMNOSCI): sieć zwarciowa składowej zgodnej
+    = admitancje szeregowe bez B/2; model π (``siec_zwarciowa=False``) różni się od niej
+    DOKŁADNIE o B/2 na przekątnej. Iloczyn: B {0, małe, kabel SN} × tryb {zwarciowy, π}."""
+    graph = NetworkGraph()
+    graph.add_node(create_pq_node("A"))
+    graph.add_node(create_pq_node("B"))
+    line = create_line_branch("AB", "A", "B", 0.2, 0.4, b_us_per_km, 10.0)
+    graph.add_branch(line)
+
+    z_base = 20.0**2 / S_BASE_MVA
+    y_series = line.get_series_admittance() * z_base
+    y_shunt = line.get_shunt_admittance_per_end() * z_base
+
+    budowniczy = AdmittanceMatrixBuilder(graph)
+    y_zwarciowa = budowniczy.build(siec_zwarciowa=True)
+    np.testing.assert_allclose(
+        y_zwarciowa,
+        np.array([[y_series, -y_series], [-y_series, y_series]], dtype=complex),
+        rtol=1e-13,
+    )
+    y_pi = AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=False)
+    np.testing.assert_allclose(y_pi - y_zwarciowa, np.diag([y_shunt, y_shunt]), atol=1e-15)
+    # Zbiór pominiętych = stemple, które tryb zwarciowy zeruje: Y_konca w pu, dokładnie to,
+    # o co przekątne modelu π przewyższają sieć zwarciową (ten sam iterator `_stemple_galezi`).
+    pominiete = budowniczy.admitancje_poprzeczne_pominiete()
+    if not b_us_per_km:
+        assert pominiete == []
+        return
+    ((galaz, y_konca_pu),) = pominiete
+    assert galaz.id == "AB"
+    assert y_konca_pu == pytest.approx(y_shunt, rel=1e-15)
+    # Stempel bit w bit: przekątna π = przekątna sieci zwarciowej + zerowany bocznik końca.
+    assert y_pi[0, 0] == y_zwarciowa[0, 0] + y_konca_pu
+    assert y_pi[1, 1] == y_zwarciowa[1, 1] + y_konca_pu
+
+
 def test_ybus_parallel_lines_between_two_nodes():
     graph = NetworkGraph()
     graph.add_node(create_pq_node("A"))
@@ -117,7 +169,7 @@ def test_ybus_parallel_lines_between_two_nodes():
     graph.add_branch(line2)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series_total = (line1.get_series_admittance() + line2.get_series_admittance()) * z_base
@@ -148,7 +200,7 @@ def test_ybus_ignores_out_of_service_branch():
     graph.add_branch(inactive_line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series = active_line.get_series_admittance() * z_base
@@ -175,7 +227,7 @@ def test_ybus_includes_isolated_node_in_matrix_size():
     graph.add_branch(line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     assert y_bus.shape == (3, 3)
 
@@ -228,7 +280,31 @@ def test_transformer_impedance_ohm_lv():
     assert transformer.get_short_circuit_impedance_ohm_lv() == z_expected
 
 
-def test_voltage_factor_c_lv():
+@pytest.mark.parametrize(("tolerancja", "c_max"), [("PLUS_6", 1.05), ("PLUS_10", 1.10)])
+def test_voltage_factor_c_lv(tolerancja, c_max):
+    """K_T (IEC 60909-0 eq. 12a): c_max strony dolnej nN z tolerancji sieci nN deklarowanej na
+    transformatorze (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK; dawne c_min/I''k strony dolnej bez
+    konsumenta w produkcie — skasowane)."""
+    transformer = create_transformer_branch(
+        "T1",
+        "A",
+        "B",
+        rated_power_mva=25.0,
+        voltage_hv_kv=110.0,
+        voltage_lv_kv=0.4,
+        uk_percent=10.0,
+        pk_kw=120.0,
+    )
+    transformer.tolerancja_nn_dolna = tolerancja
+
+    assert transformer.get_voltage_factor_c_max() == c_max
+
+
+def test_voltage_factor_c_lv_bez_rozstrzygnietej_tolerancji_to_blad_programu():
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasę tolerancji sieci nN strony dolnej rozstrzyga
+    mapowanie (deklaracja albo wartość robocza wyspy, `enm.tolerancja_nn`). Gałąź bez klasy
+    przy stronie dolnej nN to błąd PROGRAMU (``ValueError``), nie odmowa dziedziny — K_T i c
+    nigdy nie biorą wiersza tabeli po cichu."""
     transformer = create_transformer_branch(
         "T1",
         "A",
@@ -240,8 +316,11 @@ def test_voltage_factor_c_lv():
         pk_kw=120.0,
     )
 
-    assert transformer.get_voltage_factor_c_max() == 1.05
-    assert transformer.get_voltage_factor_c_min() == 0.95
+    with pytest.raises(ValueError) as blad:
+        transformer.get_voltage_factor_c_max()
+    assert not isinstance(blad.value, OdmowaDanychError)
+    with pytest.raises(ValueError):
+        transformer.get_kt_correction_factor()
 
 
 def test_voltage_factor_c_mv():
@@ -257,46 +336,6 @@ def test_voltage_factor_c_mv():
     )
 
     assert transformer.get_voltage_factor_c_max() == 1.10
-    assert transformer.get_voltage_factor_c_min() == 1.00
-
-
-def test_ikss_lv_scales_with_c():
-    transformer = create_transformer_branch(
-        "T1",
-        "A",
-        "B",
-        rated_power_mva=20.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=20.0,
-        uk_percent=8.0,
-        pk_kw=60.0,
-    )
-
-    ik_c1 = transformer.get_ikss_lv_ka(c=1.0)
-    ik_cmax = transformer.get_ikss_lv_cmax_ka()
-    ik_cmin = transformer.get_ikss_lv_cmin_ka()
-
-    assert np.isclose(ik_cmax / ik_c1, 1.10)
-    assert np.isclose(ik_cmin / ik_c1, 1.00)
-    assert ik_cmax > ik_cmin
-
-
-def test_ikss_lv_rejects_nonpositive_c():
-    transformer = create_transformer_branch(
-        "T1",
-        "A",
-        "B",
-        rated_power_mva=20.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=20.0,
-        uk_percent=8.0,
-        pk_kw=60.0,
-    )
-
-    with pytest.raises(ValueError):
-        transformer.get_ikss_lv_ka(c=0.0)
-    with pytest.raises(ValueError):
-        transformer.get_ikss_lv_ka(c=-0.1)
 
 
 def _node_at(node_id: str, voltage_kv: float) -> Node:
@@ -334,7 +373,7 @@ def test_transformer_stamping_between_two_nodes():
     graph.add_branch(transformer)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     # IEC 60909-0 §3.3.3: the SC/Z-bus network stamps the K_T-corrected network
     # transformer impedance Z_TK = K_T·(R_T + jX_T), not the nominal impedance.
@@ -377,7 +416,7 @@ def test_transformer_stamping_uses_bus_voltage_base_and_off_nominal_ratio():
     )
     graph.add_branch(transformer)
 
-    y_bus = AdmittanceMatrixBuilder(graph).build()
+    y_bus = AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=True)
 
     v_scale = 20.0 / 21.0
     z_pu_base = (
@@ -426,7 +465,7 @@ def test_transformer_stamping_follows_tap_position():
         tr.tap_position = tap
         tr.tap_step_percent = 1.5
         graph.add_branch(tr)
-        return AdmittanceMatrixBuilder(graph).build()
+        return AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=True)
 
     y0 = build(0)
     y5 = build(5)
@@ -457,7 +496,7 @@ def test_transformer_ignored_when_out_of_service():
     graph.add_branch(transformer)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     expected = np.zeros((2, 2), dtype=complex)
     np.testing.assert_allclose(y_bus, expected)

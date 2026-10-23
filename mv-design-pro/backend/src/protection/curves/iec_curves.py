@@ -19,8 +19,9 @@ CIENKIM ADAPTEREM — petla obliczeniowa (M^B, guard, TMS-skalowanie) zyje
 WYLACZNIE w `network_model.solvers.protection_iec60255.compute_idmt_generic`
 (JEDYNA implementacja formuly IEC w repozytorium). Publiczna powierzchnia
 tego modulu (nazwy, sygnatury, ksztalt `IECTrippingResult`) NIE ZMIENIA SIE —
-konsumenci (w tym `protection.curves.curve_calculator`, uzywany przez
-`application.analyses.protection.coordination`) dzialaja bez edycji.
+konsumenci (`application/protection_read_model.py`, testy tozsamosci krzywych)
+dzialaja bez edycji; fasada `curve_calculator.py` skasowana w partii integracji 10
+(zero konsumentow).
 Post-processing specyficzny dla tego adaptera (clamp do zakresu skonczonego,
 ``inf`` dla braku wyzwolenia, DT jako osobny parametr ``definite_time_s``)
 ZOSTAJE tutaj — to reprezentacja wyniku dla tego konsumenta, nie druga
@@ -32,7 +33,13 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from network_model.solvers.protection_iec60255 import compute_idmt_generic
+from network_model.odmowa_danych import OdmowaDanychError
+from network_model.solvers.protection_iec60255 import (
+    IEC60255_CURVE_LABELS_PL,
+    IEC60255_CURVE_PARAMS,
+    IEC60255CurveType,
+    compute_idmt_generic,
+)
 
 # Numeric guard for inverse-time results, NOT a protection setting.
 # The IEC 60255 inverse curves diverge as M -> 1 (e.g. LTI at M=1.1, TMS=1 gives
@@ -54,17 +61,14 @@ class IECCurveType(StrEnum):
     STANDARD_INVERSE = "SI"  # Normalna odwrotna
     VERY_INVERSE = "VI"  # Bardzo odwrotna
     EXTREMELY_INVERSE = "EI"  # Ekstremalnie odwrotna
-    LONG_TIME_INVERSE = "LTI"  # Długoczasowa odwrotna
+    LONG_TIME_INVERSE = "LTI"  # Odwrotna długoczasowa (K = 120)
     DEFINITE_TIME = "DT"  # Czas niezależny
 
 
-# Polish labels for UI display (no codenames)
+# Polskie etykiety — JEDNO źródło: rdzeń IEC 60255 (od partii integracji 9 nazwy krzywych
+# adaptera i rdzenia są te same, więc odwzorowanie idzie po wartości, bez mapy nazw).
 IEC_CURVE_LABELS_PL: dict[str, str] = {
-    "SI": "Normalna odwrotna (SI)",
-    "VI": "Bardzo odwrotna (VI)",
-    "EI": "Ekstremalnie odwrotna (EI)",
-    "LTI": "Długoczasowa odwrotna (LTI)",
-    "DT": "Czas niezależny (DT)",
+    typ.value: IEC60255_CURVE_LABELS_PL[typ] for typ in IEC60255CurveType
 }
 
 
@@ -96,17 +100,15 @@ class IECCurveParams:
         Returns:
             IECCurveParams with standard A, B, C values
         """
-        # IEC 60255-151:2009 standard parameters
-        STANDARD_PARAMS: dict[IECCurveType, tuple[float, float, float]] = {
-            IECCurveType.STANDARD_INVERSE: (0.14, 0.02, 0.0),
-            IECCurveType.VERY_INVERSE: (13.5, 1.0, 0.0),
-            IECCurveType.EXTREMELY_INVERSE: (80.0, 2.0, 0.0),
-            IECCurveType.LONG_TIME_INVERSE: (120.0, 1.0, 0.0),
-            IECCurveType.DEFINITE_TIME: (0.0, 0.0, 0.0),  # Fixed time curve
-        }
-
-        a, b, c = STANDARD_PARAMS.get(curve_type, (0.14, 0.02, 0.0))  # Default to SI
-        return cls(curve_type=curve_type, a=a, b=b, c=c)
+        # Stałe (A, B) — JEDNO źródło: tabela rdzenia `IEC60255_CURVE_PARAMS` (nazwy krzywych
+        # adaptera i rdzenia są te same od partii integracji 9). C = 0 dla krzywych normy;
+        # DT nie ma stałych (czas zadziałania = zwłoka nastawy). Bez cichego zapasu na SI:
+        # typ spoza enumu nie przechodzi przez `IECCurveType` u wołającego.
+        typ_rdzenia = IEC60255CurveType(curve_type.value)
+        if typ_rdzenia not in IEC60255_CURVE_PARAMS:
+            return cls(curve_type=curve_type, a=0.0, b=0.0, c=0.0)
+        a, b = IEC60255_CURVE_PARAMS[typ_rdzenia]
+        return cls(curve_type=curve_type, a=a, b=b, c=0.0)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for JSON export."""
@@ -191,7 +193,7 @@ def calculate_iec_tripping_time(
     """
     # Calculate current multiple
     if pickup_current_a <= 0:
-        raise ValueError("Pickup current must be positive")
+        raise OdmowaDanychError("Pickup current must be positive")
 
     current_multiple = fault_current_a / pickup_current_a
 
@@ -200,7 +202,10 @@ def calculate_iec_tripping_time(
 
     # Definite time curve
     if curve_params.curve_type == IECCurveType.DEFINITE_TIME:
-        dt = definite_time_s if definite_time_s is not None else 0.1
+        # Zwłoka DT jest nastawą — jej brak to odmowa danych, nie domyślne 0,1 s.
+        if definite_time_s is None:
+            raise OdmowaDanychError("Charakterystyka czasu niezależnego (DT) wymaga zwłoki nastawy")
+        dt = definite_time_s
         trip_time = dt if will_trip else float("inf")
         return IECTrippingResult(
             tripping_time_s=trip_time,
@@ -236,7 +241,7 @@ def calculate_iec_tripping_time(
     # generycznego silnika `protection_iec60255.compute_idmt_generic` —
     # JEDYNA implementacja tego wzoru w repozytorium. ``denom_guard=1e-10``
     # zachowuje dotychczasowy epsilon TEGO adaptera (bez zmiany wynikow
-    # istniejacych wolajacych — `curve_calculator`, `coordination/**`).
+    # istniejacych wolajacych — `application/protection_read_model.py`).
     numerator = curve_params.a
     generic = compute_idmt_generic(
         i_fault_a=fault_current_a,

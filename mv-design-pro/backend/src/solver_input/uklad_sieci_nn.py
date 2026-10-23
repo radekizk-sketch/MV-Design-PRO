@@ -11,7 +11,7 @@ odmawia dla nich NAZWANIE, zamiast liczyć.
 
 from __future__ import annotations
 
-from enm.models import UkladSieciNn
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import NetworkType, ProtectionArrangement
 
 #: Układy, dla których metoda pętli zwarcia TN (IEC 60364-4-41 § 411.4) ma zastosowanie.
@@ -26,12 +26,18 @@ _MAPA: dict[str, tuple[NetworkType, ProtectionArrangement]] = {
 }
 
 
-def typ_sieci_solvera(uklad: UkladSieciNn) -> tuple[NetworkType, ProtectionArrangement]:
-    """Układ modelu → (typ sieci solvera, sposób ochrony). Wartość spoza literału = błąd nazwany."""
+def typ_sieci_solvera(uklad: str) -> tuple[NetworkType, ProtectionArrangement]:
+    """Układ modelu → (typ sieci solvera, sposób ochrony). Wartość spoza literału = błąd nazwany.
+
+    Parametr ma typ `str`, nie `UkladSieciNn`: wołający przekazują układ odczytany z danych
+    stacji (słownik `nn_earthing`, kolumna arkusza), a odmowa wartości spoza słownika
+    `UkladSieciNn` jest zadaniem TEJ funkcji (`OdmowaDanychError` niżej) — literał w
+    sygnaturze obiecywałby kontrolę, której wołający nie wykonują.
+    """
     try:
         return _MAPA[uklad]
     except KeyError as exc:
-        raise ValueError(f"Układ sieci nN {uklad!r} spoza słownika UkladSieciNn.") from exc
+        raise OdmowaDanychError(f"Układ sieci nN {uklad!r} spoza słownika UkladSieciNn.") from exc
 
 
 def uklad_tn(uklad: str | None) -> bool:

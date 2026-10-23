@@ -59,6 +59,8 @@
             "enum": ["OPEN_MODAL", "NAVIGATE_TO_ELEMENT", "SELECT_CATALOG", "ADD_MISSING_DEVICE"]
           },
           "element_ref": { "type": ["string", "null"] },
+          "modal_type": { "type": ["string", "null"] },
+          "payload_hint": { "type": ["object", "null"] },
           "panel": { "type": ["string", "null"] },
           "step": { "type": ["string", "null"] },
           "focus": { "type": ["string", "null"] },

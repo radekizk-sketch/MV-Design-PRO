@@ -102,12 +102,13 @@
  *
  * Pozostałe ograniczenia (bez zgadywania — poza zakresem testu parytetu, bo
  * poza kanonicznym rejestrem):
- * 1. Kody generyczne bez separatora kropkowego (`E001`..`E042`, `W001`..`W040`,
+ * 1. Kody generyczne bez separatora kropkowego (`E001`..`E042`, `W001`..`W062`,
  *    `I001`..`I005` z `enm/validator.py`) NIE MAJĄ przestrzeni nazw (prefiksu)
- *    wskazującej cel — trafiają do „Pozostałe". Ich znaczenie jest czytelne
- *    z `wizard_step_hint` (K2..K6) i treści `message_pl`, ale to inny sygnał
- *    niż „prefiks kodu" — GRANICA PRODUKTU (rozszerzenie mapowania o
- *    `wizard_step_hint` wymaga osobnej decyzji o drugim kluczu grupowania).
+ *    wskazującej cel. Gdy most `domain/readiness_bridge.py` odwzorowuje kod na
+ *    kanon (ten sam warunek), zgłoszenie niesie `canonical_code` i cel idzie za
+ *    nim (`naProblemGotowosci`; karta ETYKIETA-STACJI-PRZELOTOWEJ — dawniej W043
+ *    i każdy inny odwzorowany kod walidatora lądował w „Pozostałe"). Kod bez
+ *    odwzorowania kanonicznego trafia do „Pozostałe" (bez zgadywania).
  * 2. Kody z `network_model/validation/validator.py` i
  *    `network_model/catalog/readiness_checker.py` (np. `transformer.hv_invalid`,
  *    `transformer.polarity_reversed`) pochodzą z ODRĘBNEGO modułu walidacji
@@ -187,6 +188,13 @@ export interface ProblemGotowosci {
    * jawną zasadę: brak priorytetu nie wyprzedza kodu uszeregowanego przez kanon).
    */
   priorytetKanoniczny: number | null;
+  /**
+   * Kod kanonicznego rejestru gotowości (`canonical_code` kontraktu) — klucz tabeli akcji
+   * naprawczych (`akcjeNaprawcze.ts`). `null` = zgłoszenie bez odpowiednika w kanonie.
+   */
+  kodKanoniczny: string | null;
+  /** Nawigacja naprawcza kanonu (`canonical_fix_navigation`) — m.in. pole do fokusu. */
+  nawigacjaKanoniczna: Readonly<Record<string, string>> | null;
 }
 
 /** Grupa celu — problemy + liczniki + postęp (karta §1: „postęp per cel"). */
@@ -240,6 +248,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'trunk.segment_length_invalid': 'wspolne',
   'ring.endpoints_missing': 'wspolne',
   'ring.nop_required': 'wspolne',
+  // Linia 110 kV liczona z wartością roboczą geometrii słupa (zasada nr 4, obszar TOPOLOGY):
+  // wymóg wspólny zwarć i rozpływu — parametry linii wchodzą do obu analiz.
+  'line.geometria_wartosc_robocza': 'wspolne',
   // CATALOGS (:554-562, :601-609, :736-793, :849-870, :872-884)
   'trunk.catalog_missing': 'wspolne',
   'transformer.catalog_missing': 'wspolne',
@@ -247,7 +258,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'import.catalog_mapping_required': 'wspolne',
   'catalog.binding_version_missing': 'wspolne',
   'catalog.binding_missing': 'wspolne',
-  'catalog.materialization_failed': 'wspolne',
   // Bramy katalogowe (karta W4, dług V12K-317). Do tej karty rejestr znał tylko
   // cztery kody przestrzeni `catalog.`, a bramy emitują ich siedemnaście więcej —
   // z `catalog.item_not_found` na czele, bo po ujednoliceniu parytetu torów
@@ -255,10 +265,14 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // DOKŁADNY (nie fallback prefiksu), żeby kod był tu widoczny i policzalny:
   // fallback grupuje milcząco, więc kod spoza rejestru wyglądałby jak obsłużony.
   'catalog.item_not_found': 'wspolne',
+  'catalog.type_incomplete': 'wspolne',
+  'catalog.duplicate_id': 'wspolne',
   'catalog.ref_missing': 'wspolne',
   'catalog.item_missing': 'wspolne',
   'catalog.item_id_missing': 'wspolne',
   'catalog.binding_required': 'wspolne',
+  // Karta PODSTAWA-Q (E011): wartość projektanta maszyny albo aparatu SN spoza bramy rejestru.
+  'catalog.wartosc_projektanta_niedopuszczalna': 'wspolne',
   'catalog.binding_invalid': 'wspolne',
   'catalog.namespace_missing': 'wspolne',
   'catalog.namespace_required': 'wspolne',
@@ -276,6 +290,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
   // blokuje wyłącznie rozpływ mocy (i wszystko, co z niego startuje).
   'load.zip_agregat_niereprezentowalny': 'rozplyw',
+  // Karta modeli odbiorów: odbiór bez modelu dynamicznego (bloker biegu czasowego; akcja —
+  // wiązanie z profilem katalogowym na ekranie dynamiki, jak `der.dynamika_missing`).
+  'load.dynamika_missing': 'rozplyw',
   'nn.cable_catalog_missing': 'wspolne',
   // STATIONS (:564-599, :610-618, :620-637, :822-847)
   'station.type_invalid': 'stacje',
@@ -285,6 +302,13 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
+  // Karta W5-E-TTIT: odmowy nazwane pętli doziemnej TT/IT (dane stacji/odbioru/odcinka)
+  // oraz pasmo nN transformatora — obszar STATIONS rejestru.
+  'nn.brak_r_a': 'stacje',
+  'nn.brak_r_b': 'stacje',
+  'nn.brak_rcd': 'stacje',
+  'nn.brak_pojemnosci_doziemnej': 'stacje',
+  'nn.transformer_lv_not_nn_band': 'stacje',
   'apparatus.sn_catalog_missing': 'stacje',
   'apparatus.nn_catalog_missing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
@@ -299,6 +323,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
+  // Karta W5-E-TTIT: limit napięcia dotykowego TT/IT spoza repozytorium (BRAK_PODSTAWY) —
+  // kryterium SWZ ocenia pętlę zwarcia nN, więc cel „zwarcia".
+  'swz.limit_tt_it_brak_tekstu_normy': 'zwarcia',
 
   // KARTA-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
   // ujawnił 76 kodów kanonu dodanych do rejestru PO napisaniu tabeli powyżej —
@@ -321,6 +348,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'source.u_set_pu_out_of_range': 'zwarcia',
   // CATALOGS (wspolne)
   'branch.zero_sequence_missing': 'wspolne',
+  // R′0/X′0 z wartości roboczej katalogu: zwarcia doziemne i rozpływ niesymetryczny.
+  'branch.z0_wartosc_robocza': 'wspolne',
   'cable.insulation_data_missing': 'wspolne',
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',
@@ -346,6 +375,11 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: tolerancja napięcia sieci nN (+6 %/+10 %)
+  // deklarowana na transformatorze stacji — wzorzec `lv_earthing_system` (obszar STATIONS).
+  'fault.c_tolerancja_nn_robocza': 'stacje',
+  // Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej (obszar SOURCES — dane zwarciowe).
+  'fault.parametry_maszyny_robocze': 'zwarcia',
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',
@@ -376,6 +410,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.secondary_circuit_missing': 'zabezpieczenia',
   // ANALYSIS (wspolne)
   'fault.location_on_branch_requires_assembler': 'wspolne',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: odmowy nadpisania c scenariusza (obszar ANALYSIS).
+  'fault.c_nadpisanie_bez_uzasadnienia': 'wspolne',
+  'fault.c_nadpisanie_wartosc_niepoprawna': 'wspolne',
+  // Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza zwarciowego (obszar ANALYSIS).
+  'fault.czas_tb_niepoprawny': 'wspolne',
+  'fault.czas_tb_wartosc_robocza': 'wspolne',
   'oltc.deadband_missing': 'wspolne',
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',
@@ -442,7 +482,8 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   generator: 'rozplyw',
   // O-53 (AB-H0, 2026-09-24): jedna regula mocy zrodla emituje kody `converter.*` w obszarze
   // GENERATORS (`transformer_capacity_exceeded`, `setpoint_above_rating`,
-  // `power_check_input_invalid`) — ten sam cel co `generator.*`.
+  // `power_check_input_invalid`, a od punktu 1 karty O-53b `power_check_group_ambiguous`)
+  // — ten sam cel co `generator.*`.
   converter: 'rozplyw',
   oze: 'rozplyw',
   pv_bess: 'rozplyw',
@@ -498,9 +539,15 @@ export function naProblemGotowosci(issue: ReadinessIssue): ProblemGotowosci {
     waga: wagaZSeverity(issue.severity),
     elementRef: issue.element_ref ?? issue.element_refs[0] ?? null,
     opisPl: issue.message_pl,
-    cel: celDlaKodu(issue.code),
+    // Cel po kodzie KANONICZNYM, gdy backend go dołączył (most `readiness_bridge`: ten sam
+    // warunek w kanonie) — dawniej zgłoszenia walidatora (`W043`, `E009`, …) szły po
+    // surowym kodzie bez kropki do „Pozostałe", choć kanon zna ich obszar. Kod surowy
+    // zostaje w `code` (identyfikacja wiersza, filtry).
+    cel: celDlaKodu(issue.canonical_code ?? issue.code),
     fixAction: issue.fix_action,
     priorytetKanoniczny: issue.canonical_priority ?? null,
+    kodKanoniczny: issue.canonical_code ?? null,
+    nawigacjaKanoniczna: issue.canonical_fix_navigation ?? null,
   };
 }
 

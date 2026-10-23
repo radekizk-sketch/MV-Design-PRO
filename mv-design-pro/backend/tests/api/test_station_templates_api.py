@@ -1,4 +1,4 @@
-"""Tests for K30-16/V12T-016 station templates REST API (73+ templates, 15 categories)."""
+"""Tests for K30-16/V12T-016 station templates REST API (71 templates, 15 categories)."""
 
 from __future__ import annotations
 
@@ -11,12 +11,13 @@ def _make_client():
     return TestClient(app)
 
 
-def test_list_endpoint_returns_73_templates() -> None:
+def test_list_endpoint_returns_71_templates() -> None:
     client = _make_client()
     response = client.get("/api/station-templates")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] >= 73
+    # 73 z planu minus 2 wiatrowe wycofane 2026-10-15 (`SZABLONY_WIATROWE_WYCOFANE`).
+    assert data["total"] == 71
     assert len(data["templates"]) == data["total"]
 
 
@@ -42,7 +43,7 @@ def test_categories_endpoint_lists_15_categories() -> None:
     assert response.status_code == 200
     data = response.json()
     assert len(data["categories"]) == 15
-    assert data["total_templates"] >= 73
+    assert data["total_templates"] == 71
     # Each category has icon + label + count
     for cat in data["categories"]:
         assert "id" in cat
@@ -112,7 +113,12 @@ def test_apply_endpoint_validates_case_id_uuid() -> None:
         },
     )
     assert response.status_code == 400
-    assert "Invalid case_id" in response.json()["detail"]
+    # Partia integracji 10: zdanie po polsku z odmowy formatu (bez angielskiego prefiksu
+    # i bez echa wartości z adresu).
+    assert response.json()["detail"] == (
+        "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+    )
+    assert "not-a-uuid" not in response.json()["detail"]
 
 
 def test_apply_endpoint_validates_ratio_bounds() -> None:

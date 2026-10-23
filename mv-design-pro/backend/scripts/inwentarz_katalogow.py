@@ -99,6 +99,7 @@ RODZINY_MIERNIKA: dict[str, str] = {
     "lv-cable": "lv_cable_types",
     "lv-breaker-mcb": "lv_breaker_mcb_types",
     "lv-fuse-link": "lv_fuse_link_types",
+    "lv-rcd": "lv_rcd_types",
     "load": "load_types",
     "ct": "ct_types",
     "vt": "vt_types",
@@ -118,6 +119,8 @@ RODZINY_MIERNIKA: dict[str, str] = {
     # supraharmonic typu przekształtnika (katalog statyczny: wyłącznie z wyciągiem
     # dokumentu producenta).
     "spectral-card": "karty_widmowe",
+    # Karta LINIA-110: przewody linii napowietrznych 110 kV (dane wyrobu PN-EN 50182).
+    "overhead-conductor": "overhead_conductor_types",
 }
 
 #: Rodziny, które w żywym katalogu legalnie NIE MAJĄ pozycji — z powodem (pomiar, nie

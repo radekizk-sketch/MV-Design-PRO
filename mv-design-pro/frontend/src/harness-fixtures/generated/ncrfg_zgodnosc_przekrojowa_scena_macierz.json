@@ -4,6 +4,25 @@
   "der_count": 2,
   "pominiete": [],
   "certyfikaty_odrzucone": [],
+  "certyfikaty_brakujace": {
+    "bess/5bd678b5dbce96516c72492e40298e5f/converter": {
+      "kod": "BRAK_CERTYFIKATU_WIPWC:bess_pcs_abb_500",
+      "rodzaj": "BRAK_CERTYFIKATU_WIPWC",
+      "pakiet": "P1",
+      "identyfikator": "bess_pcs_abb_500",
+      "nazwa_elementu": "Magazyn energii 1,5 MW",
+      "status_maszynowy": "BRAK_DOWODU",
+      "komunikat_pl": "Źródło „Magazyn energii 1,5 MW”: typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV” nie ma certyfikatu PTPiREE w wykazie certyfikowanych urządzeń dostępnym w systemie — zgodność z wymaganiami przyłączeniowymi nie ma dowodu, a wniosek do OSD może zostać odrzucony. Certyfikaty dostarcza pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD.",
+      "wyjasnienie": {
+        "zdanie_pl": "Źródło „Magazyn energii 1,5 MW”: typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV” nie ma certyfikatu PTPiREE w wykazie certyfikowanych urządzeń dostępnym w systemie — zgodność z wymaganiami przyłączeniowymi nie ma dowodu, a wniosek do OSD może zostać odrzucony. Certyfikaty dostarcza pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD.",
+        "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet wykazu certyfikowanych urządzeń PTPiREE (WiPWC), dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+        "czego_brakuje": [
+          "certyfikat PTPiREE w wykazie certyfikowanych urządzeń — typ przekształtnika „ABB PCS100 ESS 500 kW / 0.4 kV”"
+        ],
+        "zastrzezenia": []
+      }
+    }
+  },
   "bieg": {
     "contract": "NcRfgPtpireeTestResultV2",
     "procedure_version": {
@@ -3527,7 +3546,7 @@
                 "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
                 "symbol_latex": "Q_{\\min}",
                 "wartosc": {
-                  "wartosc": -0.330749354005168,
+                  "wartosc": -0.330749354005,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
@@ -3555,7 +3574,7 @@
               },
               "margines": {
                 "wartosc": {
-                  "wartosc": 0.000749354005167957,
+                  "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "definicja_latex": "m = x_{\\lim} - x",
@@ -3565,7 +3584,7 @@
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "skala_rodzaj": "LIMIT",
-                "wzgledny": 0.0022707697126301725,
+                "wzgledny": 0.00227076971263,
                 "niedefiniowalny": false,
                 "powod_pl": null
               },
@@ -3693,7 +3712,7 @@
                 "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
                 "symbol_latex": "Q_{\\min}",
                 "wartosc": {
-                  "wartosc": -0.330749354005168,
+                  "wartosc": -0.330749354005,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
@@ -3721,7 +3740,7 @@
               },
               "margines": {
                 "wartosc": {
-                  "wartosc": 0.000749354005167957,
+                  "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "definicja_latex": "m = x_{\\lim} - x",
@@ -3731,7 +3750,7 @@
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "skala_rodzaj": "LIMIT",
-                "wzgledny": 0.0022707697126301725,
+                "wzgledny": 0.00227076971263,
                 "niedefiniowalny": false,
                 "powod_pl": null
               },
@@ -3992,7 +4011,7 @@
                 "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
                 "symbol_latex": "Q_{\\min}",
                 "wartosc": {
-                  "wartosc": -0.330749354005168,
+                  "wartosc": -0.330749354005,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
@@ -4020,7 +4039,7 @@
               },
               "margines": {
                 "wartosc": {
-                  "wartosc": 0.000749354005167957,
+                  "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "definicja_latex": "m = x_{\\lim} - x",
@@ -4030,7 +4049,7 @@
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "skala_rodzaj": "LIMIT",
-                "wzgledny": 0.0022707697126301725,
+                "wzgledny": 0.00227076971263,
                 "niedefiniowalny": false,
                 "powod_pl": null
               },
@@ -7179,8 +7198,8 @@
         "formula": "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka strona o mniejszym zapasie",
         "data": {
           "zakres_modulu_pu": [
-            -0.330749354005168,
-            0.330749354005168
+            -0.330749354005,
+            0.330749354005
           ],
           "zakres_wymagany_pu": [
             -0.33,
@@ -7250,8 +7269,8 @@
         "formula": "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka strona o mniejszym zapasie",
         "data": {
           "zakres_modulu_pu": [
-            -0.330749354005168,
-            0.330749354005168
+            -0.330749354005,
+            0.330749354005
           ],
           "zakres_wymagany_pu": [
             -0.33,
@@ -7369,8 +7388,8 @@
         "formula": "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka strona o mniejszym zapasie",
         "data": {
           "zakres_modulu_pu": [
-            -0.330749354005168,
-            0.330749354005168
+            -0.330749354005,
+            0.330749354005
           ],
           "zakres_wymagany_pu": [
             -0.33,
@@ -11068,7 +11087,7 @@
                 },
                 "margines": {
                   "wartosc": {
-                    "wartosc": 0.04999999999999993,
+                    "wartosc": 0.05,
                     "jednostka": "p.u. (U_n)"
                   },
                   "definicja_latex": "m = x_{\\lim}(t^{*}) - x(t^{*})",
@@ -11078,7 +11097,7 @@
                     "jednostka": "p.u. (U_n)"
                   },
                   "skala_rodzaj": "LIMIT",
-                  "wzgledny": 0.05882352941176463,
+                  "wzgledny": 0.0588235294118,
                   "niedefiniowalny": false,
                   "powod_pl": null
                 },
@@ -11540,7 +11559,7 @@
                   "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
                   "symbol_latex": "Q_{\\min}",
                   "wartosc": {
-                    "wartosc": -0.330749354005168,
+                    "wartosc": -0.330749354005,
                     "jednostka": "p.u. (P_n modułu)"
                   },
                   "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
@@ -11568,7 +11587,7 @@
                 },
                 "margines": {
                   "wartosc": {
-                    "wartosc": 0.000749354005167957,
+                    "wartosc": 0.000749354005168,
                     "jednostka": "p.u. (P_n modułu)"
                   },
                   "definicja_latex": "m = x_{\\lim} - x",
@@ -11578,7 +11597,7 @@
                     "jednostka": "p.u. (P_n modułu)"
                   },
                   "skala_rodzaj": "LIMIT",
-                  "wzgledny": 0.0022707697126301725,
+                  "wzgledny": 0.00227076971263,
                   "niedefiniowalny": false,
                   "powod_pl": null
                 },

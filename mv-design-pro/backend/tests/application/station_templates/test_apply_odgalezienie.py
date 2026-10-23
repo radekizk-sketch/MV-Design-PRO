@@ -36,7 +36,9 @@ from application.station_templates.apply import (
     _resolve_station_type,
     _resolve_transformer_ref_for_template,
     _szyna_nn_stacji,
+    _wspolny_aparat_pol_sn,
     _zabuduj_stacje_w_odgalezieniu,
+    dlugosc_odgalezienia_m,
 )
 from application.station_templates.schema import transformer_voltages_kv
 from enm.domain_operations import execute_domain_operation
@@ -135,6 +137,9 @@ def _zastosuj_szablon(
     nn_block = {"outgoing_feeders_nn_count": 2, "outgoing_feeders_nn": []}
     klasa = _klasa_przylaczenia(role)
     dziennik: list[dict[str, Any]] = []
+    # POLA-W-TORZE: wspólny aparat pól szablonu jedzie w ładunku operacji stacyjnej (dostaje go
+    # pole domknięte przez operację) — ta sama wartość, co w `_zastosuj_szablon_pod_blokada`.
+    wspolny_aparat_pol = _wspolny_aparat_pol_sn(template, overrides=overrides, catalog_profile=None)
 
     if klasa == "B":
         enm_po, station_ref, nn_bus_ref, created = _zabuduj_stacje_w_odgalezieniu(
@@ -148,6 +153,10 @@ def _zastosuj_szablon(
             sn_field_specs=specyfikacje,
             nn_block_spec=nn_block,
             operations_log=dziennik,
+            wspolny_aparat_pol=wspolny_aparat_pol,
+            # Ta sama funkcja odmowy, którą `rozstrzygnij_parametry_szablonu` woła przed
+            # blokadą w ścieżce produkcyjnej.
+            dlugosc_m=dlugosc_odgalezienia_m(overrides),
         )
     else:
         wynik = _wykonaj(
@@ -156,10 +165,15 @@ def _zastosuj_szablon(
             {
                 "segment_id": segment_ref,
                 "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
-                "station": {**station_spec, "station_type": _resolve_station_type(template)},
+                "station": {**station_spec, "station_type": _resolve_station_type(role)},
                 "transformer": transformer_spec,
                 "sn_fields": specyfikacje,
                 "nn_block": nn_block,
+                **(
+                    {"field_apparatus_catalog_ref": wspolny_aparat_pol}
+                    if wspolny_aparat_pol
+                    else {}
+                ),
             },
         )
         enm_po = wynik["snapshot"]

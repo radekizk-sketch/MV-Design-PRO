@@ -119,7 +119,8 @@ def test_genset_bez_power_factor_odrzucony() -> None:
 
 
 def test_genset_power_factor_poza_zakresem_odrzucony_osobnym_kodem() -> None:
-    """Dana JAWNA, ale niepoprawna (poza (0, 1]), to inny przypadek niż brak danej."""
+    """Dana JAWNA, ale niepoprawna (poza [0,5; 1] — brama cos φ rejestru wartości roboczych
+    maszyn, karta PODSTAWA-Q), to inny przypadek niż brak danej."""
     payload = _genset_payload()
     payload["genset_spec"]["power_factor"] = 1.5
     result = execute_domain_operation(_base_enm(), "add_genset_nn", payload)

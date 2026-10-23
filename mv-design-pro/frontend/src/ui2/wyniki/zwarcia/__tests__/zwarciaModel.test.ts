@@ -23,6 +23,7 @@ import {
   fmtCzas,
   fmtKA,
   fmtMVA,
+  fmtOhm,
   fmtWspolczynnik,
   rodzajZwarciaPL,
   rxRatioZrodloPL,
@@ -136,13 +137,13 @@ describe('uwagiZwarciaPL — flagi na tekst uwag', () => {
 describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z konfiguracji ZAPISANEJ na biegu', () => {
   // Karta TODO-UI2 p.7: `konfiguracja_biegu` to konfiguracja TEGO biegu
   // (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`), nigdy
-  // aktywnego przypadku obliczeniowego — iloczyn cech: {c jawny / c auto-per-
-  // -węzeł} × {czas z opcji / czas domyślny assemblera} × {konfiguracja
-  // nieobecna (starszy zapis)}.
-  it('metoda jest stałą normatywną; c jawny i czas z opcji biegu', () => {
+  // aktywnego przypadku obliczeniowego — iloczyn cech: {c nadpisane z uzasadnieniem /
+  // c auto-per-węzeł × scenariusz MAX/MIN/brak} × {czas z opcji / czas domyślny
+  // assemblera} × {konfiguracja nieobecna (starszy zapis)}.
+  it('metoda jest stałą normatywną; c nadpisane (z uzasadnieniem) i czas z opcji biegu', () => {
     const zalozenia = naZalozeniaZwarc(
       konfiguracjaBieguFixture({
-        c_factor: { tryb: 'jawny', wartosc: 1.1 },
+        c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
         thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
       }),
       undefined,
@@ -154,9 +155,10 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
     });
     expect(zalozenia[1]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: fmtWspolczynnik(1.1),
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanie(fmtWspolczynnik(1.05), 'Uzgodnienie z OSD'),
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanieUwaga('Uzgodnienie z OSD'),
     });
-    expect(zalozenia[1].uwaga).toBeUndefined();
+    expect(zalozenia[1].uwaga).toContain('Uzgodnienie z OSD');
     expect(zalozenia[2]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
       wartosc: fmtCzas(1.0),
@@ -165,18 +167,28 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
     expect(zalozenia[2].uwaga).toBeUndefined();
   });
 
-  it('c auto-per-węzeł (brak jawnego override) → uczciwy opis, NIE liczba zmyślona', () => {
-    const zalozenia = naZalozeniaZwarc(
-      konfiguracjaBieguFixture({ c_factor: { tryb: 'auto_per_wezel', wartosc: null } }),
-      undefined,
-      NAZWA,
-    );
-    expect(zalozenia[1]).toMatchObject({
-      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
-      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
-    });
-  });
+  it.each([
+    ['MAX', 'IEC 60909-0 tab. 1 per węzeł, scenariusz MAX'],
+    ['MIN', 'IEC 60909-0 tab. 1 per węzeł, scenariusz MIN'],
+    [null, 'IEC 60909-0 tab. 1 per węzeł'],
+  ] as const)(
+    'c auto-per-węzeł, scenariusz %s → opis doboru z tabeli 1, NIE liczba zmyślona',
+    (scenariusz, oczekiwany) => {
+      const zalozenia = naZalozeniaZwarc(
+        konfiguracjaBieguFixture({
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+          scenariusz,
+        }),
+        undefined,
+        NAZWA,
+      );
+      expect(zalozenia[1]).toMatchObject({
+        etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+        wartosc: oczekiwany,
+        uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+      });
+    },
+  );
 
   it('czas cieplny domyślny assemblera (brak w opcjach biegu) → wartość NAZWANA jako domyślna', () => {
     const zalozenia = naZalozeniaZwarc(
@@ -199,6 +211,50 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
     expect(zalozenia[2].wartosc).toBe(ZWARCIA_STRINGS.kreska);
     expect(zalozenia[2].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].jednostka).toBeUndefined();
+  });
+
+  // Karta OD-14: Z_f zapisana na biegu (`impedancja_przejscia`, wyłącznie Z_f ≠ 0) →
+  // jawny wiersz założeń z uwagą o zakresie ważności; bieg metaliczny → brak wiersza.
+  // Iloczyn: {Z_f obecna (R, R+jX) / nieobecna} × {założenia źródeł brak / są}.
+  it.each([
+    [{ r_f_ohm: 2, x_f_ohm: 0 }, `${fmtOhm(2)} + j${fmtOhm(0)}`],
+    [{ r_f_ohm: 1.5, x_f_ohm: 0.75 }, `${fmtOhm(1.5)} + j${fmtOhm(0.75)}`],
+  ])('bieg przez impedancję %o → wiersz Z_f z uwagą o zakresie IEC 60909', (z, oczekiwana) => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        impedancja_przejscia: { ...z, poza_zakresem_iec60909: true },
+      }),
+      undefined,
+      NAZWA,
+    );
+    expect(zalozenia).toHaveLength(4);
+    expect(zalozenia[3]).toEqual({
+      etykieta: ZWARCIA_STRINGS.zalImpedancjaPrzejscia,
+      wartosc: oczekiwana,
+      jednostka: ZWARCIA_STRINGS.jednOhm,
+      uwaga: ZWARCIA_STRINGS.zalImpedancjaPrzejsciaUwaga,
+    });
+  });
+
+  it('bieg metaliczny (brak impedancja_przejscia) → brak wiersza Z_f', () => {
+    const zalozenia = naZalozeniaZwarc(konfiguracjaBieguFixture(), undefined, NAZWA);
+    expect(zalozenia).toHaveLength(3);
+    expect(zalozenia.map((z) => z.etykieta)).not.toContain(
+      ZWARCIA_STRINGS.zalImpedancjaPrzejscia,
+    );
+  });
+
+  it('Z_f i założenia źródeł razem → Z_f przed założeniami źródeł', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        impedancja_przejscia: { r_f_ohm: 2, x_f_ohm: 0, poza_zakresem_iec60909: true },
+      }),
+      [zalozenieBieguFixture({ element_ref: 's1' })],
+      NAZWA,
+    );
+    expect(zalozenia).toHaveLength(5);
+    expect(zalozenia[3].etykieta).toBe(ZWARCIA_STRINGS.zalImpedancjaPrzejscia);
+    expect(zalozenia[4].etykieta).toBe(ZWARCIA_STRINGS.zalozenieEtykieta('nazwa s1'));
   });
 
   // CV-4.3 K7: `raw_result.zalozenia` — jedno wiersz na założenie biegu, treść

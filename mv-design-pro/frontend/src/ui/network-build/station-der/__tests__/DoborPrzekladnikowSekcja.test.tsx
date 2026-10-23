@@ -294,8 +294,9 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
                   step: 1,
                   key: 'ct_rezystancja_przewodow',
                   title: 'Rezystancja przewodów obwodu wtórnego',
-                  formula_latex: '$$R_p = \\frac{2 \\rho L}{s}$$',
-                  substitution: '$$R_p = 0.14\\ \\Omega$$',
+                  formula_latex: 'R_p = \\frac{2 \\rho L}{s}',
+                  // Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX goły w `substitution_latex`.
+                  substitution_latex: 'R_p = 0{,}14\\ \\Omega',
                   notes: 'Współczynnik 2 wynika z obwodu dwuprzewodowego.',
                 },
               ],
@@ -312,6 +313,9 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
     const slad = await screen.findByTestId('kryterium-slad-ct.alf');
     expect(slad.textContent).toContain('Rezystancja przewodów obwodu wtórnego');
     expect(slad.textContent).toContain('Współczynnik 2 wynika z obwodu dwuprzewodowego.');
+    // Podstawienie idzie przez KaTeX, nie jako surowy zapis LaTeX (karta DOWOD-CIEPLNY).
+    expect(slad.querySelector('[data-testid="math-rendered"]')).not.toBeNull();
+    expect(slad.querySelector('[data-testid="math-fallback"]')).toBeNull();
   });
 
   it('kryterium bez śladu nie renderuje sekcji rozwijalnej', async () => {

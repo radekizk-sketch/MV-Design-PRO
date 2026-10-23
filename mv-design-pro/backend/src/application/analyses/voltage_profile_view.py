@@ -47,7 +47,9 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 # dedykowanego modułu, żeby nie zostawiać duplikatu mechanizmu w trzecim miejscu).
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
     PowerFlowBusResult,
@@ -58,12 +60,12 @@ from network_model.solvers.power_flow_result import (
 
 def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Profil napięć wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
@@ -234,7 +236,7 @@ def build_voltage_profile_view(
         try:
             path = VoltageProfileSegmentBuilder(graph).build_path(result_v1, node_ref)
         except VoltageProfileSegmentPathError as exc:
-            raise ValueError(str(exc)) from exc
+            raise OdmowaDanychError(str(exc)) from exc
         payload["segmenty"] = path.to_dict()
     elif worst_nn:
         result_v1 = _power_flow_result_v1(run)
@@ -242,4 +244,5 @@ def build_voltage_profile_view(
         if worst_path is not None:
             payload["segmenty"] = worst_path.to_dict()
 
+    payload.update(pola_danych_przyjetych_biegu(run.raw_result))
     return payload

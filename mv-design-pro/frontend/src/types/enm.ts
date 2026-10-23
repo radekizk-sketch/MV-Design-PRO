@@ -7,6 +7,7 @@
 
 import type {
   RolaUziemnika,
+  TolerancjaNapieciaNn,
   TypPunktuNeutralnego,
   UkladSieciNn,
   UziemienieEkranuKabla,
@@ -86,8 +87,23 @@ export interface ProtectionSetting {
     | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
     | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
+  /**
+   * Karta BIEG-ZABEZPIECZEN-Z-MODELU (PZ-09): strona przekładnika, po której podano próg —
+   * `A_WTORNY` (nastawa przekaźnika) albo `A_PIERWOTNY`. Próg bez jednostki jest odrzucany
+   * przy zapisie (`enm/nastawy_zabezpieczen.py::bledy_nastaw`).
+   */
+  threshold_unit?: 'A_WTORNY' | 'A_PIERWOTNY' | null;
   time_delay_s?: number | null;
-  curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
+  curve_type?:
+    | 'DT'
+    | 'IEC_SI'
+    | 'IEC_VI'
+    | 'IEC_EI'
+    | 'IEC_LTI'
+    | 'IEEE_MI'
+    | 'IEEE_VI'
+    | 'IEEE_EI'
+    | null;
   /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
   time_multiplier?: number | null;
   is_directional?: boolean;
@@ -121,7 +137,7 @@ export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 export interface ParameterOverride {
   key: string;
   value: number | string;
-  reason?: string;
+  reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +216,46 @@ export interface PortRef {
   port_id: string;
 }
 
+/**
+ * Karta LINIA-110: położenie przewodu w przekroju poprzecznym linii [m] —
+ * `x_m` od osi słupa, `y_m` ŚREDNIA wysokość nad ziemią w przęśle.
+ */
+export interface PolozeniePrzewoduLinii {
+  x_m: number;
+  y_m: number;
+}
+
+/**
+ * Karta LINIA-110: geometria słupa linii 110 kV — dana projektu. Każda składowa
+ * opcjonalna: `null` = projekt jej nie podaje i obliczenie biegnie z wartością
+ * roboczą (ESTIMATED, kompletność dowodu NIEPELNY). `odgromowe: []` = linia bez
+ * przewodu odgromowego.
+ */
+export interface GeometriaSlupaLinii {
+  fazy?: PolozeniePrzewoduLinii[] | null;
+  liczba_w_wiazce?: number;
+  odstep_wiazki_m?: number | null;
+  odgromowe?: PolozeniePrzewoduLinii[] | null;
+  przewod_odgromowy_ref?: string | null;
+  rezystywnosc_gruntu_ohm_m?: number | null;
+}
+
+/** Karta LINIA-110: proweniencja R′/X′/B′/Z′0 wyliczonych z geometrii słupa. */
+export interface ParametryLiniiZGeometrii {
+  metoda: string;
+  wersja_metody: string;
+  odcisk_wejscia: string;
+  kompletnosc_dowodu: 'PELNY' | 'NIEPELNY';
+  czestotliwosc_hz: number;
+  temperatura_przewodu_c: number;
+  r1_temperatura_ohm_per_km: number;
+  r0_bez_odgromowych_ohm_per_km: number;
+  x0_bez_odgromowych_ohm_per_km: number;
+  gmd_m: number;
+  gmr_fazy_m: number;
+  wartosci_robocze?: string[];
+}
+
 export interface OverheadLine extends BranchBase {
   type: 'line_overhead';
   length_km: number;
@@ -229,6 +285,10 @@ export interface OverheadLine extends BranchBase {
   operating_temperature_c?: number | null;
   short_circuit_temperature_c?: number | null;
   thermal_source_ref?: string | null;
+  /** Karta LINIA-110: geometria słupa (linia z przewodem z katalogu PRZEWOD_LINII_WN). */
+  geometria_slupa?: GeometriaSlupaLinii | null;
+  /** Karta LINIA-110: proweniencja parametrów z geometrii (zapis operacji domenowej). */
+  parametry_z_geometrii?: ParametryLiniiZGeometrii | null;
 }
 
 export interface Cable extends BranchBase {
@@ -368,6 +428,11 @@ export interface Transformer extends ENMElement {
   lv_neutral?: GroundingConfig | null;
   /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
   lv_earthing_system?: UkladSieciNn | null;
+  /** Tolerancja napięcia sieci nN zasilanej z tego transformatora — wiersz nN tabeli 1
+   * IEC 60909-0 (+6 % → c 1,05/0,95; +10 % → c 1,10/0,90). Brak = wartość robocza rejestru
+   * (+10 %), oznaczona założeniem biegu `fault.c_tolerancja_nn_robocza` (karta
+   * TOLERANCJA-NN-WARTOSC-ROBOCZA) — nie blokuje zwarć. */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   tap_position?: number | null;
   tap_min?: number | null;
   tap_max?: number | null;
@@ -418,8 +483,10 @@ export interface Source extends ENMElement {
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;
-  c_max?: number | null;
-  c_min?: number | null;
+  /** Tolerancja napięcia sieci nN dla źródła na szynie nN (wiersz nN tabeli 1 IEC 60909-0).
+   * Dawne `c_max`/`c_min` źródła usunięte — fantom bez konsumenta (karta
+   * WSPOLCZYNNIK-C-JEDEN-NOSNIK: c dobiera backend per węzeł). */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   parameter_source?: ParameterSourceWithManualEquivalent | null;
@@ -446,6 +513,12 @@ export interface Load extends ENMElement {
   q_mvar: number;
   model: 'pq' | 'zip';
   phases?: PhaseSet | null;
+  /**
+   * Rezystancja uziomu instalacji odbiorczej R_A [Ω] (karta W5-E-TTIT, `Load.earth_electrode_r_ohm`):
+   * pętla doziemna układu TT domyka się przez ten uziom; brak = analiza TT odmawia kodem
+   * `nn.brak_r_a` (nie podstawia wartości). Pole addytywne, poza hashem modelu, gdy puste.
+   */
+  earth_electrode_r_ohm?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   quantity?: number | null;
@@ -453,6 +526,8 @@ export interface Load extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Model dynamiczny odbioru — kopia profilu katalogu `load_dynamic` (karta modeli odbiorów). */
+  dynamika?: ModelDynamicznyOdbioru | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,6 +709,18 @@ export interface TurbinaWiatrowa {
 }
 
 /** Unia dyskryminowana po `rodzina` — jeden blok parametrow dynamicznych zrodla. */
+/**
+ * Model dynamiczny ODBIORU (`Load.dynamika`, lustro `enm/dynamika_modele.py::
+ * ModelDynamicznyOdbioru`): napięcie przejścia do stałej impedancji (`null` wyłącznie dla
+ * odbioru czysto impedancyjnego) i stała pomiaru częstotliwości (`null` wyłącznie dla odbioru
+ * bez czułości częstotliwościowej). Kształt charakterystyki (ZIP, k) żyje w typie odbioru.
+ */
+export interface ModelDynamicznyOdbioru {
+  proweniencja: ProweniencjaParametrow;
+  u_min_pu: number | null;
+  t_pomiaru_czestotliwosci_s: number | null;
+}
+
 export type ParametryDynamiczne =
   | MaszynaSynchroniczna
   | PrzeksztaltnikGFL
@@ -1506,17 +1593,6 @@ export interface BayEarthFaultPath {
   earth_return_split_factor?: number | null;
 }
 
-export interface BayVerificationResult {
-  continuous_current_ok?: boolean | null;
-  thermal_withstand_ok?: boolean | null;
-  dynamic_withstand_ok?: boolean | null;
-  ct_ok?: boolean | null;
-  vt_ok?: boolean | null;
-  cable_head_ok?: boolean | null;
-  main_switch_ok?: boolean | null;
-  whole_power_path_ok?: boolean | null;
-}
-
 export interface BayProofBinding {
   proof_ref: string;
   primary_result_refs: string[];
@@ -1534,7 +1610,6 @@ export interface BayProjectResults {
   main_power_flow_results_ref?: string | null;
   source_contributions_sc: BayShortCircuitSourceContribution[];
   source_contributions_pf: BayPowerFlowSourceContribution[];
-  verification: BayVerificationResult;
   earth_fault_path?: BayEarthFaultPath | null;
   proof_binding: BayProofBinding;
 }
@@ -2095,11 +2170,28 @@ export interface SecondaryConnectorViewV1 {
   segment_ref: string;
 }
 
+/**
+ * Karta POLE-ZAJĘTE: zajętość pola rozdzielnicy SN liczona JEDNĄ funkcją backendu
+ * (`enm/zajetosc_pol.py`). Front czyta ją stąd i nie liczy zajętości sam.
+ */
+export interface LineFieldViewV1 {
+  field_ref: string;
+  station_ref: string;
+  bay_role: string;
+  /** Punkt przyłączenia odcinka: własny zacisk pola albo szyna pola. */
+  attachment_bus_ref: string | null;
+  occupied: boolean;
+  segment_refs: string[];
+  corridor_refs: string[];
+}
+
 export interface LogicalViewsV1 {
   trunks: TrunkViewV1[];
   branches: BranchViewV1[];
   secondary_connectors: SecondaryConnectorViewV1[];
   terminals: TerminalRef[];
+  /** Brak pola (odpowiedź bez modelu odczytu zajętości) = zajętość nieznana, nigdy „wolne”. */
+  line_fields?: LineFieldViewV1[];
 }
 
 export interface MaterializedCatalogParams {

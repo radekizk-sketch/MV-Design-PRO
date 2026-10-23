@@ -20,10 +20,12 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
 import { wybierzElementOdbioru } from './odbiorPomiary';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/dowody');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/dowody'));
 const THEMES = ['light', 'dark'] as const;
 
 /** Sceny rundy dowodowej (scena „odbior-zgodnosc" = ekran „Zgodność
@@ -459,6 +461,7 @@ test.describe('dowody-wyniki:screenshot', () => {
         expect(errs, `no console/page errors for ${scena}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `dowod_${scena}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });

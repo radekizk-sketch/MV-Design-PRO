@@ -15,6 +15,12 @@ Builds a deterministic MV network:
   - Deterministic: same seed → same SHA-256 hash
   - Valid: passes ENMValidator (no fatal issues)
   - Loadable: can be served via GET /api/cases/{case_id}/enm
+  - Product path: every operation result passes through the model store's
+    read-time pipeline (`enm.store.przygotuj_model_po_odczycie` — attachment-point
+    key migration, promotion of nN fields to real apparatus/feeder buses, catalog
+    defaults), exactly as the next API operation would see it (karta SLD-SUBSTRAT:
+    the substrate built without this path lacked the nN field promotion that no
+    model served by the API ever skips).
 
 Root-cause notes (M-05 recon):
   Bug 1 — add_converter_source der=0 (STAN_REPO §2, line V-10):
@@ -73,6 +79,10 @@ _LINE_REF = "line-base-al-120"  # overhead line 120 mm² Al
 _GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
+#: Stacje z konfiguracją mieszaną PV 0,5 MW + BESS 0,5 MW (Σ S_n 1,1 MVA): kontrola O-53
+#: sumuje źródła zasilane przez ten sam transformator (V12K-022, karta GPT-478), więc
+#: 630 kVA nie mieści obu jednostek — transformator stacji przepinany na 1250 kVA.
+_TRAFO_MIXED_DER = "tr-sn-nn-15-04-1250kva-dyn11"
 
 # Uklad sieci nN (E063, walidator ENM: `Transformer.lv_earthing_system`) — deklaracja
 # JAWNA fikstury referencyjnej, nie cichy domysl walidatora/modelu (SUB-52s
@@ -143,6 +153,16 @@ def _empty_enm() -> dict[str, Any]:
     }
 
 
+def _jak_z_magazynu(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Model po operacji w postaci, w jakiej magazyn poda go następnej operacji
+    (`enm.store.przygotuj_model_po_odczycie`) — ta sama sekwencja co w produkcie."""
+    from enm.models import EnergyNetworkModel
+    from enm.store import przygotuj_model_po_odczycie
+
+    model, zmieniono = przygotuj_model_po_odczycie(EnergyNetworkModel.model_validate(snapshot))
+    return model.model_dump(mode="json") if zmieniono else snapshot
+
+
 def _op(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Execute domain op; raise AssertionError on failure."""
     from enm.domain_operations import execute_domain_operation
@@ -155,7 +175,7 @@ def _op(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[str,
     snapshot = result.get("snapshot")
     if snapshot is None:
         raise AssertionError(f"Domain op '{op_name}' returned no snapshot")
-    return snapshot
+    return _jak_z_magazynu(snapshot)
 
 
 def _try_op(
@@ -170,7 +190,7 @@ def _try_op(
     snapshot = result.get("snapshot")
     if snapshot is None:
         return enm, "no snapshot returned"
-    return snapshot, None
+    return _jak_z_magazynu(snapshot), None
 
 
 def _feeder_port_ref(enm: dict[str, Any], station_ref: str) -> str | None:
@@ -263,8 +283,15 @@ def _add_trunk_station(
     segment_ref: str,
     name: str,
     trafo_ref: str = _TRAFO_STANDARD,
+    trafo_n_parallel: int = 1,
 ) -> dict[str, Any]:
-    """Insert a type-C station with LINIA_ODG bay on a trunk segment."""
+    """Insert a type-C station with LINIA_ODG bay on a trunk segment.
+
+    ``trafo_n_parallel`` ≥ 2 — identyczne jednostki pola transformatorowego (``n_parallel``,
+    Σ S_n w kontroli O-53 i Z/n w solverze)."""
+    transformer: dict[str, Any] = {"create": True, "transformer_catalog_ref": trafo_ref}
+    if trafo_n_parallel >= 2:
+        transformer["n_parallel"] = trafo_n_parallel
     return _op(
         enm,
         "insert_station_on_segment_sn",
@@ -279,17 +306,14 @@ def _add_trunk_station(
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM, "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "LINIA_ODG"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {
-                "create": True,
-                "transformer_catalog_ref": trafo_ref,
-            },
+            "transformer": transformer,
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
     )
@@ -363,6 +387,7 @@ def _add_station_load(
     feeder_ref = (feeder_result.get("selection_hint") or {}).get("element_id")
     if enm_feeder is None or not feeder_ref:
         return enm, "feeder: no snapshot/selection_hint"
+    enm_feeder = _jak_z_magazynu(enm_feeder)
     return _try_op(
         enm_feeder,
         "add_nn_load",
@@ -534,7 +559,10 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                         "sn_voltage_kv": 15.0,
                         "nn_voltage_kv": 0.4,
                     },
-                    "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+                    "nn_earthing": {
+                        "lv_system": _NN_EARTHING_SYSTEM,
+                        "lv_voltage_tolerance": "PLUS_6",
+                    },
                     "sn_fields": [
                         {"field_role": "LINIA_IN"},
                         {"field_role": "LINIA_OUT"},
@@ -597,6 +625,28 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         lateral_station_refs[-4:] if len(lateral_station_refs) >= 4 else lateral_station_refs
     )
     for i, stn_ref in enumerate(mixed_stns):
+        trafo_refs = next(
+            (s.get("transformer_refs") or [] for s in enm["substations"] if s["ref_id"] == stn_ref),
+            [],
+        )
+        if len(trafo_refs) != 1:
+            der_errors.append(f"{stn_ref}: oczekiwano jednego transformatora, jest {trafo_refs}")
+            continue
+        enm, err_tr = _try_op(
+            enm,
+            "assign_catalog_to_element",
+            {
+                "element_ref": trafo_refs[0],
+                "catalog_binding": {
+                    "catalog_namespace": "TRAFO_SN_NN",
+                    "catalog_item_id": _TRAFO_MIXED_DER,
+                    "catalog_item_version": "2024.1",
+                },
+            },
+        )
+        if err_tr:
+            der_errors.append(f"{stn_ref}/TR: {err_tr}")
+            continue
         attach(stn_ref, "PV", _PV_CATALOG_REF, _PV_NAMESPACE, 0.5, f"MIX_PV_{i+1}")
         attach(stn_ref, "BESS", _BESS_CATALOG_REF, _BESS_NAMESPACE, 0.5, f"MIX_BESS_{i+1}")
 
@@ -669,7 +719,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
             },
         )
         if not nop_result.get("error") and nop_result.get("snapshot") is not None:
-            enm = nop_result["snapshot"]
+            enm = _jak_z_magazynu(nop_result["snapshot"])
             nop_switch_ref = (nop_result.get("selection_hint") or {}).get("element_id")
             if nop_switch_ref:
                 enm, _ = _try_op(enm, "set_normal_open_point", {"switch_ref": nop_switch_ref})
@@ -729,9 +779,15 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     der_count = len(generators)
     der_types = {g.get("gen_type") for g in generators if g.get("gen_type")}
 
-    corridors = enm.get("corridors", [])
+    # Odgałęzienia liczone z CIĄGÓW (`line_runs`), a nie z korytarzy: operacja
+    # `start_branch_segment_sn` wpisuje `parent_run_ref`/`branch_origin_station_ref`
+    # także do słownika korytarza, ale model `Corridor` tych pól nie ma, więc magazyn
+    # modelu (ścieżka produktu, `_jak_z_magazynu`) je odrzuca — trwałym nośnikiem
+    # pochodzenia odgałęzienia jest `LineRun` (karta SLD-SUBSTRAT, kontynuacja).
     lateral_corridors = [
-        c for c in corridors if c.get("branch_origin_station_ref") or c.get("parent_run_ref")
+        r
+        for r in enm.get("line_runs", [])
+        if r.get("branch_origin_station_ref") or r.get("parent_run_ref")
     ]
 
     return {

@@ -28,6 +28,11 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
+from network_model.catalog.wartosci_robocze import (
+    RODZINA_MASZYNA_ASYNCHRONICZNA,
+    RODZINA_MASZYNA_SYNCHRONICZNA,
+    RODZINA_MASZYNY_WG_GEN_TYPE,
+)
 from network_model.core.topologia import przeglad_wszerz, scal_wezly, skladowe_spojne
 
 from .models import (
@@ -36,6 +41,7 @@ from .models import (
     Junction,
     OverheadLine,
 )
+from .tor_pola import szyny_stacji
 
 #: Typy gałęzi ENM będące łącznikami: zamknięty łącznik SCALA szyny w jeden węzeł
 #: topologiczny (CN → TN), linia/kabel — nie (to impedancja między dwoma węzłami).
@@ -47,9 +53,20 @@ TYPY_LACZNIKOW_ENM: frozenset[str] = frozenset(
 #: równoważne źródło napięciowe): synchroniczne oraz asynchroniczne (Type 3 DFIG,
 #: SCIG). Falownik (pv_inverter, bess, wind_inverter, fw_pmsg) jest źródłem
 #: PRĄDOWYM bez impedancji (§6.8) — wyspa zasilana wyłącznie falownikami nie ma
-#: odniesienia. Jedno źródło prawdy dla ``enm/mapping.py`` i wykonawców.
-TYPY_MASZYN_SYNCHRONICZNYCH: frozenset[str] = frozenset({"synchronous"})
-TYPY_MASZYN_ASYNCHRONICZNYCH: frozenset[str] = frozenset({"fw_dfig", "fw_scig"})
+#: odniesienia. Zbiory WYPROWADZONE z rodzin rejestru maszyn wirujących
+#: (``RODZINA_MASZYNY_WG_GEN_TYPE``, karta PODSTAWA-Q) — ten sam podział, którym mapowanie wybiera
+#: model maszyny i rejestr jej parametrów zwarciowych (predykaty parami: rodzaj z modelem
+#: maszyny w zwarciu = rodzaj z parametrami maszyny, z jednego słownika).
+TYPY_MASZYN_SYNCHRONICZNYCH: frozenset[str] = frozenset(
+    rodzaj
+    for rodzaj, rodzina in RODZINA_MASZYNY_WG_GEN_TYPE.items()
+    if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA
+)
+TYPY_MASZYN_ASYNCHRONICZNYCH: frozenset[str] = frozenset(
+    rodzaj
+    for rodzaj, rodzina in RODZINA_MASZYNY_WG_GEN_TYPE.items()
+    if rodzina == RODZINA_MASZYNA_ASYNCHRONICZNA
+)
 
 
 def _kolekcja(snapshot: object, nazwa: str) -> list[object]:
@@ -314,8 +331,9 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     # Bus → substation mapping
     bus_to_sub: dict[str, str] = {}
     for sub in enm.substations:
-        for br in sub.bus_refs:
-            bus_to_sub[br] = sub.ref_id
+        # POLA-W-TORZE: zaciski pól SN i szyny za aparatami pól nN należą do stacji.
+        for br in sorted(szyny_stacji(sub, enm.branches)):
+            bus_to_sub.setdefault(br, sub.ref_id)
 
     # Bus → junction mapping
     bus_to_junc: dict[str, str] = {}

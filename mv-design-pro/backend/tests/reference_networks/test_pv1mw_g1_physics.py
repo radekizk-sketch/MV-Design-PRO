@@ -39,7 +39,9 @@ def test_g1_per_node_kappa_ip_are_physical_and_not_inverted():
     # nN — behind the transformer: X/R 3-6, κ 1.4-1.55, ip 27-30 kA. The upper ip bound was
     # 29.5 while the measured value is 29.49 — a 0.02% margin, i.e. an assertion that would
     # flip on rounding noise rather than on a physics regression. Re-based to 30.0, which is
-    # what the κ band itself implies: κ_max·√2·Ik″ = 1.55·1.4142·13.613 = 29.8 kA.
+    # what the κ band itself implies: κ_max·√2·Ik″ = 1.55·1.4142·13.613 = 29.8 kA. After the nN
+    # c row fix (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, Ik″ 13.613 → 13.033 kA) the measured value is
+    # 28.24 kA (κ = 1.532), inside the band with 1.24 kA margin to the lower bound.
     assert 3.0 <= nn_xr <= 6.0, f"nN X/R={nn_xr:.2f} unphysical behind a transformer"
     assert 1.40 <= nn_k <= 1.55, f"nN κ={nn_k:.3f} outside transformer range"
     assert 27.0 <= nn_ip <= 30.0, f"nN ip={nn_ip:.2f} kA outside 27-30"
@@ -73,6 +75,14 @@ def test_g1_kappa_fix_preserves_ikss_magnitudes():
     # The SN_PCC figure is untouched by K_T (the transformer is behind that busbar), which is
     # why only the nN expectation moves. Tolerance tightened to 0.15 kA so the pre-K_T value
     # (13.18) can no longer satisfy this lock.
+    #
+    # RE-BASELINE nN 13.61 → 13.03 kA (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK). The 13.61 chain used
+    # c_max = 1.05 inside K_T but the SN value c_max = 1.10 as the Thévenin source voltage of
+    # the 0.8 kV busbar — two different rows of IEC 60909-0 Table 1 for the same nN network.
+    # The substrate now declares the nN tolerance +6 % and reads c per bus from the table:
+    #   Ik″_Thévenin = 12 747 A · 1.05/1.10 = 12 168 A;  IBG 866 A (current source, c-free)
+    #   ⇒ 12 168 + 866 = 13 034 A.  K_T and |Z| are unchanged (K_T already used 1.05).
+    # The old 13.61 lies 0.58 kA away, so the 0.15 kA tolerance rejects the pre-card value.
     c = build_g4_pvtr()
     assert c["short_circuit"]["buses"]["SN_PCC"]["max"]["ikss_ka"] == pytest.approx(9.06, abs=0.2)
-    assert c["short_circuit"]["buses"]["NN_800"]["max"]["ikss_ka"] == pytest.approx(13.61, abs=0.15)
+    assert c["short_circuit"]["buses"]["NN_800"]["max"]["ikss_ka"] == pytest.approx(13.03, abs=0.15)

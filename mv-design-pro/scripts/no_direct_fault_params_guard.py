@@ -9,8 +9,8 @@ z warstwy API/analiz.
 
 Wykrywa (analiza składni, nie dopasowanie tekstu):
   A. Wywołanie funkcji/metody WARSTWY SOLVERA z argumentem kluczowym
-     `fault_node_id=`.  Adresat rozwiązywany po imporcie (`network_model.solvers`,
-     `analysis.machine_short_circuit`) ORAZ po drodze pośredniej (niżej), więc
+     `fault_node_id=`.  Adresat rozwiązywany po imporcie (`network_model.solvers`)
+     ORAZ po drodze pośredniej (niżej), więc
      odczyt `result.fault_node_id`, kolumna ORM, literał w słowniku, docstring
      i nazwa pola DTO nie są trafieniami Z KONSTRUKCJI REGUŁY — bez żadnej
      białej listy dla warstwy odczytu wyniku.  Budowa obiektu danych (klasa
@@ -77,6 +77,17 @@ GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho):
 Dozwolone lokalizacje: warstwa wiązania (WHITELISTED_PATHS), warstwa solvera
 (SOLVER_LAYER_PREFIXES), testy i skrypty.
 
+IMPORTY są rozwiązywane wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło
+prawdy bramek): `from ..solvers.short_circuit_iec60909 import …` i
+`from ..solvers import machine_sc_iec60909` w `network_model/core/**` to te same wejścia
+w solver co formy bezwzględne (do 2026-09-30 bramka czytała samo `module`). Pakiet
+`analysis.machine_short_circuit` (dawniej drugi prefiks warstwy solvera) skasowany kartą
+TORY-TYLKO-W-TESTACH (2026-09-30) — interpretacja bez konsumenta w produkcie, a warstwa
+analizy nie woła solverów (`scripts/arch_guard.py`). Nazwa sprowadzona
+z pakietu (`from network_model import solvers`) liczy się jako moduł `pakiet.nazwa`.
+Import względny ponad korzeń drzewa importów (interpreter: `ImportError`) jest
+naruszeniem `K:` — bramka nie zgaduje jego celu (fail-closed).
+
 ZAPADKA (LEGACY_DIRECT_SOLVER_CALLERS) wiąże KONKRETNE zastane WYWOŁANIA, nie
 pliki: dla każdego pliku trzyma budżet w postaci `{"<reguła>:<adresat>": liczba}`
 zmierzoną na stanie zamrożenia.  Plik z zapadki jest normalnie parsowany i
@@ -101,6 +112,12 @@ from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
+from guard_parsowanie import sparsuj_plik, uruchom  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku, pod_prefiksem  # noqa: E402
+
 # Korzeń źródeł backendu.
 # UWAGA (V12K-306 / audyt 2026-08-01, defekt D3): ten plik leży w
 # <repo>/mv-design-pro/scripts/, więc parent.parent to JUŻ <repo>/mv-design-pro.
@@ -113,11 +130,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Moduły warstwy solvera — callee zaimportowany stąd to wejście w fizykę.
-SOLVER_MODULE_PREFIXES = ("network_model.solvers", "analysis.machine_short_circuit")
+SOLVER_MODULE_PREFIXES = ("network_model.solvers",)
 
 #: Warstwa solvera po ścieżce pliku: `fault_node_id` jest tam nazwą parametru
 #: WŁASNEJ sygnatury i wewnętrznym wywołaniem fizyki, nie iniekcją z zewnątrz.
-SOLVER_LAYER_PREFIXES = ("network_model/solvers/", "analysis/machine_short_circuit/")
+SOLVER_LAYER_PREFIXES = ("network_model/solvers/",)
 
 #: Nazwy wywołań kanonicznego wiązania (naruszenie B).
 BINDING_CALL_NAMES = frozenset({"execute_short_circuit", "_execute_short_circuit"})
@@ -130,7 +147,6 @@ FAULT_NODE_PARAM = "fault_node_id"
 WHITELISTED_PATHS = {
     "domain/fault_scenario.py",
     "application/solvers/short_circuit_binding.py",
-    "application/result_mapping/short_circuit_to_resultset_v1.py",
     "application/fault_scenario_service.py",
 }
 
@@ -160,13 +176,10 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
         "C:compute_machine_contributions": 1,
     },
     "application/analyses/fault_loop/service.py": {},
-    "application/analysis_run/service.py": {
-        "A:compute_1ph_short_circuit": 1,
-        "A:compute_2ph_ground_short_circuit": 1,
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
-        "C:compute_machine_contributions": 1,
-    },
+    # `application/analysis_run/service.py` (5 wejść w solver) nie istnieje od kasacji
+    # dawnego toru biegów; jego budżet wisiał osierocony, bo zapadka nie sprawdzała
+    # istnienia kluczy — zdjęty kartą TORY-TYLKO-W-TESTACH (2026-09-30), a
+    # `check_legacy_callers_freshness` pilnuje odtąd, że każdy klucz wskazuje plik.
     # Wejscie `A:compute_3ph_short_circuit` ZDJETE 2026-08-07 (dlug
     # PACK-SC3F-WIAZANIE): mapowanie snapshotu i wywolanie solvera przeniesione do
     # warstwy wiazania (`zwarcie_3f_ze_snapshotu`), wiec pakiet dowodowy przestal
@@ -183,11 +196,12 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
     # station_archetype_substrate.py przeniesiony do `backend/tests/` (poza
     # BACKEND_SRC, wiec poza skanem tego guarda) — oba wpisy zdjete (zapadka
     # w obie strony, niedobor = obniz budzet).
+    # Wejscia `A:compute_{1ph,2ph,2ph_ground,3ph}_short_circuit` ZDJETE kartą
+    # TB-WARTOSC-ROBOCZA: dyspozycja rodzaju zwarcia biegu przeniesiona do warstwy
+    # wiazania (`short_circuit_binding.wynik_zwarcia_punktu`, ta sama funkcja co pakiety
+    # dowodowe) razem z rozstrzygnieciem t_b punktu (`czas_tb_punktu`). Budzet OBNIZONY
+    # (zapadka zazadala tego sama: RC=1 „Dlug ZMALAL"). Zostaje `B:` — bieg zwarciowy.
     "enm/canonical_analysis.py": {
-        "A:compute_1ph_short_circuit": 1,
-        "A:compute_2ph_ground_short_circuit": 1,
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
         "B:_execute_short_circuit": 1,
     },
 }
@@ -227,6 +241,27 @@ def check_whitelisted_paths_freshness() -> list[str]:
             violations.append(
                 f"[fault-params-wyjatek-osierocony] WHITELISTED_PATHS zawiera {path!r}, "
                 "ktorego juz nie ma w backend/src — usun ten wpis"
+            )
+    return violations
+
+
+def check_legacy_callers_freshness() -> list[str]:
+    """Zapadka świeżości kluczy LEGACY_DIRECT_SOLVER_CALLERS (karta TORY-TYLKO-W-TESTACH,
+    2026-09-30).
+
+    Budżet przypięty do nieistniejącego pliku jest MARTWYM WYJĄTKIEM: plik utworzony
+    kiedyś pod tą samą ścieżką względną dostałby z góry prawo do wejść w solver bez
+    żadnego sygnału (zmierzone: klucz `application/analysis_run/service.py` z budżetem
+    pięciu wywołań wisiał po kasacji pliku). Ścieżka składana TAK SAMO jak w
+    `relative_to_backend` i `check_whitelisted_paths_freshness` (`BACKEND_SRC / path`) —
+    predykaty parami z jednego źródła (KLASA-NIE-INSTANCJA §3).
+    """
+    violations: list[str] = []
+    for path in sorted(LEGACY_DIRECT_SOLVER_CALLERS):
+        if not (BACKEND_SRC / path).is_file():
+            violations.append(
+                f"[fault-params-zapadka-osierocona] LEGACY_DIRECT_SOLVER_CALLERS zawiera "
+                f"{path!r}, ktorego juz nie ma w backend/src — usun ten wpis"
             )
     return violations
 
@@ -274,10 +309,7 @@ def solver_signature_index() -> dict[str, int]:
     signatures: dict[str, int] = {}
     for prefix in SOLVER_LAYER_PREFIXES:
         for path in sorted((root / prefix).rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, UnicodeDecodeError, SyntaxError):
-                continue
+            tree = sparsuj_plik(path)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     continue
@@ -294,26 +326,46 @@ def solver_signature_index() -> dict[str, int]:
     return signatures
 
 
-def solver_aliases(tree: ast.AST) -> set[str]:
+def pakiet_zrodla(filepath: Path) -> str:
+    """`__package__` pliku względem `BACKEND_SRC` (plik spoza korzenia: pakiet pusty —
+    każdy jego import względny jest wtedy wyjściem ponad korzeń, czyli naruszeniem)."""
+    try:
+        return pakiet_pliku(filepath, BACKEND_SRC)
+    except ValueError:
+        return ""
+
+
+def solver_aliases(tree: ast.AST, pakiet: str = "") -> set[str]:
     """Nazwy lokalne (funkcje, klasy, moduły) zaimportowane z warstwy solvera."""
     aliases: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if any(
-                module == prefix or module.startswith(prefix + ".")
-                for prefix in SOLVER_MODULE_PREFIXES
-            ):
-                for alias in node.names:
+            try:
+                modul = modul_bazowy(pakiet, node)
+            except ImportPonadKorzen:
+                continue  # naruszenie `K:` zgłasza `imports_beyond_root`
+            for alias in node.names:
+                if pod_prefiksem(modul, SOLVER_MODULE_PREFIXES) or pod_prefiksem(
+                    f"{modul}.{alias.name}", SOLVER_MODULE_PREFIXES
+                ):
                     aliases.add(alias.asname or alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if any(
-                    alias.name == prefix or alias.name.startswith(prefix + ".")
-                    for prefix in SOLVER_MODULE_PREFIXES
-                ):
+                if pod_prefiksem(alias.name, SOLVER_MODULE_PREFIXES):
                     aliases.add(alias.asname or alias.name.split(".")[0])
     return aliases
+
+
+def imports_beyond_root(tree: ast.AST, pakiet: str) -> list[ast.ImportFrom]:
+    """Importy względne wychodzące ponad korzeń drzewa importów (fail-closed)."""
+    wynik: list[ast.ImportFrom] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            try:
+                modul_bazowy(pakiet, node)
+            except ImportPonadKorzen:
+                wynik.append(node)
+    return wynik
 
 
 def callee_name(call: ast.Call) -> str:
@@ -444,9 +496,9 @@ def propagate_refs(tree: ast.AST, names: set[str], attrs: set[str]) -> None:
                 changed = True
 
 
-def solver_reference_sets(tree: ast.AST) -> tuple[set[str], set[str]]:
+def solver_reference_sets(tree: ast.AST, pakiet: str = "") -> tuple[set[str], set[str]]:
     """Nośniki referencji do warstwy solvera: (nazwy, atrybuty)."""
-    names = solver_aliases(tree)
+    names = solver_aliases(tree, pakiet)
     attrs: set[str] = set()
     if names:
         propagate_refs(tree, names, attrs)
@@ -463,11 +515,23 @@ def binding_reference_sets(tree: ast.AST) -> tuple[set[str], set[str]]:
 
 def collect_findings(tree: ast.AST, filepath: Path) -> list[tuple[str, int, str]]:
     """Znaleziska w jednym drzewie: (sygnatura, wiersz, komunikat)."""
-    solver_names, solver_attrs = solver_reference_sets(tree)
+    pakiet = pakiet_zrodla(filepath)
+    solver_names, solver_attrs = solver_reference_sets(tree, pakiet)
     binding_names, binding_attrs = binding_reference_sets(tree)
     signatures = solver_signature_index()
 
     findings: list[tuple[str, int, str]] = []
+    for node in imports_beyond_root(tree, pakiet):
+        cel = "." * node.level + (node.module or "")
+        findings.append(
+            (
+                f"K:{cel}",
+                node.lineno,
+                f"  {filepath}:{node.lineno}: import względny '{cel}' wychodzi ponad korzeń "
+                "drzewa importów (interpreter: ImportError) — bramka nie rozstrzyga, czy to "
+                "wejście w warstwę solvera (fail-closed)",
+            )
+        )
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -567,17 +631,9 @@ def check_file(filepath: Path) -> list[str]:
     if is_whitelisted(filepath):
         return violations
 
-    try:
-        source = filepath.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return violations
-
-    try:
-        tree = ast.parse(source, filename=str(filepath))
-    except SyntaxError as exc:
-        # Plik liczy się jako obejrzany; ostrzeżenie zamiast wywrócenia bramki.
-        print(f"WARN: {filepath}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-        return violations
+    # Plik z zakresu skanu, którego nie da się odczytać/sparsować, to czerwień
+    # (`BladZrodla` -> `uruchom` -> kod 1), nigdy ciche pominięcie.
+    tree = sparsuj_plik(filepath)
 
     findings = collect_findings(tree, filepath)
 
@@ -621,6 +677,7 @@ def main() -> int:
         return 1
 
     violations.extend(check_whitelisted_paths_freshness())
+    violations.extend(check_legacy_callers_freshness())
 
     if violations:
         print("FAIL: Direct fault parameter usage detected outside whitelisted modules:")
@@ -635,4 +692,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

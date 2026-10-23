@@ -30,8 +30,17 @@ from analysis.arc_flash import (
     EnclosureType,
 )
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
+from werdykt import DanaPrzyjeta
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -74,26 +83,29 @@ def build_arc_flash_view(
             komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Analiza Arc Flash wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
+    # Karta OD-14: wynik zwarcia przez impedancję przejścia Z_f poza zakresem tej
+    # zdolności — odmowa SI-117 (jedno źródło: `blokady_zakresu_biegu`).
+    wymagaj_zakresu_biegu(run, ZdolnoscMiarodajna.ARC_FLASH)
     try:
         cfg = ElectrodeConfig(electrode_config)
     except ValueError as exc:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznana konfiguracja elektrod: {electrode_config!r} "
             "(dozwolone: VCB, VCBB, HCB, VOA, HOA)."
         ) from exc
     try:
         enc = EnclosureType(enclosure_type)
     except ValueError as exc:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany typ obudowy: {enclosure_type!r} (dozwolone: Typical, Shallow)."
         ) from exc
 
@@ -102,11 +114,23 @@ def build_arc_flash_view(
     # Nazwa szyny z tabeli wyników zwarć (nazwa z modelu albo opis rodzaju) — wiersz
     # widoku i raportu nazywa szynę nią, nie identyfikatorem węzła (karta #144).
     nazwy_szyn: dict[str, str] = {}
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkty w sieci nN liczonej z wartością roboczą
+    # tolerancji (znacznik wiersza biegu) — I_bf stoi na danej przyjętej. Karta LINIA-110:
+    # tak samo punkty, do których prądu wchodzi linia 110 kV z wartością roboczą geometrii.
+    robocze: set[str] = set()
+    dane_linii: dict[str, tuple[DanaPrzyjeta, ...]] = {}
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy
+    # punktu z TEGO SAMEGO wiersza — I_bf = I″k punktu stoi na nich, gdy wpływają na I″k.
+    robocze_maszyn: dict[str, list[dict[str, Any]]] = {}
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
         if not target_id:
             continue
         nazwy_szyn[str(target_id)] = str(row.get("target_name"))
+        if row.get("tolerancja_nn_robocza"):
+            robocze.add(str(target_id))
+        dane_linii[str(target_id)] = dane_przyjete_galezi_wiersza(row)
+        robocze_maszyn[str(target_id)] = list(row.get("parametry_robocze_maszyn") or ())
         inputs.append(
             ArcFlashInput(
                 bus_ref=str(target_id),
@@ -123,4 +147,16 @@ def build_arc_flash_view(
     view = ArcFlashBuilder().build(inputs, context=_context(run)).to_dict()
     for wynik in view.get("results") or []:
         wynik["bus_name"] = nazwy_szyn[str(wynik["bus_ref"])]
+        dane = (
+            (
+                (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {wynik['bus_name']}"),)
+                if str(wynik["bus_ref"]) in robocze
+                else ()
+            )
+            + dane_linii.get(str(wynik["bus_ref"]), ())
+            + dane_przyjete_maszyn(robocze_maszyn.get(str(wynik["bus_ref"])), wielkosc="ikss")
+        )
+        if dane:
+            wynik["status_danych"] = "UNVALIDATED_INPUT"
+            wynik["dane_przyjete"] = [dana.model_dump(mode="json") for dana in dane]
     return view

@@ -16,6 +16,7 @@ import type {
   BatchJob,
   CreateBatchRequest,
 } from './types';
+import { STANY_KONCOWE_SERII, czyStanKoncowyBiegu } from './types';
 
 const API_BASE = '/api/study-cases';
 const EXECUTION_BASE = '/api/execution';
@@ -181,48 +182,6 @@ export async function countStudyCases(projectId: string): Promise<{ count: numbe
 }
 
 // =============================================================================
-// Protection Configuration (P14c)
-// =============================================================================
-
-export interface ProtectionConfig {
-  template_ref: string | null;
-  template_fingerprint: string | null;
-  library_manifest_ref: Record<string, any> | null;
-  overrides: Record<string, any>;
-  bound_at: string | null;
-}
-
-export interface UpdateProtectionConfigRequest {
-  template_ref: string | null;
-  template_fingerprint: string | null;
-  library_manifest_ref: Record<string, any> | null;
-  overrides: Record<string, any>;
-}
-
-/**
- * Get protection configuration for a study case.
- */
-export async function getProtectionConfig(caseId: string): Promise<ProtectionConfig> {
-  const response = await fetch(`${API_BASE}/${caseId}/protection-config`);
-  return handleResponse<ProtectionConfig>(response);
-}
-
-/**
- * Update protection configuration for a study case.
- */
-export async function updateProtectionConfig(
-  caseId: string,
-  request: UpdateProtectionConfigRequest
-): Promise<ProtectionConfig> {
-  const response = await fetch(`${API_BASE}/${caseId}/protection-config`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<ProtectionConfig>(response);
-}
-
-// =============================================================================
 // PR-14: Execution Runs API
 // =============================================================================
 
@@ -252,13 +211,70 @@ export async function listRuns(
 }
 
 /**
- * Execute a pending run.
+ * Zleć bieg wykonawcy w tle (karta DYNAMIKA-W-TLE): backend odpowiada 202 ze stanem
+ * `QUEUED` (albo stanem bieżącym, gdy bieg był już zlecony) i wraca natychmiast —
+ * wynik jest dostępny dopiero po dojściu stanu do DONE/FAILED/CANCELLED
+ * (`executeRunAndWait`, `getRun`).
  */
 export async function executeRun(runId: string): Promise<ExecutionRun> {
   const response = await fetch(`${EXECUTION_BASE}/runs/${runId}/execute`, {
     method: 'POST',
   });
   return handleResponse<ExecutionRun>(response);
+}
+
+/**
+ * Anuluj bieg: w kolejce — natychmiast (CANCELLED); w toku — w najbliższym punkcie
+ * przerwania wykonawcy (odpowiedź niesie stan bieżący, odpytuj do CANCELLED).
+ * Bieg zakończony albo w toku bez punktów przerwania → 409 z nazwanym powodem.
+ */
+export async function cancelRun(runId: string): Promise<ExecutionRun> {
+  const response = await fetch(`${EXECUTION_BASE}/runs/${runId}/cancel`, {
+    method: 'POST',
+  });
+  return handleResponse<ExecutionRun>(response);
+}
+
+/** Odstęp odpytywania stanu biegu w tle [ms] — jedna wartość dla całego frontu. */
+export const ODSTEP_ODPYTYWANIA_BIEGU_MS = 750;
+
+export interface OpcjeOczekiwaniaNaBieg {
+  /** Wołane po każdym odczycie stanu (postęp, stan kolejki). */
+  onStan?: (bieg: ExecutionRun) => void;
+  /** Wstrzykiwalne oczekiwanie (testy bez zegara rzeczywistego). */
+  czekaj?: (ms: number) => Promise<void>;
+}
+
+const czekajDomyslnie = (ms: number): Promise<void> =>
+  new Promise((resolve) => window.setTimeout(resolve, ms));
+
+/**
+ * Odpytuj stan biegu do stanu końcowego (DONE/FAILED/CANCELLED). Bez limitu prób:
+ * wykonawca w tle gwarantuje stan końcowy (zakończenie, odmowa, anulowanie albo
+ * zamknięcie biegu osieroconego po restarcie procesu), a błąd sieci przerywa pętlę
+ * wyjątkiem.
+ */
+export async function waitForRunTerminalState(
+  poczatkowy: ExecutionRun,
+  opcje: OpcjeOczekiwaniaNaBieg = {},
+): Promise<ExecutionRun> {
+  const czekaj = opcje.czekaj ?? czekajDomyslnie;
+  let biezacy = poczatkowy;
+  opcje.onStan?.(biezacy);
+  while (!czyStanKoncowyBiegu(biezacy.status)) {
+    await czekaj(ODSTEP_ODPYTYWANIA_BIEGU_MS);
+    biezacy = await getRun(biezacy.id);
+    opcje.onStan?.(biezacy);
+  }
+  return biezacy;
+}
+
+/** Zleć bieg (202) i odpytuj do stanu końcowego — JEDNA ścieżka dla każdego klienta. */
+export async function executeRunAndWait(
+  runId: string,
+  opcje: OpcjeOczekiwaniaNaBieg = {},
+): Promise<ExecutionRun> {
+  return waitForRunTerminalState(await executeRun(runId), opcje);
 }
 
 /**
@@ -296,8 +312,40 @@ export async function createBatch(
   return handleResponse<BatchJob>(response);
 }
 
+/** Szczegóły serii (stan, pozycje ze świeżością) — odpytywanie serii w tle. */
+export async function getBatch(batchId: string): Promise<BatchJob> {
+  const response = await fetch(`${EXECUTION_BASE}/batches/${batchId}`);
+  return handleResponse<BatchJob>(response);
+}
+
 /**
- * Wykonaj serię przebiegów (sekwencyjnie, torem kanonicznym).
+ * Anuluj serię: z kolejki natychmiast, w toku — po bieżącej pozycji.
+ */
+export async function cancelBatch(batchId: string): Promise<BatchJob> {
+  const response = await fetch(`${EXECUTION_BASE}/batches/${batchId}/cancel`, {
+    method: 'POST',
+  });
+  return handleResponse<BatchJob>(response);
+}
+
+/** Zleć serię (202, QUEUED) i odpytuj `getBatch` do stanu końcowego serii. */
+export async function executeBatchAndWait(
+  batchId: string,
+  opcje: { onStan?: (seria: BatchJob) => void; czekaj?: (ms: number) => Promise<void> } = {},
+): Promise<BatchJob> {
+  const czekaj = opcje.czekaj ?? czekajDomyslnie;
+  let biezaca = await executeBatch(batchId);
+  opcje.onStan?.(biezaca);
+  while (!STANY_KONCOWE_SERII.has(biezaca.status)) {
+    await czekaj(ODSTEP_ODPYTYWANIA_BIEGU_MS);
+    biezaca = await getBatch(batchId);
+    opcje.onStan?.(biezaca);
+  }
+  return biezaca;
+}
+
+/**
+ * Zleć serię przebiegów wykonawcy w tle (202, stan QUEUED; sekwencyjnie, torem kanonicznym).
  */
 export async function executeBatch(batchId: string): Promise<BatchJob> {
   const response = await fetch(`${EXECUTION_BASE}/batches/${batchId}/execute`, {

@@ -159,6 +159,24 @@ export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.6, l1Max: 1.2 };
  */
 export const LOD_HYSTERESIS_MARGIN = 0.15;
 
+/**
+ * W2C-PLAN-ETYKIET — SKALE KAMERY, przy których dany LOD jest AKTYWNY w kamerze
+ * produkcyjnej (progi `DEFAULT_LOD_THRESHOLDS` + histereza
+ * `LOD_HYSTERESIS_MARGIN`: brzegi martwych stref 0,51/0,69 wokół 0,6 i
+ * 1,02/1,38 wokół 1,2, plus punkt wnętrza 2 dla L2). Na tych skalach wyrocznie
+ * planu etykiet (`canvas/labelLegibility.ts`) muszą dawać zero porzuconych
+ * tożsamości i zero kolizji. JEDNA tabela dla odbioru `accept:sld-v3`
+ * (`identity_label_probe`) i bramki dowodowej W2c
+ * (`scripts/render_schemat10_w2c.tsx`) — do tej karty odbiór trzymał ją jako
+ * literał lokalny, a bramka W2c liczyła plan przy skali dopasowania panelu
+ * niezwiązanej z żadnym LOD.
+ */
+export const LABEL_PLAN_PRODUCTION_SCALES: Readonly<Record<SceneLod, readonly number[]>> = {
+  0: [0.51, 0.68],
+  1: [0.51, 0.69, 1.02, 1.38],
+  2: [1.02, 1.38, 2],
+};
+
 /** Klasyfikacja BEZ histerezy (użyta tylko dla stanu POCZĄTKOWEGO kamery —
  *  brak „obecnego" LOD do porównania, nic do zabezpieczenia histerezą).
  *  Przyjmuje SUROWĄ skalę (nie `refScale`) — stan startowy fituje bezpośrednio

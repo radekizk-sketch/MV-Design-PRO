@@ -27,8 +27,9 @@
  * ten moduł NIE jest stamtąd importowany (zero wpływu na goldeny
  * sceny/ekranu — pomiar: `grep -rn "exportPalette" ../canvas ../sheet` = 0).
  *
- * MECHANIZM (RECON `ui/sld/export/**` + `v2/export/exportSvg.ts`
- * `normalizeSvgForExport`): eksport dziś RASTERYZUJE (serializuje) żywą
+ * MECHANIZM (RECON `ui/sld/export/**` + dawnego `v2/export/exportSvg.ts`
+ * `normalizeSvgForExport`, skasowanego bez konsumenta w karcie
+ * KASACJA-SCL-I-CIM-KLIENT): eksport dziś RASTERYZUJE (serializuje) żywą
  * kanwę ekranową 1:1 — v3 koduje kolor jako KONKRETNY hex w atrybutach SVG
  * (`fill=`/`stroke=`), NIE `currentColor` jak `canonical_symbols/*.svg` v2
  * (jedyny wyjątek v3: `FaultContributionArrow`, patrz niżej) — więc

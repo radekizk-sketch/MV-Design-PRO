@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 # Dozwolone wartosci kierunkow — JEDNO zrodlo dla wszystkich przelicznikow, ktore te
 # pola przyjmuja (podglad ΔU oraz dobor kabla toru DER). Bez wspolnej definicji kazda
 # warstwa musialaby powtarzac liste i mogla sie z nia rozjechac.
@@ -13,9 +15,9 @@ REACTIVE_CHARACTERS: tuple[str, ...] = ("inductive", "capacitive")
 def validate_flow_flags(flow_direction: str, reactive_character: str) -> None:
     """Sprawdz kierunek mocy czynnej i charakter mocy biernej (ValueError przy bledzie)."""
     if flow_direction not in FLOW_DIRECTIONS:
-        raise ValueError("flow_direction musi byc 'load' albo 'generation'.")
+        raise OdmowaDanychError("flow_direction musi byc 'load' albo 'generation'.")
     if reactive_character not in REACTIVE_CHARACTERS:
-        raise ValueError("reactive_character musi byc 'inductive' albo 'capacitive'.")
+        raise OdmowaDanychError("reactive_character musi byc 'inductive' albo 'capacitive'.")
 
 
 @dataclass(frozen=True)
@@ -112,17 +114,17 @@ def compute_cable_voltage_drop(data: CableVoltageDropInput) -> CableVoltageDropR
     """
 
     if data.current_a <= 0:
-        raise ValueError("Prad obciazenia musi byc dodatni.")
+        raise OdmowaDanychError("Prad obciazenia musi byc dodatni.")
     if data.length_km <= 0:
-        raise ValueError("Dlugosc odcinka musi byc dodatnia.")
+        raise OdmowaDanychError("Dlugosc odcinka musi byc dodatnia.")
     if data.line_voltage_v <= 0:
-        raise ValueError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
     if data.r_ohm_per_km < 0:
-        raise ValueError("Rezystancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Rezystancja jednostkowa nie moze byc ujemna.")
     if data.x_ohm_per_km < 0:
-        raise ValueError("Reaktancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Reaktancja jednostkowa nie moze byc ujemna.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise ValueError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
     validate_flow_flags(data.flow_direction, data.reactive_character)
 
     # Znaki skladowych sa NIEZALEZNE, bo kierunek mocy czynnej i biernej moze byc
@@ -156,11 +158,11 @@ def compute_cable_rated_current(data: CableRatedCurrentInput) -> CableRatedCurre
     """Oblicz prad znamionowy z mocy przylaczeniowej dla ukladu 3-fazowego."""
 
     if data.active_power_kw <= 0:
-        raise ValueError("Moc czynna musi byc dodatnia.")
+        raise OdmowaDanychError("Moc czynna musi byc dodatnia.")
     if data.line_voltage_v <= 0:
-        raise ValueError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise ValueError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
 
     apparent_va = data.active_power_kw * 1000.0 / data.cos_phi
     rated_current = apparent_va / (math.sqrt(3.0) * data.line_voltage_v)
@@ -205,10 +207,10 @@ def compute_trunk_voltage_drop(
     roznych napiec nie jest spadkiem ciagu (ValueError, fail-closed).
     """
     if not segments:
-        raise ValueError("Ciąg musi zawierać co najmniej jeden odcinek.")
+        raise OdmowaDanychError("Ciąg musi zawierać co najmniej jeden odcinek.")
     napiecia = {s.line_voltage_v for s in segments}
     if len(napiecia) != 1:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Odcinki ciągu mają różne napięcia międzyfazowe — spadek ciągu wymaga jednego "
             "napięcia."
         )

@@ -22,13 +22,13 @@ rozróżniania gniazd/odbiorników na stałe — dana o obecności gniazd nie je
 nigdzie modelowana) — uproszczenie JAWNE, udokumentowane tu i w
 ``application/analyses/swz/werdykt.py``, nie milczące.
 
-STATUS: TN — używane przez moduł SWZ (fault_loop solver obsługuje wyłącznie
-TN-S/TN-C-S/TN-C, zob. ``application/analyses/fault_loop/service.py::
-układy TT/IT (`solver_input.uklad_sieci_nn.uklad_tn`)``). TT — tabela KOMPLETNA (struktura + dane niezależnie od
-użycia, zgodnie z zasadą rejestru G), ale NIE jest jeszcze czytana przez
-werdykt SWZ (pętla TT wymaga innej fizyki — RA·IΔn, nie pętli L-PE/L-PEN;
-luka G-12, P1). Odczyt tabeli TT bez solvera TT byłby fasadą — dlatego
-funkcja werdyktu w tym P0.6 świadomie NIE przyjmuje układu TT jako wejścia.
+STATUS: TN — czyta moduł SWZ (``application/analyses/swz/werdykt.py``). TT — czyta werdykt
+SWZ układu TT (``application/analyses/swz/werdykt_tt_it.py``, karta W5-E-TTIT, 2026-10-15):
+czas wymagany porównywany z czasem wyłączenia RCD przy prądzie doziemnym z pętli przez uziomy
+R_A/R_B (solver ``petla_zwarcia_tt_it`` przez ``compute_fault_loop``); stan źródła tabeli
+(REFERENCYJNY, dwa źródła wtórne) jest częścią wyjaśnienia werdyktu. Dopuszczalne napięcie
+dotykowe TT/IT NIE jest w tym module ani nigdzie w repozytorium — kryterium ma status
+BRAK_PODSTAWY do pakietu danych właściciela (żadna liczba z pamięci).
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 @dataclass(frozen=True)
@@ -158,7 +159,7 @@ def pasmo_dla_u0(u0_v: float) -> str:
     """
     tol = _TOLERANCJA_GRANICY_PASMA_V
     if u0_v <= 50.0:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"U0={u0_v} V ≤ 50 V — poza zakresem Tab. 41.1 (reżim SELV/PELV, "
             "ochrona nie opiera się na samoczynnym wyłączeniu)."
         )

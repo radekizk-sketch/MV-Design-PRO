@@ -18,10 +18,12 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
 /**
  * Fixtura sceny „pulpit" — TEN SAM plik, który harness wstrzykuje do
@@ -175,7 +177,7 @@ const POROWNANIE_WYNIK_ZAB = JSON.parse(
 ) as {
   run_a_id: string;
   run_b_id: string;
-  rows: { protected_element_ref: string; state_change: string }[];
+  rows: { protected_element_ref: string; device_id_a: string; state_change: string }[];
   ranking: { issue_code: string; element_ref: string }[];
 };
 
@@ -351,6 +353,7 @@ test.describe('flow-ekspert:screenshot', () => {
           );
           await page.waitForTimeout(200);
           const qPath = path.join(OUTPUT_DIR, `porownanie-q-${theme}.png`);
+          await bramkaTresciMatematycznej(page);
           await root.screenshot({ path: qPath });
           expect(fs.existsSync(qPath)).toBe(true);
           await page.getByTestId('mvd-por-filtr-roznice').uncheck();
@@ -372,18 +375,22 @@ test.describe('flow-ekspert:screenshot', () => {
           await page.getByTestId('mvd-porzab-przycisk').click();
           const wynikZab = page.getByTestId('mvd-porzab-wynik');
           await expect(wynikZab).toBeVisible();
-          // Element chroniony i element problemu z rankingu — NAZWY z modelu, na którym
+          // Zabezpieczenie wiersza i element problemu z rankingu — NAZWY z modelu, na którym
           // policzono biegi zabezpieczeń (migawka sceny koordynacji serwowana przez magazyn
-          // ENM, z promowanymi polami nN), nie identyfikatory grafu z odpowiedzi.
+          // ENM, z promowanymi polami nN), nie identyfikatory z odpowiedzi. Kolumna
+          // „Zabezpieczenie" nazywa URZĄDZENIE z modelu (karta BIEG-ZABEZPIECZEN-Z-MODELU:
+          // urządzenie = przypisanie zabezpieczenia `protection_assignments`), nie wyłącznik.
           await expect(wynikZab).toContainText(
-            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref),
+            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.rows[0].device_id_a),
           );
+          await expect(wynikZab).not.toContainText(POROWNANIE_WYNIK_ZAB.rows[0].device_id_a);
           await expect(wynikZab).not.toContainText(POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref);
           await page.getByTestId('mvd-porzab-tab-ranking').click();
           await expect(wynikZab).toContainText(
             nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.ranking[0].element_ref),
           );
           const zrzutZab = path.join(OUTPUT_DIR, `porownanie-zabezpieczenia-${theme}.png`);
+          await bramkaTresciMatematycznej(page);
           await root.screenshot({ path: zrzutZab });
           expect(fs.existsSync(zrzutZab)).toBe(true);
 
@@ -401,6 +408,7 @@ test.describe('flow-ekspert:screenshot', () => {
         expect(errs, `no console/page errors for ${scena}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `flow_${scena}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });

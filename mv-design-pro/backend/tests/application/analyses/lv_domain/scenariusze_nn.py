@@ -50,6 +50,7 @@ from enm.models import (
     ENMHeader,
     FuseBranch,
     Generator,
+    GroundingConfig,
     Load,
     Measurement,
     MeasurementRating,
@@ -124,7 +125,10 @@ class BudowniczyStacji:
         sn_mva: float = 0.63,
         group: str = "Dyn5",
         uk: float = 4.0,
+        r_b_ohm: float | None = None,
     ) -> str:
+        """``r_b_ohm`` — rezystancja uziomu punktu neutralnego nN uziemionego bezpośrednio
+        (R_B pętli doziemnej układu TT, karta W5-E-TTIT); ``None`` = bez opisu punktu."""
         self.transformers.append(
             Transformer(
                 ref_id=ref,
@@ -138,6 +142,13 @@ class BudowniczyStacji:
                 pk_kw=round(sn_mva * 10.3, 2),
                 vector_group=group,
                 lv_earthing_system=self.earthing,
+                lv_neutral=(
+                    GroundingConfig(type="directly_grounded", r_ohm=r_b_ohm)
+                    if r_b_ohm is not None
+                    else None
+                ),
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1).
+                lv_voltage_tolerance="PLUS_6",
                 catalog_ref=f"tr-15-04-{int(round(sn_mva * 1000))}kva-{group.lower()}",
             )
         )
@@ -309,8 +320,16 @@ class BudowniczyStacji:
         return ref
 
     def odbior(
-        self, ref: str, name: str, bus: str, p_mw: float, q_mvar: float | None = None
+        self,
+        ref: str,
+        name: str,
+        bus: str,
+        p_mw: float,
+        q_mvar: float | None = None,
+        *,
+        r_a_ohm: float | None = None,
     ) -> str:
+        """``r_a_ohm`` — rezystancja uziomu instalacji odbiorczej (R_A pętli TT, W5-E-TTIT)."""
         self.loads.append(
             Load(
                 ref_id=ref,
@@ -318,6 +337,38 @@ class BudowniczyStacji:
                 bus_ref=bus,
                 p_mw=p_mw,
                 q_mvar=q_mvar if q_mvar is not None else round(p_mw * 0.2, 6),
+                earth_electrode_r_ohm=r_a_ohm,
+            )
+        )
+        return ref
+
+    def rcd(self, ref: str, name: str, a: str, b: str, *, i_delta_n_a: float = 0.03) -> str:
+        """Wyłącznik różnicowoprądowy w torze (W5-E-TTIT): aparat ``APARAT_NN_RCD`` ze
+        zmaterializowanymi parametrami rekordu rodziny generycznej (status REFERENCYJNY) —
+        dokładnie to, co tworzy operacja ``add_nn_rcd``."""
+        idn_ma = int(round(i_delta_n_a * 1000))
+        self.branches.append(
+            SwitchBranch(
+                ref_id=ref,
+                name=name,
+                type="switch",
+                from_bus_ref=a,
+                to_bus_ref=b,
+                r_ohm=0.0,
+                x_ohm=0.0,
+                catalog_ref=f"rcd_nn_a_40a_{idn_ma}ma",
+                catalog_namespace="APARAT_NN_RCD",
+                materialized_params={
+                    "in_a": 40.0,
+                    "i_delta_n_a": i_delta_n_a,
+                    "rcd_type": "A",
+                    "selective": False,
+                    "t_a_s": 0.3,
+                    "t_a_2idn_s": 0.15,
+                    "t_a_5idn_s": 0.04,
+                    "verification_status": "REFERENCYJNY",
+                },
+                meta={"device_role": "RCD"},
             )
         )
         return ref
@@ -375,6 +426,8 @@ class BudowniczyStacji:
                 pk_kw=4.5,
                 vector_group="Dyn5",
                 lv_earthing_system=self.earthing,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1).
+                lv_voltage_tolerance="PLUS_6",
                 catalog_ref="tr-15-04-400kva-dyn5",
             )
         )
@@ -420,7 +473,14 @@ class BudowniczyStacji:
                 ct_ref=ct_ref,
                 device_type="overcurrent",
                 settings=[
-                    ProtectionSetting(function_type=f, threshold_a=400.0, time_delay_s=0.2)  # type: ignore[arg-type]
+                    # Próg 400 A przy przekładniku 1000/5 A to prąd PIERWOTNY — strona
+                    # przekładnika zadeklarowana w nastawie (PZ-09), nie domyślna.
+                    ProtectionSetting(
+                        function_type=f,  # type: ignore[arg-type]
+                        threshold_a=400.0,
+                        threshold_unit="A_PIERWOTNY",
+                        time_delay_s=0.2,
+                    )
                     for f in funkcje
                 ],
                 catalog_ref="przekaznik-nn-50-51",
@@ -990,6 +1050,34 @@ def scenariusz_18_swz_overlay() -> EnergyNetworkModel:
     return b.zbuduj()
 
 
+def scenariusz_19_swz_tt() -> EnergyNetworkModel:
+    """Układ TT (karta W5-E-TTIT): transformator z uziomem stacji R_B, odpływ QF-01 z RCD i
+    odbiorem z uziomem instalacji R_A (werdykt wyjaśnialny SWZ TT), odpływ QF-02 bez RCD
+    (odmowa nazwana `nn.brak_rcd`). Wartości R_A/R_B — dane scenariusza, nie normy."""
+    b = BudowniczyStacji("stTT", "Stacja TT", earthing="TT")
+    sn = b.szyna_sn("sn", "Szyna SN 15 kV")
+    b.zrodlo_sn("src", "GPZ", sn)
+    board = b.szyna("RGnN-1", "RGnN-1", korzen=True)
+    zacisk = b.szyna("T1_zacisk", "T1 zacisk nN")
+    b.transformator("T1", "T1", sn, zacisk, sn_mva=0.4, r_b_ohm=2.0)
+    b.wylacznik("QF-T1", "QF-T1", zacisk, board, in_a=600.0, rola="glowny")
+    # QF-01: wyłącznik → kabel → RCD → zaciski instalacji z odbiorem (R_A).
+    z1 = b.szyna("QF-01_zacisk", "QF-01 zacisk wyjściowy")
+    k1 = b.szyna("QF-01_koniec", "Zacisk Odbiór z RCD")
+    i1 = b.szyna("QF-01_instalacja", "Zaciski instalacji: Odbiór z RCD")
+    b.wylacznik("QF-01", "QF-01", board, z1, in_a=40.0)
+    b.kabel("QF-01_kabel", "Kabel QF-01", z1, k1, length_km=0.08, przekroj=35)
+    b.rcd("RCD-01", "RCD-01", k1, i1)
+    b.odbior("QF-01_odbior", "Odbiór z RCD", i1, 0.015, r_a_ohm=25.0)
+    # QF-02: odbiór z uziomem instalacji, ale bez RCD — werdykt odmawia kodem nn.brak_rcd.
+    z2 = b.szyna("QF-02_zacisk", "QF-02 zacisk wyjściowy")
+    k2 = b.szyna("QF-02_koniec", "Zacisk Odbiór bez RCD")
+    b.wylacznik("QF-02", "QF-02", board, z2, in_a=25.0)
+    b.kabel("QF-02_kabel", "Kabel QF-02", z2, k2, length_km=0.2, przekroj=16)
+    b.odbior("QF-02_odbior", "Odbiór bez RCD", k2, 0.01, r_a_ohm=30.0)
+    return b.zbuduj()
+
+
 @dataclass(frozen=True)
 class ScenariuszNn:
     slug: str
@@ -1131,6 +1219,13 @@ SCENARIUSZE: tuple[ScenariuszNn, ...] = (
         "Trzy odpływy o różnej długości kabla — werdykty SWZ mieszane.",
         "stSWZ",
         scenariusz_18_swz_overlay,
+    ),
+    ScenariuszNn(
+        "19_swz_tt",
+        "SWZ w układzie TT: werdykt wyjaśnialny",
+        "Układ TT: odpływ z RCD i uziomem instalacji (werdykt wyjaśnialny) oraz odpływ bez RCD (odmowa nazwana).",
+        "stTT",
+        scenariusz_19_swz_tt,
     ),
 )
 

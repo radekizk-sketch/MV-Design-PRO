@@ -52,6 +52,20 @@ export interface WierszZalozenia {
    * czcionką maszynową czytały się jak zrzut kodu). `etykieta` jest wtedy pomijana.
    */
   zdanie?: boolean;
+  /**
+   * Dyskretny znacznik obok etykiety (np. „wartość robocza” — zasada nr 4, V12K-351):
+   * wartość przyjęta przez system, nie zadeklarowana przez projektanta.
+   */
+  znacznik?: string;
+  /** Akcja wiersza (np. „Zmień wartość” → kreator edycji parametru); brak = brak przycisku. */
+  akcja?: AkcjaZalozenia;
+}
+
+/** Akcja wiersza założenia — etykieta, obsługa i identyfikator testowy przycisku. */
+export interface AkcjaZalozenia {
+  etykieta: string;
+  onWybierz: () => void;
+  testid: string;
 }
 
 /**

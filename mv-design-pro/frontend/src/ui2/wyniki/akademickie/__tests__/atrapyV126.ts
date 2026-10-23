@@ -110,17 +110,25 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
     }
     if (metoda === 'POST' && adres.includes('/runs/v126/')) {
       if (opcje.bladBiegu) return odpowiedz({ detail: opcje.bladBiegu }, 422);
-      return odpowiedz({
-        run_id: RUN_ID,
-        case_id: CASE_ID,
-        analysis_type: rodzajZAdresu(adres, '/runs/v126/'),
-        status: 'FINISHED',
-        result_url: '',
-        trace_url: '',
-        proof_url: '',
-        report_url: '',
-        deterministic_hash: 'hash-akad',
-      });
+      // Karta DYNAMIKA-W-TLE: zlecenie wraca z 202 i stanem QUEUED; wynik i odcisk
+      // dopiero po odpytaniu stanu biegu (`GET /api/execution/runs/{id}`) do DONE.
+      return odpowiedz(
+        {
+          run_id: RUN_ID,
+          case_id: CASE_ID,
+          analysis_type: rodzajZAdresu(adres, '/runs/v126/'),
+          status: 'QUEUED',
+          result_url: `/api/analysis-runs/${RUN_ID}/results/v126/${rodzajZAdresu(adres, '/runs/v126/')}`,
+          trace_url: '',
+          proof_url: '',
+          report_url: '',
+          deterministic_hash: null,
+        },
+        202,
+      );
+    }
+    if (metoda === 'GET' && adres.endsWith(`/api/execution/runs/${RUN_ID}`)) {
+      return odpowiedz({ id: RUN_ID, status: 'DONE', analysis_type: 'V126', error_message: null });
     }
     const rodzajWyniku = rodzajZAdresu(adres, '/results/v126/');
     if (adres.includes('/trace')) {

@@ -11,7 +11,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { audit2QueryKeys } from '../../../query-client';
-import { createRun, executeRun, getRunResults } from '../../study-cases/api';
+import { createRun, executeRunAndWait, getRunResults } from '../../study-cases/api';
 import type { RunStatus } from '../../study-cases/types';
 import {
   deleteStationAudit2Config,
@@ -278,7 +278,8 @@ export async function runExtendedPowerFlow(
       audit2_station_id: args.audit2StationId,
     },
   });
-  const executed = await executeRun(created.id);
+  // Karta DYNAMIKA-W-TLE: zlecenie (202) + odpytywanie do stanu końcowego.
+  const executed = await executeRunAndWait(created.id);
   if (executed.status !== 'DONE') {
     return {
       status: executed.status,

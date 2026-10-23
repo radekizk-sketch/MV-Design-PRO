@@ -8,6 +8,7 @@ import uuid
 from enm.assembler import _build_snapshot_graph_element_context
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.reference_networks.demo_oze_sc import build_demo_oze_sc_network
@@ -58,7 +59,7 @@ def test_demo_network_short_circuit_converges_on_every_sn_bus() -> None:
         if node_id not in ref_by_node:
             continue
         res = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph, fault_node_id=node_id, c_factor=1.10, tk_s=1.0
+            graph=graph, fault_node_id=node_id, c_factor=1.10, tk_s=1.0, czas_tb=czas_tb_roboczy()
         )
         ikss = float(res.to_dict()["ikss_a"])
         assert ikss == ikss, f"Ik'' NaN na {node_id}"  # noqa: PLR0133

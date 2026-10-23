@@ -80,6 +80,12 @@ Equipment in a field:
 
 ### EmbeddingRoleV1
 
+> **Skasowane (karta ETYKIETA-STACJI-PRZELOTOWEJ, 2026-09-30).** `EmbeddingRoleV1`, pole
+> `StationBlockDetailV1.embeddingRole` i walidator `validateStationBlock` nie miały producenta ani
+> wywołań (`stationBlockBuilder.ts` usunięty wcześniej) — były drugą, martwą klasyfikacją rodzaju
+> stacji. Rodzaj stacji ma jedną regułę: `docs/sld/SLD_TYPY_STACJI_KANONICZNE.md`. Tabela niżej
+> jest zapisem historycznym.
+
 Station's role relative to trunk segmentation:
 
 | Role | Condition | Description |
@@ -130,54 +136,16 @@ Missing voltage is never fabricated — it produces FixAction `bus.voltage_missi
 | `TopologyBranchV1.voltageHvKv` | `number \| null` | propagated from bus |
 | `TopologyBranchV1.voltageLvKv` | `number \| null` | propagated from bus |
 
-## Device Requirements
+## Device Requirements and Fix Actions — skasowane (partia integracji 10)
 
-Each `FieldRole` has canonical device requirements defined in `DEVICE_REQUIREMENT_SETS`:
-
-- `REQUIRED`: Device MUST be present (fixAction if missing)
-- `REQUIRED_IF`: Device required under specific conditions
-- `OPTIONAL`: Device may be present
-
-## Validation & Fix Actions
-
-28 stable fix codes in `FieldDeviceFixCodes` (all PL messages):
-
-### Field-level
-- `field.device_missing.cb` - CB wymagany ale nieobecny
-- `field.device_missing.ct` - CT wymagany ale nieobecny
-- `field.device_missing.relay` - Relay wymagany ale nieobecny
-- `field.device_missing.cable_head` - Glowica kablowa wymagana
-- `field.device_missing.transformer` - Transformator wymagany
-- `field.device_missing.acb` - ACB wymagany
-- `field.device_missing.generator` - Generator wymagany
-
-### Station-level
-- `station.embedding_role_undetermined` - Nie mozna wyznaczyc roli embedding
-- `station.typology_conflict` - Konflikt stationType vs topologia **(NEW in RUN #3D-FIX)**
-- `station.coupler_missing` - Stacja sekcyjna bez sprzegla
-- `station.transformer_missing_for_sn_nn` - Stacja SN/nN bez transformatora
-- `station.multiple_branches_requires_explicit_ports` - Wiele branchow wymaga jawnych portow
-
-### Catalog
-- `catalog.ref_missing` - Brak referencji katalogowej
-- `catalog.ref_incomplete` - Niekompletna referencja katalogowa
-
-### Parameter validation **(NEW in RUN #3D-FIX)**
-- `device.cb.breaking_capacity_missing` - CB bez zdolnosci wylaczania
-- `device.ct.ratio_missing` - CT bez przekladni
-- `device.relay.settings_missing` - Relay bez nastaw zabezpieczen
-- `device.transformer.rated_power_missing` - Transformator bez mocy znamionowej
-
-### Protection
-- `protection.relay_binding_missing` - Relay bez powiazania z CB
-- `protection.relay_cb_binding_missing` - Relay wskazuje CB ktory nie istnieje
-
-### Branch / Generator / Model
-- `branch.nop_state_missing` - Brak stanu NOP
-- `generator.block_transformer_missing` - OZE bez transformatora blokowego
-- `model.nn_scope_missing` - Brak zakresu nN
-
-**Zero fabrication**: Missing data generates FixAction, never fallback/default.
+Korekta stanu (pomiar 2026-10-16): `DEVICE_REQUIREMENT_SETS`, `validateFieldDevices`,
+`FieldDeviceFixCodes` i pole `StationBlockDetailV1.fixActions` nie miały ANI JEDNEGO wywołania
+produkcyjnego ani testu, a zestawy wymagań zawierały jedną rolę z pustą listą wymagań —
+deklaracja „Field device requirements enforced: PASS" była fałszywa. Kod skasowano
+w partii integracji 10. Kompletność danych aparatów i pól pilnuje gotowość obliczeń backendu
+(`backend/src/enm/validator.py` + `CalculationReadiness`), a braki topologii rysunku zgłasza
+czytnik topologii SLD (`TopologyFixAction` w `topologyInputReader.ts`, komunikaty z nazwą
+elementu z modelu, identyfikator w polu `elementRef`).
 
 ## Protection Binding (RUN #3D-FIX)
 
@@ -219,7 +187,7 @@ and their `deviceIds` are populated in the coupler field.
 | 9 | Zero string heuristics in visualGraph.ts **(fixed RUN #3D-FIX)** | PASS |
 | 10 | ENM alignment | PASS |
 | 11 | Station has members/fields | PASS |
-| 12 | Field device requirements enforced (DEVICE_REQUIREMENT_SETS + validateFieldDevices) | PASS |
+| 12 | Field device requirements — walidator skasowany w partii integracji 10 (zero wywołań, puste zestawy wymagań; patrz sekcja wyżej) | NIE DOTYCZY |
 | 13 | Device catalog ref validation (CATALOG_REF_MISSING, no fabrication) | PASS |
 | 14 | Relay binding fix actions (PROTECTION_RELAY_BINDING_MISSING) | PASS |
 | 15 | Zero fabrication in builder (no auto-defaults, no fallbackDevice) | PASS |
@@ -230,7 +198,7 @@ Guard 1 (dual layout engine) is a pre-existing failure unrelated to RUN #3D.
 
 | File | Purpose |
 |------|---------|
-| `fieldDeviceContracts.ts` | Domain contracts: FieldV1, DeviceV1, BusSectionV1, StationBlockDetailV1, validators, 28 FixCodes |
+| `fieldDeviceContracts.ts` | Domain contracts: FieldV1, DeviceV1, BusSectionV1, StationBlockDetailV1 (bez walidatora i kodów naprawy — skasowane w partii integracji 10) |
 | `stationBlockBuilder.ts` | Builder: deriveEmbeddingRole, validateEmbeddingVsDomain, buildStationBlocks, buildFieldsForStation |
 | `topologyAdapterV2.ts` | V2 pipeline: buildVisualGraphFromTopology, resolvePortId, classifyStationType |
 | `topologyAdapterV1.ts` | Public API: convertToVisualGraph (delegates to V2 pipeline) |

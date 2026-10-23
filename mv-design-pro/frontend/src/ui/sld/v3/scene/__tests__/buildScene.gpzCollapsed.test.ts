@@ -214,7 +214,15 @@ describe('KD-5 — zwinięcie NIE przemeblowuje świata (jedna kotwica) i nie ł
     const ids = new Set<string>(CONTINUITY_APPARATUS_SYMBOL_IDS);
     const aparaty = sceneL0.symbols.filter((s) => ids.has(s.symbolId));
     expect(aparaty.length).toBeGreaterThan(0);
-    expect(aparaty.every((s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'))).toBe(true);
+    // Karta SLD-SUBSTRAT (kontynuacja): poza polami GPZ na L0 stoi JEDYNIE łącznik
+    // sekcyjny NA torze (substrat: „Łącznik sekcyjny NO (rezerwa)", gałąź switch
+    // między dwoma odcinkami odgałęzienia) — element modelu, który dotąd nie miał
+    // żadnego prymitywu (`scene/elementyToru.ts`). Intencja bez zmian: aparat pola
+    // odejściowego pochodzi z GPZ; łącznik toru jest osobną klasą z własnym testId.
+    const zGpz = aparaty.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'));
+    expect(zGpz.length).toBeGreaterThan(0);
+    const reszta = aparaty.filter((s) => !(s.meta?.ownerRef ?? '').startsWith('gpz/'));
+    expect(reszta.every((s) => (s.meta?.testId ?? '').startsWith('sld-v3-lacznik-toru-'))).toBe(true);
   });
 
   it('wyrocznie L0 zielone: czytelność, widoczność i połączenie źródeł', () => {
@@ -283,6 +291,12 @@ describe('KD-5 — REGRESJA WSTRZYKNIĘTA: kontrakt GRYZIE', () => {
     };
     expect(bezWylacznika.symbols.length).toBeLessThan(sceneL0.symbols.length);
     expect(gpzCollapseGaps(bezWylacznika).some((g) => g.startsWith('aparatów ciągłości'))).toBe(true);
-    expect(lodPathContinuityGaps(bezWylacznika).some((g) => g.reason === 'brak-aparatow-ciaglosci')).toBe(true);
+    // Karta SLD-SUBSTRAT (kontynuacja): wyrocznia ciągłości LOD jest GLOBALNA (czy scena
+    // ma JAKIKOLWIEK aparat ciągłości), a substrat ma teraz narysowany łącznik sekcyjny
+    // na torze — gryzie więc dopiero scena bez ŻADNEGO aparatu ciągłości.
+    const ids = new Set<string>(CONTINUITY_APPARATUS_SYMBOL_IDS);
+    const bezAparatow: SceneV3 = { ...sceneL0, symbols: sceneL0.symbols.filter((s) => !ids.has(s.symbolId)) };
+    expect(lodPathContinuityGaps(bezWylacznika).some((g) => g.reason === 'brak-aparatow-ciaglosci')).toBe(false);
+    expect(lodPathContinuityGaps(bezAparatow).some((g) => g.reason === 'brak-aparatow-ciaglosci')).toBe(true);
   });
 });

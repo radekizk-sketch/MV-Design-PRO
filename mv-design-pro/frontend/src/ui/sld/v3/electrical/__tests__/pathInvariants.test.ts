@@ -14,9 +14,10 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { validateElectricalGraph, type InvariantCode } from '../invariants';
+import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';
+import { wlasnyZaciskPola } from '../../../../shared/zaciskPola';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
 const enmBazowy = buildStacjaBFixture();
@@ -91,15 +92,33 @@ describe('P0.12(c) — inwarianty 1-9 ZIELONE na poprawnej fixturze Stacja B', (
 });
 
 describe('viewModel.ts — szkielet SLD VIEW MODEL buduje się na Stacji B (T1 skonsumuje później)', () => {
-  it('jedna sekcja na szynę, jedna granica transformatorowa T1, odpływy przypisane do sekcji zasilającej', () => {
-    const viewModel = buildSldViewModel(graphBazowy);
+  it('jedna sekcja na szynę GŁÓWNĄ, jedna granica transformatorowa T1, odpływy przypisane do sekcji zasilającej', () => {
+    const viewModel = buildSldViewModel(graphBazowy, enmBazowy);
     // Fixtura niesie DWA transformatory (GPZ 110/15 kV TR1 z bazowej
     // `openBranch.enm.json` + T1 15/0,4 kV Stacji B) — sekcje/granice liczone
     // dla CAŁEGO modelu, nie tylko Stacji B.
-    expect(viewModel.sections).toHaveLength(graphBazowy.nodes.size);
+    // SZYNY-STACJI-LUSTRO (kanon toru pola, `enm/tor_pola.py`): zacisk pola SN i szyna za
+    // aparatem pola nN NIE są osobnymi sekcjami — należą do sekcji szyny głównej swojego pola
+    // (`szynaGlownaStacji`). Intencja testu („sekcja = szyna rozdzielnicy”) zostaje; dawne
+    // „sekcja = każdy węzeł grafu” liczyło zaciski pól jako szyny.
+    const zaciskiPol = new Set(
+      (enmBazowy.substations ?? []).flatMap((s) =>
+        ((s.meta as { field_specs?: Record<string, unknown>[] } | undefined)?.field_specs ?? [])
+          .map((spec) => wlasnyZaciskPola(spec))
+          .filter((ref): ref is string => ref !== null),
+      ),
+    );
+    expect(zaciskiPol.size).toBeGreaterThan(0);
+    const sekcjeSzyn = new Set(viewModel.sections.map((sekcja) => sekcja.busRef));
+    for (const zacisk of zaciskiPol) expect(sekcjeSzyn.has(zacisk)).toBe(false);
+    expect(viewModel.sections.length).toBeLessThan(graphBazowy.nodes.size);
     expect(viewModel.transformerBoundaries).toHaveLength(graphBazowy.transformerEdges.length);
     const t1Boundary = viewModel.transformerBoundaries.find((b) => b.transformerRef === STACJA_B_REFS.transformerRef);
     expect(t1Boundary).toBeTruthy();
+    // Strona górna T1 leży na ZACISKU pola TR (zasada toru), a granica transformatorowa stoi na
+    // sekcji szyny głównej SN tego pola.
+    const t1 = enmBazowy.transformers.find((t) => t.ref_id === STACJA_B_REFS.transformerRef)!;
+    expect(zaciskiPol.has(t1.hv_bus_ref)).toBe(true);
     expect(t1Boundary?.hvSectionId).toBe(`${STACJA_B_REFS.snBusRef}#section`);
     expect(t1Boundary?.lvSectionId).toBe(`${STACJA_B_REFS.lvTerminalBusRef}#section`);
     const qf01Assignment = viewModel.feederAssignments.find((f) => f.branchRef === STACJA_B_REFS.qf01Ref);
@@ -207,13 +226,45 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     expect(codes).toContain('EDGE_VOLTAGE_MISMATCH');
   });
 
-  it('inwariant 7 (UNRESOLVED_ACTIVE_APPARATUS): QF-01 traci namespace/device_kind rozpoznawalny, tor pozostaje ZAMKNIĘTY', () => {
+  // Karta SLD-SUBSTRAT (kontynuacja): intencja inwariantu 7 bez zmian — aparat
+  // W TORZE AKTYWNYM, którego rodzaju NIE DA SIĘ rozstrzygnąć z danych, to HARD
+  // ERROR. Kanon doprecyzowany: „nie da się rozstrzygnąć" dotyczy aparatu Z
+  // wiązaniem katalogowym (dane sprzeczne); aparat BEZ wiązania to jawny brak
+  // katalogu nazwany pozycją gotowości (E061/W061), który blokuje analizy, nie
+  // rysunek. Iloczyn: wiązanie {jest, brak} × tor {zamknięty, otwarty}.
+  it('inwariant 7 (UNRESOLVED_ACTIVE_APPARATUS): QF-01 Z wiązaniem katalogowym traci namespace/device_kind rozpoznawalny, tor pozostaje ZAMKNIĘTY', () => {
     const enm = mutate((m) => {
       const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
       (branch as { catalog_namespace: string | null }).catalog_namespace = null;
       (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
     });
     expect(violationCodes(enm)).toContain('UNRESOLVED_ACTIVE_APPARATUS');
+  });
+
+  it('inwariant 7 — aparat BEZ wiązania katalogowego w torze ZAMKNIĘTYM: brak katalogu (pozycja gotowości), NIE naruszenie grafu', () => {
+    const enm = mutate((m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = null;
+      (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+      (branch as { materialized_params: Record<string, unknown> | null }).materialized_params = null;
+    });
+    const graph = buildTerminalGraph(enm);
+    const edge = graph.edges.find((e) => e.ref === STACJA_B_REFS.qf01Ref)!;
+    expect(resolveNnApparatusKind(edge)).toBe('CATALOG_MISSING');
+    expect(validateElectricalGraph(graph).violations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(false);
+  });
+
+  it('inwariant 7 — aparat Z wiązaniem nierozpoznawalnym w torze OTWARTYM nie jest HARD ERROR', () => {
+    const enm = mutate((m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
+      (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+      (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
+      (branch as { status: string }).status = 'open';
+    });
+    const result = validateElectricalGraph(buildTerminalGraph(enm));
+    expect(result.violations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(false);
   });
 
   it('inwariant 7 — kontrola negatywna: TEN SAM aparat nierozpoznany, ale tor OTWARTY, nie jest HARD ERROR (plan: „nigdy element w AKTYWNYM torze")', () => {
@@ -240,4 +291,85 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     });
     expect(violationCodes(enm)).toContain('MV_FIELD_ON_LV_BUS');
   });
+});
+
+/**
+ * Partia integracji 10 — treść naruszenia nazywa elementy nazwą z modelu, identyfikator
+ * zostaje w polu `elementRefs`. Iloczyn: mutacja wywołująca każdy z dziewięciu kodów
+ * inwariantu × nazwy elementów {jak w fixturze, wszystkie wyczyszczone}. Dla każdej
+ * kombinacji: kod występuje, a ŻADNA treść naruszenia nie zawiera identyfikatora żadnego
+ * elementu modelu (pełny zbiór `ref_id`, nie tylko `elementRefs` naruszenia).
+ */
+describe('treść naruszeń inwariantów — nazwy z modelu, nigdy identyfikatory', () => {
+  const przepnij = (ref: string, koniec: 'from_bus_ref' | 'to_bus_ref', szyna: string) => (m: EnergyNetworkModel) => {
+    (branchByRef(m, ref)[koniec] as unknown) = szyna;
+  };
+  const trafo = (pole: 'lv_bus_ref' | 'ulv_kv', wartosc: unknown) => (m: EnergyNetworkModel) => {
+    const t1 = (m.transformers as unknown as Record<string, unknown>[]).find((t) => t.ref_id === STACJA_B_REFS.transformerRef)!;
+    t1[pole] = wartosc;
+  };
+  const MUTACJE: ReadonlyArray<readonly [InvariantCode, (m: EnergyNetworkModel) => void]> = [
+    ['EDGE_VOLTAGE_MISMATCH', przepnij(STACJA_B_REFS.cableQf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['TRANSFORMER_NOT_CROSSING_DOMAIN', trafo('lv_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 0.23)],
+    ['DEVICE_TERMINAL_UNRESOLVED', (m) => {
+      (m.branches as unknown as Record<string, unknown>[]).push({
+        id: 'galaz-osierocona', ref_id: 'galaz-osierocona', name: 'Gałąź osierocona', tags: [], meta: {}, type: 'cable',
+        from_bus_ref: STACJA_B_REFS.rgnn1BusRef, to_bus_ref: 'szyna-nieistniejaca', status: 'closed',
+        length_km: 0.01, r_ohm_per_km: 0.3, x_ohm_per_km: 0.08,
+      });
+    }],
+    ['DANGLING_ENERGIZED_TERMINAL', (m) => {
+      (m.buses as unknown as Record<string, unknown>[]).push({
+        id: 'szyna-wyspa', ref_id: 'szyna-wyspa', name: 'Szyna wyspa', tags: [], meta: {}, voltage_kv: 0.4, phase_system: '3ph',
+      });
+      (m.loads as unknown as Record<string, unknown>[]).push({
+        id: 'odbior-wyspa', ref_id: 'odbior-wyspa', name: 'Odbiór wyspa', tags: [], meta: {}, bus_ref: 'szyna-wyspa',
+        p_mw: 0.005, q_mvar: 0.001, model: 'pq',
+      });
+    }],
+    ['CROSS_VOLTAGE_CONDUCTOR', przepnij(STACJA_B_REFS.qfTr1Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['UNRESOLVED_ACTIVE_APPARATUS', (m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      branch.catalog_ref = 'pozycja-nierozpoznana';
+      branch.catalog_namespace = null;
+      branch.materialized_params = {};
+    }],
+    ['LV_FEEDER_ON_MV_BUS', przepnij(STACJA_B_REFS.qf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['MV_FIELD_ON_LV_BUS', przepnij(STACJA_B_REFS.snFieldBreakerTrRef, 'to_bus_ref', STACJA_B_REFS.odbior1BusRef)],
+  ];
+  const KOLEKCJE = ['buses', 'branches', 'transformers', 'loads', 'generators', 'sources', 'substations', 'bays'] as const;
+
+  function wszystkieRefy(enm: EnergyNetworkModel): string[] {
+    const refy: string[] = [];
+    for (const k of KOLEKCJE) {
+      for (const e of ((enm as unknown as Record<string, unknown>)[k] as Record<string, unknown>[] | undefined) ?? []) {
+        if (typeof e.ref_id === 'string') refy.push(e.ref_id);
+      }
+    }
+    return refy;
+  }
+
+  for (const [kod, mutator] of MUTACJE) {
+    for (const nazwy of ['z_fixtury', 'wyczyszczone'] as const) {
+      it(`${kod} × nazwy ${nazwy}`, () => {
+        const enm = mutate((m) => {
+          mutator(m);
+          if (nazwy === 'wyczyszczone') {
+            for (const k of KOLEKCJE) {
+              for (const e of ((m as unknown as Record<string, unknown>)[k] as Record<string, unknown>[] | undefined) ?? []) e.name = '';
+            }
+          }
+        });
+        const wynik = validateElectricalGraph(buildTerminalGraph(enm));
+        expect(wynik.violations.map((v) => v.code)).toContain(kod);
+        const refy = wszystkieRefy(enm).concat('szyna-nieistniejaca');
+        for (const naruszenie of wynik.violations) {
+          for (const ref of refy) expect(naruszenie.messagePl, `${naruszenie.code}: ${ref}`).not.toContain(ref);
+          expect(naruszenie.elementRefs.length).toBeGreaterThan(0);
+          if (nazwy === 'wyczyszczone') expect(naruszenie.messagePl).not.toMatch(/„\s*”/);
+        }
+      });
+    }
+  }
 });

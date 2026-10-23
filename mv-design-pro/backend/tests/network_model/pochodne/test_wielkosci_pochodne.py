@@ -114,7 +114,8 @@ def test_napiecie_fazowe_v_ze_skalowaniem_kv_do_v_tozsamosc(u_ll_kv: float) -> N
 @pytest.mark.parametrize("c", [0.95, 1.0, 1.05, 1.1])
 @pytest.mark.parametrize("u_lv_kv", NAPIECIA_BRZEGOWE_KV)
 def test_napiecie_fazowe_v_z_c_factor_tozsamosc(u_lv_kv: float, c: float) -> None:
-    """network_model/core/branch.py::get_ikss_lv_ka — ``c*(voltage_lv_kv*1e3)/sqrt(3)``."""
+    """Napięcie źródła zastępczego ``c·U_n/√3`` (dawne ``branch.py::get_ikss_lv_ka``, skasowane
+    kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK jako tor bez konsumenta) — tożsamość algebry pochodnej."""
     oczekiwane = c * (u_lv_kv * 1e3) / math.sqrt(3)
     assert wp.napiecie_fazowe_v(c * (u_lv_kv * 1e3)) == oczekiwane
 
@@ -212,7 +213,7 @@ def test_wspolczynnik_kappa_graniczne_wartosci() -> None:
 @pytest.mark.parametrize("i", PRADY_BRZEGOWE_A)
 def test_calka_joule_ka2s_tozsamosc(i: float, t: float) -> None:
     """equipment_proof/generator.py (×4), proof_generator.py (×3),
-    enm/canonical_analysis.py::_sc_pelny_bilans, domain/sc_comparison.py."""
+    enm/canonical_analysis.py::_sc_pelny_bilans."""
     oczekiwane = i**2 * t
     assert wp.calka_joule_ka2s(i, t) == oczekiwane
 
@@ -382,3 +383,68 @@ def test_prad_z_mocy_pozornej_ka_przyklad_podrecznikowy() -> None:
 def test_impedancja_z_napiecia_i_mocy_ohm_przyklad_podrecznikowy() -> None:
     # Zbase = 15^2/100 = 2.25 ohm (baza 100 MVA typowa dla Y-bus solvera).
     assert wp.impedancja_z_napiecia_i_mocy_ohm(15.0, 100.0) == 2.25
+
+
+# ---------------------------------------------------------------------------
+# Karta C4 — trafienia poszerzonej rodziny G przeniesione z konsumentów
+# ---------------------------------------------------------------------------
+
+REAKTANCJE_PU_BRZEGOWE = [1e-6, 0.12, 0.35, 10.0]
+IMPEDANCJE_OHM_BRZEGOWE = [0.0, 1e-6, 0.012, 0.125, 1.7, 25.0, 1.0e4]
+MOCE_ODCINKA_BRZEGOWE = [-5.0, 0.0, 1e-6, 0.05, 0.4, 2.0, 12.5, 1.0e4]
+ZMIANY_NAPIECIA_PROCENT = [-10.0, -5.0, -1.0, 1.0, 5.0, 10.0]
+
+
+@pytest.mark.parametrize("s", _moce())
+@pytest.mark.parametrize("u", _napiecia())
+@pytest.mark.parametrize("x_pu", REAKTANCJE_PU_BRZEGOWE)
+def test_reaktancja_z_jednostek_wzglednych_ohm_tozsamosc(x_pu: float, u: float, s: float) -> None:
+    """network_model/core/machine.py::SynchronousMachineSource.x_subtransient_ohm."""
+    assert wp.reaktancja_z_jednostek_wzglednych_ohm(x_pu, u, s) == x_pu * (u**2) / s
+
+
+@pytest.mark.parametrize("u", _napiecia())
+@pytest.mark.parametrize("moc", MOCE_ODCINKA_BRZEGOWE)
+@pytest.mark.parametrize("z", IMPEDANCJE_OHM_BRZEGOWE)
+def test_skladowa_spadku_napiecia_procent_tozsamosc(z: float, moc: float, u: float) -> None:
+    """application/proof_engine/proof_generator.py — ΔU_R = R·P/U²·100, ΔU_X = X·Q/U²·100."""
+    assert wp.skladowa_spadku_napiecia_procent(z, moc, u) == (z * moc) / (u**2) * 100
+
+
+@pytest.mark.parametrize("u", _napiecia())
+@pytest.mark.parametrize("zmiana", ZMIANY_NAPIECIA_PROCENT)
+@pytest.mark.parametrize("spadek", [-3.0, 0.0, 0.01, 2.5, 7.9, 100.0])
+def test_spadek_procentowy_przy_innym_napieciu_tozsamosc(
+    spadek: float, zmiana: float, u: float
+) -> None:
+    """analysis/lf_sensitivity/builder.py::_drivers_for_u_nom (u' = u·(1 ± δ))."""
+    u_nowe = u * (1.0 + zmiana / 100.0)
+    assert wp.spadek_procentowy_przy_innym_napieciu(spadek, u, u_nowe) == (
+        spadek * (u**2) / (u_nowe**2)
+    )
+
+
+@pytest.mark.parametrize("u", _napiecia())
+@pytest.mark.parametrize("q", [0.0, 1e-6, 0.05, 0.123456789, 0.6, 1.2, 7.77, 1.0e3])
+def test_susceptancja_i_moc_bierna_para(q: float, u: float) -> None:
+    """Eksport/import CGMES baterii: B = Q/U², Q = B·U² (para, powrót z dokładnością IEEE)."""
+    b = wp.susceptancja_z_mocy_biernej_s(q, u)
+    assert b == q / (u**2)
+    assert wp.moc_bierna_z_susceptancji_mvar(b, u) == pytest.approx(q, rel=1e-15, abs=0.0)
+
+
+def test_susceptancja_z_mocy_biernej_s_poprawnie_zaokraglona_czesciej_niz_postac_odwrotna() -> None:
+    """Pomiar wyboru postaci (karta C4): Q/U² vs 1/(U²/Q) wobec wartości dokładnej."""
+    from fractions import Fraction
+
+    siatka = [
+        (q, u)
+        for q in (0.0001, 0.05, 0.1, 0.123456789, 0.3, 0.6, 1.2, 2.4, 5.0, 7.77, 12.5)
+        for u in (0.23, 0.4, 0.69, 6.0, 10.0, 15.0, 20.0, 30.0, 110.0)
+    ]
+    zle_bezposrednia = sum(
+        wp.susceptancja_z_mocy_biernej_s(q, u) != float(Fraction(q) / Fraction(u) ** 2)
+        for q, u in siatka
+    )
+    zle_odwrotna = sum(1.0 / (u**2 / q) != float(Fraction(q) / Fraction(u) ** 2) for q, u in siatka)
+    assert (zle_bezposrednia, zle_odwrotna) == (13, 28)

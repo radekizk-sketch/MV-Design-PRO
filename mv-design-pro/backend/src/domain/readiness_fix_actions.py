@@ -395,6 +395,7 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         "sources.no_short_circuit_params",
         "E009",
         "E010",
+        "E011",
         # Generator validation
         "catalog.ref_missing",
         "generator.connection_variant_missing",
@@ -469,6 +470,7 @@ def check_blocker_fix_action_coverage() -> list[str]:
                 "sources.no_short_circuit_params",
                 "E009",
                 "E010",
+                "E011",
             }
             eligibility_codes = {
                 "ELIG_SC3_MISSING_SOURCE",

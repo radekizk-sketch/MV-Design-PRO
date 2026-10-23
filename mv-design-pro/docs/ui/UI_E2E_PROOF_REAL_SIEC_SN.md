@@ -173,6 +173,10 @@ Pokrycie:
 - Brak wynikow — komunikat informacyjny
 - Rozne typy elementow (Bus, Branch, Transformer, Source)
 - Formatowanie wartosci numerycznych (precyzja, jednostki)
+
+> Korekta 2026-10-22 (karta LINIA-110): `cardAnalysisResults.test.ts` skasowany — testował
+> wyłącznie lokalne kopie funkcji, nie kod kart; `LineSegmentCard.tsx` skasowana (zero
+> konsumentów produkcyjnych). Opis wyżej jest stanem z 2026-03-28, nie bieżącym dowodem.
 - Obsluga blednych/niekompletnych danych
 
 ### 4.3. workflowIntegration.test.ts

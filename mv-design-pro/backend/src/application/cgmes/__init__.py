@@ -7,6 +7,11 @@ solvers nor analysis.
 
 from __future__ import annotations
 
+from .kompletnosc import (
+    BrakKompletnosciCgmes,
+    ModelNiekompletnyDlaCgmesError,
+    braki_kompletnosci_cgmes,
+)
 from .service import (
     CGMES_FORMAT_ID,
     build_refmap,
@@ -16,6 +21,9 @@ from .service import (
 )
 
 __all__ = [
+    "BrakKompletnosciCgmes",
+    "ModelNiekompletnyDlaCgmesError",
+    "braki_kompletnosci_cgmes",
     "CGMES_FORMAT_ID",
     "build_refmap",
     "export_cgmes",

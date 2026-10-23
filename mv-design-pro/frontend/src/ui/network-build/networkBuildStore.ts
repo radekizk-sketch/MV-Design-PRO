@@ -7,6 +7,7 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
+import { rodzajStacji, type RodzajStacji } from '../shared/rodzajStacji';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -52,6 +53,12 @@ import {
   validateSurfaceStack,
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
+import { stacjaSzyn } from '../shared/szynyStacji';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+  stationRefOfTransformer,
+} from '../shared/transformatoryStacji';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -112,6 +119,7 @@ function mapOperationToEntityTypeCode(op: NetworkBuildOperationName): EntityType
     case 'continue_trunk_segment_sn':
       return 'segment';
     case 'insert_station_on_segment_sn':
+    case 'append_station_on_endpoint':
     case 'add_transformer_sn_nn':
       return 'station';
     case 'insert_branch_pole_on_segment_sn':
@@ -640,7 +648,9 @@ export interface RingCandidate {
 export interface StationSummary {
   id: string;
   name: string;
-  stationType: string;
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`); `null` — rodzaj
+   *  nie dotyczy (rozdzielnica nN). */
+  rodzaj: RodzajStacji | null;
   trunkRef: string | null;
   hasTransformer: boolean;
   hasNnPart: boolean;
@@ -995,6 +1005,8 @@ export function selectStationSummaries(
   blockerCountsByElement: Map<string, number> | null,
 ): StationSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.substations ?? [])
     .filter((s) => String(s.station_type ?? '').toLowerCase() !== 'gpz')
@@ -1003,7 +1015,7 @@ export function selectStationSummaries(
       const branchBays = stationBays.filter(
         (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER' || b.bay_role === 'OZE',
       );
-      const hasTransformer = s.transformer_refs.length > 0;
+      const hasTransformer = selectStationDistributionTransformers(snapshot, s, kontekstTransformatorow).length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
         (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
@@ -1013,7 +1025,7 @@ export function selectStationSummaries(
       return {
         id: s.id,
         name: identity.displayName,
-        stationType: s.station_type,
+        rodzaj: rodzajStacji(snapshot, s.ref_id)?.rodzaj ?? null,
         trunkRef: null,
         hasTransformer,
         hasNnPart: nnBuses.length > 0,
@@ -1027,12 +1039,14 @@ export function selectTransformerSummaries(
   snapshot: EnergyNetworkModel | null,
 ): TransformerSummary[] {
   if (!snapshot) return [];
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po transformatorach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
 
   return (snapshot.transformers ?? [])
     .map((t) => {
-      const station = (snapshot.substations ?? []).find((s) =>
-        s.transformer_refs.includes(t.ref_id),
-      );
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      const stationRef = stationRefOfTransformer(snapshot, t.ref_id, kontekstTransformatorow);
+      const station = (snapshot.substations ?? []).find((s) => s.ref_id === stationRef);
 
       return {
         id: t.ref_id,
@@ -1052,11 +1066,15 @@ export function selectLoadSummaries(
 ): LoadSummary[] {
   if (!snapshot) return [];
 
+  // SZYNY-STACJI-LUSTRO: stacja odbioru = stacja jego szyny z jednego lustra `szynyStacji`
+  // (odbiór stoi zwykle na szynie odpływu nN za aparatem pola, spoza `bus_refs`).
+  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
   return (snapshot.loads ?? [])
     .map((load) => {
-      const station = (snapshot.substations ?? []).find((candidate) =>
-        candidate.bus_refs.includes(load.bus_ref),
-      );
+      const stationRef = stacjaSzyny.get(load.bus_ref);
+      const station = stationRef
+        ? (snapshot.substations ?? []).find((candidate) => candidate.ref_id === stationRef)
+        : undefined;
 
       return {
         id: load.ref_id,

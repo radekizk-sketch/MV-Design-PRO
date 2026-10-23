@@ -14,7 +14,7 @@
  * Ten plik nic nie liczy — zbiera pola formularza i pokazuje odpowiedzi.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import './scenariusze.css';
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -27,10 +27,43 @@ import {
   type FaultTypeValue,
   type LocationType,
 } from '../../../../ui/fault-scenarios/types';
+import { SekcjaWspolczynnikaC } from '../../../../ui/fault-scenarios/SekcjaWspolczynnikaC';
+import {
+  czasWylaczeniaZPola,
+  DOMYSLNE_POLA_C,
+  konfiguracjaZwarciaZPol,
+  opisCScenariusza,
+  opisCzasuWylaczenia,
+  poleCzasuWylaczenia,
+  type PolaWspolczynnikaC,
+} from '../../../../ui/fault-scenarios/wspolczynnikC';
+import type { FaultScenario, ShortCircuitConfig } from '../../../../ui/fault-scenarios/types';
 import { SCENARIUSZE_STRINGS as T } from './strings';
+import { uruchomScenariuszZwarciowy } from '../uruchomObliczenie';
+import { useZadanieCzasuTb } from './zadanieCzasuTb';
 
-/** Domyślne wartości konfiguracji zwarcia — 1:1 z kontraktem `ShortCircuitConfig`. */
-const DOMYSLNY_C = 1.1;
+/**
+ * Konfiguracja scenariusza z nowym t_b (karta TB-WARTOSC-ROBOCZA) — pozostałe pola bez
+ * zmian; `null` usuwa klucz (t_b znów rozstrzygany w punkcie zwarcia). Bez fizyki.
+ */
+function konfiguracjaZCzasemTb(config: ShortCircuitConfig, tb: number | null): ShortCircuitConfig {
+  const reszta: ShortCircuitConfig = { ...config };
+  delete reszta.breaking_time_seconds;
+  return tb === null ? reszta : { ...reszta, breaking_time_seconds: tb };
+}
+
+/** Edycja t_b jednego scenariusza w wierszu listy (tekst pola, jak w formularzu). */
+interface EdycjaCzasuTb {
+  scenarioId: string;
+  tekst: string;
+}
+
+/**
+ * Domyślny czas zwarcia t_k [s] — ta sama wartość, którą przyjmuje backend
+ * (`ShortCircuitConfigRequest.thermal_time_seconds`). Współczynnika c NIE ma tu jako
+ * liczby: scenariusz MAX/MIN wybiera kolumnę tabeli 1 IEC 60909-0, c dobiera backend
+ * per węzeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+ */
 const DOMYSLNY_CZAS_S = 1;
 
 interface FormularzScenariusza {
@@ -42,8 +75,10 @@ interface FormularzScenariusza {
   tryb: FaultModeValue;
   rOhm: string;
   xOhm: string;
-  wspolczynnikC: string;
+  c: PolaWspolczynnikaC;
   czasCieplnyS: string;
+  /** Karta SC-IB-ITH-ZRODLA: t_b [s] jako tekst pola; puste = brak danej. */
+  czasWylaczeniaS: string;
   wklady: boolean;
 }
 
@@ -56,8 +91,9 @@ const PUSTY_FORMULARZ: FormularzScenariusza = {
   tryb: 'METALLIC',
   rOhm: '0',
   xOhm: '0',
-  wspolczynnikC: String(DOMYSLNY_C),
+  c: DOMYSLNE_POLA_C,
   czasCieplnyS: String(DOMYSLNY_CZAS_S),
+  czasWylaczeniaS: '',
   wklady: true,
 };
 
@@ -69,22 +105,87 @@ export function PanelScenariuszy() {
   const setStudyCaseId = useFaultScenariosStore((s) => s.setStudyCaseId);
   const createScenario = useFaultScenariosStore((s) => s.createScenario);
   const deleteScenario = useFaultScenariosStore((s) => s.deleteScenario);
-  const createRun = useFaultScenariosStore((s) => s.createRun);
+  const updateScenario = useFaultScenariosStore((s) => s.updateScenario);
+  const przypadekListy = useFaultScenariosStore((s) => s.studyCaseId);
+  const zadanieTb = useZadanieCzasuTb((s) => s.zadanie);
+  const odbierzZadanieTb = useZadanieCzasuTb((s) => s.odbierz);
 
   const [formularzOtwarty, setFormularzOtwarty] = useState(false);
   const [formularz, setFormularz] = useState<FormularzScenariusza>(PUSTY_FORMULARZ);
   const [bladFormularza, setBladFormularza] = useState<string | null>(null);
   const [doUsuniecia, setDoUsuniecia] = useState<string | null>(null);
   const [komunikat, setKomunikat] = useState<string | null>(null);
+  const [wToku, setWToku] = useState<string | null>(null);
+  const [edycjaTb, setEdycjaTb] = useState<EdycjaCzasuTb | null>(null);
+  const [bladTb, setBladTb] = useState<string | null>(null);
+  const [fokusTbNowego, setFokusTbNowego] = useState(false);
+  const poleTbNowegoRef = useRef<HTMLInputElement | null>(null);
+  const sekcjaRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setStudyCaseId(activeCaseId ?? null);
   }, [activeCaseId, setStudyCaseId]);
 
+  // Karta TB-WARTOSC-ROBOCZA: żądanie „Zmień wartość" t_b z ekranu wyników zwarć. Scenariusz
+  // biegu → edycja t_b w jego wierszu (dopiero po wczytaniu listy TEGO przypadku); bieg bez
+  // scenariusza albo scenariusz już usunięty → formularz nowego scenariusza z kursorem w t_b.
+  useEffect(() => {
+    if (zadanieTb === null || !activeCaseId) return;
+    if (zadanieTb.scenarioId !== null && (przypadekListy !== activeCaseId || isLoading)) return;
+    odbierzZadanieTb();
+    sekcjaRef.current?.scrollIntoView?.({ block: 'start' });
+    const scenariusz =
+      zadanieTb.scenarioId === null
+        ? undefined
+        : scenarios.find((s) => s.scenario_id === zadanieTb.scenarioId);
+    setBladTb(null);
+    if (scenariusz) {
+      setEdycjaTb({ scenarioId: scenariusz.scenario_id, tekst: poleCzasuWylaczenia(scenariusz.config) });
+      return;
+    }
+    if (zadanieTb.scenarioId !== null) setKomunikat(T.zmianaTbScenariuszaBrak);
+    setFormularzOtwarty(true);
+    setFokusTbNowego(true);
+  }, [zadanieTb, activeCaseId, przypadekListy, isLoading, scenarios, odbierzZadanieTb]);
+
+  useEffect(() => {
+    if (!fokusTbNowego || !formularzOtwarty) return;
+    poleTbNowegoRef.current?.focus();
+    setFokusTbNowego(false);
+  }, [fokusTbNowego, formularzOtwarty]);
+
+  const zapiszCzasTb = async (scenariusz: FaultScenario, tekst: string) => {
+    const tb = czasWylaczeniaZPola(tekst);
+    if (!tb.ok) {
+      setBladTb(tb.blad);
+      return;
+    }
+    setBladTb(null);
+    try {
+      await updateScenario(scenariusz.scenario_id, {
+        config: konfiguracjaZCzasemTb(scenariusz.config, tb.wartosc),
+      });
+      setEdycjaTb(null);
+      setKomunikat(`${T.zmianaTbZapisano}: ${scenariusz.name}`);
+    } catch {
+      /* komunikat błędu żyje w store (pokazany niżej) */
+    }
+  };
+
   const zapisz = async () => {
     if (!activeCaseId) return;
     if (!formularz.nazwa.trim() || !formularz.elementRef.trim()) {
       setBladFormularza(T.bladFormularza);
+      return;
+    }
+    const konfiguracja = konfiguracjaZwarciaZPol(
+      formularz.c,
+      Number(formularz.czasCieplnyS),
+      formularz.wklady,
+      formularz.czasWylaczeniaS,
+    );
+    if (!konfiguracja.ok) {
+      setBladFormularza(konfiguracja.blad);
       return;
     }
     setBladFormularza(null);
@@ -98,14 +199,10 @@ export function PanelScenariuszy() {
           location_type: formularz.rodzajMiejsca,
           position: Number.isFinite(pozycja as number) ? pozycja : null,
         },
-        config: {
-          c_factor: Number(formularz.wspolczynnikC),
-          thermal_time_seconds: Number(formularz.czasCieplnyS),
-          include_branch_contributions: formularz.wklady,
-        },
+        config: konfiguracja.config,
         fault_mode: formularz.tryb,
         ...(formularz.tryb === 'IMPEDANCE'
-          ? { fault_impedance: { r_ohm: Number(formularz.rOhm), x_ohm: Number(formularz.xOhm) } }
+          ? { fault_impedance: { r_f_ohm: Number(formularz.rOhm), x_f_ohm: Number(formularz.xOhm) } }
           : {}),
       });
       setFormularz(PUSTY_FORMULARZ);
@@ -115,18 +212,24 @@ export function PanelScenariuszy() {
     }
   };
 
+  // Karta OD-14 (partia integracji 10): „Uruchom" WYKONUJE bieg ze scenariusza (utworzenie
+  // → wykonanie → stan końcowy → związanie z powłoką), wspólnym końcem z biegiem przypadku.
+  // Dawniej tworzył tylko bieg PENDING, którego nikt nie wykonywał — komunikat „uruchomiono"
+  // kłamał, a tryb IMPEDANCE nie miał drogi do ekranu wyników.
   const uruchom = async (scenarioId: string, nazwa: string) => {
     setKomunikat(null);
+    setWToku(scenarioId);
     try {
-      await createRun(scenarioId);
-      setKomunikat(`${T.uruchomiono}: ${nazwa}`);
-    } catch {
-      /* komunikat błędu żyje w store */
+      if (await uruchomScenariuszZwarciowy(scenarioId)) {
+        setKomunikat(`${T.uruchomiono}: ${nazwa}`);
+      }
+    } finally {
+      setWToku(null);
     }
   };
 
   return (
-    <section className="mvd-scen" data-testid="mvd-scenariusze">
+    <section className="mvd-scen" data-testid="mvd-scenariusze" ref={sekcjaRef}>
       <header className="mvd-scen-glowa">
         <div>
           <h3 className="mvd-scen-tytul">{T.tytul}</h3>
@@ -244,6 +347,7 @@ export function PanelScenariuszy() {
                 <input
                   type="number"
                   step="0.001"
+                  min="0"
                   data-testid="mvd-scenariusze-r"
                   value={formularz.rOhm}
                   onChange={(e) => setFormularz({ ...formularz, rOhm: e.target.value })}
@@ -254,6 +358,7 @@ export function PanelScenariuszy() {
                 <input
                   type="number"
                   step="0.001"
+                  min="0"
                   data-testid="mvd-scenariusze-x"
                   value={formularz.xOhm}
                   onChange={(e) => setFormularz({ ...formularz, xOhm: e.target.value })}
@@ -261,16 +366,12 @@ export function PanelScenariuszy() {
               </label>
             </>
           )}
-          <label className="mvd-scen-pole">
-            <span>{T.polaWspolczynnikC}</span>
-            <input
-              type="number"
-              step="0.01"
-              data-testid="mvd-scenariusze-c"
-              value={formularz.wspolczynnikC}
-              onChange={(e) => setFormularz({ ...formularz, wspolczynnikC: e.target.value })}
-            />
-          </label>
+          <SekcjaWspolczynnikaC
+            pola={formularz.c}
+            onZmiana={(c) => setFormularz({ ...formularz, c })}
+            testIdPrefix="mvd-scenariusze"
+            klasaPola="mvd-scen-pole"
+          />
           <label className="mvd-scen-pole">
             <span>{T.polaCzasCieplny}</span>
             <input
@@ -279,6 +380,18 @@ export function PanelScenariuszy() {
               data-testid="mvd-scenariusze-czas"
               value={formularz.czasCieplnyS}
               onChange={(e) => setFormularz({ ...formularz, czasCieplnyS: e.target.value })}
+            />
+          </label>
+          <label className="mvd-scen-pole">
+            <span>{T.polaCzasWylaczenia}</span>
+            <input
+              type="number"
+              step="0.01"
+              data-testid="mvd-scenariusze-czas-tb"
+              ref={poleTbNowegoRef}
+              value={formularz.czasWylaczeniaS}
+              title={T.polaCzasWylaczeniaPodpowiedz}
+              onChange={(e) => setFormularz({ ...formularz, czasWylaczeniaS: e.target.value })}
             />
           </label>
           <label className="mvd-scen-pole mvd-scen-pole--chk">
@@ -333,6 +446,8 @@ export function PanelScenariuszy() {
               <th scope="col">{T.kolNazwa}</th>
               <th scope="col">{T.kolRodzaj}</th>
               <th scope="col">{T.kolMiejsce}</th>
+              <th scope="col">{T.kolWspolczynnikC}</th>
+              <th scope="col">{T.kolCzasWylaczenia}</th>
               <th scope="col">{T.kolAkcje}</th>
             </tr>
           </thead>
@@ -344,14 +459,80 @@ export function PanelScenariuszy() {
                 <td className="mvd-num">
                   {`${LOCATION_TYPE_LABELS[s.location.location_type] ?? s.location.location_type}: ${s.location.element_ref}`}
                 </td>
+                <td data-testid={`mvd-scenariusze-c-${s.scenario_id}`}>{opisCScenariusza(s.config)}</td>
+                <td data-testid={`mvd-scenariusze-tb-${s.scenario_id}`}>
+                  {edycjaTb?.scenarioId === s.scenario_id ? (
+                    <form
+                      className="mvd-scen-tb-edycja"
+                      data-testid={`mvd-scenariusze-tb-edycja-${s.scenario_id}`}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void zapiszCzasTb(s, edycjaTb.tekst);
+                      }}
+                    >
+                      <label className="mvd-scen-pole">
+                        <span>{T.polaCzasWylaczenia}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          autoFocus
+                          data-testid={`mvd-scenariusze-tb-pole-${s.scenario_id}`}
+                          value={edycjaTb.tekst}
+                          title={T.polaCzasWylaczeniaPodpowiedz}
+                          onChange={(e) => setEdycjaTb({ scenarioId: s.scenario_id, tekst: e.target.value })}
+                        />
+                      </label>
+                      {bladTb && (
+                        <p className="mvd-scen-blad" data-testid={`mvd-scenariusze-tb-blad-${s.scenario_id}`}>
+                          {bladTb}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        className="mvd-scen-akcja"
+                        data-testid={`mvd-scenariusze-tb-zapisz-${s.scenario_id}`}
+                      >
+                        {T.zmianaTbZapisz}
+                      </button>
+                      <button
+                        type="button"
+                        className="mvd-scen-akcja mvd-scen-akcja--wtorna"
+                        data-testid={`mvd-scenariusze-tb-anuluj-${s.scenario_id}`}
+                        onClick={() => {
+                          setEdycjaTb(null);
+                          setBladTb(null);
+                        }}
+                      >
+                        {T.anuluj}
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      {opisCzasuWylaczenia(s.config)}{' '}
+                      <button
+                        type="button"
+                        className="mvd-scen-akcja mvd-scen-akcja--wtorna"
+                        data-testid={`mvd-scenariusze-tb-zmien-${s.scenario_id}`}
+                        onClick={() => {
+                          setBladTb(null);
+                          setEdycjaTb({ scenarioId: s.scenario_id, tekst: poleCzasuWylaczenia(s.config) });
+                        }}
+                      >
+                        {T.zmianaTb}
+                      </button>
+                    </>
+                  )}
+                </td>
                 <td className="mvd-scen-akcje-kom">
                   <button
                     type="button"
                     className="mvd-scen-akcja"
                     data-testid={`mvd-scenariusze-uruchom-${s.scenario_id}`}
+                    disabled={wToku !== null}
+                    aria-busy={wToku === s.scenario_id}
                     onClick={() => void uruchom(s.scenario_id, s.name)}
                   >
-                    {T.uruchom}
+                    {wToku === s.scenario_id ? T.uruchomWToku : T.uruchom}
                   </button>
                   {doUsuniecia === s.scenario_id ? (
                     <button

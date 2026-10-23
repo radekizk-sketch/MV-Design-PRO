@@ -24,15 +24,17 @@ from api.canonical_run_views import (
 )
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
+from api.odmowa_http import OdmowaHttpError
 from application.analysis_run.read_model import canonicalize_json
+from application.execution import wykonawca_biegow
 from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
-from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
@@ -72,7 +74,11 @@ def _resolve_case_id(
     with uow_factory() as uow:
         active_case = uow.cases.get_active_study_case(project_id)
     if active_case is None:
-        raise ValueError(f"Brak aktywnego przypadku dla projektu {project_id}")
+        raise OdmowaNazwana(
+            "Projekt nie ma aktywnego przypadku obliczeniowego.",
+            kod="projekt.brak_aktywnego_przypadku",
+            dane={"project_ref": str(project_id)},
+        )
     return str(active_case.id)
 
 
@@ -373,11 +379,8 @@ def create_power_flow_run(
             analysis_type="PF",
             options=options,
         )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
     return canonicalize_json(
         {
@@ -394,15 +397,17 @@ def create_power_flow_run(
     )
 
 
-@router.post("/power-flow-runs/{run_id}/execute")
+@router.post("/power-flow-runs/{run_id}/execute", status_code=status.HTTP_202_ACCEPTED)
 def execute_power_flow_run(
     run_id: UUID,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     _require_canonical_run(run_id)
+    # Karta DYNAMIKA-W-TLE: bieg trafia do kolejki wykonawcy w tle (202, stan QUEUED);
+    # klient odpytuje `GET /power-flow-runs/{run_id}` do stanu końcowego.
     # CV-4.2b: fabryka `UnitOfWork` żądania idzie do wykonawcy — rozpływ z
     # konfiguracją audytu 2 stacji czyta ją tą samą bazą, którą ją zapisano.
-    run = execute_canonical_run(run_id, uow_factory=uow_factory)
+    run = wykonawca_biegow.zlec_bieg(run_id, uow_factory=uow_factory)
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {
@@ -419,33 +424,24 @@ def execute_power_flow_run(
 def get_power_flow_run(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(build_power_flow_run_header(_require_canonical_run(run_id)))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
 
 @router.get("/power-flow-runs/{run_id}/results")
 def get_power_flow_results(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(get_canonical_power_flow_result(_require_canonical_run(run_id)))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
 
 @router.get("/power-flow-runs/{run_id}/trace")
 def get_power_flow_trace(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(get_canonical_power_flow_trace(_require_canonical_run(run_id)))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
 
 @router.get("/power-flow-runs/{run_id}/export/json")
@@ -457,11 +453,8 @@ def export_power_flow_run_json(run_id: UUID) -> Response:
         )
     except HTTPException:
         raise
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
 
 @router.get("/power-flow-runs/{run_id}/export/docx")
@@ -805,11 +798,8 @@ def get_power_flow_interpretation(run_id: UUID) -> dict[str, Any]:
 
     try:
         result_dict = build_power_flow_interpretation(_require_canonical_run(run_id))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
     _interpretation_cache[run_id_str] = result_dict
     return canonicalize_json(result_dict)
 

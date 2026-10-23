@@ -4,14 +4,15 @@
  *
  * Tor pracy (kontrakt ekranu prowadzącego, FLOW §0.3):
  *  1. dane wejściowe — braki modelu, przez które bieg odmówi, z nazwami elementów;
- *  2. modele dynamiczne źródeł — stan, pochodzenie, wiązanie z profilem katalogowym
- *     (cel akcji naprawczej `der.dynamika_missing`);
+ *  2. modele dynamiczne źródeł i odbiorów — stan, pochodzenie, wiązanie z profilem
+ *     katalogowym (cel akcji naprawczych `der.dynamika_missing` i `load.dynamika_missing`);
  *  3. punkt pracy — JAWNIE wybrany zakończony rozpływ tej samej migawki (akcja: policz);
  *  4. scenariusz zdarzeń (nazwany, z edytora generowanego z kontraktu) i nastawy solvera;
  *  5. bieg istniejącą ścieżką wykonania z odpytywaniem stanu;
  *  6. wynik — rekordy „nie oceniono" z backendu, poziom dowodowy (model niezwalidowany),
- *     założenia, oś zdarzeń, wielkości charakterystyczne i przeglądarka przebiegów
- *     sprzężona ze schematem.
+ *     założenia (zdania z nazwami elementów, złożone w backendzie z rekordów rdzenia — bez
+ *     zapisu technicznego rdzenia), oś zdarzeń, wielkości charakterystyczne i przeglądarka
+ *     przebiegów sprzężona ze schematem.
  *
  * ZERO fizyki, ZERO werdyktu, ZERO wartości domyślnych w UI. Metadane produkcyjne biegu
  * (identyfikator, wersja solvera, własności numeryczne) wyłącznie w `InformacjeAudytowe`.
@@ -37,7 +38,6 @@ import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
-import { ZapisTechniczny } from '../wzorzec/ZapisTechniczny';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 import { nazwaObiektuZMigawki } from '../wzorzec/useNazwaObiektu';
 import { OcenaNiewykonana } from '../wzorzec/OcenaNiewykonana';
@@ -46,6 +46,7 @@ import {
   fetchOpisScenariusza,
   fetchScenariuszeDynamiki,
   fetchWynikDynamiki,
+  anulujBiegDynamiki,
   uruchomBiegDynamiki,
   zapiszScenariuszDynamiki,
 } from './api';
@@ -108,6 +109,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   const [bladWiazania, setBladWiazania] = useState<string | null>(null);
   const [bieg, setBieg] = useState<ExecutionRun | null>(null);
   const [bladBiegu, setBladBiegu] = useState<string | null>(null);
+  const [anulowanieZlecone, setAnulowanieZlecone] = useState(false);
   const [wybranyBiegId, setWybranyBiegId] = useState<string | null>(null);
   const [wynik, setWynik] = useState<Wczytanie<WynikDynamiki> | null>(null);
 
@@ -204,9 +206,9 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
   }, [snapshot]);
 
   const pokazNaSchemacie = useCallback(
-    (ref: string, nazwa?: string) => {
+    (ref: string, nazwa?: string, typElementu?: 'Generator' | 'Load') => {
       const element = wynik?.stan === 'gotowe' ? wynik.dane.opis_wyniku.elementy[ref] : undefined;
-      const typ = typZaznaczenia(element) ?? 'Generator';
+      const typ = typZaznaczenia(element) ?? typElementu ?? 'Generator';
       selectElement({ id: ref, type: typ, name: nazwa ?? element?.nazwa ?? T.brakNazwy });
       centerSldOnElement(ref);
       setActiveSpace('schemat');
@@ -240,6 +242,38 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     [caseId, odswiezGotowosc, projektId, setSnapshot],
   );
 
+  // Wiązanie modelu dynamicznego ODBIORU: kanoniczna operacja `set_load_dynamic_binding`
+  // przez magazyn migawki (ta sama droga co każda operacja domenowa — blokada modelu,
+  // podmiana migawki, historia operacji); backend buduje kopię `Load.dynamika` z profilu.
+  const powiazOdbior = useCallback(
+    async (loadRef: string, profileId: string | null) => {
+      if (!caseId) return;
+      setZapisywanyRef(loadRef);
+      setBladWiazania(null);
+      try {
+        const odpowiedz = await useSnapshotStore
+          .getState()
+          .executeDomainOperation(caseId, 'set_load_dynamic_binding', {
+            load_ref: loadRef,
+            dynamic_model_ref: profileId,
+          });
+        // Potwierdzenie sukcesu wydaje magazyn migawki (centralny komunikat operacji
+        // domenowej); tu zostaje odmowa backendu pokazana wprost przy sekcji.
+        if (odpowiedz === null) {
+          setBladWiazania(useSnapshotStore.getState().error ?? T.wiazanieOdbioruBlad);
+        } else if (odpowiedz.error) {
+          setBladWiazania(odpowiedz.error);
+        }
+      } catch (blad) {
+        setBladWiazania(komunikat(blad));
+      } finally {
+        setZapisywanyRef(null);
+      }
+      await odswiezGotowosc();
+    },
+    [caseId, odswiezGotowosc],
+  );
+
   const zapiszScenariusz = useCallback(
     async (zadanie: Parameters<typeof zapiszScenariuszDynamiki>[1]) => {
       if (!caseId) return;
@@ -259,6 +293,7 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
     setBledyNastaw(bledy);
     if (!gotowe) return;
     setBladBiegu(null);
+    setAnulowanieZlecone(false);
     try {
       const koniec = await uruchomBiegDynamiki(
         { caseId, scenarioId: scenariuszId, pfRunId, nastawy: gotowe },
@@ -267,13 +302,27 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
       await useExecutionRunsStore.getState().loadRuns(caseId);
       if (koniec.status === 'DONE') {
         setWybranyBiegId(koniec.id);
-      } else {
+      } else if (koniec.status === 'FAILED') {
         setBladBiegu(koniec.error_message ?? T.stanBiegu.FAILED);
       }
+      // CANCELLED: decyzja użytkownika — stan biegu (z wyjaśnieniem) pokazuje wiersz akcji.
     } catch (blad) {
       setBladBiegu(komunikat(blad));
+    } finally {
+      setAnulowanieZlecone(false);
     }
   }, [caseId, nastawy, opis, pfRunId, scenariuszId]);
+
+  const anulujBieg = useCallback(async () => {
+    if (!bieg) return;
+    try {
+      const stan = await anulujBiegDynamiki(bieg.id);
+      setAnulowanieZlecone(true);
+      setBieg(stan);
+    } catch (blad) {
+      setBladBiegu(`${T.bladAnulowania} ${komunikat(blad)}`);
+    }
+  }, [bieg]);
 
   // Świeżość wyniku wobec bieżącego modelu — ta sama derywacja co na każdym ekranie wyników
   // (rewizja biegu z kontraktu przebiegu vs rewizja bieżącego modelu; brak danej = brak znacznika).
@@ -295,7 +344,10 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
 
   const dane = gotowosc.stan === 'gotowe' ? gotowosc.dane : null;
   const brakiModelu = dane?.braki_modelu ?? [];
-  const biegTrwa = bieg !== null && (bieg.status === 'PENDING' || bieg.status === 'RUNNING');
+  const biegTrwa =
+    bieg !== null &&
+    (bieg.status === 'PENDING' || bieg.status === 'QUEUED' || bieg.status === 'RUNNING');
+  const postep = bieg?.status === 'RUNNING' ? (bieg.postep ?? null) : null;
   const warunki: string[] = [];
   if (!scenariuszId) warunki.push(T.warunekScenariusz);
   if (!pfRunId) warunki.push(T.warunekPunktPracy);
@@ -348,10 +400,19 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
           )}
           <SekcjaModeliZrodel
             zrodla={dane.zrodla}
+            odbiory={dane.odbiory}
+            profileOdbiorow={dane.profile_odbiorow}
             wskazanyRef={wskazanyElement}
             zapisywanyRef={zapisywanyRef}
             onPowiaz={(ref, profil) => void powiaz(ref, profil)}
-            onPokazNaSchemacie={(ref, nazwa) => pokazNaSchemacie(ref, nazwa)}
+            onPowiazOdbior={(ref, profil) => void powiazOdbior(ref, profil)}
+            onPokazNaSchemacie={(ref, nazwa) =>
+              pokazNaSchemacie(
+                ref,
+                nazwa,
+                dane.odbiory.some((o) => o.ref_id === ref) ? 'Load' : 'Generator',
+              )
+            }
           />
 
           <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-punkt-pracy">
@@ -436,10 +497,52 @@ export function EkranDynamiki({ trybZaawansowania = 'basic', wskazanyElement = n
           </button>
           {bieg && (
             <span className="mvd-dynamika-stan-biegu" data-testid="mvd-dynamika-stan-biegu" data-status={bieg.status}>
-              {etykietaZeSlownika(T.stanBiegu, bieg.status)}
+              {bieg.status === 'CANCELLED' && bieg.error_message
+                ? `${T.stanBiegu.CANCELLED} ${bieg.error_message}`
+                : etykietaZeSlownika(T.stanBiegu, bieg.status)}
             </span>
           )}
+          {biegTrwa && (
+            <button
+              type="button"
+              className="mvd-dynamika-akcja-drugorzedna"
+              data-testid="mvd-dynamika-anuluj"
+              disabled={anulowanieZlecone}
+              onClick={() => void anulujBieg()}
+            >
+              {T.anulujBieg}
+            </button>
+          )}
         </div>
+        {bieg?.status === 'RUNNING' && (
+          <div className="mvd-dynamika-postep" data-testid="mvd-dynamika-postep">
+            <div
+              className="mvd-dynamika-postep-pasek"
+              role="progressbar"
+              aria-label={T.postepBiegu}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={postep ? Math.round(postep.ulamek * 100) : undefined}
+              data-testid="mvd-dynamika-postep-pasek"
+              data-ulamek={postep ? postep.ulamek.toFixed(3) : ''}
+            >
+              <div
+                className="mvd-dynamika-postep-wypelnienie"
+                style={{ width: `${postep ? Math.round(postep.ulamek * 100) : 0}%` }}
+              />
+            </div>
+            <span className="mvd-dynamika-postep-opis" data-testid="mvd-dynamika-postep-opis">
+              {postep
+                ? T.postepOpis(
+                    postep.wykonane.toLocaleString('pl-PL', { maximumFractionDigits: 3 }),
+                    postep.razem.toLocaleString('pl-PL', { maximumFractionDigits: 3 }),
+                    postep.jednostka,
+                  )
+                : T.postepBezPomiaru}
+              {anulowanieZlecone ? ` ${T.anulowanieZlecone}` : ''}
+            </span>
+          </div>
+        )}
         {bladBiegu && (
           <div className="mvd-dynamika-blad" role="alert" data-testid="mvd-dynamika-bieg-blad">
             {T.bladBiegu} {bladBiegu}
@@ -539,22 +642,14 @@ function Wynik({
       </section>
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-zalozenia">
         <h4>{T.zalozeniaTytul}</h4>
+        {/* Jedna lista: zdania z nazwami elementów złożone w backendzie z rekordów rdzenia
+            i założeń wejścia (karta modeli odbiorów — rdzeń dynamiki nie pisze zdań, więc
+            zapisu technicznego rdzenia na tym ekranie nie ma). */}
         <ul>
           {wynik.opis_wyniku.zalozenia_modelu.map((z) => (
             <li key={z}>{z}</li>
           ))}
         </ul>
-        {/* Zdania rdzenia obliczeń (bez nazw elementów modelu) — podpisany widok techniczny
-            wspólnego wzorca wyników, jak zapis silnika zamrożonego (karta #145). */}
-        {wynik.opis_wyniku.zalozenia_rdzenia.length > 0 && (
-          <ZapisTechniczny podpis={T.zalozeniaRdzeniaPodpis} testid="mvd-dynamika-zalozenia-rdzenia">
-            <ul>
-              {wynik.opis_wyniku.zalozenia_rdzenia.map((z) => (
-                <li key={z}>{z}</li>
-              ))}
-            </ul>
-          </ZapisTechniczny>
-        )}
       </section>
       <PrzegladarkaPrzebiegow
         wynik={wynik}

@@ -16,8 +16,8 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
-import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
-import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
+import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
+import { useOtworzKonfiguracjeStacji, useZmienWartoscAparatu, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
@@ -27,7 +27,9 @@ import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
+import { useZmienTolerancjeNn } from './zmianaTolerancjiNn';
 import { useSwiezoscNaglowka } from '../../freshness';
+import { otworzEdycjeCzasuTb } from '../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
@@ -68,6 +70,11 @@ export function EkranZwarc({
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
   // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
+  // Zasada nr 4 (V12K-351): wartość robocza aparatu → kreator edycji parametrów aparatu.
+  const zmienWartoscAparatu = useZmienWartoscAparatu();
+  // Zasada nr 4: sieć nN liczona na wartości roboczej tolerancji → kreator edycji pola
+  // deklaracji elementu zasilającego (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+  const zmienTolerancjeNn = useZmienTolerancjeNn();
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
   // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
@@ -82,7 +89,15 @@ export function EkranZwarc({
   // R3-B (K3-G3): realny dostawca wkładów — rozbicie maszynowe z backendu
   // (endpoint SC3F contributions). Props `wklady` (test/nadpisanie) ma
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
-  const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+  // Karta OD-14: wkłady biegu przez impedancję przejścia liczą tę samą pętlę (Z_f z
+  // konfiguracji ZAPISANEJ na biegu), inaczej sekcja wkładów pokazałaby prądy metaliczne
+  // obok tabeli biegu przez Z_f.
+  // Karta WSPÓŁCZYNNIK-C: wkłady liczone ze scenariuszem i nadpisaniem c TEGO biegu
+  // (końcówka dobiera c z tabeli 1 dla pasma węzła; bez scenariusza odmawia 422).
+  const wkladyPobrane = useWkladyZwarciowe(
+    wklady ? null : aktywnyPunkt,
+    parametryWkladowZKonfiguracji(wynik?.konfiguracja_biegu),
+  );
 
   // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
   // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane
@@ -106,20 +121,27 @@ export function EkranZwarc({
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
   const nazwaAktywnego = nazwaPunktuZwarcia(wierszAktywny, nazwaObiektu);
   const wkladyAktywne =
-    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
+    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane.dane?.wklady ?? null;
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
   // przy wkladach z props (testy/nadpisanie) wywodu brak (zero fabrykacji).
-  const wywodWkladow = wklady ? [] : wkladyPobrane?.wywod ?? [];
+  const wywodWkladow = wklady ? [] : wkladyPobrane.dane?.wywod ?? [];
   // ZWARCIA-PRO F3: wywod sekcyjny + checklista walidacji IEC (addytywne pola
   // odpowiedzi contributions) — takze wylacznie od realnego dostawcy.
-  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane?.wywodSekcje ?? [];
-  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane?.walidacjaIec ?? [];
+  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane.dane?.wywodSekcje ?? [];
+  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane.dane?.walidacjaIec ?? [];
+  // Partia 2 (zasada nr 4): dane przyjęte wkładów — wyłącznie od realnego dostawcy, jak wywód.
+  const danePrzyjeteWkladow = wklady ? null : wkladyPobrane.dane?.danePrzyjete ?? null;
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia, (ref) => nazwaObiektu(ref))}
+        zalozenia={naZalozeniaZwarc(
+          wynik.konfiguracja_biegu,
+          wynik.zalozenia,
+          (ref) => nazwaObiektu(ref),
+          zmienTolerancjeNn,
+        )}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows, nazwaObiektu)}
         wykres={<WykresZwarc rows={rows} />}
@@ -166,19 +188,32 @@ export function EkranZwarc({
           siebie, z proweniencją każdej strony. */}
       <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
 
-      <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
+      {/* Karta TB-WARTOSC-ROBOCZA: „Zmień wartość" t_b roboczego → edycja t_b scenariusza
+          zwarciowego TEGO biegu (albo nowy scenariusz z polem t_b dla biegu przypadku). */}
+      <BilansIEC
+        row={wierszAktywny}
+        punktNazwa={nazwaAktywnego}
+        onZmienCzasTb={() => otworzEdycjeCzasuTb(wynik.konfiguracja_biegu?.scenariusz_zwarciowy_id ?? null)}
+      />
 
-      {/* Ogniwo łańcucha: prądy TEGO punktu → końcówka walidacji wytrzymałości
-          aparatury (ta sama, którą karta K7-B wpięła w konfigurator stacji). */}
+      {/* Ogniwo łańcucha: stacja TEGO punktu + zapisany bieg → werdykty wytrzymałości
+          aparatury wszystkich pól stacji, każde przy prądzie swojego punktu zabudowy. */}
       <WeryfikacjaAparatury
         wiersz={wierszAktywny}
+        runId={runId}
         punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
+        onZmienWartosc={zmienWartoscAparatu}
       />
 
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
+        pominiete={rozplyw.pominiete}
+        progA={rozplyw.progA}
+        blad={rozplyw.blad}
+        ladowanie={rozplyw.ladowanie}
+        danePrzyjete={rozplyw.danePrzyjete}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />
@@ -189,15 +224,19 @@ export function EkranZwarc({
         punktNazwa={nazwaAktywnego}
         trace={rozplyw.trace}
         blad={rozplyw.blad}
+        ladowanie={rozplyw.ladowanie}
         trybZaawansowania={trybZaawansowania}
       />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
+        blad={!wklady && wkladyPobrane.blad}
+        ladowanie={!wklady && wkladyPobrane.ladowanie}
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}
+        danePrzyjete={danePrzyjeteWkladow}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />

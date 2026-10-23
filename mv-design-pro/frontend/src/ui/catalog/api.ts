@@ -10,14 +10,19 @@ import type {
   CatalogNamespace,
   ConverterType,
   CTCatalogType,
+  KatalogPrzewodowLiniiWn,
   LineType,
   LoadCatalogType,
   LVApparatusType,
+  LVRcdType,
   LVCableType,
-  MVApparatusCatalogType,
+  MVApparatusType,
+  OverheadConductorType,
+  PodgladParametrowLiniiWn,
   PVInverterCatalogType,
   PtpireeGeneratorCertificateCatalogType,
   ProtectionDeviceType,
+  RejestrMaszynWirujacych,
   SourceSystemCatalogType,
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
@@ -64,11 +69,13 @@ export function getCatalogErrorMessage(error: unknown): string {
 
 export type CatalogListItem =
   | LineType
+  | OverheadConductorType
   | CableType
   | TransformerType
   | SwitchEquipmentType
-  | MVApparatusCatalogType
+  | MVApparatusType
   | LVApparatusType
+  | LVRcdType
   | LVCableType
   | LoadCatalogType
   | CTCatalogType
@@ -142,6 +149,33 @@ async function fetchCatalogJson<T>(endpoint: string): Promise<T> {
 
 export async function fetchLineTypes(): Promise<LineType[]> {
   return fetchCatalogJson<LineType[]>('/api/catalog/line-types');
+}
+
+/**
+ * Karta LINIA-110: katalog przewodów linii napowietrznych 110 kV (PRZEWOD_LINII_WN) wraz
+ * z rejestrem wartości roboczych danych linii (geometria słupa, przewód odgromowy, grunt).
+ */
+export async function fetchKatalogPrzewodowLiniiWn(): Promise<KatalogPrzewodowLiniiWn> {
+  return fetchCatalogJson<KatalogPrzewodowLiniiWn>('/api/catalog/overhead-conductor-types');
+}
+
+/**
+ * Karta LINIA-110: podgląd R′, X′, B′ i Z′0 linii 110 kV z przewodu katalogu i geometrii słupa
+ * — bez zapisu w modelu. `geometria_slupa: null` = wszystkie składowe z wartości roboczych.
+ */
+export async function fetchPodgladParametrowLiniiWn(
+  przewodId: string,
+  geometriaSlupa: Record<string, unknown> | null,
+  czestotliwoscHz: number,
+): Promise<PodgladParametrowLiniiWn> {
+  return requestCatalog<PodgladParametrowLiniiWn>(
+    `/api/catalog/overhead-conductor-types/${encodeURIComponent(przewodId)}/parametry-linii`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ geometria_slupa: geometriaSlupa, czestotliwosc_hz: czestotliwoscHz }),
+    },
+  );
 }
 
 /** Lista producentów rozdzielnic SN (goal §11A). */
@@ -242,12 +276,25 @@ export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]
   return fetchCatalogJson<SwitchEquipmentType[]>('/api/catalog/switch-equipment-types');
 }
 
-export async function fetchMvApparatusTypes(): Promise<MVApparatusCatalogType[]> {
-  return fetchCatalogJson<MVApparatusCatalogType[]>('/api/catalog/mv-apparatus-types');
+export async function fetchMvApparatusTypes(): Promise<MVApparatusType[]> {
+  return fetchCatalogJson<MVApparatusType[]>('/api/catalog/mv-apparatus-types');
+}
+
+/**
+ * Karta PODSTAWA-Q: parametry zwarciowe maszyn wirujących (x″d, cos φ, p, I_LR/I_rM, η) z zakresem
+ * bramy i propozycją wartości roboczej — dostawca sekcji maszyny w kreatorze edycji parametrów.
+ */
+export async function fetchRejestrMaszynWirujacych(): Promise<RejestrMaszynWirujacych> {
+  return fetchCatalogJson<RejestrMaszynWirujacych>('/api/catalog/maszyny-wirujace/wartosci-robocze');
 }
 
 export async function fetchLvApparatusTypes(): Promise<LVApparatusType[]> {
   return fetchCatalogJson<LVApparatusType[]>('/api/catalog/lv-apparatus-types');
+}
+
+/** Karta W5-E-TTIT: katalog wyłączników różnicowoprądowych nN (APARAT_NN_RCD). */
+export async function fetchLvRcdTypes(): Promise<LVRcdType[]> {
+  return fetchCatalogJson<LVRcdType[]>('/api/catalog/lv-rcd-types');
 }
 
 export async function fetchLvCableTypes(): Promise<LVCableType[]> {
@@ -651,6 +698,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
     case 'LINE':
       types = await fetchLineTypes();
       break;
+    case 'HV_OVERHEAD_CONDUCTOR':
+      types = (await fetchKatalogPrzewodowLiniiWn()).przewody;
+      break;
     case 'CABLE':
       types = await fetchCableTypes();
       break;
@@ -665,6 +715,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'LV_APPARATUS':
       types = await fetchLvApparatusTypes();
+      break;
+    case 'LV_RCD':
+      types = await fetchLvRcdTypes();
       break;
     case 'LV_CABLE':
       types = await fetchLvCableTypes();

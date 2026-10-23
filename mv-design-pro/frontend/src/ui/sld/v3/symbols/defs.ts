@@ -24,6 +24,8 @@ export type SymbolId =
   | 'cableHead'        // głowica kablowa
   | 'jointSleeve'      // mufa kablowa
   | 'noPoint'          // punkt podziału NO (łącznik otwarty na torze)
+  | 'lineSwitch'       // łącznik na torze poziomym (łącznik sekcyjny ciągu — nóż w osi toru)
+  | 'lineBreaker'      // wyłącznik na torze poziomym (wyłącznik sekcyjny ciągu)
   | 'junction'         // węzeł T (jawna kropka)
   | 'branchJunction'   // węzeł rozgałęzienia lateralu — akcent (spec §14.4)
   | 'branchCabinet'    // złącze kablowe SN (ZKSN) — punkt odgałęźny na odcinku kablowym
@@ -155,6 +157,20 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'a', x: 0, y: 8, dir: 'W' },
     { name: 'b', x: 16, y: 8, dir: 'E' },
   ], 'Mufa kablowa'),
+  // Karta SLD-SUBSTRAT (kontynuacja): łącznik sekcyjny wstawiony NA ciąg
+  // (`insert_section_switch_sn`) nie miał żadnego prymitywu — rysunek pokazywał
+  // ciągły kabel tam, gdzie model ma łącznik (także otwarty punkt podziału w
+  // odgałęzieniu). Tor ciągu biegnie poziomo, a glify aparatów pól są pionowe
+  // (porty N/S), więc łącznik toru ma własny glif z portami W/E. Tor pionowy
+  // (zejście) używa glifów pionowych `disconnector`/`breaker`.
+  lineSwitch: def('lineSwitch', 32, 16, [
+    { name: 'a', x: 0, y: 8, dir: 'W' },
+    { name: 'b', x: 32, y: 8, dir: 'E' },
+  ], 'Łącznik na torze'),
+  lineBreaker: def('lineBreaker', 16, 16, [
+    { name: 'a', x: 0, y: 8, dir: 'W' },
+    { name: 'b', x: 16, y: 8, dir: 'E' },
+  ], 'Wyłącznik na torze'),
   noPoint: def('noPoint', 16, 16, [
     { name: 'a', x: 0, y: 8, dir: 'W' },
     { name: 'b', x: 16, y: 8, dir: 'E' },

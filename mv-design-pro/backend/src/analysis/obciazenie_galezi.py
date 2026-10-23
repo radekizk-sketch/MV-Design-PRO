@@ -25,15 +25,14 @@ Konsumenci — jedyne miejsca liczenia obciążenia gałęzi z wyniku rozpływu:
 `enm/canonical_analysis.py::build_branch_results` (tabela gałęzi),
 `analysis/energy_validation/builder.py` (kontrole obciążenia linii i transformatorów),
 `application/analyses/sanity_bounds.py` (pasma wiarygodności obciążenia),
-`analysis/power_flow/analysis.py::_build_violations` (naruszenia prądowe),
 `analysis/power_flow_interpretation/builder.py` (ustalenia obciążenia gałęzi).
 
 Prąd ZACISKU (bez obciążenia) czytają z tabeli gałęzi (kolumny `i_a` — zacisk `od`,
 `i_do_a` — zacisk `do`) wyłącznie przez zacisk rozstrzygnięty jawnie: pakiet nastaw
 (`protection_settings/batch_run.py`, zacisk zabezpieczenia), arkusz obwodów nN
 (`application/analyses/nn_circuit_sheet.py`, zacisk od strony rozdzielnicy wzdłuż
-trasy) i prąd roboczy urządzeń koordynacji (frontend, miejsce z
-`zacisk_zabezpieczenia.miejsce_urzadzenia`).
+trasy) i prąd roboczy wyłącznika urządzenia koordynacji (gałąź na granicy strefy
+urządzenia, `ocena_nadpradowa.prad_roboczy_przekaznika`).
 """
 
 from __future__ import annotations

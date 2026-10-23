@@ -7,11 +7,18 @@ Mapping (EQ unless noted; TP = ConnectivityNode/TopologicalNode + Terminals):
   OverheadLine     -> ACLineSegment (R/X/B total) + 2 Terminals                 [EQ/TP]
   Cable            -> ACLineSegment (R/X/B total) + 2 Terminals                  [EQ/TP]
   Transformer      -> PowerTransformer + 2 PowerTransformerEnd (+ RatioTapChanger) [EQ]
+  Transformer.tap_changer (V12K-045, regulacja DETC/OLTC)
+                   -> RatioTapChanger na końcu uzwojenia regulowanego
+                      (+ TapChangerControl, gdy model niesie sterowanie)          [EQ/SSH]
+                      — tabela pól i znane utraty: ``_emit_canonical_tap_changer``,
+                      ``_emit_tap_changer_control``, ``REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO``
   SwitchBranch     -> Breaker / Disconnector / LoadBreakSwitch (+ normalOpen)    [EQ]
   FuseBranch       -> Fuse                                                       [EQ]
   Source           -> ExternalNetworkInjection                                  [EQ]
   Generator(sync)  -> SynchronousMachine                                        [EQ]
-  Generator(IBR)   -> PowerElectronicsConnection (+ Photovoltaic/Battery unit)  [EQ]
+  Generator(SCIG)  -> AsynchronousMachine (asynchronousMachineType=generator)    [EQ]
+  Generator(IBR)   -> PowerElectronicsConnection (+ PhotoVoltaic/Battery/
+                      PowerElectronicsWind unit)                                 [EQ]
   Load             -> EnergyConsumer                                            [EQ]
   Substation       -> Substation + VoltageLevel(s)                              [EQ]
 
@@ -54,10 +61,21 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
-from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
-from network_model.pochodne import kw_na_w, prad_znamionowy_a
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
+from network_model.odmowa_danych import OdmowaDanychError
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_mocy_ohm,
+    kw_na_mw,
+    prad_znamionowy_a,
+    susceptancja_z_mocy_biernej_s,
+)
 
 from .mrid import mrid_for, urn
+from .parametry_maszyn import (
+    ATRYBUT_MOCY_MECHANICZNEJ,
+    atrybuty_maszyny_do_cim,
+    moc_mechaniczna_do_cim,
+)
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
 from .units import (
     fmt_float,
@@ -316,17 +334,29 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
 
     hv_kind, lv_kind, clock = _vector_group_kinds(trafo.vector_group)
 
-    # IEC 60909 short-circuit equivalent (referred to HV end):
-    #   Z_uk = uk% / 100 * U_hv^2 / S_n ; R = pk / (3 * I_hv^2) but per-end we use
-    #   the standard lumped HV-end split. We keep it deterministic + documented.
+    # Impedancja zwarciowa odniesiona do strony GN (IEC 60076-1): Z_k = uk%/100 · Z_b,
+    # R_k = ΔP_Cu/S_n · Z_b, X_k = √(Z_k² − R_k²), Z_b = U_GN²/S_n — baza z recenzowanej
+    # formuły ``pochodne`` (karta C3: wzór Z = U²/S nie żyje w infrastrukturze). Stan PRZED
+    # podstawiał po cichu Z = 0 przy S_n = 0 i X = 0 przy R_k > Z_k — dane sprzeczne
+    # zapisane jako transformator bez reaktancji. Teraz: nazwana odmowa eksportu.
     sn_va = mva_to_va(trafo.sn_mva)
     uhv_v = kv_to_v(trafo.uhv_kv)
     ulv_v = kv_to_v(trafo.ulv_kv)
-    z_hv_ohm = (trafo.uk_percent / 100.0) * (uhv_v**2) / sn_va if sn_va else 0.0
-    # R from copper losses pk (kW -> W), referred to HV.
-    pk_w = kw_na_w(trafo.pk_kw)
-    r_hv_ohm = pk_w * (uhv_v**2) / (sn_va**2) if sn_va else 0.0
-    x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5 if z_hv_ohm > r_hv_ohm else 0.0
+    if trafo.sn_mva <= 0 or trafo.uhv_kv <= 0:
+        raise OdmowaDanychError(
+            f"Transformator „{trafo.name}”: moc znamionowa {trafo.sn_mva} MVA i napięcie "
+            f"strony GN {trafo.uhv_kv} kV muszą być dodatnie — eksport CGMES niemożliwy."
+        )
+    z_bazowa_ohm = impedancja_z_napiecia_i_mocy_ohm(trafo.uhv_kv, trafo.sn_mva)
+    z_hv_ohm = (trafo.uk_percent / 100.0) * z_bazowa_ohm
+    r_hv_ohm = kw_na_mw(trafo.pk_kw) / trafo.sn_mva * z_bazowa_ohm
+    if r_hv_ohm > z_hv_ohm:
+        raise OdmowaDanychError(
+            f"Transformator „{trafo.name}”: straty obciążeniowe {trafo.pk_kw} kW dają "
+            f"rezystancję większą niż impedancja zwarciowa (uk = {trafo.uk_percent} %) — dane "
+            "sprzeczne; popraw parametry przed eksportem CGMES."
+        )
+    x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5
 
     # End 1 = HV (carries the lumped impedance), End 2 = LV (zero impedance).
     for seq, (bus_ref, rated_u_v, kind, r_ohm, x_ohm) in enumerate(
@@ -354,7 +384,12 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
         _ref(end, "TransformerEnd.Terminal", t_mrid)
         _connect_terminal_tp(tp, t_mrid, bus_ref)
 
-    # RatioTapChanger (HV end) if tap data present.
+    if regulator_kanoniczny(trafo):
+        _emit_canonical_tap_changer(eq, trafo)
+        return
+
+    # RatioTapChanger (HV end) if tap data present — pola legacy `tap_*` dla
+    # transformatora BEZ aktywnego regulatora kanonicznego (bajty bez zmian).
     if trafo.tap_min is not None and trafo.tap_max is not None:
         rtc_mrid = mrid_for("RatioTapChanger", trafo.ref_id)
         rtc = _obj(eq, "RatioTapChanger", rtc_mrid)
@@ -370,6 +405,182 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
             _prop(rtc, "TapChanger.normalStep", str(trafo.tap_position))
         if trafo.tap_step_percent is not None:
             _prop(rtc, "RatioTapChanger.stepVoltageIncrement", fmt_float(trafo.tap_step_percent))
+
+
+# ---------------------------------------------------------------------------
+# Kanoniczny regulator zaczepów (V12K-045) -> RatioTapChanger + TapChangerControl
+# ---------------------------------------------------------------------------
+
+#: Rodzaje regulacji, które mają odwzorowanie w CIM (``TapChanger.ltcFlag``).
+#: ``NONE`` oznacza „regulatora nie ma" — ``TransformerBranch.get_tap_ratio`` traktuje
+#: go identycznie jak brak ``tap_changer`` (fizyka z pól legacy ``tap_*``), a CIM nie
+#: zna „przełącznika zaczepów obecnego, lecz bez regulacji" odrębnego od braku obiektu.
+_LTC_FLAG: dict[str, str] = {"OLTC": "true", "DETC": "false"}
+
+#: Pola kanonicznego regulatora, których profil CGMES 3.0 (EQ/SSH, CIM100) NIE niesie.
+#: Wiązanie z pomiarem: RDFS CGMES 3.0 (pakiet ``pycgmes`` 2.0.6 generowany cimgen z plików
+#: ENTSO-E) — klasy ``TapChanger``/``RatioTapChanger``/``TapChangerControl``/
+#: ``RegulatingControl`` NIE mają w żadnym profilu atrybutów ``initialDelay``,
+#: ``subsequentDelay``, ``lineDropCompensation``, ``lineDropR``, ``lineDropX`` (istnieją
+#: w bazowym CIM IEC 61970-301, ale profil ich nie przewiduje, więc eksporter ich nie
+#: emituje — zakaz rozszerzeń poza profilem), a ``RegulatingControlModeKind`` nie ma
+#: literałów odpowiadających trybom ``PROFILE``/``REMOTE``. Te dane przeżywają WYŁĄCZNIE
+#: side-car (tor wewnętrzny, bezstratny); tor obcy EQ+TP je traci — każda pozycja jest
+#: przypięta testem ``tests/cgmes/test_cgmes_regulator_zaczepow.py``.
+REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
+    "tap_changer.delay_seconds — CGMES 3.0 nie ma TapChanger.initialDelay",
+    "tap_changer.line_drop_compensation — CGMES 3.0 nie ma TapChangerControl.lineDrop*",
+    "tap_changer.control_mode PROFILE/REMOTE — CIM zna tylko regulację włączoną/wyłączoną "
+    "(TapChanger.controlEnabled, RegulatingControl.enabled); import odtwarza AUTOMATIC, "
+    "fizyka (TapChanger.is_automatic) identyczna",
+    "tap_changer.catalog_ref — CIM nie niesie referencji katalogowej",
+    "tap_changer z regulation_type=NONE — brak odrębnej semantyki CIM, import daje "
+    "tap_changer=None (fizyka identyczna: get_tap_ratio i tak czyta pola legacy)",
+    "pola legacy tap_* obok AKTYWNEGO regulatora kanonicznego — jeden RatioTapChanger "
+    "na transformator niesie jedno źródło prawdy (kanoniczne, V12K-045)",
+    "tap_changer.controlled_bus_ref wskazujący szynę bez żadnego zacisku (Terminal) — "
+    "RegulatingControl.Terminal musi wskazać zacisk urządzenia; szyna izolowana go nie ma",
+)
+
+
+def regulator_kanoniczny(trafo: Transformer) -> bool:
+    """Czy transformator eksportuje KANONICZNY regulator zaczepów (V12K-045).
+
+    Jedyny predykat wejścia toru kanonicznego eksportu. Jego para po stronie importu to
+    obecność ``TapChanger.ltcFlag`` na ``RatioTapChanger`` — eksporter emituje ten
+    atrybut WYŁĄCZNIE w torze kanonicznym, tor legacy go nie pisze (bajty modeli bez
+    regulatora bez zmian). Zgodność pary przypina test rundy (iloczyn cech).
+    """
+    tc = trafo.tap_changer
+    return tc is not None and tc.regulation_type in _LTC_FLAG
+
+
+def _sterowanie_regulatora(trafo: Transformer) -> bool:
+    """Czy regulator ma obiekt ``TapChangerControl`` — tylko gdy model niesie choć jedno
+    pole sterowania: tryb inny niż ręczny, nastawę, pasmo albo szynę regulowaną."""
+    tc = trafo.tap_changer
+    assert tc is not None
+    return (
+        tc.control_mode != "MANUAL"
+        or tc.voltage_setpoint_kv is not None
+        or tc.deadband_kv is not None
+        or tc.controlled_bus_ref is not None
+    )
+
+
+def _emit_canonical_tap_changer(eq: ET.Element, trafo: Transformer) -> None:
+    """``RatioTapChanger`` na końcu uzwojenia regulowanego — pola kanoniczne 1:1.
+
+    Odwzorowanie (CGMES 3.0; [EQ] profil wyposażenia, [SSH] profil stanu ustalonego):
+
+      regulated_winding HV/LV  -> RatioTapChanger.TransformerEnd = koniec 1 / 2   [EQ]
+      regulation_type OLTC/DETC -> TapChanger.ltcFlag true / false               [EQ]
+      min/max_position          -> TapChanger.lowStep / highStep                 [EQ]
+      neutral_position          -> TapChanger.neutralStep                        [EQ]
+      current_position          -> TapChanger.normalStep [EQ] + TapChanger.step  [SSH]
+      step_percent              -> RatioTapChanger.stepVoltageIncrement (% U_r)  [EQ]
+      control_mode != MANUAL    -> TapChanger.controlEnabled                     [SSH]
+      (napięcie znamionowe uzwojenia regulowanego) -> TapChanger.neutralU [V]    [EQ]
+
+    Atrybuty profilu SSH trafiają do członu EQ — ten sam, zastany w repozytorium wzorzec co
+    ``EnergyConsumer.p/q`` i ``PowerElectronicsConnection.p/q``: pakiet emituje jeden
+    człon wyposażenia (EQ) i topologii (TP), a SSH jest odroczony (``profiles.py``).
+    Konwencja znaku zgodna: CIM ``stepVoltageIncrement`` i model ``step_percent`` to
+    przyrost napięcia uzwojenia regulowanego na pozycję względem ``neutralStep``.
+    """
+    tc = trafo.tap_changer
+    assert tc is not None
+    koniec = "1" if tc.regulated_winding == "HV" else "2"
+    rtc = _obj(eq, "RatioTapChanger", mrid_for("RatioTapChanger", trafo.ref_id))
+    _prop(rtc, "IdentifiedObject.name", f"{trafo.name}_tap")
+    _ref(
+        rtc,
+        "RatioTapChanger.TransformerEnd",
+        mrid_for("PowerTransformerEnd", trafo.ref_id, suffix=koniec),
+    )
+    _prop(rtc, "TapChanger.ltcFlag", _LTC_FLAG[tc.regulation_type])
+    _prop(rtc, "TapChanger.lowStep", str(tc.min_position))
+    _prop(rtc, "TapChanger.highStep", str(tc.max_position))
+    _prop(rtc, "TapChanger.neutralStep", str(tc.neutral_position))
+    _prop(rtc, "TapChanger.normalStep", str(tc.current_position))
+    _prop(rtc, "TapChanger.step", str(tc.current_position))
+    u_uzwojenia_kv = trafo.uhv_kv if tc.regulated_winding == "HV" else trafo.ulv_kv
+    _prop(rtc, "TapChanger.neutralU", fmt_float(kv_to_v(u_uzwojenia_kv)))
+    _prop(rtc, "RatioTapChanger.stepVoltageIncrement", fmt_float(tc.step_percent))
+    _prop(rtc, "TapChanger.controlEnabled", "false" if tc.control_mode == "MANUAL" else "true")
+    if _sterowanie_regulatora(trafo):
+        _ref(rtc, "TapChanger.TapChangerControl", mrid_for("TapChangerControl", trafo.ref_id))
+
+
+def _zaciski_wg_wezla_topologicznego(tp: ET.Element) -> dict[str, list[str]]:
+    """TopologicalNode mRID -> posortowane mRID-y zacisków (z powiązań profilu TP)."""
+    indeks: dict[str, list[str]] = {}
+    prefiks = "urn:uuid:"
+    for wiazanie in tp:
+        if wiazanie.tag != f"{_CIM}Terminal":
+            continue
+        zacisk = wiazanie.get(RDF_ABOUT, "").removeprefix(prefiks)
+        wezel = wiazanie.find(f"{_CIM}Terminal.TopologicalNode")
+        if not zacisk or wezel is None:
+            continue
+        indeks.setdefault(wezel.get(RDF_RESOURCE, "").removeprefix(prefiks), []).append(zacisk)
+    return {wezel: sorted(zaciski) for wezel, zaciski in indeks.items()}
+
+
+def _zacisk_szyny_regulowanej(
+    trafo: Transformer, bus_ref: str, zaciski: dict[str, list[str]]
+) -> str | None:
+    """Zacisk wskazujący szynę regulowaną w ``RegulatingControl.Terminal``.
+
+    CIM wiąże regulację z ZACISKIEM urządzenia przyłączonego do węzła (nie z węzłem).
+    Deterministycznie: szyna własna transformatora -> jego zacisk (1 = GN, 2 = DN);
+    szyna zdalna -> najmniejszy mRID zacisku przyłączonego do tej szyny. Szyna bez
+    zacisku -> ``None`` (atrybut pominięty, znana utrata — patrz
+    ``REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO``).
+    """
+    if bus_ref == trafo.hv_bus_ref:
+        return mrid_for("Terminal", trafo.ref_id, suffix="1")
+    if bus_ref == trafo.lv_bus_ref:
+        return mrid_for("Terminal", trafo.ref_id, suffix="2")
+    kandydaci = zaciski.get(mrid_for("TopologicalNode", bus_ref), [])
+    return kandydaci[0] if kandydaci else None
+
+
+def _emit_tap_changer_control(
+    eq: ET.Element, trafo: Transformer, zaciski: dict[str, list[str]]
+) -> None:
+    """``TapChangerControl`` (RegulatingControl) — sterowanie napięciowe regulatora.
+
+      (regulator napięciowy)    -> RegulatingControl.mode = voltage              [EQ]
+      controlled_bus_ref        -> RegulatingControl.Terminal                    [EQ]
+      control_mode != MANUAL    -> RegulatingControl.enabled                     [SSH]
+      (pozycje całkowite)       -> RegulatingControl.discrete = true             [SSH]
+      voltage_setpoint_kv       -> RegulatingControl.targetValue [kV]            [SSH]
+      deadband_kv (całe pasmo)  -> RegulatingControl.targetDeadband [kV]         [SSH]
+      (jednostka nastawy)       -> RegulatingControl.targetValueUnitMultiplier=k [SSH]
+
+    Pole puste w modelu = atrybut POMINIĘTY (nigdy liczba zastępcza). ``targetDeadband``
+    w CIM to CAŁE pasmo (100 kV ± 2 kV/2 -> 99…101 kV), tak samo jak ``deadband_kv``
+    (``power_flow_oltc_studies``: |U − U_zad| ≤ pasmo/2). Mnożnik ``k`` jest pisany
+    tylko wtedy, gdy jest czego dotyczyć (nastawa albo pasmo).
+    """
+    tc = trafo.tap_changer
+    assert tc is not None
+    ctrl = _obj(eq, "TapChangerControl", mrid_for("TapChangerControl", trafo.ref_id))
+    _prop(ctrl, "IdentifiedObject.name", f"{trafo.name}_regulator")
+    _enum(ctrl, "RegulatingControl.mode", "RegulatingControlModeKind", "voltage")
+    if tc.controlled_bus_ref is not None:
+        zacisk = _zacisk_szyny_regulowanej(trafo, tc.controlled_bus_ref, zaciski)
+        if zacisk is not None:
+            _ref(ctrl, "RegulatingControl.Terminal", zacisk)
+    _prop(ctrl, "RegulatingControl.enabled", "false" if tc.control_mode == "MANUAL" else "true")
+    _prop(ctrl, "RegulatingControl.discrete", "true")
+    if tc.voltage_setpoint_kv is not None:
+        _prop(ctrl, "RegulatingControl.targetValue", fmt_float(tc.voltage_setpoint_kv))
+    if tc.deadband_kv is not None:
+        _prop(ctrl, "RegulatingControl.targetDeadband", fmt_float(tc.deadband_kv))
+    if tc.voltage_setpoint_kv is not None or tc.deadband_kv is not None:
+        _enum(ctrl, "RegulatingControl.targetValueUnitMultiplier", "UnitMultiplier", "k")
 
 
 # ---------------------------------------------------------------------------
@@ -436,42 +647,153 @@ def _ik_a(sk3_mva: float | None, ik3_ka: float | None, bus_kv: float | None) -> 
 
 
 # ---------------------------------------------------------------------------
-# Generator -> SynchronousMachine | PowerElectronicsConnection
+# Generator -> SynchronousMachine | AsynchronousMachine | PowerElectronicsConnection
 # ---------------------------------------------------------------------------
 
-#: Źródła energoelektroniczne (PowerElectronicsConnection) = kanoniczny zbiór
-#: `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (karta AB-H0 Pakiet D: jedno źródło, parytet
-#: w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
+#: Źródła energoelektroniczne = kanoniczny zbiór `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE`
+#: (karta AB-H0 Pakiet D: jedno źródło, parytet w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
 _IBR_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
+
+#: Rodzaj generatora ENM -> (klasa urządzenia CIM, klasa jednostki PowerElectronicsUnit).
+#: CGMES 3.0 (RDFS, ``pycgmes`` 2.0.6): turbina wiatrowa typu 1/2 (``fw_scig``, maszyna
+#: indukcyjna klatkowa bez przekształtnika) to ``AsynchronousMachine`` (dynamika
+#: ``WindTurbineType1or2Dynamics`` wiąże się z maszyną asynchroniczną), typ 3 (``fw_dfig``)
+#: i typ 4 (``fw_pmsg``, ``wind_inverter``) to ``PowerElectronicsConnection`` z jednostką
+#: ``PowerElectronicsWindUnit`` (``WindTurbineType3or4Dynamics`` wiąże się z PEC). Nazwa
+#: klasy jednostki PV w CGMES 3.0 to ``PhotoVoltaicUnit`` (wielkie V) — stan PRZED
+#: emitował nieistniejącą klasę ``PhotovoltaicUnit``. ``gen_type=None`` (rodzaj
+#: nieokreślony w modelu) -> nazwana ODMOWA eksportu (karta C3): CIM nie ma klasy
+#: „generatora nieokreślonego", a każda wybrana klasa zmienia fizykę u odbiorcy (wkład
+#: zwarciowy maszyny wirującej albo przekształtnika) — pominięcie zgubiłoby wtrysk mocy.
+_KLASA_CIM_GENERATORA: dict[str, tuple[str, str | None]] = {
+    "synchronous": ("SynchronousMachine", None),
+    "fw_scig": ("AsynchronousMachine", None),
+    "pv_inverter": ("PowerElectronicsConnection", "PhotoVoltaicUnit"),
+    "bess": ("PowerElectronicsConnection", "BatteryUnit"),
+    "wind_inverter": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+    "fw_pmsg": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+    "fw_dfig": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+}
+
+#: Sufiks nazwy obiektu jednostki (nazwy sprzed karty dla PV i baterii bez zmian).
+_SUFIKS_JEDNOSTKI: dict[str, str] = {
+    "PhotoVoltaicUnit": "pv",
+    "BatteryUnit": "battery",
+    "PowerElectronicsWindUnit": "wind",
+}
+
+#: Dane generatora, których tor obcy EQ+TP NIE odtworzy (side-car je niesie).
+GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
+    "gen_type fw_pmsg/fw_dfig — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
+    "odróżnia profil DY); import daje wind_inverter z ostrzeżeniem",
+    "podział mocy znamionowej na jednostki (quantity/n_parallel) — ratedS niesie moc "
+    "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
+    "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
+    "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
+    "parametry zwarciowe maszyny DFIG (pr_mw, pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
+    "PowerElectronicsConnection nie ma atrybutów maszyny wirującej",
+    "pozostałe klucze materialized_params poza sn_mva, un_kv i parametrami zwarciowymi maszyn "
+    "SynchronousMachine/AsynchronousMachine",
+    "wartości projektanta parametrów zwarciowych maszyny (overrides) — EQ niesie wyłącznie "
+    "tabliczkę; wartość projektanta wpisana do atrybutu udawałaby daną tabliczki odbiorcy",
+)
+
+
+def klasa_cim_generatora(gen: Generator) -> str:
+    """Klasa urządzenia CIM, na którą eksporter mapuje generator (jedno źródło prawdy —
+    ten sam predykat czyta ``application.cgmes.service`` dla mapy tożsamości side-cara).
+
+    Rodzaj nieokreślony (``gen_type=None``) = ``OdmowaDanychError`` (patrz
+    ``_KLASA_CIM_GENERATORA``)."""
+    return _klasa_i_jednostka(gen)[0]
+
+
+def _klasa_i_jednostka(gen: Generator) -> tuple[str, str | None]:
+    if gen.gen_type is None:
+        raise OdmowaDanychError(
+            f"Generator „{gen.name}” nie ma określonego rodzaju — uzupełnij rodzaj generatora "
+            "przed eksportem CGMES."
+        )
+    return _KLASA_CIM_GENERATORA[gen.gen_type]
+
+
+def _konwencja_odbiorcza(wartosc_w: float) -> float:
+    """Moc wytwarzana (ENM: dodatnia = oddawana do sieci) -> konwencja odbiorcza CIM
+    (``RotatingMachine.p/q``, ``PowerElectronicsConnection.p/q``: „positive sign means
+    flow out from a node"). ``0.0 - x`` zamiast ``-x``, żeby zero nie stało się ``-0``."""
+    return 0.0 - wartosc_w
+
+
+def _moc_pozorna_znamionowa_mva(gen: Generator) -> float | None:
+    """Moc pozorna znamionowa CAŁEJ instalacji [MVA] — z tabliczki zmaterializowanej karty
+    (``materialized_params["sn_mva"]``, moc JEDNEJ jednostki) × liczba jednostek
+    (``liczba_jednostek_zrodla``, ta sama reguła co ``enm.mapping._gen_rated_apparent_mva``).
+    Brak tabliczki = ``None`` -> atrybut ``ratedS`` POMINIĘTY. Stan PRZED pisał tu moc
+    CZYNNĄ ``p_mw`` (P w miejsce S) — obcy program liczyłby prąd znamionowy zaniżony o cosφ.
+    """
+    sn = (gen.materialized_params or {}).get("sn_mva")
+    if isinstance(sn, bool) or not isinstance(sn, int | float) or sn <= 0:
+        return None
+    return float(sn) * liczba_jednostek_zrodla(gen)
+
+
+def _napiecie_znamionowe_kv(gen: Generator) -> float | None:
+    un = (gen.materialized_params or {}).get("un_kv")
+    if isinstance(un, bool) or not isinstance(un, int | float) or un <= 0:
+        return None
+    return float(un)
 
 
 def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
-    is_ibr = gen.gen_type in _IBR_TYPES
-    if not is_ibr:
-        mrid = mrid_for("SynchronousMachine", gen.ref_id)
-        sm = _obj(eq, "SynchronousMachine", mrid)
-        _prop(sm, "IdentifiedObject.name", gen.name)
-        _prop(sm, "RotatingMachine.ratedS", fmt_float(mva_to_va(gen.p_mw)))
-        t1 = _terminal(eq, owner_ref=gen.ref_id, equipment_mrid=mrid, seq=1)
-        _connect_terminal_tp(tp, t1, gen.bus_ref)
-        return
+    """Generator -> urządzenie CIM wg ``_KLASA_CIM_GENERATORA``.
 
-    mrid = mrid_for("PowerElectronicsConnection", gen.ref_id)
-    pec = _obj(eq, "PowerElectronicsConnection", mrid)
-    _prop(pec, "IdentifiedObject.name", gen.name)
-    _prop(pec, "PowerElectronicsConnection.ratedS", fmt_float(mva_to_va(gen.p_mw)))
-    _prop(pec, "PowerElectronicsConnection.p", fmt_float(mw_to_w(gen.p_mw)))
+      p_mw (wytwarzanie > 0)       -> RotatingMachine.p / PowerElectronicsConnection.p
+                                      [SSH, W, konwencja odbiorcza: −P]
+      q_mvar                       -> .q [SSH, var, −Q]; brak = atrybut pominięty
+      sn_mva × liczba jednostek    -> .ratedS [EQ, VA]; brak tabliczki = pominięty
+      pr_mw × liczba jednostek     -> AsynchronousMachine.ratedMechanicalPower [EQ, W];
+                                      brak tabliczki = pominięty (P_rM, IEC 60909-0 pkt 6.7)
+      un_kv                        -> .ratedU [EQ, V]; brak = pominięty
+      fw_scig                      -> AsynchronousMachine.asynchronousMachineType =
+                                      generator [SSH]
+      xd_subtransient_pu, cos_phi,   -> SynchronousMachine.satDirectSubtransX,
+      pole_pairs, i_lr_ratio,           RotatingMachine.ratedPowerFactor,
+      efficiency                        AsynchronousMachine.polePairNumber/iaIrRatio/
+                                      efficiency [EQ, ``parametry_maszyn``]; brak = pominięty
+
+    Atrybuty SSH w członie EQ — ten sam zastany wzorzec co ``EnergyConsumer.p/q``.
+    """
+    klasa, jednostka = _klasa_i_jednostka(gen)
+    mrid = mrid_for(klasa, gen.ref_id)
+    urzadzenie = _obj(eq, klasa, mrid)
+    _prop(urzadzenie, "IdentifiedObject.name", gen.name)
+    wlasciciel = "PowerElectronicsConnection" if jednostka is not None else "RotatingMachine"
+    moc_s = _moc_pozorna_znamionowa_mva(gen)
+    if moc_s is not None:
+        _prop(urzadzenie, f"{wlasciciel}.ratedS", fmt_float(mva_to_va(moc_s)))
+    un_kv = _napiecie_znamionowe_kv(gen)
+    if un_kv is not None:
+        _prop(urzadzenie, f"{wlasciciel}.ratedU", fmt_float(kv_to_v(un_kv)))
+    _prop(urzadzenie, f"{wlasciciel}.p", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.p_mw))))
     if gen.q_mvar is not None:
-        _prop(pec, "PowerElectronicsConnection.q", fmt_float(mw_to_w(gen.q_mvar)))
-
-    # Attached generating unit (CIM 3.0): PV array or battery.
-    if gen.gen_type == "bess":
-        unit = _obj(eq, "BatteryUnit", mrid_for("BatteryUnit", gen.ref_id))
-        _prop(unit, "IdentifiedObject.name", f"{gen.name}_battery")
-        _ref(unit, "PowerElectronicsUnit.PowerElectronicsConnection", mrid)
-    elif gen.gen_type == "pv_inverter":
-        unit = _obj(eq, "PhotovoltaicUnit", mrid_for("PhotovoltaicUnit", gen.ref_id))
-        _prop(unit, "IdentifiedObject.name", f"{gen.name}_pv")
+        _prop(urzadzenie, f"{wlasciciel}.q", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.q_mvar))))
+    if klasa == "AsynchronousMachine":
+        moc_p = moc_mechaniczna_do_cim(gen.materialized_params, liczba_jednostek_zrodla(gen))
+        if moc_p is not None:
+            _prop(urzadzenie, ATRYBUT_MOCY_MECHANICZNEJ, moc_p)
+        _enum(
+            urzadzenie,
+            "AsynchronousMachine.asynchronousMachineType",
+            "AsynchronousMachineKind",
+            "generator",
+        )
+    # Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej z tabliczki (wartość robocza nie
+    # jest daną tabliczki — nie trafia do pliku; odbiorca liczy z własnym założeniem).
+    for atrybut, tekst in atrybuty_maszyny_do_cim(klasa, gen.materialized_params):
+        _prop(urzadzenie, atrybut, tekst)
+    if jednostka is not None:
+        unit = _obj(eq, jednostka, mrid_for(jednostka, gen.ref_id))
+        _prop(unit, "IdentifiedObject.name", f"{gen.name}_{_SUFIKS_JEDNOSTKI[jednostka]}")
         _ref(unit, "PowerElectronicsUnit.PowerElectronicsConnection", mrid)
 
     t1 = _terminal(eq, owner_ref=gen.ref_id, equipment_mrid=mrid, seq=1)
@@ -501,16 +823,20 @@ def _emit_load(eq: ET.Element, tp: ET.Element, load: Load) -> None:
 def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
     """ShuntCapacitor -> LinearShuntCompensator (D-06c).
 
-    Susceptancja na sekcję z pierwszych zasad: B = Q_rated / U_rated² [S].
-    Modelujemy jeden stopień (maximumSections=1, sections=1 gdy załączona).
+    Susceptancja na sekcję: B = Q_n/U_n² — ``pochodne.susceptancja_z_mocy_biernej_s``
+    (karty C3/C4; stan PRZED liczył ten wzór w infrastrukturze). Napięcie ≤ 0 =
+    nazwana odmowa (stan PRZED zapisywał po cichu B = 0). Jeden stopień
+    (maximumSections=1, sections=1 gdy załączona).
     """
+    if cap.rated_kv <= 0:
+        raise OdmowaDanychError(
+            f"Bateria kondensatorów „{cap.name}”: napięcie znamionowe {cap.rated_kv} kV musi "
+            "być dodatnie — eksport CGMES niemożliwy."
+        )
     mrid = mrid_for("LinearShuntCompensator", cap.ref_id)
     lsc = _obj(eq, "LinearShuntCompensator", mrid)
     _prop(lsc, "IdentifiedObject.name", cap.name)
-    b_per_section = 0.0
-    if cap.rated_kv and cap.rated_kv > 0:
-        # B [S] = Q [VAr] / U² [V²]; Q_rated in Mvar -> VAr, U_rated in kV -> V.
-        b_per_section = mva_to_va(cap.rated_mvar) / (kv_to_v(cap.rated_kv) ** 2)
+    b_per_section = susceptancja_z_mocy_biernej_s(cap.rated_mvar, cap.rated_kv)
     _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(b_per_section))
     _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(0.0))
     _prop(lsc, "ShuntCompensator.nomU", fmt_float(kv_to_v(cap.rated_kv)))
@@ -591,12 +917,17 @@ def build_eq_tp_trees(enm: EnergyNetworkModel) -> tuple[ET.Element, ET.Element]:
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
         _emit_substation(eq, sub, bus_kv)
 
+    # Sterowanie regulatorów zaczepów na końcu — ``RegulatingControl.Terminal`` może
+    # wskazać zacisk DOWOLNEGO urządzenia (szyna zdalna), więc indeks zacisków budujemy
+    # z kompletnego profilu TP. Modele bez regulatora kanonicznego: nic nie dochodzi.
+    regulatory = [
+        t
+        for t in sorted(enm.transformers, key=lambda t: t.ref_id)
+        if regulator_kanoniczny(t) and _sterowanie_regulatora(t)
+    ]
+    if regulatory:
+        zaciski = _zaciski_wg_wezla_topologicznego(tp)
+        for trafo in regulatory:
+            _emit_tap_changer_control(eq, trafo, zaciski)
+
     return eq, tp
-
-
-def export_eq_tp_bytes(enm: EnergyNetworkModel) -> tuple[bytes, bytes]:
-    """Serialize the ENM to (EQ bytes, TP bytes) canonical RDF/XML."""
-    from .rdf_writer import to_bytes
-
-    eq, tp = build_eq_tp_trees(enm)
-    return to_bytes(eq), to_bytes(tp)

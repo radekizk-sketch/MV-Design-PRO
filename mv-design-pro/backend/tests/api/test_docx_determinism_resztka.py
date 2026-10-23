@@ -10,7 +10,6 @@ KLASA, NIE INSTANCJA: przeszukano CALY backend za kazdym miejscem budujacym
 DOCX (`python-docx`, `Document(`, `.save(`). Ten modul testuje bit-w-bit
 determinizm binarny wszystkich miejsc, ktore NIE mialy jeszcze pokrycia:
 
-- `api/analysis_run_exports.py::export_run_docx_response` (bundle rozplywu mocy)
 - `api/analysis_run_exports.py::export_run_report_docx_response` (raport analizy)
 - `api/power_flow_comparisons.py::export_power_flow_comparison_docx` (endpoint HTTP)
 - `api/power_flow_runs.py::export_power_flow_run_docx` (endpoint HTTP)
@@ -34,7 +33,6 @@ powtorzen (mierzone bezposrednia iniekcja na `arc_flash_report.py`).
 
 from __future__ import annotations
 
-import dataclasses
 import hashlib
 import time
 from typing import Any
@@ -48,6 +46,7 @@ from tests.test_canonical_analysis_api import (
     _reset_backend_state,
     _seed_power_flow_enm,
 )
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _sha256(data: bytes) -> str:
@@ -55,34 +54,12 @@ def _sha256(data: bytes) -> str:
 
 
 # =============================================================================
-# api/analysis_run_exports.py — 2 miejsca budowy DOCX (funkcje wywolywane
+# api/analysis_run_exports.py — miejsce budowy DOCX (funkcja wywolywana
 # bezposrednio na CanonicalRun, bez HTTP)
 # =============================================================================
 
 
 class TestAnalysisRunExportsDocxDeterminism:
-    def test_export_run_docx_response_is_byte_deterministic(self) -> None:
-        """`export_run_docx_response` (bundle rozplywu mocy) — 2x eksport
-        z odstepem >2s -> identyczne bajty."""
-        from api.analysis_run_exports import export_run_docx_response
-
-        # `power_flow_trace` musi byc jawnie ustawiony (nie None) — wymagany
-        # przez `get_power_flow_trace` w budowie bundle (`_build_pf_run` go
-        # nie ustawia, bo domyslny sciezka testowa idzie przez raport, nie
-        # przez bundle).
-        run = dataclasses.replace(_build_pf_run(), power_flow_trace={})
-
-        first = export_run_docx_response(run, filename_stem="power_flow")
-        time.sleep(2.1)
-        second = export_run_docx_response(run, filename_stem="power_flow")
-
-        assert first.body[:2] == b"PK", "DOCX powinien byc plikiem ZIP"
-        hash_1 = _sha256(first.body)
-        hash_2 = _sha256(second.body)
-        assert hash_1 == hash_2, (
-            f"export_run_docx_response nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
-        )
-
     def test_export_run_report_docx_response_is_byte_deterministic(self) -> None:
         """`export_run_report_docx_response` (raport analizy) — 2x eksport
         z odstepem >2s -> identyczne bajty."""
@@ -202,7 +179,7 @@ def test_power_flow_run_export_docx_endpoint_is_byte_deterministic(
     )
     assert created_response.status_code == 201, created_response.text
     run_id = created_response.json()["id"]
-    executed_response = canonical_client.post(f"/api/execution/runs/{run_id}/execute")
+    executed_response = wykonaj_bieg(canonical_client, run_id)
     assert executed_response.status_code == 200, executed_response.text
 
     first = canonical_client.get(f"/api/power-flow-runs/{run_id}/export/docx")

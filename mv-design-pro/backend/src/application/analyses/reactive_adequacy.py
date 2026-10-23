@@ -30,8 +30,10 @@ from analysis.reactive_adequacy.models import (
 )
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_bus_results
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.nazwy_elementow import zbuduj_indeks_nazw
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 # Pola Q-granic karty przekształtnika (proweniencja werdyktu).
 _Q_LIMIT_CARD_FIELDS = ("qmin_mvar", "qmax_mvar")
@@ -152,12 +154,12 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
             zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Adekwatność mocy biernej wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
@@ -174,4 +176,4 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
         nazwy=zbuduj_indeks_nazw(snapshot),
         power_flow_converged=converged,
     )
-    return view.to_dict()
+    return {**view.to_dict(), **pola_danych_przyjetych_biegu(run.raw_result)}

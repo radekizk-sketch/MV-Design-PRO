@@ -1,0 +1,135 @@
+/*
+ * Wykonawca akcji naprawczej (karta C-12, decyzja K-12 opcja A) — PRZENIESIONY z
+ * `ui/shared/fixActionSurfaceExecutor.ts`, gdzie był wyspą z jednym konsumentem
+ * (skasowany pasek `ReadinessBar` warstwy legacy). Logika bez zmian: rozwiązanie
+ * powierzchni akcji → selekcja i wyśrodkowanie elementu → formularz operacji
+ * domenowej. Jedynym wołającym jest `wykonajAkcjeNaprawcza` (`akcjeNaprawcze.ts`),
+ * który wcześniej wykonuje JEDNĄ nawigację powłoki (D1). Komunikaty odmowy bez
+ * identyfikatorów maszynowych (nazwa operacji po polsku z rejestru powierzchni).
+ */
+import type { CanonicalOpName } from '../../../types/domainOps';
+import type { EnergyNetworkModel } from '../../../types/enm';
+import {
+  resolveFixActionSurface,
+  type FixActionSurfaceDescriptor,
+} from '../../../types/fixActionSurface';
+import { getOperationSurfaceByOp } from '../../../ui/topology/modals/operationSurfaceRegistry';
+import type { SelectedElement } from '../../../ui/types';
+import {
+  buildFixActionOperationContext,
+  resolveFixActionElementType,
+  surfaceOpSupportsForm,
+} from '../../../ui/shared/fixActionSurfaceRuntime';
+import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
+import { GOTOWOSC_STRINGS } from './strings';
+
+type NotificationLevel = 'success' | 'info' | 'warning' | 'error';
+
+export interface FixActionLike {
+  code?: string | null;
+  action_type: string;
+  element_ref: string | null;
+  modal_type?: string | null;
+  panel?: string | null;
+  step?: string | null;
+  focus?: string | null;
+  payload_hint?: Record<string, unknown> | null;
+  surface_descriptor?: FixActionSurfaceDescriptor | null;
+}
+
+export interface ExecuteFixActionSurfaceDeps {
+  snapshot: EnergyNetworkModel | null;
+  openOperationForm: (op: CanonicalOpName, context?: Record<string, unknown>) => void;
+  selectElement: (element: SelectedElement | null) => void;
+  centerSldOnElement: (elementId: string | null) => void;
+  notify: (message: string, level: NotificationLevel) => void;
+}
+
+function resolveSurfaceDescriptor(action: FixActionLike): FixActionSurfaceDescriptor {
+  if (action.surface_descriptor) {
+    return action.surface_descriptor;
+  }
+
+  return resolveFixActionSurface({
+    code: action.code ?? 'fix_action.unknown',
+    action_type: action.action_type,
+    element_ref: action.element_ref,
+    modal_type: action.modal_type ?? null,
+    panel: action.panel ?? null,
+    step_hint: action.step ?? null,
+    focus_ref: action.focus ?? null,
+    payload_hint: action.payload_hint ?? null,
+  });
+}
+
+function resolveNavigationRef(surface: FixActionSurfaceDescriptor): string | null {
+  return surface.focus_ref ?? surface.element_ref ?? null;
+}
+
+function buildSelectionElement(
+  snapshot: EnergyNetworkModel | null,
+  surface: FixActionSurfaceDescriptor,
+): SelectedElement | null {
+  const targetRef = resolveNavigationRef(surface);
+  if (!targetRef) {
+    return null;
+  }
+
+  const explicitType =
+    typeof surface.context.element_type === 'string'
+      ? surface.context.element_type
+      : null;
+  const elementType = resolveFixActionElementType(snapshot, targetRef, explicitType);
+
+  return resolveSelectedElementFromSnapshot(snapshot, targetRef, targetRef, elementType);
+}
+
+function navigateToSurfaceTarget(
+  surface: FixActionSurfaceDescriptor,
+  deps: ExecuteFixActionSurfaceDeps,
+): boolean {
+  const targetRef = resolveNavigationRef(surface);
+  if (!targetRef) {
+    return false;
+  }
+
+  const selection = buildSelectionElement(deps.snapshot, surface);
+  if (selection) {
+    deps.selectElement(selection);
+  }
+  deps.centerSldOnElement(targetRef);
+  return true;
+}
+
+export function executeFixActionSurface(
+  action: FixActionLike,
+  deps: ExecuteFixActionSurfaceDeps,
+): boolean {
+  const surface = resolveSurfaceDescriptor(action);
+  const navigated = navigateToSurfaceTarget(surface, deps);
+
+  if (surface.kind === 'navigate_to_element') {
+    if (!navigated) {
+      deps.notify(GOTOWOSC_STRINGS.akcjaBezElementu, 'warning');
+      return false;
+    }
+    return true;
+  }
+
+  if (surfaceOpSupportsForm(surface)) {
+    const entry = getOperationSurfaceByOp(surface.operation);
+    if (!entry?.implemented) {
+      deps.notify(GOTOWOSC_STRINGS.akcjaBezFormularza(entry?.labelPl ?? null), 'warning');
+      return false;
+    }
+
+    deps.openOperationForm(
+      surface.operation,
+      buildFixActionOperationContext(surface, deps.snapshot),
+    );
+    return true;
+  }
+
+  deps.notify(GOTOWOSC_STRINGS.akcjaNierozpoznana, 'warning');
+  return false;
+}

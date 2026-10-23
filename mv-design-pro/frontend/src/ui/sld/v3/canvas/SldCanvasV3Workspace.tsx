@@ -123,13 +123,13 @@ import {
   KLASY_UCHWYTU,
   type CanvasMenuSubject,
 } from './canvasMenuSubject';
-import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
+import { stacjaPola } from '../../../shared/szynyStacji';
+import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
   buildDerDropDetailDrawerData,
   buildDetailDrawerDataForKind,
   buildStationDetailDrawerData,
-  findBayByRef,
   findSubstationByRef,
   mapKindToMenuKind,
 } from '../../shared/detailDrawerData';
@@ -191,7 +191,7 @@ import { toLightTechnicalExportSvg } from '../export/exportPalette';
 // i dla implementacji.
 import { buildSheetTitleBlockData, SheetTitleBlock } from '../export/sheetTitleBlock';
 import { buildSldExportFile } from '../export/sldExport';
-import type { SldExportFormat } from '../export/formats';
+import { sldExportFormatDescriptor, type SldExportFormat } from '../export/formats';
 // KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
 // na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
 import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
@@ -200,6 +200,7 @@ import {
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
   SLD_CANVAS_DOCK_INSETS,
+  stationInternalPanelWidthPx,
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
@@ -231,6 +232,7 @@ import {
 import {
   buildResultRefBridge,
   resultPointsHiddenByModel,
+  resultPointsInStationNnBoard,
   type ResultPointCoverage,
 } from './resultRefBridge';
 import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
@@ -446,39 +448,15 @@ function elementKindForDrawer(kind: PreviewElementKind | undefined): string | un
 }
 
 /**
- * Rozwiązuje `Substation.ref_id` właściciela bay-a (`Bay.substation_ref`,
- * ENM FK — realna relacja, NIE zgadywanie) z `bayRef`, którą `apparatus`
- * niesie jako `meta.ownerRef` w kompozycji STACJI (`compose/station.ts`,
- * `ownerRef: s.bayRef ?? s.sourceRef`).
- *
- * UDOKUMENTOWANA LUKA (zweryfikowana empirycznie, fixture
- * `sldSubstrate52s.enm.json`): dla `apparatus` GPZ (`compose/gpz.ts`
- * `gpzSymbolToPreview`, `ownerRef: sourceRef ?? bayRef ?? transformerRef ??
- * sectionId` — TEN SAM priorytet `bayRef`) bay GPZ NIE JEST rekordem
- * `snapshot.bays` (`findBayByRef` zwraca `null` — bay GPZ żyje w odrębnej
- * substrukturze GPZ, nie w płaskiej liście `Bay` ENM) — funkcja zwraca wtedy
- * `null`, KOREKTA `stationCode` w `buildDetailDrawerDataForElementKind`
- * niżej cicho nie następuje (budowniczy współdzielony zostaje przy swoim
- * fallbacku `sldData.stations[0]` — potencjalnie NIEPOPRAWNY breadcrumb dla
- * aparatu GPZ, ale `label`/`kind`/`menuKind` drawera są poprawne; drawer się
- * OTWIERA, nie crashuje). Dla aparatu STACJI (bay w `snapshot.bays`) korekta
- * działa poprawnie.
+ * Rozwiązuje `Substation.ref_id` właściciela pola z `bayRef`, którą `apparatus` niesie jako
+ * `meta.ownerRef` w kompozycji STACJI i GPZ (`compose/station.ts`, `compose/gpz.ts`). Jedna
+ * reguła stacji pola `stacjaPola` (dawniej: `Bay.substation_ref`, a w zapasie wzorzec refu
+ * `stn/⟨id⟩`, bez pól GPZ — breadcrumb aparatu GPZ spadał na `sldData.stations[0]`).
  */
 function stationRefForBayOwner(snapshot: EnergyNetworkModel | null, bayRef: string): string | null {
-  const direct = findBayByRef(snapshot, bayRef)?.substation_ref;
-  if (direct) return direct;
-  // Adaptacja flex (2026-07-17, pomiar na modelu z REALNEGO backendu —
-  // fixtura `openTrunkChain.enm.json`): `snapshot.bays` bywa PUSTE (pola
-  // stacji żyją w `meta.field_specs`, nie w płaskiej liście `Bay`), a bay-ref
-  // symbolu jest syntetyczny (`stn/⟨id⟩/sn_field/⟨n⟩`). Wtedy stacja-właściciel
-  // z GRAMATYKI refów: prefiks własności `stn/⟨id⟩` (dwa pierwsze człony
-  // ścieżki — TA SAMA konwencja co `ownerScope` w `scene/crossings.ts`),
-  // dopasowany do realnego rekordu `snapshot.substations` (relacja
-  // potwierdzona rekordem, nie sam string).
-  const scope = bayRef.split('/').slice(0, 2).join('/');
-  if (!scope.startsWith('stn/')) return null;
-  const station = (snapshot?.substations ?? []).find((s) => (s.ref_id ?? '').startsWith(`${scope}/`));
-  return station?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO (commit 2): stacja pola z DANYCH (`stacjaPola`: rekord `bays`, potem
+  // `field_specs`/`nn_field_specs` stacji — także GPZ), nie z gramatyki refu `stn/⟨id⟩`.
+  return snapshot ? stacjaPola(snapshot, bayRef) : null;
 }
 
 /**
@@ -529,11 +507,9 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * fabrykowany ref. `stationCode`/
  * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
  * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
- * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu STACJI, rozwiązanego
- * z `Bay.substation_ref` (realna relacja ENM, nie zgadywanie); dla aparatu
- * GPZ korekta nie następuje (bay GPZ poza `snapshot.bays`, patrz
- * `stationRefForBayOwner` nagłówek) — UDOKUMENTOWANA LUKA, drawer się mimo
- * to otwiera (nie crash, `label` poprawny).
+ * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu stacji i GPZ, stacja pola
+ * z danych (`stationRefForBayOwner` → `stacjaPola`: rekord `bays` albo `field_specs`
+ * stacji). Pole nieznane w danych ⇒ brak korekty (drawer się otwiera, `label` poprawny).
  */
 function buildDetailDrawerDataForElementKind(
   snapshot: EnergyNetworkModel | null,
@@ -987,8 +963,8 @@ function LegendPanelGlyph(props: { readonly id: SymbolId }): JSX.Element {
 function LegendPanelLineSample(props: { readonly id: string }): JSX.Element {
   return (
     <svg width={24} height={24} viewBox="0 0 28 16" className="shrink-0 text-scada-text" aria-hidden="true">
-      <line x1={0} y1={8} x2={props.id === 'openTerminal' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
-      {props.id === 'openTerminal' && (
+      <line x1={0} y1={8} x2={props.id === 'openTerminal' || props.id === 'tieMarker' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
+      {(props.id === 'openTerminal' || props.id === 'tieMarker') && (
         <line x1={22} y1={2} x2={22} y2={14} stroke="currentColor" strokeWidth={1.6} />
       )}
     </svg>
@@ -1214,7 +1190,8 @@ function SldV3ResultCoverageLine(props: {
       </div>
     );
   }
-  const niewidoczne = coverage.hiddenByModel + coverage.withoutTemplate + coverage.withoutAnchor;
+  const niewidoczne =
+    coverage.hiddenByModel + coverage.withoutTemplate + coverage.inStationNnBoard + coverage.withoutAnchor;
   return (
     <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
       <span data-testid="sld-v3-result-coverage-liczby">
@@ -1224,6 +1201,7 @@ function SldV3ResultCoverageLine(props: {
         <span className="text-scada-muted" data-testid="sld-v3-result-coverage-braki">
           {`Bez etykiety: ${coverage.hiddenByModel} nierysowanych w modelu · `
             + `${coverage.withoutTemplate} bez wielkości dla tej analizy · `
+            + `${coverage.inStationNnBoard} w rozdzielnicach nN stacji (poza schematem SN) · `
             + `${coverage.withoutAnchor} bez elementu na schemacie`}
         </span>
       )}
@@ -1625,7 +1603,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [resultLabelsByOwnerRef, resultFilter],
   );
   // S9-2 (W-1): UCZCIWY RACHUNEK POKRYCIA — ile punktów wyniku backendu ma
-  // etykietę, a ile nie i DLACZEGO (cztery rozłączne kategorie, suma = liczba
+  // etykietę, a ile nie i DLACZEGO (pięć rozłącznych kategorii, suma = liczba
   // punktów). Liczony z etykiet NIEFILTROWANYCH: filtr to wybór operatora, a
   // rachunek odpowiada na pytanie „czy schemat pokazuje wynik biegu".
   const resultCoverage = useMemo<ResultPointCoverage>(
@@ -1634,6 +1612,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         labelsPayload,
         resultLabelsByOwnerRef,
         resultPointsHiddenByModel(snapshot),
+        resultPointsInStationNnBoard(snapshot),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );
@@ -1951,6 +1930,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     // tę pozycję w menu (zrodlo/szyna/stacja).
     const branchStartAvailable = resolveBranchStartAvailability(
       snapshot,
+      logicalViews,
       contextSubject.menuKind,
       contextSubject.modelRef,
     );
@@ -2004,7 +1984,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       apparatusKind,
       // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
       // punkcie startu odgałęzienia co menu kanwy i kreator.
-      branchStartAvailable: resolveBranchStartAvailability(snapshot, menuKind, detailDrawerData.elementId),
+      branchStartAvailable: resolveBranchStartAvailability(
+        snapshot,
+        logicalViews,
+        menuKind,
+        detailDrawerData.elementId,
+      ),
       // S95-START: szuflada czyta TĘ SAMĄ prawdę o punkcie startu ciągu co menu kanwy.
       trunkStartAvailable: resolveTrunkStartAvailability(
         snapshot,
@@ -2231,7 +2216,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // SCHEMAT-10 S4 (V12K-135/136, D11/D12): dawniej — surowa serializacja
   // ekranu (dark, kadr kamery) BEZ normalizacji, mimo że `SldExportFormatMenu`
   // reklamuje ten sam kanał jako „SVG (light_technical)" (V12K-007 invariant
-  // v2 `exportSvg.ts` NIE obejmuje v3 — v3 koduje kolor jako hex konkretny,
+  // dawnego v2 `exportSvg.ts` NIE obejmował v3 — v3 koduje kolor jako hex konkretny,
   // nie `currentColor`, patrz `export/exportPalette.ts` nagłówek) — DWA
   // przyciski eksportu SVG (ten button + dropdown niżej) dawały DWA różne
   // (i oba niepełne) wyniki. Teraz: JEDNA funkcja, poprawna end-to-end —
@@ -2239,10 +2224,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // widoku użytkownika), (2) kadr fit-do-treści z bboxa sceny AKTUALNEGO LOD
   // (`applyContentFitFrame`, D12 „reszta" — ignoruje kamerę/aspekt
   // kontenera), (3) paleta jasna (`toLightTechnicalExportSvg`, D11) na
-  // zserializowanym markupie. Zwraca nazwę pliku (jak `downloadSldSvg`) albo
-  // `null`, gdy nie ma czego eksportować — ten sam kontrakt zwrotny co
-  // `SldExportFormatMenu.onExportSvgOverride`, więc JEDNA implementacja
-  // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
+  // zserializowanym markupie. JEDNA implementacja zasila OBA punkty wejścia
+  // (button + dropdown) bez duplikacji (dawny v2 `downloadSldSvg` skasowany
+  // bez konsumenta w karcie KASACJA-SCL-I-CIM-KLIENT).
   //
   // S9-6 (audyt E-1/E-2/E-3/E-6): funkcja rozdzielona na DWA kroki. Tu (niżej,
   // `buildExportSheetMarkup`) powstaje MARKUP ARKUSZA — jedno źródło rysunku
@@ -2340,20 +2324,32 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   /**
    * S9-6: jedno wyjście dla KAŻDEGO formatu z menu (`SLD_EXPORT_FORMATS`).
    * Zwraca nazwę zapisanego pliku albo `null`, gdy nie ma czego eksportować;
-   * błąd budowy (np. bramka „rysunek bez geometrii") leci wyjątkiem do
-   * wołającego, który pokazuje komunikat — nigdy pusty plik „na sukces".
+   * błąd budowy (np. bramka „rysunek bez geometrii" albo nazwana odmowa
+   * serwera dla modelu niekompletnego) leci wyjątkiem do wołającego, który
+   * pokazuje komunikat — nigdy pusty plik „na sukces".
+   *
+   * Karta KASACJA-SCL-I-CIM-KLIENT: rysunek budowany TYLKO dla formatów, których
+   * źródłem jest rysunek (`source` w `export/formats.ts`); model sieci (CGMES)
+   * pochodzi z serwera dla aktywnego przypadku i nie potrzebuje kanwy.
    */
   const handleExport = useCallback(
-    (format: SldExportFormat): string | null => {
-      const svgMarkup = buildExportSheetMarkup();
-      if (svgMarkup === null) return null;
-      const file = buildSldExportFile(format, {
+    async (format: SldExportFormat): Promise<string | null> => {
+      let svgMarkup: string | null = null;
+      if (sldExportFormatDescriptor(format).source === 'rysunek') {
+        svgMarkup = buildExportSheetMarkup();
+        if (svgMarkup === null) return null;
+      }
+      const file = await buildSldExportFile(format, {
         svgMarkup,
         snapshot,
+        caseId: activeCaseId,
         projectName: activeProjectName,
         caseName: activeCaseName,
       });
-      const blob = new Blob([file.content], { type: `${file.mime};charset=utf-8` });
+      const blob =
+        typeof file.content === 'string'
+          ? new Blob([file.content], { type: `${file.mime};charset=utf-8` })
+          : file.content;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -2362,10 +2358,20 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       URL.revokeObjectURL(url);
       return file.filename;
     },
-    [activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
+    [activeCaseId, activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
   );
 
-  const handleExportSvg = useCallback((): string | null => handleExport('svg'), [handleExport]);
+  // Przycisk „↓ SVG" melduje brak rysunku i błąd budowy tak samo jak menu —
+  // bez tego klik bez rysunku byłby martwym klikiem (zero pliku, zero słowa).
+  const handleExportSvg = useCallback((): void => {
+    handleExport('svg')
+      .then((filename) => {
+        if (filename === null) notify('Eksport schematu: nie ma czego wyeksportować — najpierw wczytaj model sieci.', 'error');
+      })
+      .catch((exc: unknown) =>
+        notify(`Eksport schematu: ${exc instanceof Error ? exc.message : String(exc)}`, 'error'),
+      );
+  }, [handleExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -2446,10 +2452,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
   const closeLvDomainPortal = useCallback(() => setLvDomainStationRef(null), []);
   const lvDomainPortalOpen = lvDomainStationRef !== null && activeCaseId !== null;
-  const lvDomainPortalWidth = Math.min(
-    LV_DOMAIN_PORTAL_MAX_WIDTH_PX,
-    Math.max(0, size.width - 24),
-  );
+  const lvDomainPortalWidth = stationInternalPanelWidthPx(size.width);
   const lvDomainPortalHeight = Math.max(240, size.height - 24);
   const effectiveCanvasInsets = useMemo(
     () =>
@@ -2805,7 +2808,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         >
           ↓ SVG
         </button>
-        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/SCD/CIM) idzie tą samą drogą
+        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/CGMES) idzie tą samą drogą
             — `handleExport` → `export/sldExport.ts`. Błąd budowy pliku (np.
             bramka „rysunek bez geometrii") pokazujemy jako powiadomienie,
             zamiast milczeć albo zapisać pusty plik. */}
@@ -3155,7 +3158,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         <div
           data-testid="lv-domain-portal-drawer"
           data-view-mode="side-drawer"
-          className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex max-w-[min(760px,calc(100%-1.5rem))] items-start justify-end"
+          className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex items-start justify-end"
+          style={{ maxWidth: `min(${LV_DOMAIN_PORTAL_MAX_WIDTH_PX}px, calc(100% - 1.5rem))` }}
         >
           <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
             <LvDomainPortal

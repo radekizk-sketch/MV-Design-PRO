@@ -40,7 +40,7 @@ import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicke
 import type {
   CTCatalogType,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
   ProtectionDeviceType,
   TransformerType,
   VTCatalogType,
@@ -72,7 +72,11 @@ import {
 } from '../../../ui/network-build/networkBuildStore';
 import { scheduleNextOperationForm } from '../../../ui/network-build/trunkContinuation';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { PUNKTY_NEUTRALNE_IMPEDANCYJNE } from '../../../types/uziemienie';
+import {
+  ETYKIETA_PL_TOLERANCJI_NN,
+  PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  TOLERANCJE_NAPIECIA_NN,
+} from '../../../types/uziemienie';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -94,7 +98,7 @@ import {
   DANE_DOMYSLNE,
   RODZAJE_ZABEZPIECZEN,
   aparatyDlaPola,
-  brakujePolaTransformatorowego,
+  brakujacePolaToru,
   czyAparaturaKompletna,
   czyKoniecOdcinka,
   domyslneWpisyPol,
@@ -120,6 +124,7 @@ import {
   opcjeSzablonowRoli,
   parametryZKatalogu,
   producenciUzywalni,
+  rodzajStacjiZKreatora,
   rolePolaStacji,
   szablonyDlaWyboru,
   szablonyPerRola,
@@ -157,6 +162,13 @@ import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
 import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
+import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
+
+/** Opcje tolerancji napięcia sieci nN — słownik przypięty do backendu (`types/uziemienie.ts`). */
+const OPCJE_TOLERANCJI_NN = TOLERANCJE_NAPIECIA_NN.map((id) => ({
+  id,
+  etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
+}));
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szablon', tytul: T.krokSzablon },
@@ -264,7 +276,7 @@ export function KreatorStacjiSnNn() {
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
   const [bladRozdzielnicy, setBladRozdzielnicy] = useState<string | null>(null);
-  const [aparaty, setAparaty] = useState<MVApparatusCatalogType[]>([]);
+  const [aparaty, setAparaty] = useState<MVApparatusType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   // Tor BLOK_RMU — konfiguracje fabryczne WYBRANEJ rodziny (subzasób katalogu).
@@ -889,10 +901,13 @@ export function KreatorStacjiSnNn() {
     ],
   );
   const rozdzielnicaKompletna = czyRozdzielnicaKompletna(snFields);
-  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN ZAWSZE tworzy transformator
-  // (`transformer.create: true` w payloadzie), więc brak pola roli TR na liście
-  // to zawsze świadoma rezygnacja projektanta — i zawsze ma być nazwana wprost.
-  const brakPolaTransformatorowego = brakujePolaTransformatorowego(dane.pola, true);
+  // POLA-W-TORZE: pola toru wymagane przez umiejscowienie (JEDEN predykat
+  // `brakujacePolaToru`, ten sam zbiór, który operacja domyka). Kreator ZAWSZE tworzy
+  // transformator, więc pole TR należy do toru w obu trybach; brak dowolnego pola toru
+  // blokuje zapis i jest nazwany wprost w kroku pól oraz w panelu kontroli.
+  const polaToruBrak = brakujacePolaToru(dane.pola, kontekst.tryb);
+  const brakPolaTransformatorowego = polaToruBrak.includes('TRANSFORMATOROWE');
+  const brakPolLiniowychToru = polaToruBrak.filter((rola) => rola !== 'TRANSFORMATOROWE');
   const aparaturaKompletna = czyAparaturaKompletna(snFields);
 
   const dodajPole = useCallback(() => {
@@ -914,26 +929,25 @@ export function KreatorStacjiSnNn() {
   }, [aparatDomyslnyRoli, szablonyRola]);
 
   /**
-   * KOMPLETNOSC-POLA-TR: przywrócenie pola transformatorowego po świadomym
-   * usunięciu. Pole wchodzi z tym samym doborem, co domyślne (szablon roli +
-   * aparat dopuszczalny dla roli TR) — projektant nie musi go składać od nowa.
+   * Dodanie brakującego pola toru (transformatorowego albo liniowego) jednym kliknięciem.
+   * Pole wchodzi z tym samym doborem, co domyślne (szablon roli + aparat dopuszczalny dla
+   * roli) — projektant nie musi go składać od nowa i nadal może je edytować.
    */
-  const przywrocPoleTransformatorowe = useCallback(() => {
+  const dodajPoleToru = useCallback((rola: SnFieldRole) => {
     setDane((p) => {
-      if (p.pola.some((pole) => pole.field_role === 'TRANSFORMATOROWE')) return p;
-      const rola: SnFieldRole = 'TRANSFORMATOROWE';
-      return {
-        ...p,
-        pola: [
-          ...p.pola,
-          nowyWpisPola(
-            rola,
-            szablonyRola[rola]?.template_ref ?? null,
-            aparatDomyslnyRoli(rola),
-            p.pola.length + 1,
-          ),
-        ],
-      };
+      if (p.pola.some((pole) => pole.field_role === rola)) return p;
+      const wpis = nowyWpisPola(
+        rola,
+        szablonyRola[rola]?.template_ref ?? null,
+        aparatDomyslnyRoli(rola),
+        p.pola.length + 1,
+      );
+      // Kolejność toru jak w składzie domykanym przez operację: pole wejściowe na
+      // początku, wyjściowe zaraz za wejściowym, transformatorowe na końcu.
+      const zaWejsciowym = p.pola.findIndex((pole) => pole.field_role === 'LINIA_IN') + 1;
+      const pozycja =
+        rola === 'LINIA_IN' ? 0 : rola === 'LINIA_OUT' ? zaWejsciowym : p.pola.length;
+      return { ...p, pola: [...p.pola.slice(0, pozycja), wpis, ...p.pola.slice(pozycja)] };
     });
   }, [aparatDomyslnyRoli, szablonyRola]);
 
@@ -1020,7 +1034,7 @@ export function KreatorStacjiSnNn() {
 
   const zapiszStacje = useCallback(
     async (daneEff: StacjaFormData, konwerterEff: ConverterType | null) => {
-      const walid = walidujFormularz(daneEff, snFields);
+      const walid = walidujFormularz(daneEff, snFields, kontekst.tryb);
       setBledy(walid);
       if (walid.length > 0) return;
       if (!kontekstOk) {
@@ -1182,7 +1196,13 @@ export function KreatorStacjiSnNn() {
     try {
       const [szablon, podgladSzablonu] = await Promise.all([
         fetchStationTemplate(wybranySzablonId),
-        previewStationTemplate(wybranySzablonId, {}).catch(() => null),
+        // Odmowa podglądu (np. HTTP 422 z kodem odmowy szablonu) jest POKAZYWANA — dawne
+        // ciche `catch(() => null)` wypełniało formularz bez doboru transformatora i bez
+        // słowa wyjaśnienia (karta GPT-478 pkt 7.3: jedna, jawna funkcja odmowy).
+        previewStationTemplate(wybranySzablonId, {}).catch((e: unknown) => {
+          setBladSzablonow(T.szablonPodgladOdmowa + (e instanceof Error ? e.message : String(e)));
+          return null;
+        }),
       ]);
       const wypelnienie = wypelnienieZSzablonu(szablon, podgladSzablonu);
       setSzablonZastosowany(szablon);
@@ -1311,8 +1331,16 @@ export function KreatorStacjiSnNn() {
   }, [dane, dobrane, falowniki, isZrodlo, konwerter, zapiszStacje]);
 
   const koniec = czyKoniecOdcinka(kontekst);
-  const typLabel =
-    T.typStacjiOpcje.find((o) => o.id === dane.station_type)?.etykieta ?? dane.station_type;
+  // Rodzaj, który powstanie ze składu pól i umiejscowienia (jedna reguła produktu) — obok
+  // deklaracji z kroku „Rodzaj"; rozjazd = ostrzeżenie W043 po zapisie, więc widać go od razu.
+  const rodzajWynikowy = rodzajStacjiZKreatora(dane.pola, kontekst.tryb);
+  const rodzajZgodny = rodzajWynikowy === dane.station_type;
+  const typLabel = rodzajZgodny
+    ? T.rodzajWynikowy(NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy])
+    : T.rodzajNiezgodny(
+      NAZWA_RODZAJU_STACJI_PL[rodzajWynikowy],
+      NAZWA_RODZAJU_STACJI_PL[dane.station_type],
+    );
   const umiejscowienieLabel = koniec ? T.umiejscowienieKoniec : T.umiejscowieniePodzial;
   const konfiguracjaNnLabel =
     T.konfiguracjaNnOpcje.find((o) => o.id === dane.nn_configuration)?.etykieta ?? dane.nn_configuration;
@@ -1325,7 +1353,7 @@ export function KreatorStacjiSnNn() {
   const protekcja = zabezpieczenieZrodla(dane);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszTyp, stan: 'kompletne', wartosc: typLabel },
+    { etykieta: T.wierszTyp, stan: rodzajZgodny ? 'kompletne' : 'ostrzezenie', wartosc: typLabel },
     {
       etykieta: T.wierszUmiejscowienie,
       stan: kontekstOk ? 'kompletne' : 'brak',
@@ -1344,13 +1372,13 @@ export function KreatorStacjiSnNn() {
           ? `${snFields.length} pól · ${selectedManufacturer?.name ?? dane.manufacturer_ref}`
           : 'Do doboru',
     },
-    // KOMPLETNOSC-POLA-TR: stan pola transformatorowego W PANELU KONTROLI, czyli
-    // widoczny z KAŻDEGO kroku — panel skutków w kroku pól zobaczy tylko ten, kto
-    // do tego kroku wróci. `ostrzezenie` (nie `brak`), bo rezygnacja z pola jest
-    // legalnym stanem roboczym: zapis pozostaje możliwy.
+    // KOMPLETNOSC-POLA-TR + POLA-W-TORZE: stan pola transformatorowego W PANELU
+    // KONTROLI, czyli widoczny z KAŻDEGO kroku — panel skutków w kroku pól zobaczy
+    // tylko ten, kto do tego kroku wróci. `brak`, bo transformator bez pola omijałby
+    // aparat, który ma go odłączać: zapis jest zablokowany.
     {
       etykieta: T.wierszPoleTr,
-      stan: brakPolaTransformatorowego ? 'ostrzezenie' : 'kompletne',
+      stan: brakPolaTransformatorowego ? 'brak' : 'kompletne',
       wartosc: brakPolaTransformatorowego ? T.wierszPoleTrBrak : T.wierszPoleTrJest,
     },
     {
@@ -1376,6 +1404,7 @@ export function KreatorStacjiSnNn() {
     || !activeCaseId
     || !rozdzielnicaKompletna
     || !aparaturaKompletna
+    || polaToruBrak.length > 0
     || !dane.catalog_ref
     || (isZrodlo && !konwerter);
   const szybkaZablokowana =
@@ -1383,6 +1412,7 @@ export function KreatorStacjiSnNn() {
     || !activeCaseId
     || !rozdzielnicaKompletna
     || !aparaturaKompletna
+    || polaToruBrak.length > 0
     || !rekomendowanyTrafoRef
     || (isZrodlo && falowniki.length === 0);
   const brakSzablonowKomunikat =
@@ -1411,7 +1441,9 @@ export function KreatorStacjiSnNn() {
           : T.brakSzablonow)
     : !aparaturaKompletna
       ? bladAparatow ?? T.brakAparatow
-      : null;
+      : polaToruBrak.length > 0
+        ? T.polaToruBrakStopka(polaToruBrak.map((rola) => fieldRoleLabelPl(rola)).join(', '))
+        : null;
   const walidacjaStopka =
     bledy.length > 0
       ? T.walidacjaStopka
@@ -1959,12 +1991,37 @@ export function KreatorStacjiSnNn() {
                 <button
                   type="button"
                   className="mvd-kreator-btn mvd-kreator-btn--glowna"
-                  onClick={przywrocPoleTransformatorowe}
+                  onClick={() => dodajPoleToru('TRANSFORMATOROWE')}
                   data-testid="mvd-kreator-stacja-przywroc-pole-tr"
                 >
                   {T.polaPrzywrocTr}
                 </button>
               )}
+            </KreatorSekcja>
+          ) : null}
+
+          {brakPolLiniowychToru.length > 0 ? (
+            <KreatorSekcja tytul={T.polaToruBrakTytul} testid="mvd-kreator-stacja-brak-pol-toru">
+              <KreatorInfo>
+                {T.polaToruBrakOpis(
+                  brakPolLiniowychToru.map((rola) => fieldRoleLabelPl(rola)).join(', '),
+                  czyKoniecOdcinka(kontekst),
+                )}
+              </KreatorInfo>
+              {/* W torze blokowym jednostek nie dokłada się ręcznie (patrz pole TR wyżej). */}
+              {torKonfiguracji === 'BLOK_RMU'
+                ? null
+                : brakPolLiniowychToru.map((rola) => (
+                    <button
+                      key={rola}
+                      type="button"
+                      className="mvd-kreator-btn mvd-kreator-btn--glowna"
+                      onClick={() => dodajPoleToru(rola)}
+                      data-testid={`mvd-kreator-stacja-dodaj-pole-toru-${rola}`}
+                    >
+                      {T.polaDodajPoleToru(fieldRoleLabelPl(rola))}
+                    </button>
+                  ))}
             </KreatorSekcja>
           ) : null}
 
@@ -2455,6 +2512,16 @@ export function KreatorStacjiSnNn() {
             testid="mvd-kreator-stacja-uklad-nn"
           />
           <PoleWyboru
+            etykieta={T.uziemienieTolerancja}
+            wartosc={dane.tolerancja_napiecia_nn}
+            opcje={OPCJE_TOLERANCJI_NN}
+            onZmiana={(v) =>
+              zmien('tolerancja_napiecia_nn', v as StacjaFormData['tolerancja_napiecia_nn'])
+            }
+            pomoc={T.uziemienieTolerancjaPomoc}
+            testid="mvd-kreator-stacja-tolerancja-nn"
+          />
+          <PoleWyboru
             etykieta={T.uziemieniePunkt}
             wartosc={dane.neutral_point}
             opcje={T.uziemieniePunktOpcje}
@@ -2472,6 +2539,18 @@ export function KreatorStacjiSnNn() {
               wymagane
               blad={bladDlaPola('neutral_impedance_ohm')}
               testid="mvd-kreator-stacja-rezystancja-uziemienia"
+            />
+          ) : null}
+          {dane.neutral_point === 'directly_grounded' ? (
+            <PoleTekstowe
+              etykieta={T.uziemienieRezystancjaUziomuStacji}
+              wartosc={dane.neutral_impedance_ohm}
+              onZmiana={(v) => zmien('neutral_impedance_ohm', v)}
+              placeholder={T.uziemienieRezystancjaPlaceholder}
+              pomoc={T.uziemienieRezystancjaUziomuStacjiPomoc}
+              wymagane={dane.uklad_sieci_nn === 'TT'}
+              blad={bladDlaPola('neutral_impedance_ohm')}
+              testid="mvd-kreator-stacja-rezystancja-uziomu-stacji"
             />
           ) : null}
           <PanelTeorii

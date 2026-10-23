@@ -4,7 +4,7 @@
   "branches": [
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -43,6 +43,12 @@
         "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
         "trade_name": "YAKXS 3x120/16",
         "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
@@ -162,7 +168,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -201,6 +207,12 @@
         "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
         "trade_name": "YAKXS 3x120/16",
         "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
@@ -585,13 +597,15 @@
           },
           "cosphi_max": {
             "field_name": "cosphi_max",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "cosphi_min": {
             "field_name": "cosphi_min",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "current_loop_bandwidth_hz": {
             "field_name": "current_loop_bandwidth_hz",
@@ -619,18 +633,20 @@
           },
           "manufacturer": {
             "field_name": "manufacturer",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "model": {
             "field_name": "model",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "p_installed_mw": {
             "field_name": "p_installed_mw",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "moc zainstalowana DC — założenie nadwymiarowania DC/AC przyjęte w rekordzie, nie dana karty",
+            "quality": "ESTIMATED"
           },
           "pll_bandwidth_hz": {
             "field_name": "pll_bandwidth_hz",
@@ -640,33 +656,39 @@
           },
           "pmax_mw": {
             "field_name": "pmax_mw",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "pn_ac_mw": {
             "field_name": "pn_ac_mw",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "qmax_mvar": {
             "field_name": "qmax_mvar",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "qmin_mvar": {
             "field_name": "qmin_mvar",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "sn_mva": {
             "field_name": "sn_mva",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "un_kv": {
             "field_name": "un_kv",
-            "quality": "DATASHEET",
-            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+            "note": "wartość z deklarowanej karty technicznej — dokument niedołączony, niezweryfikowany",
+            "quality": "ESTIMATED",
+            "source_ref": "Deklarowane: Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com) — dokument nie jest dołączony do repozytorium (niezweryfikowany)"
           },
           "voltage_loop_bandwidth_hz": {
             "field_name": "voltage_loop_bandwidth_hz",
@@ -810,7 +832,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "715042f626e7864e260386d22ff7a0e444faddba68a6101d630e9a2af48141e9",
+    "hash_sha256": "31386723fa62794a5b39e24d2001d92611062ee39478f571d23f294d6283cb3c",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -838,14 +860,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -1196,6 +1217,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1248,6 +1270,7 @@
       "lv_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-2000kva-dyn11",
         "catalog_item_version": "2024.1",
@@ -1293,17 +1316,18 @@
       "catalog_ref": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
       "hv_bus_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/block_hv_bus",
       "hv_neutral": null,
-      "i0_percent": 1.0,
+      "i0_percent": 0.5,
       "id": "52ad1e7f-cf7c-550f-a9c0-381309db0f4c",
       "lv_bus_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/producer_nn_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
         "catalog_item_version": "2024.1",
-        "i0_percent": 1.0,
-        "p0_kw": 3.75,
-        "pk_kw": 26.25,
+        "i0_percent": 0.5,
+        "p0_kw": 2.79,
+        "pk_kw": 19.0,
         "rated_power_mva": 2.5,
         "uk_percent": 6.0,
         "vector_group": "Dyn11",
@@ -1319,9 +1343,9 @@
       "n_parallel": 1,
       "name": "Transformator blokowy Instalacja PV 1,9 MW",
       "overrides": [],
-      "p0_kw": 3.75,
+      "p0_kw": 2.79,
       "parameter_source": "CATALOG",
-      "pk_kw": 26.25,
+      "pk_kw": 19.0,
       "ref_id": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/block_transformer",
       "sn_mva": 2.5,
       "source_mode": "KATALOG",

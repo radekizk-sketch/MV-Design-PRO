@@ -12,10 +12,10 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
-import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { podpisStacjiPl } from '../../shared/rodzajStacji';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
 import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
-import { selectStationDistributionTransformers } from '../stationTransformerSelection';
+import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
@@ -103,8 +103,8 @@ export function StationCard({ elementId }: { elementId: string }) {
         { key: 'name', label: 'Nazwa', value: station.name },
         {
           key: 'station_type',
-          label: 'Typ topologiczny',
-          value: formatStationTypeLabelPl(station.station_type),
+          label: 'Rodzaj stacji',
+          value: podpisStacjiPl(snapshot, station),
         },
         {
           key: 'entry_point',
@@ -305,7 +305,7 @@ export function StationCard({ elementId }: { elementId: string }) {
   return (
     <ObjectCard
       elementName={station.name}
-      elementType={formatStationTypeLabelPl(station.station_type)}
+      elementType={podpisStacjiPl(snapshot, station)}
       elementId={elementId}
       statusDot={dot}
       sections={sections}

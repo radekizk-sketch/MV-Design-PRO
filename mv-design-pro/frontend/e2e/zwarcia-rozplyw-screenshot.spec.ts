@@ -9,9 +9,11 @@
  * HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): tabela `zwarcia-rozplyw:screenshot`
  * niesie liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na sieci
  * złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
- * zwarcia_rozplyw_scena_zwarcia`) — punkt „Szyna SN" (pierwszy wg sortu
- * kanonicznego, bez preselekcji), tor sieci nadrzędnej (`THEVENIN_GRID`,
- * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4").
+ * zwarcia_rozplyw_scena_zwarcia` — mapa `target_id → odpowiedź` dla KAŻDEGO punktu
+ * biegu) — punkt „Szyna SN" (pierwszy wg sortu kanonicznego, bez preselekcji), tor
+ * sieci nadrzędnej (`THEVENIN_GRID`, gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`,
+ * gałąź „TR 15/0.4"). Punkt domyślny wyznacza pierwszy wiersz fikstury wyników tej
+ * sceny, nie literał.
  *
  * HARNESS-RESZTA (kontynuacja, 2026-09-16, ścieżka b): schemat
  * `zwarcia-schemat:screenshot` DOMKNIĘTY — dawny dług (dawna fixtura testu
@@ -36,19 +38,31 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Prądy gałęzi toru zwarciowego z fikstury biegu backendu, którą karmi się scena —
  * nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
  */
-const ZWARCIA_ROZPLYW = JSON.parse(
-  fs.readFileSync(
-    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json'),
-    'utf-8',
-  ),
-) as { branch_contributions: { branch_name: string; source_id: string; i_ka: number }[] };
+const czytajFiksture = (nazwa: string): unknown =>
+  JSON.parse(
+    fs.readFileSync(path.resolve(_dirname, `../src/harness-fixtures/generated/${nazwa}.json`), 'utf-8'),
+  );
+type OdpowiedzRozplywu = {
+  branch_contributions: { branch_name: string; source_id: string; i_ka: number }[];
+  wklady_pominiete?: { branch_name: string; source_id: string }[] | null;
+  prog_wkladu_pominietego_a?: number | null;
+};
+/** Punkt domyślny ekranu = pierwszy wiersz wyników biegu sceny (bez preselekcji). */
+const PUNKT_DOMYSLNY = (
+  czytajFiksture('zwarcia_wyniki_scena_zwarcia') as { rows: { target_id: string }[] }
+).rows[0].target_id;
+const ZWARCIA_ROZPLYW = (
+  czytajFiksture('zwarcia_rozplyw_scena_zwarcia') as Record<string, OdpowiedzRozplywu>
+)[PUNKT_DOMYSLNY];
 /** Największy prąd gałęzi o danej nazwie [kA] (tor dominujący przez tę gałąź). */
 const pradToru = (nazwa: string): number =>
   Math.max(
@@ -60,7 +74,7 @@ const kaPl = (wartosc: number): string =>
   wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const CREATOR_HARNESS_URL = adresHarnessu('creator-harness.html');
 const SCREENSHOT_HARNESS_URL = adresHarnessu('screenshot-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('zwarcia-rozplyw:screenshot', () => {
@@ -88,9 +102,11 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja).toBeVisible();
       await expect(sekcja).toContainText('Rozpływ prądu zwarciowego');
 
-      const tabela = sekcja.getByTestId('mvd-wyn-tabela');
+      // Tabela wkładów OPUBLIKOWANYCH (w trybie eksperckim sekcja ma też tabelę zestawienia
+      // wkładów pominiętych |I| < próg — z tymi samymi nagłówkami kolumn).
+      const tabela = sekcja.getByTestId('mvd-zwarcia-rozplyw-tabela');
       // Kolumna „źródło" (tryb ekspercki) — nagłówek kolumny, niezależny od danych.
-      await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
+      await expect(tabela.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
       // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
       // Wiersz maszyny: źródło toru falownika (`source_id="gen_pv"` w kontrakcie
@@ -110,10 +126,32 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       // gałęziami w tej sieci — inaczej niż w dawnej fixturze TH-1 z jedną linią).
       await expect(tabela).toContainText('TR 110/15');
       await expect(tabela).toContainText('TR 15/0.4');
+      // Wkłady pominięte (|I| < próg z odpowiedzi backendu) NIE są wierszami tabeli wkładów:
+      // nota liczy je dokładnie, a zestawienie trybu eksperckiego ma tyle samo wierszy.
+      const pominiete = ZWARCIA_ROZPLYW.wklady_pominiete ?? [];
+      const prog = ZWARCIA_ROZPLYW.prog_wkladu_pominietego_a;
+      expect(pominiete.length, 'fikstura sceny niesie wkłady pominięte').toBeGreaterThan(0);
+      expect(typeof prog).toBe('number');
+      await expect(tabela.getByTestId('mvd-wyn-wiersz')).toHaveCount(
+        ZWARCIA_ROZPLYW.branch_contributions.length,
+      );
+      await expect(sekcja.getByTestId('mvd-zwarcia-rozplyw-pominiete-nota')).toContainText(
+        `(|I| < ${(prog as number).toExponential()} A): ${pominiete.length}.`,
+      );
+      const wierszePominietych = sekcja
+        .getByTestId('mvd-zwarcia-rozplyw-pominiete-tabela')
+        .getByTestId('mvd-wyn-wiersz');
+      await expect(wierszePominietych).toHaveCount(pominiete.length);
+      // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO):
+      // każdy wiersz zestawienia pokazuje „nie określono", nigdy liczbę stopni.
+      for (let i = 0; i < pominiete.length; i += 1) {
+        await expect(wierszePominietych.nth(i)).toContainText('nie określono');
+      }
 
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
 
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-rozplyw-${theme}.png`),
       });
@@ -204,6 +242,7 @@ test.describe('zwarcia-schemat:screenshot', () => {
       const clipTop = Math.max(canvasBox.y, unionTop - padding);
       const clipRight = Math.min(canvasBox.x + canvasBox.width, unionRight + padding);
       const clipBottom = Math.min(canvasBox.y + canvasBox.height, unionBottom + padding);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-schemat-${theme}.png`),
         clip: { x: clipLeft, y: clipTop, width: clipRight - clipLeft, height: clipBottom - clipTop },

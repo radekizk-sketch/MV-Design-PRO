@@ -13,8 +13,13 @@ from __future__ import annotations
 
 import pytest
 from application.analyses.fault_loop.service import build_feeder_fault_loop_view
+from application.analyses.fault_loop.tt_it import KOD_BRAK_POJEMNOSCI
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
+from application.analyses.swz.werdykt_tt_it import (
+    KOD_LIMIT_BRAK_TEKSTU_NORMY,
+    KONTRAKT_WERDYKTU_TT_IT,
+)
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.models import (
     Bus,
@@ -42,6 +47,9 @@ def _reset() -> None:
     yield
     reset_enm_store()
     reset_canonical_runs()
+
+
+from tests.application.analyses.lv_domain.fixtury_stacji_nn import REF_STACJA, zbuduj_stacje_nn
 
 
 def _siec_referencyjna() -> EnergyNetworkModel:
@@ -84,6 +92,7 @@ def _siec_referencyjna() -> EnergyNetworkModel:
                 pk_kw=6.5,
                 vector_group="Dyn11",
                 lv_earthing_system="TN-C-S",
+                lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 catalog_ref="tr-630kva-referencyjny",
             )
         ],
@@ -377,18 +386,46 @@ class TestStanyTrzecie:
         assert wiersz["k2_i2"]["status"] == "nierozstrzygalne"
         assert wiersz["kryterium_ii_i2_iz"]["status"] == "nierozstrzygalne"
 
-    def test_uklad_it_nie_dotyczy_swz_i_doboru(self) -> None:
+    def test_uklad_it_bez_pojemnosci_odmawia_kodem_dobor_nie_dotyczy(self) -> None:
+        # Karta W5-E-TTIT: IT jest liczony pętlą doziemną; bez pojemności doziemnych odcinków
+        # sekcje `swz`/`ik_min` odmawiają NAZWANYM kodem, dobór wg SWZ przy Ik_min ma status
+        # „nie dotyczy" z kodem limitu (tekst normy spoza repozytorium).
         enm = _siec_referencyjna()
         for t in enm.transformers:
             t.lv_earthing_system = "IT"
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn")
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
-        assert wiersz["swz"]["status"] == "nie dotyczy"
+        assert wiersz["swz"]["status"] == "brak danych"
+        assert wiersz["swz"]["kod_odmowy"] == KOD_BRAK_POJEMNOSCI
+        assert wiersz["ik_min"]["status"] == "brak danych"
+        assert wiersz["ik_min"]["kod_odmowy"] == KOD_BRAK_POJEMNOSCI
         assert wiersz["status_doboru"]["status"] == "nie dotyczy"
-        assert wiersz["ik_min"]["status"] == "nie dotyczy"
+        assert wiersz["status_doboru"]["kod_odmowy"] == KOD_LIMIT_BRAK_TEKSTU_NORMY
+        # Kryteria przeciążeniowe (i)/(ii) nie zależą od układu — liczone jak w TN.
+        assert wiersz["kryterium_i_ib_in_iz"]["status"] == "OK"
+        assert wiersz["kryterium_ii_i2_iz"]["status"] == "OK"
         # Kolumny NIEZALEŻNE od pętli TN nadal dostępne (topologiczne "najgorsze").
         assert wiersz["worst_point_zrodlo"] == "topologiczny (najdalszy hop)"
         assert wiersz["iz"]["status"] == "OK"
+
+    def test_uklad_tt_komplet_danych_niesie_werdykt_wyjasnialny(self) -> None:
+        enm = zbuduj_stacje_nn(uklad_uziemienia="TT", r_b_ohm=2.0, r_a_ohm=25.0, rcd=True)
+        wynik = build_nn_circuit_sheet(enm=enm, station_ref=REF_STACJA)
+        wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_a")
+        assert wiersz["ik_min"]["status"] == "OK"
+        assert wiersz["ik_min"]["wartosc"] > 0
+        assert "TT" in wiersz["ik_min"]["zrodlo_pl"]
+        assert wiersz["swz"]["status"] == "OK"
+        werdykt = wiersz["swz"]["wartosc"]
+        assert werdykt["kontrakt"] == KONTRAKT_WERDYKTU_TT_IT
+        assert werdykt["kod_odmowy_limitu"] == KOD_LIMIT_BRAK_TEKSTU_NORMY
+        assert werdykt["wymaganie"]["status_maszynowy"] in {"BRAK_PODSTAWY", "NIE_SPELNIA"}
+        assert wiersz["status_doboru"]["status"] == "nie dotyczy"
+        assert wiersz["status_doboru"]["kod_odmowy"] == KOD_LIMIT_BRAK_TEKSTU_NORMY
+        # Fikstura stacji nN nie materializuje obciążalności kabla: kryteria przeciążeniowe są
+        # „brak danych" (Iz′), nie „nie dotyczy" — inny stan niż dobór wg SWZ.
+        assert wiersz["kryterium_i_ib_in_iz"]["status"] == "brak danych"
+        assert "Iz′" in wiersz["kryterium_i_ib_in_iz"]["reason_pl"]
 
     def test_aparat_bez_materialized_params_brak_danych(self) -> None:
         enm = _siec_referencyjna()

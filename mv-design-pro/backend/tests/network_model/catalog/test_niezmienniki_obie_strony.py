@@ -45,6 +45,8 @@ from network_model.catalog.types import (
     ConverterKind,
     ConverterType,
     LVFuseLinkType,
+    LVRcdType,
+    OverheadConductorType,
     _normalize_catalog_status,
     _normalize_verification_status,
     _validate_float_range,
@@ -466,7 +468,104 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _karty_statyczne(z_wyciagiem=False),
         lambda: _karty_statyczne(z_wyciagiem=True),
     ),
+    # --- tor maszyny turbiny wiatrowej (karta KATALOG-TURBINY-TOR-V112) --------
+    "KAT-T-042": (
+        # Napięcie stojana przy falowniku PV — maszyny brak.
+        lambda: _konwerter(generator_stator_voltage_kv=0.71),
+        # Turbina z napięciem stojana RÓWNYM stronie sieci (np. 690/690 V) — legalna.
+        lambda: _konwerter(kind=ConverterKind.WIND, un_kv=0.69, generator_stator_voltage_kv=0.69),
+    ),
+    "KAT-T-043": (
+        lambda: _konwerter(kind=ConverterKind.WIND, generator_stator_frequency_max_hz=0.0),
+        # Częstotliwość stojana wyższa od sieci (V112-3.0: 145 Hz) — legalna.
+        lambda: _konwerter(kind=ConverterKind.WIND, generator_stator_frequency_max_hz=145.0),
+    ),
+    "KAT-T-044": (
+        lambda: _konwerter(
+            kind=ConverterKind.WIND,
+            generator_machine_type="SCIG",
+            converter_topology="DFIG_ROTOR_CONVERTER",
+        ),
+        # Generator klatkowy za przekształtnikiem pełnej mocy (V112-3.3 wariant 2) i sam
+        # rodzaj maszyny bez zadeklarowanej topologii — oba legalne.
+        lambda: (
+            _konwerter(
+                kind=ConverterKind.WIND,
+                generator_machine_type="SCIG",
+                converter_topology="FULL_CONVERTER",
+            ),
+            _konwerter(kind=ConverterKind.WIND, generator_machine_type="DFIG"),
+        ),
+    ),
+    # Karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (`LVRcdType`).
+    "KAT-T-045": (
+        lambda: _rcd(rcd_type="AB"),
+        # Rodzaj B (IEC 62423) jest legalny, choć rodzina referencyjna niesie tylko AC i A.
+        lambda: _rcd(rcd_type="B"),
+    ),
+    "KAT-T-046": (
+        lambda: _rcd(i_delta_n_a=0.0),
+        # Bardzo mały, ale dodatni I_Δn (10 mA) jest legalny.
+        lambda: _rcd(i_delta_n_a=0.01),
+    ),
+    "KAT-T-047": (
+        lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5),
+        lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5, t_nieczuly_min_s=0.13),
+    ),
+    # Karta LINIA-110: GMR równy promieniowi przewodu jest fizycznie niemożliwy (indukcyjność
+    # wewnętrzna ≤ 0); GMR tuż poniżej promienia — nietypowy, lecz legalny.
+    "KAT-T-048": (
+        lambda: _przewod_wn(gmr_mm=10.9),
+        lambda: _przewod_wn(gmr_mm=10.8),
+    ),
+    # Budowa 2 % niezgodna ze średnicą tablicy — odmowa; 0,9 % (zaokrąglenia tablicy) — legalna.
+    "KAT-T-049": (
+        lambda: _przewod_wn(srednica_mm=21.8 * 1.02),
+        lambda: _przewod_wn(srednica_mm=21.8 * 1.009),
+    ),
 }
+
+
+def _przewod_wn(**zmiany: Any) -> OverheadConductorType:
+    """Przewód linii 110 kV z danymi TESTOWYMI (budowa 26 drutów Al na rdzeniu 8,04 mm)."""
+    pola: dict[str, Any] = {
+        "id": "przewod_test",
+        "name": "Przewód testowy",
+        "oznaczenie": "243-AL1/39-ST1A",
+        "przeznaczenie": "FAZOWY",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 243.1,
+        "przekroj_stali_mm2": 39.5,
+        "srednica_mm": 21.8,
+        "warstwy_al": (10, 16),
+        "liczba_drutow_st": 7,
+        "srednica_drutu_al_mm": 3.45,
+        "srednica_drutu_st_mm": 2.68,
+        "srednica_rdzenia_mm": 8.04,
+        "r20_dc_ohm_per_km": 0.1188,
+        "alfa_1_per_k": 0.004,
+        "masa_kg_per_km": 980.1,
+        "wytrzymalosc_kn": 85.12,
+        "voltage_rating_kv": 110.0,
+        "max_temperature_c": 80.0,
+    }
+    pola.update(zmiany)
+    return OverheadConductorType(**pola)
+
+
+def _rcd(**zmiany: Any) -> LVRcdType:
+    """Rekord RCD z danymi TESTOWYMI (kształt rekordu, nie wartości katalogowe)."""
+    pola: dict[str, Any] = {
+        "id": "rcd_test",
+        "name": "RCD testowy",
+        "in_a": 40.0,
+        "i_delta_n_a": 0.03,
+        "rcd_type": "A",
+        "selective": False,
+        "t_a_s": 0.3,
+    }
+    pola.update(zmiany)
+    return LVRcdType(**pola)
 
 
 def test_kazdy_kod_twardy_ma_pare_przypadkow() -> None:

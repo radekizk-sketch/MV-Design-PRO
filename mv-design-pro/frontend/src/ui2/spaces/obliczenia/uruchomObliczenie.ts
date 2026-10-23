@@ -40,6 +40,13 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
+import { czyStanKoncowyBiegu } from '../../../ui/study-cases/types';
+import {
+  ODSTEP_ODPYTYWANIA_BIEGU_MS,
+  cancelRun,
+  executeRunAndWait,
+} from '../../../ui/study-cases/api';
+import { useFaultScenariosStore } from '../../../ui/fault-scenarios/store';
 import { notify } from '../../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
 
@@ -71,7 +78,7 @@ export function isFailedAnalysisRun(
 }
 
 export function isTerminalExecutionRun(run: ExecutionRun): boolean {
-  return run.status === 'DONE' || run.status === 'FAILED';
+  return czyStanKoncowyBiegu(run.status);
 }
 
 export async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRunHealth | null> {
@@ -110,19 +117,75 @@ export function analysisRunFailureMessage(): string {
 export const KOMUNIKAT_BIEG_WYNIKI_CZEKAJA =
   'Obliczenie zakończone. Wyniki czekają w przestrzeni „Wyniki i dowody".';
 
+/** Komunikat biegu anulowanego przez użytkownika (stan CANCELLED, bez wyniku). */
+export const KOMUNIKAT_BIEG_ANULOWANY = 'Obliczenie anulowane — bieg nie ma wyniku.';
+
+/**
+ * Odpytuj stan biegu do stanu końcowego (DONE/FAILED/CANCELLED) — bez limitu prób
+ * (karta DYNAMIKA-W-TLE): `POST …/execute` wraca z 202 od razu, a bieg liczy się w
+ * tle tak długo, jak trwa (zwarcie sieci 50 stacji — dziesiątki sekund); dawny limit
+ * 24 × 750 ms przerywał odpytywanie po 18 s i zostawiał projektanta z komunikatem
+ * „nadal wykonywane" bez wyniku. Stan końcowy jest gwarantowany przez wykonawcę
+ * (zakończenie, odmowa, anulowanie, zamknięcie biegu osieroconego po restarcie).
+ */
 export async function waitForExecutionRunTerminalState(
   initialRun: ExecutionRun,
   pollRunStatus: (runId: string) => Promise<ExecutionRun>,
+  czekaj: (ms: number) => Promise<void> = (ms) =>
+    new Promise((resolve) => window.setTimeout(resolve, ms)),
 ): Promise<ExecutionRun> {
   let current = initialRun;
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    if (isTerminalExecutionRun(current)) {
-      return current;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
+  while (!isTerminalExecutionRun(current)) {
+    await czekaj(ODSTEP_ODPYTYWANIA_BIEGU_MS);
     current = await pollRunStatus(current.id);
   }
   return current;
+}
+
+/**
+ * Wspólny KONIEC każdego biegu zleconego z powłoki (stan końcowy już osiągnięty):
+ * zdrowie przebiegu → związanie z powłoką (`setActiveRun`) → status wyników → migawka
+ * → komunikat. Jedno źródło dla biegu z przypadku (`uruchomObliczenie`) i biegu ze
+ * scenariusza zwarciowego (`uruchomScenariuszZwarciowy`) — karta OD-14, partia
+ * integracji 10: bieg ze scenariusza zostawał dotąd w stanie PENDING (nikt go nie
+ * wykonywał), więc tryb IMPEDANCE nie miał drogi do ekranu wyników.
+ */
+async function zakonczBieg(run: ExecutionRun): Promise<boolean> {
+  const runHealth = await fetchAnalysisRunHealth(run.id);
+  useAppStateStore.getState().setActiveRun(run.id);
+
+  if (isFailedAnalysisRun(run, runHealth)) {
+    useAppStateStore.getState().setActiveCaseResultStatus('NONE');
+    notify(analysisRunFailureMessage(), 'error');
+    return false;
+  }
+
+  if (run.status !== 'DONE') {
+    // Jedyny stan końcowy poza DONE/FAILED to CANCELLED (anulowanie przez
+    // użytkownika — decyzja, nie awaria).
+    useAppStateStore.getState().setActiveCaseResultStatus('NONE');
+    notify(KOMUNIKAT_BIEG_ANULOWANY, 'info');
+    return false;
+  }
+
+  useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
+  try {
+    const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
+    if (response.ok) {
+      const payload = (await response.json()) as { snapshot_id?: unknown };
+      if (typeof payload.snapshot_id === 'string' && payload.snapshot_id.trim()) {
+        useAppStateStore.getState().setActiveSnapshot(payload.snapshot_id);
+      }
+    }
+  } catch {
+    // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
+  }
+  // S9-11 / W-4: bieg zostawia projektanta TAM, GDZIE JEST — zero nawigacji.
+  // `setActiveRun` wyżej już związał świeży przebieg z powłoką: nakładka na
+  // schemacie odświeża się sama (S9-2), a jawny klik w „Wyniki i dowody"
+  // otwiera wyniki tego biegu (`mostTrasyPrzestrzeni` dokleja `?run=`).
+  notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');
+  return true;
 }
 
 /**
@@ -137,6 +200,7 @@ export async function waitForExecutionRunTerminalState(
 export async function uruchomObliczenie(
   analysisType: ExecutionAnalysisType,
   solverInput?: Record<string, unknown>,
+  onBieg?: (bieg: ExecutionRun) => void,
 ): Promise<boolean> {
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
@@ -174,46 +238,45 @@ export async function uruchomObliczenie(
       analysis_type: analysisType,
       ...(solverInput !== undefined ? { solver_input: solverInput } : {}),
     });
+    // Karta DYNAMIKA-W-TLE: bieg zlecony (202, QUEUED) — wołający zna jego identyfikator,
+    // żeby móc go anulować w trakcie odpytywania.
+    onBieg?.(createdRun);
     const run = await waitForExecutionRunTerminalState(
       createdRun,
       useExecutionRunsStore.getState().pollRunStatus,
     );
-    const runHealth = await fetchAnalysisRunHealth(run.id);
-    useAppStateStore.getState().setActiveRun(run.id);
+    return await zakonczBieg(run);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
+    notify(message, 'error');
+    return false;
+  }
+}
 
-    if (isFailedAnalysisRun(run, runHealth)) {
-      useAppStateStore.getState().setActiveCaseResultStatus('NONE');
-      notify(analysisRunFailureMessage(), 'error');
-      return false;
+/**
+ * Uruchamia bieg ZE SCENARIUSZA ZWARCIOWEGO (karta OD-14, partia integracji 10):
+ * `POST /api/execution/fault-scenarios/{id}/runs` (bieg PENDING z opcjami scenariusza —
+ * rodzaj, miejsce, c, czas cieplny, tryb i Z_f) → `POST …/runs/{id}/execute` → stan
+ * końcowy → ten sam koniec co bieg z przypadku (`zakonczBieg`). Odmowa utworzenia
+ * (np. 409 z blokadą modelu) zostaje w store scenariuszy i panel ją pokazuje — tu bez
+ * drugiego komunikatu; błąd wykonania idzie komunikatem jak w `uruchomObliczenie`.
+ * Zwraca `true`, gdy przebieg zakończył się wynikiem (status DONE bez awarii).
+ */
+export async function uruchomScenariuszZwarciowy(scenarioId: string): Promise<boolean> {
+  let utworzony: Record<string, unknown>;
+  try {
+    utworzony = await useFaultScenariosStore.getState().createRun(scenarioId);
+  } catch {
+    return false;
+  }
+  try {
+    const runId = utworzony.id;
+    if (typeof runId !== 'string' || runId === '') {
+      throw new Error('Niepoprawna odpowiedź utworzenia przebiegu (brak identyfikatora)');
     }
-
-    if (run.status !== 'DONE') {
-      useAppStateStore.getState().setActiveCaseResultStatus('NONE');
-      notify(
-        'Obliczenia są nadal wykonywane. Wyniki zostaną pokazane po zakończeniu solvera.',
-        'info',
-      );
-      return false;
-    }
-
-    useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
-    try {
-      const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
-      if (response.ok) {
-        const payload = (await response.json()) as { snapshot_id?: unknown };
-        if (typeof payload.snapshot_id === 'string' && payload.snapshot_id.trim()) {
-          useAppStateStore.getState().setActiveSnapshot(payload.snapshot_id);
-        }
-      }
-    } catch {
-      // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
-    }
-    // S9-11 / W-4: bieg zostawia projektanta TAM, GDZIE JEST — zero nawigacji.
-    // `setActiveRun` wyżej już związał świeży przebieg z powłoką: nakładka na
-    // schemacie odświeża się sama (S9-2), a jawny klik w „Wyniki i dowody"
-    // otwiera wyniki tego biegu (`mostTrasyPrzestrzeni` dokleja `?run=`).
-    notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');
-    return true;
+    const run = await executeRunAndWait(runId);
+    await useExecutionRunsStore.getState().loadRuns(run.study_case_id);
+    return await zakonczBieg(run);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
     notify(message, 'error');
@@ -228,15 +291,32 @@ export async function uruchomObliczenie(
  */
 export function useUruchomObliczenie(): {
   uruchom: (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => void;
+  /** Anuluj bieg w toku (karta DYNAMIKA-W-TLE): z kolejki od razu, w toku — w punkcie przerwania. */
+  anuluj: () => void;
   wToku: boolean;
+  /** Identyfikator biegu zleconego w tym uruchomieniu (do anulowania); `null` poza biegiem. */
+  biegId: string | null;
 } {
   const [wToku, setWToku] = useState(false);
+  const [biegId, setBiegId] = useState<string | null>(null);
   const uruchom = useCallback(
     (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => {
       setWToku(true);
-      void uruchomObliczenie(analysisType, solverInput).finally(() => setWToku(false));
+      setBiegId(null);
+      void uruchomObliczenie(analysisType, solverInput, (bieg) => setBiegId(bieg.id)).finally(
+        () => {
+          setWToku(false);
+          setBiegId(null);
+        },
+      );
     },
     [],
   );
-  return { uruchom, wToku };
+  const anuluj = useCallback(() => {
+    if (biegId === null) return;
+    void cancelRun(biegId).catch((error: unknown) => {
+      notify(error instanceof Error ? error.message : 'Nie udało się anulować obliczenia', 'error');
+    });
+  }, [biegId]);
+  return { uruchom, anuluj, wToku, biegId };
 }

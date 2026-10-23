@@ -19,6 +19,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from api.odmowa_http import OdmowaHttpError
 from application.reference_patterns import (
     PATTERN_ID,
     PATTERN_NAME_PL,
@@ -27,6 +28,7 @@ from application.reference_patterns import (
     run_pattern_a,
 )
 from fastapi import APIRouter, HTTPException, Response
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
 
@@ -229,8 +231,8 @@ def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
 
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except OdmowaDanychError as e:
+        raise OdmowaHttpError(e, status_code=400) from e
 
 
 @router.get("/fixtures/{fixture_file}", response_model=PatternRunResponse)
@@ -251,8 +253,8 @@ def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
         return result_to_response(result, run_id)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except OdmowaDanychError as e:
+        raise OdmowaHttpError(e, status_code=400) from e
 
 
 # =============================================================================
@@ -290,8 +292,8 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         data = result.to_dict()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except OdmowaDanychError as e:
+        raise OdmowaHttpError(e, status_code=400) from e
 
     # Create PDF in memory
     buffer = io.BytesIO()
@@ -451,8 +453,8 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         data = result.to_dict()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except OdmowaDanychError as e:
+        raise OdmowaHttpError(e, status_code=400) from e
 
     # Create DOCX document
     doc = Document()

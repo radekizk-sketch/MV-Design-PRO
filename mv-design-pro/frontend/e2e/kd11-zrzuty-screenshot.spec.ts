@@ -22,9 +22,11 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -126,6 +128,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
     expect(segmentRefs.length).toBeGreaterThan(0);
     op = await domainOp(request, caseId, 'insert_station_on_segment_sn', {
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+      nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
       field_apparatus_catalog_ref: FIELD_APPARATUS_ID,
       segment_id: segmentRefs[segmentRefs.length - 1],
       station_type: 'B',
@@ -242,6 +246,7 @@ test.describe('kd11:zrzuty', () => {
       const tozsamosciRozwiniecie = await etykiety.locator('g[data-label-role="tozsamosc"]').count();
       expect(tozsamosciRozwiniecie, 'kadr rozwiniecia bez podpisow tozsamosci').toBeGreaterThan(0);
       await expect(etykiety).toHaveAttribute('data-dropped-identity', '0');
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-rozwiniecie-${id}.png`) });
 
       // (4) KADR „DOPASUJ WIDOK" — dowód przed zapisem: są podpisy tożsamości.
@@ -251,6 +256,7 @@ test.describe('kd11:zrzuty', () => {
       expect(tozsamosci, 'kadr dopasowany bez podpisow tozsamosci').toBeGreaterThan(0);
       await expect(etykiety).toHaveAttribute('data-dropped-identity', '0');
       const ukryteDopasowany = Number(await etykiety.getAttribute('data-hidden-unreadable'));
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-dopasowany-${id}.png`) });
 
       // (5) KADR PRZYBLIŻONY — kółkiem NAD BLOKIEM GPZ, aż do pełnego poziomu
@@ -279,6 +285,7 @@ test.describe('kd11:zrzuty', () => {
       expect(ukryteBlisko, 'po przyblizeniu opisy szczegolowe musza wracac').toBeLessThan(ukryteDopasowany);
       expect(await etykiety.locator('g[data-label-role="dane"]').count()).toBeGreaterThan(0);
       expect(await etykiety.locator('g[data-label-role="tozsamosc"]').count()).toBeGreaterThan(0);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd11-tozsamosc-blisko-${id}.png`) });
     });
   }

@@ -11,13 +11,17 @@
  * wyników.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -40,7 +44,8 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
   };
 };
@@ -84,16 +89,6 @@ async function domainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
-}
-
-async function czekajNaWynik(request: APIRequestContext, runId: string): Promise<void> {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`);
-    if (response.ok()) return;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`Wynik biegu ${runId} nie pojawił się w czasie budżetu.`);
 }
 
 async function zbudujScene(request: APIRequestContext): Promise<Scena> {
@@ -148,6 +143,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   // Stacja z aparatem pola z katalogu APARAT_SN ORAZ z wyposażeniem pola
   // (CT + przekaźnik z NASTAWAMI) — czas wyłączenia ma się wziąć z nastaw.
   op = await domainOp(request, studyCase.id, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: APARAT_POLA_ID,
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -169,6 +166,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
               {
                 function_type: 'overcurrent_51',
                 threshold_a: 400.0,
+                // Jednostka progu jest częścią nastawy (karta BIEG-ZABEZPIECZEN-Z-MODELU,
+                // PZ-09): 400 A po stronie pierwotnej przekładnika 400/5 A.
+                threshold_unit: 'A_PIERWOTNY',
                 curve_type: 'DT',
                 time_delay_s: 0.3,
               },
@@ -201,7 +201,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -226,9 +228,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   );
   expect(createRun.ok()).toBeTruthy();
   const run = (await createRun.json()) as { id: string };
-  const executeRun = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`);
-  expect(executeRun.ok()).toBeTruthy();
-  await czekajNaWynik(request, run.id);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); gotowość = stan DONE
+  // biegu (`biegi.ts`), nie 200 z `results/index` (ten jest 200 także w toku).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
 
   const wynikResponse = await request.get(
     `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
@@ -252,12 +254,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   const widokResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${studyCase.id}/enm/wytrzymalosc-aparatury`,
     {
-      data: {
-        station_ref: stationRef,
-        i_peak_ka: punkt!.ip_ka,
-        i_thermal_ka: punkt!.ith_ka,
-        ik_ka: punkt!.ikss_ka ?? null,
-      },
+      // Kontrakt karty WYTRZYMALOSC-PRAD-POLA: zapisany bieg, nie liczby stacji —
+      // prąd każdego pola backend bierze z wiersza biegu w punkcie zabudowy pola.
+      data: { station_ref: stationRef, short_circuit_run_id: run.id },
     },
   );
   expect(widokResponse.ok()).toBeTruthy();
@@ -342,10 +341,27 @@ test.describe('kd6:zrzuty', () => {
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
+      // Układ rekordów K: każda karta werdyktu ma czytelną szerokość. Karty wpięte luźno
+      // w wiersz flex kurczyły się do kilku znaków i sekcja miała ~186 000 px wysokości.
+      const karty = page
+        .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
+        .locator(':scope > *');
+      // Trzy rekordy K na pole: wytrzymałość dynamiczna, cieplna i zdolność wyłączania
+      // (karta SC-IB-ITH-ZRODLA dodała trzeci — I_b ≤ I_cu dla wyłącznika SN).
+      expect(await karty.count()).toBe(3);
+      for (const karta of await karty.all()) {
+        const ramka = await karta.boundingBox();
+        expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
+      }
+      const ramkaSekcji = await sekcja.boundingBox();
+      expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
+
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
       const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pierwszePole}`);
       await expect(czas).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
     });
   }

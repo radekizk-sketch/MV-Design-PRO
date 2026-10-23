@@ -31,11 +31,13 @@ import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
 import { KreatorEdycjiParametrow } from '../../ui2/kreatory/edycja-parametrow';
 import { KreatorPolaNn } from '../../ui2/kreatory/pole-nn';
 import { KreatorPomiaru } from '../../ui2/kreatory/pomiar';
+import { KreatorPrzepieciaNaPole } from '../../ui2/kreatory/przepiecie-na-pole';
 import { KreatorPrzekaznika } from '../../ui2/kreatory/przekaznik';
 import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katalogu';
 import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
 import { KreatorRozdzielnicyNn } from '../../ui2/kreatory/rozdzielnica-nn';
 import { KreatorAparatuNn } from '../../ui2/kreatory/aparat-nn';
+import { KreatorRcdNn } from '../../ui2/kreatory/rcd-nn';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -53,6 +55,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   insert_section_switch_sn: KreatorLacznikaSekcyjnego,
   connect_secondary_ring_sn: KreatorPierscienia,
   set_normal_open_point: KreatorPierscienia,
+  przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,
   update_element_parameters: KreatorEdycjiParametrow,
@@ -66,6 +69,12 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_ct: KreatorPomiaru,
   add_vt: KreatorPomiaru,
   add_relay: KreatorPrzekaznika,
+  // Nastawy zabezpieczenia modelu edytuje formularz INLINE `EdytorNastawZabezpieczenia`
+  // (ekran „Zabezpieczenia i automatyka" i karta elementu na schemacie) — bez okna kreatora.
+  update_protection_settings: null,
+  // Sekcja „Obwód wtórny przekładnika” w edytorze nastaw (karta CT-JEDEN-WERDYKT) — bez formularza
+  // przestrzeni roboczej, jak `update_protection_settings`.
+  set_measurement_secondary_circuit: null,
   // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — reuse ISTNIEJĄCYCH
   // operacji domenowych (enm/domain_operations_v2.py, P0.1), brakowało wyłącznie
   // dostawcy dialogu (patrz komentarz przy CANONICAL_OPERATION_NAMES).
@@ -73,6 +82,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_nn_distribution_board: KreatorRozdzielnicyNn,
   add_nn_switch_device: KreatorAparatuNn,
   add_nn_section_coupler: KreatorRozdzielnicyNn,
+  // W5-E-TTIT: wyłącznik różnicowoprądowy w torze instalacji odbioru nN (układ TT).
+  add_nn_rcd: KreatorRcdNn,
   // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
   // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
   set_nn_cable_laying_conditions: null,
@@ -90,6 +101,10 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   // jeszcze formularza — typy istnieją dla wywołań programowych.
   set_source_operating_mode: null,
   set_dynamic_profile: null,
+  // Karta modeli odbiorów: wiązanie modelu dynamicznego odbioru z profilem katalogu jest
+  // akcją naprawczą INLINE w sekcji modeli ekranu dynamiki (`ui2/wyniki/dynamika/
+  // SekcjaModeliZrodel.tsx`, kod gotowości `load.dynamika_missing`) — bez okna kreatora.
+  set_load_dynamic_binding: null,
 };
 
 /**

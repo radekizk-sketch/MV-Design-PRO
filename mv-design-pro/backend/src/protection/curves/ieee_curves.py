@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.protection_iec60255 import compute_ieee_c37112_generic
 
 
@@ -173,7 +174,7 @@ def calculate_ieee_tripping_time(
     """
     # Calculate current multiple
     if pickup_current_a <= 0:
-        raise ValueError("Pickup current must be positive")
+        raise OdmowaDanychError("Pickup current must be positive")
 
     current_multiple = fault_current_a / pickup_current_a
 

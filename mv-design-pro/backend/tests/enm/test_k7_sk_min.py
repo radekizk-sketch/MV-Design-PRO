@@ -37,6 +37,7 @@ from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
 from enm.validator import ENMValidator
 from enm.zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dane_zwarciowe_zrodla
 from network_model.catalog.types import SourceSystemType
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
@@ -50,12 +51,25 @@ def _ik_a(u_kv: float, sk_mva: float) -> float:
     return sk_mva / (SQRT3 * u_kv) * 1000.0
 
 
+def _tol(u_kv: float) -> str | None:
+    """Tolerancja sieci nN źródła wprost na szynie (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): +6 %
+    dla pasma nN (liczby testów sprzed karty bez zmian), brak dla SN/WN (nie dotyczy)."""
+    return "PLUS_6" if u_kv <= 1.0 else None
+
+
 def _enm(u_kv: float, **pola: object) -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="k7"),
         buses=[Bus(ref_id="b1", name="B1", voltage_kv=u_kv)],
         sources=[
-            Source(ref_id="s1", name="Grid", bus_ref="b1", model="short_circuit_power", **pola)  # type: ignore[arg-type]
+            Source(
+                ref_id="s1",
+                name="Grid",
+                bus_ref="b1",
+                model="short_circuit_power",
+                lv_voltage_tolerance=_tol(u_kv),  # type: ignore[arg-type]
+                **pola,  # type: ignore[arg-type]
+            )
         ],
     )
 
@@ -67,7 +81,7 @@ def _ik_biegu(enm: EnergyNetworkModel, scenariusz: str) -> float:
     return (
         ShortCircuitIEC60909Solver()
         .compute_3ph_short_circuit(
-            graph, node_id, c_for_node(u_kv, scenariusz), 1.0  # type: ignore[arg-type]
+            graph, node_id, c_for_node(u_kv, scenariusz, tolerancja_nn=_tol(u_kv)), 1.0, czas_tb=czas_tb_roboczy()  # type: ignore[arg-type]
         )
         .ikss_a
     )
@@ -98,18 +112,25 @@ def test_predykat_tryby_max_i_min() -> None:
 @pytest.mark.parametrize(("u_kv", "sk_max", "sk_min"), PASMA)
 def test_z_q_min_z_c_min_i_sk_min(u_kv: float, sk_max: float, sk_min: float) -> None:
     enm = _enm(u_kv, sk3_mva=sk_max, rx_ratio=0.1, sk3_min_mva=sk_min, rx_ratio_min=0.2)
-    z_max = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MAX")
-    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN")
+    z_max = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MAX", tolerancja_nn=_tol(u_kv))
+    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN", tolerancja_nn=_tol(u_kv))
     assert z_max is not None and z_min is not None
-    assert abs(z_max) == pytest.approx(c_for_node(u_kv, "MAX") * u_kv**2 / sk_max, rel=1e-12)
-    assert abs(z_min) == pytest.approx(c_for_node(u_kv, "MIN") * u_kv**2 / sk_min, rel=1e-12)
+    assert abs(z_max) == pytest.approx(
+        c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)) * u_kv**2 / sk_max, rel=1e-12
+    )
+    assert abs(z_min) == pytest.approx(
+        c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)) * u_kv**2 / sk_min, rel=1e-12
+    )
     assert z_max.real / z_max.imag == pytest.approx(0.1, rel=1e-12)
     assert z_min.real / z_min.imag == pytest.approx(0.2, rel=1e-12)
     wpis_max = build_grid_source_trace(enm, "MAX")[0]
     wpis_min = build_grid_source_trace(enm, "MIN")[0]
     assert wpis_max["tryb"] == "MOC_ZWARCIOWA" and wpis_max["scenariusz"] == "MAX"
     assert wpis_min["tryb"] == "MOC_ZWARCIOWA_MIN" and wpis_min["scenariusz"] == "MIN"
-    assert wpis_min["c"] == c_for_node(u_kv, "MIN") and wpis_min["sk3_mva"] == sk_min
+    assert (
+        wpis_min["c"] == c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv))
+        and wpis_min["sk3_mva"] == sk_min
+    )
     assert wpis_min["rx_ratio_zrodlo"] == "MODEL_MIN" and wpis_min["rx_ratio"] == 0.2
     assert "c_min" in wpis_min["formula"] and "zalozenie" not in wpis_min
     assert "zalozenie" not in wpis_max
@@ -130,10 +151,10 @@ def test_min_z_pradem_ik_min(u_kv: float, sk_max: float, sk_min: float) -> None:
     """Dane MIN jako I''kQmin: Z_Qmin = c_min·U/(√3·I''kQmin); bieg MIN w PCC = I''kQmin."""
     ik_min_ka = _ik_a(u_kv, sk_min) / 1000.0
     enm = _enm(u_kv, sk3_mva=sk_max, rx_ratio=0.1, ik3_min_ka=ik_min_ka)
-    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN")
+    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN", tolerancja_nn=_tol(u_kv))
     assert z_min is not None
     assert abs(z_min) == pytest.approx(
-        c_for_node(u_kv, "MIN") * u_kv / (SQRT3 * ik_min_ka), rel=1e-12
+        c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)) * u_kv / (SQRT3 * ik_min_ka), rel=1e-12
     )
     wpis = build_grid_source_trace(enm, "MIN")[0]
     assert wpis["tryb"] == "PRAD_ZWARCIOWY_MIN" and wpis["ik3_ka"] == ik_min_ka
@@ -145,14 +166,18 @@ def test_min_z_pradem_ik_min(u_kv: float, sk_max: float, sk_min: float) -> None:
 def test_min_bez_danych_jawne_zalozenie(u_kv: float, sk_max: float, sk_min: float) -> None:
     """Fallback K6 (Z_Q z danych MAX, c_min w źródle napięciowym) — z NAZWANYM założeniem."""
     enm = _enm(u_kv, sk3_mva=sk_max, rx_ratio=0.1)
-    z_max = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MAX")
-    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN")
+    z_max = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MAX", tolerancja_nn=_tol(u_kv))
+    z_min = _source_positive_impedance_ohm(enm.sources[0], u_kv, "MIN", tolerancja_nn=_tol(u_kv))
     assert z_min == z_max
     wpis = build_grid_source_trace(enm, "MIN")[0]
-    assert wpis["tryb"] == "MOC_ZWARCIOWA_MAX_JAKO_MIN" and wpis["c"] == c_for_node(u_kv, "MAX")
+    assert wpis["tryb"] == "MOC_ZWARCIOWA_MAX_JAKO_MIN" and wpis["c"] == c_for_node(
+        u_kv, "MAX", tolerancja_nn=_tol(u_kv)
+    )
     assert wpis["zalozenie"] == KOD_SK_MIN_BRAK == "source.sk_min_missing"
     assert "niekonserwatywne" in wpis["zalozenie_opis"]
-    c_min, c_max = c_for_node(u_kv, "MIN"), c_for_node(u_kv, "MAX")
+    c_min, c_max = c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)), c_for_node(
+        u_kv, "MAX", tolerancja_nn=_tol(u_kv)
+    )
     assert _ik_biegu(enm, "MIN") == pytest.approx(_ik_a(u_kv, sk_max) * c_min / c_max, rel=1e-9)
 
 
@@ -165,20 +190,22 @@ def test_rx_min_domyslne_iec_gdy_brak_obu() -> None:
 def test_impedancja_jawna_bez_wariantu_min_i_bez_zalozenia() -> None:
     enm = _enm(15.0, r_ohm=0.09, x_ohm=0.9)
     for scenariusz in ("MAX", "MIN"):
-        wynik = impedancja_zrodla_sieciowego(enm.sources[0], 15.0, scenariusz)  # type: ignore[arg-type]
+        wynik = impedancja_zrodla_sieciowego(enm.sources[0], 15.0, scenariusz, tolerancja_nn=None)  # type: ignore[arg-type]
         assert wynik is not None
         z_q, wpis = wynik
         assert z_q == complex(0.09, 0.9)
         assert wpis["tryb"] == "IMPEDANCJA_JAWNA" and wpis["scenariusz"] == scenariusz
         assert "zalozenie" not in wpis and "c" not in wpis
-    c_min, c_max = c_for_node(15.0, "MIN"), c_for_node(15.0, "MAX")
+    c_min, c_max = c_for_node(15.0, "MIN", tolerancja_nn=None), c_for_node(
+        15.0, "MAX", tolerancja_nn=None
+    )
     assert _ik_biegu(enm, "MIN") == pytest.approx(_ik_biegu(enm, "MAX") * c_min / c_max, rel=1e-9)
 
 
 def test_zrodlo_z_samym_ik_max_jest_policzalne() -> None:
     """Tryb PRAD_ZWARCIOWY dla MAX: do K7 mapper pomijał takie źródło (graf bez bocznika)."""
     enm = _enm(15.0, ik3_ka=9.6)
-    z_q = _source_positive_impedance_ohm(enm.sources[0], 15.0, "MAX")
+    z_q = _source_positive_impedance_ohm(enm.sources[0], 15.0, "MAX", tolerancja_nn=None)
     assert z_q is not None
     assert abs(z_q) == pytest.approx(1.1 * 15.0 / (SQRT3 * 9.6), rel=1e-12)
     assert map_enm_to_network_graph(enm).get_grid_sc_sources()
@@ -190,12 +217,12 @@ def test_zrodlo_z_samym_ik_max_jest_policzalne() -> None:
 def test_sekwencja_zerowa_idzie_za_z_q_scenariusza() -> None:
     enm = _enm(110.0, sk3_mva=4000.0, rx_ratio=0.1, sk3_min_mva=2500.0, z0_z1_ratio=1.5)
     for scenariusz in ("MAX", "MIN"):
-        z1 = _source_positive_impedance_ohm(enm.sources[0], 110.0, scenariusz)  # type: ignore[arg-type]
-        z0 = _source_zero_impedance_ohm(enm.sources[0], 110.0, scenariusz)  # type: ignore[arg-type]
+        z1 = _source_positive_impedance_ohm(enm.sources[0], 110.0, scenariusz, tolerancja_nn=None)  # type: ignore[arg-type]
+        z0 = _source_zero_impedance_ohm(enm.sources[0], 110.0, scenariusz, tolerancja_nn=None)  # type: ignore[arg-type]
         assert z1 is not None and z0 == z1 * 1.5
-    assert abs(_source_zero_impedance_ohm(enm.sources[0], 110.0, "MIN") or 0) == pytest.approx(
-        1.5 * 1.0 * 110.0**2 / 2500.0, rel=1e-12
-    )
+    assert abs(
+        _source_zero_impedance_ohm(enm.sources[0], 110.0, "MIN", tolerancja_nn=None) or 0
+    ) == pytest.approx(1.5 * 1.0 * 110.0**2 / 2500.0, rel=1e-12)
 
 
 # --------------------------------------------------------------------------------------
@@ -245,7 +272,9 @@ def test_szyna_za_transformatorem_min_z_z_q_min() -> None:
     z_q = graph.get_grid_sc_sources()[0].z_ohm
     assert abs(z_q) == pytest.approx(1.0 * 110.0**2 / 2500.0, rel=1e-12)
     mv = next(n for n in graph.nodes.values() if n.voltage_level == 33.0)
-    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(graph, mv.id, 1.0, 1.0)
+    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
+        graph, mv.id, 1.0, 1.0, czas_tb=czas_tb_roboczy()
+    )
     z_q_33 = z_q * (33.0 / 110.0) ** 2
     # K_T = 0,95·c_max/(1+0,6·x_T) (IEC 60909-0:2016 eq. 12) — c_max TAKŻE w scenariuszu MIN;
     # c_min wchodzi wyłącznie do źródła napięciowego w węźle zwarcia.
@@ -259,13 +288,19 @@ def test_szyna_za_transformatorem_min_z_z_q_min() -> None:
 # --------------------------------------------------------------------------------------
 
 
-def _bieg_sc(enm: EnergyNetworkModel, scenario: str, klucz: str):
-    run = _bieg(
-        enm,
-        klucz=klucz,
-        analysis_type="short_circuit_sn",
-        options={"fault_type": "3F", "scenario": scenario, "thermal_time_seconds": 1.0},
-    )
+def _bieg_sc(enm: EnergyNetworkModel, scenario: str, klucz: str, *, tb_s: float | None = 0.1):
+    # Karta TB-WARTOSC-ROBOCZA: bieg bez czasu wyłączenia t_b liczy na t_b punktu (pola
+    # lokalne albo wartość robocza) i publikuje założenie `fault.czas_tb_wartosc_robocza`.
+    # Testy tej sekcji izolują założenie S_k,min, więc bieg niesie t_b; współwystępowanie
+    # obu założeń sprawdza test niżej (tb_s=None).
+    opcje: dict[str, object] = {
+        "fault_type": "3F",
+        "scenario": scenario,
+        "thermal_time_seconds": 1.0,
+    }
+    if tb_s is not None:
+        opcje["breaking_time_seconds"] = tb_s
+    run = _bieg(enm, klucz=klucz, analysis_type="short_circuit_sn", options=opcje)
     _execute_short_circuit(run)
     return run
 
@@ -292,6 +327,21 @@ def test_bieg_kanoniczny_max_nigdy_nie_niesie_zalozenia_min() -> None:
     run = _bieg_sc(_enm_za_transformatorem(), "max", "k7-max")
     assert run.raw_result["zrodla_sieciowe"][0]["tryb"] == "MOC_ZWARCIOWA"
     assert "zalozenia" not in run.raw_result
+
+
+def test_bieg_bez_tb_niesie_zalozenie_tb_obok_zalozenia_min() -> None:
+    """Iloczyn {MIN bez danych, MAX} × {bieg bez t_b}: założenie `fault.czas_tb_wartosc_robocza`
+    (bieg, bez elementu, z listą punktów) dochodzi do założenia S_k,min, nie zastępuje go ani
+    nie znika w MAX."""
+    run_min = _bieg_sc(_enm_za_transformatorem(), "min", "k7-min-bez-tb", tb_s=None)
+    kody_min = sorted(z["code"] for z in run_min.raw_result["zalozenia"])
+    assert kody_min == ["fault.czas_tb_wartosc_robocza", "source.sk_min_missing"]
+    run_max = _bieg_sc(_enm_za_transformatorem(), "max", "k7-max-bez-tb", tb_s=None)
+    (zal,) = run_max.raw_result["zalozenia"]
+    assert zal["code"] == "fault.czas_tb_wartosc_robocza" and zal["element_ref"] is None
+    punkty_wierszy = sorted(r["fault_node_id"] for r in run_max.raw_result["results"])
+    assert sorted(p["fault_node_id"] for p in zal["punkty"]) == punkty_wierszy
+    assert {p["pochodzenie"] for p in zal["punkty"]} == {"PROPOZYCJA"}
 
 
 def test_odpowiedz_wynikow_zwarc_niesie_zrodla_i_zalozenia() -> None:

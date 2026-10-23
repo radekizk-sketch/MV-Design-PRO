@@ -35,6 +35,7 @@ from api.main import app
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _reset_backend_state() -> None:
@@ -178,7 +179,7 @@ def _wykonaj_bieg(
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(client, run_id)
     assert execute.status_code == 200, execute.text
     assert execute.json()["status"] == "DONE"
     return str(run_id)
@@ -383,7 +384,12 @@ def test_punkt_spoza_przebiegu_odmawia_z_powodem(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
-    assert "wezel-ktorego-nie-ma" in response.json()["detail"]
+    # Partia integracji 10: zdanie bez identyfikatora, wybór w polach odmowy nazwanej.
+    cialo = response.json()
+    assert "wezel-ktorego-nie-ma" not in cialo["detail"]
+    assert "wybierz punkt z listy" in cialo["detail"]
+    assert cialo["kod"] == "dowod.punkt_zwarcia_spoza_biegu"
+    assert cialo["dane"] == {"punkt": "wezel-ktorego-nie-ma"}
 
 
 # ---------------------------------------------------------------------------
@@ -1025,8 +1031,12 @@ def test_odcinek_spoza_przebiegu_odmawia_zamiast_podstawic_pierwszy(
     )
 
     assert odpowiedz.status_code == 422
-    assert "jakis-odcinek" in odpowiedz.json()["detail"]
-    assert "wybierz odcinek z listy" in odpowiedz.json()["detail"]
+    # Partia integracji 10: zdanie bez identyfikatora, wybór w polach odmowy nazwanej.
+    cialo = odpowiedz.json()
+    assert "jakis-odcinek" not in cialo["detail"]
+    assert "wybierz odcinek z listy" in cialo["detail"]
+    assert cialo["kod"] == "dowod.odcinek_spoza_biegu"
+    assert cialo["dane"] == {"odcinek": "jakis-odcinek"}
 
 
 def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(

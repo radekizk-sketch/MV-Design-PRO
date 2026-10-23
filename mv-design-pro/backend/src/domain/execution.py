@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -38,21 +39,100 @@ from uuid import UUID, uuid4
 
 
 class RunStatus(StrEnum):
-    """Run lifecycle status."""
+    """Run lifecycle status (kontrakt HTTP wykonania).
+
+    Karta DYNAMIKA-W-TLE: bieg wykonuje się poza żądaniem HTTP — `QUEUED` to bieg
+    przyjęty do kolejki wykonawcy (jeden ciężki bieg naraz), `CANCELLED` to bieg
+    anulowany przez użytkownika przed startem albo między krokami obliczeń (bez
+    wyniku częściowego, z wyjaśnieniem w `error_message`).
+    """
 
     PENDING = "PENDING"
+    QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     DONE = "DONE"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 #: Stan DOMENOWY biegu kanonicznego R1 (`enm.canonical_analysis.CanonicalRun.status`, klucze
-#: `STATUS_WYKONAWCZY`): CREATED → RUNNING → FINISHED | FAILED. Kontrakt HTTP wykonania
-#: renderuje go jako `RunStatus` (CREATED → PENDING, FINISHED → DONE). JEDEN słownik cyklu
-#: życia biegu dla pozycji serii (`domain.run_batch`), proweniencji porównań i list biegów
-#: w API (karta AB-1a Pakiet E2, plan AB §8 F10) — stan wykonania, nie werdykt. Zgodność ze
-#: `STATUS_WYKONAWCZY` przypina `tests/domain/test_stan_biegu.py` (predykaty parami).
-StanBiegu = Literal["CREATED", "RUNNING", "FINISHED", "FAILED"]
+#: `STATUS_WYKONAWCZY`): CREATED → QUEUED → RUNNING → FINISHED | FAILED | CANCELLED (anulowanie
+#: z CREATED/QUEUED/RUNNING). Kontrakt HTTP wykonania renderuje go jako `RunStatus`
+#: (CREATED → PENDING, FINISHED → DONE). JEDEN słownik cyklu życia biegu dla pozycji serii
+#: (`domain.run_batch`), proweniencji porównań i list biegów w API (karta AB-1a Pakiet E2,
+#: plan AB §8 F10) — stan wykonania, nie werdykt. Zgodność ze `STATUS_WYKONAWCZY` przypina
+#: `tests/domain/test_stan_biegu.py` (predykaty parami).
+StanBiegu = Literal["CREATED", "QUEUED", "RUNNING", "FINISHED", "FAILED", "CANCELLED"]
+
+#: Stany, w których bieg jest ZAKOŃCZONY — nic już się w nim nie zmieni (jedno źródło
+#: dla wykonawcy, repozytorium biegów i klientów odpytujących).
+STANY_KONCOWE_BIEGU: frozenset[str] = frozenset({"FINISHED", "FAILED", "CANCELLED"})
+#: Stany, w których bieg jest W TOKU po stronie wykonawcy — po restarcie procesu API każdy
+#: taki bieg jest osierocony (wykonawca żyje w procesie).
+STANY_W_TOKU_BIEGU: frozenset[str] = frozenset({"QUEUED", "RUNNING"})
+
+
+@dataclass(frozen=True)
+class PostepBiegu:
+    """Postęp biegu w toku — pomiar wykonawcy, NIE część wyniku (nie wchodzi do odcisku).
+
+    `ulamek` ∈ [0, 1] wyprowadzony z `wykonane`/`razem` (czas symulacji dla biegu
+    czasowego, punkty zwarcia dla biegu zwarciowego, pozycje dla serii); `jednostka`
+    nazywa, co jest liczone, żeby ekran nie musiał zgadywać.
+    """
+
+    wykonane: float
+    razem: float
+    jednostka: str
+    krok: int
+
+    @property
+    def ulamek(self) -> float:
+        if self.razem <= 0:
+            return 0.0
+        return min(1.0, max(0.0, self.wykonane / self.razem))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wykonane": self.wykonane,
+            "razem": self.razem,
+            "jednostka": self.jednostka,
+            "krok": self.krok,
+            "ulamek": self.ulamek,
+        }
+
+
+class BiegAnulowanyError(Exception):
+    """Bieg przerwany na żądanie użytkownika w punkcie przerwania wykonawcy.
+
+    Celowo NIE jest `ValueError` ani `OdmowaDanychError`: odmowa obliczenia to wynik
+    biegu (FAILED z kodem), anulowanie to decyzja użytkownika (CANCELLED z wyjaśnieniem).
+    """
+
+    def __init__(self, wyjasnienie: str) -> None:
+        super().__init__(wyjasnienie)
+        self.wyjasnienie = wyjasnienie
+
+
+@dataclass(frozen=True)
+class KontekstWykonania:
+    """Zdolności kontekstu wykonania biegu podawane przez wykonawcę w tle.
+
+    `czy_anulowano` — predykat sprawdzany w PUNKTACH PRZERWANIA (między krokami
+    całkowania biegu czasowego, między punktami zwarcia, między pozycjami serii);
+    `zglos_postep` — ujście pomiaru postępu. Bieg wołany bez kontekstu (skrypty,
+    testy rdzenia, pozycje serii) liczy dokładnie to samo — kontekst nie ma dostępu do
+    stanu obliczeń, więc nie może zmienić wyniku.
+    """
+
+    czy_anulowano: Callable[[], bool]
+    zglos_postep: Callable[[PostepBiegu], None]
+
+    def punkt_przerwania(self, postep: PostepBiegu, *, wyjasnienie: str) -> None:
+        """Zgłoś postęp i przerwij bieg, jeśli użytkownik go anulował."""
+        self.zglos_postep(postep)
+        if self.czy_anulowano():
+            raise BiegAnulowanyError(wyjasnienie)
 
 
 def stan_biegu(wartosc: str) -> StanBiegu:

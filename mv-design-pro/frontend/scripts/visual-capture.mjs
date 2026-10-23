@@ -9,13 +9,13 @@
  * Build sieci portowany z e2e/critical-run-flow.spec.ts (kanoniczny flow).
  */
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const BACKEND = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
-const PW_EXE = process.env.PW_EXE ?? '/opt/pw-browsers/chromium-1208/chrome-linux64/chrome';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -173,7 +173,11 @@ async function shoot(page, name, { wait = 2200, full = false } = {}) {
 
 async function main() {
   const seed = await buildProject();
-  const browser = await chromium.launch({ executablePath: PW_EXE, headless: true, args: ['--no-sandbox'] });
+  const browser = await chromium.launch(
+    process.env.PW_EXE
+      ? { executablePath: process.env.PW_EXE, headless: true, args: ['--no-sandbox'] }
+      : chromiumLaunchOptions({ headless: true, args: ['--no-sandbox'] }),
+  );
 
   async function newCtx(width, height) {
     const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });

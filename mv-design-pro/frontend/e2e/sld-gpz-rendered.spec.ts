@@ -19,13 +19,14 @@ import { dirname, join } from 'node:path';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const SCREENSHOT_DIR = join(
+import { katalogZrzutow } from './katalogZrzutow';
+const SCREENSHOT_DIR = katalogZrzutow(join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
   'docs',
   'audits',
   'screenshots',
-);
+));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';

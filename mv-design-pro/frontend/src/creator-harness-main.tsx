@@ -54,6 +54,10 @@ import { KreatorPomiaru } from './ui2/kreatory/pomiar';
 import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
 import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
 import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
+import './ui2/spaces/obliczenia/przypadki.css';
+import { KartaPrzypadku } from './ui2/spaces/obliczenia/KartaPrzypadku';
+import { PanelScenariuszy } from './ui2/spaces/obliczenia/scenariusze/PanelScenariuszy';
+import type { StudyCase } from './ui/study-cases/types';
 import {
   SekcjaArcFlash,
   SekcjaMigotania,
@@ -78,6 +82,7 @@ import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_pr
 // wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
 // identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
 // miejsce z atrapą testów jednostkowych.
+import przypadekScenaKarta from './harness-fixtures/generated/przypadek_scena_karta.json';
 import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
 import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
 import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
@@ -94,6 +99,32 @@ import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyni
 import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
 import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
 import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
+// Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena „zwarcia-tolerancja-robocza" — komplet czterech
+// odpowiedzi ekranu zwarć z REALNEGO biegu na sieci złotej BEZ deklaracji tolerancji sieci nN
+// (`eksport_fixtur_harnessu.py::zwarcia_*_scena_tolerancja_robocza`): wszystkie sekcje ekranu
+// liczone na tej samej wartości roboczej (+10 %), żadna z liczbami biegu z deklaracją +6 %.
+import zwarciaWynikiScenyRoboczej from './harness-fixtures/generated/zwarcia_wyniki_scena_tolerancja_robocza.json';
+import zwarciaWkladyScenyRoboczej from './harness-fixtures/generated/zwarcia_wklady_scena_tolerancja_robocza.json';
+import zwarciaRozplywScenyRoboczej from './harness-fixtures/generated/zwarcia_rozplyw_scena_tolerancja_robocza.json';
+import zwarciaPasmoScenyRoboczej from './harness-fixtures/generated/zwarcia_pasmo_scena_tolerancja_robocza.json';
+// Model, na którym policzono bieg sceny roboczej (transformator SN/nN bez deklaracji
+// tolerancji) — zasiew mostu nazw wyników i formularza „Zmień wartość".
+import zwarciaMigawkaScenyRoboczej from './harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json';
+const SCENA_ZWARC_ROBOCZA =
+  new URLSearchParams(window.location.search).get('creator') === 'zwarcia-tolerancja-robocza';
+const ZWARCIA_SCENY = SCENA_ZWARC_ROBOCZA
+  ? {
+      wyniki: zwarciaWynikiScenyRoboczej,
+      wklady: zwarciaWkladyScenyRoboczej,
+      rozplyw: zwarciaRozplywScenyRoboczej,
+      pasmo: zwarciaPasmoScenyRoboczej,
+    }
+  : {
+      wyniki: zwarciaWynikiScenyZwarcia,
+      wklady: zwarciaWkladyScenyZwarcia,
+      rozplyw: zwarciaRozplywScenyZwarcia,
+      pasmo: zwarciaPasmoScenyZwarcia,
+    };
 // HARNESS-RESZTA (2026-09-16): scena "wyniki-stan-fazowy" (E-31) karmiona
 // WYLACZNIE wynikiem REALNEGO biegu backendu (phase_state_sn na sieci zlotej,
 // `eksport_fixtur_harnessu.py` — ta sama funkcja, ktora woła koncowka
@@ -109,6 +140,10 @@ import dynamikaScenyOpis from './harness-fixtures/generated/dynamika_scena_opis.
 import dynamikaScenyMigawka from './harness-fixtures/generated/dynamika_scena_migawka.json';
 import dynamikaScenyGotowosc from './harness-fixtures/generated/dynamika_scena_gotowosc.json';
 import dynamikaScenyGotowoscBrak from './harness-fixtures/generated/dynamika_scena_gotowosc_brak.json';
+// Karta modeli odbiorów: wariant E-32 z PV związanym i ODBIOREM bez modelu dynamicznego —
+// akcja naprawcza `load.dynamika_missing` (wiązanie profilu katalogu odbiorów) w tej samej
+// sekcji ekranu co modele źródeł; odpowiedź końcówki gotowości liczona tą samą funkcją.
+import dynamikaScenyGotowoscOdbiorBrak from './harness-fixtures/generated/dynamika_scena_gotowosc_odbior_brak.json';
 import dynamikaScenyScenariusze from './harness-fixtures/generated/dynamika_scena_scenariusze.json';
 import dynamikaScenyWyniki from './harness-fixtures/generated/dynamika_scena_wyniki.json';
 import dynamikaScenyPrzebiegi from './harness-fixtures/generated/dynamika_scena_przebiegi.json';
@@ -148,13 +183,12 @@ import zbieznoscScenyMigawka from './harness-fixtures/generated/zbieznosc_scena_
 import koordynacjaScenyMigawka from './harness-fixtures/generated/koordynacja_scena_migawka.json';
 import koordynacjaScenyZwarciaMax from './harness-fixtures/generated/koordynacja_scena_zwarcia_max.json';
 import koordynacjaScenyZwarciaMin from './harness-fixtures/generated/koordynacja_scena_zwarcia_min.json';
-import koordynacjaScenyGalezie from './harness-fixtures/generated/koordynacja_scena_galezie.json';
 import koordynacjaScenyPakietDostepnoscMax from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_max.json';
 import koordynacjaScenyPakietDostepnoscMin from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_min.json';
 import koordynacjaScenyNastawy from './harness-fixtures/generated/koordynacja_scena_nastawy.json';
 import koordynacjaScenyNastawyDopasowanie from './harness-fixtures/generated/koordynacja_scena_nastawy_dopasowanie.json';
 import koordynacjaScenyWynik from './harness-fixtures/generated/koordynacja_scena_wynik.json';
-import koordynacjaScenyMiejsca from './harness-fixtures/generated/koordynacja_scena_miejsca.json';
+import koordynacjaScenyOcena from './harness-fixtures/generated/koordynacja_scena_ocena.json';
 // HARNESS-RESZTA-2: scena "porownanie" (A/B rozplywu) — dwa REALNE biegi PF
 // jednego projektu (siec zlota i ta sama siec z obciazeniem x1,6) + wynik i slad
 // `PowerFlowComparisonService`; scena "oltc" — REALNY bieg PF z opcja badania
@@ -345,230 +379,44 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 // (karta AB-P1).
 
 /**
- * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Najbardziej graficzny ekran
- * systemu (krzywe czasowo-prądowe log-log, marginesy CTI, werdykty par).
- *
- * Łańcuch odtworzony w całości, bo ekran go WYMAGA i nie da się go obejść:
- * zakończony bieg zwarciowy → wiersze wyniku → prądy koordynacji (zero
- * losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje po NATYWNYCH
- * klikach (szablon urządzenia → wskazanie lokalizacji → uruchom analizę), a nie
- * po wymuszeniu stanu store — inaczej zrzut dowodziłby działania atrapy.
- *
- * HARNESS-RESZTA-2 (2026-09-17): wszystkie liczby sceny pochodzą z REALNYCH
- * biegów backendu (`harness-fixtures/generated/koordynacja_scena_*.json`) —
- * patrz importy u góry pliku i podmieniony `fetch` niżej.
+ * Scena E-28 „Koordynacja zabezpieczeń" (karta BIEG-ZABEZPIECZEN-Z-MODELU). Sieć sceny = sieć
+ * złota G08 (magistrala GPZ → Stacja S01 → Stacja S02 z dwoma wyłącznikami liniowymi,
+ * przekładnikami i zabezpieczeniami z nastawami) zbudowana operacjami domenowymi; biegi
+ * zwarciowe MAX i MIN, bieg rozpływu, ocena zabezpieczeń i wynik koordynacji policzone przez
+ * backend (`harness-fixtures/generated/koordynacja_scena_*.json`). Kadr powstaje po NATYWNYCH
+ * klikach („Oceń zabezpieczenia", „Wykonaj analizę koordynacji").
  */
-
-/** Wynik analizy koordynacji zwrócony w tym biegu sceny (spójny między `/run`,
- *  `/tcc` i pełnym wynikiem — ekran woła trzy końcówki po kolei). */
-type WynikKoordynacjiSceny = typeof koordynacjaScenyWynik;
-let wynikKoordynacjiSceny: WynikKoordynacjiSceny | null = null;
-
-/**
- * Tożsamości zabezpieczeń są WYMYŚLANE PRZEZ EKRAN (`crypto.randomUUID()` w
- * `ProtectionCoordinationPage.handleApplyTemplate`), więc fixtura policzona
- * backendem nie może ich znać. Mapujemy je po `location_element_id` — tożsamość
- * domenowa, jedyna wspólna dla obu stron. Fizyka (werdykty, marginesy, krzywe,
- * ślad) zostaje BEZ ZMIAN z realnego biegu.
- */
-function podmienTozsamosciZabezpieczen(
-  wynik: WynikKoordynacjiSceny,
-  mapa: ReadonlyMap<string, string>,
-): WynikKoordynacjiSceny {
-  let tekst = JSON.stringify(wynik);
-  for (const [zFixtury, zZadania] of mapa) tekst = tekst.split(zFixtury).join(zZadania);
-  return JSON.parse(tekst) as WynikKoordynacjiSceny;
-}
-
-/**
- * Odcisk nastaw zabezpieczenia — WYŁĄCZNIE wielkości, które wchodzą do fizyki
- * koordynacji (prądy rozruchowe, czas członu bezzwłocznego, rodzina i wariant
- * krzywej, mnożnik czasowy). Porównanie całych obiektów `settings` jest
- * niemożliwe: żądanie niesie postać SZABLONU ekranu, a fixtura postać
- * KANONICZNĄ backendu (dopisane `stage_50_high`/`stage_51n` = null,
- * `reset_time_s`, `definite_time_s`, liczby jako float). Odcisk porównuje
- * dokładnie to, od czego zależy wynik — nie kształt serializacji.
- */
-function odciskNastaw(settings: unknown): string {
-  const stopien = (dane: unknown): string => {
-    if (dane === null || typeof dane !== 'object') return 'brak';
-    const s = dane as {
-      enabled?: boolean;
-      pickup_current_a?: number;
-      time_s?: number | null;
-      curve_settings?: { standard?: string; variant?: string; time_multiplier?: number } | null;
-    };
-    const krzywa = s.curve_settings
-      ? `${s.curve_settings.standard}/${s.curve_settings.variant}/${s.curve_settings.time_multiplier}`
-      : 'bez-krzywej';
-    return `${s.enabled === true}|${Number(s.pickup_current_a)}|${s.time_s ?? 'null'}|${krzywa}`;
-  };
-  const s = (settings ?? {}) as Record<string, unknown>;
-  return ['stage_51', 'stage_50', 'stage_50_high', 'stage_51n', 'stage_50n']
-    .map((klucz) => `${klucz}=${stopien(s[klucz] ?? null)}`)
-    .join(';');
-}
-
-/** Prądy zwarciowe [A] lokalizacji wprost z fixtur obu biegów (ta sama droga
- *  kA → A, co `pradyZBiegow.ts`), do porównania z prądami żądania. */
-function pradAZFixtury(
-  fixtura: { rows: readonly { element_id?: string | null; ikss_ka?: number | null }[] },
-  lokalizacja: string,
-): number | null {
-  for (const wiersz of fixtura.rows) {
-    if (wiersz.element_id === lokalizacja && typeof wiersz.ikss_ka === 'number') {
-      return wiersz.ikss_ka * 1000;
-    }
-  }
-  return null;
-}
-
-type RozstrzygniecieMiejsca = {
-  readonly zacisk: 'od' | 'do' | null;
-  readonly zaciski: Record<'od' | 'do', { readonly szyna_ref: string }> | null;
-  readonly odmowa_zacisku: { readonly powod_pl: string } | null;
-};
-
-const ROZSTRZYGNIECIA_MIEJSC = koordynacjaScenyMiejsca.rozstrzygniecia as unknown as Record<
-  string,
-  RozstrzygniecieMiejsca
->;
-
-/** Odpowiedź `GET …/enm/zacisk-lokalizacji` z fixtury backendu; spoza fixtury — 404 nazwane. */
-function odpowiedzMiejscaSceny(url: string): Response {
-  const parametry = new URL(url, 'http://harness.local').searchParams;
-  const klucz = `${parametry.get('lokalizacja') ?? ''}|${parametry.get('zacisk') ?? ''}`;
-  const rekord = ROZSTRZYGNIECIA_MIEJSC[klucz];
-  if (rekord === undefined) {
-    return new Response(
-      JSON.stringify({ detail: `atrapa miejsca: brak rozstrzygnięcia ${klucz} — uruchom scripts/eksport_fixtur_harnessu.py` }),
-      { status: 404, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-  return new Response(JSON.stringify(rekord), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-/**
- * Szyna prądu zwarciowego lokalizacji urządzenia z żądania — TA SAMA reguła co backend
- * (`szyny_zwarcia_lokalizacji`): gałąź/łącznik → szyna zacisku rozstrzygniętego przez
- * resolver, szyna → ona sama; odmowa resolvera → powód.
- */
-function szynaZwarciaZadania(
-  lokalizacja: string,
-  zacisk: string | null | undefined,
-): { readonly szyna: string } | { readonly powod: string } {
-  const rekord = ROZSTRZYGNIECIA_MIEJSC[`${lokalizacja}|${zacisk ?? ''}`];
-  if (rekord === undefined) return { powod: `lokalizacja ${lokalizacja} spoza migawki sceny` };
-  if (rekord.odmowa_zacisku) return { powod: rekord.odmowa_zacisku.powod_pl };
-  if (rekord.zacisk && rekord.zaciski) return { szyna: rekord.zaciski[rekord.zacisk].szyna_ref };
-  return { szyna: lokalizacja };
-}
 
 /**
  * Wynik koordynacji dla ŻĄDANIA ekranu — albo nazwana odmowa 409.
  *
- * PARA PREDYKATÓW (KLASA, NIE INSTANCJA — wzorzec sceny `macierz`): fixtura
- * opisuje DOKŁADNIE jedno żądanie (dwa zabezpieczenia z szablonu 50/51 na
- * odcinkach magistrali przy zacisku początkowym, prądy zwarciowe szyn zacisków z
- * biegów MAX i MIN, prądy robocze zacisków z biegu rozpływu). Gdy ekran wyśle
- * co innego, atrapa ODMAWIA zamiast podać wynik policzony dla innych danych.
- * Tolerancja porównania prądów 1e-9 względna — DOKŁADNIE ta sama, którą stosuje
- * backend (`TOLERANCJA_WZGLEDNA_PRADU`, `application/autorytet_biegu_
- * zwarciowego.py`); to margines podwójnego przeliczenia jednostek (A → kA → A),
- * nie tolerancja inżynierska.
- *
- * MIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja-gałąź niesie zacisk; prąd
- * zwarciowy lokalizacji to prąd SZYNY zacisku (ta sama reguła co backend,
- * `szynaZwarciaZadania`), prąd roboczy — prąd TEGO zacisku z wiersza gałęzi
- * rozpływu (`i_a` dla `od`, `i_do_a` dla `do`). Backend prądów roboczych nie
- * potwierdza wobec biegu (nazwany brak w docstringu `run_coordination_analysis`),
- * ale atrapa MUSI je sprawdzić: wynik fixtury policzono dla tych liczb.
+ * PARA PREDYKATÓW (wzorzec sceny `macierz`): fixtura opisuje DOKŁADNIE jedno żądanie —
+ * identyfikatory biegu maksymalnego, minimalnego i rozpływu sceny. Żądanie z innymi biegami
+ * (albo z dawnymi polami urządzeń i prądów) atrapa ODRZUCA zamiast podać wynik policzony dla
+ * innych danych.
  */
-function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKoordynacjiSceny | Response {
+function wynikKoordynacjiDlaZadania(
+  cialo: BodyInit | null | undefined,
+): typeof koordynacjaScenyWynik | Response {
   const odmowa = (powod: string): Response =>
     new Response(JSON.stringify({ detail: `atrapa koordynacji: ${powod} — uruchom scripts/eksport_fixtur_harnessu.py` }), {
       status: 409,
       headers: { 'Content-Type': 'application/json' },
     });
-
-  const zadanie = JSON.parse(String(cialo ?? '{}')) as {
-    devices?: { id?: string; location_element_id?: string; zacisk?: string | null; settings?: unknown }[];
-    fault_currents?: { location_id?: string; ik_max_3f_a?: number; ik_min_3f_a?: number }[];
-    sc_run_id?: string;
-    sc_run_id_min?: string;
+  const zadanie = JSON.parse(String(cialo ?? '{}')) as Record<string, unknown>;
+  const oczekiwane = {
+    sc_run_id: koordynacjaScenyZwarciaMax.run_id,
+    sc_run_id_min: koordynacjaScenyZwarciaMin.run_id,
+    pf_run_id: koordynacjaScenyWynik.pf_run_id,
   };
-  // Karta S-2: backend potwierdza prądy wobec DWÓCH wskazanych biegów — żądanie bez nich
-  // (albo z innymi) backend odrzuca, więc atrapa też.
-  if (zadanie.sc_run_id !== koordynacjaScenyZwarciaMax.run_id) {
-    return odmowa(`żądanie wskazuje bieg maksymalny ${String(zadanie.sc_run_id)}, fixtura ${koordynacjaScenyZwarciaMax.run_id}`);
+  if (JSON.stringify(zadanie) !== JSON.stringify(oczekiwane)) {
+    return odmowa(`żądanie ${JSON.stringify(zadanie)} różni się od żądania fixtury ${JSON.stringify(oczekiwane)}`);
   }
-  if (zadanie.sc_run_id_min !== koordynacjaScenyZwarciaMin.run_id) {
-    return odmowa(`żądanie wskazuje bieg minimalny ${String(zadanie.sc_run_id_min)}, fixtura ${koordynacjaScenyZwarciaMin.run_id}`);
-  }
-  const zZadania = zadanie.devices ?? [];
-  const zFixtury = koordynacjaScenyWynik.devices;
-  if (zZadania.length !== zFixtury.length) {
-    return odmowa(`fixtura opisuje ${zFixtury.length} zabezpieczeń, żądanie niesie ${zZadania.length}`);
-  }
-
-  const mapa = new Map<string, string>();
-  for (const urzadzenieFixtury of zFixtury) {
-    const dopasowane = zZadania.find(
-      (u) => u.location_element_id === urzadzenieFixtury.location_element_id,
-    );
-    if (dopasowane?.id === undefined) {
-      return odmowa(`żądanie nie ma zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id}`);
-    }
-    if (odciskNastaw(dopasowane.settings) !== odciskNastaw(urzadzenieFixtury.settings)) {
-      return odmowa(
-        `nastawy zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id} różnią się od nastaw fixtury `
-        + `(żądanie: ${odciskNastaw(dopasowane.settings)}; fixtura: ${odciskNastaw(urzadzenieFixtury.settings)})`,
-      );
-    }
-    mapa.set(urzadzenieFixtury.id, dopasowane.id);
-  }
-
-  for (const pozycja of zadanie.fault_currents ?? []) {
-    const lokalizacja = pozycja.location_id ?? '';
-    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
-    const punkt = szynaZwarciaZadania(lokalizacja, urzadzenie?.zacisk);
-    if ('powod' in punkt) return odmowa(`${lokalizacja}: brak szyny zwarcia lokalizacji — ${punkt.powod}`);
-    for (const [klucz, fixtura] of [
-      ['ik_max_3f_a', koordynacjaScenyZwarciaMax],
-      ['ik_min_3f_a', koordynacjaScenyZwarciaMin],
-    ] as const) {
-      const podany = pozycja[klucz];
-      const zBiegu = pradAZFixtury(fixtura, punkt.szyna);
-      if (typeof podany !== 'number') continue;
-      if (zBiegu === null) return odmowa(`bieg nie ma prądu zwarciowego dla lokalizacji ${lokalizacja}`);
-      if (Math.abs(podany - zBiegu) > 1e-9 * Math.max(Math.abs(zBiegu), 1)) {
-        return odmowa(`${lokalizacja}.${klucz}: żądanie ${podany} A, bieg ${zBiegu} A`);
-      }
-    }
-  }
-
-  const zadanieRobocze = JSON.parse(String(cialo ?? '{}')) as {
-    operating_currents?: { location_id?: string; i_operating_a?: number }[];
-  };
-  const robocze = zadanieRobocze.operating_currents ?? [];
-  if (robocze.length !== zZadania.length) {
-    return odmowa(`żądanie niesie ${robocze.length} prądów roboczych dla ${zZadania.length} zabezpieczeń`);
-  }
-  for (const pozycja of robocze) {
-    const lokalizacja = pozycja.location_id ?? '';
-    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
-    const wiersz = koordynacjaScenyGalezie.rows.find((w) => w.element_id === lokalizacja);
-    const zBiegu = urzadzenie?.zacisk === 'do' ? wiersz?.i_do_a : wiersz?.i_a;
-    if (typeof zBiegu !== 'number' || pozycja.i_operating_a !== zBiegu) {
-      return odmowa(`${lokalizacja}: prąd roboczy żądania ${String(pozycja.i_operating_a)} A, bieg rozpływu ${String(zBiegu)} A`);
-    }
-  }
-
-  return podmienTozsamosciZabezpieczen(koordynacjaScenyWynik, mapa);
+  return koordynacjaScenyWynik;
 }
+
+/** Biegi oceny zabezpieczeń sceny E-28 — lista rośnie po natywnym kliku „Oceń zabezpieczenia". */
+let biegiOcenySceny: { id: string; status: string; created_at: string }[] = [];
 
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
@@ -583,6 +431,7 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
   'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
   zwarcia: zwarciaWynikiScenyZwarcia.run_id,
+  'zwarcia-tolerancja-robocza': zwarciaWynikiScenyRoboczej.run_id,
   rozplyw: rozplywScenyWynik.run_id,
   walidacja: walidacjaScenyWynik.context.run_id,
   estymacja: estymacjaScenyWynik.analysis_id,
@@ -760,18 +609,76 @@ function odpowiedzDokumentuSceny(
   });
 }
 
-/**
- * Konfiguracja zabezpieczeń przypadku zasiewu (`GET`/`PUT /api/study-cases/{id}/
- * protection-config`, P14c) — stan atrapy trzymany jak w backendzie (zapis widoczny
- * w kolejnym odczycie), kształt 1:1 z `domain/study_case.py::ProtectionConfig.to_dict`.
- */
-let konfiguracjaZabezpieczenPrzypadku: Record<string, unknown> = {
-  template_ref: null,
-  template_fingerprint: null,
-  library_manifest_ref: null,
-  overrides: {},
-  bound_at: null,
+
+/** Scenariusze zwarciowe sceny „panel-scenariuszy": MAX, MIN i nadpisanie c z uzasadnieniem. */
+const SCENARIUSZE_ZWARCIOWE_SCENY = (() => {
+  const baza = {
+    study_case_id: 'case-demo',
+    analysis_type: 'SHORT_CIRCUIT',
+    fault_type: 'SC_3F',
+    location: { element_ref: 'Szyna SN stacji', location_type: 'BUS', position: null },
+    fault_impedance_type: 'METALLIC',
+    fault_mode: 'METALLIC',
+    fault_impedance: null,
+    arc_params: null,
+    z0_bus_data: null,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+  const scenariusze = [
+    {
+      ...baza,
+      scenario_id: 'scen-max',
+      name: 'Zwarcie 3F — dobór aparatury',
+      config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-max',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-min',
+      name: 'Zwarcie 3F — czułość zabezpieczeń',
+      config: { scenariusz: 'MIN', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-min',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-nadpisanie',
+      name: 'Zwarcie 3F — uzgodnienie z operatorem',
+      config: {
+        scenariusz: 'MAX',
+        nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'uzgodnienie z operatorem sieci' },
+        thermal_time_seconds: 1,
+        include_branch_contributions: true,
+      },
+      content_hash: 'h-nadpisanie',
+    },
+  ];
+  return { scenarios: scenariusze, count: scenariusze.length };
+})();
+
+/** Przypadek sceny „karta-przypadku" — `StudyCase.to_dict()` z fabryki domeny backendu
+ * (fixtura `przypadek_scena_karta`, `eksport_fixtur_harnessu.py`); harness dokleja tylko
+ * status wyników, jak warstwa API (`api/study_cases.py`, przypadek bez biegów → NONE). */
+const PRZYPADEK_KARTY_SCENY: StudyCase = {
+  ...(przypadekScenaKarta as Omit<
+    StudyCase,
+    | 'result_status'
+    | 'results_valid'
+    | 'result_status_reason'
+    | 'result_status_reason_pl'
+    | 'rewizja_biegu'
+    | 'rewizja_biezaca'
+    | 'zmiany_od_biegu'
+  >),
+  result_status: 'NONE',
+  results_valid: false,
+  result_status_reason: 'brak_wyniku',
+  result_status_reason_pl: 'Brak wyniku — przypadek nie był jeszcze obliczany.',
+  rewizja_biegu: null,
+  rewizja_biezaca: przypadekScenaKarta.revision,
+  zmiany_od_biegu: [],
 };
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -789,6 +696,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return jsonOK(przegladWiarygodnosciKatalogu);
   }
 
+  // Scena „panel-scenariuszy" (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): lista scenariuszy
+  // zwarciowych przypadku w kształcie 1:1 z `FaultScenarioListResponse` backendu
+  // (`config` = `ShortCircuitConfigRequest`: scenariusz MAX/MIN + opcjonalne nadpisanie c
+  // z uzasadnieniem; liczby c harness nie wymyśla — to zapis wejścia inżyniera).
+  if (
+    creator === 'panel-scenariuszy' &&
+    url.endsWith('/api/execution/study-cases/case-demo/fault-scenarios')
+  ) {
+    return jsonOK(SCENARIUSZE_ZWARCIOWE_SCENY);
+  }
+
   if (creator === 'wyniki-skladowe') {
     if (url.endsWith('/results/short-circuit')) return jsonOK(skladoweScenyWynik);
     if (url.endsWith('/results/trace')) return jsonOK(skladoweScenySlad);
@@ -800,28 +718,54 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   } else if (creator === 'wyniki-stan-fazowy') {
     if (url.includes('/results/phase-state')) return jsonOK(stanFazowyScenyWyniki);
   } else if (creator === 'koordynacja') {
-    // HARNESS-RESZTA-2 (2026-09-17): CALA scena E-28 karmiona REALNYM biegiem
-    // backendu (`eksport_fixtur_harnessu.py`, sekcja „scena koordynacja"):
-    // magistrala SN z dwiema stacjami zbudowana TYMI SAMYMI operacjami
-    // domenowymi, ktorymi buduje ja projektant, dwa biegi `short_circuit_sn`
-    // (wariant MAX i MIN), bieg `PF`, dostepnosc pakietu nastaw, nastawy
-    // Hoppela, dopasowanie aparatu i wynik analizatora koordynacji.
-    // Poprzednio KAZDA z tych liczb byla wpisana recznie na siec, ktora nie
-    // istnieje (refy `gpz/sekcja_a/bus_sn`, `stacja_s02/bus_sn`).
+    // CALA scena E-28 karmiona REALNYMI biegami backendu (`eksport_fixtur_harnessu.py`,
+    // sekcja „scena koordynacja"): siec zlota G08 z zabezpieczeniami i nastawami w
+    // modelu, dwa biegi `short_circuit_sn` (wariant MAX i MIN), bieg `PF`, ocena
+    // zabezpieczen (`protection_sn`), dostepnosc pakietu nastaw, nastawy Hoppela,
+    // dopasowanie aparatu i wynik koordynacji.
     if (url.includes('/results/short-circuit')) {
       const min = url.includes(koordynacjaScenyZwarciaMin.run_id);
       return jsonOK(min ? koordynacjaScenyZwarciaMin : koordynacjaScenyZwarciaMax);
     }
-    if (url.includes('/results/branches')) return jsonOK(koordynacjaScenyGalezie);
-    // Decyzja O-51 pkt 7: miejsce prądu urządzenia rozstrzyga backend
-    // (`opis_miejsca_urzadzenia`) — odpowiedzi policzone dla KAŻDEJ lokalizacji listy
-    // wyboru i każdego wskazania (`koordynacja_scena_miejsca.json`).
-    if (url.includes('/enm/zacisk-lokalizacji')) return odpowiedzMiejscaSceny(url);
     if (url.includes('/enm')) return jsonOK(koordynacjaScenyMigawka);
+    // Ocena zabezpieczen na biegu zwarciowym: utworzenie + wykonanie biegu i jego wynik
+    // (`koordynacja_scena_ocena.json` — bieg na biegu MAKSYMALNYM sceny). Utworzenie z innym
+    // biegiem zwarciowym albo innym przypadkiem atrapa odrzuca nazwanym bledem.
+    if (url.endsWith('/protection-runs') && (init?.method ?? 'GET').toUpperCase() === 'POST') {
+      const zadanie = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      if (
+        zadanie.sc_run_id !== koordynacjaScenyOcena.sc_run_id
+        || zadanie.protection_case_id !== koordynacjaScenyOcena.protection_case_id
+      ) {
+        return new Response(
+          JSON.stringify({ detail: `atrapa oceny zabezpieczeń: żądanie ${JSON.stringify(zadanie)} spoza fixtury` }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return jsonOK({ id: koordynacjaScenyOcena.run_id, status: 'CREATED', error_message: null });
+    }
+    if (url.endsWith(`/protection-runs/${koordynacjaScenyOcena.run_id}/execute`)) {
+      biegiOcenySceny = [
+        { id: koordynacjaScenyOcena.run_id, status: 'FINISHED', created_at: koordynacjaScenyOcena.created_at },
+      ];
+      // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle — 202 i stan QUEUED, jak backend;
+      // stan końcowy klient odczytuje odpytywaniem `GET /protection-runs/{id}`.
+      return new Response(
+        JSON.stringify({ id: koordynacjaScenyOcena.run_id, status: 'QUEUED', error_message: null }),
+        { status: 202, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.endsWith(`/protection-runs/${koordynacjaScenyOcena.run_id}`)) {
+      return jsonOK({ id: koordynacjaScenyOcena.run_id, status: 'FINISHED', error_message: null });
+    }
+    if (url.endsWith(`/protection-runs/${koordynacjaScenyOcena.run_id}/results`)) {
+      return jsonOK(koordynacjaScenyOcena);
+    }
+    if (url.endsWith('/protection-runs')) return jsonOK({ runs: biegiOcenySceny, total: biegiOcenySceny.length });
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
-    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // scenariusz MAX, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
     // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
     // kandydata.
     if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
@@ -839,28 +783,20 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/api/protection-coordination/') && url.endsWith('/run')) {
       const wynik = wynikKoordynacjiDlaZadania(init?.body);
       if (wynik instanceof Response) return wynik;
-      wynikKoordynacjiSceny = wynik;
+      // Potwierdzenie wykonania = ten sam kształt co `CoordinationSummaryResponse` backendu
+      // (liczby zbiorcze z `summary` wyniku, bez werdyktu — P-06).
       return jsonOK({
         run_id: wynik.run_id,
         project_id: wynik.project_id,
-        overall_verdict: wynik.overall_verdict,
-        overall_verdict_pl: wynik.summary.overall_verdict_pl,
         total_devices: wynik.summary.total_devices,
         total_checks: wynik.summary.total_checks,
-        sensitivity_pass: wynik.summary.sensitivity.pass,
-        sensitivity_fail: wynik.summary.sensitivity.fail,
-        selectivity_pass: wynik.summary.selectivity.pass,
-        selectivity_fail: wynik.summary.selectivity.fail,
-        overload_pass: wynik.summary.overload.pass,
-        overload_fail: wynik.summary.overload.fail,
+        najmniejszy_odstep_s: wynik.summary.selectivity.najmniejszy_odstep_s,
+        najmniejszy_iloraz_czulosci: wynik.summary.sensitivity.najmniejszy_iloraz,
+        najmniejszy_iloraz_przeciazalnosci: wynik.summary.overload.najmniejszy_iloraz,
       });
     }
-    if (url.includes('/api/protection-coordination/') && url.endsWith('/tcc')) {
-      const wynik = wynikKoordynacjiSceny ?? koordynacjaScenyWynik;
-      return jsonOK({ curves: wynik.tcc_curves, fault_markers: wynik.fault_markers });
-    }
-    if (url.includes('/api/protection-coordination/')) {
-      return jsonOK(wynikKoordynacjiSceny ?? koordynacjaScenyWynik);
+    if (url.includes(`/api/protection-coordination/${koordynacjaScenyWynik.run_id}`)) {
+      return jsonOK(koordynacjaScenyWynik);
     }
   } else if (creator === 'odbior') {
     // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena
@@ -888,10 +824,20 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       // tego, czego model NIE niesie. Wcześniej cała lista była wpisana ręcznie.
       return jsonOK(wiazaniaScenyFunkcjeZabezpieczen);
     }
-  } else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+  } else if (
+    creator === 'wyniki-dynamika' ||
+    creator === 'wyniki-dynamika-brak' ||
+    creator === 'wyniki-dynamika-odbior-brak'
+  ) {
     if (url.endsWith('/api/dynamika/opis-scenariusza')) return jsonOK(dynamikaScenyOpis);
     if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/gotowosc')) {
-      return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyGotowosc : dynamikaScenyGotowoscBrak);
+      return jsonOK(
+        creator === 'wyniki-dynamika'
+          ? dynamikaScenyGotowosc
+          : creator === 'wyniki-dynamika-brak'
+            ? dynamikaScenyGotowoscBrak
+            : dynamikaScenyGotowoscOdbiorBrak,
+      );
     }
     if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/scenariusze')) {
       return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyScenariusze : { scenariusze: [], count: 0 });
@@ -997,24 +943,27 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // liczb fizycznych. `fault_node_id` z ciala zadania POST, jak w realnym
     // kliencie (`zwarcia/api.ts::fetchWkladyZwarciowe`).
     const cialoWkladow = JSON.parse(String(init?.body ?? '{}')) as { fault_node_id?: string };
-    const wklady = (zwarciaWkladyScenyZwarcia as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
+    const wklady = (ZWARCIA_SCENY.wklady as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
     if (wklady) return jsonOK(wklady);
   }
   if (url.includes('/results/short-circuit/rozplyw')) {
-    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy JEDNEGO punktu — ten,
-    // ktory `EkranZwarc` wybiera domyslnie (pierwszy wiersz wynikow) — realny
-    // bieg backendu (`zwarcia_rozplyw_scena_zwarcia`), tor sieci nadrzednej
-    // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
-    // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
-    const targetId = new URL(url, location.origin).searchParams.get('target_id');
-    if (targetId === zwarciaRozplywScenyZwarcia.target_id) return jsonOK(zwarciaRozplywScenyZwarcia);
+    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy (i slad podzialu pradu, ta sama
+    // odpowiedz) — mapa target_id -> odpowiedz REALNEGO biegu backendu dla KAZDEGO
+    // punktu sceny (`eksport_fixtur_harnessu.py::zwarcia_rozplyw_scena_zwarcia`, ta
+    // sama funkcja co koncowka `get_short_circuit_rozplyw`), jak mapa wkladow wyzej.
+    // Dawna makieta znala wylacznie punkt domyslny, wiec wybor szyny nN konczyl sie
+    // bledem pobrania. Punkt domyslny niesie tor sieci nadrzednej (THEVENIN_GRID)
+    // ORAZ tor falownika (gen_pv), jak scena Z-3 — bez zadnej recznej liczby.
+    const targetId = new URL(url, location.origin).searchParams.get('target_id') ?? '';
+    const rozplyw = (ZWARCIA_SCENY.rozplyw as Record<string, unknown>)[targetId];
+    if (rozplyw) return jsonOK(rozplyw);
   }
   if (url.includes('/results/short-circuit/pasmo')) {
     // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;
     // strona MIN `obliczony_na_zadanie` (bez wlasnego run_id) — realny ksztalt
     // `dobierz_pasmo_min_max_zwarcia` (`eksport_fixtur_harnessu.py::
     // zwarcia_pasmo_scena_zwarcia`).
-    return jsonOK(zwarciaPasmoScenyZwarcia);
+    return jsonOK(ZWARCIA_SCENY.pasmo);
   }
   if (url.includes('/power-flow-runs')) {
     // HARNESS-RESZTA-2: lista zakonczonych przebiegow rozplywu projektu sceny
@@ -1234,7 +1183,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
     // biblioteki szablonów (`ui2/spaces/model/szablony`) — w odróżnieniu od
     // kreatora stacji (mock pustej listy wyżej) ta scena istnieje WPROST po
-    // to, żeby pokazać rzeczywistą, pełną bibliotekę (73 szablony, 15
+    // to, żeby pokazać rzeczywistą, pełną bibliotekę (71 szablonów, 15
     // kategorii, rola A „Zasilanie sieci" już niepusta) — atrapa
     // przeczyłaby własnemu celowi sceny. Przechodzi do PRAWDZIWEGO
     // backendu (ten sam wzorzec co scena „stacja" — `zasiejSceneStacji`
@@ -1443,6 +1392,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
     // HARNESS-RESZTA-2: kontrakt przebiegu po wykonaniu — REALNY bieg backendu.
+    // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); harness oddaje od razu
+    // stan koncowy tego samego realnego biegu, a odpytywanie `GET …/runs/{id}` nizej
+    // widzi DONE przy pierwszym odczycie.
+    return jsonOK(oltcScenyPrzebieg);
+  }
+  if (/\/api\/execution\/runs\/[^/]+$/.test(url)) {
     return jsonOK(oltcScenyPrzebieg);
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {
@@ -1488,25 +1443,6 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (creator === 'ocena') return jsonOK(werdyktProjektowyScenyOcena);
     if (creator === 'ocena-przekroczenia') return jsonOK(werdyktProjektowyScenyOcenaPrzekroczenia);
     return jsonOK(werdyktProjektowyScenyUwaga);
-  }
-  if (url.includes('/api/study-cases/') && url.endsWith('/protection-config')) {
-    // Konfiguracja zabezpieczeń przypadku (P14c) — scena „koordynacja" zapisuje
-    // urządzenia NATYWNYM klikiem (`zapiszUrzadzeniaKoordynacji` → PUT). Bez atrapy
-    // realny backend odpowiadał 400 dla `case-demo`, a zrzut do oceny niósł
-    // notyfikację „Błąd zapisu" po każdym zapisie. PUT zachowuje się jak
-    // `StudyCaseService.update_protection_config`: zapisana konfiguracja wraca
-    // w odpowiedzi i w kolejnym GET, `bound_at` tylko przy związaniu szablonu.
-    if ((init?.method ?? 'GET').toUpperCase() === 'PUT') {
-      const zadanie = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
-      konfiguracjaZabezpieczenPrzypadku = {
-        template_ref: zadanie.template_ref ?? null,
-        template_fingerprint: zadanie.template_fingerprint ?? null,
-        library_manifest_ref: zadanie.library_manifest_ref ?? null,
-        overrides: zadanie.overrides ?? {},
-        bound_at: zadanie.template_ref ? '2026-07-28T08:10:00+00:00' : null,
-      };
-    }
-    return jsonOK(konfiguracjaZabezpieczenPrzypadku);
   }
   return originalFetch(input as RequestInfo, init);
 }) as typeof window.fetch;
@@ -1569,6 +1505,7 @@ const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
   rozplyw: sieckZlotaScenyMigawka,
   zwarcia: sieckZlotaScenyMigawka,
   'zwarcia-rozplyw': sieckZlotaScenyMigawka,
+  'zwarcia-tolerancja-robocza': zwarciaMigawkaScenyRoboczej,
   'odbior-zgodnosc': sieckZlotaScenyMigawka,
   estymacja: sieckZlotaScenyMigawka,
   'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
@@ -1734,6 +1671,15 @@ if (creator === 'arcflash') {
   useResultsInspectorStore.setState({
     shortCircuitResults: zwarciaWynikiScenyZwarcia,
     selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
+  } as never);
+} else if (creator === 'zwarcia-tolerancja-robocza') {
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): bieg na sieci złotej bez
+  // deklaracji tolerancji sieci nN — sekcja „Założenia" pokazuje założenie
+  // `fault.c_tolerancja_nn_robocza` ze znacznikiem „wartość robocza" i akcją „Zmień wartość",
+  // bilans punktu nN — podstawę c „(wartość robocza)". Zero ręcznie wpisanych liczb.
+  useResultsInspectorStore.setState({
+    shortCircuitResults: ZWARCIA_SCENY.wyniki,
+    selectedRunId: ZWARCIA_SCENY.wyniki.run_id,
   } as never);
 } else if (creator === 'zwarcia-rozplyw') {
   // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
@@ -1948,10 +1894,9 @@ if (creator === 'arcflash') {
     ],
   } as never);
 } else if (creator === 'koordynacja') {
-  // Scena E-28 (V12K-262): ekran koordynacji WYMAGA zakonczonego biegu zwarciowego —
-  // bez niego pokazuje uczciwy stan zerowy. Prady koordynacji buduja sie z WIERSZY
-  // wyniku (F-K4: zero losowania), wiec scena zasiewa bieg i podmienia koncowki
-  // wynikow; urzadzenia dodaje sie NATYWNYM klikiem w tescie, nie wymuszeniem stanu.
+  // Scena E-28: ekran koordynacji WYMAGA zakonczonych biegow zwarciowych (MAX i MIN,
+  // scenariusz zapisany na biegu) i rozplywu — bez nich pokazuje uczciwy stan zerowy.
+  // Urzadzenia i nastawy niesie model sceny; ocene i koordynacje uruchamia NATYWNY klik.
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useAppStateStore.getState().setActiveCase('case-demo', 'Wariant zimowy', null, 'FRESH');
@@ -1966,8 +1911,8 @@ if (creator === 'arcflash') {
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna, a
-        // `zbudujPradyKoordynacji` w ogole nie tworzy pozycji pradowej.
+        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
+        // odmawia bez biegu minimalnego).
         id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',
         status: 'DONE',
@@ -1975,7 +1920,7 @@ if (creator === 'arcflash') {
         started_at: '2026-07-28T08:01:00Z',
       } as unknown as ExecutionRun,
       {
-        id: koordynacjaScenyGalezie.run_id,
+        id: koordynacjaScenyWynik.pf_run_id,
         analysis_type: 'LOAD_FLOW',
         status: 'DONE',
         finished_at: '2026-07-28T08:05:00Z',
@@ -1999,7 +1944,11 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
-} else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+} else if (
+  creator === 'wyniki-dynamika' ||
+  creator === 'wyniki-dynamika-brak' ||
+  creator === 'wyniki-dynamika-odbior-brak'
+) {
   // Scena E-32 (karta AB-P1): model sceny (migawka po wiązaniu PV) i — w wariancie
   // z wynikiem — zakończony bieg `DYNAMIKA_RMS` z fixtury REALNEGO biegu backendu.
   useShellStore.setState({ advancementMode: 'expert' });
@@ -2091,6 +2040,15 @@ if (creator === 'arcflash') {
     parameter_source: 'KATALOG',
     field: 'r_pct',
     value: '0.55',
+  });
+} else if (creator === 'edycja-tolerancja-nn') {
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: formularz edycji parametrów otwarty akcją „Zmień
+  // wartość" założenia biegu `fault.c_tolerancja_nn_robocza` (ekran wyników zwarć) — ten sam
+  // kontekst co `zmianaTolerancjiNn.ts`: element zasilający, jego rodzaj i pole parametru.
+  useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
+    element_ref: 'TR-1',
+    element_type: 'TransformerBranch',
+    field: 'lv_voltage_tolerance',
   });
 } else if (creator === 'cieplna') {
   // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
@@ -2190,6 +2148,8 @@ function Harness() {
     node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
     node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+  else if (creator === 'zwarcia-tolerancja-robocza')
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
     // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
@@ -2249,7 +2209,11 @@ function Harness() {
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
   else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;
-  else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak')
+  else if (
+    creator === 'wyniki-dynamika' ||
+    creator === 'wyniki-dynamika-brak' ||
+    creator === 'wyniki-dynamika-odbior-brak'
+  )
     node = <EkranDynamiki trybZaawansowania="expert" />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
@@ -2330,6 +2294,9 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'edycja-tolerancja-nn') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'panel-scenariuszy') node = <PanelScenariuszy />;
+  else if (creator === 'karta-przypadku') node = <KartaPrzypadku przypadek={PRZYPADEK_KARTY_SCENY} ladowanie={false} blad={null} />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else if (creator === 'szablony')
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
@@ -2350,7 +2317,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'akademickie',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak', 'akademickie',
           'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400

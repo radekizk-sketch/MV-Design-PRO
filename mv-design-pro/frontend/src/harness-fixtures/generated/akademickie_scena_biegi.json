@@ -24,10 +24,10 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
-        "proof_id": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "proof_hash": "8e80dcac8f204ecc2969353a4ea9c95094ba4cc45ba1581db24555d2f7d73d7c",
+        "proof_id": "proof:v126:ssci_impedance:0bb6217677198bd3",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
-        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "source_result_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c",
         "steps": [
           {
             "data": {
@@ -102,13 +102,13 @@
             "proof_status": "complete",
             "result": {
               "z_grid_at_f_min": {
-                "im": 1.707536,
-                "mag": 1.868156,
-                "phase_deg": 66.067,
-                "re": 0.757843
+                "im": 1.797536,
+                "mag": 1.949643,
+                "phase_deg": 67.218,
+                "re": 0.754964
               }
             },
-            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.9496 Ω",
             "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
             "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
           },
@@ -136,7 +136,7 @@
       "koperta": {
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
-        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "deterministic_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance",
@@ -149,19 +149,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "7b7db37e415a59cc8220426d616a039e8a4d5a0dbca3cf57c88b8332b59256d0",
-        "report_id": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "report_hash": "77a158ca50d4fcec1c6109bd5016c5d49635f53d51baf779ea03e2d7606bf52c",
+        "report_id": "report:v126:ssci_impedance:0bb6217677198bd3",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:ssci_impedance:1f5e266f9d6ce43e"
+                "value": "proof:v126:ssci_impedance:0bb6217677198bd3"
               },
               {
                 "label": "proof_hash",
-                "value": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd"
+                "value": "8e80dcac8f204ecc2969353a4ea9c95094ba4cc45ba1581db24555d2f7d73d7c"
               },
               {
                 "label": "trace_step_count",
@@ -175,7 +175,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+                "value": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c"
               },
               {
                 "label": "solver_version",
@@ -183,19 +183,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049"
+                "value": "dac6ca602b0cda65ea49154b2e4063a0a810a0b965beafe9328a00d3ec10537f"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
-        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+        "source_proof_hash": "8e80dcac8f204ecc2969353a4ea9c95094ba4cc45ba1581db24555d2f7d73d7c",
+        "source_result_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c"
       },
       "slad": {
         "analysis_type": "ssci_impedance",
-        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "deterministic_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "steps": [
           {
@@ -274,13 +274,13 @@
             "reporting_status": "reportable",
             "result": {
               "z_grid_at_f_min": {
-                "im": 1.707536,
-                "mag": 1.868156,
-                "phase_deg": 66.067,
-                "re": 0.757843
+                "im": 1.797536,
+                "mag": 1.949643,
+                "phase_deg": 67.218,
+                "re": 0.754964
               }
             },
-            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.9496 Ω",
             "step": 2,
             "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
             "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
@@ -309,14 +309,14 @@
         "trace_version": "AcademicWhiteBoxTraceV1"
       },
       "stabilnosc": {
-        "analysis_id": "828617fdf32b21075f30a4cd7a1f2c0fdbcb25418784ccc896afc7fcf3eb9920",
+        "analysis_id": "57ad4e5e1d5efb9e2436e8808be737e8663f8feee3042c3543468d3983ae3dea",
         "context": {
           "case_id": "case-demo",
           "case_name": null,
           "project_name": null,
           "run_id": "run-v126-scena-akademickie-ssci_impedance",
           "run_timestamp": "2026-09-16T09:00:00+00:00",
-          "snapshot_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+          "snapshot_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c"
         },
         "gain_crossover_mag": 1.0,
         "ocena": {
@@ -423,13 +423,13 @@
           "gain_crossover": null,
           "has_magnitude_crossover": true,
           "is_risk": null,
-          "max_minor_loop_gain": 137.42,
+          "max_minor_loop_gain": 144.5435,
           "missing_data": [],
           "nearest_to_minus_one": {
-            "distance_to_minus_one": 1.0378,
+            "distance_to_minus_one": 1.0862,
             "f_hz": 1.0,
-            "mag": 1.1368,
-            "phase_deg": -122.309
+            "mag": 1.1863,
+            "phase_deg": -121.159
           },
           "negative_resistance_f_hz": 8.3025,
           "negative_resistance_present": true,
@@ -550,21 +550,21 @@
             {
               "formula_latex": "L(j\\omega) = \\dfrac{Z_{grid}(j\\omega)}{Z_{conv}(j\\omega)}",
               "result_pl": "moduły impedancji przecinają się (|L| ≥ 1)",
-              "substitution_pl": "max|L| = 137.42 przy f = 250.0 Hz; próg przecięcia |L| = 1.0",
+              "substitution_pl": "max|L| = 144.5435 przy f = 250.0 Hz; próg przecięcia |L| = 1.0",
               "symbol": "L(jω)",
               "unit_check_pl": "L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |Z_grid|=|Z_conv|."
             },
             {
               "formula_latex": "\\Delta\\varphi_{min} = \\min_{f:\\,|L(f)|\\geq 1}\\left(180^\\circ - |\\angle L(f)|\\right)",
-              "result_pl": "Δφ_min = 0.583°",
+              "result_pl": "Δφ_min = 0.555°",
               "substitution_pl": "min po paśmie |L| ≥ 1.0; f = 47.7 Hz",
               "symbol": "Δφ_min",
               "unit_check_pl": "stopnie; Δφ ≤ 0° ⟺ ∠L osiąga ±180° ⟺ okrążenie −1."
             },
             {
               "formula_latex": "d_{-1} = \\min_{f}\\left|L(j\\omega) + 1\\right|",
-              "result_pl": "d(−1) = 1.0378 (odległość przebiegu od −1)",
-              "substitution_pl": "f = 1.0 Hz, |L| = 1.1368, ∠L = -122.309°",
+              "result_pl": "d(−1) = 1.0862 (odległość przebiegu od −1)",
+              "substitution_pl": "f = 1.0 Hz, |L| = 1.1863, ∠L = -121.159°",
               "symbol": "|L+1|_min",
               "unit_check_pl": "bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1."
             },
@@ -577,7 +577,7 @@
             }
           ],
           "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
-          "worst_phase_margin_deg": 0.583,
+          "worst_phase_margin_deg": 0.555,
           "worst_phase_margin_f_hz": 47.7044
         }
       },
@@ -585,13 +585,13 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
-        "report_ref": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "proof_ref": "proof:v126:ssci_impedance:0bb6217677198bd3",
+        "report_ref": "report:v126:ssci_impedance:0bb6217677198bd3",
         "result": {
           "analysis_type": "ssci_impedance",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
-          "input_hash": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049",
+          "deterministic_hash": "0bb6217677198bd3c45da6d2e9b82b89839f19e28c083b5641f89ee18c61ff9c",
+          "input_hash": "dac6ca602b0cda65ea49154b2e4063a0a810a0b965beafe9328a00d3ec10537f",
           "result": {
             "base_frequency_hz": 50.0,
             "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
@@ -662,430 +662,430 @@
             "minor_loop_gain": [
               {
                 "f_hz": 1.0,
-                "im": -0.960762,
-                "mag": 1.136759,
-                "phase_deg": -122.309,
-                "re": -0.607584
+                "im": -1.015197,
+                "mag": 1.186344,
+                "phase_deg": -121.159,
+                "re": -0.613829
               },
               {
                 "f_hz": 1.0964,
-                "im": -1.046682,
-                "mag": 1.222881,
-                "phase_deg": -121.139,
-                "re": -0.632371
+                "im": -1.105952,
+                "mag": 1.277833,
+                "phase_deg": -120.061,
+                "re": -0.6401
               },
               {
                 "f_hz": 1.2021,
-                "im": -1.139102,
-                "mag": 1.317137,
-                "phase_deg": -120.137,
-                "re": -0.661284
+                "im": -1.203561,
+                "mag": 1.377844,
+                "phase_deg": -119.131,
+                "re": -0.670743
               },
               {
                 "f_hz": 1.3179,
-                "im": -1.238158,
-                "mag": 1.419792,
-                "phase_deg": -119.3,
-                "re": -0.694818
+                "im": -1.308167,
+                "mag": 1.486652,
+                "phase_deg": -118.365,
+                "re": -0.70628
               },
               {
                 "f_hz": 1.445,
-                "im": -1.344221,
-                "mag": 1.531357,
-                "phase_deg": -118.622,
-                "re": -0.733571
+                "im": -1.420157,
+                "mag": 1.604796,
+                "phase_deg": -117.755,
+                "re": -0.747344
               },
               {
                 "f_hz": 1.5843,
-                "im": -1.457287,
-                "mag": 1.651971,
-                "phase_deg": -118.097,
-                "re": -0.778026
+                "im": -1.539524,
+                "mag": 1.73242,
+                "phase_deg": -117.295,
+                "re": -0.794445
               },
               {
                 "f_hz": 1.737,
-                "im": -1.577497,
-                "mag": 1.781924,
-                "phase_deg": -117.714,
-                "re": -0.828707
+                "im": -1.666412,
+                "mag": 1.86983,
+                "phase_deg": -116.974,
+                "re": -0.848136
               },
               {
                 "f_hz": 1.9044,
-                "im": -1.704975,
-                "mag": 1.92149,
-                "phase_deg": -117.462,
-                "re": -0.886106
+                "im": -1.800945,
+                "mag": 2.017316,
+                "phase_deg": -116.78,
+                "re": -0.908935
               },
               {
                 "f_hz": 2.088,
-                "im": -1.839915,
-                "mag": 2.071022,
-                "phase_deg": -117.326,
-                "re": -0.950706
+                "im": -1.943323,
+                "mag": 2.175251,
+                "phase_deg": -116.699,
+                "re": -0.97735
               },
               {
                 "f_hz": 2.2892,
-                "im": -1.982397,
-                "mag": 2.230734,
-                "phase_deg": -117.293,
-                "re": -1.022877
+                "im": -2.093626,
+                "mag": 2.343863,
+                "phase_deg": -116.717,
+                "re": -1.053765
               },
               {
                 "f_hz": 2.5099,
-                "im": -2.132847,
-                "mag": 2.401221,
-                "phase_deg": -117.348,
-                "re": -1.103098
+                "im": -2.252298,
+                "mag": 2.523777,
+                "phase_deg": -116.82,
+                "re": -1.138685
               },
               {
                 "f_hz": 2.7518,
-                "im": -2.291575,
-                "mag": 2.582939,
-                "phase_deg": -117.477,
-                "re": -1.191747
+                "im": -2.41966,
+                "mag": 2.715476,
+                "phase_deg": -116.993,
+                "re": -1.232498
               },
               {
                 "f_hz": 3.0171,
-                "im": -2.459275,
-                "mag": 2.776794,
-                "phase_deg": -117.668,
-                "re": -1.289399
+                "im": -2.596444,
+                "mag": 2.919916,
+                "phase_deg": -117.225,
+                "re": -1.335808
               },
               {
                 "f_hz": 3.3079,
-                "im": -2.636641,
-                "mag": 2.983725,
-                "phase_deg": -117.911,
-                "re": -1.39669
+                "im": -2.783378,
+                "mag": 3.138087,
+                "phase_deg": -117.505,
+                "re": -1.449274
               },
               {
                 "f_hz": 3.6268,
-                "im": -2.824724,
-                "mag": 3.205172,
-                "phase_deg": -118.2,
-                "re": -1.514615
+                "im": -2.981572,
+                "mag": 3.371507,
+                "phase_deg": -117.829,
+                "re": -1.57394
               },
               {
                 "f_hz": 3.9764,
-                "im": -3.024585,
-                "mag": 3.44272,
-                "phase_deg": -118.533,
-                "re": -1.644446
+                "im": -3.192144,
+                "mag": 3.621846,
+                "phase_deg": -118.193,
+                "re": -1.711136
               },
               {
                 "f_hz": 4.3596,
-                "im": -3.237398,
-                "mag": 3.698302,
-                "phase_deg": -118.911,
-                "re": -1.78793
+                "im": -3.416336,
+                "mag": 3.891143,
+                "phase_deg": -118.601,
+                "re": -1.862698
               },
               {
                 "f_hz": 4.7799,
-                "im": -3.464506,
-                "mag": 3.974357,
-                "phase_deg": -119.341,
-                "re": -1.947489
+                "im": -3.655567,
+                "mag": 4.181966,
+                "phase_deg": -119.058,
+                "re": -2.031174
               },
               {
                 "f_hz": 5.2406,
-                "im": -3.706847,
-                "mag": 4.273238,
-                "phase_deg": -119.836,
-                "re": -2.125994
+                "im": -3.910834,
+                "mag": 4.496794,
+                "phase_deg": -119.577,
+                "re": -2.219581
               },
               {
                 "f_hz": 5.7458,
-                "im": -3.965343,
-                "mag": 4.597798,
-                "phase_deg": -120.408,
-                "re": -2.327187
+                "im": -4.183113,
+                "mag": 4.838634,
+                "phase_deg": -120.172,
+                "re": -2.431861
               },
               {
                 "f_hz": 6.2996,
-                "im": -4.240296,
-                "mag": 4.950781,
-                "phase_deg": -121.075,
-                "re": -2.555411
+                "im": -4.472728,
+                "mag": 5.210377,
+                "phase_deg": -120.86,
+                "re": -2.672588
               },
               {
                 "f_hz": 6.9068,
-                "im": -4.531548,
-                "mag": 5.335181,
-                "phase_deg": -121.857,
-                "re": -2.815889
+                "im": -4.779521,
+                "mag": 5.615176,
+                "phase_deg": -121.66,
+                "re": -2.947265
               },
               {
                 "f_hz": 7.5726,
-                "im": -4.838103,
-                "mag": 5.753949,
-                "phase_deg": -122.772,
-                "re": -3.114592
+                "im": -5.102448,
+                "mag": 6.056138,
+                "phase_deg": -122.592,
+                "re": -3.262182
               },
               {
                 "f_hz": 8.3025,
-                "im": -5.157844,
-                "mag": 6.20983,
-                "phase_deg": -123.84,
-                "re": -3.458125
+                "im": -5.439282,
+                "mag": 6.536156,
+                "phase_deg": -123.676,
+                "re": -3.624299
               },
               {
                 "f_hz": 9.1028,
-                "im": -5.487494,
-                "mag": 6.70558,
-                "phase_deg": -125.08,
-                "re": -3.853856
+                "im": -5.786577,
+                "mag": 7.058132,
+                "phase_deg": -124.931,
+                "re": -4.041379
               },
               {
                 "f_hz": 9.9803,
-                "im": -5.822194,
-                "mag": 7.243669,
-                "phase_deg": -126.509,
-                "re": -4.309616
+                "im": -6.139218,
+                "mag": 7.624668,
+                "phase_deg": -126.373,
+                "re": -4.521677
               },
               {
                 "f_hz": 10.9423,
-                "im": -6.155235,
-                "mag": 7.826183,
-                "phase_deg": -128.141,
-                "re": -4.833449
+                "im": -6.490141,
+                "mag": 8.237962,
+                "phase_deg": -128.017,
+                "re": -5.073667
               },
               {
                 "f_hz": 11.997,
-                "im": -6.477946,
-                "mag": 8.45497,
-                "phase_deg": -129.989,
-                "re": -5.433483
+                "im": -6.830212,
+                "mag": 8.899958,
+                "phase_deg": -129.875,
+                "re": -5.705915
               },
               {
                 "f_hz": 13.1534,
-                "im": -6.779427,
-                "mag": 9.131477,
-                "phase_deg": -132.062,
-                "re": -6.117454
+                "im": -7.147952,
+                "mag": 9.612181,
+                "phase_deg": -131.958,
+                "re": -6.426571
               },
               {
                 "f_hz": 14.4213,
-                "im": -7.046436,
-                "mag": 9.856682,
-                "phase_deg": -134.366,
-                "re": -6.892163
+                "im": -7.429414,
+                "mag": 10.375662,
+                "phase_deg": -134.271,
+                "re": -7.242801
               },
               {
                 "f_hz": 15.8114,
-                "im": -7.263464,
-                "mag": 10.631117,
-                "phase_deg": -136.904,
-                "re": -7.762908
+                "im": -7.658258,
+                "mag": 11.19096,
+                "phase_deg": -136.817,
+                "re": -8.160187
               },
               {
                 "f_hz": 17.3355,
-                "im": -7.412997,
-                "mag": 11.454996,
-                "phase_deg": -139.674,
-                "re": -8.73295
+                "im": -7.816039,
+                "mag": 12.058301,
+                "phase_deg": -139.595,
+                "re": -9.182165
               },
               {
                 "f_hz": 19.0065,
-                "im": -7.47599,
-                "mag": 12.328303,
-                "phase_deg": -142.67,
-                "re": -9.802888
+                "im": -7.882692,
+                "mag": 12.977666,
+                "phase_deg": -142.598,
+                "re": -10.309364
               },
               {
                 "f_hz": 20.8385,
-                "im": -7.432599,
-                "mag": 13.251019,
-                "phase_deg": -145.881,
-                "re": -10.970232
+                "im": -7.837315,
+                "mag": 13.949038,
+                "phase_deg": -145.816,
+                "re": -11.539157
               },
               {
                 "f_hz": 22.8472,
-                "im": -7.2631,
-                "mag": 14.223606,
-                "phase_deg": -149.294,
-                "re": -12.229404
+                "im": -7.659133,
+                "mag": 14.972899,
+                "phase_deg": -149.234,
+                "re": -12.865667
               },
               {
                 "f_hz": 25.0495,
-                "im": -6.948974,
-                "mag": 15.247169,
-                "phase_deg": -152.886,
-                "re": -13.571585
+                "im": -7.328638,
+                "mag": 16.050414,
+                "phase_deg": -152.832,
+                "re": -14.279596
               },
               {
                 "f_hz": 27.464,
-                "im": -6.473953,
-                "mag": 16.324166,
-                "phase_deg": -156.635,
-                "re": -14.985538
+                "im": -6.828697,
+                "mag": 17.184168,
+                "phase_deg": -156.585,
+                "re": -15.7691
               },
               {
                 "f_hz": 30.1113,
-                "im": -5.824836,
-                "mag": 17.459023,
-                "phase_deg": -160.511,
-                "re": -16.458699
+                "im": -6.14541,
+                "mag": 18.378818,
+                "phase_deg": -160.465,
+                "re": -17.320938
               },
               {
                 "f_hz": 33.0138,
-                "im": -4.992088,
-                "mag": 18.658539,
-                "phase_deg": -164.481,
-                "re": -17.978324
+                "im": -5.268739,
+                "mag": 19.641518,
+                "phase_deg": -164.44,
+                "re": -18.921671
               },
               {
                 "f_hz": 36.196,
-                "im": -3.969918,
-                "mag": 19.932474,
-                "phase_deg": -168.512,
-                "re": -19.533132
+                "im": -4.192591,
+                "mag": 20.982539,
+                "phase_deg": -168.474,
+                "re": -20.559405
               },
               {
                 "f_hz": 39.685,
-                "im": -2.755749,
-                "mag": 21.29411,
-                "phase_deg": -172.564,
-                "re": -21.115041
+                "im": -2.914262,
+                "mag": 22.41586,
+                "phase_deg": -172.53,
+                "re": -22.225612
               },
               {
                 "f_hz": 43.5103,
-                "im": -1.349478,
-                "mag": 22.760437,
-                "phase_deg": -176.601,
-                "re": -22.720396
+                "im": -1.43366,
+                "mag": 23.959357,
+                "phase_deg": -176.57,
+                "re": -23.916426
               },
               {
                 "f_hz": 47.7044,
-                "im": 0.24785,
-                "mag": 24.35254,
-                "phase_deg": 179.417,
-                "re": -24.351279
+                "im": 0.2481,
+                "mag": 25.63522,
+                "phase_deg": 179.445,
+                "re": -25.634019
               },
               {
                 "f_hz": 52.3026,
-                "im": 2.03525,
-                "mag": 26.095606,
-                "phase_deg": 175.527,
-                "re": -26.016119
+                "im": 2.129959,
+                "mag": 27.46995,
+                "phase_deg": 175.553,
+                "re": -27.38725
               },
               {
                 "f_hz": 57.3442,
-                "im": 4.013532,
-                "mag": 28.019426,
-                "phase_deg": 171.765,
-                "re": -27.730485
+                "im": 4.212747,
+                "mag": 29.494893,
+                "phase_deg": 171.788,
+                "re": -29.19249
               },
               {
                 "f_hz": 62.8717,
-                "im": 6.186109,
-                "mag": 30.158153,
-                "phase_deg": 168.163,
-                "re": -29.516881
+                "im": 6.500029,
+                "mag": 31.745983,
+                "phase_deg": 168.185,
+                "re": -31.073414
               },
               {
                 "f_hz": 68.932,
-                "im": 8.560332,
-                "mag": 32.550902,
-                "phase_deg": 164.753,
-                "re": -31.405126
+                "im": 8.99951,
+                "mag": 34.264365,
+                "phase_deg": 164.773,
+                "re": -33.061391
               },
               {
                 "f_hz": 75.5764,
-                "im": 11.148037,
-                "mag": 35.242014,
-                "phase_deg": 161.559,
-                "re": -33.432332
+                "im": 11.723618,
+                "mag": 37.096681,
+                "phase_deg": 161.577,
+                "re": -35.195462
               },
               {
                 "f_hz": 82.8614,
-                "im": 13.96607,
-                "mag": 38.281815,
-                "phase_deg": 158.603,
-                "re": -35.64332
+                "im": 14.69004,
+                "mag": 40.295856,
+                "phase_deg": 158.62,
+                "re": -37.522777
               },
               {
                 "f_hz": 90.8485,
-                "im": 17.036047,
-                "mag": 41.727196,
-                "phase_deg": 155.904,
-                "re": -38.091102
+                "im": 17.921479,
+                "mag": 43.921712,
+                "phase_deg": 155.919,
+                "re": -40.099094
               },
               {
                 "f_hz": 99.6055,
-                "im": 20.384334,
-                "mag": 45.643127,
-                "phase_deg": 153.474,
-                "re": -40.838388
+                "im": 21.445624,
+                "mag": 48.042544,
+                "phase_deg": 153.488,
+                "re": -42.990362
               },
               {
                 "f_hz": 109.2066,
-                "im": 24.041137,
-                "mag": 50.104082,
-                "phase_deg": 151.326,
-                "re": -43.959558
+                "im": 25.294183,
+                "mag": 52.736624,
+                "phase_deg": 151.339,
+                "re": -46.274787
               },
               {
                 "f_hz": 119.7332,
-                "im": 28.039403,
-                "mag": 55.196387,
-                "phase_deg": 149.47,
-                "re": -47.544012
+                "im": 29.501725,
+                "mag": 58.094651,
+                "phase_deg": 149.481,
+                "re": -50.046346
               },
               {
                 "f_hz": 131.2745,
-                "im": 32.413054,
-                "mag": 61.02137,
-                "phase_deg": 147.915,
-                "re": -51.701078
+                "im": 34.103808,
+                "mag": 64.223048,
+                "phase_deg": 147.926,
+                "re": -54.419943
               },
               {
                 "f_hz": 143.9282,
-                "im": 37.194468,
-                "mag": 67.699894,
-                "phase_deg": 146.674,
-                "re": -56.567192
+                "im": 39.134315,
+                "mag": 71.248717,
+                "phase_deg": 146.684,
+                "re": -59.538937
               },
               {
                 "f_hz": 157.8017,
-                "im": 42.410922,
-                "mag": 75.37916,
-                "phase_deg": 145.762,
-                "re": -62.316382
+                "im": 44.6217,
+                "mag": 79.326153,
+                "phase_deg": 145.77,
+                "re": -65.586145
               },
               {
                 "f_hz": 173.0124,
-                "im": 48.078639,
-                "mag": 84.241947,
-                "phase_deg": 145.199,
-                "re": -69.174779
+                "im": 50.582699,
+                "mag": 88.647124,
+                "phase_deg": 145.207,
+                "re": -72.79906
               },
               {
                 "f_hz": 189.6894,
-                "im": 54.193634,
-                "mag": 94.520912,
-                "phase_deg": 145.016,
-                "re": -77.441932
+                "im": 57.012679,
+                "mag": 99.455644,
+                "phase_deg": 145.023,
+                "re": -81.492206
               },
               {
                 "f_hz": 207.9738,
-                "im": 60.715079,
-                "mag": 106.518382,
-                "phase_deg": 145.25,
-                "re": -87.520539
+                "im": 63.868119,
+                "mag": 112.068689,
+                "phase_deg": 145.257,
+                "re": -92.088297
               },
               {
                 "f_hz": 228.0207,
-                "im": 67.535982,
-                "mag": 120.636442,
-                "phase_deg": 145.956,
-                "re": -99.960203
+                "im": 71.035745,
+                "mag": 126.907681,
+                "phase_deg": 145.962,
+                "re": -105.164075
               },
               {
                 "f_hz": 250.0,
-                "im": 74.427466,
-                "mag": 137.419999,
-                "phase_deg": 147.207,
-                "re": -115.519732
+                "im": 78.273933,
+                "mag": 144.543543,
+                "phase_deg": 147.212,
+                "re": -121.515543
               }
             ],
             "ocena": {
@@ -1627,430 +1627,430 @@
             "z_grid": [
               {
                 "f_hz": 1.0,
-                "im": 1.707536,
-                "mag": 1.868156,
-                "phase_deg": 66.067,
-                "re": 0.757843
+                "im": 1.797536,
+                "mag": 1.949643,
+                "phase_deg": 67.218,
+                "re": 0.754964
               },
               {
                 "f_hz": 1.0964,
-                "im": 1.872143,
-                "mag": 2.019714,
-                "phase_deg": 67.962,
-                "re": 0.757843
+                "im": 1.970819,
+                "mag": 2.110473,
+                "phase_deg": 69.04,
+                "re": 0.754964
               },
               {
                 "f_hz": 1.2021,
-                "im": 2.05263,
-                "mag": 2.188062,
-                "phase_deg": 69.736,
-                "re": 0.757843
+                "im": 2.160819,
+                "mag": 2.28891,
+                "phase_deg": 70.741,
+                "re": 0.754964
               },
               {
                 "f_hz": 1.3179,
-                "im": 2.250363,
-                "mag": 2.374544,
-                "phase_deg": 71.388,
-                "re": 0.757843
+                "im": 2.368974,
+                "mag": 2.486364,
+                "phase_deg": 72.324,
+                "re": 0.754965
               },
               {
                 "f_hz": 1.445,
-                "im": 2.467391,
-                "mag": 2.581151,
-                "phase_deg": 72.926,
-                "re": 0.757843
+                "im": 2.597441,
+                "mag": 2.704934,
+                "phase_deg": 73.793,
+                "re": 0.754965
               },
               {
                 "f_hz": 1.5843,
-                "im": 2.705251,
-                "mag": 2.809396,
-                "phase_deg": 74.35,
-                "re": 0.757843
+                "im": 2.847838,
+                "mag": 2.94621,
+                "phase_deg": 75.152,
+                "re": 0.754965
               },
               {
                 "f_hz": 1.737,
-                "im": 2.965992,
-                "mag": 3.06128,
-                "phase_deg": 75.667,
-                "re": 0.757844
+                "im": 3.122322,
+                "mag": 3.212299,
+                "phase_deg": 76.407,
+                "re": 0.754965
               },
               {
                 "f_hz": 1.9044,
-                "im": 3.251834,
-                "mag": 3.338975,
-                "phase_deg": 76.881,
-                "re": 0.757844
+                "im": 3.42323,
+                "mag": 3.505493,
+                "phase_deg": 77.563,
+                "re": 0.754965
               },
               {
                 "f_hz": 2.088,
-                "im": 3.565339,
-                "mag": 3.644992,
-                "phase_deg": 78.0,
-                "re": 0.757844
+                "im": 3.753259,
+                "mag": 3.828437,
+                "phase_deg": 78.627,
+                "re": 0.754966
               },
               {
                 "f_hz": 2.2892,
-                "im": 3.908896,
-                "mag": 3.981683,
-                "phase_deg": 79.028,
-                "re": 0.757845
+                "im": 4.114924,
+                "mag": 4.183608,
+                "phase_deg": 79.604,
+                "re": 0.754966
               },
               {
                 "f_hz": 2.5099,
-                "im": 4.285751,
-                "mag": 4.35224,
-                "phase_deg": 79.972,
-                "re": 0.757845
+                "im": 4.511642,
+                "mag": 4.574373,
+                "phase_deg": 80.5,
+                "re": 0.754967
               },
               {
                 "f_hz": 2.7518,
-                "im": 4.698806,
-                "mag": 4.759529,
-                "phase_deg": 80.838,
-                "re": 0.757846
+                "im": 4.946468,
+                "mag": 5.003751,
+                "phase_deg": 81.322,
+                "re": 0.754968
               },
               {
                 "f_hz": 3.0171,
-                "im": 5.151819,
-                "mag": 5.207261,
-                "phase_deg": 81.632,
-                "re": 0.757847
+                "im": 5.423358,
+                "mag": 5.475654,
+                "phase_deg": 82.075,
+                "re": 0.754968
               },
               {
                 "f_hz": 3.3079,
-                "im": 5.648374,
-                "mag": 5.698988,
-                "phase_deg": 82.358,
-                "re": 0.757848
+                "im": 5.946085,
+                "mag": 5.993822,
+                "phase_deg": 82.764,
+                "re": 0.754969
               },
               {
                 "f_hz": 3.6268,
-                "im": 6.192912,
-                "mag": 6.23911,
-                "phase_deg": 83.023,
-                "re": 0.757849
+                "im": 6.519324,
+                "mag": 6.562893,
+                "phase_deg": 83.394,
+                "re": 0.75497
               },
               {
                 "f_hz": 3.9764,
-                "im": 6.789874,
-                "mag": 6.832036,
-                "phase_deg": 83.631,
-                "re": 0.75785
+                "im": 7.14775,
+                "mag": 7.187511,
+                "phase_deg": 83.971,
+                "re": 0.754972
               },
               {
                 "f_hz": 4.3596,
-                "im": 7.44421,
-                "mag": 7.482687,
-                "phase_deg": 84.187,
-                "re": 0.757852
+                "im": 7.836574,
+                "mag": 7.872857,
+                "phase_deg": 84.497,
+                "re": 0.754973
               },
               {
                 "f_hz": 4.7799,
-                "im": 8.1619,
-                "mag": 8.197008,
-                "phase_deg": 84.695,
-                "re": 0.757854
+                "im": 8.592091,
+                "mag": 8.625196,
+                "phase_deg": 84.978,
+                "re": 0.754975
               },
               {
                 "f_hz": 5.2406,
-                "im": 8.948577,
-                "mag": 8.980611,
-                "phase_deg": 85.159,
-                "re": 0.757856
+                "im": 9.420231,
+                "mag": 9.450436,
+                "phase_deg": 85.418,
+                "re": 0.754978
               },
               {
                 "f_hz": 5.7458,
-                "im": 9.811244,
-                "mag": 9.840471,
-                "phase_deg": 85.583,
-                "re": 0.757859
+                "im": 10.328366,
+                "mag": 10.355923,
+                "phase_deg": 85.819,
+                "re": 0.754981
               },
               {
                 "f_hz": 6.2996,
-                "im": 10.756905,
-                "mag": 10.783569,
-                "phase_deg": 85.97,
-                "re": 0.757863
+                "im": 11.323869,
+                "mag": 11.349009,
+                "phase_deg": 86.186,
+                "re": 0.754984
               },
               {
                 "f_hz": 6.9068,
-                "im": 11.793756,
-                "mag": 11.818081,
-                "phase_deg": 86.323,
-                "re": 0.757867
+                "im": 12.415368,
+                "mag": 12.438303,
+                "phase_deg": 86.52,
+                "re": 0.754988
               },
               {
                 "f_hz": 7.5726,
-                "im": 12.930681,
-                "mag": 12.952871,
-                "phase_deg": 86.646,
-                "re": 0.757872
+                "im": 13.612215,
+                "mag": 13.633136,
+                "phase_deg": 86.825,
+                "re": 0.754993
               },
               {
                 "f_hz": 8.3025,
-                "im": 14.177073,
-                "mag": 14.197316,
-                "phase_deg": 86.94,
-                "re": 0.757878
+                "im": 14.924298,
+                "mag": 14.943383,
+                "phase_deg": 87.104,
+                "re": 0.754999
               },
               {
                 "f_hz": 9.1028,
-                "im": 15.543695,
-                "mag": 15.562161,
-                "phase_deg": 87.209,
-                "re": 0.757885
+                "im": 16.362947,
+                "mag": 16.380357,
+                "phase_deg": 87.358,
+                "re": 0.755007
               },
               {
                 "f_hz": 9.9803,
-                "im": 17.042166,
-                "mag": 17.05901,
-                "phase_deg": 87.454,
-                "re": 0.757894
+                "im": 17.940393,
+                "mag": 17.956273,
+                "phase_deg": 87.59,
+                "re": 0.755015
               },
               {
                 "f_hz": 10.9423,
-                "im": 18.684957,
-                "mag": 18.700321,
-                "phase_deg": 87.677,
-                "re": 0.757904
+                "im": 19.669764,
+                "mag": 19.684249,
+                "phase_deg": 87.802,
+                "re": 0.755026
               },
               {
                 "f_hz": 11.997,
-                "im": 20.486081,
-                "mag": 20.500097,
-                "phase_deg": 87.881,
-                "re": 0.757917
+                "im": 21.565811,
+                "mag": 21.579025,
+                "phase_deg": 87.995,
+                "re": 0.755038
               },
               {
                 "f_hz": 13.1534,
-                "im": 22.460922,
-                "mag": 22.473706,
-                "phase_deg": 88.067,
-                "re": 0.757932
+                "im": 23.644728,
+                "mag": 23.65678,
+                "phase_deg": 88.171,
+                "re": 0.755053
               },
               {
                 "f_hz": 14.4213,
-                "im": 24.626231,
-                "mag": 24.637892,
-                "phase_deg": 88.237,
-                "re": 0.75795
+                "im": 25.924148,
+                "mag": 25.935142,
+                "phase_deg": 88.332,
+                "re": 0.755071
               },
               {
                 "f_hz": 15.8114,
-                "im": 27.000304,
-                "mag": 27.010941,
-                "phase_deg": 88.392,
-                "re": 0.757972
+                "im": 28.42333,
+                "mag": 28.433358,
+                "phase_deg": 88.478,
+                "re": 0.755093
               },
               {
                 "f_hz": 17.3355,
-                "im": 29.603322,
-                "mag": 29.613025,
-                "phase_deg": 88.533,
-                "re": 0.757998
+                "im": 31.163517,
+                "mag": 31.172665,
+                "phase_deg": 88.612,
+                "re": 0.755119
               },
               {
                 "f_hz": 19.0065,
-                "im": 32.457357,
-                "mag": 32.466208,
-                "phase_deg": 88.662,
-                "re": 0.758029
+                "im": 34.167942,
+                "mag": 34.176286,
+                "phase_deg": 88.734,
+                "re": 0.755151
               },
               {
                 "f_hz": 20.8385,
-                "im": 35.586541,
-                "mag": 35.594614,
-                "phase_deg": 88.78,
-                "re": 0.758067
+                "im": 37.462006,
+                "mag": 37.469617,
+                "phase_deg": 88.845,
+                "re": 0.755189
               },
               {
                 "f_hz": 22.8472,
-                "im": 39.017758,
-                "mag": 39.025122,
-                "phase_deg": 88.887,
-                "re": 0.758113
+                "im": 41.074006,
+                "mag": 41.080949,
+                "phase_deg": 88.947,
+                "re": 0.755234
               },
               {
                 "f_hz": 25.0495,
-                "im": 42.779964,
-                "mag": 42.786682,
-                "phase_deg": 88.985,
-                "re": 0.758167
+                "im": 45.034419,
+                "mag": 45.040752,
+                "phase_deg": 89.039,
+                "re": 0.755289
               },
               {
                 "f_hz": 27.464,
-                "im": 46.905049,
-                "mag": 46.911178,
-                "phase_deg": 89.074,
-                "re": 0.758233
+                "im": 49.376809,
+                "mag": 49.382587,
+                "phase_deg": 89.124,
+                "re": 0.755355
               },
               {
                 "f_hz": 30.1113,
-                "im": 51.428362,
-                "mag": 51.433952,
-                "phase_deg": 89.155,
-                "re": 0.758312
+                "im": 54.138379,
+                "mag": 54.143649,
+                "phase_deg": 89.201,
+                "re": 0.755434
               },
               {
                 "f_hz": 33.0138,
-                "im": 56.388377,
-                "mag": 56.393476,
-                "phase_deg": 89.229,
-                "re": 0.758407
+                "im": 59.359619,
+                "mag": 59.364427,
+                "phase_deg": 89.271,
+                "re": 0.755529
               },
               {
                 "f_hz": 36.196,
-                "im": 61.827227,
-                "mag": 61.83188,
-                "phase_deg": 89.297,
-                "re": 0.758522
+                "im": 65.084867,
+                "mag": 65.089253,
+                "phase_deg": 89.335,
+                "re": 0.755643
               },
               {
                 "f_hz": 39.685,
-                "im": 67.791582,
-                "mag": 67.795826,
-                "phase_deg": 89.359,
-                "re": 0.758659
+                "im": 71.363232,
+                "mag": 71.367233,
+                "phase_deg": 89.393,
+                "re": 0.755781
               },
               {
                 "f_hz": 43.5103,
-                "im": 74.332332,
-                "mag": 74.336205,
-                "phase_deg": 89.415,
-                "re": 0.758824
+                "im": 78.248259,
+                "mag": 78.25191,
+                "phase_deg": 89.446,
+                "re": 0.755946
               },
               {
                 "f_hz": 47.7044,
-                "im": 81.505658,
-                "mag": 81.509192,
-                "phase_deg": 89.466,
-                "re": 0.759023
+                "im": 85.799054,
+                "mag": 85.802386,
+                "phase_deg": 89.495,
+                "re": 0.756145
               },
               {
                 "f_hz": 52.3026,
-                "im": 89.372739,
-                "mag": 89.375964,
-                "phase_deg": 89.513,
-                "re": 0.759262
+                "im": 94.079973,
+                "mag": 94.083013,
+                "phase_deg": 89.539,
+                "re": 0.756384
               },
               {
                 "f_hz": 57.3442,
-                "im": 98.001872,
-                "mag": 98.004815,
-                "phase_deg": 89.556,
-                "re": 0.75955
+                "im": 103.16285,
+                "mag": 103.165625,
+                "phase_deg": 89.58,
+                "re": 0.756671
               },
               {
                 "f_hz": 62.8717,
-                "im": 107.467199,
-                "mag": 107.469886,
-                "phase_deg": 89.595,
-                "re": 0.759895
+                "im": 113.125652,
+                "mag": 113.128185,
+                "phase_deg": 89.617,
+                "re": 0.757017
               },
               {
                 "f_hz": 68.932,
-                "im": 117.850877,
-                "mag": 117.85333,
-                "phase_deg": 89.63,
-                "re": 0.760311
+                "im": 124.054757,
+                "mag": 124.05707,
+                "phase_deg": 89.65,
+                "re": 0.757433
               },
               {
                 "f_hz": 75.5764,
-                "im": 129.243237,
-                "mag": 129.245477,
-                "phase_deg": 89.663,
-                "re": 0.760812
+                "im": 136.045113,
+                "mag": 136.047225,
+                "phase_deg": 89.681,
+                "re": 0.757934
               },
               {
                 "f_hz": 82.8614,
-                "im": 141.744368,
-                "mag": 141.746413,
-                "phase_deg": 89.692,
-                "re": 0.761415
+                "im": 149.201894,
+                "mag": 149.203822,
+                "phase_deg": 89.709,
+                "re": 0.758536
               },
               {
                 "f_hz": 90.8485,
-                "im": 155.464047,
-                "mag": 155.465915,
-                "phase_deg": 89.719,
-                "re": 0.76214
+                "im": 163.640412,
+                "mag": 163.642174,
+                "phase_deg": 89.734,
+                "re": 0.759261
               },
               {
                 "f_hz": 99.6055,
-                "im": 170.524343,
-                "mag": 170.52605,
-                "phase_deg": 89.744,
-                "re": 0.763013
+                "im": 179.488838,
+                "mag": 179.490448,
+                "phase_deg": 89.757,
+                "re": 0.760135
               },
               {
                 "f_hz": 109.2066,
-                "im": 187.060275,
-                "mag": 187.061835,
-                "phase_deg": 89.766,
-                "re": 0.764065
+                "im": 196.888869,
+                "mag": 196.89034,
+                "phase_deg": 89.778,
+                "re": 0.761187
               },
               {
                 "f_hz": 119.7332,
-                "im": 205.221834,
-                "mag": 205.223261,
-                "phase_deg": 89.786,
-                "re": 0.765333
+                "im": 215.997822,
+                "mag": 215.999167,
+                "phase_deg": 89.798,
+                "re": 0.762454
               },
               {
                 "f_hz": 131.2745,
-                "im": 225.175881,
-                "mag": 225.177187,
-                "phase_deg": 89.805,
-                "re": 0.766861
+                "im": 236.990586,
+                "mag": 236.991818,
+                "phase_deg": 89.815,
+                "re": 0.763983
               },
               {
                 "f_hz": 143.9282,
-                "im": 247.108502,
-                "mag": 247.109698,
-                "phase_deg": 89.822,
-                "re": 0.768705
+                "im": 260.06204,
+                "mag": 260.063168,
+                "phase_deg": 89.831,
+                "re": 0.765827
               },
               {
                 "f_hz": 157.8017,
-                "im": 271.228611,
-                "mag": 271.229707,
-                "phase_deg": 89.837,
-                "re": 0.770931
+                "im": 285.430764,
+                "mag": 285.431797,
+                "phase_deg": 89.846,
+                "re": 0.768053
               },
               {
                 "f_hz": 173.0124,
-                "im": 297.77052,
-                "mag": 297.771525,
-                "phase_deg": 89.851,
-                "re": 0.773621
+                "im": 313.341636,
+                "mag": 313.342584,
+                "phase_deg": 89.859,
+                "re": 0.770743
               },
               {
                 "f_hz": 189.6894,
-                "im": 326.999645,
-                "mag": 327.000568,
-                "phase_deg": 89.864,
-                "re": 0.776875
+                "im": 344.071691,
+                "mag": 344.072562,
+                "phase_deg": 89.871,
+                "re": 0.773996
               },
               {
                 "f_hz": 207.9738,
-                "im": 359.216728,
-                "mag": 359.217577,
-                "phase_deg": 89.875,
-                "re": 0.780816
+                "im": 377.93437,
+                "mag": 377.935171,
+                "phase_deg": 89.882,
+                "re": 0.777937
               },
               {
                 "f_hz": 228.0207,
-                "im": 394.766348,
-                "mag": 394.76713,
-                "phase_deg": 89.886,
-                "re": 0.785596
+                "im": 415.288211,
+                "mag": 415.288949,
+                "phase_deg": 89.892,
+                "re": 0.782718
               },
               {
                 "f_hz": 250.0,
-                "im": 434.045139,
-                "mag": 434.04586,
-                "phase_deg": 89.896,
-                "re": 0.791406
+                "im": 456.545139,
+                "mag": 456.54582,
+                "phase_deg": 89.901,
+                "re": 0.788528
               }
             ]
           },
@@ -2130,13 +2130,13 @@
               "reporting_status": "reportable",
               "result": {
                 "z_grid_at_f_min": {
-                  "im": 1.707536,
-                  "mag": 1.868156,
-                  "phase_deg": 66.067,
-                  "re": 0.757843
+                  "im": 1.797536,
+                  "mag": 1.949643,
+                  "phase_deg": 67.218,
+                  "re": 0.754964
                 }
               },
-              "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+              "result_pl": "Impedancja sieci przy 1.0 Hz: 1.9496 Ω",
               "step": 2,
               "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
               "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
@@ -2171,10 +2171,10 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
-        "proof_id": "proof:v126:voltage_stability:1ff1f161482e6971",
+        "proof_hash": "bf87e023ae73dead832ec1005a0f5b4be832cbcc004f69f8588a791d07fe607a",
+        "proof_id": "proof:v126:voltage_stability:629f3da463700d81",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
-        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "source_result_hash": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c",
         "steps": [
           {
             "data": {
@@ -2203,7 +2203,7 @@
       "koperta": {
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
-        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "deterministic_hash": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability",
@@ -2216,19 +2216,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "45aaad4fe19177990d4e0ee032859feff9f7181f189d3f856fc8c97a960d2d32",
-        "report_id": "report:v126:voltage_stability:1ff1f161482e6971",
+        "report_hash": "4c91b2ee7cdebb553ecc59fe51fe75d79200b3efd0e250b206d3ec990de9e9e6",
+        "report_id": "report:v126:voltage_stability:629f3da463700d81",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:voltage_stability:1ff1f161482e6971"
+                "value": "proof:v126:voltage_stability:629f3da463700d81"
               },
               {
                 "label": "proof_hash",
-                "value": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508"
+                "value": "bf87e023ae73dead832ec1005a0f5b4be832cbcc004f69f8588a791d07fe607a"
               },
               {
                 "label": "trace_step_count",
@@ -2242,7 +2242,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
+                "value": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c"
               },
               {
                 "label": "solver_version",
@@ -2250,19 +2250,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+                "value": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
-        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
+        "source_proof_hash": "bf87e023ae73dead832ec1005a0f5b4be832cbcc004f69f8588a791d07fe607a",
+        "source_result_hash": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c"
       },
       "slad": {
         "analysis_type": "voltage_stability",
-        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "deterministic_hash": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "steps": [
           {
@@ -2295,13 +2295,13 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:voltage_stability:1ff1f161482e6971",
-        "report_ref": "report:v126:voltage_stability:1ff1f161482e6971",
+        "proof_ref": "proof:v126:voltage_stability:629f3da463700d81",
+        "report_ref": "report:v126:voltage_stability:629f3da463700d81",
         "result": {
           "analysis_type": "voltage_stability",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
-          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "deterministic_hash": "629f3da463700d810c7816044d53309bf71cee002010e2b31b711f93fcb99b7c",
+          "input_hash": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848",
           "result": {
             "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
             "l_index_per_bus": [
@@ -2521,10 +2521,10 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
-        "proof_id": "proof:v126:reliability_contingency:b27734df66f10ceb",
+        "proof_hash": "670008842046955d2c64f7536a0607b70b75174255992ec81889cd678c26365c",
+        "proof_id": "proof:v126:reliability_contingency:252987d7532673f6",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
-        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "source_result_hash": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939",
         "steps": [
           {
             "data": {
@@ -2550,7 +2550,7 @@
       "koperta": {
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
-        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "deterministic_hash": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency",
@@ -2563,19 +2563,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "f435ec601b7b9cbd03b275baa654153376f44db1ce4fd365f93144d7a45bea27",
-        "report_id": "report:v126:reliability_contingency:b27734df66f10ceb",
+        "report_hash": "36504036c141e5bb0db7cfff78d8b7a4ef10865bb6d74d1271edbc22fff8431b",
+        "report_id": "report:v126:reliability_contingency:252987d7532673f6",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:reliability_contingency:b27734df66f10ceb"
+                "value": "proof:v126:reliability_contingency:252987d7532673f6"
               },
               {
                 "label": "proof_hash",
-                "value": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36"
+                "value": "670008842046955d2c64f7536a0607b70b75174255992ec81889cd678c26365c"
               },
               {
                 "label": "trace_step_count",
@@ -2589,7 +2589,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
+                "value": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939"
               },
               {
                 "label": "solver_version",
@@ -2597,19 +2597,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215"
+                "value": "f8b7ca45f51c17748f24f8c50c5814ff446ab6ed80823d86c525cfe3ceeb9d66"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
-        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
+        "source_proof_hash": "670008842046955d2c64f7536a0607b70b75174255992ec81889cd678c26365c",
+        "source_result_hash": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939"
       },
       "slad": {
         "analysis_type": "reliability_contingency",
-        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "deterministic_hash": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "steps": [
           {
@@ -2639,13 +2639,13 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:reliability_contingency:b27734df66f10ceb",
-        "report_ref": "report:v126:reliability_contingency:b27734df66f10ceb",
+        "proof_ref": "proof:v126:reliability_contingency:252987d7532673f6",
+        "report_ref": "report:v126:reliability_contingency:252987d7532673f6",
         "result": {
           "analysis_type": "reliability_contingency",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
-          "input_hash": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215",
+          "deterministic_hash": "252987d7532673f626496e393572735dedeba07025d491d40a27c70383d73939",
+          "input_hash": "f8b7ca45f51c17748f24f8c50c5814ff446ab6ed80823d86c525cfe3ceeb9d66",
           "result": {
             "indices": {
               "caidi_min_per_interruption": 362.5135,
@@ -2655,6 +2655,7 @@
             },
             "ranking_n1": {
               "ekran": "Wyniki › Kontyngencje",
+              "metoda_pl": "szacunek bez rozpływu",
               "powod_pl": "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve",
               "status": "NIEPREZENTOWANY",
               "trasa": "/api/insights/n-1-contingency"
@@ -2698,10 +2699,10 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
-        "proof_id": "proof:v126:earthing_safety:4651d15a7446d0cf",
+        "proof_hash": "ae01f6e20b99b67f9c47e84c41569804c038c98d71cb84aac25e5f9c325610f0",
+        "proof_id": "proof:v126:earthing_safety:5a57c2cf721c4ee3",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
-        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "source_result_hash": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e",
         "steps": [
           {
             "data": {
@@ -2729,7 +2730,7 @@
       "koperta": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "deterministic_hash": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
@@ -2742,19 +2743,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "97638f0b07a480c6ab361fd53eda03869db418f7b5e2e9861bb55e5832bd99af",
-        "report_id": "report:v126:earthing_safety:4651d15a7446d0cf",
+        "report_hash": "40626480f62cd849aaf5947cc596e620ce73f64b413301a2f0871239561741d7",
+        "report_id": "report:v126:earthing_safety:5a57c2cf721c4ee3",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earthing_safety:4651d15a7446d0cf"
+                "value": "proof:v126:earthing_safety:5a57c2cf721c4ee3"
               },
               {
                 "label": "proof_hash",
-                "value": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8"
+                "value": "ae01f6e20b99b67f9c47e84c41569804c038c98d71cb84aac25e5f9c325610f0"
               },
               {
                 "label": "trace_step_count",
@@ -2768,7 +2769,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
+                "value": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e"
               },
               {
                 "label": "solver_version",
@@ -2776,19 +2777,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25"
+                "value": "6c572c9cf9ec8a588c00f5ed9427ae59b36bdfe4155bf6c91f0f2b05dc22bc1f"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
-        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
+        "source_proof_hash": "ae01f6e20b99b67f9c47e84c41569804c038c98d71cb84aac25e5f9c325610f0",
+        "source_result_hash": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e"
       },
       "slad": {
         "analysis_type": "earthing_safety",
-        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "deterministic_hash": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "steps": [
           {
@@ -2820,13 +2821,13 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earthing_safety:4651d15a7446d0cf",
-        "report_ref": "report:v126:earthing_safety:4651d15a7446d0cf",
+        "proof_ref": "proof:v126:earthing_safety:5a57c2cf721c4ee3",
+        "report_ref": "report:v126:earthing_safety:5a57c2cf721c4ee3",
         "result": {
           "analysis_type": "earthing_safety",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
-          "input_hash": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25",
+          "deterministic_hash": "5a57c2cf721c4ee378960f964b67f69d2f1913369aee07a6eedf80b763dd171e",
+          "input_hash": "6c572c9cf9ec8a588c00f5ed9427ae59b36bdfe4155bf6c91f0f2b05dc22bc1f",
           "result": {
             "fault_clearing_time_s": 0.5,
             "gpr_kv": 6.726865,
@@ -2890,10 +2891,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
-        "proof_id": "proof:v126:earth_fault_detection:5d650527329a3346",
+        "proof_hash": "0ab923ecc3a4786fc69a3e02ab587985ae87742d9e36d49d4fcf7dbdbfd32585",
+        "proof_id": "proof:v126:earth_fault_detection:dca9995e91030c46",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "source_result_hash": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2",
         "steps": [
           {
             "data": {
@@ -2923,7 +2924,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "deterministic_hash": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -2936,19 +2937,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "428e2f395616dee5ba74c3e457fcfd10cab0ff39a189c0bdd2ed764e2799e24e",
-        "report_id": "report:v126:earth_fault_detection:5d650527329a3346",
+        "report_hash": "7eff7a6fe52156e766c22f7306df9de1501b9353e40b83acd9ac87f0cb98e322",
+        "report_id": "report:v126:earth_fault_detection:dca9995e91030c46",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:5d650527329a3346"
+                "value": "proof:v126:earth_fault_detection:dca9995e91030c46"
               },
               {
                 "label": "proof_hash",
-                "value": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1"
+                "value": "0ab923ecc3a4786fc69a3e02ab587985ae87742d9e36d49d4fcf7dbdbfd32585"
               },
               {
                 "label": "trace_step_count",
@@ -2962,7 +2963,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
+                "value": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2"
               },
               {
                 "label": "solver_version",
@@ -2970,19 +2971,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041"
+                "value": "13f5b017a49fae4460fd228ddc3768278c3e50e6f576ffa82d40e944f602e30f"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
-        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
+        "source_proof_hash": "0ab923ecc3a4786fc69a3e02ab587985ae87742d9e36d49d4fcf7dbdbfd32585",
+        "source_result_hash": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "deterministic_hash": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -3016,13 +3017,13 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:5d650527329a3346",
-        "report_ref": "report:v126:earth_fault_detection:5d650527329a3346",
+        "proof_ref": "proof:v126:earth_fault_detection:dca9995e91030c46",
+        "report_ref": "report:v126:earth_fault_detection:dca9995e91030c46",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
-          "input_hash": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041",
+          "deterministic_hash": "dca9995e91030c46f548176134afd87b3efe1b4a120e2698bc9f802574e474c2",
+          "input_hash": "13f5b017a49fae4460fd228ddc3768278c3e50e6f576ffa82d40e944f602e30f",
           "result": {
             "alternative_method": "fifth_harmonic",
             "neutral_grounding": "petersen_tuned",
@@ -3075,10 +3076,10 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
-        "proof_id": "proof:v126:transient_trv:18595c77271bad2b",
+        "proof_hash": "4f680d5fd62b515d178b3eca2e8ecacc5690e105aa7ba2007f6c6efe1bc79746",
+        "proof_id": "proof:v126:transient_trv:1157fdcbd9e10ca1",
         "run_id": "run-v126-scena-akademickie-transient_trv",
-        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "source_result_hash": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893",
         "steps": [
           {
             "data": {
@@ -3105,7 +3106,7 @@
       "koperta": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "deterministic_hash": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
@@ -3118,19 +3119,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "8bee182941d8ef419ad0732c2098eb0212ea962ae37496aacdc25d3ae504097d",
-        "report_id": "report:v126:transient_trv:18595c77271bad2b",
+        "report_hash": "fee3f0fa20ed8f1ad7ece20cff4e9261945dd11318d089006264ef1b4a6bfaf1",
+        "report_id": "report:v126:transient_trv:1157fdcbd9e10ca1",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:transient_trv:18595c77271bad2b"
+                "value": "proof:v126:transient_trv:1157fdcbd9e10ca1"
               },
               {
                 "label": "proof_hash",
-                "value": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288"
+                "value": "4f680d5fd62b515d178b3eca2e8ecacc5690e105aa7ba2007f6c6efe1bc79746"
               },
               {
                 "label": "trace_step_count",
@@ -3144,7 +3145,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
+                "value": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893"
               },
               {
                 "label": "solver_version",
@@ -3152,19 +3153,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b"
+                "value": "dfed59e6b50d53246463c84dc615e154bf237f6230b2079a00c99b7f4d94a3d5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
-        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
+        "source_proof_hash": "4f680d5fd62b515d178b3eca2e8ecacc5690e105aa7ba2007f6c6efe1bc79746",
+        "source_result_hash": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893"
       },
       "slad": {
         "analysis_type": "transient_trv",
-        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "deterministic_hash": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "steps": [
           {
@@ -3195,13 +3196,13 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:transient_trv:18595c77271bad2b",
-        "report_ref": "report:v126:transient_trv:18595c77271bad2b",
+        "proof_ref": "proof:v126:transient_trv:1157fdcbd9e10ca1",
+        "report_ref": "report:v126:transient_trv:1157fdcbd9e10ca1",
         "result": {
           "analysis_type": "transient_trv",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
-          "input_hash": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b",
+          "deterministic_hash": "1157fdcbd9e10ca1aaeb39e2fc09b21f61b9a980c33a0682499b011eb5fc3893",
+          "input_hash": "dfed59e6b50d53246463c84dc615e154bf237f6230b2079a00c99b7f4d94a3d5",
           "result": {
             "ferroresonance": {
               "recommendation": "brak przesłanek do ferrorezonansu",
@@ -3506,10 +3507,10 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
-        "proof_id": "proof:v126:motor_starting:8cf74b9561d1aeae",
+        "proof_hash": "6a5d0c00c517d4e53f6cdedf10df01192b738e98d6a342bfdb20bcea1188b2b4",
+        "proof_id": "proof:v126:motor_starting:1e2dabf5942c4cc4",
         "run_id": "run-v126-scena-akademickie-motor_starting",
-        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "source_result_hash": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544",
         "steps": [
           {
             "data": {
@@ -3533,7 +3534,7 @@
       "koperta": {
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
-        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "deterministic_hash": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting",
@@ -3546,19 +3547,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "61a68fb1f9a3ec91078f74c66d26dd8a06fd8e30f752189d660b8e47bb6fe7eb",
-        "report_id": "report:v126:motor_starting:8cf74b9561d1aeae",
+        "report_hash": "9b1a39a4ea2b50a0dfaae571493fc7e70dc039f59da13e3c78dc86c8651eba1e",
+        "report_id": "report:v126:motor_starting:1e2dabf5942c4cc4",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:motor_starting:8cf74b9561d1aeae"
+                "value": "proof:v126:motor_starting:1e2dabf5942c4cc4"
               },
               {
                 "label": "proof_hash",
-                "value": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2"
+                "value": "6a5d0c00c517d4e53f6cdedf10df01192b738e98d6a342bfdb20bcea1188b2b4"
               },
               {
                 "label": "trace_step_count",
@@ -3572,7 +3573,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
+                "value": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544"
               },
               {
                 "label": "solver_version",
@@ -3580,19 +3581,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979"
+                "value": "c1affa1d69a80cbde3bd640809f284dd8ce43aad2adbe2626ac1410d5a8f2cf2"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
-        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
+        "source_proof_hash": "6a5d0c00c517d4e53f6cdedf10df01192b738e98d6a342bfdb20bcea1188b2b4",
+        "source_result_hash": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544"
       },
       "slad": {
         "analysis_type": "motor_starting",
-        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "deterministic_hash": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "steps": [
           {
@@ -3620,13 +3621,13 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:motor_starting:8cf74b9561d1aeae",
-        "report_ref": "report:v126:motor_starting:8cf74b9561d1aeae",
+        "proof_ref": "proof:v126:motor_starting:1e2dabf5942c4cc4",
+        "report_ref": "report:v126:motor_starting:1e2dabf5942c4cc4",
         "result": {
           "analysis_type": "motor_starting",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
-          "input_hash": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979",
+          "deterministic_hash": "1e2dabf5942c4cc4bb75c50e6803b81c8c1331b296aa556dbd12e4c281e9f544",
+          "input_hash": "c1affa1d69a80cbde3bd640809f284dd8ce43aad2adbe2626ac1410d5a8f2cf2",
           "result": {
             "motors": [
               {
@@ -3677,10 +3678,10 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
-        "proof_id": "proof:v126:benchmark_validation:ecd352bcb031c442",
+        "proof_hash": "fff5a42f8a88585490a3376ac10112626491596a8041c0b86d4336f88c71ab94",
+        "proof_id": "proof:v126:benchmark_validation:9623aa419dbec33c",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
-        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "source_result_hash": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62",
         "steps": [
           {
             "data": {
@@ -3705,7 +3706,7 @@
       "koperta": {
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
-        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "deterministic_hash": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation",
@@ -3718,19 +3719,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "30b721c9a1f7a30ca817c5747a35010f12f494f515e107fa348f132e225b16fa",
-        "report_id": "report:v126:benchmark_validation:ecd352bcb031c442",
+        "report_hash": "c373498d2b9a83ecbd9f95b24b877ce91bc85d522cb3140e638767d203532fb4",
+        "report_id": "report:v126:benchmark_validation:9623aa419dbec33c",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:benchmark_validation:ecd352bcb031c442"
+                "value": "proof:v126:benchmark_validation:9623aa419dbec33c"
               },
               {
                 "label": "proof_hash",
-                "value": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9"
+                "value": "fff5a42f8a88585490a3376ac10112626491596a8041c0b86d4336f88c71ab94"
               },
               {
                 "label": "trace_step_count",
@@ -3744,7 +3745,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
+                "value": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62"
               },
               {
                 "label": "solver_version",
@@ -3752,19 +3753,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+                "value": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
-        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
+        "source_proof_hash": "fff5a42f8a88585490a3376ac10112626491596a8041c0b86d4336f88c71ab94",
+        "source_result_hash": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62"
       },
       "slad": {
         "analysis_type": "benchmark_validation",
-        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "deterministic_hash": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "steps": [
           {
@@ -3793,13 +3794,13 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:benchmark_validation:ecd352bcb031c442",
-        "report_ref": "report:v126:benchmark_validation:ecd352bcb031c442",
+        "proof_ref": "proof:v126:benchmark_validation:9623aa419dbec33c",
+        "report_ref": "report:v126:benchmark_validation:9623aa419dbec33c",
         "result": {
           "analysis_type": "benchmark_validation",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
-          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "deterministic_hash": "9623aa419dbec33cc88e7b91dd827d408cbdf89a48889ded4db2fd5d26aede62",
+          "input_hash": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848",
           "result": {
             "message_pl": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09).",
             "references_provided": false,
@@ -3843,10 +3844,10 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
-        "proof_id": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
+        "proof_hash": "50890e1d5f9736af96a78a90348fa20fbc3a040aaf43972e9928fba0c5a6e1ce",
+        "proof_id": "proof:v126:uncertainty_sensitivity:db57460a257af14c",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
-        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "source_result_hash": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420",
         "steps": [
           {
             "data": {
@@ -3858,9 +3859,9 @@
             "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
             "proof_status": "complete",
             "result": {
-              "expanded_uncertainty_percent_k2": 5.70896
+              "expanded_uncertainty_percent_k2": 5.74737
             },
-            "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+            "result_pl": "Niepewność rozszerzona (k = 2): 5.74737 %",
             "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
           }
@@ -3870,7 +3871,7 @@
       "koperta": {
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
-        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "deterministic_hash": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity",
@@ -3883,19 +3884,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "614b67b96a441a52af814f337b101a6af1d7f8e084efd17cd69e0ab9702ccebc",
-        "report_id": "report:v126:uncertainty_sensitivity:1500947651959ed4",
+        "report_hash": "7fa472df29afb6904c80ed11d21cb19bb2c6dbc4f11e9390b7469d7155b60f87",
+        "report_id": "report:v126:uncertainty_sensitivity:db57460a257af14c",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:uncertainty_sensitivity:1500947651959ed4"
+                "value": "proof:v126:uncertainty_sensitivity:db57460a257af14c"
               },
               {
                 "label": "proof_hash",
-                "value": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38"
+                "value": "50890e1d5f9736af96a78a90348fa20fbc3a040aaf43972e9928fba0c5a6e1ce"
               },
               {
                 "label": "trace_step_count",
@@ -3909,7 +3910,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
+                "value": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420"
               },
               {
                 "label": "solver_version",
@@ -3917,19 +3918,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+                "value": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
-        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
+        "source_proof_hash": "50890e1d5f9736af96a78a90348fa20fbc3a040aaf43972e9928fba0c5a6e1ce",
+        "source_result_hash": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420"
       },
       "slad": {
         "analysis_type": "uncertainty_sensitivity",
-        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "deterministic_hash": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "steps": [
           {
@@ -3943,9 +3944,9 @@
             "proof_status": "complete",
             "reporting_status": "reportable",
             "result": {
-              "expanded_uncertainty_percent_k2": 5.70896
+              "expanded_uncertainty_percent_k2": 5.74737
             },
-            "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+            "result_pl": "Niepewność rozszerzona (k = 2): 5.74737 %",
             "step": 1,
             "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
@@ -3957,16 +3958,16 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
-        "report_ref": "report:v126:uncertainty_sensitivity:1500947651959ed4",
+        "proof_ref": "proof:v126:uncertainty_sensitivity:db57460a257af14c",
+        "report_ref": "report:v126:uncertainty_sensitivity:db57460a257af14c",
         "result": {
           "analysis_type": "uncertainty_sensitivity",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
-          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "deterministic_hash": "db57460a257af14c611ab67a64c1ba412855a1c8904b382461177d74f5e9a420",
+          "input_hash": "f549015f3fa58ff388e89f906e3079d7fcbb6f708108865859f28504d2ab3848",
           "result": {
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
-            "expanded_uncertainty_percent_k2": 5.70896,
+            "expanded_uncertainty_percent_k2": 5.74737,
             "sanity": {
               "checks_passed": 3,
               "checks_total": 3,
@@ -3976,37 +3977,37 @@
             "sensitivity_ranking": [
               {
                 "parameter": "bus_hv.s_sc_mva",
-                "share_percent": 52.6939,
+                "share_percent": 51.6062,
                 "sigma_contribution_percent": 2.5
               },
               {
                 "parameter": "tr_hv_sn.uk_percent",
-                "share_percent": 25.2931,
+                "share_percent": 24.771,
                 "sigma_contribution_percent": 1.2
               },
               {
                 "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer.uk_percent",
-                "share_percent": 10.5388,
-                "sigma_contribution_percent": 0.5
+                "share_percent": 12.3855,
+                "sigma_contribution_percent": 0.6
               },
               {
                 "parameter": "tr_sn_nn.uk_percent",
-                "share_percent": 9.4849,
+                "share_percent": 9.2891,
                 "sigma_contribution_percent": 0.45
               },
               {
                 "parameter": "line_b_c.z_ohm",
-                "share_percent": 1.4944,
+                "share_percent": 1.4636,
                 "sigma_contribution_percent": 0.0709
               },
               {
                 "parameter": "cab_main_b.z_ohm",
-                "share_percent": 0.4863,
+                "share_percent": 0.4762,
                 "sigma_contribution_percent": 0.02307
               },
               {
                 "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable.z_ohm",
-                "share_percent": 0.0086,
+                "share_percent": 0.0085,
                 "sigma_contribution_percent": 0.00041
               },
               {
@@ -4033,9 +4034,9 @@
               "proof_status": "complete",
               "reporting_status": "reportable",
               "result": {
-                "expanded_uncertainty_percent_k2": 5.70896
+                "expanded_uncertainty_percent_k2": 5.74737
               },
-              "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+              "result_pl": "Niepewność rozszerzona (k = 2): 5.74737 %",
               "step": 1,
               "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
               "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
@@ -4051,10 +4052,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
-        "proof_id": "proof:v126:neutral_earthing_design:59a348096c99235c",
+        "proof_hash": "d95ab0814beeaca21b6888e7a599a6aa5d0cfc03ca68cfb50716526e002a9260",
+        "proof_id": "proof:v126:neutral_earthing_design:e1173a28f15cbfc7",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "source_result_hash": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1",
         "steps": [
           {
             "data": {
@@ -4130,7 +4131,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "deterministic_hash": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -4143,19 +4144,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "cf241832de846f20c7fbc6da3d81f491d4f4d540d71811b8375cf44d585d4a65",
-        "report_id": "report:v126:neutral_earthing_design:59a348096c99235c",
+        "report_hash": "2c26297c08b48f644e366f637cf105a3926c256a31616297848187f3ea2af29f",
+        "report_id": "report:v126:neutral_earthing_design:e1173a28f15cbfc7",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:59a348096c99235c"
+                "value": "proof:v126:neutral_earthing_design:e1173a28f15cbfc7"
               },
               {
                 "label": "proof_hash",
-                "value": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c"
+                "value": "d95ab0814beeaca21b6888e7a599a6aa5d0cfc03ca68cfb50716526e002a9260"
               },
               {
                 "label": "trace_step_count",
@@ -4169,7 +4170,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
+                "value": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1"
               },
               {
                 "label": "solver_version",
@@ -4177,19 +4178,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc"
+                "value": "511f6fea085218c12b49033ad38c2cc65937e4e10f21baa1eea6f35e381154c2"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
-        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
+        "source_proof_hash": "d95ab0814beeaca21b6888e7a599a6aa5d0cfc03ca68cfb50716526e002a9260",
+        "source_result_hash": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "deterministic_hash": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -4273,13 +4274,13 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:59a348096c99235c",
-        "report_ref": "report:v126:neutral_earthing_design:59a348096c99235c",
+        "proof_ref": "proof:v126:neutral_earthing_design:e1173a28f15cbfc7",
+        "report_ref": "report:v126:neutral_earthing_design:e1173a28f15cbfc7",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
-          "input_hash": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc",
+          "deterministic_hash": "e1173a28f15cbfc73e99e9085c7041e68d713688e43495f48d56e60717678dd1",
+          "input_hash": "511f6fea085218c12b49033ad38c2cc65937e4e10f21baa1eea6f35e381154c2",
           "result": {
             "branches_contributing": [
               {

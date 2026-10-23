@@ -1,0 +1,42 @@
+/** Teksty PL edytora nastaw zabezpieczenia nadprądowego (karta BIEG-ZABEZPIECZEN-Z-MODELU). */
+
+export const NASTAWY_STRINGS = {
+  przekladnik: 'Przekładnik prądowy',
+  brakPrzekladni: 'brak przekładnika — przeliczenie progu niemożliwe',
+  zakresyKatalogu: 'Zakresy nastaw',
+  brakZakresow: 'pozycja katalogowa bez zakresów nastaw',
+  jednostkaNieustalona: 'jednostka zakresów nieustalona',
+  stopien51: 'Stopień I> (51) — zwłoczny',
+  stopien50: 'Stopień I>> (50) — zwarciowy',
+  stopienAktywnyOpis: 'Stopień nieaktywny nie jest zapisywany w modelu.',
+  prog: 'Próg rozruchowy',
+  jednostka: 'Strona przekładnika',
+  charakterystyka: 'Charakterystyka czasowa',
+  zwloka: 'Zwłoka',
+  tms: 'Mnożnik czasowy TMS',
+  wybierz: '— wybierz —',
+  zakresPrzekaznika: 'zakres przekaźnika',
+  zakresNieznany: 'Zakres przekaźnika nieznany — próg nie zostanie sprawdzony z katalogiem.',
+  progPierwotny: (pierwotny: string, wtorny: string) =>
+    `Po stronie pierwotnej: ${pierwotny} A (wtórna ${wtorny} A) — przeliczenie backendu.`,
+  brakiTytul: 'Ocena tego zabezpieczenia jest wstrzymana:',
+  gotowe: 'Nastawy kompletne i w zakresach katalogu — zabezpieczenie gotowe do oceny.',
+  zapisz: 'Zapisz nastawy',
+  zapisywanie: 'Zapisywanie…',
+  bladZapisu: 'Nie udało się zapisać nastaw zabezpieczenia.',
+  brakPrzypadku: 'Brak aktywnego przypadku — nastaw nie ma gdzie zapisać.',
+  obwodTytul: 'Obwód wtórny przekładnika prądowego',
+  obwodOpis:
+    'Z tych danych backend liczy nasycenie przekładnika (ALF_eff wg IEC 61869-2) — bez długości '
+    + 'i przekroju przewodów wiarygodność punktów oceny zabezpieczenia pozostaje nieustalona.',
+  obwodDlugosc: 'Długość przewodów (w jedną stronę)',
+  obwodPrzekroj: 'Przekrój żyły',
+  obwodMocStykow: 'Moc tracona na stykach i zaciskach',
+  obwodMocStykowPomoc: 'Podaj tylko wartość znaną — puste pole to brak danej, nie zero.',
+  obwodAparatNazwa: 'Aparat w obwodzie',
+  obwodAparatMoc: 'Moc pobierana',
+  obwodDodajAparat: 'Dodaj aparat',
+  obwodUsunAparat: 'Usuń aparat',
+  obwodZapisz: 'Zapisz obwód wtórny',
+  obwodBladZapisu: 'Nie udało się zapisać obwodu wtórnego przekładnika.',
+} as const;

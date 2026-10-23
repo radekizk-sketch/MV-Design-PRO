@@ -441,8 +441,9 @@ class TestNetworkGraphStationIntegration:
 
         graph.add_station(station1)
 
-        with pytest.raises(ValueError, match="już istnieje"):
+        with pytest.raises(ValueError, match="Stacja „Second” występuje w grafie") as odm:
             graph.add_station(station2)
+        assert odm.value.dane == {"element_ref": "S1"}
 
     def test_remove_station_from_graph(self):
         """Usunięcie stacji z grafu."""

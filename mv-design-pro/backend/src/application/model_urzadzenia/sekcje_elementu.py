@@ -35,6 +35,12 @@ from dziedziny.sekcje import OcenaSekcji, StatusWeryfikacjiRekordu
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.katalog_projektu_karty import problemy_zrodel_modeli
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
+from enm.slownik_komunikatow import (
+    NAZWY_KOLEKCJI_PL,
+    lista_pl,
+    opis_obiektu,
+    opis_pozycji_katalogu,
+)
 from network_model.catalog.sekcje_modelu import (
     JAKOSC_ZRODLA_DYNAMIKI,
     KLASA_ELEMENTU_PRZEKSZTALTNIKOWEGO,
@@ -46,10 +52,12 @@ from network_model.catalog.sekcje_modelu import (
     dowod_certyfikatu_ptpiree,
     dowody_kart,
     jakosc_profilu_dynamicznego,
+    jakosci_wartosci_roboczych,
     najslabsza_jakosc,
     oceny_sekcji,
     typ_katalogowy,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mvar_na_kvar, mw_na_kw
 from werdykt.proweniencja import FieldQuality
 
@@ -95,7 +103,7 @@ _POLA_TYPOWANE: Mapping[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = Ma
 )
 
 
-class OdmowaSekcjiElementu(ValueError):
+class OdmowaSekcjiElementu(OdmowaDanychError):
     """Nazwana odmowa odczytu sekcji elementu (``kod`` = kod błędu dla konsumenta)."""
 
     def __init__(self, kod: str, komunikat: str) -> None:
@@ -117,7 +125,9 @@ def znajdz_urzadzenie(migawka: Mapping[str, Any], ref: str) -> tuple[str, Mappin
                 return kolekcja, element
     raise OdmowaSekcjiElementu(
         "sekcje.element_nieznany",
-        f"Element '{ref}' nie istnieje w modelu wśród urządzeń ({', '.join(KOLEKCJE_URZADZEN)}).",
+        "Wskazany element nie istnieje w modelu wśród urządzeń ("
+        + lista_pl([NAZWY_KOLEKCJI_PL[k] for k in KOLEKCJE_URZADZEN])
+        + ").",
     )
 
 
@@ -137,7 +147,8 @@ def _klasa(kolekcja: str, element: Mapping[str, Any]) -> str:
     )
     raise OdmowaSekcjiElementu(
         "sekcje.brak_widoku",
-        f"Element '{element.get('ref_id')}' nie ma widoku sekcji modelu: {powod}.",
+        f"{opis_obiektu(element, NAZWY_KOLEKCJI_PL[kolekcja].capitalize())} nie ma widoku "
+        f"sekcji modelu: {powod}.",
     )
 
 
@@ -177,15 +188,15 @@ def dane_elementu(enm: EnergyNetworkModel | Mapping[str, Any], ref: str) -> Dane
         if typ is None:
             raise OdmowaSekcjiElementu(
                 "sekcje.typ_niedostepny",
-                f"Typ {catalog_ref!r} elementu '{ref}' nie istnieje w katalogu modelu "
-                f"(przestrzeń {przestrzen}) — sekcji nie da się ocenić bez rekordu typu.",
+                f"Typ katalogowy elementu ({opis_obiektu(element, NAZWY_KOLEKCJI_PL[kolekcja])}) "
+                "nie istnieje w katalogu modelu — sekcji nie da się ocenić bez rekordu typu.",
             )
         status_typu = str(typ.verification_status)
         if status_typu not in get_args(StatusWeryfikacjiRekordu):
             raise OdmowaSekcjiElementu(
                 "sekcje.typ_niedostepny",
-                f"Typ {catalog_ref!r} ma status weryfikacji {status_typu!r} spoza słownika "
-                "katalogu (reguła KAT-T-001).",
+                f"{opis_pozycji_katalogu(str(catalog_ref), przestrzen, 'Typ')} ma status "
+                "weryfikacji spoza słownika katalogu (reguła KAT-T-001).",
             )
         status_rekordu = cast(StatusWeryfikacjiRekordu, status_typu)  # zawężone wyżej
 
@@ -194,7 +205,7 @@ def dane_elementu(enm: EnergyNetworkModel | Mapping[str, Any], ref: str) -> Dane
         pola: dict[str, Any] = _POLA_TYPOWANE[kolekcja](element)
     else:
         pola = dict(surowe) if isinstance(surowe, Mapping) else {}
-    jakosci_zrodel: dict[str, FieldQuality | None] = {}
+    jakosci_zrodel: dict[str, FieldQuality | None] = jakosci_wartosci_roboczych(pola)
     if klasa == KLASA_ELEMENTU_PRZEKSZTALTNIKOWEGO:
         opis, jakosc = _model_dynamiczny(element, pola)
         pola[POLE_MODELU_DYNAMICZNEGO_ELEMENTU] = opis
@@ -215,9 +226,10 @@ def dane_elementu(enm: EnergyNetworkModel | Mapping[str, Any], ref: str) -> Dane
         if problemy:
             raise OdmowaSekcjiElementu(
                 "sekcje.karta_widmowa_niedostepna",
-                f"Modele widmowe elementu '{ref}' mają nieaktualną proweniencję: "
+                f"Modele widmowe elementu ({opis_obiektu(element, NAZWY_KOLEKCJI_PL[kolekcja])}) "
+                "mają nieaktualną proweniencję: "
                 + "; ".join(problemy)
-                + ". Przematerializuj karty (`set_der_catalog_bindings`, `karty_widmowe_ref`).",
+                + ". Przypisz ponownie karty widmowe z katalogu w wiązaniu katalogowym źródła.",
             )
         modele = modele_elementu.modele
         karty = tuple(

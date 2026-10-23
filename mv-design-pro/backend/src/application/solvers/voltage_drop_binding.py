@@ -80,6 +80,7 @@ from typing import Any
 
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Rodzaj wyniku, jaki zapisuje tor rozpływu (``enm.canonical_analysis``).
 RODZAJ_WYNIKU_ROZPLYWU = "load_flow"
@@ -90,7 +91,7 @@ RODZAJ_WYNIKU_ROZPLYWU = "load_flow"
 RODZAJE_ODCINKA: frozenset[str] = frozenset({"line_overhead", "cable"})
 
 
-class BrakDanychSpadkuError(ValueError):
+class BrakDanychSpadkuError(OdmowaDanychError):
     """Zapis biegu nie niesie danych, z których dowód spadku mógłby powstać uczciwie.
 
     Komunikat jest po polsku i nazywa BRAKUJĄCĄ rzecz — brama pakietu pokazuje go

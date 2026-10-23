@@ -49,6 +49,8 @@ from dziedziny.widmo import ModelZrodlaWidmowego
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.repository import CatalogRepository
+from network_model.catalog.types import POLA_TORU_MASZYNY
+from network_model.catalog.wartosci_robocze import KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU
 from pydantic import BaseModel, ConfigDict
 from solver_input.provenance import resolve_card_field_quality_map
 from werdykt.kontrakt import PodstawaWymagania
@@ -167,6 +169,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "cosphi_min",
                 "cosphi_max",
                 "e_kwh",
+                *POLA_TORU_MASZYNY,
             ),
             _FLAGI_REGULACJI,
         ),
@@ -264,6 +267,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "trade_name",
                 "number_of_cores",
                 "return_conductor_material",
+                KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
             ),
             fundamental=(
                 "r_ohm_per_km",
@@ -293,6 +297,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "base_type_id",
                 "trade_name",
                 "thermal_source_reference",
+                KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
             ),
             fundamental=(
                 "r_ohm_per_km",
@@ -358,6 +363,9 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         "APARAT_NN": "aparatura łączeniowa nN — jak APARAT_SN",
         "APARAT_NN_MCB": "wyłącznik instalacyjny nN — charakterystyka zadziałania, nie model obwodu",
         "WKLADKA_NN": "wkładka topikowa nN — charakterystyka zadziałania, nie model obwodu",
+        "APARAT_NN_RCD": (
+            "wyłącznik różnicowoprądowy nN — prąd różnicowy i czas wyłączenia, nie model obwodu"
+        ),
         "CT": "przekładnik prądowy — tor pomiarowy zabezpieczeń, nie element obwodu mocy",
         "VT": "przekładnik napięciowy — tor pomiarowy zabezpieczeń, nie element obwodu mocy",
         "OGRANICZNIK_SN": (
@@ -372,6 +380,10 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         ),
         "KARTA_WIDMOWA": (
             "rekord danych sekcji harmonic/supraharmonic typu przekształtnika, nie urządzenie"
+        ),
+        "PRZEWOD_LINII_WN": (
+            "przewód linii 110 kV — dane wyrobu wejściowe obliczenia; model obwodu linii "
+            "(R′, X′, B′, Z′0) powstaje z geometrii słupa projektu, nie z typu przewodu"
         ),
     }
 )
@@ -462,6 +474,7 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("magazyn", False, "e_kwh"),
                 _s("regulacja", False, *_REGULACJA, *_FLAGI_REGULACJI),
                 *_FUNDAMENTAL_OPCJONALNE,
+                _s("tor_maszyny", False, *POLA_TORU_MASZYNY),
             ),
             **_SEKCJE_PRZEKSZTALTNIKA_WSPOLNE,
         },
@@ -494,6 +507,8 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("zdolnosc_bierna", False, "qmin_mvar", "qmax_mvar"),
                 _s("regulacja", False, *_REGULACJA),
                 *_FUNDAMENTAL_OPCJONALNE,
+                # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny zmaterializowany z typu.
+                _s("tor_maszyny", False, *POLA_TORU_MASZYNY),
             ),
             **_SEKCJE_PRZEKSZTALTNIKA_WSPOLNE,
             "dynamic": (
@@ -660,9 +675,24 @@ class DaneUrzadzenia:
     )
 
 
+def jakosci_wartosci_roboczych(pola: Mapping[str, Any]) -> dict[str, FieldQuality | None]:
+    """Pola oznaczone w mapie ``wartosci_robocze`` (pole → założenie) mają jakość ``ESTIMATED``.
+
+    JEDNA reguła dla typu katalogowego (krotka par) i elementu (słownik w
+    ``materialized_params``): wartość wyprowadzona założeniem inżynierskim katalogu nie jest
+    daną karty producenta (zasada nr 4, kontrakt werdyktu §3) — także w widoku sekcji.
+    """
+    surowe = pola.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not surowe:
+        return {}
+    pary = surowe.items() if isinstance(surowe, Mapping) else surowe
+    return {str(nazwa): FieldQuality.ESTIMATED for nazwa, _ in pary}
+
+
 def jakosc_pol(klasa: str, pola: Mapping[str, Any]) -> dict[str, FieldQuality]:
     """Jakość pól urządzenia — JEDNA reguła (``resolve_card_field_quality_map``) dla typu
-    i elementu; dla klas bez karty przekształtnika — pusta mapa (jakość niezadeklarowana)."""
+    i elementu; dla klas bez karty przekształtnika — pusta mapa (jakość niezadeklarowana).
+    """
     if klasa not in _KLASY_KARTY_PRZEKSZTALTNIKA:
         return {}
     widok: dict[str, Any] = {nazwa: None for nazwa in _POLA_WIDOKU_KARTY}
@@ -856,9 +886,18 @@ def dane_typu(repozytorium: CatalogRepository, przestrzen: str, typ_id: str) -> 
         modele_widmowe=tuple(model for karta in karty for model in karta.modele),
         dowody=(*dowody_kart(karty), *((dowod_ptpiree,) if dowod_ptpiree else ())),
         jakosci_zrodel=MappingProxyType(
-            {"dynamic_profile_id": jakosc_profilu_dynamicznego(pola.get("dynamic_profile_id"))}
-            if "dynamic_profile_id" in pola
-            else {}
+            {
+                **jakosci_wartosci_roboczych(pola),
+                **(
+                    {
+                        "dynamic_profile_id": jakosc_profilu_dynamicznego(
+                            pola.get("dynamic_profile_id")
+                        )
+                    }
+                    if "dynamic_profile_id" in pola
+                    else {}
+                ),
+            }
         ),
     )
 

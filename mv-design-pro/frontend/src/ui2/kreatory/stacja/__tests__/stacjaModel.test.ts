@@ -40,11 +40,17 @@ import {
   type KontekstStacji,
   type StacjaFormData,
   type WyborRozdzielnicy,
+  brakujacePolaToru,
+  type SnFieldRole,
+  type TrybUmiejscowienia,
 } from '../stacjaModel';
 
 function szablon(over: Partial<CompleteMvBayTemplateSummary> = {}): CompleteMvBayTemplateSummary {
   return {
     template_ref: 'tpl-in',
+    // Kontrakt wymaga kompozycji aparatów pola (`base_template`); testy modelu kreatora
+    // nie czytają jej składu, więc wystarcza pusta, poprawna kompozycja.
+    base_template: { template_id: 'tpl-in', name: 'Pole', bay_role: 'IN', devices: [] },
     manufacturer_ref: 'ZPUE_WLOSZCZOWA',
     switchgear_family_ref: 'ZPUE_ROTOBLOK',
     bay_kind: 'liniowe_doplywowe',
@@ -251,6 +257,31 @@ describe('stacjaModel — walidacja', () => {
     ).toBe(false);
   });
 
+  it.each([
+    // tryb × skład pól → brakujące pola toru (ten sam zbiór, który operacja domyka)
+    ['SPLIT', ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE'], []],
+    ['SPLIT', ['LINIA_IN', 'LINIA_ODG', 'TRANSFORMATOROWE'], ['LINIA_OUT']],
+    ['SPLIT', ['LINIA_OUT', 'TRANSFORMATOROWE'], ['LINIA_IN']],
+    ['SPLIT', ['LINIA_IN', 'LINIA_OUT'], ['TRANSFORMATOROWE']],
+    ['SPLIT', ['LINIA_ODG'], ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE']],
+    ['ENDPOINT_APPEND', ['LINIA_IN', 'TRANSFORMATOROWE'], []],
+    ['ENDPOINT_APPEND', ['LINIA_IN'], ['TRANSFORMATOROWE']],
+    ['ENDPOINT_APPEND', ['LINIA_OUT', 'TRANSFORMATOROWE'], ['LINIA_IN']],
+  ] as const satisfies ReadonlyArray<
+    readonly [TrybUmiejscowienia, readonly SnFieldRole[], readonly SnFieldRole[]]
+  >)('pola toru: tryb %s, skład %j → brak %j', (tryb, role, brak) => {
+    expect(brakujacePolaToru(role.map((field_role) => ({ field_role })), tryb)).toEqual(brak);
+    // Walidacja zapisu korzysta z TEGO SAMEGO predykatu (jedno źródło): błąd pól toru
+    // pojawia się dokładnie wtedy, gdy predykat zgłasza brak.
+    const sklad = new Set<SnFieldRole>(role);
+    const bledy = walidujFormularz(
+      dane(),
+      rozdzielnica('branch').snFields.filter((f) => sklad.has(f.field_role)),
+      tryb,
+    ).filter((e) => e.field === 'sn_fields_tor');
+    expect(bledy.length > 0).toBe(brak.length > 0);
+  });
+
   it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {
     // Intencja: operacja domenowa NIE dobiera aparatu pola (usunięty fallback),
     // więc kreator musi wymusić jawne wskazanie z katalogu APARAT_SN.
@@ -375,9 +406,26 @@ describe('stacjaModel — payload', () => {
     const earthing = payload.nn_earthing as Record<string, unknown>;
     expect(earthing.lv_system).toBe('IT');
     expect(earthing.neutral_point).toBe('isolated');
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: domyślna, widoczna w kroku tolerancja sieci nN.
+    expect(earthing.lv_voltage_tolerance).toBe('PLUS_10');
     // Izolowany → brak rezystancji (nie dotyczy).
     expect(earthing).not.toHaveProperty('lv_r_ohm');
   });
+
+  it.each(['PLUS_6', 'PLUS_10'] as const)(
+    'tolerancja napięcia sieci nN %s → nn_earthing.lv_voltage_tolerance (jedyny nośnik: transformator)',
+    (tolerancja) => {
+      const payload = zbudujPayload(
+        dane({ tolerancja_napiecia_nn: tolerancja }),
+        kontekst(),
+        rozdzielnica('branch'),
+      );
+      expect((payload.nn_earthing as Record<string, unknown>).lv_voltage_tolerance).toBe(tolerancja);
+      // Nie ma drugiej kopii poza blokiem uziemienia (np. w `transformer` czy `station`).
+      expect(payload.transformer as Record<string, unknown>).not.toHaveProperty('lv_voltage_tolerance');
+      expect(payload.station as Record<string, unknown>).not.toHaveProperty('lv_voltage_tolerance');
+    },
+  );
 
   it('liczba równoległych transformatorów → transformer.n_parallel tylko dla ≥2 (G-STK-6)', () => {
     // Pojedynczy (domyślnie 1) → brak n_parallel w payloadzie.
@@ -403,6 +451,44 @@ describe('stacjaModel — payload', () => {
     expect(zPw.station_auxiliary).toEqual({ active_power_kw: 5, cos_phi: 0.9 });
   });
 
+  it('uziom stacji R_B (W5-E-TTIT): punkt uziemiony bezpośrednio z rezystancją → lv_r_ohm; bez rezystancji → brak klucza', () => {
+    const z = zbudujPayload(
+      dane({ uklad_sieci_nn: 'TT', neutral_point: 'directly_grounded', neutral_impedance_ohm: '2' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    // Partia integracji 11: krok uziemienia niesie też tolerancję sieci nN (karta
+    // WSPOLCZYNNIK-C-JEDEN-NOSNIK, domyślna widoczna PLUS_10) — intencja testu (klucz R_B
+    // tylko przy rezystancji) bez zmian.
+    expect(z.nn_earthing).toEqual({
+      lv_system: 'TT',
+      neutral_point: 'directly_grounded',
+      lv_r_ohm: 2,
+      lv_voltage_tolerance: 'PLUS_10',
+    });
+    const bez = zbudujPayload(
+      dane({ uklad_sieci_nn: 'TN-C-S', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect(bez.nn_earthing).toEqual({
+      lv_system: 'TN-C-S',
+      neutral_point: 'directly_grounded',
+      lv_voltage_tolerance: 'PLUS_10',
+    });
+  });
+
+  it('układ TT z punktem uziemionym bezpośrednio bez R_B = błąd walidacji przy polu; TN bez R_B nie blokuje', () => {
+    const bledyTt = walidujFormularz(
+      dane({ uklad_sieci_nn: 'TT', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+    ).map((b) => b.field);
+    expect(bledyTt).toContain('neutral_impedance_ohm');
+    const bledyTn = walidujFormularz(
+      dane({ uklad_sieci_nn: 'TN-C-S', neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }),
+    ).map((b) => b.field);
+    expect(bledyTn).not.toContain('neutral_impedance_ohm');
+  });
+
   it('impedancja uziemienia tylko dla wariantu impedancyjnego: rezystor → lv_r_ohm, cewka → lv_x_ohm', () => {
     // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
     const zRezystorem = zbudujPayload(
@@ -423,13 +509,15 @@ describe('stacjaModel — payload', () => {
     expect((zCewka.nn_earthing as Record<string, unknown>).lv_x_ohm).toBe(150);
     expect(zCewka.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
 
-    // Bezpośrednio uziemiony + wartość w polu → IGNOROWANA (nie dotyczy tego wariantu).
+    // Bezpośrednio uziemiony + wartość w polu → rezystancja uziomu stacji R_B (`lv_r_ohm`,
+    // karta W5-E-TTIT: pętla doziemna układu TT) — do W5-E wartość była ignorowana.
     const bezposredni = zbudujPayload(
       dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
-    expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+    expect((bezposredni.nn_earthing as Record<string, unknown>).lv_r_ohm).toBe(12.5);
+    expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_x_ohm');
   });
 
   it('walidacja: uziemienie impedancyjne bez składowej dominującej = błąd nazwany (ten sam predykat co backend)', () => {

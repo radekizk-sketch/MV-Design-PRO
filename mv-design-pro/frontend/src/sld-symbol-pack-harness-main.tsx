@@ -82,6 +82,7 @@ export const WIERSZE_PAKIETU: readonly WierszPakietu[] = [
   { lp: '17', cad: 'cad.zabezpieczenie', obecny: 'protectionRelay', obecnyOpis: 'okrąg z kodami WEWNĄTRZ (plakietka, odrzucone §3)', uwagi: 'prostokąt urządzenia wtórnego ze znakami IEC (I>, I>>) — jak blok wyzwalacza LSI w pierwowzorze; DRAFT (konwencja, nie IEC)' },
   { lp: '18', cad: 'cad.zacisk', obecny: 'kropka', obecnyOpis: 'kropka wypełniona rysowana przez widok (ten sam znak co węzeł)', uwagi: 'zacisk (S00017) = okrąg pusty, ODRÓŻNIALNY od węzła' },
   { lp: '19', cad: 'cad.wezel', obecny: 'junction', obecnyOpis: 'kropka wypełniona r=3', uwagi: 'kropka połączenia (S00020/S00021), ∅ ≈ 7× kreski jak w pierwowzorze' },
+  { lp: '20', cad: 'cad.wylacznikRoznicowopradowy', obecny: 'loadBreakSwitch', obecnyOpis: 'RCD rysowany symbolem rozłącznika (typ gałęzi switch, bez rozpoznania przestrzeni katalogu)', uwagi: 'wyłącznik różnicowoprądowy (APARAT_NN_RCD, W5-E-TTIT): krzyżyk wyłącznika + rdzeń sumacyjny (elipsa) na przewodzie pod przegubem + sprzężenie kreskowe do napędu; IΔn/typ/In w etykiecie z tabliczki katalogowej' },
 ];
 
 /** Tablica rozpoznawalności §22: stała permutacja (klucz w dokumencie pakietu). */
@@ -112,6 +113,8 @@ export const TABLICA_ROZPOZNANIA: readonly { readonly cad: CadSymbolId; readonly
   { cad: 'cad.zabezpieczenie', state: 'closed' },
   { cad: 'cad.wylacznikInstalacyjny', state: 'closed' },
   { cad: 'cad.wylacznikInstalacyjny', state: 'open' },
+  { cad: 'cad.wylacznikRoznicowopradowy', state: 'closed' },
+  { cad: 'cad.wylacznikRoznicowopradowy', state: 'open' },
 ];
 
 const NAZWA_STANU: Readonly<Record<CadSwitchState, string>> = { closed: 'ZAMKNIĘTY', open: 'OTWARTY', unknown: 'NIEZNANY' };

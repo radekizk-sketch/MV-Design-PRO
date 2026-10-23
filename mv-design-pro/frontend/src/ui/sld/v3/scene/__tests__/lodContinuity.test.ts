@@ -92,10 +92,16 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
 
   it('kontrakt klas toru prądowego jest jawny i zamknięty (czyta go też strażnik statyczny)', () => {
     expect([...CURRENT_PATH_SEGMENT_KINDS].sort()).toEqual(['bus', 'busGpz', 'lv', 'sn', 'snTrunk']);
+    // Karta SLD-SUBSTRAT (kontynuacja): łącznik i wyłącznik sekcyjny NA torze
+    // ciągu (`lineSwitch`/`lineBreaker`, `scene/elementyToru.ts`) są aparatami
+    // ciągłości tak samo jak ich pionowe odpowiedniki w polach — zamknięty łącznik
+    // na torze nie przerywa toru energii.
     expect([...CONTINUITY_APPARATUS_SYMBOL_IDS].sort()).toEqual([
       'breaker',
       'disconnector',
       'fuseSwitch',
+      'lineBreaker',
+      'lineSwitch',
       'loadBreakSwitch',
       'noPoint',
     ]);

@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
@@ -264,9 +265,14 @@ def _run_app(uow_factory) -> TestClient:
     `GET /api/analysis-runs/{run_id}/results/short-circuit` (+ `/trace` dla White Box).
     """
     from api.analysis_runs import router as analysis_runs_router
+    from api.exception_handlers import register_exception_handlers
     from api.execution_runs import router as execution_runs_router
 
     test_app = FastAPI()
+    # Partia integracji 10: odmowy danych idą do klienta przez handlery globalne
+    # (`OdmowaDanychError` → 422, `OdmowaHttpError` → status routera) — aplikacja testowa
+    # rejestruje je jak `api/main.py`, inaczej nie ćwiczy realnej ścieżki odpowiedzi.
+    register_exception_handlers(test_app)
     test_app.include_router(enm_router)
     # Ścieżki obu routerów są już pełne (`/api/execution/...`, `/api/analysis-runs/...`)
     # — ten sam wzorzec montażu co `api/main.py` (bez dodatkowego prefiksu).
@@ -285,7 +291,7 @@ def _create_and_execute(
     if utworzony.status_code != 201:
         return utworzony, None
     run_id = utworzony.json()["id"]
-    wykonany = client.post(f"/api/execution/runs/{run_id}/execute")
+    wykonany = wykonaj_bieg(client, run_id)
     return utworzony, wykonany
 
 
@@ -353,7 +359,7 @@ class TestRunDispatch:
             },
         )
         assert utworzony.status_code == 201, utworzony.text
-        wykonany = client.post(f"/api/execution/runs/{utworzony.json()['id']}/execute")
+        wykonany = wykonaj_bieg(client, utworzony.json()["id"])
         assert wykonany.status_code == 200, wykonany.text
 
         rows = _sc_rows(client, utworzony.json()["id"])

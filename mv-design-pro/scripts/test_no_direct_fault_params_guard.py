@@ -33,6 +33,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import guard_parsowanie
 import no_direct_fault_params_guard as guard
 
 #: Warstwa solvera w drzewie testowym. Reguła C czyta pozycję `fault_node_id`
@@ -352,6 +353,9 @@ def test_odczyt_wyniku_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> No
     # ZAPADKI-ALLOWLIST-RESZTA) inaczej zglosilaby wszystkie 5 wpisow jako
     # sieroty, bo szuka ich pod podmienionym BACKEND_SRC.
     monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
+    # Ta sama przyczyna dla zapadki świeżości kluczy LEGACY_DIRECT_SOLVER_CALLERS
+    # (karta TORY-TYLKO-W-TESTACH): drzewo syntetyczne nie ma plików z zapadki.
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", {})
 
     rc = guard.main()
 
@@ -365,6 +369,7 @@ def test_definicja_funkcji_nie_jest_naruszeniem(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
     monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", {})
 
     assert guard.main() == 0
 
@@ -589,7 +594,12 @@ def test_mapa_sygnatur_czyta_pozycje_z_kodu_solvera() -> None:
     assert signatures, "warstwa solvera nie oddala zadnej sygnatury z fault_node_id"
     assert signatures["compute_3ph_short_circuit"] == 1
     assert signatures["compute_machine_contributions"] == 1
-    assert set(signatures.values()) == {1}
+    # Odmowa strukturalna węzła spoza grafu (rdzeń zwarciowy, decyzja B-01 partii 9) bierze
+    # identyfikator jako PIERWSZY parametr — mapa musi ją znać, żeby reguła C łapała
+    # przekazanie pozycyjne także do niej. Pozycje 0 i 1 to cały zbiór zmierzony w repo;
+    # pozycja 2+ oznaczałaby nieobcięte `self`/`cls` (błąd mapy).
+    assert signatures["odmowa_wezla_zwarcia_spoza_grafu"] == 0
+    assert set(signatures.values()) == {0, 1}
 
 
 def test_pusta_mapa_sygnatur_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
@@ -610,20 +620,24 @@ def test_pusta_mapa_sygnatur_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
     assert "ani jednej sygnatury" in out
 
 
-def test_plik_z_bledem_skladni_jest_liczony_i_nie_wywraca_bramki(
+def test_plik_z_bledem_skladni_jest_czerwienia_z_nazwa_pliku_i_linia(
     tmp_path, monkeypatch, capsys
 ) -> None:
+    """Intencja zachowana, kanon zmieniony (GUARD-BLAD-SKLADNI): plik z zakresu skanu, ktorego
+    nie da sie sparsowac, to CZERWIEN z plikiem i linia — wczesniej bylo `WARN` i rc == 0,
+    czyli bramka meldowala czysto o pliku, ktorego nie umiala ocenic."""
     root = _drzewo(tmp_path, {"application/zepsuty.py": "def f(:\n", "api/ok.py": CZYSTY})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
     monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", {})
 
-    rc = guard.main()
+    rc = guard_parsowanie.uruchom(guard.main)
 
     out = capsys.readouterr().out
-    assert rc == 0, out
-    assert "Scanned 2 Python file(s)" in out
-    assert "nie da sie sparsowac" in out
+    assert rc == 1, out
+    assert "zepsuty.py:1:" in out
+    assert "blad skladni" in out
 
 
 def test_plik_spoza_korzenia_nie_jest_cicho_bialolistowany(tmp_path, monkeypatch) -> None:
@@ -745,3 +759,58 @@ if __name__ == "__main__":
     import pytest
 
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+# =============================================================================
+# ZAPADKA SWIEZOSCI KLUCZY LEGACY_DIRECT_SOLVER_CALLERS (karta TORY-TYLKO-W-TESTACH,
+# 2026-09-30). Zmierzone: klucz `application/analysis_run/service.py` z budzetem pieciu
+# wejsc w solver wisial po kasacji pliku — plik utworzony pod ta sama sciezka dostalby
+# z gory prawo do tych wywolan.
+# =============================================================================
+
+
+def test_legacy_callers_freshness_is_green_na_repo() -> None:
+    assert guard.check_legacy_callers_freshness() == []
+
+
+def test_legacy_callers_wszystkie_klucze_istnieja_pod_backend_src() -> None:
+    for path in guard.LEGACY_DIRECT_SOLVER_CALLERS:
+        assert (guard.BACKEND_SRC / path).is_file(), f"zapadka: brak pliku {path!r}"
+
+
+def test_legacy_callers_freshness_lapie_osierocony_klucz(monkeypatch) -> None:
+    """Klucz wskazujacy plik, ktorego nie ma -> naruszenie z NAZWA klucza."""
+    monkeypatch.setattr(
+        guard,
+        "LEGACY_DIRECT_SOLVER_CALLERS",
+        {
+            **guard.LEGACY_DIRECT_SOLVER_CALLERS,
+            "application/nigdy_nieistniejacy_serwis.py": {"A:compute_3ph_short_circuit": 1},
+        },
+    )
+
+    violations = guard.check_legacy_callers_freshness()
+
+    assert len(violations) == 1
+    assert "[fault-params-zapadka-osierocona]" in violations[0]
+    assert "nigdy_nieistniejacy_serwis.py" in violations[0]
+
+
+def test_legacy_callers_freshness_wpieta_w_main(monkeypatch, capsys) -> None:
+    """RC=1 z main() na realnym drzewie, kiedy zapadka ma osierocony klucz — kontrola
+    W GUARDZIE, nie tylko w funkcji pomocniczej."""
+    monkeypatch.setattr(
+        guard,
+        "LEGACY_DIRECT_SOLVER_CALLERS",
+        {
+            **guard.LEGACY_DIRECT_SOLVER_CALLERS,
+            "application/nigdy_nieistniejacy_serwis.py": {},
+        },
+    )
+
+    rc = guard.main()
+
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "fault-params-zapadka-osierocona" in out
+    assert "nigdy_nieistniejacy_serwis.py" in out

@@ -21,9 +21,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
@@ -121,6 +123,8 @@ async function zbudujSiec(request: APIRequestContext): Promise<{
   const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmentRefs.length).toBeGreaterThan(0);
   await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
@@ -195,12 +199,14 @@ test.describe('legenda:zrzuty dokumentacyjne', () => {
       await expect(page.getByTestId('sld-sheet-legend')).toHaveCount(0);
       await expect(page.getByTestId('sld-v3-view-dock')).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kanwa-bez-legendy-${plik}.png`) });
 
       // Kadr 2: panel legendy otwarty z doku (klik natywny).
       await page.getByTestId('sld-v3-legend-toggle').click();
       await expect(page.getByTestId('sld-v3-legend-panel')).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `legenda-panel-${plik}.png`) });
     });
   }

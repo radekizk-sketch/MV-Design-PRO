@@ -1004,14 +1004,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-12_der_full_path",
-    "model_hash": "acc4c8211a77abcc349662ada20eced28af648dcb38eeda2efa2824d54b72893",
+    "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
     "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "ccb412feca040655b6e30df0ad172903b4676fe5c271027067cd7daaaae1e703",
+  "projection_hash": "e2727c2e6f9af13f2a3da3d1a3546ba54f0ad0f9aab9a36ecf0b4843a5e6e053",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1029,6 +1029,7 @@
   "station_ref": "stDER",
   "status": "OK",
   "swz_snapshot": {
+    "kod_odmowy": null,
     "missing_data": [],
     "network_system": "TN-C-S",
     "reason_pl": null,
@@ -1042,6 +1043,10 @@
               {
                 "bus_ref": "FU-BES_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1063,15 +1068,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "FU-BES_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1094,42 +1152,50 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "FU-BES_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1151,15 +1217,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "FU-BES_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1182,38 +1301,42 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1222,6 +1345,10 @@
               "breaker_ref": "FU-BES",
               "bus_ref": "FU-BES_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1243,15 +1370,68 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "FU-BES_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
+                "parametry_robocze_maszyn": [
+                  {
+                    "jednostka": "MVA",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "parametr": "sn_mva",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "S_rG",
+                    "wartosc": 0.1,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "p.u. (S_rG, U_rG)",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "parametr": "xd_subtransient_pu",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "x″d",
+                    "wartosc": 0.15,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "1",
+                    "nazwa_pl": "znamionowy współczynnik mocy",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "parametr": "cos_phi",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "cos φ_r",
+                    "wartosc": 0.8,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  }
+                ],
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
                 "white_box_trace": [
@@ -1274,33 +1454,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -1309,13 +1491,43 @@
               "station_ref": "stDER",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "wartosc": {
+                      "jednostka": "MVA",
+                      "wartosc": 0.1
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "wartosc": 0.15
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.8
+                    }
+                  }
+                ],
                 "ia_wymagane_a": null,
-                "ik1_min_a": 2601.65408,
+                "ik1_min_a": 2601.65424,
                 "margines": null,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A > Inf=125.0 A (wkładka gG 100 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy t_wymagany=5 s SWZ (rozdzielczy, pasmo U0 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki Inf/If (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (7200 s), NIE w t_wymagany SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe).",
+                "przyczyna_pl": "Ik1_min=2601.7 A > Inf=125.0 A (wkładka gG 100 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy t_wymagany=5 s SWZ (rozdzielczy, pasmo U0 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki Inf/If (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (7200 s), NIE w t_wymagany SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe). Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "nierozstrzygalne",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 5.0,
                 "white_box_trace": [
                   {
@@ -1330,7 +1542,7 @@
                   {
                     "solver_trace": {
                       "gwarancja": "wyzwolenie_gwarantowane",
-                      "i_query_a": 2601.65408,
+                      "i_query_a": 2601.65424,
                       "if_a": 160.0,
                       "in_a": 100.0,
                       "inf_a": 125.0,
@@ -1352,7 +1564,7 @@
                   {
                     "bramka_t_wymagany_a": null,
                     "if_a": 160.0,
-                    "ik1_min_a": 2601.65408,
+                    "ik1_min_a": 2601.65424,
                     "inf_a": 125.0,
                     "result": "nierozstrzygalne",
                     "step": "werdykt_gg_nierozstrzygalne",
@@ -1370,6 +1582,10 @@
               {
                 "bus_ref": "QF-01_koniec",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1391,15 +1607,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-01_koniec",
-                  "ik_max_a": 2655.5429,
-                  "ik_min_a": 2402.63405,
+                  "ik_max_a": 2655.54305,
+                  "ik_min_a": 2402.63419,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1422,42 +1691,50 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.091313574,
-                        "r_total_ohm": 0.0894873141,
-                        "x_total_ohm": 0.0181711148
+                        "magnitude_ohm": 0.0913135687,
+                        "r_total_ohm": 0.0894873132,
+                        "x_total_ohm": 0.0181710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 2655.5429,
-                      "ik_min_a": 2402.63405,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 2655.54305,
+                      "ik_min_a": 2402.63419,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.091313574
+                      "z_magnitude_ohm": 0.0913135687
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0181711148,
-                    "magnitude": 0.091313574,
-                    "re": 0.0894873141
+                    "im": 0.0181710928,
+                    "magnitude": 0.0913135687,
+                    "re": 0.0894873132
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-01_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1479,15 +1756,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-01_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1510,38 +1840,42 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1550,6 +1884,10 @@
               "breaker_ref": "QF-01",
               "bus_ref": "QF-01_koniec",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1571,15 +1909,68 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-01_koniec",
-                "ik_max_a": 1740.93334,
-                "ik_min_a": 1575.13017,
+                "ik_max_a": 1740.93339,
+                "ik_min_a": 1575.13021,
                 "network_type": "TN-C-S",
+                "parametry_robocze_maszyn": [
+                  {
+                    "jednostka": "MVA",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "parametr": "sn_mva",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "S_rG",
+                    "wartosc": 0.1,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "p.u. (S_rG, U_rG)",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "parametr": "xd_subtransient_pu",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "x″d",
+                    "wartosc": 0.15,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "1",
+                    "nazwa_pl": "znamionowy współczynnik mocy",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "parametr": "cos_phi",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "cos φ_r",
+                    "wartosc": 0.8,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  }
+                ],
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
                 "white_box_trace": [
@@ -1602,33 +1993,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.139285696,
-                      "r_total_ohm": 0.138095314,
-                      "x_total_ohm": 0.0181711148
+                      "magnitude_ohm": 0.139285692,
+                      "r_total_ohm": 0.138095313,
+                      "x_total_ohm": 0.0181710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 1740.93334,
-                    "ik_min_a": 1575.13017,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 1740.93339,
+                    "ik_min_a": 1575.13021,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.139285696
+                    "z_magnitude_ohm": 0.139285692
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0181711148,
-                  "magnitude": 0.139285696,
-                  "re": 0.138095314
+                  "im": 0.0181710928,
+                  "magnitude": 0.139285692,
+                  "re": 0.138095313
                 }
               },
               "missing_data": [],
@@ -1637,13 +2030,43 @@
               "station_ref": "stDER",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "wartosc": {
+                      "jednostka": "MVA",
+                      "wartosc": 0.1
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "wartosc": 0.15
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.8
+                    }
+                  }
+                ],
                 "ia_wymagane_a": 630.0,
-                "ik1_min_a": 1575.13017,
-                "margines": 2.50020662,
+                "ik1_min_a": 1575.13021,
+                "margines": 2.50020669,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=1575.1 A ≥ Ia=630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Ik1_min=1575.1 A ≥ Ia=630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -1664,8 +2087,8 @@
                   },
                   {
                     "ia_a": 630.0,
-                    "ik1_min_a": 1575.13017,
-                    "margines": 2.50020662,
+                    "ik1_min_a": 1575.13021,
+                    "margines": 2.50020669,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -1682,6 +2105,10 @@
               {
                 "bus_ref": "QF-G1_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1703,15 +2130,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-G1_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1734,42 +2214,50 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-G1_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -1791,15 +2279,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-G1_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -1822,38 +2363,42 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -1862,6 +2407,10 @@
               "breaker_ref": "QF-G1",
               "bus_ref": "QF-G1_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -1883,15 +2432,68 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-G1_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
+                "parametry_robocze_maszyn": [
+                  {
+                    "jednostka": "MVA",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "parametr": "sn_mva",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "S_rG",
+                    "wartosc": 0.1,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "p.u. (S_rG, U_rG)",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "parametr": "xd_subtransient_pu",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "x″d",
+                    "wartosc": 0.15,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "1",
+                    "nazwa_pl": "znamionowy współczynnik mocy",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "parametr": "cos_phi",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "cos φ_r",
+                    "wartosc": 0.8,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  }
+                ],
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
                 "white_box_trace": [
@@ -1914,33 +2516,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -1949,13 +2553,43 @@
               "station_ref": "stDER",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "wartosc": {
+                      "jednostka": "MVA",
+                      "wartosc": 0.1
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "wartosc": 0.15
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.8
+                    }
+                  }
+                ],
                 "ia_wymagane_a": 1000.0,
-                "ik1_min_a": 2601.65408,
-                "margines": 2.60165408,
+                "ik1_min_a": 2601.65424,
+                "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 5.0,
                 "white_box_trace": [
                   {
@@ -1976,8 +2610,8 @@
                   },
                   {
                     "ia_a": 1000.0,
-                    "ik1_min_a": 2601.65408,
-                    "margines": 2.60165408,
+                    "ik1_min_a": 2601.65424,
+                    "margines": 2.60165424,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -1994,6 +2628,10 @@
               {
                 "bus_ref": "QF-PV1_pcc",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -2015,15 +2653,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-PV1_pcc",
-                  "ik_max_a": 4295.29176,
-                  "ik_min_a": 3886.21635,
+                  "ik_max_a": 4295.29232,
+                  "ik_min_a": 3886.21686,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -2046,42 +2737,50 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0564541658,
-                        "r_total_ohm": 0.0539673141,
-                        "x_total_ohm": 0.0165711148
+                        "magnitude_ohm": 0.0564541584,
+                        "r_total_ohm": 0.0539673132,
+                        "x_total_ohm": 0.0165710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.29176,
-                      "ik_min_a": 3886.21635,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 4295.29232,
+                      "ik_min_a": 3886.21686,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0564541658
+                      "z_magnitude_ohm": 0.0564541584
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0165711148,
-                    "magnitude": 0.0564541658,
-                    "re": 0.0539673141
+                    "im": 0.0165710928,
+                    "magnitude": 0.0564541584,
+                    "re": 0.0539673132
                   }
                 },
                 "hop_count": 3,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               },
               {
                 "bus_ref": "QF-PV1_zacisk",
                 "fault_loop": {
+                  "c_max": 1.05,
+                  "c_min": 0.95,
+                  "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                  "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
@@ -2103,15 +2802,68 @@
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.00036209837,
-                      "r_ohm": 7.10379856e-05,
-                      "x_ohm": 0.000355061733
+                      "magnitude_ohm": 0.000362076602,
+                      "r_ohm": 7.10370219e-05,
+                      "x_ohm": 0.000355039727
                     }
                   ],
                   "fault_node_id": "QF-PV1_zacisk",
-                  "ik_max_a": 23049.8108,
-                  "ik_min_a": 20854.5907,
+                  "ik_max_a": 23049.8579,
+                  "ik_min_a": 20854.6334,
                   "network_type": "TN-C-S",
+                  "parametry_robocze_maszyn": [
+                    {
+                      "jednostka": "MVA",
+                      "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "parametr": "sn_mva",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "S_rG",
+                      "wartosc": 0.1,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "parametr": "xd_subtransient_pu",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "x″d",
+                      "wartosc": 0.15,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    },
+                    {
+                      "jednostka": "1",
+                      "nazwa_pl": "znamionowy współczynnik mocy",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "parametr": "cos_phi",
+                      "pochodzenie": "PROPOZYCJA",
+                      "source_id": "QF-G1_zrodlo",
+                      "source_name": "Agregat G1",
+                      "symbol": "cos φ_r",
+                      "wartosc": 0.8,
+                      "wielkosci": [
+                        "ikss",
+                        "ip",
+                        "ib",
+                        "ith"
+                      ]
+                    }
+                  ],
                   "protection_arrangement": "PEN",
                   "u_nom_v": 230.940108,
                   "white_box_trace": [
@@ -2134,38 +2886,42 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.10379856e-05,
-                          "x_ohm": 0.000355061733
+                          "r_ohm": 7.10370219e-05,
+                          "x_ohm": 0.000355039727
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.0105201347,
-                        "r_total_ohm": 0.00268731413,
-                        "x_total_ohm": 0.0101711148
+                        "magnitude_ohm": 0.0105201131,
+                        "r_total_ohm": 0.00268731316,
+                        "x_total_ohm": 0.0101710928
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23049.8108,
-                      "ik_min_a": 20854.5907,
+                      "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                      "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                      "ik_max_a": 23049.8579,
+                      "ik_min_a": 20854.6334,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
-                      "z_magnitude_ohm": 0.0105201347
+                      "z_magnitude_ohm": 0.0105201131
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.0101711148,
-                    "magnitude": 0.0105201347,
-                    "re": 0.00268731413
+                    "im": 0.0101710928,
+                    "magnitude": 0.0105201131,
+                    "re": 0.00268731316
                   }
                 },
                 "hop_count": 2,
+                "kod_odmowy": null,
                 "reason_pl": null,
-                "status": "OK"
+                "status": "OK",
+                "tt_it": null
               }
             ],
             "supply": "jednostronne",
@@ -2174,6 +2930,10 @@
               "breaker_ref": "QF-PV1",
               "bus_ref": "QF-PV1_pcc",
               "fault_loop_min_scenario": {
+                "c_max": 1.05,
+                "c_min": 0.95,
+                "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
@@ -2195,15 +2955,68 @@
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.00036209837,
-                    "r_ohm": 7.10379856e-05,
-                    "x_ohm": 0.000355061733
+                    "magnitude_ohm": 0.000362076602,
+                    "r_ohm": 7.10370219e-05,
+                    "x_ohm": 0.000355039727
                   }
                 ],
                 "fault_node_id": "QF-PV1_pcc",
-                "ik_max_a": 2875.5124,
-                "ik_min_a": 2601.65408,
+                "ik_max_a": 2875.51258,
+                "ik_min_a": 2601.65424,
                 "network_type": "TN-C-S",
+                "parametry_robocze_maszyn": [
+                  {
+                    "jednostka": "MVA",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "parametr": "sn_mva",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "S_rG",
+                    "wartosc": 0.1,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "p.u. (S_rG, U_rG)",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "parametr": "xd_subtransient_pu",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "x″d",
+                    "wartosc": 0.15,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  },
+                  {
+                    "jednostka": "1",
+                    "nazwa_pl": "znamionowy współczynnik mocy",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "parametr": "cos_phi",
+                    "pochodzenie": "PROPOZYCJA",
+                    "source_id": "QF-G1_zrodlo",
+                    "source_name": "Agregat G1",
+                    "symbol": "cos φ_r",
+                    "wartosc": 0.8,
+                    "wielkosci": [
+                      "ikss",
+                      "ip",
+                      "ib",
+                      "ith"
+                    ]
+                  }
+                ],
                 "protection_arrangement": "PEN",
                 "u_nom_v": 230.940108,
                 "white_box_trace": [
@@ -2226,33 +3039,35 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.10379856e-05,
-                        "x_ohm": 0.000355061733
+                        "r_ohm": 7.10370219e-05,
+                        "x_ohm": 0.000355039727
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.0843283142,
-                      "r_total_ohm": 0.0826841141,
-                      "x_total_ohm": 0.0165711148
+                      "magnitude_ohm": 0.0843283089,
+                      "r_total_ohm": 0.0826841132,
+                      "x_total_ohm": 0.0165710928
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5124,
-                    "ik_min_a": 2601.65408,
+                    "c_zrodlo_max": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+                    "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
+                    "ik_max_a": 2875.51258,
+                    "ik_min_a": 2601.65424,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
-                    "z_magnitude_ohm": 0.0843283142
+                    "z_magnitude_ohm": 0.0843283089
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.0165711148,
-                  "magnitude": 0.0843283142,
-                  "re": 0.0826841141
+                  "im": 0.0165710928,
+                  "magnitude": 0.0843283089,
+                  "re": 0.0826841132
                 }
               },
               "missing_data": [],
@@ -2261,13 +3076,43 @@
               "station_ref": "stDER",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "wartosc": {
+                      "jednostka": "MVA",
+                      "wartosc": 0.1
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "p.u. (S_rG, U_rG)",
+                      "wartosc": 0.15
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.8
+                    }
+                  }
+                ],
                 "ia_wymagane_a": 1000.0,
-                "ik1_min_a": 2601.65408,
-                "margines": 2.60165408,
+                "ik1_min_a": 2601.65424,
+                "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 5.0,
                 "white_box_trace": [
                   {
@@ -2288,8 +3133,8 @@
                   },
                   {
                     "ia_a": 1000.0,
-                    "ik1_min_a": 2601.65408,
-                    "margines": 2.60165408,
+                    "ik1_min_a": 2601.65424,
+                    "margines": 2.60165424,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -2301,8 +3146,10 @@
             "worst_point_bus_ref": "QF-PV1_pcc"
           }
         ],
+        "kod_odmowy": null,
         "missing_data": [],
         "nn_bus_ref": "T1_zacisk",
+        "reason_pl": null,
         "status": "OK",
         "transformer_ref": "T1"
       }
@@ -2311,22 +3158,106 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "f8f783c2-3a41-5a1e-84c5-1644195cdab7",
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+      "calculation_run_id": "7b820578-32f5-5a00-9a35-1a74d5efc2e4",
       "case_id": "fixture-12_der_full_path",
-      "equivalent_id": "05e5a268-52f4-5e00-a805-7c68d8a2cd84",
-      "ikss_ka": 18.7082951,
+      "dane_przyjete": [
+        {
+          "jakosc": "ESTIMATED",
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "wartosc": {
+            "jednostka": "MVA",
+            "wartosc": 0.1
+          }
+        },
+        {
+          "jakosc": "ESTIMATED",
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "wartosc": {
+            "jednostka": "p.u. (S_rG, U_rG)",
+            "wartosc": 0.15
+          }
+        },
+        {
+          "jakosc": "ESTIMATED",
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.8
+          }
+        }
+      ],
+      "equivalent_id": "a40fbd1a-82ae-5df7-8306-9878f3502bc8",
+      "ikss_ka": 18.7094198,
       "missing_data": [],
-      "model_hash": "acc4c8211a77abcc349662ada20eced28af648dcb38eeda2efa2824d54b72893",
+      "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
-      "rx_ratio": 0.20007221,
+      "parametry_robocze_maszyn": [
+        {
+          "jednostka": "MVA",
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "parametr": "sn_mva",
+          "pochodzenie": "PROPOZYCJA",
+          "source_id": "QF-G1_zrodlo",
+          "source_name": "Agregat G1",
+          "symbol": "S_rG",
+          "wartosc": 0.1,
+          "wielkosci": [
+            "ikss",
+            "ip",
+            "ib",
+            "ith"
+          ]
+        },
+        {
+          "jednostka": "p.u. (S_rG, U_rG)",
+          "nazwa_pl": "reaktancja podprzejściowa nasycona",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "parametr": "xd_subtransient_pu",
+          "pochodzenie": "PROPOZYCJA",
+          "source_id": "QF-G1_zrodlo",
+          "source_name": "Agregat G1",
+          "symbol": "x″d",
+          "wartosc": 0.15,
+          "wielkosci": [
+            "ikss",
+            "ip",
+            "ib",
+            "ith"
+          ]
+        },
+        {
+          "jednostka": "1",
+          "nazwa_pl": "znamionowy współczynnik mocy",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "parametr": "cos_phi",
+          "pochodzenie": "PROPOZYCJA",
+          "source_id": "QF-G1_zrodlo",
+          "source_name": "Agregat G1",
+          "symbol": "cos φ_r",
+          "wartosc": 0.8,
+          "wielkosci": [
+            "ikss",
+            "ip",
+            "ib",
+            "ith"
+          ]
+        }
+      ],
+      "rx_ratio": 0.200081897,
       "scenario_id": "MAX",
-      "sk_mva": 486.055765,
+      "sk_mva": 486.084985,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
       "station_name": "Stacja OZE",
       "station_ref": "stDER",
       "status": "OK",
+      "status_danych": "UNVALIDATED_INPUT",
       "transformer_ref": "T1",
       "upstream_node_id": "sn",
       "upstream_source_ids": [
@@ -2345,8 +3276,8 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.0998971673,
-        "x": 0.499305562
+        "r": 0.099895812,
+        "x": 0.499274616
       }
     }
   ],

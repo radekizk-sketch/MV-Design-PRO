@@ -397,7 +397,41 @@ POMIJANE_KATALOGI = {
 #: i na `4199d528`, listy bledow porownane linia po linii): 83 -> 81. Zeszly 2 bledy TS2339
 #: (martwa galaz `debtCode` w `ui/canon/__tests__/coverage-matrix.test.ts` — typ
 #: `CoverageStatus` dopuszcza tylko pelne pokrycie; zastapiona asercja statusu); zero nowych.
-BUDZET_BLEDOW_POZA_BRAMKA = 81
+#: Karta POLA-W-TORZE (2026-09-30, pomiar `tsc` pelnego zbioru na drzewie karty, lista bledow
+#: porownana z pomiarem guarda przed poprawka): 81 -> 80. Zszedl zastany TS2322 w
+#: `ui2/kreatory/stacja/__tests__/stacjaModel.test.ts` (fikstura szablonu pola bez wymaganej
+#: kompozycji `base_template`); dwa bledy dopisane przez karte w nowych testach (rola
+#: `POMIAROWE` spoza `SnFieldRole`, rodzaj aparatu `load_break_switch` spoza slownika)
+#: naprawione u zrodla przed commitem. Zero nowych bledow.
+#: Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (2026-09-30, pomiar pelnej listy `_BLEDY_POZA_BRAMKA`
+#: na drzewie karty i na worktree czubka partii 6 `615f3b24`, listy porownane linia po linii):
+#: baza partii 6 miala 81 przy budzecie 80 (czerwien zastana — integracja partii przywrocila
+#: jeden blad), drzewo karty 81, zbiory identyczne. 81 -> 69: zdjete 12 zastanych TS6133
+#: (nieuzywane importy w testach: `vi` x2, `renderHook`, `LayerId`, `ResultLabelEntry`,
+#: `buildSceneV3`, `fieldFunctionalDesignation`, `V3_STROKE_APPARATUS`, `act`, `beforeEach`,
+#: `afterEach`, `JAKOSC_STRINGS`); zero nowych bledow.
+#: Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30, pomiar `zmierz_dlug()` na drzewie karty i na
+#: drzewie startowym `615f3b24`): start 81 (guard czerwony juz na starcie — lista bledow
+#: identyczna na obu drzewach, karta nie dopisala zadnego) -> 64. Zeszlo 17 zastanych TS6133
+#: (nieuzywane importy i zmienne w 16 plikach testow; `hasDashed` w `earthingSwitchIec`
+#: dublowal asercje `allLineStrokes`, `DEKLARACJE_SPRAWDZANE` w `wlasnoscEtykiet` byla spisem
+#: bez konsumenta — reguly (a)–(d) sprawdzaja petle ponizej). Zero nowych bledow.
+#: Partia integracji 7 (2026-10-15, pomiar `zmierz_dlug()` na drzewie scalonym po czesci 2
+#: ETYKIETY-STACJI): 62 — zbiory zdjetych TS6133 kart BIEG-ZABEZPIECZEN (12) i ETYKIETA-STACJI
+#: (17) czesciowo wspolne, B01-RUNDA-1 i PARTIA-6-BACKEND naprawily ten sam blad bazy. Zero
+#: nowych bledow.
+#: Partia integracji 8 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
+#: bazie partii `53551167b`): baza 63 -> 61, roznica list wylacznie ubytkowa: zeszly TS2550
+#: w `StationTemplateWizard.test.tsx` (karta SZYBKIE-TESTY) i TS2345 w
+#: `downloadSldExport.test.ts` (karta KASACJA-SCL-I-CIM-KLIENT, test eksportu przepisany).
+#: Zero nowych bledow.
+#: Partia integracji 9 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
+#: bazie partii `0aa21b4c7`, listy porownane linia po linii): baza 61 -> 59, roznica wylacznie
+#: ubytkowa: zeszly TS2345 w `protection-curves/__tests__/types.test.ts` (karta PROT-LTI)
+#: i TS2739 w `ui2/spaces/model/katalog/__tests__/fixtures.ts` (karta W5-E-TTIT, kategorie
+#: katalogu nN). Zero nowych bledow; jedyny blad W BRAMCE iloczynu kart (etykiety historii
+#: operacji bez `update_protection_settings` i `set_load_dynamic_binding`) naprawiony u zrodla.
+BUDZET_BLEDOW_POZA_BRAMKA = 59
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

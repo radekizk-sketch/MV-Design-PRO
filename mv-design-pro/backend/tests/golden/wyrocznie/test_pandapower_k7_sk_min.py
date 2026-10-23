@@ -10,7 +10,8 @@ PRZYPIĘTY w ``proweniencja_k7.json`` — rozjazd wersji pandapower albo mostu w
 zapisanej wywala test.
 
 Sieć: źródło 110 kV z danymi MAX i MIN, transformator 110/15 kV, szyna 15 kV; wariant
-nN (0,4 kV, c_min = 0,95) i wariant bez danych MIN (założenie ``source.sk_min_missing``:
+nN (0,4 kV, sieć +6 % — źródło deklaruje ``lv_voltage_tolerance="PLUS_6"``, więc
+c_max = 1,05 i c_min = 0,95 z tabeli 1 IEC 60909-0) i wariant bez danych MIN (założenie ``source.sk_min_missing``:
 Z_Qmin = Z_Qmax, więc ``s_sc_min_mva`` = (c_min/c_max)·S''kQmax — po obu stronach ta sama
 impedancja). Bez gałęzi liniowych (most nie odwzorowuje korekty temperaturowej MIN).
 
@@ -85,6 +86,7 @@ def _siec_nn(**pola_min: float) -> EnergyNetworkModel:
                 model="short_circuit_power",
                 sk3_mva=10.0,
                 rx_ratio=0.3,
+                lv_voltage_tolerance="PLUS_6",
                 **pola_min,
             )
         ],
@@ -181,7 +183,10 @@ def test_ext_grid_s_sc_min_rowne_deklarowanemu_sk_min() -> None:
     enm = _siec_110_15()
     net, _ = most.zbuduj_siec(enm)
     assert float(net.ext_grid.iloc[0]["s_sc_min_mva"]) == pytest.approx(
-        4000.0 * c_for_node(110.0, "MIN") / c_for_node(110.0, "MAX"), rel=1e-12
+        4000.0
+        * c_for_node(110.0, "MIN", tolerancja_nn=None)
+        / c_for_node(110.0, "MAX", tolerancja_nn=None),
+        rel=1e-12,
     )
 
 

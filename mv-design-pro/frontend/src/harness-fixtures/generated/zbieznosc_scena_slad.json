@@ -1,17 +1,17 @@
 {
   "solver_version": "load-flow-newton-raphson-v1",
   "solver_method": "newton-raphson",
-  "proof_ref": "proof:power-flow:7a0300ba27d72e36aa838859dafa57ec61fbec61c6230f0561cd7fb63fd080be",
+  "proof_ref": "proof:power-flow:0c498f96556fea04142a93a244261aab4b92c4f8b2651e574d8954eff6f72e20",
   "proof_status": "complete",
   "reporting_status": "reportable",
-  "input_hash": "3f98e8b326505dae04c97dd6cc8051bf613000473b99f9733337afc2396583f9",
-  "snapshot_id": "eab2c9e78bc24c383c108288382abfb4625ac3cef22ac5b74b66b5ba5b4fc5b7",
+  "input_hash": "0028af91bb44ee3e82fda6220adcfe989b4836cffa2025aef705ffc892d224e4",
+  "snapshot_id": "b9a4e660138b377262e5b22b551df04991f81eb7c34d03cbd25a0487ba0a503a",
   "case_id": "case-demo",
   "run_id": "run-lf-scena-zbieznosc",
   "init_state": {
     "63203cbc-ac91-5100-a0ee-a275d24514ff": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     },
     "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
       "v_pu": 1.0,
@@ -19,15 +19,15 @@
     },
     "d70aff7b-d056-5804-acce-c9bc5707612b": {
       "v_pu": 1.0,
-      "theta_rad": 1.0471975511965974
+      "theta_rad": 1.0471975512
     },
     "d93618a6-23da-5d59-ae10-a7242961b790": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     },
     "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     }
   },
   "init_method": "flat_start",
@@ -58,47 +58,47 @@
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
         "vector_group": "YNd11",
         "clock_number": 11,
-        "phase_shift_deg": 29.999999999999996,
-        "phase_shift_rad": 0.5235987755982988,
+        "phase_shift_deg": 30.0,
+        "phase_shift_rad": 0.523598775598,
         "tap_abs": 0.975,
-        "tap_complex_real": 0.8443747686898277,
-        "tap_complex_imag": -0.48749999999999993
+        "tap_complex_real": 0.84437476869,
+        "tap_complex_imag": -0.4875
       },
       {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
         "vector_group": "Dyn11",
         "clock_number": 11,
-        "phase_shift_deg": 29.999999999999996,
-        "phase_shift_rad": 0.5235987755982988,
+        "phase_shift_deg": 30.0,
+        "phase_shift_rad": 0.523598775598,
         "tap_abs": 1.0,
-        "tap_complex_real": 0.8660254037844387,
-        "tap_complex_imag": -0.49999999999999994
+        "tap_complex_real": 0.866025403784,
+        "tap_complex_imag": -0.5
       }
     ]
   },
   "iterations": [
     {
       "k": 1,
-      "norm_mismatch": 0.05421919079168506,
-      "max_mismatch_pu": 0.05352185126632367,
+      "norm_mismatch": 0.0542191907932,
+      "max_mismatch_pu": 0.0535218512679,
       "cause_if_failed": null
     },
     {
       "k": 2,
-      "norm_mismatch": 0.0016231147936781238,
-      "max_mismatch_pu": 0.0015843984039765528,
+      "norm_mismatch": 0.00162311479642,
+      "max_mismatch_pu": 0.00158439840674,
       "cause_if_failed": null
     },
     {
       "k": 3,
-      "norm_mismatch": 1.350457163506022e-06,
-      "max_mismatch_pu": 1.2609951435834447e-06,
+      "norm_mismatch": 1.35045420759e-06,
+      "max_mismatch_pu": 1.26099178489e-06,
       "cause_if_failed": null
     },
     {
       "k": 4,
-      "norm_mismatch": 2.7896262452039595e-12,
-      "max_mismatch_pu": 2.082668872789261e-12,
+      "norm_mismatch": 4.40618922045e-12,
+      "max_mismatch_pu": 3.02888995361e-12,
       "cause_if_failed": null
     }
   ],
@@ -275,8 +275,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": 0,
-            "u_controlled_kv": 15.007544940787783,
-            "u_regulation_kv": 15.007544940787783,
+            "u_controlled_kv": 15.0075449408,
+            "u_regulation_kv": 15.0075449408,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -1,
@@ -291,8 +291,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -1,
-            "u_controlled_kv": 15.197391901075576,
-            "u_regulation_kv": 15.197391901075576,
+            "u_controlled_kv": 15.1973919011,
+            "u_regulation_kv": 15.1973919011,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,
@@ -307,8 +307,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -2,
-            "u_controlled_kv": 15.39210775298142,
-            "u_regulation_kv": 15.39210775298142,
+            "u_controlled_kv": 15.392107753,
+            "u_regulation_kv": 15.392107753,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,

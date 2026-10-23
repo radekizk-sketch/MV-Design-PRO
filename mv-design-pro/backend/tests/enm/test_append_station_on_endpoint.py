@@ -21,8 +21,10 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+import pytest
 from enm.domain_operations import append_station_on_endpoint, execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -275,7 +277,8 @@ def test_minimal_station_creates_substation_and_bay_in() -> None:
     new_subs = [s for s in new_snap["substations"] if s["name"] == "Stacja Końcowa"]
     assert len(new_subs) == 1
     sub = new_subs[0]
-    assert sub["station_type"] == "mv_lv"
+    # Deklaracja „terminal" zapisana wprost (dawniej gubiona jako `mv_lv`).
+    assert sub["station_type"] == "terminal"
     assert endpoint in sub["bus_refs"]
     # Bay(IN) wskazujący na endpoint_bus
     bays_in = [
@@ -332,7 +335,15 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
     transformers = [t for t in new_snap["transformers"] if t["ref_id"] == tr_ref]
     assert len(transformers) == 1
     transformer = transformers[0]
-    assert transformer["hv_bus_ref"] == endpoint
+    # POLA-W-TORZE: strona górna transformatora leży na ZACISKU pola transformatorowego,
+    # którego aparat wychodzi z szyny końca ciągu (szyny głównej stacji).
+    assert transformer["hv_bus_ref"] != endpoint
+    aparat_pola_tr = next(
+        b
+        for b in new_snap["branches"]
+        if b.get("to_bus_ref") == transformer["hv_bus_ref"] and b.get("from_bus_ref") == endpoint
+    )
+    assert aparat_pola_tr["catalog_namespace"] == "APARAT_SN"
     # Bus nN wśród bus_refs
     nn_bus_ref = transformer["lv_bus_ref"]
     assert nn_bus_ref in sub["bus_refs"]
@@ -346,6 +357,7 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
     ]
     assert len(bays_tr) == 1
     assert tr_ref in bays_tr[0]["equipment_refs"]
+    assert aparat_pola_tr["ref_id"] in bays_tr[0]["equipment_refs"]
 
 
 def test_endpoint_append_materializes_requested_station_sn_fields_without_splitting_segment() -> (
@@ -532,10 +544,14 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
         for spec in sub.get("meta", {}).get("field_specs", [])
         if spec.get("field_role") == "LINIA_OUT"
     )
-    main_bus_ref = out_field["meta"]["terminal_bus_ref"]
+    # POLA-W-TORZE: szyna pola (`bus_ref`) to szyna główna stacji (dawny koniec ciągu), a zacisk
+    # pola (`field_terminal_bus_ref` i `terminal_bus_ref` — jedna wartość, jak we wcięciu
+    # stacji w odcinek) leży ZA aparatem pola.
+    main_bus_ref = out_field["bus_ref"]
     field_terminal_ref = out_field["meta"]["field_terminal_bus_ref"]
     assert main_bus_ref == endpoint
     assert field_terminal_ref != main_bus_ref
+    assert out_field["meta"]["terminal_bus_ref"] == field_terminal_ref
 
     response_continue = execute_domain_operation(
         appended,
@@ -839,6 +855,39 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
     assert "nn_earthing_system" not in (sub.get("meta") or {})
 
 
+@pytest.mark.parametrize(
+    ("tolerancja", "kod"),
+    [("PLUS_6", None), ("PLUS_10", None), ("PLUS_8", "station.invalid_lv_voltage_tolerance")],
+)
+def test_endpoint_append_nn_earthing_niesie_tolerancje_sieci_nn(
+    tolerancja: str, kod: str | None
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `nn_earthing.lv_voltage_tolerance` (parytet z
+    `insert_station_on_segment_sn`) zapisuje wiersz nN tabeli 1 IEC 60909-0 na
+    transformatorze stacji; wartość spoza słownika = odmowa nazwana bez skutku."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja tolerancja", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": tolerancja},
+        },
+    )
+    if kod is not None:
+        assert response.get("error_code") == kod, response
+        assert response.get("snapshot") is None
+        return
+    assert response.get("error") is None, response
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja tolerancja")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    assert tr["lv_voltage_tolerance"] == tolerancja
+
+
 def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
     """station_auxiliary → odbiór nN „potrzeby własne" z Q z cosφ (G-STK-3).
 
@@ -1089,6 +1138,9 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
                 "pk_kw": 6.5,
             },
             "nn_voltage_kv": 0.4,
+            # Sieć nN +6 % (wiersz c 1,05/0,95 tabeli 1 IEC 60909-0): K_T transformatora
+            # czyta c_max strony dolnej z tej deklaracji; pin liczony dla tego wiersza.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
         },
     )
     assert response.get("error") is None
@@ -1098,7 +1150,7 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
     )
     galaz_tr = next(b for b in graph.branches.values() if getattr(b, "voltage_lv_kv", None) == 0.4)
     wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph, galaz_tr.to_node_id, c_factor=1.1, tk_s=1.0
+        graph, galaz_tr.to_node_id, c_factor=1.1, tk_s=1.0, czas_tb=czas_tb_roboczy()
     )
 
     assert galaz_tr.uk_percent == 5.0

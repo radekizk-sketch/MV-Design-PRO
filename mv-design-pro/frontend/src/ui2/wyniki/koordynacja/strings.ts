@@ -10,15 +10,16 @@ export const KOORDYNACJA_STRINGS = {
   // Cel jednym zdaniem (cytat z karty F-E5b §0.2).
   // Nazwy polskie ocen par, nie kody (PASS/MARGINAL/FAIL) — tekst dla człowieka nie niesie
   // kodów werdyktu (kontrakt werdyktu §12, strażnik reguła 6b).
-  cel: 'Dobór nastaw i selektywność zabezpieczeń nadprądowych: ocena każdej pary '
-    + 'zabezpieczeń (selektywna, na granicy, nieselektywna), marginesy stopniowania czasowego '
-    + 'i krzywe czasowo-prądowe — z przebiegu zwarciowego i biblioteki zabezpieczeń.',
+  cel: 'Działanie i selektywność zabezpieczeń nadprądowych: ocena każdego zabezpieczenia '
+    + 'w punktach jego strefy, ocena każdej pary (selektywna, na granicy, nieselektywna), '
+    + 'odstępy stopniowania czasowego i krzywe czasowo-prądowe — urządzenia i nastawy z modelu '
+    + 'sieci, prądy z biegów zwarciowych i rozpływu.',
 
   // Stan zerowy — brak aktywnego projektu.
   brakProjektuTytul: 'Brak aktywnego projektu',
-  brakProjektuOpis: 'Koordynacja zabezpieczeń pracuje na modelu sieci i bibliotece '
-    + 'zabezpieczeń wybranego projektu. Bez aktywnego projektu nie ma z czego dobrać '
-    + 'nastaw ani policzyć marginesów selektywności.',
+  brakProjektuOpis: 'Koordynacja zabezpieczeń pracuje na urządzeniach i nastawach z modelu '
+    + 'sieci wybranego projektu. Bez aktywnego projektu nie ma czego ocenić ani z czego '
+    + 'policzyć odstępów selektywności.',
   brakProjektuAkcja: 'Wybierz projekt',
 
   // Stan zerowy — brak zakończonego przebiegu zwarciowego.
@@ -29,22 +30,24 @@ export const KOORDYNACJA_STRINGS = {
   brakZwarciaAkcja: 'Przejdź do obliczeń',
 
   // Sekcja nastaw (karta W3-C1) — jedyna metodyka: Hoppel/IRiESD. Kotwica = ostatni
-  // zakończony bieg zwarcia trójfazowego gałęzi maksymalnej (c_max) przypadku.
+  // zakończony bieg zwarcia trójfazowego scenariusza MAX przypadku (karta
+  // WSPOLCZYNNIK-C-JEDEN-NOSNIK: gałęzie rozstrzyga scenariusz, c dobiera backend per węzeł).
   nastawyTytul: 'Nastawy nadprądowe I>/I>> (metoda Hoppela/IRiESD)',
-  nastawyOpis: 'Nastawy liczone z zakończonego zwarcia trójfazowego (gałąź maksymalna '
-    + 'c_max) tego przypadku: serwer sam dolicza wariant minimalny (c_min) i wariant '
-    + 'rozpływu na tej samej migawce. Wybierz chroniony odcinek i szynę kolejnej strefy '
-    + 'selektywności — reszta jest wynikiem silnika, nie UI.',
+  nastawyOpis: 'Nastawy liczone z zakończonego zwarcia trójfazowego (scenariusz MAX) '
+    + 'tego przypadku: serwer sam dolicza wariant minimalny (scenariusz MIN, c z tabeli 1 '
+    + 'IEC 60909-0 dla każdego węzła) i wariant rozpływu na tej samej migawce. Wybierz '
+    + 'chroniony odcinek i szynę kolejnej strefy selektywności — reszta jest wynikiem '
+    + 'silnika, nie UI.',
   nastawyLadowanie: 'Wyszukiwanie kotwicy nastaw…',
   nastawyLiczenie: 'Liczenie nastaw…',
   nastawyBlad: 'Nie udało się wczytać nastaw',
 
-  // Stan zerowy — brak kotwicy (żaden zakończony bieg 3F c_max w przypadku).
+  // Stan zerowy — brak kotwicy (żaden zakończony bieg 3F scenariusza MAX w przypadku).
   nastawyBrakKotwicyTytul: 'Brak kotwicy nastaw',
   nastawyBrakKotwicyOpis: 'Nastawy I>/I>> liczy się z zakończonego zwarcia trójfazowego '
-    + 'gałęzi maksymalnej (c_max) tego przypadku. Uruchom taki przebieg, aby dobrać '
+    + 'scenariusza MAX tego przypadku. Uruchom taki przebieg, aby dobrać '
     + 'nastawy na tle rzeczywistych prądów zwarcia.',
-  nastawyBrakKotwicyAkcja: 'Uruchom zwarcie 3F (c_max)',
+  nastawyBrakKotwicyAkcja: 'Uruchom zwarcie 3F (scenariusz MAX)',
 
   // Wybór odcinka i szyny kolejnej strefy (dostępność z backendu).
   nastawyWybierzOdcinek: 'Chroniony odcinek',
@@ -72,8 +75,9 @@ export const KOORDYNACJA_STRINGS = {
 
   // Parametry inżynierskie — jawne, z opisanym źródłem wartości domyślnej.
   nastawyParametryTytul: 'Parametry doboru',
-  nastawyParametrCMin: 'Współczynnik napięciowy gałęzi minimalnej c_min',
-  nastawyParametrCMinZrodlo: 'IEC 60909-0 Tabela 1 (domyślnie 1,0 — bieg minimalny SN)',
+  // Podstawa współczynnika c nastaw (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z proweniencji.
+  nastawyPodstawaCKotwicy: 'Współczynnik c kotwicy',
+  nastawyPodstawaCWariantuMin: 'Współczynnik c wariantu minimalnego',
   nastawyParametrDeltaT: 'Stopień zwłoki czasowej Δt [s]',
   nastawyParametrDeltaTZrodlo: 'IRiESD ENEA (domyślnie 0,3 s)',
   nastawyParametrKb: 'Współczynnik bezpieczeństwa k_b',
@@ -122,6 +126,39 @@ export const KOORDYNACJA_STRINGS = {
 
   nastawyKolumnaWartosc: 'Wartość',
   nastawyKolumnaWarunek: 'Warunek',
+
+  // Ocena zabezpieczeń z modelu na biegu zwarciowym (bieg `protection_sn`).
+  ocenaTytul: 'Ocena zabezpieczeń na biegu zwarciowym',
+  ocenaOpis: 'Każde zabezpieczenie nadprądowe z modelu oceniane w punktach zwarcia swojej '
+    + 'strefy: prąd przekaźnika z rozpływu zwarciowego, próg i czas z nastaw (charakterystyki '
+    + 'IEC 60255), wiarygodność względem granicy nasycenia przekładnika (z obciążenia obwodu '
+    + 'wtórnego). Nastawy edytujesz '
+    + 'na ekranie „Zabezpieczenia i automatyka".',
+  ocenaWariant: 'Bieg zwarciowy',
+  ocenaWariantMax: 'wariant maksymalny',
+  ocenaWariantMin: 'wariant minimalny',
+  ocenaBrakBiegu: 'Brak zakończonego biegu zwarciowego 3F albo 2F z zapisanym wariantem — '
+    + 'uruchom obliczenie zwarciowe.',
+  ocenaUruchom: 'Oceń zabezpieczenia',
+  ocenaWToku: 'Ocena w toku…',
+  ocenaWczytywanie: 'Wczytywanie ostatniej oceny…',
+  ocenaBrakWyniku: 'Nie oceniono jeszcze zabezpieczeń w tym projekcie.',
+  ocenaNieaktualna: 'Wynik nieaktualny',
+  ocenaPodsumowanie: (
+    ocen: number, zadzialan: number, bezZadzialania: number, niewiarygodnych: number,
+  ) => `Ocen: ${ocen} · zadziała: ${zadzialan} · nie zadziała: ${bezZadzialania} · `
+    + `niewiarygodnych: ${niewiarygodnych}`,
+  ocenaKolUrzadzenie: 'Zabezpieczenie',
+  ocenaKolPunkt: 'Punkt zwarcia',
+  ocenaKolPrad: 'Prąd przekaźnika [A]',
+  ocenaKolStopien: 'Stopień decydujący',
+  ocenaKolCzas: 'Czas zadziałania [s]',
+  ocenaKolWiarygodnosc: 'Wiarygodność',
+  ocenaKolOcena: 'Ocena',
+  ocenaNieZadziala: 'nie zadziała',
+  ocenaOdmowyTytul: 'Zabezpieczenia bez oceny — nazwane braki',
+  ocenaPominieteTytul: 'Zabezpieczenia, których ocena nadprądowa nie dotyczy',
+  ocenaUzupelnij: 'Uzupełnij w modelu',
 
   // V12K-262 (kontynuacja): stan spoza kontraktu NIE MOŻE czytać się jak wynik.
   nastawyStanNieznany: 'Stan nierozpoznany — nie traktuj tej wartości jak wyznaczonej',

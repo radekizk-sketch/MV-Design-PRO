@@ -6,9 +6,10 @@
 // svg) does not hit this — left unchanged.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 
 const dir = process.env.CANON_OUT ?? '/tmp/canon';
-const browser = await chromium.launch();
+const browser = await chromium.launch(chromiumLaunchOptions());
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 for (const f of readdirSync(dir).filter((x) => x.endsWith('.svg')).sort()) {
   const svg = readFileSync(`${dir}/${f}`, 'utf8');

@@ -77,10 +77,13 @@ import type {
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  WkladPominietyRozplywu,
   ZalozenieBieguSlad,
   ZrodloSiecioweSlad,
 } from '../../../ui/results-inspector/types';
+import { formatujWartosc } from '../dowod/dowodModel';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
+import { typSelekcjiZalozenia, type CelZmianyZalozenia } from './zmianaTolerancjiNn';
 import type {
   DefinicjaKolumny,
   KrokWywodu,
@@ -100,6 +103,7 @@ import {
   rodzajZwarciaPL,
   rxRatioZrodloPL,
   scenariuszZwarciaPL,
+  torPominietegoPL,
   trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
@@ -215,11 +219,15 @@ export function naWierszeZwarc(
 }
 
 /** Wiersz „Współczynnik napięciowy c" — z KONFIGURACJI TEGO BIEGU (nie z
- * aktywnego przypadku obliczeniowego, karta UI2 p.7). Tryb `jawny` →
- * liczba; `auto_per_wezel` → uczciwy opis (solver dobiera c per węzeł, nie ma
- * jednej wspólnej wartości biegu); brak konfiguracji (starszy zapis) → „—".
+ * aktywnego przypadku obliczeniowego, karta UI2 p.7). Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+ * `auto_per_wezel` → opis doboru z tabeli 1 IEC 60909-0 ze scenariuszem biegu (nie ma
+ * jednej liczby — podstawa każdego węzła w bilansie punktu, `c_zrodlo`); `nadpisanie` →
+ * wartość RAZEM z uzasadnieniem inżyniera; brak konfiguracji (starszy zapis) → „—".
  */
-function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefined): WierszZalozenia {
+function wierszWspolczynnikaC(
+  c: KonfiguracjaBieguZwarcia['c_factor'] | undefined,
+  scenariusz: KonfiguracjaBieguZwarcia['scenariusz'],
+): WierszZalozenia {
   if (c === undefined) {
     return {
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
@@ -227,14 +235,23 @@ function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefine
       uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
     };
   }
-  if (c.tryb === 'auto_per_wezel' || c.wartosc === null) {
+  if (c.tryb === 'nadpisanie' && c.wartosc !== null) {
+    // Uzasadnienie W TREŚCI wiersza, nie tylko w dymku — nadpisanie bez widocznego
+    // powodu byłoby liczbą bez podstawy (werdykt wyjaśnialny).
     return {
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
-      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanie(
+        fmtWspolczynnik(c.wartosc),
+        c.uzasadnienie ?? ZWARCIA_STRINGS.kreska,
+      ),
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCNadpisanieUwaga(c.uzasadnienie ?? ZWARCIA_STRINGS.kreska),
     };
   }
-  return { etykieta: ZWARCIA_STRINGS.zalWspolczynnikC, wartosc: fmtWspolczynnik(c.wartosc) };
+  return {
+    etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+    wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto(scenariusz ?? null),
+    uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+  };
 }
 
 /** Wiersz „Czas cieplny" — z KONFIGURACJI TEGO BIEGU; `pochodzenie:
@@ -258,6 +275,49 @@ function wierszCzasuCieplnego(
   };
 }
 
+/** Wiersz „Czas wyłączenia tb" (karta SC-IB-ITH-ZRODLA) — wartość scenariusza biegu albo
+ * (karta TB-WARTOSC-ROBOCZA) „w punkcie zwarcia" ze zdaniem reguły z backendu (`opis_pl`):
+ * t_b każdego punktu i jego pochodzenie niesie bilans punktu, a punkty z wartością roboczą —
+ * założenie biegu `fault.czas_tb_wartosc_robocza`. Starszy zapis bez pola → brak wiersza. */
+function wierszCzasuWylaczenia(
+  t: KonfiguracjaBieguZwarcia['breaking_time_seconds'],
+): WierszZalozenia[] {
+  if (t === undefined) return [];
+  if (t.wartosc === null) {
+    return [
+      {
+        etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia,
+        wartosc: ZWARCIA_STRINGS.zalCzasWylaczeniaPunkt,
+        uwaga: t.opis_pl,
+      },
+    ];
+  }
+  return [
+    {
+      etykieta: ZWARCIA_STRINGS.zalCzasWylaczenia,
+      wartosc: fmtCzas(t.wartosc),
+      jednostka: ZWARCIA_STRINGS.jednS,
+    },
+  ];
+}
+
+/** Wiersz „Impedancja przejścia Z_f" — WYŁĄCZNIE dla biegu przez Z_f ≠ 0 (pole
+ * `impedancja_przejscia` konfiguracji biegu, karta OD-14); uwaga mówi wprost, że wynik
+ * jest poza zakresem IEC 60909. Bieg metaliczny → brak wiersza (nie „0 Ω"). */
+function wierszImpedancjiPrzejscia(
+  z: KonfiguracjaBieguZwarcia['impedancja_przejscia'],
+): WierszZalozenia[] {
+  if (z === undefined) return [];
+  return [
+    {
+      etykieta: ZWARCIA_STRINGS.zalImpedancjaPrzejscia,
+      wartosc: `${fmtOhm(z.r_f_ohm)} + j${fmtOhm(z.x_f_ohm)}`,
+      jednostka: ZWARCIA_STRINGS.jednOhm,
+      uwaga: ZWARCIA_STRINGS.zalImpedancjaPrzejsciaUwaga,
+    },
+  ];
+}
+
 /**
  * Buduje sekcję ZAŁOŻENIA (W-602). Metoda / współczynnik c / czas cieplny
  * pochodzą z `konfiguracja_biegu` odpowiedzi (`GET …/results/short-circuit`,
@@ -277,18 +337,72 @@ export function naZalozeniaZwarc(
   konfiguracja: KonfiguracjaBieguZwarcia | undefined,
   zalozeniaBiegu: readonly ZalozenieBieguSlad[] | undefined,
   nazwa: (ref: string) => string,
+  zmienWartosc?: (cel: CelZmianyZalozenia) => void,
 ): WierszZalozenia[] {
   const bazowe: WierszZalozenia[] = [
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
-    wierszWspolczynnikaC(konfiguracja?.c_factor),
+    wierszWspolczynnikaC(konfiguracja?.c_factor, konfiguracja?.scenariusz),
     wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
+    ...wierszCzasuWylaczenia(konfiguracja?.breaking_time_seconds),
+    ...wierszImpedancjiPrzejscia(konfiguracja?.impedancja_przejscia),
   ];
-  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
-    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) =>
+    z.code === KOD_TOLERANCJA_NN_ROBOCZA && z.element_ref !== null
+      ? wierszTolerancjiNnRoboczej(z, z.element_ref, nazwa, zmienWartosc)
+      : {
+          // Założenie bez elementu dotyczy całego biegu (np. `fault.czas_tb_wartosc_robocza`).
+          etykieta:
+            z.element_ref === null
+              ? ZWARCIA_STRINGS.zalozenieBiegu
+              : ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+          wartosc: z.message_pl,
+          // Karta TB-WARTOSC-ROBOCZA: założenie z listą punktów zwarcia — liczba punktów obok
+          // scenariusza (t_b i źródło każdego punktu pokazuje jego bilans).
+          uwaga:
+            z.punkty && z.punkty.length > 0
+              ? `${ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz))}. ${ZWARCIA_STRINGS.zalozeniePunkty(z.punkty.length)}`
+              : ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
+        },
+  );
+  return [...bazowe, ...zZaZrodel];
+}
+
+/**
+ * Kod założenia biegu: sieć nN liczona na wartości roboczej tolerancji napięcia
+ * (`enm/tolerancja_nn.py::KOD_TOLERANCJA_NN_ROBOCZA`, rejestr gotowości).
+ */
+export const KOD_TOLERANCJA_NN_ROBOCZA = 'fault.c_tolerancja_nn_robocza';
+
+/**
+ * Wiersz założenia „tolerancja sieci nN — wartość robocza” (zasada nr 4, V12K-351): treść
+ * z backendu, dyskretny znacznik „wartość robocza” i akcja „Zmień wartość”, gdy backend
+ * wskazał element i pole deklaracji (`element_type` + `parametr`) i ekran podał obsługę.
+ * Wyspa nN bez elementu zasilającego nie ma pola deklaracji — wtedy bez akcji (treść
+ * backendu mówi, czego brakuje).
+ */
+function wierszTolerancjiNnRoboczej(
+  z: ZalozenieBieguSlad,
+  elementRef: string,
+  nazwa: (ref: string) => string,
+  zmienWartosc: ((cel: CelZmianyZalozenia) => void) | undefined,
+): WierszZalozenia {
+  const nazwaElementu = nazwa(elementRef);
+  const { parametr, element_type: elementType } = z;
+  const akcja =
+    zmienWartosc && parametr && elementType && typSelekcjiZalozenia(elementType) !== null
+      ? {
+          etykieta: ZWARCIA_STRINGS.zmienWartosc,
+          testid: `mvd-zwarcia-zalozenie-zmien-${elementRef}-${z.scenariusz}`,
+          onWybierz: () => zmienWartosc({ elementRef, elementType, parametr, nazwa: nazwaElementu }),
+        }
+      : undefined;
+  return {
+    etykieta: ZWARCIA_STRINGS.zalozenieTolerancjiNn(nazwaElementu),
     wartosc: z.message_pl,
     uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
-  }));
-  return [...bazowe, ...zZaZrodel];
+    znacznik: ZWARCIA_STRINGS.znacznikWartosciRoboczej,
+    ...(akcja ? { akcja } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -417,9 +531,9 @@ export interface SzczegolWkladu {
   irKA: number | null;
   /** Stosunek Ik"/Ir (bezwymiarowy). */
   stosunekIkIr: number | null;
-  /** Współczynnik zaniku μ (IEC 60909 §6.6.1). */
+  /** Współczynnik zaniku μ (IEC 60909-0:2016 rozdz. 9; między węzłami t_min interpolacja liniowa). */
   mu: number | null;
-  /** Współczynnik q (IEC 60909 §6.6.3; 1 dla maszyn synchronicznych). */
+  /** Współczynnik q (IEC 60909-0:2016 rozdz. 9; 1 dla maszyn synchronicznych). */
   q: number | null;
   /** Prąd wyłączeniowy symetryczny Ib [kA]. */
   ibKA: number | null;
@@ -600,6 +714,48 @@ export function naWierszeRozplywu(
     // (Thevenin, source_id="THEVENIN_GRID") vs falownik/maszyna nazwana z modelu.
     zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id, nazwa) },
     [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
+  }));
+}
+
+/**
+ * Zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (karta
+ * PROG-ZERA-WKLADOW) — kolumny tabeli eksperckiej pod tabelą rozpływu.
+ */
+export const KLUCZ_POMINIETY = 'identyfikator';
+
+export const KOLUMNY_POMINIETYCH: DefinicjaKolumny[] = [
+  { klucz: 'galaz', etykieta: ZWARCIA_STRINGS.rozplywKolGalaz, wyrownanie: 'lewo' },
+  { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.rozplywKolZrodlo, wyrownanie: 'lewo' },
+  { klucz: 'tor', etykieta: ZWARCIA_STRINGS.rozplywKolTor, wyrownanie: 'lewo' },
+  {
+    klucz: 'prad',
+    etykieta: ZWARCIA_STRINGS.rozplywKolPrad,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    mono: true,
+  },
+  // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO) —
+  // kolumna tekstowa bez jednostki: komórka „nie określono", nigdy liczba stopni.
+  { klucz: 'kat', etykieta: ZWARCIA_STRINGS.rozplywKolKat, wyrownanie: 'lewo' },
+];
+
+/**
+ * Wiersze zestawienia wkładów pominiętych (kolejność backendu: branch_id, source_id).
+ * Moduł w zapisie z potęgą dziesięciu (`formatujWartosc` śladu WHITE BOX) — format
+ * stałoprzecinkowy kA pokazałby „0,000", czyli fałszywe zero. Kąt fazora wkładu
+ * pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO: rdzeń podaje `null`,
+ * przyczyna w notatce kroku śladu) → „nie określono", nigdy liczba ani 0°.
+ */
+export function naWierszePominietych(
+  pominiete: readonly WkladPominietyRozplywu[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
+  return pominiete.map((wpis) => ({
+    galaz: { wartosc: nazwa(wpis.branch_id, wpis.branch_name) },
+    zrodlo: { wartosc: zrodloRozplywuPL(wpis.source_id, nazwa) },
+    tor: { wartosc: torPominietegoPL(wpis.tor) },
+    prad: { wartosc: formatujWartosc(wpis.i_ka), sortKey: wpis.i_ka },
+    kat: { wartosc: ZWARCIA_STRINGS.katNieokreslony },
+    [KLUCZ_POMINIETY]: { wartosc: `${wpis.branch_id}::${wpis.source_id}` },
   }));
 }
 

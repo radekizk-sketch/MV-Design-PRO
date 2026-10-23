@@ -218,7 +218,7 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
           info_pl: null,
           white_box: [
             {
-              symbol: 'P_{st,i}',
+              symbol: 'P_st,i',
               formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
               substitution_pl: 'P_st_i = 0.05 · 1 / 325 MVA',
               result_pl: 'P_st_i = 0.4',
@@ -249,7 +249,7 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
       ],
       white_box: [
         {
-          symbol: 'P_{st}',
+          symbol: 'P_st',
           formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
           substitution_pl: 'P_st = (0.4^3)^(1/3)',
           result_pl: 'P_st = 0.4',

@@ -16,6 +16,7 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND / "src"))
+sys.path.insert(0, str(BACKEND))
 
 CEL = BACKEND / "schemas" / "openapi_snapshot.json"
 
@@ -23,8 +24,11 @@ CEL = BACKEND / "schemas" / "openapi_snapshot.json"
 def schemat_kanoniczny() -> str:
     from api.main import app  # noqa: PLC0415 — import po ustawieniu sys.path
 
-    schemat = app.openapi()
-    return json.dumps(schemat, ensure_ascii=False, sort_keys=True, indent=1) + "\n"
+    from tests.golden.zapis_fikstur import json_fikstury  # noqa: PLC0415
+
+    # Regula zapisu liczb wspolna dla fikstur; stale kontraktu maja <= 12 cyfr znaczacych,
+    # wiec regula nie zmienia tresci (pin: test_openapi_snapshot + test regul zapisu).
+    return json_fikstury(app.openapi(), indent=1)
 
 
 def main() -> int:

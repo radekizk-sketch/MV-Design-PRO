@@ -44,9 +44,10 @@ export const OPERATOR_PROFILES: Array<{
 export type ScInputMode = 'simplified' | 'advanced';
 
 export interface StudyCaseConfig {
-  // Short-circuit parameters
-  c_factor_max: number;
-  c_factor_min: number;
+  // Współczynnik napięciowy c i czas t_k NIE są parametrami przypadku (karta
+  // WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59): jedynym ich nośnikiem jest scenariusz
+  // zwarciowy (`ui/fault-scenarios/types.ts` ShortCircuitConfig). Backend nie ma tych
+  // pól w `StudyCaseConfig` — ich pokazywanie tutaj było fantomem.
 
   // Power flow parameters
   base_mva: number;
@@ -56,7 +57,6 @@ export interface StudyCaseConfig {
   // Analysis options
   include_motor_contribution: boolean;
   include_inverter_contribution: boolean;
-  thermal_time_seconds: number;
 
   // Operator profile (NC RfG / IRiESD per OSD)
   // Default: 'enea' per /goal V12K (ENEA Operator first in priority)
@@ -172,14 +172,11 @@ export interface UpdateStudyCaseRequest {
  * Default configuration values.
  */
 export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
-  c_factor_max: 1.10,
-  c_factor_min: 0.95,
   base_mva: 100.0,
   max_iterations: 50,
   tolerance: 1e-6,
   include_motor_contribution: true,
   include_inverter_contribution: true,
-  thermal_time_seconds: 1.0,
   operator_profile_id: 'enea',
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
@@ -208,14 +205,11 @@ export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
  * Polish labels for configuration fields.
  */
 export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
-  c_factor_max: 'Współczynnik napięciowy (max)',
-  c_factor_min: 'Współczynnik napięciowy (min)',
   base_mva: 'Moc bazowa [MVA]',
   max_iterations: 'Maksymalna liczba iteracji',
   tolerance: 'Tolerancja zbieżności',
   include_motor_contribution: 'Wkład silników',
   include_inverter_contribution: 'Wkład inwerterów',
-  thermal_time_seconds: 'Czas cieplny [s]',
   operator_profile_id: 'Operator (OSD)',
   sc_input_mode: 'Parametry zwarciowe (tryb)',
   sc_simplified_sk_mva: 'Moc zwarciowa S″k po stronie SN [MVA]',
@@ -237,12 +231,43 @@ export type ExecutionAnalysisType =
   | 'LOAD_FLOW'
   | 'PHASE_STATE_SN'
   | 'PF_UNBALANCED'
-  | 'DYNAMIKA_RMS';
+  | 'DYNAMIKA_RMS'
+  // Bieg oceny zabezpieczeń nadprądowych z modelu (`protection_sn`) — listing biegów przypadku
+  // (`GET /api/execution/study-cases/{id}/runs`) zwraca go jako `PROTECTION`; bieg tworzy ekran
+  // koordynacji (`POST /api/projects/{id}/protection-runs`), nie przycisk „Oblicz".
+  | 'PROTECTION';
 
 /**
- * Run lifecycle status.
+ * Run lifecycle status (kontrakt HTTP wykonania, `domain.execution.RunStatus`).
+ * Karta DYNAMIKA-W-TLE: `QUEUED` — bieg przyjęty do kolejki wykonawcy w tle
+ * (jeden ciężki bieg naraz), `CANCELLED` — anulowany przez użytkownika (bez wyniku
+ * częściowego, z wyjaśnieniem w `error_message`).
  */
-export type RunStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+export type RunStatus = 'PENDING' | 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELLED';
+
+/** Stany końcowe biegu — po nich nic już się w biegu nie zmieni. */
+export const STANY_KONCOWE_BIEGU: ReadonlySet<RunStatus> = new Set<RunStatus>([
+  'DONE',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export function czyStanKoncowyBiegu(status: RunStatus): boolean {
+  return STANY_KONCOWE_BIEGU.has(status);
+}
+
+/**
+ * Postęp biegu w toku (pomiar wykonawcy w tle — `domain.execution.PostepBiegu`):
+ * co policzono z czego w nazwanej jednostce (czas symulacji, punkty zwarcia,
+ * pozycje serii) i ułamek 0–1. `null` gdy wykonawca biegu nie mierzy postępu.
+ */
+export interface PostepBiegu {
+  wykonane: number;
+  razem: number;
+  jednostka: string;
+  krok: number;
+  ulamek: number;
+}
 
 /**
  * Execution run record.
@@ -267,6 +292,8 @@ export interface ExecutionRun {
   created_at?: string | null;
   /** Odcisk migawki modelu, z której bieg policzono (pochodzenie). */
   snapshot_hash?: string | null;
+  /** Postęp biegu w toku (karta DYNAMIKA-W-TLE); `null`/brak = nie mierzony. */
+  postep?: PostepBiegu | null;
 }
 
 /**
@@ -303,6 +330,7 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   PHASE_STATE_SN: 'Stan fazowy SN',
   PF_UNBALANCED: 'Rozpływ niesymetryczny',
   DYNAMIKA_RMS: 'Dynamika czasowa RMS',
+  PROTECTION: 'Ocena zabezpieczeń nadprądowych',
 };
 
 /**
@@ -310,9 +338,11 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
  */
 export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   PENDING: 'Oczekuje',
+  QUEUED: 'W kolejce',
   RUNNING: 'W trakcie',
   DONE: 'Zakończony',
   FAILED: 'Błąd',
+  CANCELLED: 'Anulowany',
 };
 
 /**
@@ -320,9 +350,13 @@ export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
  */
 export const RUN_STATUS_COLORS: Record<RunStatus, string> = {
   PENDING: 'text-gray-500',
+  // Karta DYNAMIKA-W-TLE: każdy stan ma własny kolor (test „distinct colors") —
+  // w kolejce = oczekiwanie (bursztyn), anulowany = wygaszony (łupek), nie szary PENDING.
+  QUEUED: 'text-amber-600',
   RUNNING: 'text-blue-500',
   DONE: 'text-green-600',
   FAILED: 'text-red-600',
+  CANCELLED: 'text-slate-400',
 };
 
 /**
@@ -351,11 +385,32 @@ export interface CreateRunRequest {
  * stan niemożliwy dla pojedynczego biegu (część pozycji FAILED, reszta
  * FINISHED — seria NIGDY nie melduje cicho FINISHED).
  */
-export type BatchStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED' | 'PARTIAL';
+export type BatchStatus =
+  | 'CREATED'
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'FINISHED'
+  | 'FAILED'
+  | 'PARTIAL'
+  | 'CANCELLED';
+
+/** Stany końcowe serii (karta DYNAMIKA-W-TLE: seria liczy się w tle, klient odpytuje). */
+export const STANY_KONCOWE_SERII: ReadonlySet<BatchStatus> = new Set<BatchStatus>([
+  'FINISHED',
+  'FAILED',
+  'PARTIAL',
+  'CANCELLED',
+]);
 
 /** Status WYKONANIA jednej pozycji serii — TEN SAM słownik co bieg kanoniczny
  * (bez PARTIAL — to stan wyłącznie serii, agregat pozycji). */
-export type BatchItemStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED';
+export type BatchItemStatus =
+  | 'CREATED'
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'FINISHED'
+  | 'FAILED'
+  | 'CANCELLED';
 
 /**
  * Jedna pozycja serii (kontrakt `items[]`, karta CV-3.3-C). ZERO własnego
@@ -413,8 +468,10 @@ export interface CreateBatchRequest {
  */
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
   CREATED: 'Utworzona',
+  QUEUED: 'W kolejce',
   RUNNING: 'W trakcie',
   FINISHED: 'Zakończona',
   FAILED: 'Błąd',
   PARTIAL: 'Częściowa',
+  CANCELLED: 'Anulowana',
 };

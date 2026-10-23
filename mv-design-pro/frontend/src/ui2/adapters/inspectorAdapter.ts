@@ -65,6 +65,7 @@ import type {
 import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
+import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -195,6 +196,42 @@ function wlasciwosciGaleziWspolne(el: { from_bus_ref: string; to_bus_ref: string
   ]);
 }
 
+/** Susceptancja jednostkowa w µS/km (zmiana jednostki wartości z modelu, bez obliczeń). */
+function mikrosimensy(wartosc: number | null | undefined): number | null {
+  return typeof wartosc === 'number' && Number.isFinite(wartosc) ? wartosc * 1e6 : null;
+}
+
+/** Składowe danych linii 110 kV (klucze rejestru wartości roboczych backendu) — nazwy PL. */
+const SKLADOWE_DANYCH_LINII_PL: Readonly<Record<string, string>> = {
+  fazy: 'położenie przewodów fazowych',
+  odgromowe: 'położenie przewodu odgromowego',
+  przewod_odgromowy_ref: 'typ przewodu odgromowego',
+  rezystywnosc_gruntu_ohm_m: 'rezystywność gruntu',
+};
+
+/**
+ * Linia 110 kV z przewodem z katalogu: pochodzenie R′/X′/B′/Z′0 (z geometrii słupa), kompletność
+ * dowodu i składowe przyjęte jako wartości robocze — zasada nr 4: wynik na założeniach jest
+ * w inspektorze odróżniony od wyniku z danych projektu.
+ */
+function wlasciwosciParametrowZGeometrii(el: OverheadLine): (WierszWlasciwosci | null)[] {
+  const p = el.parametry_z_geometrii;
+  if (!p) return [];
+  const robocze = (p.wartosci_robocze ?? []).map((k) => SKLADOWE_DANYCH_LINII_PL[k] ?? k);
+  return [
+    wr('Parametry linii', `z geometrii słupa i przewodu z katalogu (${p.metoda} ${p.wersja_metody})`),
+    wr(
+      'Kompletność dowodu parametrów',
+      p.kompletnosc_dowodu === 'PELNY'
+        ? 'pełna — dane projektu i katalogu'
+        : `niepełna — wartości robocze (ESTIMATED): ${robocze.join(', ')}`,
+    ),
+    wr(`Rezystancja R1 w temperaturze ${p.temperatura_przewodu_c} °C`, p.r1_temperatura_ohm_per_km, 'Ω/km'),
+    wr('Średnia geometryczna odległość faz (GMD)', p.gmd_m, 'm'),
+    w('Rezystywność gruntu (projekt)', el.geometria_slupa?.rezystywnosc_gruntu_ohm_m ?? null, 'Ω·m'),
+  ];
+}
+
 function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
   return [
     ...wlasciwosciGaleziWspolne(el),
@@ -202,11 +239,14 @@ function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
       w('Prąd cieplny 1s (Ith)', el.ith_1s_a ?? null, 'A'),
+      ...wlasciwosciParametrowZGeometrii(el),
     ]),
   ];
 }
@@ -218,8 +258,10 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
       w('Izolacja', el.insulation ?? null),
@@ -328,21 +370,26 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   ]);
 }
 
-const ETYKIETA_RODZAJU_STACJI: Readonly<Record<string, string>> = {
+/** Funkcja stacji z deklaracji (GPZ, rozdzielnica nN, rozdzielcza, odbiorcza) — to NIE jest rodzaj
+ *  topologiczny; ten pochodzi z jednej reguły produktu (`ui/shared/rodzajStacji.ts`). */
+const ETYKIETA_FUNKCJI_STACJI: Readonly<Record<string, string>> = {
   gpz: 'GPZ',
-  mv_lv: 'SN/nN',
   switching: 'Rozdzielcza',
   customer: 'Odbiorcza',
-  inline: 'Przelotowa',
-  branch: 'Odgałęźna',
-  terminal: 'Końcowa',
-  sectional: 'Sekcyjna',
   rozdzielnica_nn: 'Rozdzielnica nN',
 };
 
-function wlasciwosciStacji(el: Substation): WierszWlasciwosci[] {
+function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWlasciwosci[] {
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: „Rodzaj stacji" z topologii (liczba pól liniowych,
+  // sprzęgło, połączenia) — dawniej 1:1 z deklaracji `station_type` (inna odpowiedź niż schemat).
+  const rodzaj = rodzajStacji(model, el.ref_id);
   return bezNulli([
-    wr('Rodzaj stacji', ETYKIETA_RODZAJU_STACJI[el.station_type] ?? el.station_type),
+    wr(
+      'Rodzaj stacji',
+      rodzaj ? podpisRodzajuStacjiPl(rodzaj.rodzaj) : (ETYKIETA_FUNKCJI_STACJI[el.station_type] ?? 'Stacja SN/nN'),
+    ),
+    w('Podstawa rodzaju', rodzaj?.przyczynaPl ?? null),
+    w('Funkcja stacji', ETYKIETA_FUNKCJI_STACJI[el.station_type] ?? null),
     w('Konstrukcja', el.construction_type ?? null),
     w('Oznaczenie', el.designation ?? null),
     wr('Liczba szyn', el.bus_refs.length),
@@ -486,7 +533,11 @@ function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
  * fixture z KOMPLETEM pól} sprawdza, że KAŻDY typ zwraca >= 1 wiersz —
  * brak wpisu (nowy typ w `EnergyNetworkModel`) jest czerwony.
  */
-function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWlasciwosci[] {
+function wlasciwosciKatalogoweWgTypu(
+  typ: string,
+  element: ENMElement,
+  model: EnergyNetworkModel,
+): WierszWlasciwosci[] {
   switch (typ) {
     case 'szyna':
       return wlasciwosciSzyny(element as unknown as Bus);
@@ -509,7 +560,7 @@ function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWl
     case 'bateria_kondensatorow':
       return wlasciwosciBaterii(element as unknown as ShuntCapacitor);
     case 'stacja':
-      return wlasciwosciStacji(element as unknown as Substation);
+      return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
       return wlasciwosciPola(element as unknown as Bay);
     case 'wezel':
@@ -531,8 +582,12 @@ function wlasciwosciKatalogoweWgTypu(typ: string, element: ENMElement): WierszWl
   }
 }
 
-function sekcjaWlasciwosciKatalogowych(typ: string, element: ENMElement): SekcjaWlasciwosci | null {
-  const wiersze = wlasciwosciKatalogoweWgTypu(typ, element);
+function sekcjaWlasciwosciKatalogowych(
+  typ: string,
+  element: ENMElement,
+  model: EnergyNetworkModel,
+): SekcjaWlasciwosci | null {
+  const wiersze = wlasciwosciKatalogoweWgTypu(typ, element, model);
   if (wiersze.length === 0) return null;
   return { id: 'katalogowe', tytul: 'Właściwości katalogowe', wiersze };
 }
@@ -546,7 +601,7 @@ export function mapowanieObiektuInspektora(
   const znaleziony = znajdzElement(model, id);
   if (!znaleziony) return null;
   const { element, typ, typEtykieta } = znaleziony;
-  const sekcjaKatalogowa = sekcjaWlasciwosciKatalogowych(typ, element);
+  const sekcjaKatalogowa = sekcjaWlasciwosciKatalogowych(typ, element, model);
   return {
     id: element.id,
     typ,

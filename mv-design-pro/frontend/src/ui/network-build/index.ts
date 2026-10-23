@@ -5,7 +5,6 @@
  */
 
 export { ProcessPanel } from './ProcessPanel';
-export { ReadinessBar } from './ReadinessBar';
 export {
   useNetworkBuildStore,
   useNetworkBuildDerived,

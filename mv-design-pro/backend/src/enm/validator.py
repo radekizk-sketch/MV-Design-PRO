@@ -8,7 +8,8 @@ Komunikaty po polsku.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from network_model.catalog.governance import (
@@ -19,6 +20,7 @@ from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
 )
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
     pasmo_napieciowe,
@@ -31,6 +33,7 @@ from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
 from .migrations.nn_field_specs_promocja import (
+    META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
 )
 from .models import (
@@ -40,7 +43,14 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
+from .nazwy_elementow import nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
+from .rodzaj_stacji import (
+    KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+    KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
+    RodzajStacji,
+    rodzaje_stacji,
+)
 from .severity import (
     SEVERITY_BLOCKER,
     SEVERITY_IMPORTANT,
@@ -55,15 +65,24 @@ from .severity import (
     severity_rank,
 )
 from .slownik_komunikatow import (
+    NAZWY_RODZAJOW_STACJI_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
     nazwa_rodzaju_generatora,
     opis_elementu,
+    opis_nazwy,
     opis_obiektu,
     pole,
 )
 from .topology import derive
+from .tor_pola import (
+    KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
+    OPERACJA_PRZEPIECIA,
+    naruszenia_zasady_toru,
+)
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .wartosci_projektanta import blad_wartosci_projektanta_elementu, rodzina_generatora
+from .zajetosc_pol import zajetosc_pol
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
@@ -75,6 +94,23 @@ def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
     return ", ".join(
         str(getattr(aparat, "designation", None) or "aparat bez oznaczenia") for aparat in aparaty
     )
+
+
+def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str | None, str | None]:
+    """Nazwa pola nN (`Substation.meta.nn_field_specs`) o danym `field_ref` i nazwa
+    jego stacji — do pozycji gotowości aparatu z automigracji; ``(None, None)``,
+    gdy wpisu nie ma (ref osierocony)."""
+    if not isinstance(field_ref, str) or not field_ref:
+        return None, None
+    for stacja in enm.substations:
+        meta = stacja.meta if isinstance(stacja.meta, dict) else {}
+        for spec in meta.get("nn_field_specs") or []:
+            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
+                # Jedna reguła nazwy (`network_model.nazwy`): pusty napis i same spacje
+                # to brak nazwy — także dla nazwy stacji, bo zdanie pozycji gotowości
+                # opisuje pole tylko wtedy, gdy obie nazwy są nadane.
+                return nazwa_nadana(spec.get("name")), nazwa_nadana(stacja.name)
+    return None, None
 
 
 def _strict_port_binding_enabled() -> bool:
@@ -123,6 +159,8 @@ class ENMValidator:
 
         self._check_blockers(enm, issues)
         self._check_catalog_first(enm, issues)
+        # Zasada nr 4 (V12K-351, karta PODSTAWA-Q): wartość projektanta spoza bramy rejestru
+        self._check_wartosci_projektanta(enm, issues)
         self._check_warnings(enm, issues)
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
@@ -131,8 +169,14 @@ class ENMValidator:
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
+        # Karta POLE-ZAJĘTE: pole liniowe z więcej niż jednym odcinkiem (stan zastany)
+        self._check_line_field_single_segment(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
+        # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy
+        self._check_zasada_toru(enm, issues)
+        # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
+        self._check_rodzaj_stacji(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -310,6 +354,53 @@ class ENMValidator:
                             element_ref=trafo.ref_id,
                             modal_type="TransformerModal",
                             payload_hint={"required": "bus_assignment"},
+                        ),
+                    )
+                )
+
+        # E023: napięcie znamionowe strony transformatora w innym paśmie napięć niż szyna, do
+        # której ta strona jest przyłączona (partia integracji 11). Do tej pory model przyjmował
+        # np. transformator 15/0,4 kV wpięty między szyny 110 kV i 15 kV (pozycja katalogu
+        # SN/nN przypisana transformatorowi GPZ) — przekładnia, impedancja i współczynnik
+        # korekcyjny K_T (IEC 60909-0 eq. 12a, c strony dolnej) liczyły się z napięć, których
+        # sieć nie ma, a wynik wychodził bez ostrzeżenia. Porównanie PASMEM (nN/SN/WN, jedno
+        # źródło `pasma_napieciowe`), nie wartością: napięcie znamionowe uzwojenia różni się od
+        # napięcia sieci w obrębie pasma (np. 15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV).
+        napiecia_szyn = {b.ref_id: b.voltage_kv for b in enm.buses}
+        for trafo in enm.transformers:
+            for strona, napiecie_znamionowe, szyna_ref in (
+                ("górnego", trafo.uhv_kv, trafo.hv_bus_ref),
+                ("dolnego", trafo.ulv_kv, trafo.lv_bus_ref),
+            ):
+                napiecie_szyny = napiecia_szyn.get(szyna_ref)
+                if napiecie_szyny is None or napiecie_szyny <= 0 or napiecie_znamionowe <= 0:
+                    continue  # brak szyny i napięcia zerowe zgłaszają inne kontrole
+                pasmo_uzwojenia = pasmo_napieciowe(napiecie_znamionowe)
+                pasmo_szyny = pasmo_napieciowe(napiecie_szyny)
+                if pasmo_uzwojenia == pasmo_szyny:
+                    continue
+                issues.append(
+                    ValidationIssue(
+                        code="E023",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis_obiektu(trafo, 'Transformator')}: napięcie znamionowe "
+                            f"strony {strona} napięcia {napiecie_znamionowe:g} kV (pasmo "
+                            f"{pasmo_uzwojenia}) nie pasuje do szyny "
+                            f"{opis_elementu(enm, szyna_ref, 'szyna')} "
+                            f"{napiecie_szyny:g} kV (pasmo {pasmo_szyny})."
+                        ),
+                        element_refs=[trafo.ref_id, szyna_ref],
+                        wizard_step_hint="K5",
+                        suggested_fix=(
+                            "Przypisz transformatorowi pozycję katalogu o napięciach "
+                            "znamionowych zgodnych z szynami, do których jest przyłączony."
+                        ),
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "catalog_ref"},
                         ),
                     )
                 )
@@ -1197,6 +1288,57 @@ class ENMValidator:
                     )
                 )
 
+    def _check_wartosci_projektanta(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E011: wartość projektanta (``overrides``) maszyny wirującej albo aparatu SN spoza
+        bramy rejestru wartości roboczych (parametr innej rodziny, liczba poza zakresem, tekst,
+        parametr powtórzony).
+
+        Operacje zapisu odmawiają takiej listy (``enm.wartosci_projektanta``); do modelu trafia
+        wyłącznie z pliku albo sprzed bramy. Obliczenie nie może jej przyjąć ani pominąć po
+        cichu (pominięcie zastąpiłoby wartość projektanta tabliczką albo propozycją bez słowa)
+        — blokada z akcją naprawczą: sekcja wartości projektanta w kreatorze edycji parametrów
+        (zapis listy z formularza usuwa wpisy spoza rodziny). Generator spoza maszyn wirujących
+        jest pominięty — żaden tor obliczeń jego listy nie czyta.
+        """
+        elementy: list[tuple[str, Any, str]] = [
+            ("generators", gen, "Źródło")
+            for gen in enm.generators
+            if rodzina_generatora(gen.gen_type) is not None
+        ]
+        elementy.extend(("branches", galaz, "Aparat łączeniowy SN") for galaz in enm.branches)
+        for kolekcja, element, rodzaj in elementy:
+            if not element.overrides:
+                continue
+            blad = blad_wartosci_projektanta_elementu(
+                kolekcja,
+                element.model_dump(mode="json"),
+                opis_pl=opis_obiektu(element, rodzaj),
+            )
+            if blad is None:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E011",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"{opis_obiektu(element, rodzaj)} ma wartość projektanta, której "
+                        f"obliczenie nie może przyjąć: {blad}"
+                    ),
+                    element_refs=[element.ref_id],
+                    wizard_step_hint="K4",
+                    suggested_fix=(
+                        "Popraw albo usuń wartość projektanta w parametrach elementu i zapisz."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=element.ref_id,
+                        payload_hint={"required": "overrides"},
+                    ),
+                )
+            )
+
     # ------------------------------------------------------------------
     # INFO (I001-I002)
     # ------------------------------------------------------------------
@@ -1469,6 +1611,210 @@ class ENMValidator:
                     ),
                 )
             )
+
+    def _check_zasada_toru(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W042: element przyłączony do szyny głównej stacji z pominięciem pola (POLA-W-TORZE).
+
+        Aparat pola jest w torze prądowym elementu, któremu pole służy; element leżący na szynie
+        głównej obok pola (połówka odcinka, strona górna transformatora) zostawia aparat pola
+        martwym elektrycznie — otwarcie pola nic nie odłącza, a prąd aparatu jest zerowy. Stan
+        zastany modeli zbudowanych przed kartą: modele NIE są migrowane (zasady inżynierskie
+        repo), walidator wskazuje element i pole, a akcja naprawcza przepina element operacją
+        `przepnij_element_na_pole`. Poziom IMPORTANT: wynik obliczeń sieci jest poprawny,
+        błędny jest tor aparatu pola (sprawdzenia aparatu, zabezpieczenia pola, łączenia).
+        Predykat: JEDNO źródło `enm.tor_pola.naruszenia_zasady_toru`.
+        """
+        widok = {
+            "substations": [
+                {"ref_id": s.ref_id, "name": s.name, "bus_refs": list(s.bus_refs), "meta": s.meta}
+                for s in enm.substations
+            ],
+            "branches": [
+                {
+                    "ref_id": b.ref_id,
+                    "name": b.name,
+                    "type": getattr(b, "type", None),
+                    "from_bus_ref": getattr(b, "from_bus_ref", None),
+                    "to_bus_ref": getattr(b, "to_bus_ref", None),
+                }
+                for b in enm.branches
+            ],
+            "transformers": [
+                {
+                    "ref_id": t.ref_id,
+                    "name": t.name,
+                    "hv_bus_ref": t.hv_bus_ref,
+                    "lv_bus_ref": t.lv_bus_ref,
+                }
+                for t in enm.transformers
+            ],
+            "sources": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.sources],
+            "loads": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.loads],
+            "generators": [{"ref_id": e.ref_id, "bus_ref": e.bus_ref} for e in enm.generators],
+        }
+        for naruszenie in naruszenia_zasady_toru(widok):
+            element = opis_nazwy(
+                naruszenie.element_name,
+                "Odcinek" if naruszenie.rodzaj_elementu == "odcinek" else "Transformator",
+            )
+            stacja = opis_nazwy(naruszenie.station_name, "stacji")
+            if naruszenie.field_ref is not None:
+                naprawa = (
+                    "Przepnij element na zacisk wolnego pola — aparat pola wejdzie w tor prądowy."
+                )
+                fix = FixAction(
+                    action_type="OPEN_MODAL",
+                    element_ref=naruszenie.element_ref,
+                    modal_type=OPERACJA_PRZEPIECIA,
+                    payload_hint={
+                        "element_ref": naruszenie.element_ref,
+                        "field_ref": naruszenie.field_ref,
+                        "station_ref": naruszenie.station_ref,
+                    },
+                )
+            else:
+                naprawa = (
+                    "Dodaj w konfiguratorze stacji pole, które posłuży temu elementowi, "
+                    "i przepnij element na jego zacisk."
+                )
+                fix = FixAction(
+                    action_type="OPEN_MODAL",
+                    element_ref=naruszenie.station_ref,
+                    modal_type="add_sn_bay",
+                    payload_hint={
+                        "bay_role": (
+                            "TR" if naruszenie.rodzaj_elementu == "transformator" else "OUT"
+                        )
+                    },
+                )
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{element} jest przyłączony do szyny {stacja} z pominięciem pola "
+                        "rozdzielnicy — aparat pola nie leży w jego torze prądowym (otwarcie "
+                        "pola go nie odłącza, a przez aparat nie płynie jego prąd)."
+                    ),
+                    element_refs=[
+                        naruszenie.element_ref,
+                        naruszenie.station_ref,
+                        *([naruszenie.field_ref] if naruszenie.field_ref else []),
+                    ],
+                    wizard_step_hint="K3",
+                    suggested_fix=naprawa,
+                    fix_action=fix,
+                )
+            )
+
+    @staticmethod
+    def _rodzaje_stacji(enm: EnergyNetworkModel) -> dict[str, RodzajStacji]:
+        """Rodzaj każdej stacji z JEDNEJ reguły `enm.rodzaj_stacji` (widok słownikowy modelu)."""
+        return rodzaje_stacji(
+            {
+                "substations": [
+                    {
+                        "ref_id": s.ref_id,
+                        "id": s.id,
+                        "name": s.name,
+                        "station_type": s.station_type,
+                        "bus_refs": list(s.bus_refs),
+                        "meta": s.meta,
+                    }
+                    for s in enm.substations
+                ],
+                "branches": [
+                    {
+                        "ref_id": b.ref_id,
+                        "type": getattr(b, "type", None),
+                        "from_bus_ref": getattr(b, "from_bus_ref", None),
+                        "to_bus_ref": getattr(b, "to_bus_ref", None),
+                        "meta": b.meta,
+                    }
+                    for b in enm.branches
+                ],
+                "bays": [
+                    {
+                        "ref_id": b.ref_id,
+                        "name": b.name,
+                        "substation_ref": b.substation_ref,
+                        "bay_role": b.bay_role,
+                        "meta": b.meta,
+                    }
+                    for b in enm.bays
+                ],
+            }
+        )
+
+    def _check_rodzaj_stacji(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W043 / W044: rodzaj stacji wobec topologii (karta ETYKIETA-STACJI-PRZELOTOWEJ).
+
+        Rodzaj stacji jest WYPROWADZANY z topologii (`enm.rodzaj_stacji`, `SLD_CAD_SPEC_V3`
+        §19.3, V12K-034), a deklaracja `Substation.station_type` służy wyłącznie walidacji:
+        W043 — deklaracja różni się od rodzaju wyprowadzonego (rysunek, drzewo, karty
+        pokazują wyprowadzony; akcja naprawcza zmienia deklarację operacją
+        `update_element_parameters`, alternatywą jest zmiana pól w konfiguratorze stacji);
+        W044 — pole rozdzielnicy SN o roli nierozpoznanej nie liczy się do rodzaju (akcja:
+        wskazanie roli pola w konfiguratorze). Poziom IMPORTANT: obliczenia sieci są poprawne,
+        niespójna jest dokumentacja stacji (deklaracja wobec zbudowanego układu).
+        """
+        for rodzaj in self._rodzaje_stacji(enm).values():
+            stacja = opis_nazwy(rodzaj.station_name, "Stacja")
+            if not rodzaj.zgodny_z_deklaracja and rodzaj.deklaracja is not None:
+                deklarowany = NAZWY_RODZAJOW_STACJI_PL[rodzaj.deklaracja]
+                issues.append(
+                    ValidationIssue(
+                        code=KOD_WALIDATORA_RODZAJ_NIEZGODNY,
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{stacja} jest zadeklarowana jako {deklarowany}, a z topologii "
+                            f"wynika stacja {rodzaj.nazwa_pl}: {rodzaj.przyczyna_pl}. Schemat, "
+                            "drzewo projektu i karty pokazują rodzaj wynikający z topologii."
+                        ),
+                        element_refs=[rodzaj.station_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            f"Zmień deklarację rodzaju stacji na „{rodzaj.nazwa_pl}” albo "
+                            "dostosuj pola rozdzielnicy SN w konfiguratorze stacji do rodzaju "
+                            f"„{deklarowany}”."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=rodzaj.station_ref,
+                            modal_type="update_element_parameters",
+                            payload_hint={
+                                "element_ref": rodzaj.station_ref,
+                                "field": "station_type",
+                                "value": rodzaj.rodzaj,
+                            },
+                        ),
+                    )
+                )
+            for pole_sn in rodzaj.pola_nierozpoznane:
+                issues.append(
+                    ValidationIssue(
+                        code=KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis_nazwy(pole_sn.nazwa, 'Pole SN')} w "
+                            f"{opis_nazwy(rodzaj.station_name, 'stacji')} ma rolę spoza "
+                            "słownika ról pól rozdzielnicy SN — nie liczy się do rodzaju stacji "
+                            f"(pola liniowe, sprzęgło); rodzaj „{rodzaj.nazwa_pl}” wyznaczono "
+                            "bez tego pola."
+                        ),
+                        element_refs=[rodzaj.station_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            "Przejdź do stacji i zastąp to pole polem o znanej roli (liniowe "
+                            "wejściowe, wyjściowe, odgałęźne, transformatorowe, sprzęgła albo "
+                            "pomiarowe)."
+                        ),
+                        fix_action=FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT",
+                            element_ref=rodzaj.station_ref,
+                        ),
+                    )
+                )
 
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
@@ -1808,7 +2154,7 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'pole') for ref in offending_bays))}"
                             ") nie są podpięte do szyny SN. Ciągłość SN nie może "
@@ -1821,25 +2167,33 @@ class ENMValidator:
                             "(wspólna szyna SN)."
                         ),
                         fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                            # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                            # do elementu, przy którym projektant naprawia układ.
+                            action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=sub.ref_id,
-                            modal_type="SubstationModal",
-                            payload_hint={"required": "through_station_mv_bus"},
                         ),
                     )
                 )
                 continue
 
-            if len(mv_buses_used) > 1:
+            # POLA-W-TORZE: szyny SN stacji połączone aparatami rozdzielnicy (sekcje za
+            # sprzęgłem, część kliencka za polem układu pomiarowego energii) tworzą JEDNĄ
+            # magistralę SN stacji — ciągłość nie przechodzi przez nN ani transformator.
+            # Grupę wyznacza graf aparatów łączeniowych SN (bez impedancji), nie tożsamość szyny.
+            grupy_magistrali = {
+                self._grupa_magistrali_sn(enm, szyna, bus_by_ref) for szyna in mv_buses_used
+            }
+            if len(mv_buses_used) > 1 and len(grupy_magistrali) > 1:
                 issues.append(
                     ValidationIssue(
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            f"{opis_obiektu(sub, 'Stacja')}: pola liniowe wejściowe "
                             "i wyjściowe podpięte do różnych szyn SN ("
                             f"{', '.join(sorted(opis_elementu(enm, ref, 'szyna') for ref in mv_buses_used))}"
-                            "). Ciągłość SN przez stację przelotową wymaga wspólnej magistrali SN."
+                            "). Ciągłość SN między polem liniowym wejściowym a polem liniowym "
+                            "wyjściowym stacji wymaga wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
@@ -1848,13 +2202,116 @@ class ENMValidator:
                             "stacji."
                         ),
                         fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                            # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                            # do elementu, przy którym projektant naprawia układ.
+                            action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=sub.ref_id,
-                            modal_type="SubstationModal",
-                            payload_hint={"required": "through_station_mv_bus"},
                         ),
                     )
                 )
+
+    @staticmethod
+    def _grupa_magistrali_sn(
+        enm: EnergyNetworkModel, szyna: str, bus_by_ref: Mapping[str, object]
+    ) -> frozenset[str]:
+        """Szyny SN osiągalne ze `szyna` przez aparaty łączeniowe (wyłącznik, rozłącznik,
+        odłącznik, sprzęgło, bezpiecznik) — jedna magistrala rozdzielnicy stacji. Stan
+        łącznika nie ma znaczenia (struktura rozdzielnicy, nie stan ruchowy)."""
+        rodzaje = {"breaker", "switch", "disconnector", "bus_coupler", "fuse"}
+        sasiedzi: dict[str, set[str]] = {}
+        for galaz in enm.branches:
+            if getattr(galaz, "type", None) not in rodzaje:
+                continue
+            a = getattr(galaz, "from_bus_ref", None)
+            b = getattr(galaz, "to_bus_ref", None)
+            if isinstance(a, str) and isinstance(b, str):
+                sasiedzi.setdefault(a, set()).add(b)
+                sasiedzi.setdefault(b, set()).add(a)
+        grupa = {szyna}
+        do_odwiedzenia = [szyna]
+        while do_odwiedzenia:
+            for nastepna in sasiedzi.get(do_odwiedzenia.pop(), ()):
+                if nastepna not in grupa and nastepna in bus_by_ref:
+                    grupa.add(nastepna)
+                    do_odwiedzenia.append(nastepna)
+        return frozenset(grupa)
+
+    def _check_line_field_single_segment(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E022: z jednego pola liniowego SN wychodzi więcej niż jeden odcinek.
+
+        Kanon (dyrektywa właściciela 2026-07-17): jedno pole liniowe = jeden odcinek. Operacje
+        domenowe odmawiają drugiego kabla (`field.line_field_occupied`), ale model wczytany z
+        archiwum albo zbudowany przed kartą POLE-ZAJĘTE może ten stan nieść. Zajętość liczy
+        JEDNO źródło prawdy (`enm.zajetosc_pol`, przyłączenie fizyczne: reguły R1 i R2).
+        """
+        widok = {
+            "substations": [
+                {"ref_id": s.ref_id, "name": s.name, "meta": s.meta} for s in enm.substations
+            ],
+            "branches": [
+                {
+                    "ref_id": b.ref_id,
+                    "type": getattr(b, "type", None),
+                    "from_bus_ref": getattr(b, "from_bus_ref", None),
+                    "to_bus_ref": getattr(b, "to_bus_ref", None),
+                    "meta": b.meta,
+                }
+                for b in enm.branches
+            ],
+            "corridors": [
+                {"ref_id": c.ref_id, "ordered_segment_refs": list(c.ordered_segment_refs)}
+                for c in enm.corridors
+            ],
+        }
+        stacje = {s.ref_id: s for s in enm.substations}
+        nazwy_pol: dict[object, object] = {b.ref_id: b.name for b in enm.bays}
+        for zajetosc in zajetosc_pol(widok).values():
+            if not zajetosc.przeciazone:
+                continue
+            stacja = stacje.get(zajetosc.station_ref)
+            spec = next(
+                (
+                    f
+                    for f in ((stacja.meta if stacja else {}) or {}).get("field_specs") or []
+                    if isinstance(f, dict) and f.get("field_ref") == zajetosc.field_ref
+                ),
+                {},
+            )
+            odcinki = ", ".join(
+                opis_elementu(enm, ref, "odcinek") for ref in zajetosc.odcinki_fizyczne
+            )
+            issues.append(
+                ValidationIssue(
+                    code="E022",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"{nazwa_pola_ze_specyfikacji(spec, nazwy_pol)} w "
+                        f"{opis_obiektu(stacja, 'stacji')}: z jednego pola liniowego wychodzi "
+                        f"{len(zajetosc.odcinki_fizyczne)} odcinków ({odcinki}). Z jednego "
+                        "pola liniowego wolno wyprowadzić tylko jeden kabel."
+                    ),
+                    element_refs=[
+                        zajetosc.station_ref,
+                        zajetosc.field_ref,
+                        *zajetosc.odcinki_fizyczne,
+                    ],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Dodaj w rozdzielnicy nowe pole liniowe i przenieś na nie nadmiarowy "
+                        "odcinek albo usuń zdublowany odcinek."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=zajetosc.station_ref,
+                        payload_hint={
+                            "action": "move_segment_to_free_line_field",
+                            "field_ref": zajetosc.field_ref,
+                        },
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
@@ -2199,23 +2656,39 @@ class ENMValidator:
                 continue
             branch_meta = branch.meta if isinstance(branch.meta, dict) else {}
             if branch_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA):
+                # Karta SLD-SUBSTRAT (kontynuacja): pozycja gotowości NAZYWA pole nN,
+                # z którego aparat powstał, i jego stację, a akcja naprawcza wskazuje
+                # TEN aparat i TO pole — projektant nie szuka, którego z odpływów
+                # dotyczy brak. Brak katalogu blokuje analizy czytające dane aparatu
+                # nN (bramka kwalifikacji SWZ nN), nie rysunek.
+                field_ref = branch_meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
+                nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, field_ref)
+                opis_pola = (
+                    f" — pole „{nazwa_pola}” stacji „{nazwa_stacji}”"
+                    if nazwa_pola and nazwa_stacji
+                    else ""
+                )
                 issues.append(
                     ValidationIssue(
                         code="W061",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"{opis_obiektu(branch, 'Gałąź nN')} (z automigracji pól nN) nie ma "
-                            "wiązania z katalogiem kabli nN albo aparatów nN — dane "
-                            "katalogowe pola źródłowego nie były dostępne przy migracji."
+                            f"{opis_obiektu(branch, 'Gałąź nN')}{opis_pola} (z automigracji "
+                            "pól nN) nie ma wiązania z katalogiem aparatów nN — pole nie "
+                            "wskazywało pozycji katalogu."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K6",
-                        suggested_fix="Przypisz element z katalogu kabli nN albo aparatów nN.",
+                        suggested_fix="Przypisz aparat z katalogu aparatów nN.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=branch.ref_id,
                             modal_type="BranchModal",
-                            payload_hint={"required": "catalog_ref"},
+                            payload_hint={
+                                "required": "catalog_ref",
+                                "catalog_namespace": "APARAT_NN",
+                                "field_ref": field_ref,
+                            },
                         ),
                     )
                 )
@@ -2385,10 +2858,10 @@ class ENMValidator:
                         "wprowadź logikę SZR."
                     ),
                     fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                        # Formularz „SubstationModal" nie istnieje we froncie (akcja martwa) — nawigacja
+                        # do elementu, przy którym projektant naprawia układ.
+                        action_type="NAVIGATE_TO_ELEMENT",
                         element_ref=bus_ref,
-                        modal_type="SubstationModal",
-                        payload_hint={"required": "nn_parallel_sources"},
                     ),
                 )
             )

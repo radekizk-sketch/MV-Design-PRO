@@ -147,17 +147,28 @@ def zbuduj_indeks_nazw(model: object) -> dict[str, str]:
     return indeks
 
 
-def nazwa_nadana_po_identyfikatorze(model: object, element_ref: object) -> str | None:
-    """Nazwa nadana elementowi o identyfikatorze `element_ref` albo `None` (elementu nie ma
-    w migawce albo nie ma nazwy). Postać dla zdań komunikatów, które same dobierają słowo
-    rodzaju (`slownik_komunikatow.opis_elementu`); etykiety wyników używają
-    `nazwa_po_identyfikatorze` (opis rodzaju albo jawny brak elementu)."""
+def element_po_identyfikatorze(model: object, element_ref: object) -> object | None:
+    """Element migawki o identyfikatorze `element_ref` albo `None`, gdy go w migawce nie ma.
+
+    Rozróżnia „elementu nie ma" od „element nie ma nazwy" — zdanie komunikatu nie może
+    opisać elementu spoza modelu jako elementu bez nazwy (partia integracji 10).
+    """
     if not isinstance(element_ref, str) or not element_ref:
         return None
     for _kolekcja, ref, element in _elementy_migawki(model):
         if ref == element_ref:
-            return nazwa_nadana_elementu(element)
+            return element
     return None
+
+
+def nazwa_nadana_po_identyfikatorze(model: object, element_ref: object) -> str | None:
+    """Nazwa nadana elementowi o identyfikatorze `element_ref` albo `None` (elementu nie ma
+    w migawce albo nie ma nazwy). Postać dla zdań, które same rozstrzygają obecność elementu
+    (`scenariusze._nieprzystaje`); `slownik_komunikatow.opis_elementu` rozróżnia oba braki
+    przez `element_po_identyfikatorze`, etykiety wyników używają `nazwa_po_identyfikatorze`
+    (opis rodzaju albo jawny brak elementu)."""
+    element = element_po_identyfikatorze(model, element_ref)
+    return None if element is None else nazwa_nadana_elementu(element)
 
 
 #: Pola nazwy pozycji katalogu w kolejności pierwszeństwa (typy katalogu niosą `name`,

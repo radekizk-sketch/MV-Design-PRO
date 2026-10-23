@@ -50,7 +50,8 @@ vi.mock('../../../../ui/app-state', () => ({
 
 vi.mock('../../../../ui/study-cases/api', () => ({
   createRun: (...args: unknown[]) => createRunMock(...args),
-  executeRun: (...args: unknown[]) => executeRunMock(...args),
+  // Karta DYNAMIKA-W-TLE: ekran zleca bieg i odpytuje do stanu końcowego jedną funkcją klienta.
+  executeRunAndWait: (...args: unknown[]) => executeRunMock(...args),
   getRunResults: (...args: unknown[]) => getRunResultsMock(...args),
 }));
 

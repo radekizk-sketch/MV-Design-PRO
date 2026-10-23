@@ -87,6 +87,11 @@ def _converter(
         qmin_mvar=-0.6,
         qmax_mvar=0.6,
         pq_curve=pq_curve,
+        # Jakość DATASHEET ratingu wymaga rekordu z karty producenta (ZWERYFIKOWANY) —
+        # karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15); rekord bez karty daje ESTIMATED.
+        verification_status=(
+            "ZWERYFIKOWANY" if jakosc_pn == "DATASHEET" else "CZESCIOWO_ZWERYFIKOWANY"
+        ),
         card_field_status=(
             None
             if jakosc_pn == "DATASHEET"

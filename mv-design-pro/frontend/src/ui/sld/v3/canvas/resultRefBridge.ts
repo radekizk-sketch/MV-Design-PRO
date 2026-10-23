@@ -23,8 +23,12 @@
  * ZERO fizyki (§0): most nie czyta ani jednej wielkości wyniku — operuje na
  * refach i deklaracjach modelu.
  */
-import type { Bus, EnergyNetworkModel, Substation, Transformer } from '../../../../types/enm';
-import { pickStationBus } from '../../shared/stationBusResolution';
+import type { Bus, EnergyNetworkModel, Substation } from '../../../../types/enm';
+import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
+import {
+  kontekstTransformatorowStacji,
+  selectStationDistributionTransformers,
+} from '../../../shared/transformatoryStacji';
 import type { ResultLabelKind } from './resultLabelTemplates';
 
 /** Sufiksy refów rysunkowych szyn stacji (`compose/station.ts`) — jedyne dwa
@@ -107,10 +111,9 @@ function fieldSpecsOf(substation: Substation): readonly FieldSpecLike[] {
 export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): ResultRefBridge {
   if (!snapshot) return EMPTY_BRIDGE;
   const buses = busIndex(snapshot);
-  const transformerByRef = new Map<string, Transformer>(
-    (snapshot.transformers ?? []).map((tr) => [tr.ref_id, tr]),
-  );
   const bridge = new Map<string, ResultRefBinding>();
+  // Kontekst jedynej reguły transformatorów stacji raz na migawkę (pętla po stacjach).
+  const kontekstTransformatorow = kontekstTransformatorowStacji(snapshot);
   for (const substation of snapshot.substations ?? []) {
     const stationRef = substation.ref_id;
     const snBusRef = stationFieldBusRef(substation);
@@ -127,7 +130,9 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
     if (nn.ref) {
       bridge.set(`${stationRef}${STATION_LV_BUS_SUFFIX}`, { resultRef: nn.ref, kind: 'bus' });
     }
-    const transformerRefs = (substation.transformer_refs ?? []).filter((ref) => transformerByRef.has(ref));
+    // SZYNY-STACJI-LUSTRO: transformatory pola TR = transformatory ROZDZIELCZE stacji z jednej
+    // reguły (transformator blokowy źródła DER stoi w polu źródłowym, nie w polu TR).
+    const transformerRefs = selectStationDistributionTransformers(snapshot, substation, kontekstTransformatorow).map((tr) => tr.ref_id);
     if (transformerRefs.length === 1) {
       for (const spec of fieldSpecsOf(substation)) {
         if (!spec.field_ref || String(spec.bay_role ?? '').toUpperCase() !== 'TR') continue;
@@ -139,7 +144,7 @@ export function buildResultRefBridge(snapshot: EnergyNetworkModel | null): Resul
 }
 
 // ---------------------------------------------------------------------------
-// UCZCIWY RACHUNEK POKRYCIA — cztery ROZŁĄCZNE kategorie, suma = liczba punktów
+// UCZCIWY RACHUNEK POKRYCIA — pięć ROZŁĄCZNYCH kategorii, suma = liczba punktów
 // wyniku (inwariant testowany). Wzorzec 1:1 z nakładką różnic A/B (V12K-327):
 // brak etykiety ma mieć NAZWANY powód, nigdy „po prostu nie widać".
 // ---------------------------------------------------------------------------
@@ -165,7 +170,29 @@ export function resultPointsHiddenByModel(snapshot: EnergyNetworkModel | null): 
   return hidden;
 }
 
-/** Rozkład punktów wyniku na cztery ROZŁĄCZNE kategorie (suma = `total`). */
+/** Szyny rozdzielnicy nN stacji spoza jej szyn głównych (karta SLD-SUBSTRAT): szyny za
+ *  aparatami pól nN promowanych do modelu — zacisk wyłącznika głównego nN, szyny odpływów
+ *  i pól źródeł. Należą do rozdzielnicy nN stacji, a nie do schematu SN — kanwa SN pokazuje
+ *  stację jednym symbolem z szyną nN i agregatem odbioru. Zbiór z JEDNEGO złożenia reguł
+ *  (SZYNY-STACJI-LUSTRO): strona nN szyn stacji (`stationSideBusRefs`, ta sama reguła co
+ *  agregat odbioru i szuflada) minus `Substation.bus_refs`. Zaciski pól SN leżą po stronie
+ *  SN, więc tu nie trafiają. Punkt wyniku na takiej szynie nie jest „zgubiony" — ma
+ *  nazwany powód braku etykiety na schemacie SN. */
+export function resultPointsInStationNnBoard(snapshot: EnergyNetworkModel | null): ReadonlySet<string> {
+  const refs = new Set<string>();
+  if (!snapshot) return refs;
+  const branches = snapshot.branches ?? [];
+  const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
+  for (const station of snapshot.substations ?? []) {
+    const own = new Set(station.bus_refs ?? []);
+    for (const ref of stationSideBusRefs(station, branches, busByRef, 'nn')) {
+      if (!own.has(ref)) refs.add(ref);
+    }
+  }
+  return refs;
+}
+
+/** Rozkład punktów wyniku na pięć ROZŁĄCZNYCH kategorii (suma = `total`). */
 export interface ResultPointCoverage {
   /** Wszystkie punkty payloadu (`elements`). */
   readonly total: number;
@@ -176,6 +203,9 @@ export interface ResultPointCoverage {
   /** Punkty bez szablonu treści dla tej rodziny analizy (np. gałąź w wyniku
    *  zwarciowym — rodzina `short_circuit` ma szablon wyłącznie dla szyn). */
   readonly withoutTemplate: number;
+  /** Punkty na szynach odpływów nN stacji (`resultPointsInStationNnBoard`) — element
+   *  istnieje w rozdzielnicy nN stacji, nie na schemacie SN. */
+  readonly inStationNnBoard: number;
   /** Punkty rysowalne i z szablonem, dla których nie znaleziono elementu sceny
    *  (odmowa mostu albo element spoza bieżącej sieci) — REALNY brak pokrycia. */
   readonly withoutAnchor: number;

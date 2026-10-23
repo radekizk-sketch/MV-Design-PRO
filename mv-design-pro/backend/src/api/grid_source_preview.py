@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
+from application.analyses.dobor_toru_der_sn import OpisUlozeniaKabla, dobierz_tor_der_sn
 from application.analyses.ocena_doboru_magistrali import (
     OdcinekMagistrali,
     ocen_dobor_magistrali,
@@ -13,16 +14,13 @@ from domain.generator_validation import (
     blad_wejsc_kontroli_mocy,
     moc_pozorna_z_nastawy_mva,
 )
-from enm.der_sn_validation import (
-    NN_VOLTAGE_TOLERANCE_KV,
-    SN_VOLTAGE_TOLERANCE_KV,
-    rated_current_a,
-)
-from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, HTTPException
-from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
-from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
-from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.catalog.wartosci_robocze import (
+    TolerancjaNnRozstrzygnieta,
+    tolerancja_nn_napiecia,
+)
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
@@ -38,16 +36,7 @@ from network_model.solvers.cable_voltage_drop import (
     compute_cable_voltage_drop,
 )
 from network_model.solvers.der_selection_preview import (
-    BlockTransformerCandidate,
-    BlockTransformerSelectionInput,
-    CableCandidate,
-    CableSelectionInput,
-    FieldApparatusCandidate,
-    FieldApparatusSelectionInput,
     RejectedCandidate,
-    propose_block_transformer,
-    propose_mv_cable,
-    propose_mv_field_apparatus,
 )
 from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
@@ -89,7 +78,11 @@ class GridSourcePreviewRequest(BaseModel):
     x0_ohm: float | None = Field(default=None, gt=0)
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
-    tb_s: float = Field(default=0.1, gt=0)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja sieci nN dla U_nQ w paśmie nN
+    # (wiersz nN tabeli 1 IEC 60909-0); dla SN/WN bez znaczenia. Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: brak przy U_nQ nN = wartość robocza rejestru
+    # (`wartosci_robocze.rozstrzygnij_tolerancje_nn`), nazwana w odpowiedzi (`tolerancja_nn`).
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 class GridSourcePreviewMinResponse(BaseModel):
@@ -119,22 +112,32 @@ class GridSourcePreviewResponse(BaseModel):
     z1_ohm: ComplexOhmResponse
     z0_ohm: ComplexOhmResponse | None
     formula_ref: str
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (addytywnie): klasa tolerancji sieci nN użyta w c
+    #: dla U_nQ w paśmie nN (pochodzenie: deklaracja żądania albo wartość robocza rejestru,
+    #: zdanie źródła); ``None`` dla U_nQ SN/WN (jeden wiersz tabeli 1, tolerancja bez znaczenia).
+    tolerancja_nn: dict[str, Any] | None = None
     #: CV-4.3 K7: ``None`` = nie podano danych MIN (scenariusz MIN biegu liczony z danych
     #: MAX z jawnym założeniem ``source.sk_min_missing``). Nazwa ``scenariusz_min`` (nie
     #: ``min``): nazwy pól kontraktów trafiają do inwentarza guarda podstawień.
     scenariusz_min: GridSourcePreviewMinResponse | None = None
 
 
+def _klasa_tolerancji(
+    tolerancja: TolerancjaNnRozstrzygnieta | None,
+) -> TolerancjaNapieciaNn | None:
+    return tolerancja.wartosc if tolerancja is not None else None
+
+
 def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinResponse | None:
     if request.sk3_min_mva is None and request.ik3_min_ka is None:
         if request.rx_ratio_min is not None:
-            raise ValueError(
+            raise OdmowaDanychError(
                 "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
                 "bez własnej mocy zwarciowej liczy się z danych MAX."
             )
         return None
     if request.short_circuit_mode == "IMPEDANCE":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
             "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń."
         )
@@ -148,7 +151,7 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
         )
         tryb = "PRAD_ZWARCIOWY"
     if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Sk3 min ({sk_min_mva:g} MVA) przekracza Sk3 max ({request.sk3_mva:g} MVA) — dane "
             "scenariusza minimalnego muszą być nie większe niż maksymalnego."
         )
@@ -162,6 +165,10 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
         GridSourcePreviewInput(
             voltage_kv=request.voltage_kv,
             short_circuit_mode="SHORT_CIRCUIT_POWER",
+            scenariusz="MIN",
+            tolerancja_nn=_klasa_tolerancji(
+                tolerancja_nn_napiecia(request.voltage_kv, request.lv_voltage_tolerance)
+            ),
             sk3_mva=sk_min_mva,
             rx_ratio=rx_min,
             zero_sequence_enabled=request.zero_sequence_enabled,
@@ -169,7 +176,6 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
             x0_ohm=request.x0_ohm,
             z0_z1_ratio=request.z0_z1_ratio,
             tk_s=request.tk_s,
-            tb_s=request.tb_s,
         )
     )
     return GridSourcePreviewMinResponse(
@@ -194,26 +200,25 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
 def preview_grid_source_short_circuit(
     request: GridSourcePreviewRequest,
 ) -> GridSourcePreviewResponse:
-    try:
-        result = compute_grid_source_preview(
-            GridSourcePreviewInput(
-                voltage_kv=request.voltage_kv,
-                short_circuit_mode=request.short_circuit_mode,
-                sk3_mva=request.sk3_mva,
-                rx_ratio=request.rx_ratio,
-                r_ohm=request.r_ohm,
-                x_ohm=request.x_ohm,
-                zero_sequence_enabled=request.zero_sequence_enabled,
-                r0_ohm=request.r0_ohm,
-                x0_ohm=request.x0_ohm,
-                z0_z1_ratio=request.z0_z1_ratio,
-                tk_s=request.tk_s,
-                tb_s=request.tb_s,
-            )
+    tolerancja_nn = tolerancja_nn_napiecia(request.voltage_kv, request.lv_voltage_tolerance)
+    result = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=request.voltage_kv,
+            short_circuit_mode=request.short_circuit_mode,
+            scenariusz="MAX",
+            tolerancja_nn=_klasa_tolerancji(tolerancja_nn),
+            sk3_mva=request.sk3_mva,
+            rx_ratio=request.rx_ratio,
+            r_ohm=request.r_ohm,
+            x_ohm=request.x_ohm,
+            zero_sequence_enabled=request.zero_sequence_enabled,
+            r0_ohm=request.r0_ohm,
+            x0_ohm=request.x0_ohm,
+            z0_z1_ratio=request.z0_z1_ratio,
+            tk_s=request.tk_s,
         )
-        blok_min = _podglad_min(request)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
+    blok_min = _podglad_min(request)
 
     return GridSourcePreviewResponse(
         sk_mva=result.sk_mva,
@@ -229,6 +234,7 @@ def preview_grid_source_short_circuit(
             else None
         ),
         formula_ref=result.formula_ref,
+        tolerancja_nn=tolerancja_nn.to_dict() if tolerancja_nn is not None else None,
         scenariusz_min=blok_min,
     )
 
@@ -272,21 +278,18 @@ class CableVoltageDropResponse(BaseModel):
 def preview_cable_voltage_drop(
     request: CableVoltageDropRequest,
 ) -> CableVoltageDropResponse:
-    try:
-        result = compute_cable_voltage_drop(
-            CableVoltageDropInput(
-                current_a=request.current_a,
-                length_km=request.length_km,
-                r_ohm_per_km=request.r_ohm_per_km,
-                x_ohm_per_km=request.x_ohm_per_km,
-                cos_phi=request.cos_phi,
-                line_voltage_v=request.line_voltage_v,
-                flow_direction=request.flow_direction,
-                reactive_character=request.reactive_character,
-            )
+    result = compute_cable_voltage_drop(
+        CableVoltageDropInput(
+            current_a=request.current_a,
+            length_km=request.length_km,
+            r_ohm_per_km=request.r_ohm_per_km,
+            x_ohm_per_km=request.x_ohm_per_km,
+            cos_phi=request.cos_phi,
+            line_voltage_v=request.line_voltage_v,
+            flow_direction=request.flow_direction,
+            reactive_character=request.reactive_character,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return CableVoltageDropResponse(
         delta_u_v=result.delta_u_v,
@@ -323,16 +326,13 @@ class CableRatedCurrentResponse(BaseModel):
 def preview_cable_rated_current(
     request: CableRatedCurrentRequest,
 ) -> CableRatedCurrentResponse:
-    try:
-        result = compute_cable_rated_current(
-            CableRatedCurrentInput(
-                active_power_kw=request.active_power_kw,
-                cos_phi=request.cos_phi,
-                line_voltage_v=request.line_voltage_v,
-            )
+    result = compute_cable_rated_current(
+        CableRatedCurrentInput(
+            active_power_kw=request.active_power_kw,
+            cos_phi=request.cos_phi,
+            line_voltage_v=request.line_voltage_v,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return CableRatedCurrentResponse(
         rated_current_a=result.rated_current_a,
@@ -427,14 +427,11 @@ def _odcinek_magistrali(odcinek: OdcinekMagistraliRequest) -> OdcinekMagistrali:
 )
 def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMagistraliResponse:
     """Ocena doboru przekroju odcinka i ciągu magistrali SN rekordami werdyktu wyjaśnialnego."""
-    try:
-        ocena = ocen_dobor_magistrali(
-            napiecie_kv=request.napiecie_kv,
-            odcinek=_odcinek_magistrali(request.odcinek),
-            odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    ocena = ocen_dobor_magistrali(
+        napiecie_kv=request.napiecie_kv,
+        odcinek=_odcinek_magistrali(request.odcinek),
+        odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
+    )
 
     spadek = ocena.spadek_odcinka
     ciag = ocena.ciag
@@ -500,7 +497,7 @@ class CableLayingConditionsRequest(BaseModel):
             if wartosc is not None
         ]
         if podane and self.set_name != NAZWA_WLASNE:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Współczynniki {', '.join(podane)} można podać tylko dla "
                 f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma własne wartości."
             )
@@ -568,17 +565,14 @@ def preview_cable_ampacity_derating(
 ) -> CableAmpacityDeratingResponse:
     """Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego."""
     laying = request.laying_conditions
-    try:
-        derating = wspolczynniki_z_opisu(
-            laying.set_name if laying is not None else None,
-            f_grunt=laying.f_grunt if laying is not None else None,
-            f_wiazka=laying.f_wiazka if laying is not None else None,
-            f_grupa=laying.f_grupa if laying is not None else None,
-            opis_pl=laying.opis_pl if laying is not None else None,
-        )
-        effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    derating = wspolczynniki_z_opisu(
+        laying.set_name if laying is not None else None,
+        f_grunt=laying.f_grunt if laying is not None else None,
+        f_wiazka=laying.f_wiazka if laying is not None else None,
+        f_grupa=laying.f_grupa if laying is not None else None,
+        opis_pl=laying.opis_pl if laying is not None else None,
+    )
+    effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
 
     return CableAmpacityDeratingResponse(
         rated_ampacity_a=request.rated_ampacity_a,
@@ -613,16 +607,13 @@ class TransformerRatedCurrentsResponse(BaseModel):
 def preview_transformer_rated_currents(
     request: TransformerRatedCurrentsRequest,
 ) -> TransformerRatedCurrentsResponse:
-    try:
-        result = compute_transformer_rated_currents(
-            TransformerRatedCurrentsInput(
-                rated_power_kva=request.rated_power_kva,
-                primary_voltage_kv=request.primary_voltage_kv,
-                secondary_voltage_kv=request.secondary_voltage_kv,
-            )
+    result = compute_transformer_rated_currents(
+        TransformerRatedCurrentsInput(
+            rated_power_kva=request.rated_power_kva,
+            primary_voltage_kv=request.primary_voltage_kv,
+            secondary_voltage_kv=request.secondary_voltage_kv,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return TransformerRatedCurrentsResponse(
         primary_current_a=result.primary_current_a,
@@ -653,15 +644,12 @@ class ShuntCompensatorPreviewResponse(BaseModel):
 def preview_shunt_compensator(
     request: ShuntCompensatorPreviewRequest,
 ) -> ShuntCompensatorPreviewResponse:
-    try:
-        result = compute_shunt_compensator_preview(
-            ShuntCompensatorPreviewInput(
-                rated_mvar=request.rated_mvar,
-                rated_kv=request.rated_kv,
-            )
+    result = compute_shunt_compensator_preview(
+        ShuntCompensatorPreviewInput(
+            rated_mvar=request.rated_mvar,
+            rated_kv=request.rated_kv,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    )
 
     return ShuntCompensatorPreviewResponse(
         rated_mvar=result.rated_mvar,
@@ -817,120 +805,6 @@ def _rejected_response(
     ]
 
 
-def _cos_phi_doboru_kabla(
-    zrodlo: DerSelectionPreviewRequest | JawneWejsciaKontroliMocy,
-) -> float:
-    """cosφ prądu toru w doborze kabla (ΔU): jawny cosφ falownika, a bez niego 1,0
-    (sama moc czynna — człon bierny ΔU znika).
-
-    JEDNA reguła dla podglądu kreatora (żądanie podglądu) i dla sprawdzenia odstępstw
-    dokumentu DER-SN (jawne wejścia zapisane przez tor tworzenia, `api/der_sn_documents.py`)
-    — dokument liczy propozycję kabla ponownie i porównuje ją z zastosowanym przekrojem;
-    przy innym cosφ niż w doborze (dawniej zaszyte 0,95) zgłaszałby odstępstwo od
-    propozycji, której kreator nigdy nie pokazał. Podstawienie 1,0 za brak cosφ jest
-    długiem nazwanym w `solver_input_substitute_guard` (jeden wpis dla obu miejsc)."""
-    return zrodlo.cos_phi if zrodlo.cos_phi is not None else 1.0
-
-
-def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
-    candidates: list[BlockTransformerCandidate] = []
-    for record in get_sn_nn_transformer_types():
-        params = record.get("params") or {}
-        sn_mva = params.get("rated_power_mva")
-        primary_kv = params.get("voltage_hv_kv")
-        secondary_kv = params.get("voltage_lv_kv")
-        if sn_mva is None or primary_kv is None or secondary_kv is None:
-            continue
-        candidates.append(
-            BlockTransformerCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                sn_mva=float(sn_mva),
-                primary_kv=float(primary_kv),
-                secondary_kv=float(secondary_kv),
-                uk_percent=(
-                    float(params["uk_percent"]) if params.get("uk_percent") is not None else None
-                ),
-                vector_group=params.get("vector_group"),
-            )
-        )
-    return tuple(candidates)
-
-
-def _opcjonalna_liczba(value: Any) -> float | None:
-    """Liczba katalogowa albo None — brak danej nie moze stac sie zerem."""
-    return float(value) if value is not None else None
-
-
-def _cable_candidates() -> tuple[CableCandidate, ...]:
-    candidates: list[CableCandidate] = []
-    for record in get_all_cable_types():
-        params = record.get("params") or {}
-        cross = params.get("cross_section_mm2")
-        ampacity = params.get("rated_current_a")
-        r_km = params.get("r_ohm_per_km")
-        x_km = params.get("x_ohm_per_km")
-        # Katalog-first: pomijamy rekordy niekompletne (brak obciążalności/impedancji).
-        if cross is None or ampacity is None or r_km is None or x_km is None:
-            continue
-        candidates.append(
-            CableCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                cross_section_mm2=float(cross),
-                rated_current_a=float(ampacity),
-                r_ohm_per_km=float(r_km),
-                x_ohm_per_km=float(x_km),
-                voltage_rating_kv=(
-                    float(params["voltage_rating_kv"])
-                    if params.get("voltage_rating_kv") is not None
-                    else None
-                ),
-                # V12K-224: dane cieplne kandydata. Bez nich kryterium wytrzymalosci
-                # zwarciowej zyly (IEC 60949) bylo w doborze kabla ZAKODOWANE, ale
-                # nigdy nie odpalalo — zaden z 63 typow nie mial czym byc sprawdzony,
-                # a odrzucenie „wytrzymalosc_zwarciowa_niewystarczajaca" bylo martwe.
-                ith_1s_a=_opcjonalna_liczba(params.get("ith_1s_a")),
-                jth_1s_a_per_mm2=_opcjonalna_liczba(params.get("jth_1s_a_per_mm2")),
-                conductor_material=(
-                    str(params["conductor_material"])
-                    if params.get("conductor_material") is not None
-                    else None
-                ),
-                insulation=(
-                    str(params["insulation_type"])
-                    if params.get("insulation_type") is not None
-                    else None
-                ),
-                temp_operating_c=_opcjonalna_liczba(params.get("max_temperature_c")),
-                temp_short_circuit_c=_opcjonalna_liczba(params.get("short_circuit_temperature_c")),
-            )
-        )
-    return tuple(candidates)
-
-
-def _field_apparatus_candidates() -> tuple[FieldApparatusCandidate, ...]:
-    candidates: list[FieldApparatusCandidate] = []
-    for record in get_all_switch_equipment_types():
-        params = record.get("params") or {}
-        kind = params.get("equipment_kind")
-        un_kv = params.get("un_kv")
-        in_a = params.get("in_a")
-        if kind is None or un_kv is None or in_a is None:
-            continue
-        candidates.append(
-            FieldApparatusCandidate(
-                catalog_ref=str(record["id"]),
-                name=nazwa_pozycji_katalogu(record),
-                equipment_kind=str(kind),
-                un_kv=float(un_kv),
-                in_a=float(in_a),
-                ik_ka=(float(params["ik_ka"]) if params.get("ik_ka") is not None else None),
-            )
-        )
-    return tuple(candidates)
-
-
 @router.get(
     "/api/solver/cable-laying-conditions",
     response_model=CableLayingConditionsResponse,
@@ -979,25 +853,34 @@ def preview_der_selection(
     )
     if odmowa is not None:
         raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
-    try:
-        sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(
-            request.sum_active_power_mw, request.cos_phi
-        )
-        tr_result = propose_block_transformer(
-            BlockTransformerSelectionInput(
-                sum_apparent_power_mva=sum_apparent_power_mva,
-                primary_voltage_kv=request.sn_bus_voltage_kv,
-                secondary_voltage_kv=request.inverter_output_kv,
-                candidates=_block_transformer_candidates(),
-                simultaneity_factor=request.simultaneity_factor,
-                reserve_pu=request.transformer_reserve_pu,
-                loadability_pu=request.loadability_pu,
-                sn_tolerance_kv=SN_VOLTAGE_TOLERANCE_KV,
-                nn_tolerance_kv=NN_VOLTAGE_TOLERANCE_KV,
+    laying = request.laying_conditions
+    sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(request.sum_active_power_mw, request.cos_phi)
+    wynik = dobierz_tor_der_sn(
+        moc_pozorna_mva=sum_apparent_power_mva,
+        napiecie_sn_kv=request.sn_bus_voltage_kv,
+        napiecie_falownika_kv=request.inverter_output_kv,
+        dlugosc_kabla_km=request.cable_length_km,
+        nosnik_cos_phi=request,
+        wspolczynnik_jednoczesnosci=request.simultaneity_factor,
+        przeciazalnosc_pu=request.loadability_pu,
+        rezerwa_transformatora_pu=request.transformer_reserve_pu,
+        rezerwa_kabla_pu=request.cable_reserve_pu,
+        rezerwa_pola_pu=request.field_reserve_pu,
+        maks_spadek_napiecia_pct=request.max_delta_u_pct,
+        charakter_mocy_biernej=request.reactive_character,
+        ulozenie=(
+            OpisUlozeniaKabla(
+                set_name=laying.set_name,
+                f_grunt=laying.f_grunt,
+                f_wiazka=laying.f_wiazka,
+                f_grupa=laying.f_grupa,
+                opis_pl=laying.opis_pl,
             )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if laying is not None
+            else None
+        ),
+    )
+    tr_result = wynik.transformator
 
     transformer_response = BlockTransformerSelectionResponse(
         proposal=(
@@ -1023,7 +906,10 @@ def preview_der_selection(
     )
 
     # Kaskada kabla/pola zależy od prądu SN zaproponowanego TR — bez TR nie proponujemy.
-    if tr_result.proposal is None:
+    cable_result = wynik.kabel
+    field_result = wynik.aparat_pola
+    transformer_current_a = wynik.prad_transformatora_a
+    if cable_result is None or field_result is None or transformer_current_a is None:
         return DerSelectionPreviewResponse(
             sum_apparent_power_mva=sum_apparent_power_mva,
             transformer_current_a=None,
@@ -1031,50 +917,6 @@ def preview_der_selection(
             cable=None,
             field_apparatus=None,
         )
-
-    transformer_current_a = rated_current_a(tr_result.proposal.sn_mva, request.sn_bus_voltage_kv)
-    if transformer_current_a is None:
-        raise HTTPException(
-            status_code=422,
-            detail="Nie można wyznaczyć prądu znamionowego TR (moc/napięcie).",
-        )
-
-    cos_phi_load = _cos_phi_doboru_kabla(request)
-    try:
-        # F-K7: nazwa zestawu / współczynniki własne → współczynniki. Nieznany zestaw i
-        # brak opisu warunków własnych kończą się 422 (fail-closed), nie cichym
-        # przyjęciem warunków katalogowych.
-        laying = request.laying_conditions
-        derating = wspolczynniki_z_opisu(
-            laying.set_name if laying is not None else None,
-            f_grunt=laying.f_grunt if laying is not None else None,
-            f_wiazka=laying.f_wiazka if laying is not None else None,
-            f_grupa=laying.f_grupa if laying is not None else None,
-            opis_pl=laying.opis_pl if laying is not None else None,
-        )
-        cable_result = propose_mv_cable(
-            CableSelectionInput(
-                transformer_current_a=transformer_current_a,
-                length_km=request.cable_length_km,
-                line_voltage_v=kv_na_v(request.sn_bus_voltage_kv),
-                cos_phi=cos_phi_load,
-                candidates=_cable_candidates(),
-                reserve_pu=request.cable_reserve_pu,
-                max_delta_u_pct=request.max_delta_u_pct,
-                reactive_character=request.reactive_character,
-                derating=derating,
-            )
-        )
-        field_result = propose_mv_field_apparatus(
-            FieldApparatusSelectionInput(
-                transformer_current_a=transformer_current_a,
-                system_voltage_kv=request.sn_bus_voltage_kv,
-                candidates=_field_apparatus_candidates(),
-                reserve_pu=request.field_reserve_pu,
-            )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     cable_response = CableSelectionResponse(
         proposal=(

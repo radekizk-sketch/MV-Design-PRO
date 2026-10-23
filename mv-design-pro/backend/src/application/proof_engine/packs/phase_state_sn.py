@@ -1,4 +1,11 @@
-"""Helper proof-pack dla minimalnego solvera stanu fazowego SN bez integracji HTTP."""
+"""Pakiet dowodowy stanu fazowego SN — materializacja payloadu z GOTOWEGO wyniku solvera.
+
+Pakiet opisuje wynik, nie produkuje go: wynik `PhaseStateSNSolver` podaje wołający
+(bieg kanoniczny, `enm/canonical_analysis.py::_execute_phase_state_sn`). Dawna gałąź
+awaryjna liczyła solver tutaj, gdy wynik nie był podany — istniała wyłącznie w testach
+(bieg kanoniczny zawsze podaje wynik) i łamała zasadę „pakiet dowodowy czyta wynik
+READ-ONLY"; skasowana kartą TORY-TYLKO-W-TESTACH (2026-09-30).
+"""
 
 from __future__ import annotations
 
@@ -10,7 +17,6 @@ from network_model.solvers.phase_state_sn import (
     PHASE_ORDER,
     PhaseStateSNInput,
     PhaseStateSNResult,
-    PhaseStateSNSolver,
 )
 
 PHASE_STATE_SN_PROOF_TYPE = "PHASE_STATE_SN"
@@ -38,13 +44,10 @@ class PhaseStateSNProofPack:
     def materialize_payload(
         cls,
         data: PhaseStateSNProofPackInput,
-        solver_result: PhaseStateSNResult | None = None,
+        *,
+        solver_result: PhaseStateSNResult,
     ) -> dict[str, Any]:
-        result = (
-            solver_result
-            if solver_result is not None
-            else PhaseStateSNSolver.solve(data.solver_input)
-        )
+        result = solver_result
         voltage_drop = _compute_voltage_drop(data.solver_input, result)
 
         return {

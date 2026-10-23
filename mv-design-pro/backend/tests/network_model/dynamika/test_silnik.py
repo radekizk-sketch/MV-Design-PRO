@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import ClassVar
 
 import numpy as np
@@ -22,14 +22,17 @@ from network_model.solvers.dynamika.kontrakty import (
     KOD_WARTOSC_NIESKONCZONA,
     Urzadzenie,
 )
-from network_model.solvers.dynamika.silnik import ZALOZENIA_RDZENIA, jednostka_stanu
+from network_model.solvers.dynamika.odbiory import OdbiorCharakterystyczny
+from network_model.solvers.dynamika.silnik import jednostka_stanu, zalozenia_modelu
 from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 
 from tests.network_model.dynamika.uklady import (
     F_BAZOWA_HZ,
     S_BAZOWA_MVA,
+    STALA_MOC,
     X_ZWARCIA_OHM,
     X_ZWARCIA_PLYTKIEGO_OHM,
+    charakterystyka_czula,
     nastawy,
     zbuduj_smib,
     zbuduj_smib_z_odbiorem,
@@ -231,7 +234,8 @@ def test_slad_white_box_niesie_siec_nastawy_i_kroki_szczegolne() -> None:
     }
     assert slad["odbiory"] == []  # uklad SMIB bez odbiorow — sekcja pusta, nie nieobecna
     assert len(slad["idealizacje_harmonogramu"]) == 1
-    assert "samoczynnie" in slad["idealizacje_harmonogramu"][0]
+    (idealizacja,) = slad["idealizacje_harmonogramu"]
+    assert idealizacja["kod"] == "zwarcie_usuniete_samoczynnie"
     assert len(slad["siec"]["odcisk_ybus"]) == 64
     assert slad["siec"]["liczba_wezlow"] == 2
     assert slad["nastawy"]["integrator"] == "trapez_niejawny"
@@ -303,8 +307,16 @@ def test_zalozenia_sa_dolaczone_do_wyniku() -> None:
     wynik = SilnikDynamiki(
         uklad.wejscie(BEZ_ZDARZEN, nastawy(dt_s=0.002, horyzont_s=0.1, krok_wyjscia_s=0.05))
     ).uruchom()
-    assert wynik.zalozenia == ZALOZENIA_RDZENIA
-    assert any("skladowej zgodnej" in zalozenie for zalozenie in wynik.zalozenia)
+    # Bieg bez zdarzen i bez odbiorow: DOKLADNIE zalozenia stale modelu (rekordy
+    # strukturalne — zdanie dla projektanta sklada warstwa aplikacji).
+    assert wynik.zalozenia == zalozenia_modelu(())
+    assert [zalozenie.kod for zalozenie in wynik.zalozenia] == [
+        "model_rms_skladowej_zgodnej",
+        "model_odbiorow",
+        "zwarcia_trojfazowe",
+        "rodziny_urzadzen",
+        "probki_obustronne",
+    ]
 
 
 def test_skok_obciazenia_zmienia_punkt_pracy_sieci() -> None:
@@ -353,14 +365,10 @@ def test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki() -> None:
     czujnosc. Test sprawdza OBA kierunki (zadna rodzina nie ginie, zadna nie jest
     dopisana z palca), wiec kolejne rozszerzenie fabryki nie moze przejsc po cichu.
     """
-    wiersze = [w for w in ZALOZENIA_RDZENIA if w.startswith("Rodziny urzadzen skladane")]
-    assert len(wiersze) == 1, ZALOZENIA_RDZENIA
-    wymienione = {
-        nazwa.strip()
-        for nazwa in wiersze[0].split(":", 1)[1].rstrip(".").split(",")
-        if nazwa.strip()
-    }
-    assert wymienione == set(RODZINY_OBSLUGIWANE)
+    (rekord,) = (z for z in zalozenia_modelu(()) if z.kod == "rodziny_urzadzen")
+    # Rekord niesie KODY rodzin (zdanie z nazwami sklada warstwa aplikacji — jej test
+    # przypina, ze zdanie wymienia kazda pozycje rekordu).
+    assert rekord.pozycje == tuple(RODZINY_OBSLUGIWANE)
     # Rejestr nie moze zostac pusty — pusty zbior spelnilby rownosc wyzej trywialnie.
     assert len(RODZINY_OBSLUGIWANE) >= 5
 
@@ -538,3 +546,220 @@ def test_NaN_w_pochodnej_konczy_bieg_odmowa_z_adresem_zamiast_wejsc_do_wyniku() 
     assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
     assert blad.value.szczegoly["adresy"] == (f"{uklad.maszyna.ident}.omega_pu",)
     assert blad.value.szczegoly["indeksy"] == (1,)
+
+
+@pytest.mark.parametrize(
+    ("pole", "wartosc"),
+    [
+        ("napiecia", complex(float("nan"), 0.0)),
+        ("napiecia", complex(0.0, float("inf"))),
+        ("moce", complex(float("nan"), float("nan"))),
+        ("moce", complex(float("-inf"), 0.0)),
+    ],
+)
+def test_nieskonczona_liczba_punktu_pracy_konczy_sie_odmowa_przy_konstrukcji(
+    pole: str, wartosc: complex
+) -> None:
+    """Liczby rozplywu wchodza do rdzenia przez `PunktPracy` — tam pada odmowa z adresem.
+
+    Napiecie wezla bez urzadzenia nie trafia do zadnej pochodnej, wiec straznik pochodnych
+    go nie widzi, a porownanie norm bramki rownowagi z `eps_init` przepuszcza NaN.
+    """
+    uklad = zbuduj_smib()
+    napiecia = dict(uklad.punkt_pracy.napiecia_pu)
+    moce = dict(uklad.punkt_pracy.moce_zrodel_pu)
+    if pole == "napiecia":
+        napiecia["SYS"] = wartosc
+        adres, kontekst = "SYS", "napiecia_punktu_pracy"
+    else:
+        moce["SYS1"] = wartosc
+        adres, kontekst = "SYS1", "moce_zrodel_punktu_pracy"
+    with pytest.raises(OdmowaDynamiki) as blad:
+        PunktPracy(napiecia_pu=napiecia, moce_zrodel_pu=moce)
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["adresy"] == (adres,)
+    assert blad.value.szczegoly["kontekst"] == kontekst
+
+
+@dataclass(frozen=True)
+class _UrzadzenieZeStanemPomocniczym(_UrzadzenieZeSkazonaPochodna):
+    """Atrapa z DODATKOWYM stanem, ktorego nie czyta ani pochodna, ani prad.
+
+    Stan pomocniczy jest NaN od chwili 0 i nie wplywa na zadna liczbe, ktora bramka
+    rownowagi porownuje z `eps_init` — bez kontroli skonczonosci STANU przeszedlby bramke
+    i dotarl do pierwszego kroku. `skazony_stan` bazy jest tu nieuzywany.
+    """
+
+    @property
+    def nazwy_stanow(self) -> tuple[str, ...]:
+        return (*self.bazowe.nazwy_stanow, "pomocniczy_pu")
+
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        return (*self.bazowe.granice_stanow, None)
+
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        return (*self.bazowe.zakresy_waznosci, None)
+
+    def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
+        return np.append(self.bazowe.stan_poczatkowy(napiecie_pu, moc_pu), float("nan"))
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.append(self.bazowe.pochodne(stan[:-1], napiecie_pu), 0.0)
+
+    def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_stan_stan(stan[:-1], napiecie_pu), ((0, 1), (0, 1)))
+
+    def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_stan_napiecie(stan[:-1], napiecie_pu), ((0, 1), (0, 0)))
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        return self.bazowe.prad_pu(stan[:-1], napiecie_pu)
+
+    def jakobian_prad_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return self.bazowe.jakobian_prad_napiecie(stan[:-1], napiecie_pu)
+
+    def jakobian_prad_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_prad_stan(stan[:-1], napiecie_pu), ((0, 0), (0, 1)))
+
+    def napiecie_bez_obciazenia(self, stan: np.ndarray) -> complex:
+        return self.bazowe.napiecie_bez_obciazenia(stan[:-1])
+
+    def jakobian_napiecia_bez_obciazenia(self, stan: np.ndarray) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_napiecia_bez_obciazenia(stan[:-1]), ((0, 0), (0, 1)))
+
+
+@dataclass(frozen=True)
+class _UrzadzenieZeSkazonymPradem(_UrzadzenieZeSkazonaPochodna):
+    """Atrapa oddajaca prad NaN przy skonczonym stanie i napieciu — skazenie ALGEBRY.
+
+    Pochodne sa prawdziwe (bez skazenia), wiec straznik pochodnych milczy; NaN wchodzi
+    wylacznie do residuum algebry, ktorego norme bramka porownuje z `eps_init`.
+    """
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return self.bazowe.pochodne(stan, napiecie_pu)
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        return complex(float("nan"), 0.0)
+
+
+def _wejscie_smib_z(urzadzenie: Urzadzenie) -> WejscieDynamiki:
+    uklad = zbuduj_smib()
+    return WejscieDynamiki(
+        wezly=uklad.wezly,
+        galezie=uklad.galezie,
+        odsprzegi=(),
+        odbiory=(),
+        urzadzenia=(urzadzenie, uklad.szyna),
+        punkt_pracy=uklad.punkt_pracy,
+        harmonogram=BEZ_ZDARZEN,
+        nastawy=nastawy(dt_s=0.002, horyzont_s=0.05),
+        s_bazowa_mva=S_BAZOWA_MVA,
+        f_bazowa_hz=F_BAZOWA_HZ,
+    )
+
+
+def test_nieskonczony_stan_poczatkowy_konczy_sie_odmowa_bramki_z_adresem_w_chwili_zero() -> None:
+    """Stan `t = 0` jest sprawdzany W CHWILI POWSTANIA, nie dopiero w pierwszym kroku."""
+    uklad = zbuduj_smib()
+    atrapa = _UrzadzenieZeStanemPomocniczym(bazowe=uklad.maszyna, skazony_stan=0)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(_wejscie_smib_z(atrapa)).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "stany równowagi"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    assert blad.value.szczegoly["adresy"] == (f"{uklad.maszyna.ident}.pomocniczy_pu",)
+
+
+def test_nieskonczony_prad_urzadzenia_konczy_sie_odmowa_bramki_z_adresem_wezla() -> None:
+    """NaN w residuum algebry nie przechodzi bramki rownowagi (NaN nie jest > eps_init)."""
+    uklad = zbuduj_smib()
+    atrapa = _UrzadzenieZeSkazonymPradem(bazowe=uklad.maszyna, skazony_stan=0)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(_wejscie_smib_z(atrapa)).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "residuum algebry"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    adresy = set(blad.value.szczegoly["adresy"])
+    assert adresy and adresy <= {f"{uklad.maszyna.wezel}.Re", f"{uklad.maszyna.wezel}.Im"}
+
+
+# ---------------------------------------------------------------------------
+# Skonczonosc chwili zero dla ODBIOROW ZE STANEM (karta AB-1b.3b-NA-CZUBKU)
+# ---------------------------------------------------------------------------
+
+#: Zaburzenie wzgledne napiecia szyny odbioru — korekta algebry `t = 0` musi sie wykonac
+#: (residuum ~4e-7 pu ponad dnem zaokraglen, w `eps_init` = 1e-4 tych testow), wiec stan
+#: odbioru czulego powstaje DRUGI raz — w punkcie skorygowanym.
+_ZABURZENIE_WZGLEDNE_ODBIORU = 1.0e-7
+
+
+def _wejscie_z_odbiorem_czulym(*, zaburzony: bool) -> WejscieDynamiki:
+    uklad = zbuduj_smib_z_odbiorem(q_odbioru_pu=0.05, charakterystyka=charakterystyka_czula())
+    wejscie = uklad.wejscie(BEZ_ZDARZEN, nastawy(dt_s=0.002, horyzont_s=0.05, eps_init=1.0e-4))
+    if not zaburzony:
+        return wejscie
+    napiecia = dict(wejscie.punkt_pracy.napiecia_pu)
+    napiecia["GEN"] = napiecia["GEN"] * (1.0 + _ZABURZENIE_WZGLEDNE_ODBIORU)
+    return replace(wejscie, punkt_pracy=replace(wejscie.punkt_pracy, napiecia_pu=napiecia))
+
+
+@pytest.mark.parametrize(
+    "zrodlo_stanu", ["punkt_rozplywu", "punkt_skorygowany"], ids=["rozplyw", "korekta_t0"]
+)
+def test_nieskonczony_stan_odbioru_konczy_sie_odmowa_bramki_z_adresem_w_chwili_zero(
+    zrodlo_stanu: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Stan estymatora odbioru jest sprawdzany W CHWILI POWSTANIA — w punkcie rozplywu i po
+    reinicjalizacji `x := arg V0` w punkcie skorygowanym — tym samym straznikiem, co stany
+    urzadzen (`KontekstKroku.adresy_stanow` obejmuje odbiory ze stanem).
+
+    Stan NaN estymatora nie przechodzi przez zadne porownanie z progiem przed bramka: czynnik
+    czestotliwosciowy NaN nie jest `<= 0` (kontrola zakresu waznosci milczy), a norma pochodnych
+    NaN nie jest `> eps_init`. Iloczyn {punkt rozplywu, punkt skorygowany} — drugi wymaga
+    korekty, wiec punkt pracy jest zaburzony (stan odbioru powstaje dwa razy)."""
+    wejscie = _wejscie_z_odbiorem_czulym(zaburzony=zrodlo_stanu == "punkt_skorygowany")
+    oryginal = OdbiorCharakterystyczny.stan_poczatkowy_odbioru
+    wywolania: list[complex] = []
+
+    def skazony(self, napiecie_pu: complex) -> np.ndarray:  # type: ignore[no-untyped-def]
+        wywolania.append(napiecie_pu)
+        stan = oryginal(self, napiecie_pu)
+        if zrodlo_stanu == "punkt_rozplywu" or len(wywolania) > 1:
+            return np.full_like(stan, float("nan"))
+        return stan
+
+    monkeypatch.setattr(OdbiorCharakterystyczny, "stan_poczatkowy_odbioru", skazony)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(wejscie).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "stany równowagi"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    assert blad.value.szczegoly["adresy"] == ("ODB1.kat_pomiaru_rad",)
+    assert len(wywolania) == (1 if zrodlo_stanu == "punkt_rozplywu" else 2)
+
+
+@pytest.mark.parametrize("czuly", [False, True], ids=["odbior_bez_stanu", "odbior_ze_stanem"])
+def test_nieskonczony_prad_odbioru_konczy_sie_odmowa_bramki_z_adresem_wezla(
+    czuly: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prad odbioru NaN przy skonczonym stanie i napieciu skaza wylacznie ALGEBRE — bramka
+    rownowagi odmawia z adresem wezla odbioru (iloczyn {odbior bez stanu, ze stanem})."""
+    uklad = zbuduj_smib_z_odbiorem(
+        q_odbioru_pu=0.05, charakterystyka=charakterystyka_czula() if czuly else STALA_MOC
+    )
+    wejscie = uklad.wejscie(BEZ_ZDARZEN, nastawy(dt_s=0.002, horyzont_s=0.05))
+    monkeypatch.setattr(
+        OdbiorCharakterystyczny,
+        "prad_pu",
+        lambda self, stan, napiecie_pu: complex(float("nan"), 0.0),
+    )
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(wejscie).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "residuum algebry"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    adresy = set(blad.value.szczegoly["adresy"])
+    assert adresy and adresy <= {"GEN.Re", "GEN.Im"}

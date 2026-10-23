@@ -13,16 +13,17 @@ from application.analyses.v126_gotowosc import (
 )
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
-from domain.execution import StanBiegu
+from application.execution import wykonawca_biegow
+from domain.execution import StanBiegu, stan_biegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
-from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.nazwy_elementow import zbuduj_indeks_nazw
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from network_model.odmowa_danych import OdmowaDanychError
+from pydantic import BaseModel, ValidationError
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -30,6 +31,7 @@ from solver_input.v126_contracts import (
     V126InsulationInput,
     V126MotorInput,
     V126RunRequest,
+    braki_poziomu_izolacji,
     build_v126_input_from_enm,
     pominiete_zrodla_v126,
 )
@@ -46,7 +48,10 @@ class V126RunResponse(BaseModel):
     trace_url: str
     proof_url: str
     report_url: str
-    deterministic_hash: str
+    #: Odcisk wyniku — dopiero po FINISHED (karta DYNAMIKA-W-TLE: odpowiedź zlecenia
+    #: niesie stan QUEUED, odcisk czyta się z `result_url` po zakończeniu).
+    deterministic_hash: str | None = None
+    error_message: str | None = None
 
 
 class V126ZamiennikTrasy(BaseModel):
@@ -193,32 +198,41 @@ def _with_parameter_payloads(
     """Dołóż do wejścia solvera dane PROJEKTANTA z `parameters` (uziom, izolacja, silniki).
 
     Raises:
-        ValueError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
-            (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz.
+        OdmowaDanychError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
+            (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz — albo
+            nadpisanie niezgodne z kontraktem wejścia (komunikat walidacji pydantic).
     """
     skasowane = [klucz for klucz in _SKASOWANE_NADPISANIA_WEJSCIA if klucz in parameters]
     if skasowane:
-        raise ValueError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
+        raise OdmowaDanychError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
     update: dict[str, Any] = {"parameters": parameters}
-    if isinstance(parameters.get("earthing"), dict):
-        update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
-    if isinstance(parameters.get("insulation"), list):
-        update["insulation"] = [
-            V126InsulationInput.model_validate(item)
-            for item in parameters["insulation"]
-            if isinstance(item, dict)
-        ]
-    if isinstance(parameters.get("motors"), list):
-        update["motors"] = [
-            V126MotorInput.model_validate(item)
-            for item in parameters["motors"]
-            if isinstance(item, dict)
-        ]
+    # Parametry pochodzą z żądania projektanta: niezgodność z kontraktem wejścia to odmowa
+    # danych z tym samym komunikatem walidacji (karta ODMOWA-DANYCH-422).
+    try:
+        if isinstance(parameters.get("earthing"), dict):
+            update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
+        if isinstance(parameters.get("insulation"), list):
+            update["insulation"] = [
+                V126InsulationInput.model_validate(item)
+                for item in parameters["insulation"]
+                if isinstance(item, dict)
+            ]
+        if isinstance(parameters.get("motors"), list):
+            update["motors"] = [
+                V126MotorInput.model_validate(item)
+                for item in parameters["motors"]
+                if isinstance(item, dict)
+            ]
+    except ValidationError as exc:
+        raise OdmowaDanychError(str(exc)) from exc
     return model.model_copy(update=update)
 
 
 @router.post(
     "/cases/{case_id}/runs/v126/{analysis_type}",
+    # Karta DYNAMIKA-W-TLE: zlecenie biegu wykonawcy w tle — 202 + odpytywanie
+    # `GET /api/execution/runs/{run_id}`, jak każdy `POST …/execute`.
+    status_code=status.HTTP_202_ACCEPTED,
     response_model=V126RunResponse,
     responses={
         410: {
@@ -281,9 +295,17 @@ def run_v126_analysis(
     # reguła KLASA §3). Puste dla rodzajów, które `harmonic_sources`/`converters`
     # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — gotowość
     # powyżej już to rozstrzygnęła).
-    pominiete_zrodla: list[dict[str, str]] = []
+    pominiete_zrodla: list[dict[str, Any]] = []
     if analysis_type in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
         pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=parametry)
+    # Karta OD-17a: nazwane odmowy braku pakietu danych właściciela dla wierszy, które solver
+    # liczy (dziś: poziom izolacji udarowej chronionych aparatów z karty producenta) — ta sama
+    # funkcja co warunek gotowości; pole addytywne `braki_pakietow` zapisu biegu.
+    braki_pakietow: list[dict[str, Any]] = []
+    if analysis_type == V126AnalysisType.INSULATION_COORDINATION:
+        braki_pakietow = [
+            r.model_dump(mode="json") for r in braki_poziomu_izolacji(enm, model.insulation)
+        ]
     # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
     # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
     # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
@@ -296,25 +318,36 @@ def run_v126_analysis(
         case_id=str(case_id),
         klucz_twin=klucz,
         analysis_type=f"v126:{analysis_type.value}",
-        options={"model": model.model_dump(mode="json"), "pominiete_zrodla": pominiete_zrodla},
+        options={
+            "model": model.model_dump(mode="json"),
+            "pominiete_zrodla": pominiete_zrodla,
+            # Klucz tylko, gdy są braki — opcje biegów bez braków bajtowo bez zmian.
+            **({"braki_pakietow": braki_pakietow} if braki_pakietow else {}),
+        },
     )
-    run = _execute_canonical_run(run.id)
-    if run.status == "FAILED" or run.raw_result is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=run.error_message or "Bieg V12.6 nie powiódł się.",
-        )
-    result = run.raw_result["result"]
+    # Karta DYNAMIKA-W-TLE: bieg trafia do kolejki wykonawcy w tle (202, stan QUEUED) —
+    # klient odpytuje `GET /api/execution/runs/{run_id}` do stanu końcowego, a wynik
+    # (z odciskiem deterministycznym) czyta `result_url` po FINISHED. Adresy wyniku są
+    # funkcją identyfikatora biegu, więc są znane od chwili zlecenia.
+    run = wykonawca_biegow.zlec_bieg(run.id, uow_factory=None)
+    return _odpowiedz_biegu_v126(run, case_id, analysis_type)
+
+
+def _odpowiedz_biegu_v126(
+    run: CanonicalRun, case_id: UUID, analysis_type: V126AnalysisType
+) -> V126RunResponse:
+    wynik = (run.raw_result or {}).get("result") if run.status == "FINISHED" else None
     return V126RunResponse(
         run_id=str(run.id),
         case_id=str(case_id),
         analysis_type=analysis_type,
-        status="FINISHED",
+        status=stan_biegu(run.status),
         result_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}",
         trace_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/trace",
         proof_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/proof",
         report_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/report",
-        deterministic_hash=result["deterministic_hash"],
+        deterministic_hash=None if wynik is None else wynik["deterministic_hash"],
+        error_message=run.error_message,
     )
 
 
@@ -342,6 +375,11 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
     pominiete = run.get("pominiete_zrodla")
     if pominiete:
         payload["pominiete_zrodla"] = pominiete
+    # Karta OD-17a: nazwane odmowy braku pakietu danych właściciela zapisane przy tworzeniu
+    # biegu (przeniesione przez wykonawcę `_execute_v126` jak `pominiete_zrodla`).
+    braki_pakietow = run.get("braki_pakietow")
+    if braki_pakietow:
+        payload["braki_pakietow"] = braki_pakietow
     zrodla_widma = [
         {"ref": zrodlo["source_ref"], "proweniencja": zrodlo.get("spectrum_provenance", "KATALOG")}
         for zrodlo in run.get("input", {}).get("harmonic_sources", [])
@@ -401,13 +439,7 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
     422 gdy przebieg nie niesie payloadu solvera SSCI.
     """
     canonical_run, run = _require_canonical_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
-    try:
-        return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/proof")

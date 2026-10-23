@@ -59,6 +59,7 @@ from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny (dzielony z upstream_equivalent.py)
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
+from enm.tor_pola import szyny_stacji
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.core.topologia import poziomy, przeglad_wszerz_od
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
@@ -82,6 +83,10 @@ DEVICE_DESIGNATION_BY_TYPE: dict[str, str] = {
     "cable": "W",
     "line_overhead": "W",
 }
+
+#: Wyłącznik różnicowoprądowy (karta W5-E-TTIT) — klasa główna IEC 81346-2 „F" (ochrona);
+#: rozstrzyga ją przestrzeń katalogu wyrobu, nie typ gałęzi (RCD jest gałęzią `switch`).
+DESIGNATION_RCD = "F"
 
 
 def voltage_level_id(voltage_kv: float) -> str:
@@ -156,6 +161,30 @@ def _device_kind(branch: Branch) -> str | None:
     if isinstance(kind, str) and kind.strip():
         return kind.strip().upper()
     return None
+
+
+#: Przestrzeń katalogu wyłącznika różnicowoprądowego (karta W5-E-TTIT).
+_PRZESTRZEN_RCD = "APARAT_NN_RCD"
+
+
+def _rcd_dict(branch: Branch) -> dict[str, Any] | None:
+    """Parametry tabliczki RCD z ``materialized_params`` (wiązanie katalogowe) — do opisu
+    aparatu na rysunku nN (I_Δn, rodzaj prądu różnicowego, selektywność, In). ``None`` dla
+    aparatu spoza przestrzeni RCD albo bez zmaterializowanego I_Δn (zero domysłu)."""
+    if getattr(branch, "catalog_namespace", None) != _PRZESTRZEN_RCD:
+        return None
+    params = getattr(branch, "materialized_params", None) or {}
+    i_delta_n = params.get("i_delta_n_a")
+    if not isinstance(i_delta_n, int | float) or i_delta_n <= 0:
+        return None
+    in_a = params.get("in_a")
+    rcd_type = params.get("rcd_type")
+    return {
+        "i_delta_n_a": float(i_delta_n),
+        "rcd_type": str(rcd_type) if isinstance(rcd_type, str) and rcd_type else None,
+        "selective": bool(params.get("selective", False)),
+        "in_a": float(in_a) if isinstance(in_a, int | float) and in_a > 0 else None,
+    }
 
 
 def _branch_dict(branch: Branch) -> dict[str, Any]:
@@ -275,8 +304,10 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
     bus_by_ref = {b.ref_id: b for b in enm.buses}
     owner_by_bus: dict[str, Substation] = {}
     for st in enm.substations:
-        for bus_ref in st.bus_refs:
-            owner_by_bus[bus_ref] = st
+        # POLA-W-TORZE: szyny za aparatami pól nN (odpływy, zacisk wyłącznika głównego) należą
+        # do stacji — jedno źródło przynależności (`enm.tor_pola.szyny_stacji`).
+        for bus_ref in sorted(szyny_stacji(st, enm.branches)):
+            owner_by_bus.setdefault(bus_ref, st)
 
     # Sąsiedztwo z WSZYSTKICH gałęzi, niezależnie od `status` — topologia
     # domeny to fakt strukturalny, nie stan łączeniowy chwili (patrz nagłówek).
@@ -504,7 +535,14 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
                 # instalacyjny (MCB) od wyłącznika mocy (R2.1, pierwowzór
                 # właściciela). Addytywne, lustro `branches[].catalog_namespace`.
                 "catalog_namespace": branch.catalog_namespace,
-                "designation_class": DEVICE_DESIGNATION_BY_TYPE.get(str(branch.type), "Q"),
+                "designation_class": (
+                    DESIGNATION_RCD
+                    if branch.catalog_namespace == _PRZESTRZEN_RCD
+                    else DEVICE_DESIGNATION_BY_TYPE.get(str(branch.type), "Q")
+                ),
+                # Karta W5-E-TTIT: tabliczka RCD do opisu na rysunku — pole addytywne,
+                # obecne wyłącznie dla aparatu `APARAT_NN_RCD` (fikstury innych bez zmian).
+                **({"rcd": rcd} if (rcd := _rcd_dict(branch)) is not None else {}),
                 "device_role": role,
                 "feeder_kind": feeder_kind,
                 "transformer_ref": transformer_ref,

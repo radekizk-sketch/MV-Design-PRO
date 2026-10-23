@@ -65,7 +65,6 @@ export const DOWOD_STRINGS = {
   audytKlucz: (klucz: string) => `Klucz śladu ${klucz}`,
   audytIdentyfikator: (etykieta: string) => `${etykieta} — identyfikator w grafie obliczeniowym`,
   audytUwagaSolvera: 'Uwaga solvera (zapis techniczny)',
-  audytTytulSolvera: 'Tytuł kroku w zapisie solvera',
 
   // Wartość pusta
   kreska: '—',

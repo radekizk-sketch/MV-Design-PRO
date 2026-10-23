@@ -19,9 +19,11 @@
 
 import { useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
+import type { DanePrzyjeteWyniku } from './api';
 import {
   SladSekcyjny,
   SladWywodu,
+  StanDanychWyniku,
   TabelaWynikow,
   useNazwaObiektu,
   type KrokWywodu,
@@ -45,6 +47,10 @@ export interface WkladyZwarcioweProps {
   punktNazwa: string;
   /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne w przebiegu. */
   wklady: WkladZwarciowy[] | null;
+  /** Błąd pobrania wkładów (HTTP/sieć) — komunikat błędu, nie „dane niedostępne". */
+  blad: boolean;
+  /** Pobieranie wkładów punktu w toku — komunikat pobierania, nie „nie udało się pobrać". */
+  ladowanie: boolean;
   /**
    * Wywód {tekst, latex} z backendu (zasada KaTeX 2026-07-22) — ślad obliczeń
    * na żądanie pod tabelą wkładów. Pusta lista → przycisk śladu nie renderuje się.
@@ -58,6 +64,12 @@ export interface WkladyZwarcioweProps {
   wywodSekcje?: readonly SekcjaWywodu[];
   /** Checklista walidacji metody IEC (pkt 10) — sekcja na końcu wywodu sekcyjnego. */
   walidacjaIec?: readonly PozycjaWalidacji[];
+  /**
+   * Dane przyjęte wkładów punktu z odpowiedzi backendu (zasada nr 4, kontrakt werdyktu §3):
+   * wartości robocze, na których stoi I″k punktu i jego rozkład na źródła. `null`/brak =
+   * wynik na danych projektu — sekcja nie pokazuje nic.
+   */
+  danePrzyjete?: DanePrzyjeteWyniku | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }
@@ -106,9 +118,12 @@ function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
 export function WkladyZwarciowe({
   punktNazwa,
   wklady,
+  blad,
+  ladowanie,
   wywod = [],
   wywodSekcje = [],
   walidacjaIec = [],
+  danePrzyjete = null,
   trybZaawansowania,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
@@ -136,7 +151,16 @@ export function WkladyZwarciowe({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {wklady === null ? (
+      {wklady === null && blad ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-blad">
+          <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyBlad}</p>
+          <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyBladOpis}</p>
+        </div>
+      ) : wklady === null && ladowanie ? (
+        <p className="mvd-zwarcia-wklady-brak-desc" data-testid="mvd-zwarcia-wklady-ladowanie">
+          {ZWARCIA_STRINGS.wkladyLadowanie}
+        </p>
+      ) : wklady === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyNiedostepne}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyNiedostepneOpis}</p>
@@ -176,6 +200,15 @@ export function WkladyZwarciowe({
             />
           )}
           {wybrany && <SzczegolWkladuPanel wklad={wybrany} />}
+          {danePrzyjete && (
+            <div className="mvd-zwarcia-dane-przyjete" data-testid="mvd-zwarcia-wklady-dane">
+              <StanDanychWyniku
+                stan={danePrzyjete.stan}
+                dane={danePrzyjete.dane}
+                testId="mvd-zwarcia-wklady"
+              />
+            </div>
+          )}
           <WykresUdzialowChart slupki={naSlupkiUdzialow(wklady)} />
           {/* Scalenie F2+F3: wywod sekcyjny (z checklista walidacji IEC) ma
               pierwszenstwo; plaski SladWywodu = fallback starszych odpowiedzi. */}

@@ -21,13 +21,26 @@ dopisania wiersza „bo akurat potrzebny". Dopisanie wymaga decyzji: czy rdzen
 naprawde ma zalezec od tej rzeczy. Zamkniecie listy jest PRZYPIETE testem
 (`scripts/test_dynamika_granica_importow_guard.py`), zeby deklaracja z tego
 docstringa miala pokrycie, a nie tylko brzmiala stanowczo.
+
+KATALOG SKANU JEST PARAMETREM (`pliki_pakietu`, `znajdz_naruszenia`, `raport`). Self-test
+skanuje KOPIE pakietu w katalogu tymczasowym. Wczesniej wstrzykiwal pliki `_iniekcja_*.py`
+do ZYWEGO pakietu i usuwal je w `finally`: w biegu testow rdzenia dynamiki rownoleglym do
+lancucha guardow test powtarzalnosci biegow zobaczyl dwa rozne odciski implementacji (hash
+wszystkich plikow pakietu liczony raz z obcym plikiem w srodku), a przerwany proces
+zostawilby taki plik na stale. Zapisy autotestow do drzewa repozytorium odrzuca hak audytu
+w `scripts/conftest.py`.
 """
 
 from __future__ import annotations
 
 import ast
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, cele_importu, pakiet_pliku, pod_prefiksem  # noqa: E402
 
 KORZEN = Path(__file__).resolve().parents[1]
 KATALOG_PAKIETU = KORZEN / "backend" / "src" / "network_model" / "solvers" / "dynamika"
@@ -55,9 +68,15 @@ STDLIB_DOZWOLONE: frozenset[str] = frozenset(
 #: Biblioteki obliczeniowe dozwolone w rdzeniu (SS0 p.1). ZAMKNIETE.
 OBCE_DOZWOLONE: frozenset[str] = frozenset({"numpy", "scipy.sparse", "scipy.sparse.linalg"})
 
-#: Jedyny dozwolony modul WLASNY repozytorium poza pakietem: warstwa wielkosci
-#: pochodnych (lisc grafu importow, importuje wylacznie `math`).
-WLASNE_DOZWOLONE: frozenset[str] = frozenset({"network_model.pochodne"})
+#: Dozwolone moduly WLASNE repozytorium poza pakietem — oba sa LISCMI grafu importow
+#: (wylacznie biblioteka standardowa, bez skutkow ubocznych): warstwa wielkosci pochodnych
+#: (importuje wylacznie `math`) oraz nazwana odmowa danych (karta ODMOWA-DANYCH-422:
+#: `OdmowaDynamiki` jest odmowa wejscia rdzenia z kodem, wiec dziedziczy po
+#: `network_model.odmowa_danych.OdmowaDanychError` — inaczej API przebieraloby ja za blad
+#: programu 500 albo musialoby rozrozniac odmowe po tekscie).
+WLASNE_DOZWOLONE: frozenset[str] = frozenset(
+    {"network_model.pochodne", "network_model.odmowa_danych"}
+)
 
 #: Nazwy, ktore wolno sprowadzic skladnia `from scipy import X` (modul `scipy`
 #: sam w sobie nie jest dozwolony — dozwolony jest jego podpakiet rzadkiej algebry).
@@ -102,25 +121,25 @@ def _dozwolony_absolutny(modul: str) -> str | None:
     return "modul spoza ZAMKNIETEJ allowlisty rdzenia dynamiki"
 
 
-def _modul_wzgledny(plik: Path, poziom: int, modul: str | None) -> str:
-    """Rozwiaz import wzgledny do pelnej nazwy modulu."""
-    czesci = plik.relative_to(KATALOG_PAKIETU).with_suffix("").parts
-    if czesci and czesci[-1] == "__init__":
-        czesci = czesci[:-1]
-    pakiet = [MODUL_PAKIETU, *czesci]
-    if poziom > len(pakiet):
-        return "..(poza korzeniem)"
-    baza = pakiet[: len(pakiet) - poziom + 1]
-    return ".".join([*baza, modul] if modul else baza)
+def _pakiet(katalog: Path, plik: Path) -> str:
+    """`__package__` pliku pakietu (katalog skanu odpowiada modulowi `MODUL_PAKIETU`)."""
+    wzgledny = pakiet_pliku(plik, katalog)
+    return f"{MODUL_PAKIETU}.{wzgledny}" if wzgledny else MODUL_PAKIETU
 
 
-def znajdz_naruszenia() -> list[Naruszenie]:
+def pliki_pakietu(katalog: Path = KATALOG_PAKIETU) -> list[Path]:
+    """Pliki `.py` pakietu (posortowane, bez `__pycache__`)."""
+    return sorted(p for p in katalog.rglob("*.py") if "__pycache__" not in p.parts)
+
+
+def znajdz_naruszenia(katalog: Path = KATALOG_PAKIETU) -> list[Naruszenie]:
     """Naruszenia granicy importow w calym pakiecie (pusty wynik = zielono)."""
     naruszenia: list[Naruszenie] = []
-    for plik in sorted(KATALOG_PAKIETU.rglob("*.py")):
-        if "__pycache__" in plik.parts:
-            continue
-        wzgledna = plik.relative_to(KORZEN).as_posix()
+    for plik in pliki_pakietu(katalog):
+        try:
+            wzgledna = plik.relative_to(KORZEN).as_posix()
+        except ValueError:
+            wzgledna = plik.relative_to(katalog.parent).as_posix()
         drzewo = ast.parse(plik.read_text(encoding="utf-8"), filename=str(plik))
         for wezel in ast.walk(drzewo):
             if isinstance(wezel, ast.Import):
@@ -130,14 +149,33 @@ def znajdz_naruszenia() -> list[Naruszenie]:
                         naruszenia.append(Naruszenie(wzgledna, wezel.lineno, alias.name, powod))
             elif isinstance(wezel, ast.ImportFrom):
                 if wezel.level:
-                    modul = _modul_wzgledny(plik, wezel.level, wezel.module)
-                    if not (modul == MODUL_PAKIETU or modul.startswith(f"{MODUL_PAKIETU}.")):
+                    # Rozwiazanie wg semantyki interpretera (`scripts/importy_ast.py`).
+                    # Wlasna arytmetyka poziomow liczyla o jeden poziom za gleboko:
+                    # `from ..power_flow_newton import X` w `dynamika/a.py` wychodzilo na
+                    # `network_model.solvers.dynamika.power_flow_newton` i przechodzilo.
+                    try:
+                        cele = cele_importu(_pakiet(katalog, plik), wezel)
+                    except ImportPonadKorzen as blad:
                         naruszenia.append(
                             Naruszenie(
                                 wzgledna,
                                 wezel.lineno,
-                                modul,
-                                "import wzgledny wychodzi poza pakiet dynamiki",
+                                "." * wezel.level + (wezel.module or ""),
+                                f"import wzgledny wychodzi poza pakiet dynamiki — {blad}",
+                            )
+                        )
+                        continue
+                    for cel in cele:
+                        if pod_prefiksem(cel, (MODUL_PAKIETU,)):
+                            continue
+                        powod = _dozwolony_absolutny(cel)
+                        naruszenia.append(
+                            Naruszenie(
+                                wzgledna,
+                                wezel.lineno,
+                                cel,
+                                "import wzgledny wychodzi poza pakiet dynamiki"
+                                + (f"; {powod}" if powod else ""),
                             )
                         )
                     continue
@@ -160,10 +198,9 @@ def znajdz_naruszenia() -> list[Naruszenie]:
     return naruszenia
 
 
-def raport() -> tuple[int, list[Naruszenie]]:
+def raport(katalog: Path = KATALOG_PAKIETU) -> tuple[int, list[Naruszenie]]:
     """(liczba przeskanowanych plikow, naruszenia)."""
-    pliki = [plik for plik in KATALOG_PAKIETU.rglob("*.py") if "__pycache__" not in plik.parts]
-    return len(pliki), znajdz_naruszenia()
+    return len(pliki_pakietu(katalog)), znajdz_naruszenia(katalog)
 
 
 __all__ = [
@@ -173,6 +210,7 @@ __all__ = [
     "STDLIB_DOZWOLONE",
     "WLASNE_DOZWOLONE",
     "Naruszenie",
+    "pliki_pakietu",
     "raport",
     "znajdz_naruszenia",
 ]

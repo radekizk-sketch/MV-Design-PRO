@@ -9,6 +9,8 @@
  */
 
 import type { PortKind } from '../core/ports';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
+import { szynyStacji, type GalazDlaSzyn } from '../../../shared/szynyStacji';
 
 /* ---------------------------------------------------------------------------
    Typy hierarchii
@@ -100,8 +102,9 @@ export interface StationOnRun {
   readonly id: string;
   readonly name: string;
   readonly templateName: string | null;
-  /** Wnioskowany typ topologiczny z portów (PR-4 classifyStationTopology). */
-  readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`, §19.3); `null` —
+   *  stacji ciągu nie ma w modelu albo rodzaj jej nie dotyczy (GPZ, rozdzielnica nN). */
+  readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna' | null;
   readonly nnVoltageLevels: readonly number[];
   readonly externalPortIds: readonly string[];
   readonly orderInRun: number;
@@ -127,6 +130,8 @@ export interface EnmInputForHierarchy {
     name: string;
     station_type: string;
     bus_refs: readonly string[];
+    /** Metadane stacji (`field_specs`, `nn_field_specs`) — dla lustra `szynyStacji`. */
+    meta?: unknown;
     gpz_sections?: readonly EnmGpzSection[];
     nn_voltage_levels?: readonly number[];
     external_ports?: readonly EnmPort[];
@@ -162,6 +167,8 @@ export interface EnmInputForHierarchy {
     parent_run_ref?: string | null;
     branch_origin_station_ref?: string | null;
   }>;
+  /** Gałęzie modelu — końce aparatów pól nN należą do stacji (lustro `szynyStacji`). */
+  readonly branches?: ReadonlyArray<GalazDlaSzyn>;
   readonly generators: ReadonlyArray<{
     ref_id: string;
     name: string;
@@ -267,9 +274,9 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
     }
 
     // SC param z source przyłączonego do GPZ (jeżeli istnieje)
-    const gpzSource = enm.sources.find(
-      (s) => s.bus_ref && gpzSub.bus_refs.includes(s.bus_ref),
-    );
+    // SZYNY-STACJI-LUSTRO: źródło na szynie GPZ z jednego lustra `szynyStacji`.
+    const szynyGpz = szynyStacji(gpzSub, enm.branches ?? []);
+    const gpzSource = enm.sources.find((s) => s.bus_ref && szynyGpz.has(s.bus_ref));
 
     gpz.push({
       id: gpzSub.ref_id,
@@ -289,16 +296,13 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
   for (const lr of sortedRuns) {
     const stations: StationOnRun[] = lr.stations.map((s) => {
       const sub = enm.substations.find((ss) => ss.ref_id === s.substation_ref);
-      const externalPortKinds = (sub?.external_ports ?? []).map((p) => p.kind);
-      // Wnioskowanie typu topologicznego z portów (PR-4)
-      const snInputs = externalPortKinds.filter((k) => k === 'sn_input').length;
-      const snOutputs = externalPortKinds.filter((k) => k === 'sn_output').length;
-      const snBranches = externalPortKinds.filter((k) => k === 'sn_branch').length;
-      const snCouplers = externalPortKinds.filter((k) => k === 'sn_coupler').length;
-      let topologicalType: StationOnRun['topologicalType'] = 'końcowa';
-      if (snInputs >= 2 && snCouplers >= 1) topologicalType = 'sekcyjna';
-      else if (snInputs >= 1 && snOutputs >= 1 && snBranches >= 1) topologicalType = 'odgałęźna';
-      else if (snInputs >= 1 && snOutputs >= 1) topologicalType = 'przelotowa';
+      // Rodzaj stacji z JEDNEJ reguły produktu (`ui/shared/rodzajStacji.ts`, §19.3) — dawna
+      // reguła z portów zewnętrznych (inne progi niż schemat) skasowana (karta
+      // ETYKIETA-STACJI-PRZELOTOWEJ). `null` — stacji brak w modelu albo rodzaj jej nie dotyczy.
+      const rodzaj = rodzajStacji(enm, s.substation_ref);
+      const topologicalType: StationOnRun['topologicalType'] = rodzaj
+        ? NAZWA_RODZAJU_STACJI_PL[rodzaj.rodzaj]
+        : null;
 
       return {
         id: s.substation_ref,

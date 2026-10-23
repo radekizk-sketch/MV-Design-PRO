@@ -4,6 +4,13 @@ Ocena wiarygodności wyników solverów wobec twardych granic fizycznych — ła
 absurdy zanim trafią do pakietu OSD. NIE liczy fizyki (Z15).
 """
 
+from analysis.sanity_bounds.parametry_linii_bounds import (
+    PASMA_LINII_110KV,
+    PODSTAWA_PASM_PL,
+    OcenaParametruLinii,
+    PasmoParametruLinii,
+    ocen_parametry_linii_110kv,
+)
 from analysis.sanity_bounds.power_flow_bounds import (
     DOMYSLNY_PROG_STRAT_PROCENT,
     NORMA_NAPIECIA_PL,
@@ -30,6 +37,11 @@ __all__ = [
     "INCOMPLETE",
     "NORMA_NAPIECIA_PL",
     "OUT_OF_RANGE",
+    "PASMA_LINII_110KV",
+    "PODSTAWA_PASM_PL",
+    "OcenaParametruLinii",
+    "PasmoParametruLinii",
+    "ocen_parametry_linii_110kv",
     "PASMO_NAPIECIA_PROCENT",
     "UZASADNIENIE_PROGU_STRAT_PL",
     "BranchLoadingSanityVerdict",

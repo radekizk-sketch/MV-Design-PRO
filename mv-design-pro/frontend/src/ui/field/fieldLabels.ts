@@ -41,6 +41,8 @@ export function deviceKindLabel(kind: string | null | undefined): string {
       return 'PCS';
     case 'BATTERY':
       return 'Bateria';
+    case 'SURGE_ARRESTER':
+      return 'Ogranicznik przepięć';
     default:
       return kind ?? 'Aparat do wyboru';
   }

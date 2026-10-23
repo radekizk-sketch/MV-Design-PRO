@@ -45,6 +45,7 @@ from domain.result_contract_v1_schema import (
 )
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_bieg
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -763,7 +764,7 @@ class TestResultContractV1Api:
         assert create_resp.status_code == 201
         run_id = create_resp.json()["id"]
 
-        execute_resp = client.post(f"/api/execution/runs/{run_id}/execute")
+        execute_resp = wykonaj_bieg(client, run_id)
         assert execute_resp.status_code == 200
         assert execute_resp.json()["status"] == "DONE"
 

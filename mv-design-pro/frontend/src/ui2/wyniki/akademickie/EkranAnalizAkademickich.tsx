@@ -1279,10 +1279,18 @@ function PanelRankinguNieprezentowanego({
   onPrzejdzDoKontyngencji: () => void;
 }) {
   const powod = odczytaj(payload, 'ranking_n1.powod_pl');
+  // Metoda obciążenia N-1 V12.6 z rekordu backendu (pozycja (g) planu A/B §12.2):
+  // „szacunek bez rozpływu" — nigdy literał ekranu.
+  const metoda = odczytaj(payload, 'ranking_n1.metoda_pl');
   if (typeof powod !== 'string') return null;
   return (
     <section className="mvd-akad-sekcja" data-testid="mvd-akad-ranking-n1">
       <h3 className="mvd-akad-sekcja-tytul">{S.rankingN1Tytul}</h3>
+      {typeof metoda === 'string' && (
+        <p className="mvd-akad-opis" data-testid="mvd-akad-ranking-n1-metoda">
+          {S.rankingN1Metoda}: <strong>{metoda}</strong>
+        </p>
+      )}
       <p className="mvd-akad-opis" data-testid="mvd-akad-ranking-n1-powod">
         {S.rankingN1Nieprezentowany} — {powod}
       </p>
@@ -1991,7 +1999,7 @@ export function EkranAnalizAkademickich({
                   trybEkspercki={trybEkspercki}
                   testid="mvd-akad-informacje-audytowe"
                   wiersze={[
-                    { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash },
+                    { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash ?? '' },
                     { etykieta: S.runId, wartosc: stan.dane.przebieg.run_id },
                     { etykieta: S.wersjaSolwera, wartosc: String(stan.dane.wynik.result.solver_version ?? '') },
                     { etykieta: S.odciskWejscia, wartosc: String(stan.dane.wynik.result.input_hash ?? '') },

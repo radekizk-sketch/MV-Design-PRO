@@ -55,7 +55,7 @@ import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation' | 'tieMarker';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -88,6 +88,11 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // (sam tor zachowuje klasę `snTrunk`, ciągłość elektryczna NIETKNIĘTA).
   // Grubość jak marker końca otwartego: to znak na torze mocy, nie adnotacja.
   sheetContinuation: 1.6,
+  // Karta SLD-SUBSTRAT (kontynuacja): ZNAK POWIĄZANIA w końcu odcinka zamkniętego
+  // odcinkiem powiązania spoza korytarzy (np. rezerwa pierścieniowa między końcami
+  // dwóch odgałęzień, `scene/elementyToru.ts`) — kreska poprzeczna na torze jak
+  // słupek końca, z odsyłaczem; sam odcinek powiązania nie ma trasy przez arkusz.
+  tieMarker: 1.6,
 };
 
 /**
@@ -399,12 +404,12 @@ export interface GpzCompactGlyphSummary {
  *  mini-RMU na L0 (`AUDYT_SCHEMATOW_OD_ZERA_2026-07` §3 „Stacja"). Wszystkie
  *  pola WYPROWADZONE z realnej topologii/danych stacji (zero fabrykacji). */
 export interface StationCompactGlyphSummary {
-  /** Stacja sekcyjna (sprzęgło w `snBays`, `classifyStationTopologicalType`). */
+  /** Stacja sekcyjna (sprzęgło w rozdzielnicy — rodzaj z `ui/shared/rodzajStacji.ts`). */
   readonly sectioned: boolean;
   /** GS-5 (uwaga właściciela 2026-07-23): topologia pól liniowych sylwetki z
-   *  ROLI stacji w ciągu — TA SAMA reguła prezentacji co L1/L2 (typ z TYPU
-   *  elementów §19.3 + stacja ostatnia w ciągu bez NO prezentuje się jako
-   *  końcowa, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
+   *  RODZAJU stacji — TA SAMA reguła co podpis L1/L2 (jedna reguła produktu
+   *  `ui/shared/rodzajStacji.ts`, §19.3; przelotowa ⇔ oba pola liniowe
+   *  połączone, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
    *  fantomowego toru na wylot), 'przelotowa' = dwa pola, 'odgałęźna' = dwa
    *  pola + węzeł odgałęzienia na szynie. Sekcyjna ⇒ 'przelotowa' (dwustronna
    *  z definicji) + `sectioned`. */

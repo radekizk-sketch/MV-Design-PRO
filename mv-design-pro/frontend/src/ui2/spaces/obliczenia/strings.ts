@@ -30,6 +30,9 @@ export const PRZYPADKI_STRINGS = {
   // w przestrzeni „Obliczenia" (dotąd tylko przycisk „Oblicz" paska tytułowego).
   uruchom: 'Uruchom obliczenie',
   uruchomWToku: 'Obliczenie w toku…',
+  uruchomAnuluj: 'Anuluj',
+  uruchomAnulujOpis:
+    'Anuluj bieg: z kolejki od razu, w toku — w najbliższym punkcie przerwania (zwarcie: między punktami zwarcia; rozpływ nie ma punktów przerwania i zakończy się sam).',
   uruchomRodzaj: 'Rodzaj analizy',
   uruchomOpis:
     'Uruchamia przebieg wybranego rodzaju dla aktywnego zakresu obliczeń i otwiera wyniki.',
@@ -72,15 +75,13 @@ export const PRZYPADKI_STRINGS = {
   sekcjaOpcje: 'Opcje analizy',
   sekcjaOperator: 'Profil operatora (OSD)',
   kolParametr: 'Parametr',
-  kolWartosc: 'Wartość',
-  kolPochodzenie: 'Pochodzenie',
 
-  // Założenia — etykiety pierwszoplanowe (KARTA-UI2 §1 p. 10: temperatura/stan
-  // łączeń SKASOWANE — StudyCaseConfig ich nie niesie i nie będzie nosić;
-  // kontrolka bez dostawcy w kontrakcie = fantom, nie „wkrótce")
-  zalozenieCMax: 'Współczynnik napięciowy c (max)',
-  zalozenieCMin: 'Współczynnik napięciowy c (min)',
-  pochodzenieKonfiguracja: 'Konfiguracja przypadku (IEC 60909)',
+  // Założenia — współczynnik c i czas t_k NIE są parametrami przypadku (karta
+  // WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59): jedynym nośnikiem jest scenariusz
+  // zwarciowy (MAX/MIN wg IEC 60909-0 tab. 1 per węzeł albo nadpisanie z uzasadnieniem).
+  // Dawne wiersze „c (max)/c (min)" pokazywały pola, których backend nie ma (fantom).
+  zalozenieCNosnik:
+    'Współczynnik napięciowy c i czas zwarcia t_k niesie scenariusz zwarciowy: MAX albo MIN dobiera c z tabeli 1 IEC 60909-0 dla napięcia każdego węzła, nadpisanie wymaga uzasadnienia. Podstawę c każdego węzła pokazują wyniki zwarć.',
 
   // Porównanie konfiguracji
   porownanieTytul: 'Porównanie konfiguracji przypadków',

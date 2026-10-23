@@ -30,7 +30,7 @@ import { SYMBOL_GLYPHS } from '../../../ui/sld/v3/symbols/glyphs';
 import { LABEL_TYPOGRAPHY } from '../../../ui/sld/v3/core/text';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
+import type { MVApparatusType, TransformerType } from '../../../ui/catalog/types';
 import type { StationSnFieldTemplate } from './stacjaModel';
 import {
   GRUBOSC_SZYNY,
@@ -52,7 +52,7 @@ import { STACJA_STRINGS as T } from './strings';
 export interface PodgladRozdzielnicySnProps {
   snFields: readonly StationSnFieldTemplate[];
   /** Katalog APARAT_SN — źródło rodzaju aparatu (symbol) i jego znamion (opis). */
-  aparaty?: readonly MVApparatusCatalogType[];
+  aparaty?: readonly MVApparatusType[];
   /** Katalog TRAFO_SN_NN + wskazany typ — opis transformatora pola TR. */
   transformatory?: readonly TransformerType[];
   transformatorRef?: string | null;

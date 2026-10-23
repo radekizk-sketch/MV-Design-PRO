@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from application.analyses.protection.catalog.models import (
+    JEDNOSTKI_ZAKRESOW_PRADOWYCH,
     WEJSCIA_NAPIECIOWE_IEC_60255,
     WEJSCIA_PRADOWE_IEC_60255,
     ZRODLO_WEJSC_KARTA,
@@ -63,8 +64,34 @@ def _parse_device(payload: dict) -> DeviceCapability:
         i_inst_50n_a_min=float(payload.get("i_inst_50n_a_min", 0.0)),
         i_inst_50n_a_max=float(payload.get("i_inst_50n_a_max", 0.0)),
         **_wejscia_pomiarowe(payload),
+        **_jednostka_zakresow(payload),
         meta=meta,
     )
+
+
+def _jednostka_zakresow(payload: dict) -> dict:
+    """Jednostka zakresów prądowych + podstawa (PZ-09) — obie albo żadna.
+
+    Wartość spoza ``JEDNOSTKI_ZAKRESOW_PRADOWYCH`` albo jednostka bez podstawy to błąd
+    danych katalogu produktu (``AssertionError`` przy wczytaniu — błąd programu), nie cichy brak: pozycja z jednostką
+    bez podstawy udawałaby zakres potwierdzony.
+    """
+    jednostka = payload.get("jednostka_zakresow_pradowych")
+    podstawa = payload.get("podstawa_zakresow_pl")
+    if jednostka is None and podstawa is None:
+        return {"jednostka_zakresow_pradowych": None, "podstawa_zakresow_pl": None}
+    if (
+        jednostka not in JEDNOSTKI_ZAKRESOW_PRADOWYCH
+        or not isinstance(podstawa, str)
+        or not (podstawa.strip())
+    ):
+        # Plik katalogu jest daną PRODUKTU, nie projektanta — pozycja bez podstawy jednostki
+        # to defekt wydania katalogu (błąd programu, 500 ze śladem), nie odmowa danych.
+        raise AssertionError(
+            f"Pozycja katalogu {payload.get('device_id')!r}: jednostka zakresów prądowych "
+            f"{jednostka!r} wymaga wartości z {JEDNOSTKI_ZAKRESOW_PRADOWYCH} i niepustej podstawy."
+        )
+    return {"jednostka_zakresow_pradowych": jednostka, "podstawa_zakresow_pl": podstawa}
 
 
 def _optional_float(wartosc: object) -> float | None:

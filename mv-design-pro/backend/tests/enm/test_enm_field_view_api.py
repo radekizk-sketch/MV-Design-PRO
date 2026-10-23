@@ -17,11 +17,12 @@ from api.enm import get_enm_field_view
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.models import Project
 from domain.study_case import StudyCase
-from enm.canonical_analysis import reset_canonical_runs, run_short_circuit_now
+from enm.canonical_analysis import reset_canonical_runs
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm, reset_enm_store, set_enm
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import run_short_circuit_now
 
 
 def _nowy_przypadek(uow_factory) -> str:
@@ -356,6 +357,11 @@ def test_get_field_view_returns_canonical_bay_contract(uow_factory):
     assert results["main_short_circuit_results_ref"] == results["run_ref"]
     assert results["source_contributions_sc"][0]["source_ref"] == "src_grid"
     assert results["proof_binding"]["proof_ref"].startswith("proof:bay_in_1:")
+    # Korekta 2026-10-15 (kontrakt werdyktu wyjaśnialnego): rekord `verification` niósł gołe
+    # flagi „spełnia" wyliczane z OBECNOŚCI danych (`whole_power_path_ok = bool(equipment_refs)`,
+    # `ct_ok = True` przy samym istnieniu przekładnika) — werdykt bez kryterium, wartości
+    # i limitu. Skasowany; model odczytu pola nie wystawia żadnej oceny toru pola.
+    assert "verification" not in results
 
 
 def test_get_field_view_synthesizes_fields_from_substation_meta(uow_factory):

@@ -6,23 +6,22 @@
  *
  * PR-25 additions:
  * - FaultModeValue: METALLIC | IMPEDANCE
- * - FaultImpedance: { r_ohm, x_ohm }
+ * - FaultImpedance: { r_f_ohm, x_f_ohm } — nazwy kontraktu OD-14 (te same co w backendzie)
  * - LocationType: + NODE, BRANCH_POINT
- * - arc_params: reserved (unsupported)
+ *
+ * Partia integracji 10: pola-fantomy `fault_impedance_type` (zawsze METALLIC), `arc_params`
+ * (zawsze odrzucane) i `z0_bus_data` (nigdy nie czytane przez bieg) skasowane w backendzie —
+ * backend odrzuca żądanie z polem spoza kontraktu (422).
  */
 
-export type FaultTypeValue = 'SC_3F' | 'SC_2F' | 'SC_1F';
+// Partia integracji 10 (OD-14): SC_2F_G — 1:1 z `domain/fault_scenario.py::FaultType`.
+export type FaultTypeValue = 'SC_3F' | 'SC_2F' | 'SC_1F' | 'SC_2F_G';
 
 export const FAULT_TYPE_LABELS: Readonly<Record<FaultTypeValue, string>> = {
   SC_3F: 'Zwarcie trójfazowe',
   SC_2F: 'Zwarcie dwufazowe',
   SC_1F: 'Zwarcie jednofazowe',
-} as const;
-
-export type FaultImpedanceTypeValue = 'METALLIC';
-
-export const FAULT_IMPEDANCE_LABELS: Readonly<Record<FaultImpedanceTypeValue, string>> = {
-  METALLIC: 'Zwarcie metaliczne',
+  SC_2F_G: 'Zwarcie dwufazowe z ziemią',
 } as const;
 
 /** v2 (PR-25): Fault mode — metallic or through impedance */
@@ -33,10 +32,10 @@ export const FAULT_MODE_LABELS: Readonly<Record<FaultModeValue, string>> = {
   IMPEDANCE: 'Przez impedancję',
 } as const;
 
-/** v2 (PR-25): Fault impedance Zf — explicit R + X in Ohms */
+/** Impedancja przejścia w miejscu zwarcia Z_f = R_f + jX_f [Ω] (kontrakt OD-14, R_f, X_f ≥ 0). */
 export interface FaultImpedanceData {
-  r_ohm: number;
-  x_ohm: number;
+  r_f_ohm: number;
+  x_f_ohm: number;
 }
 
 /** v1 + v2 location types */
@@ -55,9 +54,40 @@ export interface FaultLocation {
   position: number | null;
 }
 
+/**
+ * Scenariusz współczynnika napięciowego c (IEC 60909-0 tab. 1): MAX → kolumna c_max,
+ * MIN → kolumna c_min. Wartość c dobiera backend PER WĘZEŁ z pasma jego napięcia
+ * (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59) — UI nie zna liczby c.
+ */
+export type ScenariuszC = 'MAX' | 'MIN';
+
+export const SCENARIUSZ_C_LABELS: Readonly<Record<ScenariuszC, string>> = {
+  MAX: 'MAX — największe prądy zwarciowe (dobór aparatury, wytrzymałość)',
+  MIN: 'MIN — najmniejsze prądy zwarciowe (czułość zabezpieczeń)',
+} as const;
+
+/** Ręczne nadpisanie c — wartość RAZEM z uzasadnieniem inżyniera (bez niego backend odmawia). */
+export interface NadpisanieC {
+  wartosc: number;
+  uzasadnienie: string;
+}
+
+/**
+ * Konfiguracja obliczeń zwarciowych scenariusza — 1:1 z backendowym
+ * `ShortCircuitConfigRequest` (extra=forbid; klucz `c_factor` = odmowa 422).
+ * Scenariusz zwarciowy jest JEDYNYM nośnikiem c i t_k.
+ */
 export interface ShortCircuitConfig {
-  c_factor: number;
+  scenariusz: ScenariuszC;
+  nadpisanie_c: NadpisanieC | null;
   thermal_time_seconds: number;
+  /**
+   * Czas wyłączenia t_b [s] (karta SC-IB-ITH-ZRODLA): najkrótszy czas zadziałania
+   * zabezpieczenia + czas własny wyłącznika. Brak = t_b rozstrzygany w każdym punkcie zwarcia
+   * (karta TB-WARTOSC-ROBOCZA: najkrótszy czas pól lokalnych, inaczej wartość robocza
+   * z założeniem biegu `fault.czas_tb_wartosc_robocza`).
+   */
+  breaking_time_seconds?: number | null;
   include_branch_contributions: boolean;
 }
 
@@ -69,14 +99,10 @@ export interface FaultScenario {
   fault_type: FaultTypeValue;
   location: FaultLocation;
   config: ShortCircuitConfig;
-  fault_impedance_type: FaultImpedanceTypeValue;
   /** v2 (PR-25): fault mode */
   fault_mode: FaultModeValue;
   /** v2 (PR-25): explicit fault impedance Zf */
   fault_impedance: FaultImpedanceData | null;
-  /** v2 (PR-25): reserved arc parameters (unsupported) */
-  arc_params: Record<string, unknown> | null;
-  z0_bus_data: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   content_hash: string;
@@ -91,14 +117,12 @@ export interface CreateFaultScenarioRequest {
   name: string;
   fault_type: FaultTypeValue;
   location: FaultLocation;
-  config?: ShortCircuitConfig;
+  /** Wymagana przez backend — bez scenariusza MAX/MIN scenariusz nie powstaje. */
+  config: ShortCircuitConfig;
   /** v2 (PR-25) */
   fault_mode?: FaultModeValue;
   /** v2 (PR-25) */
   fault_impedance?: FaultImpedanceData;
-  /** v2 (PR-25) — reserved, unsupported */
-  arc_params?: Record<string, unknown>;
-  z0_bus_data?: Record<string, unknown>;
 }
 
 export interface UpdateFaultScenarioRequest {
@@ -110,9 +134,6 @@ export interface UpdateFaultScenarioRequest {
   fault_mode?: FaultModeValue;
   /** v2 (PR-25) */
   fault_impedance?: FaultImpedanceData | null;
-  /** v2 (PR-25) — reserved, unsupported */
-  arc_params?: Record<string, unknown> | null;
-  z0_bus_data?: Record<string, unknown> | null;
 }
 
 export interface FixAction {

@@ -15,6 +15,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import {
   PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  type TolerancjaNapieciaNn,
   type TypPunktuNeutralnego,
   type UkladSieciNn,
 } from '../../../types/uziemienie';
@@ -47,11 +48,13 @@ import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTempla
 import type {
   CatalogNamespace,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
+import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
+import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -208,9 +211,19 @@ export interface StacjaFormData {
   nn_configuration: NnConfiguration;
   /** Układ sieci nN (uziemienie) — G-STK-1. */
   uklad_sieci_nn: UkladSieciNn;
+  /**
+   * Tolerancja napięcia sieci nN (`nn_earthing.lv_voltage_tolerance` →
+   * `Transformer.lv_voltage_tolerance`) — wiersz nN tabeli 1 IEC 60909-0, z którego backend
+   * dobiera c węzłów nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+   */
+  tolerancja_napiecia_nn: TolerancjaNapieciaNn;
   /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
   neutral_point: PunktNeutralny;
-  /** Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika (tekst PL, przecinek). */
+  /**
+   * Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika; dla punktu
+   * uziemionego bezpośrednio: rezystancja uziomu stacji R_B (karta W5-E-TTIT — pętla doziemna
+   * układu TT domyka się przez R_B; `lv_r_ohm` → `Transformer.lv_neutral.r_ohm`). Tekst PL, przecinek.
+   */
   neutral_impedance_ohm: string;
   /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
@@ -278,6 +291,11 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
   // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
   uklad_sieci_nn: 'TN-C-S',
+  // Domyślnie +10 % — sieć 230/400 V z dopuszczalnym odchyleniem napięcia +10 %
+  // (IEC 60038, PN-EN 50160). Wartość widoczna w kroku „Uziemienie"; projektant zmienia
+  // świadomie na +6 %, gdy operator deklaruje węższą tolerancję. Bez deklaracji backend
+  // liczy z wartością roboczą +10 % i oznacza ją założeniem `fault.c_tolerancja_nn_robocza`.
+  tolerancja_napiecia_nn: 'PLUS_10',
   neutral_point: 'directly_grounded',
   neutral_impedance_ohm: '',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
@@ -379,6 +397,7 @@ export function ogranicznikOdplywow(value: number): number {
 export function walidujFormularz(
   data: StacjaFormData,
   snFields?: readonly StationSnFieldTemplate[],
+  tryb?: TrybUmiejscowienia,
 ): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
@@ -422,6 +441,18 @@ export function walidujFormularz(
           : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
     });
   }
+  // W5-E-TTIT: układ TT bez rezystancji uziomu stacji R_B = pętla doziemna niepoliczalna
+  // (ten sam warunek co `tt_it.r_b_transformatora` i pre-kontrola ELIG_FLNN_MISSING_TRANSFORMER_R_B).
+  if (
+    data.uklad_sieci_nn === 'TT'
+    && data.neutral_point === 'directly_grounded'
+    && liczbaDodatniaPL(data.neutral_impedance_ohm) === null
+  ) {
+    errors.push({
+      field: 'neutral_impedance_ohm',
+      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji R_B [Ω] (punkt neutralny uziemiony bezpośrednio).',
+    });
+  }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
     errors.push({
       field: 'sn_fields',
@@ -434,6 +465,18 @@ export function walidujFormularz(
       field: 'sn_field_apparatus_refs',
       message: 'Dobierz aparat z katalogu SN dla każdego pola rozdzielnicy.',
     });
+  }
+  // POLA-W-TORZE: pole toru nieobecne na liście = odmowa operacji (brak wspólnego aparatu).
+  if (snFields !== undefined && tryb !== undefined) {
+    const brak = brakujacePolaToru(snFields, tryb);
+    if (brak.length > 0) {
+      errors.push({
+        field: 'sn_fields_tor',
+        message:
+          `Stacja wymaga pól toru: ${brak.map((rola) => FIELD_ROLE_LABEL_PL[rola]).join(', ')}`
+          + ' — dodaj je w kroku „Pola rozdzielnicy SN”.',
+      });
+    }
   }
   return errors;
 }
@@ -686,23 +729,53 @@ export function domyslneWpisyPol(
 }
 
 /**
- * KOMPLETNOSC-POLA-TR §0 pkt 1 — czy stacja z transformatorem NIE MA pola
- * transformatorowego.
+ * Pola toru, których wymaga umiejscowienie stacji (zasada toru, karta POLA-W-TORZE):
+ * element, któremu pole służy, jest przyłączony do ZACISKU tego pola, a aparat pola leży
+ * w jego torze prądowym.
  *
- * Domyślnie kreator pole TR tworzy (`buildDefaultSnFields` niesie
- * `TRANSFORMATOROWE` dla KAŻDEGO rodzaju stacji), ale lista pól jest edytowalna
- * i projektant może je świadomie usunąć. To jest legalny STAN ROBOCZY — nie
- * blokujemy zapisu. Kreator ma jednak powiedzieć WPROST, co z tego wyniknie
- * (marker niekompletności na schemacie, ostrzeżenie gotowości, zamknięta droga
- * do dokumentacji wykonawczej), bo inaczej projektant dowiaduje się o skutku
- * dopiero z rysunku.
+ * - Stacja wstawiana w odcinek (`insert_station_on_segment_sn`): część odcinka od strony
+ *   zasilania kończy się na polu liniowym wejściowym, dalsza część wychodzi z pola liniowego
+ *   wyjściowego, transformator leży na polu transformatorowym.
+ * - Stacja zamykająca odcinek (`append_station_on_endpoint`): odcinek dochodzi do pola
+ *   liniowego wejściowego, transformator — do pola transformatorowego.
+ *
+ * Kreator ZAWSZE tworzy transformator (`transformer.create: true`), więc pole
+ * transformatorowe jest wymagane w obu trybach. To ten sam zbiór, który operacja domenowa
+ * domyka (`enm.tor_pola.pola_do_domkniecia`); kreator nie wysyła wspólnego aparatu pól, więc
+ * pole brakujące na liście kończyłoby zapis odmową operacji — kreator nazywa brak wcześniej
+ * i blokuje zapis (dawny „legalny stan roboczy" bez pola TR przestał istnieć: transformator
+ * bez pola omijałby aparat, który ma go odłączać).
  */
-export function brakujePolaTransformatorowego(
-  pola: readonly PoleSnWpis[],
-  transformatorTworzony: boolean,
-): boolean {
-  if (!transformatorTworzony) return false;
-  return !pola.some((pole) => pole.field_role === 'TRANSFORMATOROWE');
+export const POLA_TORU_WG_TRYBU: Readonly<Record<TrybUmiejscowienia, readonly SnFieldRole[]>> = {
+  SPLIT: ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE'],
+  ENDPOINT_APPEND: ['LINIA_IN', 'TRANSFORMATOROWE'],
+};
+
+/** Pola toru wymagane dla trybu umiejscowienia, których lista pól nie zawiera (w kolejności toru). */
+/**
+ * Rodzaj stacji, który powstanie z tego SKŁADU pól i umiejscowienia — JEDNA reguła produktu
+ * (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, §19.3). Podział
+ * odcinka łączy oba końce stacji z siecią (dwa połączone wyprowadzenia), zakończenie odcinka —
+ * tylko pole wejściowe (jedno). Karta ETYKIETA-STACJI-PRZELOTOWEJ: kontrola i podsumowanie
+ * kreatora pokazywały DEKLARACJĘ z kroku „Rodzaj", choć edycja listy pól ją zmieniała —
+ * po zapisie drzewo i schemat pokazywały inny rodzaj niż kreator.
+ */
+export function rodzajStacjiZKreatora(
+  pola: readonly { field_role: SnFieldRole }[],
+  tryb: TrybUmiejscowienia,
+): RodzajStacji {
+  return rodzajZeSkladuPol(
+    pola.map((pole) => pole.field_role),
+    tryb === 'SPLIT' ? 2 : 1,
+  );
+}
+
+export function brakujacePolaToru(
+  pola: readonly { field_role: SnFieldRole }[],
+  tryb: TrybUmiejscowienia,
+): SnFieldRole[] {
+  const obecne = new Set(pola.map((pole) => pole.field_role));
+  return POLA_TORU_WG_TRYBU[tryb].filter((rola) => !obecne.has(rola));
 }
 
 /** Nowy wpis pola (dodanie pola w kroku 3). */
@@ -918,10 +991,10 @@ export function czyAparaturaKompletna(snFields: readonly StationSnFieldTemplate[
  * kreator nie zgaduje ograniczeń, których backend nie deklaruje.
  */
 export function aparatyDlaPola(
-  aparaty: readonly MVApparatusCatalogType[],
+  aparaty: readonly MVApparatusType[],
   snVoltageKv: number,
   rodzajeDlaRoli: readonly string[] = [],
-): MVApparatusCatalogType[] {
+): MVApparatusType[] {
   const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty
     .filter((a) => !(snVoltageKv > 0) || a.u_n_kv + 1e-6 >= snVoltageKv)
@@ -1009,7 +1082,8 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 }
 
 /**
- * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
+ * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + tolerancja napięcia sieci nN
+ * (`lv_voltage_tolerance`, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) + typ pracy punktu
  * neutralnego + impedancja uziemienia dla wariantów impedancyjnych. Mapuje 1:1
  * na kontrakt operacji (`GroundingConfig.type` + `lv_system`); składowa
  * DOMINUJĄCA spływa pod właściwym kluczem: rezystor → `lv_r_ohm`, cewka
@@ -1019,6 +1093,7 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
   const blok: Record<string, unknown> = {
     lv_system: data.uklad_sieci_nn,
+    lv_voltage_tolerance: data.tolerancja_napiecia_nn,
     neutral_point: data.neutral_point,
   };
   if (PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)) {
@@ -1026,6 +1101,11 @@ function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
     if (wartosc !== null) {
       blok[data.neutral_point === 'petersen_coil' ? 'lv_x_ohm' : 'lv_r_ohm'] = wartosc;
     }
+  } else if (data.neutral_point === 'directly_grounded') {
+    // Uziom stacji R_B (W5-E-TTIT): rezystancja uziomu punktu neutralnego uziemionego
+    // bezpośrednio — czyta ją pętla doziemna układu TT; podana = `lv_r_ohm`, pusta = brak klucza.
+    const r_b = liczbaDodatniaPL(data.neutral_impedance_ohm);
+    if (r_b !== null) blok.lv_r_ohm = r_b;
   }
   return blok;
 }

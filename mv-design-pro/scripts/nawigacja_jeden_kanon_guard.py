@@ -29,6 +29,16 @@ REGULA C — flaga powloki V3 nie istnieje.
 REGULA D — dokladnie JEDNA definicja komponentu palety komend.
     Kanon: `frontend/src/ui2/search/CommandPalette.tsx` (D4).
 
+REGULA E — wiazanie nawigacji pulpitu z `przejdzDoPrzestrzeni` w AppRoot.
+
+REGULA F — akcja naprawcza jest WYKONAWCA jedna nawigacja (C-12, decyzja K-12).
+    Pliki klasy akcji naprawczych (wykonawca gotowosci, jego rozwiazanie, petla
+    wynik->model) nie wolaja golego `setActiveSpace` — przejscie idzie mostem tras
+    `przejdzDoPrzestrzeni`. AppRoot wiaze obie drogi naprawy (panel gotowosci, NBA
+    pulpitu) z JEDNA funkcja `wykonajAkcjeNaprawcza` i nie definiuje wlasnej.
+    Wykonawca `executeFixActionSurface` ma JEDNEGO wolajacego i nie wraca do
+    warstwy `ui/` (dawna wyspa z jednym konsumentem legacy).
+
 Uruchomienie:
     python scripts/nawigacja_jeden_kanon_guard.py
 
@@ -241,6 +251,77 @@ def regula_e_wiazanie_pulpitu() -> list[str]:
     ]
 
 
+#: Regula F (karta C-12). Pliki klasy akcji naprawczych — przejscie przestrzeni
+#: wylacznie mostem tras.
+PLIK_AKCJI_NAPRAWCZYCH = FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "akcjeNaprawcze.ts"
+PLIK_WYKONAWCY = FRONTEND_SRC / "ui2" / "spaces" / "gotowosc" / "fixActionSurfaceExecutor.ts"
+PLIK_PETLI_WYNIK_MODEL = FRONTEND_SRC / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts"
+GOLY_SETTER = re.compile(r"\bsetActiveSpace\b")
+WIAZANIE_NAPRAWY = "onAkcjaNaprawcza={wykonajAkcjeNaprawcza}"
+WLASNA_NAPRAWA = re.compile(r"\b(?:const|function)\s+wykonajAkcjeNaprawcza\b")
+WYWOLANIE_WYKONAWCY = re.compile(r"\bexecuteFixActionSurface\s*\(")
+NAZWA_WYKONAWCY = "fixActionSurfaceExecutor"
+
+
+def regula_f_akcja_naprawcza() -> list[str]:
+    naruszenia: list[str] = []
+    for plik in (PLIK_AKCJI_NAPRAWCZYCH, PLIK_WYKONAWCY, PLIK_PETLI_WYNIK_MODEL):
+        if not plik.is_file():
+            naruszenia.append(
+                f"[naprawa-brak-pliku] {plik.relative_to(REPO_ROOT)} — plik klasy akcji "
+                "naprawczych zniknal (przeniesienie bez aktualizacji guarda)"
+            )
+            continue
+        tresc = bez_komentarzy(plik.read_text(encoding="utf-8"))
+        for numer, linia in enumerate(tresc.splitlines(), start=1):
+            if GOLY_SETTER.search(linia):
+                naruszenia.append(
+                    f"[naprawa-goly-setter] {plik.relative_to(REPO_ROOT)}:{numer} "
+                    "akcja naprawcza przelacza przestrzen golym setActiveSpace — "
+                    "uzyj przejdzDoPrzestrzeni (D1, C-12)"
+                )
+    if PLIK_AKCJI_NAPRAWCZYCH.is_file():
+        tresc = bez_komentarzy(PLIK_AKCJI_NAPRAWCZYCH.read_text(encoding="utf-8"))
+        if "przejdzDoPrzestrzeni(" not in tresc:
+            naruszenia.append(
+                "[naprawa-bez-nawigacji] akcjeNaprawcze.ts nie wola przejdzDoPrzestrzeni — "
+                "wykonawca musi isc JEDNA nawigacja powloki (D1)"
+            )
+
+    tresc_approot = bez_komentarzy(PLIK_APPROOT.read_text(encoding="utf-8"))
+    if WLASNA_NAPRAWA.search(tresc_approot):
+        naruszenia.append(
+            "[naprawa-druga-implementacja] AppRoot.tsx definiuje wlasne "
+            "wykonajAkcjeNaprawcza — jedna funkcja zyje w spaces/gotowosc/akcjeNaprawcze.ts"
+        )
+    if tresc_approot.count(WIAZANIE_NAPRAWY) < 2:
+        naruszenia.append(
+            f"[naprawa-niewpieta] AppRoot.tsx wiaze {WIAZANIE_NAPRAWY!r} "
+            f"{tresc_approot.count(WIAZANIE_NAPRAWY)} raz(y) zamiast 2 "
+            "(panel gotowosci + pulpit projektu)"
+        )
+
+    wolajacy: list[str] = []
+    for sciezka in pliki_frontu():
+        tresc = bez_komentarzy(sciezka.read_text(encoding="utf-8"))
+        wzgledna = sciezka.relative_to(FRONTEND_SRC)
+        if wzgledna.parts[0] == "ui" and (
+            NAZWA_WYKONAWCY in tresc or sciezka.stem == NAZWA_WYKONAWCY
+        ):
+            naruszenia.append(
+                f"[naprawa-wyspa-legacy] {sciezka.relative_to(REPO_ROOT)} — wykonawca akcji "
+                "naprawczej wrocil do warstwy ui/ (C-12: przeniesiony do ui2)"
+            )
+        if sciezka != PLIK_WYKONAWCY and WYWOLANIE_WYKONAWCY.search(tresc):
+            wolajacy.append(str(sciezka.relative_to(REPO_ROOT)))
+    if wolajacy != [str(PLIK_AKCJI_NAPRAWCZYCH.relative_to(REPO_ROOT))]:
+        naruszenia.append(
+            "[naprawa-wolajacy] executeFixActionSurface ma wolajacych: "
+            f"{wolajacy or 'brak'} — jedynym jest akcjeNaprawcze.ts (wykonajAkcjeNaprawcza)"
+        )
+    return naruszenia
+
+
 def main() -> int:
     if not FRONTEND_SRC.is_dir():
         print(f"BLAD: brak katalogu {FRONTEND_SRC}", file=sys.stderr)
@@ -252,6 +333,7 @@ def main() -> int:
     naruszenia += regula_c_flaga_v3()
     naruszenia += regula_d_jedna_paleta()
     naruszenia += regula_e_wiazanie_pulpitu()
+    naruszenia += regula_f_akcja_naprawcza()
 
     if naruszenia:
         print("NAWIGACJA-JEDEN-KANON: NARUSZENIA")
@@ -260,7 +342,9 @@ def main() -> int:
         print(f"\nRazem: {len(naruszenia)}")
         return 1
 
-    print("NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu)")
+    print(
+        "NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu, akcja naprawcza)"
+    )
     return 0
 
 

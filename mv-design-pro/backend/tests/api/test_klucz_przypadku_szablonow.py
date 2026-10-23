@@ -62,6 +62,8 @@ from enm.dziennik_zmian import wyczysc_dziennik
 from enm.store import has_enm, reset_enm_store
 from fastapi.testclient import TestClient
 
+from tests.utils.importy_ast_skryptow import importy_ast
+
 REF_ZRODLO = "src-gpz-15kv-250mva-rx010"
 REF_KABEL = "cable-tfk-yakxs-3x120"
 SZABLON = "tpl_sn_nn_630kva"
@@ -171,11 +173,17 @@ def test_postac_niekanoniczna_jest_odrzucana(postac: str) -> None:
     with pytest.raises(ValueError) as blad:
         klucz_przypadku(postac)
     assert "kanonicznej" in str(blad.value)
+    # Partia integracji 10: treść odmowy nie powtarza identyfikatora z adresu.
+    assert postac not in str(blad.value)
 
 
 def test_identyfikator_spoza_kontraktu_jest_odrzucany() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as blad:
         klucz_przypadku("nie-jest-uuid")
+    # Partia integracji 10: zdanie po polsku zamiast angielskiego komunikatu parsera UUID.
+    assert str(blad.value) == (
+        "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+    )
 
 
 @pytest.mark.parametrize("otoczenie", [" {0}", "{0} ", "\t{0}", "{0}\n"])
@@ -325,6 +333,14 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
     # projektem przez tłumacza, zero własnej konwersji klucza przypadku.
     "audit2_station_config.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU: świeżość wyniku biegu oceny zabezpieczeń porównuje
+    # sieć biegu źródłowego z BIEŻĄCYM modelem pod kluczem zapisanym na biegu (`klucz_twin`
+    # koperty, wyprowadzony przy tworzeniu jedynym tłumaczem `klucz_twin_z_uow`) — klucz
+    # z rekordu, bez konwersji identyfikatora z adresu.
+    "protection_runs.py": KLUCZ_Z_REKORDU,
+    # Koordynacja E-28 bierze urządzenia i nastawy z modelu PROJEKTU (trasa `project_id`)
+    # przez jedynego tłumacza `klucz_twin_dla_projektu` — klucza przypadku nie wyprowadza.
+    "protection_coordination.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
 }
 
 #: Dług ZGŁOSZONY, nie naprawiony (pliki poza torem karty U1). Zbiór jest zamknięty:
@@ -334,15 +350,44 @@ DLUG_NORMALIZACJI_POZA_TOREM: frozenset[str] = frozenset(
 )
 
 
-def _moduly_api_siegajace_po_magazyn() -> set[str]:
-    katalog_api = Path(inspect.getfile(station_templates)).parent
+def _moduly_api_siegajace_po_magazyn(katalog_api: Path | None = None) -> set[str]:
+    """Moduły `api/*.py` ładujące `enm.store` — KAŻDĄ formą importu.
+
+    Rozwiązanie wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło prawdy
+    bramek): `from enm import store` i `import enm.store` sięgają po magazyn tak samo jak
+    `from enm.store import get_enm` (do 2026-09-30 skan czytał samo `ImportFrom.module`
+    i pomijał obie formy)."""
+    katalog = katalog_api or Path(inspect.getfile(station_templates)).parent
     znalezione: set[str] = set()
-    for plik in sorted(katalog_api.glob("*.py")):
+    for plik in sorted(katalog.glob("*.py")):
         drzewo = ast.parse(plik.read_text(encoding="utf-8"))
         for wezel in ast.walk(drzewo):
-            if isinstance(wezel, ast.ImportFrom) and (wezel.module or "").startswith("enm.store"):
+            if isinstance(wezel, ast.Import | ast.ImportFrom) and any(
+                importy_ast.pod_prefiksem(modul, ("enm.store",))
+                for modul in importy_ast.moduly_dotkniete("api", wezel)
+            ):
                 znalezione.add(plik.name)
     return znalezione
+
+
+@pytest.mark.parametrize(
+    ("tresc", "siega"),
+    [
+        ("from enm.store import get_enm\n", True),
+        ("from enm import store\n", True),
+        ("from enm import store as magazyn\n", True),
+        ("import enm.store\n", True),
+        ("from enm.store.podmodul import x\n", True),
+        ("from enm import klucz_twin\n", False),
+        ("from .enm import store\n", False),
+        ("import enm\n", False),
+    ],
+)
+def test_skan_magazynu_widzi_kazda_forme_importu(tmp_path: Path, tresc: str, siega: bool) -> None:
+    """Samotest skanu: iloczyn form importu × (sięga / nie sięga po `enm.store`).
+    `from .enm import store` w `api/` to moduł `api.enm`, nie magazyn."""
+    (tmp_path / "trasa.py").write_text(tresc, encoding="utf-8")
+    assert (_moduly_api_siegajace_po_magazyn(tmp_path) == {"trasa.py"}) is siega
 
 
 def test_inwentarz_sciezek_siegajacych_po_magazyn_jest_domkniety() -> None:

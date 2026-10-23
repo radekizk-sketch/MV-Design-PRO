@@ -35,14 +35,13 @@ import type {
 // ---------------------------------------------------------------------------
 
 describe('DEFAULT_STUDY_CASE_CONFIG', () => {
-  it('should have valid c_factor_max for IEC 60909', () => {
-    // IEC 60909: c_max = 1.10 for MV networks
-    expect(DEFAULT_STUDY_CASE_CONFIG.c_factor_max).toBe(1.10);
-  });
-
-  it('should have valid c_factor_min for IEC 60909', () => {
-    // IEC 60909: c_min = 0.95 for MV networks
-    expect(DEFAULT_STUDY_CASE_CONFIG.c_factor_min).toBe(0.95);
+  it('przypadek NIE niesie współczynnika c ani czasu t_k (jedyny nośnik: scenariusz zwarciowy)', () => {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): backendowy `StudyCaseConfig` nie ma
+    // tych pól; ich obecność w UI była fantomem (pokazana liczba bez konsumenta).
+    for (const pole of ['c_factor_max', 'c_factor_min', 'thermal_time_seconds']) {
+      expect(DEFAULT_STUDY_CASE_CONFIG).not.toHaveProperty(pole);
+      expect(CONFIG_FIELD_LABELS).not.toHaveProperty(pole);
+    }
   });
 
   it('should have standard base MVA', () => {
@@ -67,20 +66,13 @@ describe('DEFAULT_STUDY_CASE_CONFIG', () => {
     expect(DEFAULT_STUDY_CASE_CONFIG.include_inverter_contribution).toBe(true);
   });
 
-  it('should have positive thermal time', () => {
-    expect(DEFAULT_STUDY_CASE_CONFIG.thermal_time_seconds).toBeGreaterThan(0);
-  });
-
   it('should have all expected config fields', () => {
     const expectedFields: (keyof StudyCaseConfig)[] = [
-      'c_factor_max',
-      'c_factor_min',
       'base_mva',
       'max_iterations',
       'tolerance',
       'include_motor_contribution',
       'include_inverter_contribution',
-      'thermal_time_seconds',
     ];
     for (const field of expectedFields) {
       expect(DEFAULT_STUDY_CASE_CONFIG).toHaveProperty(field);
@@ -139,14 +131,11 @@ describe('przyczyna statusu wyników', () => {
 describe('CONFIG_FIELD_LABELS', () => {
   it('should have labels for all config fields', () => {
     const configFields: (keyof StudyCaseConfig)[] = [
-      'c_factor_max',
-      'c_factor_min',
       'base_mva',
       'max_iterations',
       'tolerance',
       'include_motor_contribution',
       'include_inverter_contribution',
-      'thermal_time_seconds',
     ];
 
     for (const field of configFields) {
@@ -204,7 +193,7 @@ describe('ANALYSIS_TYPE_LABELS', () => {
 // ---------------------------------------------------------------------------
 
 describe('RUN_STATUS_LABELS', () => {
-  const ALL_STATUSES: RunStatus[] = ['PENDING', 'RUNNING', 'DONE', 'FAILED'];
+  const ALL_STATUSES: RunStatus[] = ['PENDING', 'QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELLED'];
 
   it('should have labels for all run statuses', () => {
     for (const status of ALL_STATUSES) {
@@ -220,7 +209,7 @@ describe('RUN_STATUS_LABELS', () => {
 // ---------------------------------------------------------------------------
 
 describe('RUN_STATUS_COLORS', () => {
-  const ALL_STATUSES: RunStatus[] = ['PENDING', 'RUNNING', 'DONE', 'FAILED'];
+  const ALL_STATUSES: RunStatus[] = ['PENDING', 'QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELLED'];
 
   it('should have CSS color classes for all run statuses', () => {
     for (const status of ALL_STATUSES) {

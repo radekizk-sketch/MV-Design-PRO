@@ -30,11 +30,20 @@ function ustawFetch(widok: WidokStabilnosciSsci): void {
     const adres = String(url);
     const metoda = init?.method ?? 'GET';
     if (metoda === 'POST' && adres.includes('/runs/v126/ssci_impedance')) {
+      // Karta DYNAMIKA-W-TLE: zlecenie (202, QUEUED) — stan końcowy z odpytywania niżej.
+      return {
+        ok: true,
+        status: 202,
+        statusText: 'Accepted',
+        json: async () => ({ run_id: RUN_ID, status: 'QUEUED', deterministic_hash: null }),
+      } as Response;
+    }
+    if (metoda === 'GET' && adres.endsWith(`/api/execution/runs/${RUN_ID}`)) {
       return {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: async () => ({ run_id: RUN_ID, status: 'FINISHED', deterministic_hash: 'hash-ssci' }),
+        json: async () => ({ id: RUN_ID, status: 'DONE', error_message: null }),
       } as Response;
     }
     if (metoda === 'GET' && adres.includes('/results/v126/ssci_impedance/stability')) {

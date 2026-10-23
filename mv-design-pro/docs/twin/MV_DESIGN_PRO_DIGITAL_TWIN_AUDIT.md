@@ -132,7 +132,7 @@ Przepływ prawdy dziś: kreator (ui2) → `POST /api/cases/{id}/enm/domain-ops` 
 | frontend | `TopologyPanel.tsx` (+`api.ts` ops), `traceExportApi.ts`, `comparison/api.ts:62-100`, `EdytowalnaTabela`, `element-assignment.ts` „nie zaimplementowany", fantom nastaw `SldDetailDrawer`, `ProtectionRunButton` niezamontowany, `CaseConfigPage` wygaszony | — | A9-25, A8-19, A4-03/14 |
 | frontend | drugi store DER (`synchronizacjaZModelu.ts`), 4 z 5 silników NBA, 6 z 7 inspektorów, orkiestrator `hashchange` | — | A5-11, A8-03/04/05 |
 | dokumenty | 191 do kasacji (86 kart, 108 artefaktów review, 30 zastąpionych kanonów SLD, 6 promptów), 464 do archiwum | — | A10 §2 |
-| dokumenty | `PROTECTION_SYSTEM_CANONICAL.md` (BINDING, wskazuje legacy `CTRatio`), `SLD_SCADA_CAD_CONTRACT.md` („BoundaryNode ZAWSZE" vs Core Rule 5), SSOT map SLD z 21/29 martwych ścieżek, `STAN_REPO.md` nagłówek z maja | — | A4 §9, A9 §5 pkt 13, A10 S7/S12 |
+| dokumenty | `PROTECTION_SYSTEM_CANONICAL.md` (BINDING, wskazuje legacy `CTRatio`), `SLD_SCADA_CAD_CONTRACT.md` („BoundaryNode ZAWSZE" vs Core Rule 5), SSOT map SLD z 21/29 martwych ścieżek, `STAN_REPO.md` nagłówek z maja | — | A4 §9, A9 §5 pkt 13, A10 S7/S12 **2026-09-30 (K-19, V12K-347):** `SLD_SCADA_CAD_CONTRACT.md` przepisany (BoundaryNode tylko w warstwie analizy; „punkt przyłączenia” = `GridConnectionPoint`, ADR-027 ACCEPTED); pin `docs_guard` |
 
 ---
 

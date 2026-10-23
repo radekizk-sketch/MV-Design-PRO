@@ -130,7 +130,7 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "u_n_kv": 15.0,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "u_prefault_kv": 9.526279,
         "z1_re_ohm": 0.5,
         "z1_im_ohm": 1.2,
@@ -141,8 +141,6 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         "a_re": -0.5,
         "a_im": 0.8660254038,
         "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
     response = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
     assert response.status_code == 200
@@ -232,7 +230,7 @@ def test_sc3f_pack_api_returns_zip(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "snapshot": enm.model_dump(mode="json"),
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "tk_s": 1.0,
     }
     response = client.post("/api/proof/sc3f/pack", json=payload)
@@ -308,7 +306,7 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     payload = {
         "snapshot": enm.model_dump(mode="json"),
         "fault_node_id": fault_node_id,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "t_min_s": 0.10,
     }
     response = client.post("/api/proof/sc3f/contributions", json=payload)
@@ -328,8 +326,18 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
     assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    # Karta PODSTAWA-Q (rozstrz. 3): tabliczka „Agregat" nie podaje x″d ani cos φ_rG —
+    # nagłówek niesie zdanie na każdą wartość roboczą (kolejność rejestru), odpowiedź —
+    # wpisy i dane przyjęte (ten sam dobór).
+    assert wywod[2]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: reaktancja")
+    assert wywod[3]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: znamionowy")
+    assert [w["parametr"] for w in dane["parametry_robocze_maszyn"]] == [
+        "xd_subtransient_pu",
+        "cos_phi",
+    ]
+    assert dane["status_danych"] == "UNVALIDATED_INPUT" and len(dane["dane_przyjete"]) == 2
     # Karta #145: separator nazywa maszynę bez kodu typu (`SYNCHRONOUS`).
-    assert wywod[2]["tekst"] == "— Agregat —"
+    assert wywod[4]["tekst"] == "— Agregat —"
     latexy = " ".join(k["latex"] for k in wywod if k["latex"])
     # Wzor ogolny pradu czesciowego (superpozycja Z-bus) + podstawienie z c.
     assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
@@ -360,7 +368,11 @@ def test_sc3f_contributions_empty_without_machines(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": fault_node_id,
+            "scenariusz": "MAX",
+        },
     )
     assert response.status_code == 200
     assert response.json()["contributions"] == []
@@ -372,7 +384,11 @@ def test_sc3f_contributions_accepts_enm_bus_ref(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": "bus_oze"},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": "MAX",
+        },
     )
     assert response.status_code == 200
     assert len(response.json()["contributions"]) == 1
@@ -382,7 +398,11 @@ def _dane_wkladow(tmp_path):
     """Wspolna odpowiedz contributions dla testow ZWARCIA-PRO F3 (pkt 8-10)."""
     enm = _enm_z_maszyna()
     client, _ = _prepare_api_client(tmp_path)
-    payload = {"snapshot": enm.model_dump(mode="json"), "fault_node_id": "bus_oze"}
+    payload = {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": "bus_oze",
+        "scenariusz": "MAX",
+    }
     response = client.post("/api/proof/sc3f/contributions", json=payload)
     assert response.status_code == 200
     return client, payload, response.json()
@@ -417,10 +437,18 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     splaszczone.extend(sekcje[1]["kroki"])
     splaszczone.extend(sekcje[2]["kroki"])
     assert splaszczone == dane["wywod"]
-    # Kompatybilnosc struktury plaskiej listy (jak przed F3).
+    # Kompatybilnosc struktury plaskiej listy (jak przed F3). Karta TB-WARTOSC-ROBOCZA:
+    # zadanie bez t_min (siec bez pol) -> t_min = wartosc robocza punktu, wiec naglowek
+    # niesie zdanie zrodla t_min miedzy punktem zwarcia a pierwsza maszyna.
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
     assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
-    assert dane["wywod"][2]["tekst"] == "— Agregat —"
+    assert dane["wywod"][2]["tekst"].startswith(
+        "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
+    )
+    assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
+    # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).
+    assert [k["tekst"][:16] for k in dane["wywod"][3:5]] == ["Wartość robocza:"] * 2
+    assert dane["wywod"][5]["tekst"] == "— Agregat —"
     assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
@@ -507,7 +535,11 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     client, _ = _prepare_api_client(tmp_path)
     response = client.post(
         "/api/proof/sc3f/contributions",
-        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id},
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": fault_node_id,
+            "scenariusz": "MAX",
+        },
     )
     dane = response.json()
     tytuly = [s["tytul"] for s in dane["wywod_sekcje"]]
@@ -533,7 +565,7 @@ def _payload_sc3f_pack(data, snapshot: dict) -> dict:
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "snapshot": snapshot["snapshot"],
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "tk_s": 1.0,
     }
 
@@ -544,7 +576,11 @@ def _snapshot_sc3f() -> dict:
     enm = _enm_z_maszyna()
     graph = map_enm_to_network_graph(enm)
     fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
-    return {"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id}
+    return {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": fault_node_id,
+        "scenariusz": "MAX",
+    }
 
 
 def test_sc3f_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
@@ -581,7 +617,7 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
         "run_timestamp": "2026-02-06T10:00:00",
         "solver_version": "1.0.0-test",
         "u_n_kv": 15.0,
-        "c_factor": 1.1,
+        "scenariusz": "MAX",
         "u_prefault_kv": 9.526279,
         "z1_re_ohm": 0.5,
         "z1_im_ohm": 1.2,
@@ -592,8 +628,6 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
         "a_re": -0.5,
         "a_im": 0.8660254038,
         "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
 
     pierwszy = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
@@ -901,3 +935,212 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu():
     icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
     assert u_m_value["value"] == 99.0
     assert icu_value["value"] == 77.0
+
+
+@pytest.mark.parametrize(("scenariusz", "c"), [("MAX", 1.10), ("MIN", 1.00)])
+def test_sc3f_contributions_c_z_tabeli_dla_scenariusza_ogladanego_biegu(
+    tmp_path, scenariusz: str, c: float
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: wkłady liczone c z tabeli 1 IEC 60909-0 dla pasma
+    węzła i scenariusza oglądanego biegu (dawniej zawsze 1,10) — odpowiedź niesie c i podstawę."""
+    client, _ = _prepare_api_client(tmp_path)
+    enm = _enm_z_maszyna()
+    odpowiedz = client.post(
+        "/api/proof/sc3f/contributions",
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": scenariusz,
+        },
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    assert odpowiedz.json()["c_factor"] == pytest.approx(c)
+    assert odpowiedz.json()["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo SN, {scenariusz}"
+
+
+def test_sc3f_contributions_bez_scenariusza_i_z_c_factor_to_422(tmp_path) -> None:
+    client, _ = _prepare_api_client(tmp_path)
+    snapshot = _enm_z_maszyna().model_dump(mode="json")
+    brak = {"snapshot": snapshot, "fault_node_id": "bus_oze"}
+    assert client.post("/api/proof/sc3f/contributions", json=brak).status_code == 422
+    stary = {**brak, "scenariusz": "MAX", "c_factor": 1.1}
+    assert client.post("/api/proof/sc3f/contributions", json=stary).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("type_ref", "symbol"),
+    [
+        ("sw-cb-abb-vd4-12kv-630a", "I_b"),
+        ("sw-fuse-eti-vv-12kv-63a", "I_k''"),
+        ("sw-rec-abb-rec615-17kv-630a", "I_b"),
+    ],
+    ids=["wylacznik_sn", "bezpiecznik_sn", "reklozer_sn"],
+)
+def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
+    type_ref: str, symbol: str
+):
+    """Karta SC-IB-ITH-ZRODLA — realna ścieżka HTTP: rodzaj aparatu z pozycji katalogu
+    (``type_ref``) wybiera wielkość kryterium wyłączania tym samym predykatem co ocena pól
+    stacji: wyłącznik i reklozer SN → I_b (IEC 62271-100), bezpiecznik → I″k spodziewany
+    (IEC 60282-1). Bieg bez t_b: sieć bez maszyn wirujących, więc I_b = I″k jest wyznaczalne."""
+    import json as _json
+
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "aparat-01",
+                "name_pl": "Aparat pola liniowego",
+                "type_ref": type_ref,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
+        response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        dowod = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+    krok = next(k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_P12_004")
+    assert krok["equation"]["latex"] == rf"I_{{cu}} \ge {symbol}"
+
+
+@pytest.mark.parametrize("t_b_s", [0.10, 0.2])
+def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_path, t_b_s):
+    """Karta MU-INTERPOLACJA, realna ścieżka HTTP: t_b = 0,2 s leży między krzywymi μ
+    0,10 s i 0,25 s IEC 60909-0:2016 pkt 9.1.1. Wywód wkładów i dowód SC3F (pakiet ZIP) pokazują
+    oba węzły, wagę i wynik; μ odpowiedzi = μ kroku dowodu. t_b = 0,10 s (węzeł) — jedna
+    krzywa, bez kroku interpolacji."""
+    import json
+
+    client, data = _prepare_api_client(tmp_path)
+    snapshot = _snapshot_sc3f()
+    wklady = client.post(
+        "/api/proof/sc3f/contributions", json={**snapshot, "t_min_s": t_b_s}
+    ).json()
+    (wklad,) = wklady["contributions"]
+    assert wklad["ratio_ik_ir"] > 2.0  # krzywe μ aktywne
+    slad = wklad["slad_mu"]
+    teksty = " ".join(k["tekst"] for k in wklady["wywod"])
+    latexy = " ".join(k["latex"] for k in wklady["wywod"] if k["latex"])
+    pakiet = client.post(
+        "/api/proof/sc3f/pack", json={**_payload_sc3f_pack(data, snapshot), "tb_s": t_b_s}
+    )
+    assert pakiet.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(pakiet.content)) as zz:
+        dowod = json.loads(zz.read("proof_pack/proof.json"))
+    (krok_mu,) = (k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_SC3F_011")
+    assert krok_mu["result"]["value"] == wklad["mu"] == slad["wynik"]
+    if t_b_s == 0.2:
+        assert slad["regula"] == "INTERPOLACJA"
+        assert (slad["wezel_dolny"]["t_min_s"], slad["wezel_gorny"]["t_min_s"]) == (0.10, 0.25)
+        # Karta PODSTAWA-Q: interpolacja μ ma jawną podstawę normy (pkt 9.1.1, cytat).
+        assert slad["podstawa_reguly"] == "NORMA"
+        assert "interpolacja liniowa między krzywymi μ dopuszczona jawnie przez" in teksty
+        assert "pkt 9.1.1" in krok_mu["substitution_latex"]
+        assert r"\mu_{0.10} = 0.62" in latexy and r"\mu_{0.25} = 0.56" in latexy
+        assert r"\mu_{0.10} = 0.62" in krok_mu["substitution_latex"]
+        assert f"{slad['waga']:.4f}" in krok_mu["substitution_latex"]
+    else:
+        assert slad["regula"] == "WEZEL" and slad["waga"] == 0.0
+        assert "interpolacja" not in teksty
+        assert krok_mu["substitution_latex"].startswith(r"\mu = 0.62 + 0.72")
+
+
+@pytest.mark.parametrize(("t_b_s", "regula"), [(0.10, "WEZEL"), (0.2, "INTERPOLACJA")])
+def test_sc3f_q_silnika_asynchronicznego_podstawa_w_wywodzie_i_dowodzie(tmp_path, t_b_s, regula):
+    """Karta PODSTAWA-Q, realna ścieżka HTTP: generator asynchroniczny klatkowy (`fw_scig`)
+    w miejscu agregatu. Interpolacja q pomiędzy węzłami t_min jest interpretacją inżynierską
+    (IEC 60909-0:2016 pkt 9.1.2 jej nie przewiduje) — endpoint wkładów (ślad + wywód) i dowód
+    SC3F pakietu ZIP mówią to wprost i nigdzie nie przypisują normie zezwolenia; w węźle
+    podstawą jest sama krzywa normy (pkt 9.1.2, wzór (69), rys. 14)."""
+    import json
+    import re
+
+    from enm.mapping import map_enm_to_network_graph
+
+    client, data = _prepare_api_client(tmp_path)
+    enm = _enm_z_maszyna()
+    (agregat,) = enm.generators
+    enm.generators = [agregat.model_copy(update={"gen_type": "fw_scig", "p_mw": 2.0})]
+    graf = map_enm_to_network_graph(enm)
+    assert graf.get_asynchronous_machine_sources()
+    snapshot = {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": next(n.id for n in graf.nodes.values() if n.name == "Szyna OZE"),
+        "scenariusz": "MAX",
+    }
+    odpowiedz = client.post("/api/proof/sc3f/contributions", json={**snapshot, "t_min_s": t_b_s})
+    assert odpowiedz.status_code == 200
+    (wklad,) = odpowiedz.json()["contributions"]
+    slad = wklad["slad_q"]
+    assert slad["regula"] == regula
+    assert slad["norma"] == "IEC 60909-0:2016 pkt 9.1.2, wzór (69), rys. 14"
+    zezwolenie = re.compile(r"dopuszcz|zezw", re.IGNORECASE)
+    teksty_q = " ".join(
+        k["tekst"] for k in wklad["wywod"] if k["tekst"].startswith("Współczynnik q")
+    )
+    pakiet = client.post(
+        "/api/proof/sc3f/pack", json={**_payload_sc3f_pack(data, snapshot), "tb_s": t_b_s}
+    )
+    assert pakiet.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(pakiet.content)) as zz:
+        dowod = json.loads(zz.read("proof_pack/proof.json"))
+    (krok_q,) = (k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_SC3F_012")
+    assert krok_q["result"]["value"] == wklad["q"] == slad["wynik"]
+    for tekst in (slad["podstawa_reguly_pl"], teksty_q, krok_q["substitution_latex"]):
+        assert "pkt 9.1.2" in tekst and not zezwolenie.search(tekst), tekst
+    if regula == "INTERPOLACJA":
+        assert slad["podstawa_reguly"] == "ZALOZENIE_INZYNIERSKIE"
+        for tekst in (slad["podstawa_reguly_pl"], teksty_q, krok_q["substitution_latex"]):
+            assert "interpretacja inżynierska" in tekst, tekst
+    else:
+        assert slad["podstawa_reguly"] == "NORMA"
+        assert "interpretacja inżynierska" not in teksty_q
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+def test_sc_asymmetrical_pack_nn_bez_deklaracji_na_wartosci_roboczej(tmp_path, tolerancja):
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: pakiet SC asymetryczny dla punktu nN bez
+    deklaracji tolerancji nie odmawia — c z wartości roboczej rejestru (+10 %), a podstawa c
+    w dowodzie mówi „(wartość robocza)”; deklaracja daje podstawę bez dopisku."""
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "snapshot_id": "snapshot-nn",
+        "project_name": "Projekt testowy",
+        "case_name": "Przypadek SC nN",
+        "fault_node_id": "B_NN",
+        "run_timestamp": "2026-02-06T10:00:00",
+        "solver_version": "1.0.0-test",
+        "u_n_kv": 0.4,
+        "scenariusz": "MAX",
+        "u_prefault_kv": 0.2309401,
+        "z1_re_ohm": 0.005,
+        "z1_im_ohm": 0.012,
+        "z2_re_ohm": 0.006,
+        "z2_im_ohm": 0.011,
+        "z0_re_ohm": 0.008,
+        "z0_im_ohm": 0.024,
+        "a_re": -0.5,
+        "a_im": 0.8660254038,
+        "tk_s": 1.0,
+    }
+    if tolerancja is not None:
+        payload["lv_voltage_tolerance"] = tolerancja
+    response = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(response.content)) as bundle:
+        with zipfile.ZipFile(io.BytesIO(bundle.read("pakiet_dowodowy/SC2F.zip"))) as nested:
+            dowod = nested.read("proof_pack/proof.json").decode("utf-8")
+    etykieta = {"PLUS_6": "+6 %", "PLUS_10": "+10 %", None: "+10 %"}[tolerancja]
+    dopisek = " (wartość robocza)" if tolerancja is None else ""
+    assert f"pasmo nN, tolerancja {etykieta}{dopisek}, MAX" in dowod
+    assert ("wartość robocza" in dowod) is (tolerancja is None)

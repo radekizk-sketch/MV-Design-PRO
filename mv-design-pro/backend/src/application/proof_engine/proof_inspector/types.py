@@ -192,6 +192,10 @@ class HeaderView:
     voltage_factor: float | None = None
     source_bus: str | None = None
     target_bus: str | None = None
+    #: Podstawa współczynnika c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — „IEC 60909-0 tab. 1,
+    #: pasmo SN, MAX" albo „nadpisanie ręczne: <uzasadnienie>". Pole addytywne: klucz w
+    #: ``to_dict`` tylko, gdy ustawione (dowody bez c — bajtowo te same).
+    voltage_factor_zrodlo: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -206,6 +210,11 @@ class HeaderView:
             "voltage_factor": self.voltage_factor,
             "source_bus": self.source_bus,
             "target_bus": self.target_bus,
+            **(
+                {"voltage_factor_zrodlo": self.voltage_factor_zrodlo}
+                if self.voltage_factor_zrodlo is not None
+                else {}
+            ),
         }
 
 

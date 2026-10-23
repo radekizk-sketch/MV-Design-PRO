@@ -27,10 +27,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/kreatory'));
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('kreator stacji — pole transformatorowe', () => {
@@ -70,6 +72,7 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       // (1) Stan DOMYŚLNY: pole transformatorowe obecne, panel braku niewidoczny.
       await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-4')).toBeVisible();
       expect(await page.getByTestId('mvd-kreator-stacja-brak-pola-tr').count()).toBe(0);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_pola_domyslne_${theme}.png`),
       });
@@ -85,6 +88,7 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       const wierszTr = page.getByTestId('mvd-kreator-stacja-pole-wiersz-4');
       await expect(wierszTr).toContainText('rozłącznik bezpiecznikowy');
       await wierszTr.scrollIntoViewIfNeeded();
+      await bramkaTresciMatematycznej(page);
       await wierszTr.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_pola_warianty_aparatu_${theme}.png`),
       });
@@ -94,6 +98,7 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       const panel = page.getByTestId('mvd-kreator-stacja-brak-pola-tr');
       await expect(panel).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_pola_bez_pola_tr_${theme}.png`),
       });

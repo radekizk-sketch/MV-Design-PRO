@@ -3,11 +3,11 @@
  * (karta KD-4; most katalogowy i tor z MODELU — karta KD-6 poz. 2).
  *
  * SKĄD DANE (zero zgadywania, zero fizyki w prezentacji):
- *  - PRĄDY: z wiersza WYNIKU biegu zwarciowego wybranego punktu —
- *    `ShortCircuitRow.ip_ka` (prąd udarowy → kryterium dynamiczne I_dyn),
- *    `ShortCircuitRow.ith_ka` (prąd cieplny zastępczy → kryterium cieplne I_th)
- *    i `ShortCircuitRow.ik_ka` (prąd początkowy → czas z charakterystyki
- *    zabezpieczenia). Tak samo nazywa je pakiet dowodowy SC3F.
+ *  - PRĄDY: backend bierze je z ZAPISANEGO biegu zwarciowego, PER POLE — wiersz zwarcia
+ *    trójfazowego w punkcie zabudowy każdego pola (ip → kryterium dynamiczne I_dyn,
+ *    Ith → kryterium cieplne I_th, Ik″ → czas z charakterystyki zabezpieczenia pola).
+ *    Wybrany punkt zwarcia wskazuje tylko STACJĘ (karta WYTRZYMALOSC-PRAD-POLA: dawniej
+ *    prądy wybranego punktu szły do wszystkich pól stacji).
  *  - APARAT, ZNAMIONA, CZAS I WERDYKT: z JEDNEJ końcówki backendu
  *    (`POST /api/cases/{caseId}/enm/wytrzymalosc-aparatury`), która czyta pola
  *    stacji i pozycje katalogu APARAT_SN z MODELU, a zapisaną konfigurację
@@ -21,12 +21,15 @@
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
+import { indeksGaleziPolNn, szynyStacji } from '../../../../ui/shared/szynyStacji';
 
 /**
  * Stacje, w których leży punkt zwarcia. Punkt zwarcia to węzeł (szyna) —
- * dopasowanie idzie po `bus_refs` stacji, a zapasowo po polach rozdzielczych
- * (`bays[].bus_ref` → `substation_ref`), bo starsze snapshoty nie zawsze
- * wypełniały `bus_refs`. Kolejność deterministyczna (rosnąco po ref).
+ * przynależność szyny do stacji WYŁĄCZNIE z jednego lustra backendu
+ * `szynyStacji` (SZYNY-STACJI-LUSTRO: szyny główne, zaciski pól SN, końce
+ * aparatów pól nN). Dawna druga droga „szyna pola rozdzielczego → stacja pola"
+ * (zapas dla migawek bez `bus_refs`) była osobną regułą przynależności,
+ * nieznaną backendowi — usunięta. Kolejność deterministyczna (rosnąco po ref).
  *
  * Pusta lista = punkt nie należy do żadnej stacji z modelu — to UCZCIWY BRAK
  * PODSTAWY do sprawdzenia, nie werdykt negatywny.
@@ -40,16 +43,13 @@ export function stacjeDlaPunktu(
     [row.element_id, row.target_id].filter((v): v is string => Boolean(v)),
   );
   const znalezione = new Set<string>();
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches ?? []);
 
   for (const stacja of snapshot.substations ?? []) {
     const ref = stacja.ref_id ?? stacja.id;
     if (!ref) continue;
-    if ((stacja.bus_refs ?? []).some((busRef) => refy.has(busRef))) znalezione.add(ref);
-  }
-  for (const pole of snapshot.bays ?? []) {
-    if (pole.bus_ref && refy.has(pole.bus_ref) && pole.substation_ref) {
-      znalezione.add(pole.substation_ref);
-    }
+    const szyny = szynyStacji(stacja, snapshot.branches ?? [], indeksPolNn);
+    if ([...refy].some((busRef) => szyny.has(busRef))) znalezione.add(ref);
   }
   return [...znalezione].sort((a, b) => a.localeCompare(b));
 }
@@ -70,25 +70,24 @@ export function nazwaStacji(
 
 /** Powód, dla którego weryfikacji NIE DA SIĘ przeprowadzić (uczciwy stan zerowy). */
 export type PowodBrakuPodstawy =
-  | 'brak-pradow'
+  | 'brak-biegu'
   | 'punkt-poza-stacja'
   | 'brak-aparatury';
 
 /**
  * Czy da się sprawdzić aparaturę w tym punkcie — i jeśli nie, DLACZEGO.
- * `null` = da się (są prądy, jest stacja, jest choć jeden aparat).
+ * `null` = da się (jest zapisany bieg, jest stacja, jest choć jeden aparat).
  *
  * `brak-aparatury` znaczy od karty KD-6: ani jedno pole stacji nie ma aparatu
  * z katalogu w MODELU i nie ma zapisu w konfiguracji — wcześniej ten stan
  * mówił wyłącznie o konfiguracji, bo model nie był w ogóle czytany.
  */
 export function powodBrakuPodstawy(args: {
-  readonly ipKA: number | null;
-  readonly ithKA: number | null;
+  readonly runId: string | null;
   readonly stacje: readonly string[];
   readonly liczbaPol: number;
 }): PowodBrakuPodstawy | null {
-  if (args.ipKA === null || args.ithKA === null) return 'brak-pradow';
+  if (args.runId === null) return 'brak-biegu';
   if (args.stacje.length === 0) return 'punkt-poza-stacja';
   if (args.liczbaPol === 0) return 'brak-aparatury';
   return null;

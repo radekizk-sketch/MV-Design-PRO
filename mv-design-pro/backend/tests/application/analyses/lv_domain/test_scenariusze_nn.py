@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import math
 from pathlib import Path
 
 import pytest
@@ -44,38 +43,10 @@ def _segment(p: dict, ref: str) -> dict:
     return next(s for s in p["graph"]["segments"] if s["segment_id"] == ref)
 
 
-#: Tolerancja względna liczb projekcji MIĘDZY MASZYNAMI. Wartości rozpływu (Newton,
-#: tolerancja zbieżności 1e-8) i Z-bus (LAPACK) nie są bitowo identyczne między
-#: procesorami — ścieżka SIMD biblioteki zmienia ostatnie bity i drogę zbieżności
-#: (precedens: pin jakobianu, commit 98580f24). Zmierzone odchylenie runner CI vs
-#: kontener deweloperski: max 2,1e-10 względnie (Q kabla w 16_stale_result).
-#: 1e-9 leży rząd wielkości ponad pomiarem i siedem rzędów pod dokładnością
-#: prezentowaną inżynierowi. Struktura, klucze, teksty, stany i identyfikatory
-#: porównywane są DOKŁADNIE; odcisk `projection_hash` (skrót liczb) — przez
-#: spójność fixtury z jej własną treścią.
-TOLERANCJA_WZGLEDNA_MIEDZY_MASZYNAMI = 1e-9
-
-
 def _porownaj_z_backendem(repo: object, backend: object, sciezka: str) -> None:
-    if isinstance(repo, bool) or isinstance(backend, bool):
-        assert (
-            type(repo) is type(backend) and repo == backend
-        ), f"{sciezka}: {repo!r} != {backend!r}"
-    elif isinstance(repo, int | float) and isinstance(backend, int | float):
-        assert math.isclose(
-            repo, backend, rel_tol=TOLERANCJA_WZGLEDNA_MIEDZY_MASZYNAMI, abs_tol=1e-15
-        ), f"{sciezka}: {repo!r} != {backend!r}"
-    elif isinstance(repo, dict) and isinstance(backend, dict):
-        assert set(repo) == set(backend), f"{sciezka}: klucze {set(repo) ^ set(backend)}"
-        for klucz in repo:
-            if klucz != "projection_hash":
-                _porownaj_z_backendem(repo[klucz], backend[klucz], f"{sciezka}/{klucz}")
-    elif isinstance(repo, list) and isinstance(backend, list):
-        assert len(repo) == len(backend), f"{sciezka}: długość {len(repo)} != {len(backend)}"
-        for i, (a, b) in enumerate(zip(repo, backend, strict=True)):
-            _porownaj_z_backendem(a, b, f"{sciezka}[{i}]")
-    else:
-        assert repo == backend, f"{sciezka}: {repo!r} != {backend!r}"
+    # Predykat tolerancji mieszka w skrypcie eksportu — ten sam decyduje o kotwicy zapisu.
+    roznice = eksport.roznice_z_tolerancja(repo, backend, sciezka)
+    assert roznice == [], "\n".join(roznice)
 
 
 def _kody(p: dict) -> set[str]:

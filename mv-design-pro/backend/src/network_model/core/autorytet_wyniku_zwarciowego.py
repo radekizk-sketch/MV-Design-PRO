@@ -41,7 +41,7 @@ równań, więc ich blokada byłaby karą bez przyczyny.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -56,6 +56,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     wspolczynnik_wkladu_zwarciowego,
 )
 from network_model.core.zdolnosci_wkladu_zwarciowego import (
+    KOD_BLOKADY_IMPEDANCJA_ZWARCIA,
     KOD_BLOKADY_K_SC_DOMYSLNY,
     KOD_BLOKADY_K_SC_NIEPOPRAWNY,
     KOD_BLOKADY_K_SC_POZA_DZIEDZINA,
@@ -63,9 +64,25 @@ from network_model.core.zdolnosci_wkladu_zwarciowego import (
     KOD_BLOKADY_WYNIK_BEZ_SLADU,
     KOD_BLOKADY_WYNIK_Z_PAYLOADU,
     KOD_BLOKADY_ZNACZNIK_NIEZNANY,
+    ZDOLNOSCI_BLOKOWANE_PRZY_IMPEDANCJI_ZWARCIA,
     ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO,
     ZdolnoscMiarodajna,
 )
+
+#: Klucz artefaktu biegu zwarciowego (`raw_result`) niosący impedancję przejścia Z_f
+#: (karta OD-14) — zapisuje go `enm/canonical_analysis._execute_short_circuit` WYŁĄCZNIE dla
+#: biegu z Z_f, czyta `wynik_poza_zakresem_iec60909`. Jedno źródło klucza dla zapisu i odczytu.
+KLUCZ_IMPEDANCJI_ZWARCIA = "impedancja_zwarcia"
+
+
+def wynik_poza_zakresem_iec60909(artefakt: Mapping[str, Any] | None) -> bool:
+    """Czy artefakt biegu zwarciowego pochodzi ze zwarcia przez impedancję przejścia Z_f.
+
+    JEDYNY predykat tej cechy — proweniencja zapisanego biegu
+    (`application.autorytet_biegu_zwarciowego`) i selekcja „najnowszego biegu" przez
+    konsumentów czytają go stąd.
+    """
+    return isinstance(artefakt, Mapping) and artefakt.get(KLUCZ_IMPEDANCJI_ZWARCIA) is not None
 
 
 class ZrodloWynikuZwarciowego(StrEnum):
@@ -119,6 +136,9 @@ class ProweniencjaWynikuZwarciowego:
 
     zrodlo: ZrodloWynikuZwarciowego
     znaczniki_k_sc: tuple[str, ...] = ()
+    #: Karta OD-14: wynik zwarcia przez impedancję przejścia Z_f — poza zakresem IEC 60909.
+    #: Wyprowadzane z artefaktu biegu (`wynik_poza_zakresem_iec60909`), nigdy deklarowane.
+    poza_zakresem_iec60909: bool = False
 
     # -- konstruktory wyprowadzające ----------------------------------------
 
@@ -137,7 +157,9 @@ class ProweniencjaWynikuZwarciowego:
         )
 
     @classmethod
-    def ze_znacznikow(cls, znaczniki: Iterable[str]) -> ProweniencjaWynikuZwarciowego:
+    def ze_znacznikow(
+        cls, znaczniki: Iterable[str], *, poza_zakresem_iec60909: bool = False
+    ) -> ProweniencjaWynikuZwarciowego:
         """Proweniencja odtworzona ze znaczników zapisanych przy BIEGU.
 
         Używana dla wyniku wczytanego z magazynu (``raw_result.k_sc_znaczniki``,
@@ -148,6 +170,7 @@ class ProweniencjaWynikuZwarciowego:
         return cls(
             zrodlo=ZrodloWynikuZwarciowego.SOLVER_Z_MODELU,
             znaczniki_k_sc=tuple(sorted(znaczniki)),
+            poza_zakresem_iec60909=poza_zakresem_iec60909,
         )
 
     # -- konstruktory stanów jawnie niemiarodajnych -------------------------
@@ -255,7 +278,7 @@ def blokady_autorytetu(
             ),
         )
 
-    blokady: list[BlokadaAutorytetu] = []
+    blokady: list[BlokadaAutorytetu] = list(blokady_zakresu_waznosci(zdolnosc, proweniencja))
     for znacznik in sorted(set(proweniencja.znaczniki_k_sc)):
         wpis = _KOMUNIKAT_ZNACZNIKA.get(znacznik)
         if wpis is None:
@@ -282,6 +305,34 @@ def blokady_autorytetu(
         kod, komunikat = wpis
         blokady.append(BlokadaAutorytetu(kod=kod, zdolnosc=zdolnosc, komunikat_pl=komunikat))
     return tuple(blokady)
+
+
+def blokady_zakresu_waznosci(
+    zdolnosc: ZdolnoscMiarodajna,
+    proweniencja: ProweniencjaWynikuZwarciowego,
+) -> tuple[BlokadaAutorytetu, ...]:
+    """Blokada SI-117: wynik zwarcia przez impedancję przejścia dla zdolności, której
+    kontrakt OD-14 go zabrania (`ZDOLNOSCI_BLOKOWANE_PRZY_IMPEDANCJI_ZWARCIA`).
+
+    Część `blokady_autorytetu` — oraz JEDYNE źródło tej blokady dla konsumentów biegu
+    zwarciowego, którzy nie przechodzą przez bramkę k_sc
+    (`application.autorytet_biegu_zwarciowego.blokady_zakresu_biegu`).
+    """
+    if not proweniencja.poza_zakresem_iec60909:
+        return ()
+    if zdolnosc not in ZDOLNOSCI_BLOKOWANE_PRZY_IMPEDANCJI_ZWARCIA:
+        return ()
+    return (
+        BlokadaAutorytetu(
+            kod=KOD_BLOKADY_IMPEDANCJA_ZWARCIA,
+            zdolnosc=zdolnosc,
+            komunikat_pl=(
+                "Wynik pochodzi ze zwarcia przez impedancję przejścia Z_f — poza zakresem "
+                "normy IEC 60909, która definiuje prąd zwarciowy dla zwarcia metalicznego. "
+                "Prąd przez Z_f nie jest podstawą tej decyzji: przelicz zwarcie metaliczne."
+            ),
+        ),
+    )
 
 
 def wynik_jest_miarodajny(
@@ -314,8 +365,11 @@ __all__ = [
     "BrakAutorytetuWyniku",
     "ProweniencjaWynikuZwarciowego",
     "ZrodloWynikuZwarciowego",
+    "KLUCZ_IMPEDANCJI_ZWARCIA",
     "ZNACZNIKI_BEZ_ZASTRZEZEN",
     "blokady_autorytetu",
+    "blokady_zakresu_waznosci",
+    "wynik_poza_zakresem_iec60909",
     "wymagaj_autorytetu",
     "wynik_jest_miarodajny",
 ]

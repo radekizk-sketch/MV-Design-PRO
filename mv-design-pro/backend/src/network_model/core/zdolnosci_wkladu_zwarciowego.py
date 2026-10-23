@@ -50,6 +50,15 @@ class ZdolnoscMiarodajna(StrEnum):
     TOPOLOGY = "TOPOLOGY"
     SLD = "SLD"
     EDITING = "EDITING"
+    #: Nastawy zabezpieczeń ziemnozwarciowych z prądów MINIMALNYCH (karta OD-14). Jedyny
+    #: konsument, któremu kontrakt trybu IMPEDANCE dopuszcza wynik zwarcia przez impedancję
+    #: przejścia Z_f: czułość zabezpieczenia doziemnego sprawdza się prądem przy oporności
+    #: przejścia, nie prądem zwarcia metalicznego. Silnik nastaw nie wyznacza dziś nastaw
+    #: 50N/51N (`application/protection_settings/zacisk_zabezpieczenia.py`), więc ta
+    #: zdolność nie ma jeszcze wywołującego bramkę — klasyfikację przypina test kontraktu.
+    EARTH_FAULT_SETTINGS = "EARTH_FAULT_SETTINGS"
+    #: Ocena energii łuku (wymaga prądu zwarcia METALICZNEGO — model łuku ma własną impedancję).
+    ARC_FLASH = "ARC_FLASH"
 
 
 #: Zdolności, dla których prąd zwarciowy falownika JEST wielkością wejściową.
@@ -64,6 +73,8 @@ ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO: frozenset[ZdolnoscMiarodajna] = frozens
         ZdolnoscMiarodajna.PROTECTION_COORDINATION,
         ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE,
         ZdolnoscMiarodajna.REGULATORY_EVIDENCE,
+        ZdolnoscMiarodajna.EARTH_FAULT_SETTINGS,
+        ZdolnoscMiarodajna.ARC_FLASH,
     }
 )
 
@@ -101,6 +112,39 @@ KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY = "SI-115"
 #: Kod blokady — znacznik proweniencji spoza ZAMKNIĘTEJ listy rozpoznawanych
 #: znaczników. FAIL-CLOSED: nierozpoznany znacznik nie może znaczyć „w porządku".
 KOD_BLOKADY_ZNACZNIK_NIEZNANY = "SI-116"
+#: Kod blokady — wynik zwarcia przez impedancję przejścia Z_f (karta OD-14, kontrakt
+#: `docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md` §3): poza zakresem
+#: IEC 60909, więc nie jest podstawą zdolności z `ZDOLNOSCI_BLOKOWANE_PRZY_IMPEDANCJI_ZWARCIA`.
+KOD_BLOKADY_IMPEDANCJA_ZWARCIA = "SI-117"
+
+#: Zdolności, którym wynik zwarcia przez impedancję przejścia Z_f jest ZABRONIONY (karta
+#: OD-14). Dobór wytrzymałości zwarciowej, pakiet dowodowy aparatury, wytrzymałość cieplna,
+#: nastawy nadprądowe i koordynacja (selektywność liczona prądem maksymalnym), dowód
+#: regulacyjny w punkcie przyłączenia (S''_k, SCR, migotanie) i energia łuku wymagają prądu
+#: zwarcia METALICZNEGO — prąd przez Z_f jest mniejszy (dla pętli szeregowych z algebry),
+#: więc użyty jako maksymalny zaniżyłby wymaganie po stronie niebezpiecznej.
+ZDOLNOSCI_BLOKOWANE_PRZY_IMPEDANCJI_ZWARCIA: frozenset[ZdolnoscMiarodajna] = frozenset(
+    {
+        ZdolnoscMiarodajna.PROTECTION,
+        ZdolnoscMiarodajna.BREAKING_CAPACITY_SELECTION,
+        ZdolnoscMiarodajna.PROTECTION_COORDINATION,
+        ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE,
+        ZdolnoscMiarodajna.REGULATORY_EVIDENCE,
+        ZdolnoscMiarodajna.ARC_FLASH,
+    }
+)
+
+#: Zdolności, którym wynik z Z_f jest DOZWOLONY — wymienione JAWNIE (nie dopełnienie):
+#: sama analiza zwarciowa (wynik pokazany z proweniencją „poza zakresem IEC 60909") i nastawy
+#: ziemnozwarciowe z prądów minimalnych (kontrakt OD-14 §3 — dozwolony konsument). Suma obu
+#: zbiorów = `ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO`, zbiory rozłączne (test kontraktu).
+ZDOLNOSCI_DOPUSZCZONE_PRZY_IMPEDANCJI_ZWARCIA: frozenset[ZdolnoscMiarodajna] = frozenset(
+    {
+        ZdolnoscMiarodajna.SHORT_CIRCUIT_3F,
+        ZdolnoscMiarodajna.SHORT_CIRCUIT_1F,
+        ZdolnoscMiarodajna.EARTH_FAULT_SETTINGS,
+    }
+)
 
 
 def zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc: ZdolnoscMiarodajna) -> bool:

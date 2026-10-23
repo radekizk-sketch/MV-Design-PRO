@@ -25,9 +25,13 @@ RODZAJE_PRZEBIEGU_PL: dict[str, str] = {
 STANY_PRZEBIEGU_PL: dict[str, str] = {
     "CREATED": "utworzony, nieuruchomiony",
     "PENDING": "oczekuje na wykonanie",
+    # Karta DYNAMIKA-W-TLE: bieg w kolejce wykonawcy w tle i bieg anulowany
+    # (przed startem albo w punkcie przerwania) — stany rejestru `canonical_runs`.
+    "QUEUED": "w kolejce wykonawcy",
     "RUNNING": "w toku",
     "FINISHED": "zakończony",
     "FAILED": "zakończony błędem",
+    "CANCELLED": "anulowany",
 }
 
 RODZAJ_SPOZA_SLOWNIKA_PL = "przebieg rodzaju spoza słownika aplikacji"

@@ -25,6 +25,8 @@ from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from infrastructure.persistence.models import StudyCaseORM
 
+from tests.utils.biegi import wykonaj_bieg
+
 # Tabliczka transformatora WN/SN podana JAWNIE (`hv_voltage_kv` + `transformer_sn_mva`):
 # bez niej operacja fabrykuje „typowe" 110 kV / 25 MVA, a karta FAB-G zamienia ten
 # domysl na jawny blad. Wartosci sa tu tozsame z dawnym domyslem, wiec sama siec
@@ -98,7 +100,7 @@ def _policz_bieg(klient: TestClient, case_id: str) -> dict:
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
-    execute = klient.post(f"/api/execution/runs/{run_id}/execute")
+    execute = wykonaj_bieg(klient, run_id)
     assert execute.status_code == 200, execute.text
     return execute.json()
 

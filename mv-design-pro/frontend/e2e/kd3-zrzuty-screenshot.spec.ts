@@ -14,7 +14,9 @@
 import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 /** Odpowiedź bilansu wtórnego dla obwodu KOMPLETNEGO (przekrój + moc aparatów). */
 function bilansZKompletem(
   sciezka: string,
@@ -41,7 +43,7 @@ function bilansZKompletem(
 }
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
-const OUTPUT_DIR = path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert'));
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
@@ -225,6 +227,7 @@ for (const motyw of MOTYWY) {
     await expect(page.getByText('Prąd znamionowy pierwotny')).toBeVisible({ timeout: 20000 });
     await page.waitForTimeout(300);
     const sciezkaKatalog = path.join(OUTPUT_DIR, `kd3-katalog-nn-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaKatalog });
     expect(fs.existsSync(sciezkaKatalog)).toBe(true);
 
@@ -252,6 +255,7 @@ for (const motyw of MOTYWY) {
     await expect(page.getByTestId('mvd-kreator-stacja-zaczepy')).toBeVisible();
     await page.waitForTimeout(300);
     const sciezkaZaczepy = path.join(OUTPUT_DIR, `kd3-zaczepy-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaZaczepy });
     expect(fs.existsSync(sciezkaZaczepy)).toBe(true);
 
@@ -307,6 +311,7 @@ for (const motyw of MOTYWY) {
     await page.getByTestId('mvd-kryteria-ct-1').scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
     const sciezkaBilans = path.join(OUTPUT_DIR, `kd3-bilans-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaBilans });
     expect(fs.existsSync(sciezkaBilans)).toBe(true);
   });

@@ -47,6 +47,7 @@ import argparse
 import json
 import math
 import os
+import re
 from typing import Any, Literal
 
 from analysis.obciazenie_galezi import (
@@ -55,11 +56,15 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_do_a,
     prad_zacisku_od_a,
 )
+from application.slad_kroku import kroki_zwarcia_w_kontrakcie
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
+from network_model.core.voltage_factor import TolerancjaNapieciaNn, c_for_node
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
@@ -96,6 +101,15 @@ _TRAFO_R = 0.05
 _TRAFO_X = 0.60
 _NN_FEEDER_R = 0.02
 _NN_FEEDER_X = 0.04
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN archetypów (wiersz nN tabeli 1
+# IEC 60909-0) — deklaracja substratu, nośnik węzłów nN (`Node.tolerancja_nn`) i strony dolnej
+# transformatorów (`TransformerBranch.tolerancja_nn_dolna`, K_T). +6 %: c_max 1,05, c_min 0,95.
+_TOLERANCJA_NN: TolerancjaNapieciaNn = "PLUS_6"
+
+
+def _tolerancja_wezla(voltage_kv: float) -> TolerancjaNapieciaNn | None:
+    """Tolerancja sieci nN dla węzła/strony w paśmie nN, brak dla SN (nie dotyczy)."""
+    return _TOLERANCJA_NN if w_pasmie_nn(voltage_kv) else None
 
 
 def _line(branch_id: str, from_id: str, to_id: str, r: float, x: float) -> LineBranch:
@@ -120,6 +134,7 @@ def _pq_node(node_id: str, voltage_kv: float = _BASE_KV) -> Node:
         voltage_level=voltage_kv,
         active_power=0.0,
         reactive_power=0.0,
+        tolerancja_nn=_tolerancja_wezla(voltage_kv),
     )
 
 
@@ -184,7 +199,6 @@ class _Substrate:
         ur_kv: float,
         xd_subtransient_pu: float,
         cos_phi_r: float,
-        c_max: float = 1.10,  # IEC c_max (== _C_MAX, defined later)
     ) -> SynchronousMachineSource:
         """Register a synchronous machine SC source (IEC 60909-0:2016 §6.3) — a
         voltage source behind Z″_GK, i.e. a FULL machine contribution (gate J:
@@ -205,7 +219,8 @@ class _Substrate:
             ur_kv=ur_kv,
             xd_subtransient_pu=xd_subtransient_pu,
             cos_phi_r=cos_phi_r,
-            c_max=c_max,
+            # K_G (IEC 60909-0 eq. 18): c_max tabeli 1 dla sieci szyny maszyny.
+            tolerancja_nn=self.graph.nodes[node_id].tolerancja_nn,
         )
         self.graph.add_synchronous_machine_source(src)
         return src
@@ -240,6 +255,7 @@ class _Substrate:
             efficiency=efficiency,
             i_lr_ratio=i_lr_ratio,
             pole_pairs=pole_pairs,
+            liczba_jednostek=1,
             wind_type_3=wind_type_3,
         )
         self.graph.add_asynchronous_machine_source(src)
@@ -295,6 +311,8 @@ class _Substrate:
                 uk_percent=uk_percent,
                 rated_power_mva=rated_mva,
                 pk_kw=pk_kw,
+                # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z tolerancji sieci nN.
+                tolerancja_nn_dolna=_tolerancja_wezla(lv_kv),
             )
         )
 
@@ -380,11 +398,17 @@ def _companion_from_solution(
 # ---------------------------------------------------------------------------
 # Short-circuit companion (per busbar, IEC 60909) — gate E.
 # ---------------------------------------------------------------------------
-# IEC 60909 voltage factors c: max=1.10 (Ik''max → equipment withstand), min=0.95
-# (Ik''min → protection sensitivity). tk = 1.0 s (Ith reference duration).
-_C_MAX = 1.10
-_C_MIN = 0.95
+# IEC 60909 voltage factor c PER BUSBAR from the ONE table source (`voltage_factor.c_for_node`:
+# band + nN tolerance + scenario; karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — MAX for Ik''max (equipment
+# withstand), MIN for Ik''min (protection sensitivity). Do tej karty stały tu płaskie 1,10/0,95
+# dla każdej szyny: c_max nN zawyżone (1,10 zamiast 1,05 sieci +6 %), c_min SN zaniżone (0,95
+# zamiast 1,00). tk = 1.0 s (Ith reference duration).
 _TK_S = 1.0
+
+
+def _c_szyny(graph: NetworkGraph, bus_id: str, scenario: Literal["MAX", "MIN"]) -> float:
+    wezel = graph.nodes[bus_id]
+    return c_for_node(wezel.voltage_level, scenario, tolerancja_nn=wezel.tolerancja_nn)
 
 
 def _det(value: float) -> float:
@@ -427,6 +451,9 @@ def _sc_one(graph: NetworkGraph, bus_id: str, c_factor: float) -> ShortCircuitRe
         fault_node_id=bus_id,
         c_factor=c_factor,
         tk_s=_TK_S,
+        # Karta SC-IB-ITH-ZRODLA: t_b jawny (ten sam t_min co rozbicie maszynowe niżej) —
+        # rdzeń nie ma domyślnego t_b (karta TB-WARTOSC-ROBOCZA: nośnik t_b z pochodzeniem).
+        czas_tb=czas_tb_projektanta(_MACHINE_TMIN_S),
     )
 
 
@@ -446,13 +473,17 @@ def _ibg_referred_a(graph: NetworkGraph, un_kv: float) -> float:
 
 def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float) -> dict[str, Any]:
     """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the solver's
-    White Box trace carried verbatim. Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
+    White Box trace carried verbatim except the prose copy of LaTeX the FROZEN core writes into
+    `substitution` (removed by step key at the application boundary — karta DOWOD-CIEPLNY,
+    `application/slad_kroku.py`; the LaTeX stays in `substitution_latex`). Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
     to every bus (raw §6.7 ik_sc_a, ignoring the transformer between the IBG and the fault),
     which inflates remote-bus (collector) Ik''. The reported scalars use the CONSISTENT metric:
     grid Thévenin (solver Ik'' minus its raw IBG sum) + the IBG REFERRED via the turns ratio.
     Machine sources are in the Z-bus (no inverter sources) → no-op — matching their reporting."""
-    rmax = _sc_one(graph, bus_id, _C_MAX)
-    rmin = _sc_one(graph, bus_id, _C_MIN)
+    c_max = _c_szyny(graph, bus_id, "MAX")
+    c_min = _c_szyny(graph, bus_id, "MIN")
+    rmax = _sc_one(graph, bus_id, c_max)
+    rmin = _sc_one(graph, bus_id, c_min)
     ibg_ref_a = _ibg_referred_a(graph, un_kv)
     ik_max_a = rmax.ikss_a - rmax.ik_inverters_a + ibg_ref_a
     ik_min_a = rmin.ikss_a - rmin.ik_inverters_a + ibg_ref_a
@@ -471,10 +502,10 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
         "un_kv": un_kv,
         "icw_ka": icw_ka,
         "idyn_ka": idyn_ka,
-        # Ik''max branch (c=1.10): equipment-withstand verification.
+        # Ik''max branch (c_max tabeli 1 szyny): equipment-withstand verification.
         "max": {
             "case_ref": "ZWARCIOWY_MAKS",
-            "c_factor": _C_MAX,
+            "c_factor": c_max,
             "ikss_ka": ikss_max_ka,
             "ip_ka": ip_max_ka,
             "ib_ka": round(rmax.ib_a * f_max / 1000.0, 3),
@@ -482,17 +513,17 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "kappa": round(rmax.kappa, 3),
             "sk_mva": round(rmax.sk_mva * f_max, 2),
             "rx_ratio": round(rmax.rx_ratio, 4),
-            "white_box_trace": _json_safe(rmax.white_box_trace),
+            "white_box_trace": _json_safe(kroki_zwarcia_w_kontrakcie(rmax.white_box_trace)),
         },
-        # Ik''min branch (c=0.95): protection-sensitivity reference.
+        # Ik''min branch (c_min tabeli 1 szyny): protection-sensitivity reference.
         "min": {
             "case_ref": "ZWARCIOWY_MIN",
-            "c_factor": _C_MIN,
+            "c_factor": c_min,
             "ikss_ka": ikss_min_ka,
             "ith_ka": round(rmin.ith_a * f_min / 1000.0, 3),
             "kappa": round(rmin.kappa, 3),
             "sk_mva": round(rmin.sk_mva * f_min, 2),
-            "white_box_trace": _json_safe(rmin.white_box_trace),
+            "white_box_trace": _json_safe(kroki_zwarcia_w_kontrakcie(rmin.white_box_trace)),
         },
         # Verification: Ik''max ≤ Icw (thermal withstand). The dynamic check (ip ≤ Idyn) is the
         # paired per-bus nameplate above; both are shown at L2 with their own verdict.
@@ -990,8 +1021,10 @@ def build_all_vf() -> dict[str, dict[str, Any]]:
 # IBG limited contribution tagged per gate J (bounded current, NOT a machine).
 # IBG short-circuit factor k_sc (IEC 60909-0:2016 §6.7): Ik = k_sc · I_rated.
 _IBG_K = 1.2
-# Minimum time delay t_min for the symmetrical breaking current i_b of rotating
-# machines (IEC 60909-0:2016 §6.6) — generic MV protection grading time.
+# Minimum time delay t_min = t_b of the fixture runs: symmetrical breaking current I_b of
+# rotating machines (IEC 60909-0:2016 §6.6, rozdz. 9) and the DC component i_DC(t_b)
+# (rozdz. 10) — generic MV protection grading time, an EXPLICIT fixture datum (the solver has
+# no default t_b since karta SC-IB-ITH-ZRODLA).
 _MACHINE_TMIN_S = 0.10
 
 
@@ -1089,7 +1122,9 @@ def _oze_sc_bus(
     if machine_type == "MIXED":
         # GPO wielopolowe — IBG (§6.7, sprowadzony) + maszyny wirujące (§6.3/§6.7, w Z-bus) na
         # WSPÓLNEJ szynie SN. Rozbicie udziału: sieć = Ik'' − maszyny − IBG.
-        res = compute_machine_contributions(graph, bus_id, c_factor=_C_MAX, t_min_s=t_min_s)
+        res = compute_machine_contributions(
+            graph, bus_id, c_factor=_c_szyny(graph, bus_id, "MAX"), t_min_s=t_min_s
+        )
         ibg_ka = _ibg_referred_a(graph, un_kv) / 1000.0
         machine_ka = res.ikss_machines_a / 1000.0
         entry["source_contribution"] = {
@@ -1127,7 +1162,9 @@ def _oze_sc_bus(
             "is_synchronous_machine": False,
         }
         return entry
-    res = compute_machine_contributions(graph, bus_id, c_factor=_C_MAX, t_min_s=t_min_s)
+    res = compute_machine_contributions(
+        graph, bus_id, c_factor=_c_szyny(graph, bus_id, "MAX"), t_min_s=t_min_s
+    )
     is_sync = machine_type == "SYNCHRONOUS"
     if is_sync:
         model = "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
@@ -3290,26 +3327,48 @@ def render_companions() -> dict[str, str]:
     bo zaden test nie porownywal artefaktu z wyjsciem generatora. Solvery FROZEN
     sa deterministyczne, serializacja sortuje klucze — rownosc jest BAJTOWA.
     """
+    from tests.golden.zapis_fikstur import zaokraglij_liczby
+
+    def _ts(dane: object) -> str:
+        # Regula zapisu liczb wspolna dla fikstur (``tests/golden/zapis_fikstur``).
+        return json.dumps(zaokraglij_liczby(dane), indent=2, sort_keys=True) + ";\n"
+
     return {
-        "index.ts": _TS_HEADER + json.dumps(build_all(), indent=2, sort_keys=True) + ";\n",
-        "shortCircuit.ts": (
-            _TS_SC_HEADER + json.dumps(build_all_sc(), indent=2, sort_keys=True) + ";\n"
-        ),
-        "voltageFlow.ts": (
-            _TS_VF_HEADER + json.dumps(build_all_vf(), indent=2, sort_keys=True) + ";\n"
-        ),
-        "ozeArchetypes2a.ts": (
-            _TS_OZE_HEADER + json.dumps(build_all_oze_2a(), indent=2, sort_keys=True) + ";\n"
-        ),
+        "index.ts": _TS_HEADER + _ts(build_all()),
+        "shortCircuit.ts": _TS_SC_HEADER + _ts(build_all_sc()),
+        "voltageFlow.ts": _TS_VF_HEADER + _ts(build_all_vf()),
+        "ozeArchetypes2a.ts": _TS_OZE_HEADER + _ts(build_all_oze_2a()),
     }
 
 
+_ULAMEK_SZUMU = re.compile(r"(\d\.\d{5})\d+")
+
+
+def kanonizuj_artefakt(tekst: str) -> str:
+    """Obcina ułamki do 5 znaków — JEDNO źródło predykatu „różni się wyłącznie szumem
+    ostatniej cyfry" dla testu świeżości (`tests/application/test_companions_generated.py`)
+    i zapisu `--write` (kotwica w szumie niżej). Powód: solvery FROZEN są deterministyczne
+    na jednej maszynie, ale nie co do bitu między maszynami — R/X = 0,5000025 w podstawieniu
+    współczynnika udaru przerzuca zapis 0,500003 ↔ 0,500002 w `substitution_latex`."""
+    return _ULAMEK_SZUMU.sub(r"\1", tekst)
+
+
 def _zapisz_artefakt(nazwa: str) -> str:
+    """Zapis artefaktu z KOTWICĄ W SZUMIE (karta SLD-SUBSTRAT, kontynuacja): gdy plik na
+    dysku różni się od świeżego renderu wyłącznie szumem ostatniej cyfry
+    (`kanonizuj_artefakt`), zostaje bez zmian — regeneracja na innej maszynie nie wnosi do
+    repozytorium różnicy, której nie przypisuje żadna zmiana danych wejściowych
+    (zmierzone 2026-09-29: `shortCircuit.ts` 0.500003 → 0.500002 po restarcie maszyny)."""
     out_dir = _companions_dir()
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, nazwa)
+    tresc = render_companions()[nazwa]
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            if kanonizuj_artefakt(fh.read()) == kanonizuj_artefakt(tresc):
+                return path
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(render_companions()[nazwa])
+        fh.write(tresc)
     return path
 
 

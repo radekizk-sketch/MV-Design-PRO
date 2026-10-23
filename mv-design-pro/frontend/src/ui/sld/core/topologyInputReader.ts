@@ -23,12 +23,19 @@ import type {
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
+import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
+import { kontekstTransformatorowStacji, transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
   normalizeSourceConnectionVariant,
+  OPIS_WARIANTU_PRZYLACZENIA_PL,
   SourceConnectionVariantV1,
 } from './sourceConnectionVariant';
+import { opisElementu } from './opisElementu';
+
+/** Lista wariantów przyłączenia dla podpowiedzi naprawy (kolejność kontraktu). */
+const WARIANTY_PRZYLACZENIA_PL = Object.values(OPIS_WARIANTU_PRZYLACZENIA_PL).join(', ');
 
 // =============================================================================
 // ENUMS
@@ -503,11 +510,12 @@ export function readTopologyFromENM(
   });
 
   // --- Substations ---
-  const stationBusMap = new Map<string, string>(); // busRef → stationId
+  // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra backendu `szynyStacji` (szyny
+  // główne, zaciski pól SN, końce aparatów pól nN); szyna wspólna → pierwsza stacja modelu.
+  const stationBusMap = new Map<string, string>(stacjaSzyn(enm.substations, enm.branches));
+  const kontekstTransformatorow = kontekstTransformatorowStacji(enm);
+  const indeksPolNn = kontekstTransformatorow.indeksPolNn;
   const stations: TopologyStationV1[] = enm.substations.map((sub) => {
-    for (const busRef of sub.bus_refs) {
-      stationBusMap.set(busRef, sub.ref_id);
-    }
     const meta = (sub as { meta?: unknown }).meta;
     const stationKind = enmStationKind(sub);
     const hasExplicitSnFieldSpecs = hasExplicitFieldSpecs(meta, 'field_specs');
@@ -524,10 +532,10 @@ export function readTopologyFromENM(
       voltageKv: sub.bus_refs.length > 0
         ? (busVoltageMap.get(sub.bus_refs[0]) ?? null)
         : null,
-      busIds: [...sub.bus_refs].sort(),
+      busIds: [...szynyStacji(sub, enm.branches, indeksPolNn)].sort(),
       branchIds: [],
       switchIds: [],
-      transformerIds: [...sub.transformer_refs].sort(),
+      transformerIds: transformatoryNalezaceDoStacji(enm, sub, kontekstTransformatorow).map((tr) => tr.ref_id).sort(),
       fieldSpecs: renderableFieldSpecs.length > 0
         ? renderableFieldSpecs
         : (!hasExplicitSnFieldSpecs && sub.gpz_sections?.length
@@ -600,9 +608,9 @@ export function readTopologyFromENM(
     if (!b.catalog_ref && (kind === BranchKind.LINE || kind === BranchKind.CABLE)) {
       fixActions.push({
         code: 'catalog.reference_missing',
-        message: `Galaz '${b.name}' (${b.ref_id}) nie ma referencji katalogowej.`,
+        message: `${opisElementu(kind === BranchKind.CABLE ? 'Kabel' : 'Linia', b.name)} nie ma przypisanego typu katalogowego.`,
         elementRef: b.ref_id,
-        fixHint: 'Przypisz typ katalogowy do galezi w modelu sieci.',
+        fixHint: 'Przypisz typ katalogowy do odcinka w modelu sieci.',
       });
     }
   }
@@ -627,7 +635,7 @@ export function readTopologyFromENM(
     if (!tr.catalog_ref) {
       fixActions.push({
         code: 'catalog.reference_missing',
-        message: `Transformator '${tr.name}' (${tr.ref_id}) nie ma referencji katalogowej.`,
+        message: `${opisElementu('Transformator', tr.name)} nie ma przypisanego typu katalogowego.`,
         elementRef: tr.ref_id,
         fixHint: 'Przypisz typ katalogowy do transformatora.',
       });
@@ -684,9 +692,9 @@ export function readTopologyFromENM(
     if (!g.gen_type) {
       fixActions.push({
         code: 'generator.type_missing',
-        message: `Generator '${g.name}' (${g.ref_id}) nie ma typu (gen_type).`,
+        message: `${opisElementu('Źródło', g.name)} nie ma określonego rodzaju źródła.`,
         elementRef: g.ref_id,
-        fixHint: 'Ustaw gen_type na pv_inverter, fw_pmsg, fw_dfig, fw_scig, bess lub synchronous.',
+        fixHint: 'Wybierz rodzaj źródła: fotowoltaika, farma wiatrowa, magazyn energii albo generator synchroniczny.',
       });
     }
 
@@ -702,31 +710,31 @@ export function readTopologyFromENM(
       if (!rawConnectionVariant) {
         fixActions.push({
           code: 'generator.connection_variant_missing',
-          message: `Generator OZE '${g.name}' (${g.ref_id}) nie ma wariantu przylaczenia (connection_variant).`,
+          message: `${opisElementu('Źródło OZE', g.name)} nie ma wariantu przyłączenia.`,
           elementRef: g.ref_id,
-          fixHint: 'Ustaw connection_variant na LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION albo SOURCE_CONNECTION_STATION.',
+          fixHint: `Wybierz wariant przyłączenia: ${WARIANTY_PRZYLACZENIA_PL}.`,
         });
       } else if (!isSupportedSourceConnectionVariant(rawConnectionVariant)) {
         fixActions.push({
           code: 'generator.connection_variant_invalid',
-          message: `Generator '${g.name}' (${g.ref_id}): wariant '${rawConnectionVariant}' jest nieprawidlowy.`,
+          message: `${opisElementu('Źródło OZE', g.name)} ma wariant przyłączenia spoza dozwolonych.`,
           elementRef: g.ref_id,
-          fixHint: 'Wariant musi byc jednym z: LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION, SOURCE_CONNECTION_STATION.',
+          fixHint: `Wybierz wariant przyłączenia: ${WARIANTY_PRZYLACZENIA_PL}.`,
         });
       } else if (connectionVariant === SourceConnectionVariantV1.DEDICATED_MV_CONNECTION) {
         if (!blockingTransformerId) {
           fixActions.push({
             code: 'generator.block_transformer_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant DEDICATED_MV_CONNECTION wymaga blocking_transformer_ref.`,
+            message: `${opisElementu('Źródło OZE', g.name)}: wariant przyłączenia „${OPIS_WARIANTU_PRZYLACZENIA_PL.DEDICATED_MV_CONNECTION}” wymaga wskazania transformatora blokowego.`,
             elementRef: g.ref_id,
             fixHint: 'Przypisz transformator blokowy do generatora.',
           });
         } else if (!transformerRefSet.has(blockingTransformerId)) {
           fixActions.push({
             code: 'generator.block_transformer_invalid',
-            message: `Generator '${g.name}' (${g.ref_id}): blocking_transformer_ref '${blockingTransformerId}' nie istnieje.`,
+            message: `${opisElementu('Źródło OZE', g.name)} wskazuje transformator blokowy, którego nie ma w modelu.`,
             elementRef: g.ref_id,
-            fixHint: 'Sprawdz ref_id transformatora blokowego.',
+            fixHint: 'Wskaż transformator blokowy z listy transformatorów modelu.',
           });
         }
       } else if (
@@ -736,16 +744,16 @@ export function readTopologyFromENM(
         if (!stationRef) {
           fixActions.push({
             code: 'generator.station_ref_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant ${connectionVariant} wymaga station_ref.`,
+            message: `${opisElementu('Źródło OZE', g.name)}: wariant przyłączenia „${OPIS_WARIANTU_PRZYLACZENIA_PL[connectionVariant]}” wymaga wskazania stacji.`,
             elementRef: g.ref_id,
-            fixHint: 'Przypisz stacje SN/nN do generatora.',
+            fixHint: 'Przypisz stację SN/nN do źródła.',
           });
         } else if (!stationRefSet.has(stationRef)) {
           fixActions.push({
             code: 'generator.station_ref_invalid',
-            message: `Generator '${g.name}' (${g.ref_id}): station_ref '${stationRef}' nie istnieje.`,
+            message: `${opisElementu('Źródło OZE', g.name)} wskazuje stację, której nie ma w modelu.`,
             elementRef: g.ref_id,
-            fixHint: 'Sprawdz ref_id stacji.',
+            fixHint: 'Wskaż stację z listy stacji modelu.',
           });
         }
       }
@@ -785,17 +793,7 @@ export function readTopologyFromENM(
   // --- Deklarowana oś magistrali (R2): line_runs main_trunk → kolejność stacji.
   const stationOfBusRef = (busRef: string | null | undefined): string | null => {
     if (!busRef) return null;
-    const direct = stationBusMap.get(busRef);
-    if (direct) return direct;
-    if (busRef.startsWith('stn/')) {
-      const id = busRef.split('/')[1];
-      if (id) return stations.some((st) => st.id === `stn/${id}/station`) ? `stn/${id}/station` : null;
-    }
-    if (busRef.startsWith('gpz/')) {
-      const id = busRef.split('/')[1];
-      if (id) return stations.some((st) => st.id === `gpz/${id}/substation`) ? `gpz/${id}/substation` : null;
-    }
-    return null;
+    return stationBusMap.get(busRef) ?? null;
   };
   const branchByRefId = new Map(enm.branches.map((br) => [br.ref_id, br]));
   const declaredTrunkStationIds: string[] = [];
@@ -972,9 +970,9 @@ export function readTopologyFromSymbols(
       if (voltage === null) {
         fixActions.push({
           code: 'bus.voltage_missing',
-          message: `Szyna '${s.elementName}' (${s.elementId}) nie ma jawnego napiecia — zero fabrication.`,
+          message: `${opisElementu('Szyna', s.elementName)} nie ma jawnego napięcia znamionowego — napięcia się nie zgaduje.`,
           elementRef: s.elementId,
-          fixHint: 'Podaj napiecie znamionowe w metadanych (voltageOverrides).',
+          fixHint: 'Podaj napięcie znamionowe szyny.',
         });
       }
       connectionNodes.push({
@@ -991,9 +989,9 @@ export function readTopologyFromSymbols(
       if (s.fromNodeId === s.toNodeId) {
         fixActions.push({
           code: 'topology.self_edge_forbidden',
-          message: `Galaz '${s.elementName}' (${s.elementId}) laczy wezel sam ze soba (${s.fromNodeId}).`,
+          message: `${opisElementu('Gałąź', s.elementName)} łączy węzeł sam ze sobą.`,
           elementRef: s.elementId,
-          fixHint: 'Popraw polaczenia galezi — fromNodeId i toNodeId musza byc rozne.',
+          fixHint: 'Popraw połączenia gałęzi — początek i koniec muszą leżeć na różnych węzłach.',
         });
       }
 
@@ -1018,9 +1016,9 @@ export function readTopologyFromSymbols(
       if (s.fromNodeId === s.toNodeId) {
         fixActions.push({
           code: 'topology.self_edge_forbidden',
-          message: `Lacznik '${s.elementName}' (${s.elementId}) laczy wezel sam ze soba (${s.fromNodeId}).`,
+          message: `${opisElementu('Łącznik', s.elementName)} łączy węzeł sam ze sobą.`,
           elementRef: s.elementId,
-          fixHint: 'Popraw polaczenia lacznika — fromNodeId i toNodeId musza byc rozne.',
+          fixHint: 'Popraw połączenia łącznika — oba zaciski muszą leżeć na różnych węzłach.',
         });
       }
 

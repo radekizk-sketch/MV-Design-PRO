@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { EkranZwarc } from '../EkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
@@ -8,6 +8,9 @@ import { useResultsInspectorStore } from '../../../../ui/results-inspector/store
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { konfiguracjaBieguFixture, shortCircuitResultsFixture, wkladyFixture } from './fixtures';
 import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
+import userEvent from '@testing-library/user-event';
+import { useZadanieCzasuTb } from '../../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
+import { useShellStore } from '../../../shell/useShellStore';
 
 // Karta UI2 p.9 (test klasy §2: {koperta obecna, koperta nieobecna} × {rozpływ,
 // zbieżność, ZWARCIA}) — trzeci człon macierzy, dotąd nietestowany w tym pliku
@@ -60,6 +63,9 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     expect(within(bilans).getByText('1,728')).toBeInTheDocument(); // kappa
     expect(within(bilans).getByText('9,416')).toBeInTheDocument(); // X/R
     expect(within(bilans).getByText('1,100')).toBeInTheDocument(); // c
+    // Podstawa c TEGO węzła (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tekst backendu.
+    expect(within(bilans).getByText(ZWARCIA_STRINGS.bilansCZrodlo)).toBeInTheDocument();
+    expect(within(bilans).getByText('IEC 60909-0 tab. 1, pasmo SN, MAX')).toBeInTheDocument();
     expect(within(bilans).getByText('15,0 kV')).toBeInTheDocument(); // Un
     expect(within(bilans).getByText('156,250 kA²·s')).toBeInTheDocument(); // I2t
   });
@@ -74,7 +80,11 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     const kreski = within(bilans)
       .getAllByRole('definition')
       .filter((el) => el.textContent === ZWARCIA_STRINGS.kreska);
-    expect(kreski.length).toBe(16);
+    // 18 pozycji bilansu. Karta TB-WARTOSC-ROBOCZA: t_b rozstrzyga się w każdym punkcie,
+    // stan „nie obliczono — bieg bez tb" nie istnieje — wiersz bez wyniku solvera ma
+    // uczciwe kreski także przy Ib, iDC(tb) i tb (18 kresek), bez etykiety wartości roboczej.
+    expect(kreski.length).toBe(18);
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-robocza')).not.toBeInTheDocument();
   });
 
   it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {
@@ -86,6 +96,68 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     expect(screen.queryByTestId('mvd-wyn-th-zk')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-th-kappa')).not.toBeInTheDocument();
+  });
+});
+
+// Karta TB-WARTOSC-ROBOCZA — akcja „Zmień wartość" przy t_b roboczym prowadzi do t_b
+// scenariusza zwarciowego: iloczyn {bieg ze scenariusza · bieg przypadku bez scenariusza} ×
+// {t_b robocze · t_b projektanta}. Klik natywny (userEvent), Zero-Debt pkt 5.
+describe('EkranZwarc — t_b punktu: wartość robocza i „Zmień wartość"', () => {
+  const TB_ROBOCZE = {
+    wartosc_s: 0.1,
+    pochodzenie: 'PROPOZYCJA' as const,
+    wartosc_robocza: true,
+    jakosc: 'ESTIMATED' as const,
+    opis_pl: 't_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …).',
+    zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)',
+  };
+
+  function ustawBieg(scenariuszId: string | undefined, robocze: boolean) {
+    const wyniki = shortCircuitResultsFixture({
+      konfiguracja_biegu: konfiguracjaBieguFixture({
+        breaking_time_seconds: robocze
+          ? { wartosc: null, pochodzenie: 'punkt_zwarcia', opis_pl: 'Reguła punktu zwarcia.' }
+          : { wartosc: 0.08, pochodzenie: 'opcje_biegu' },
+        ...(scenariuszId === undefined ? {} : { scenariusz_zwarciowy_id: scenariuszId }),
+      }),
+    });
+    wyniki.rows[0] = robocze
+      ? { ...wyniki.rows[0], tb_s: 0.1, tb_zrodlo: TB_ROBOCZE }
+      : { ...wyniki.rows[0], tb_s: 0.08, tb_zrodlo: undefined };
+    useResultsInspectorStore.setState({ shortCircuitResults: wyniki, selectedRunId: 'sc-run-1' });
+  }
+
+  beforeEach(() => {
+    useZadanieCzasuTb.setState({ zadanie: null });
+    useShellStore.getState().setActiveSpace('wyniki');
+  });
+
+  it.each([
+    ['bieg ze scenariusza → edycja t_b TEGO scenariusza', 'scn-7', 'scn-7'],
+    ['bieg przypadku bez scenariusza → nowy scenariusz z polem t_b', undefined, null],
+  ] as const)('%s', async (_n, scenariuszId, oczekiwany) => {
+    ustawBieg(scenariuszId, true);
+    const user = userEvent.setup();
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    expect(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-robocza')).toHaveTextContent(
+      ZWARCIA_STRINGS.bilansTbRobocza,
+    );
+    expect(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-zrodlo')).toHaveTextContent(TB_ROBOCZE.opis_pl);
+    await user.click(within(bilans).getByTestId('mvd-zwarcia-bilans-tb-zmien'));
+    expect(useZadanieCzasuTb.getState().zadanie).toEqual({ scenarioId: oczekiwany });
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+  });
+
+  it('t_b projektanta → bez etykiety, bez źródła i bez akcji (predykat parami)', async () => {
+    ustawBieg('scn-7', false);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    expect(within(bilans).getByText('0,08 s')).toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-robocza')).not.toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-zrodlo')).not.toBeInTheDocument();
+    expect(within(bilans).queryByTestId('mvd-zwarcia-bilans-tb-zmien')).not.toBeInTheDocument();
+    expect(useZadanieCzasuTb.getState().zadanie).toBeNull();
   });
 });
 
@@ -160,7 +232,7 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         konfiguracja_biegu: konfiguracjaBieguFixture({
-          c_factor: { tryb: 'jawny', wartosc: 1.1 },
+          c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
           thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
         }),
       }),
@@ -171,21 +243,26 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalMetoda)).toBeInTheDocument();
     expect(within(zalozenia).getByText('IEC 60909')).toBeInTheDocument();
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikC)).toBeInTheDocument();
-    expect(within(zalozenia).getByText('1,10')).toBeInTheDocument();
+    expect(
+      within(zalozenia).getByText('1,05 — nadpisanie ręczne: Uzgodnienie z OSD'),
+    ).toBeInTheDocument();
   });
 
   it('założenia: c auto-per-węzeł (bez jawnego override) pokazuje uczciwy opis, nie liczbę', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         konfiguracja_biegu: konfiguracjaBieguFixture({
-          c_factor: { tryb: 'auto_per_wezel', wartosc: null },
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+          scenariusz: 'MIN',
         }),
       }),
       selectedRunId: 'sc-run-1',
     });
     await renderEkranZwarc(<EkranZwarc {...props()} />);
     const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
-    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto)).toBeInTheDocument();
+    expect(
+      within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto('MIN')),
+    ).toBeInTheDocument();
   });
 
   it('założenia: brak konfiguracji biegu (starszy zapis) → kreska uczciwa, nie zgadnięta liczba', async () => {
@@ -318,7 +395,13 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
 
 describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
   beforeEach(() => {
-    ustawWynik();
+    // Wynik z realnego backendu zawsze niesie `konfiguracja_biegu` (canonical_run_views:
+    // build_short_circuit_results_response) — z niej ekran bierze scenariusz i nadpisanie c,
+    // bez których końcówka wkładów odmawia 422 (karta WSPÓŁCZYNNIK-C).
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({ konfiguracja_biegu: konfiguracjaBieguFixture() }),
+      selectedRunId: 'sc-run-1',
+    });
     useSnapshotStore.setState({
       snapshot: { header: { name: 'Siec testowa' }, buses: [], branches: [], transformers: [], sources: [], loads: [], generators: [], substations: [], bays: [] },
     } as never);
@@ -357,6 +440,100 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     expect(JSON.parse(init.body as string).fault_node_id).toBe(
       shortCircuitResultsFixture().rows[0].target_id,
     );
+    vi.unstubAllGlobals();
+  });
+
+  // Karta WSPÓŁCZYNNIK-C (scalenie partii 10 i 11): końcówka wkładów wymaga scenariusza
+  // biegu i przyjmuje nadpisanie c z uzasadnieniem. Iloczyn: scenariusz {MAX, MIN} ×
+  // nadpisanie c {brak, z uzasadnieniem} × treść zapytania o wkłady.
+  it.each([
+    ['MAX', null],
+    ['MIN', null],
+    ['MAX', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }],
+    ['MIN', { wartosc: 0.95, uzasadnienie: 'Uzgodnienie z OSD' }],
+  ] as const)('bieg %s, nadpisanie %j -> zapytanie o wklady niesie parametry biegu', async (scen, nadp) => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          scenariusz: scen,
+          c_factor: nadp
+            ? { tryb: 'nadpisanie', wartosc: nadp.wartosc, uzasadnienie: nadp.uzasadnienie }
+            : { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-wklady');
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+      ).toBe(true),
+    );
+    const wywolanie = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    const cialo = JSON.parse((wywolanie![1] as RequestInit).body as string);
+    expect(cialo.scenariusz).toBe(scen);
+    expect(cialo.nadpisanie_c).toEqual(nadp);
+    expect(cialo).not.toHaveProperty('c_factor');
+    vi.unstubAllGlobals();
+  });
+
+  it('bieg bez zapisanego scenariusza -> brak zapytania o wklady, uczciwe "dane niedostepne"', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({ scenariusz: null }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+    ).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  // Karta OD-14: wkłady źródeł biegu przez impedancję przejścia liczone z TĄ SAMĄ Z_f
+  // co bieg (`konfiguracja_biegu.impedancja_przejscia`), nie metalicznie. Iloczyn:
+  // {bieg metaliczny, bieg przez Z_f} × treść zapytania o wkłady.
+  it.each([
+    ['metaliczny', undefined, undefined],
+    [
+      'przez Z_f',
+      { r_f_ohm: 2, x_f_ohm: 0.5, poza_zakresem_iec60909: true as const },
+      { r_f_ohm: 2, x_f_ohm: 0.5 },
+    ],
+  ])('bieg %s -> zapytanie o wklady niesie fault_impedance tylko dla Z_f', async (_n, z, oczekiwana) => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture(z ? { impedancja_przejscia: z } : {}),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contributions: [{ source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-wklady');
+    const wywolanie = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    expect(wywolanie, 'brak zapytania o wklady zwarciowe').toBeDefined();
+    const cialo = JSON.parse((wywolanie![1] as RequestInit).body as string);
+    expect(cialo.fault_impedance).toEqual(oczekiwana);
     vi.unstubAllGlobals();
   });
 
@@ -540,10 +717,16 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
+  it('blad pobrania -> uczciwy stan bledu (bez fabrykacji, nie "dane niedostepne")', async () => {
+    // Intencja bez zmian: błąd pobrania nie fabrykuje wkładów. Stan jest teraz NAZWANY
+    // błędem (dawniej wchłaniany w „dane niedostępne", którym mówiło też pobieranie w toku).
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
-    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    expect(await screen.findByTestId('mvd-zwarcia-wklady-blad')).toHaveTextContent(
+      ZWARCIA_STRINGS.wkladyBlad,
+    );
+    expect(screen.queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-zwarcia-wklady-filtr')).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 

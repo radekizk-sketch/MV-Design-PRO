@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.cable_ampacity_derating import (
     WARUNKI_KATALOGOWE,
     WspolczynnikiObciazalnosci,
@@ -142,9 +143,9 @@ def propose_block_transformer(
     z jawnym powodem (napięcie SN/nN niezgodne albo moc niewystarczająca).
     """
     if data.sum_apparent_power_mva <= 0.0:
-        raise ValueError("ΣS falowników musi być dodatnie.")
+        raise OdmowaDanychError("ΣS falowników musi być dodatnie.")
     if data.primary_voltage_kv <= 0.0 or data.secondary_voltage_kv <= 0.0:
-        raise ValueError("Napięcia strony SN/nN muszą być dodatnie.")
+        raise OdmowaDanychError("Napięcia strony SN/nN muszą być dodatnie.")
 
     # Decyzja O-53: współczynnik spoza dziedziny to BŁĄD WEJŚCIA, nie liczba do podmiany
     # (dawne `k if k > 0 else 1.0` podstawiało „brak redukcji" za daną niedodatnią, a
@@ -152,11 +153,11 @@ def propose_block_transformer(
     # sprawdzana wyżej jedną funkcją `domain.generator_validation` (API podglądu, tor
     # operacji); tutaj — warunki matematyczne progu, bez których wynik byłby bez sensu.
     if data.simultaneity_factor <= 0.0:
-        raise ValueError("Współczynnik jednoczesności k_j musi być dodatni.")
+        raise OdmowaDanychError("Współczynnik jednoczesności k_j musi być dodatni.")
     if data.loadability_pu <= 0.0:
-        raise ValueError("Przeciążalność transformatora k_obc musi być dodatnia.")
+        raise OdmowaDanychError("Przeciążalność transformatora k_obc musi być dodatnia.")
     if data.reserve_pu < 0.0:
-        raise ValueError("Rezerwa mocy transformatora nie może być ujemna.")
+        raise OdmowaDanychError("Rezerwa mocy transformatora nie może być ujemna.")
     simultaneity = data.simultaneity_factor
     loadability = data.loadability_pu
     reserve = data.reserve_pu
@@ -384,13 +385,13 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
     (za mały przekrój / przekroczony ΔU). Brak kandydata ⇒ kod ❌ jak w kanonie.
     """
     if data.transformer_current_a <= 0.0:
-        raise ValueError("Prąd znamionowy TR blokowego musi być dodatni.")
+        raise OdmowaDanychError("Prąd znamionowy TR blokowego musi być dodatni.")
     if data.length_km <= 0.0:
-        raise ValueError("Długość kabla musi być dodatnia.")
+        raise OdmowaDanychError("Długość kabla musi być dodatnia.")
     if data.line_voltage_v <= 0.0:
-        raise ValueError("Napięcie linii musi być dodatnie.")
+        raise OdmowaDanychError("Napięcie linii musi być dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise ValueError("Współczynnik mocy cosφ musi leżeć w zakresie (0, 1].")
+        raise OdmowaDanychError("Współczynnik mocy cosφ musi leżeć w zakresie (0, 1].")
     # Kierunki sprawdzamy PRZED petla kandydatow: przy pustym katalogu blad wejscia
     # inaczej przeszedlby niezauwazony, a wynik „brak kandydata" ukrylby literowke
     # w nazwie przypadku pracy toru.
@@ -399,7 +400,7 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
     # Decyzja O-53 (ta sama klasa w obrębie pliku): ujemna rezerwa to błąd wejścia,
     # nie zero podstawione po cichu.
     if data.reserve_pu < 0.0:
-        raise ValueError("Rezerwa obciążalności kabla nie może być ujemna.")
+        raise OdmowaDanychError("Rezerwa obciążalności kabla nie może być ujemna.")
     reserve = data.reserve_pu
     required_ampacity = data.transformer_current_a * (1.0 + reserve)
     # F-K7: brak wspolczynnikow == warunki katalogowe (iloczyn 1,0), wiec wynik jest
@@ -639,12 +640,12 @@ def propose_mv_field_apparatus(
     proponujemy LEPSZY aparat.
     """
     if data.transformer_current_a <= 0.0:
-        raise ValueError("Prąd znamionowy TR blokowego musi być dodatni.")
+        raise OdmowaDanychError("Prąd znamionowy TR blokowego musi być dodatni.")
     if data.system_voltage_kv <= 0.0:
-        raise ValueError("Napięcie sieci musi być dodatnie.")
+        raise OdmowaDanychError("Napięcie sieci musi być dodatnie.")
     # Decyzja O-53 (ta sama klasa w obrębie pliku): ujemna rezerwa to błąd wejścia.
     if data.reserve_pu < 0.0:
-        raise ValueError("Rezerwa prądu aparatu pola nie może być ujemna.")
+        raise OdmowaDanychError("Rezerwa prądu aparatu pola nie może być ujemna.")
 
     reserve = data.reserve_pu
     required_current = data.transformer_current_a * (1.0 + reserve)

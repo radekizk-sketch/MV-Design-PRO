@@ -16,7 +16,7 @@ rodzinę, inwentarz idzie do meldunku, testy jako iloczyn cech, predykaty parami
 
 | # | Rodzina (mapa) | Tor kanoniczny (źródło prawdy) | Decyzja | B-01? |
 |---|---|---|---|---|
-| 1 | **IDMT IEC 60255 ×5** (4 #1) | `network_model/solvers/protection_iec60255.py::compute_idmt_generic` / `compute_curve_trip_time` (FROZEN; NI/VI/EI/RI, ε = 1e-12) — adaptery `protection/curves/{iec,ieee}_curves.py` już delegują (P0.7, `f4a822bb`) | Pozostałe 3 żywe pętle **przekierować na jądro** (adapter, zero własnej pętli): `application/protection_analysis/engine.py::compute_iec_inverse_time` (tor kanoniczny `protection_sn`!), `enm/domain_operations_v2.py::_compute_tcc_point` (operacja `validate_selectivity`; alias `LTI` = `RI` jądra, udokumentować), `application/analyses/protection/overcurrent/calculator.py::_iec_ni_time` (ginie razem z V12K-189 w podkarcie C). Martwe: `_compute_tcc_curve` (0 wywołań) i zaślepka `calculate_tcc_curve` (`tcc.legacy_write_disabled`) — kasacja. **Drugi silnik** `domain/protection_engine_v1.py` + `application/protection_current_resolver.py` + `application/result_mapping/protection_to_resultset_v1.py` (0 importerów produkcyjnych; `eligibility.py:263` i `execution_runs.py:119` odwołują się tylko w komentarzach) — **kasacja** z 75 testami, wpis do bramki wskrzeszenia. Test parytetu per adapter = podstawienie ręczne do wzoru normy (jak `test_protection_curves_nd4_merge.py`), nie porównanie dwóch implementacji ze sobą. Nowa rodzina guarda `E_idmt_shape` (patrz 13). | nie (wszystko poza `solvers/**`) |
+| 1 | **IDMT IEC 60255 ×5** (4 #1) | `network_model/solvers/protection_iec60255.py::compute_idmt_generic` / `compute_curve_trip_time` (FROZEN; NI/VI/EI/RI — od karty PROT-LTI 2026-09-30 „RI" nazywa się LTI, ε = 1e-12) — adaptery `protection/curves/{iec,ieee}_curves.py` już delegują (P0.7, `f4a822bb`) | Pozostałe 3 żywe pętle **przekierować na jądro** (adapter, zero własnej pętli): `application/protection_analysis/engine.py::compute_iec_inverse_time` (tor kanoniczny `protection_sn`!), `enm/domain_operations_v2.py::_compute_tcc_point` (operacja `validate_selectivity`; alias `LTI` = `RI` jądra, udokumentować), `application/analyses/protection/overcurrent/calculator.py::_iec_ni_time` (ginie razem z V12K-189 w podkarcie C). Martwe: `_compute_tcc_curve` (0 wywołań) i zaślepka `calculate_tcc_curve` (`tcc.legacy_write_disabled`) — kasacja. **Drugi silnik** `domain/protection_engine_v1.py` + `application/protection_current_resolver.py` + `application/result_mapping/protection_to_resultset_v1.py` (0 importerów produkcyjnych; `eligibility.py:263` i `execution_runs.py:119` odwołują się tylko w komentarzach) — **kasacja** z 75 testami, wpis do bramki wskrzeszenia. Test parytetu per adapter = podstawienie ręczne do wzoru normy (jak `test_protection_curves_nd4_merge.py`), nie porównanie dwóch implementacji ze sobą. Nowa rodzina guarda `E_idmt_shape` (patrz 13). | nie (wszystko poza `solvers/**`) |
 | 2 | **Metodyka nastaw ×3** (4 #2) | **Hoppel / IRiESD** — `application/protection_settings/engine.py` + `batch_run.py` + pakiet dowodowy `pakiet_nastaw.py` (`GET /analysis-runs/{id}/pakiet-dowodowy-nastaw[/dostepnosc]`): jedyna z cytatami normy, trzema wariantami SC/PF i pakietem dowodowym | **V12K-189** (`application/analyses/protection/overcurrent/**`, `api/protection_overcurrent_settings.py`, `run_registry`) — strona zapisu ma 0 wywołań produkcyjnych, ekran `SekcjaNastaw` zawsze dostaje 404 → **kasacja** + przepięcie `ui2/wyniki/koordynacja/SekcjaNastaw.tsx`/`nastawyApi.ts` na pakiet Hoppela (dostępność → wybór odcinka i szyny kolejnej strefy → pakiet). **FIX-12D** `line_overcurrent_setting/**` (1880 linii, 97 testów; jedyny konsument = generator wzorca `pattern_line_i_doubleprime_thermal_spz.py`) — **kasacja**; wzorzec liczy nastawy silnikiem Hoppela z nazwaną proweniencją (złote wartości wzorca przeliczone z uzasadnieniem: zmiana metodyki, nie fabrykacja); tabela SPZ (`spz_lookup.py`) zostaje WYŁĄCZNIE jeśli wzorzec ją czyta jako dane — wtedy przeniesiona obok konsumenta. | nie |
 | 3 | **ALF ×2** (4 #3) | `network_model/solvers/equipment_checks/ct_burden_saturation.py` (FROZEN; `ALF_eff = ALF·(Sn+Sw)/(S2obl+Sw)`, wariant uproszczony nazwany w wyniku) | Kryterium 4 w `domain/dobor_przekladnika.py` **deleguje** do jądra: S2obl z łańcucha pomiarowego pola (gdy zapisany), w przeciwnym razie S2obl = Sn z etykietą wariantu i kodem ostrzeżenia `ct.secondary_burden_unknown` (wynik liczbowo identyczny z dzisiejszym prostym sprawdzeniem, ale nazwany); `DoborPrzekladnikowSekcja.tsx` pokazuje wariant. Iloczyn cech: obciążenie znane/nieznane × Rct znane/nieznane × ALF spełnia/nie. | nie |
 | 4 | **Hosting capacity ×2** (5 #8, 9 #10) | `application/analyses/hosting_capacity.py` (pełny rozpływ przez `bieg_wariantu`, wyrocznia PF dziedziczona) | Duplikat `v126_academic.py::_hosting_capacity` (lokalna impedancja Thevenina, Monte Carlo per szyna, bez sprzężenia sieci) **schodzi z powierzchni**: `POST /cases/{id}/runs/v126/hosting_capacity` → 410 z odesłaniem do `GET /api/oze-analysis/hosting-capacity`, kafel w `ui2/wyniki/akademickie` usunięty (`katalog.ts` 14 → 12 rodzajów), GET historycznych biegów zostaje (odtwarzalność). Enum `V126AnalysisType` bez zmian (solver FROZEN dyspozycjonuje po nim). Formuła w solverze = OD-15(d). | prezentacja: nie; formuła: tak (OD-15(d)) |
@@ -97,7 +97,11 @@ guardy_z_ci, vitest, e2e) na drzewie gałęzi + push + CI 9/9.
    poza `ZASTANE` (a `ZASTANE` puste dla tych rodzin — z JEDNYM trwałym wyjątkiem architektonicznym odkrytym w W3-F:
    `application/result_mapping/short_circuit_to_resultset_v1.py`, 2× `J_skalowanie_jednostek`, plik pod
    `PROTECTED_FILES` `resultset_v1_schema_guard.py` (B-01) — te dwa literały `/1000.0` nigdy nie trafią do `pochodne/`;
-   zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18).
+   zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18). **Rozstrzygnięte 2026-09-30 (O-74 (2), V12K-341):**
+   martwe mappery `short_circuit_to_resultset_v1.py`, `protection_to_resultset_v1.py` i `sc_binding_meta.py` KASOWANE
+   razem z OD-18 (0 importerów; żywy producent ResultSet v1 = `canonical_run_to_resultset_v1.py`) — wyjątek znika
+   z plikiem. **Stan 2026-09-30:** wykonane w karcie RESULTSET-MARTWE-MAPPERY (scalona w partii integracji 8),
+   `ZASTANE` w `backend_no_physics_guard.py` puste.
 2. Trzy metodyki nastaw → jedna (Hoppel) z pakietem dowodowym osiągalnym z ekranu koordynacji; wzorzec
    referencyjny liczony tą samą metodyką.
 3. V12.6: `hosting_capacity`/`opf_loss_lcc` niedostępne jako nowe biegi (410 z odesłaniem), ranking N-1 poza
@@ -129,7 +133,7 @@ po W3-E). Bramki wskrzeszenia K2 / W3-D / W3-A liczą ŹRÓDŁO (`zrodlo_istniej
 **Wykonane (agent, worktree, 5 commitów na `a16f8d2b` → na gałęzi `cf07ad9b`, `ad0a965e`, `f4e7380e`, `35cba1b6`,
 `cb9b281f`):** `application/protection_analysis/engine.py::compute_iec_inverse_time` (tor kanoniczny `protection_sn`)
 i `enm/domain_operations_v2.py::_compute_tcc_point` (operacja `validate_selectivity`; alias `LTI` = `RI` jądra
-udokumentowany) przełączone na adapter jądra `protection_iec60255` — zero własnej pętli IDMT, `denom_guard=1e-10`
+udokumentowany; alias zniknął 2026-09-30 — karta PROT-LTI, jedna nazwa `LTI`) przełączone na adapter jądra `protection_iec60255` — zero własnej pętli IDMT, `denom_guard=1e-10`
 ujednolicony. Bridge SC↔Protection v1 (`application/protection_current_resolver.py`, `domain/protection_current_source.py`;
 0 konsumentów produkcyjnych, 35 testów wyłącznie o martwym moście) skasowany razem z martwą `_compute_tcc_curve`
 i zaślepką `calculate_tcc_curve` (`tcc.legacy_write_disabled`; `V2_CANONICAL_OPS`/`ALL_V2_HANDLERS` zaktualizowane);
@@ -140,12 +144,15 @@ w `backend_no_physics_guard.py` (inline, `math.pow`, zmienna pośrednia do 2 poz
 guarda + 8 self-testów bramki + 1 w rejestrze kanonicznym. Pętli IDMT poza solverami: 4 → 2 (obie nazwane).
 
 **B-01 STOP (zatrzymanie dozwolone, nie odroczenie):** karta literalnie kazała skasować 4 pliki „drugiego silnika";
+**[Rozstrzygnięte 2026-09-30 — V12K-341: sankcja kasacji wydana w ramach O-59; patrz wiersz niżej i :433.]**
 `guardy_z_ci.py` ujawnił, że `domain/protection_engine_v1.py` leży pod `solver_boundary_guard.py::WATCHED_PATHS`,
 a `application/result_mapping/protection_to_resultset_v1.py` pod `resultset_v1_schema_guard.py::PROTECTED_FILES`
 (docstring guarda: kasacja pliku chronionego = edycja zamrożonego rdzenia). Oba pliki + `tests/test_protection_engine_v1.py`
 przywrócone bit w bit do `a16f8d2b`; artefakty zależne (komentarze, bramka, guard, pin) skorygowane. Decyzja
 właściciela: mapa §7 **OD-18**. Ograniczenie guarda nazwane i przypięte testem: pętla w `protection_engine_v1.py:483-559`
 ma warunkowe ponowne przypisanie floora (`if denominator <= 1e-12: …`) niewidoczne dla `E_idmt_shape`.
+**Stan 2026-09-30:** OD-18 rozstrzygnięte decyzją O-59 — oba pliki i `tests/test_protection_engine_v1.py` skasowane w karcie
+RESULTSET-MARTWE-MAPPERY; ograniczenie guarda przestało mieć przedmiot (jedyna fizyka IDMT: `protection_iec60255.py::compute_idmt_generic`).
 
 **Nazwane, nie ukryte:** (1) `application/trace_emitters/protection_emitter.py` (`TraceEmitterProtection`) — 0 importerów
 produkcyjnych poza własnym `__init__`; pomiar klasy w odbiorze (2026-09-10): martwy jest CAŁY klaster ślad v2 —
@@ -430,7 +437,11 @@ deklaracją „nigdy cichy" bez testu → test × {kotwica MAX, MIN} (atrapa `wy
 `act(...)` „celowo zaakceptowane" w `9611fca9` zdjęte u źródła (klasa: 3 pliki testów renderujące `EkranZwarc` — wspólny
 `renderEkranZwarc.tsx`, 0 ostrzeżeń, 155 passed). Znalezisko: `application/solvers/short_circuit_binding.py::execute_short_circuit`
 — 0 konsumentów produkcyjnych, 5 harnessów testowych parytetu; typ wyniku konsumowany przez chroniony `short_circuit_to_resultset_v1.py`
-→ ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna.
+→ ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna. **Zgoda wydana
+2026-09-30 w ramach delegacji O-59 (V12K-341, O-69/O-74).** Stan 2026-09-30: `execute_short_circuit`
+skasowany w karcie TORY-TYLKO-W-TESTACH, `ShortCircuitBindingResult`, `short_circuit_to_resultset_v1.py`
+i `domain/protection_engine_v1.py` w karcie RESULTSET-MARTWE-MAPPERY (zdjęte z `WATCHED_PATHS`,
+`SANCTIONED_CHANGES` i `PROTECTED_FILES` w commicie kasacji; scalona w partii integracji 8).
 
 #### W3-G2 (2026-09-10) — pasma zdrowego rozsądku rozpływu — UCZCIWOŚĆ
 Wykonane: `analysis/sanity_bounds/power_flow_bounds.py` (napięcia ±10 % Un PN-EN 50160 — pasmo WIARYGODNOŚCI, obciążenia ≤ In

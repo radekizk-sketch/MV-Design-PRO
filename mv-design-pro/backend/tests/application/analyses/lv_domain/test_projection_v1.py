@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from application.analyses.fault_loop.tt_it import KOD_BRAK_POJEMNOSCI
 from application.analyses.lv_domain import projection_v1
 from application.analyses.lv_domain.projection_v1 import (
     LvDomainProjectionRunMismatch,
@@ -276,13 +277,26 @@ class TestKompletnosc:
         assert po_tr["tr2"]["feeders"] == []
         assert projekcja["swz_snapshot"]["status"] == "OK"
 
-    def test_uklad_it_daje_uczciwe_nie_dotyczy_dla_calej_stacji(self) -> None:
+    def test_uklad_it_bez_pojemnosci_odmawia_kodem_dla_calej_stacji(self) -> None:
+        # Karta W5-E-TTIT: IT jest liczony; bez pojemności doziemnych odcinków
+        # (b0_siemens_per_km) stacja odmawia NAZWANYM kodem — na poziomie migawki
+        # SWZ i wiersza transformatora (ten sam kod, jedno źródło odmowy).
         projekcja = _projekcja(zbuduj_stacje_nn(uklad_uziemienia="IT"))
         swz = projekcja["swz_snapshot"]
-        assert swz["status"] == "nie dotyczy"
+        assert swz["status"] == "brak danych"
+        assert swz["kod_odmowy"] == KOD_BRAK_POJEMNOSCI
         assert swz["network_system"] == "IT"
+        assert swz["transformers"][0]["kod_odmowy"] == KOD_BRAK_POJEMNOSCI
         assert swz["transformers"][0]["feeders"] == []
         assert "IT" in swz["reason_pl"]
+        assert swz["missing_data"] == ["tr1:c_a:b0_siemens_per_km"]
+
+    def test_uklad_it_z_pojemnosciami_liczy_odplywy(self) -> None:
+        projekcja = _projekcja(zbuduj_stacje_nn(uklad_uziemienia="IT", b0_s_per_km=1.2e-4))
+        swz = projekcja["swz_snapshot"]
+        assert swz["status"] == "OK"
+        assert swz["kod_odmowy"] is None
+        assert swz["transformers"][0]["feeders"]
 
     def test_nieznana_stacja_daje_unavailable(self) -> None:
         projekcja = build_lv_domain_projection_v1(zbuduj_stacje_nn(), "case-nn", "nie-ma-takiej")

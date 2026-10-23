@@ -7,10 +7,12 @@ Kontrakt HTTP + determinizm + iloczyn cech:
 - predykaty parami: odcisk treści scenariusza przypięty przy tworzeniu serii
   i weryfikowany przy wykonaniu (zmiana/usunięcie scenariusza po utworzeniu
   serii = uczciwa odmowa TEJ pozycji, reszta próbowana niezależnie),
-- ta sama brama uprawnień, co pojedynczy bieg (SC_2F bez Z2 → FAILED),
+- ta sama brama uprawnień, co pojedynczy bieg (SC_1F bez Z0 w modelu → FAILED; dawna
+  blokada „SC_2F bez Z2” była fantomem i zniknęła w partii integracji 10 — Z2 = Z1
+  pochodzi z modelu sieci, więc bieg 2F się liczy),
 - jedno źródło wejścia solvera (`solver_input_for_scenario`) dla ścieżki
   pojedynczego biegu i serii, z naprawą klasy: konfiguracja scenariusza
-  (`c_factor`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
+  (`scenario`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
 - TRWAŁOŚĆ: seria przetrwa symulowany restart procesu backendu (rejestr
   `run_batches`, R2 — nie ginie z procesem, jak dawne trzy słowniki w pamięci),
 - WYKONANIE CIĄGŁE: awaria jednej pozycji NIE zatrzymuje pozostałych (status
@@ -36,8 +38,10 @@ from api.main import app
 from domain.execution import ExecutionAnalysisType
 from domain.run_batch import compute_batch_input_hash, new_run_batch
 from fastapi.testclient import TestClient
+from network_model.odmowa_danych import OdmowaDanychError
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.biegi import wykonaj_serie
 
 client: TestClient
 BASE_URL = "/api/execution"
@@ -218,7 +222,7 @@ def _create_scenario(
     name: str = "Zwarcie testowe",
     fault_type: str = "SC_3F",
     element_ref: str = "bus-1",
-    c_factor: float = 1.1,
+    scenariusz: str = "MAX",
 ) -> dict:
     response = client.post(
         f"{BASE_URL}/study-cases/{case_id}/fault-scenarios",
@@ -231,7 +235,7 @@ def _create_scenario(
                 "position": None,
             },
             "config": {
-                "c_factor": c_factor,
+                "scenariusz": scenariusz,
                 "thermal_time_seconds": 1.0,
                 "include_branch_contributions": False,
             },
@@ -361,7 +365,7 @@ class TestCreateBatch:
             json={"scenario_ids": [s_obcy["scenario_id"]]},
         )
         assert response.status_code == 400
-        assert "nie należy do przypadku" in response.json()["detail"]
+        assert "nie należy do wskazanego przypadku" in response.json()["detail"]
 
     def test_mieszane_typy_analizy_400(self):
         case_id = _nowy_przypadek()
@@ -456,7 +460,7 @@ class TestExecuteBatch:
             json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
         ).json()
 
-        response = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+        response = wykonaj_serie(client, batch["batch_id"])
         assert response.status_code == 200
         done = response.json()
         assert done["status"] == "FINISHED"
@@ -498,7 +502,7 @@ class TestExecuteBatch:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s2["scenario_id"], s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
 
         assert done["scenario_ids"] == posortowane
         assert [p["position"] for p in done["items"]] == [0, 1]
@@ -516,17 +520,19 @@ class TestExecuteBatch:
             assert run.options["location"]["element_ref"] == scenariusz_elementu[scenario_id]
 
     def test_brama_uprawnien_jak_pojedynczy_bieg(self):
-        """SC_2F bez danych Z2 → seria FAILED (jedyna pozycja) z polskim
-        komunikatem blokady."""
+        """SC_1F bez składowej zerowej Z0 w modelu → seria FAILED (jedyna pozycja)
+        z polskim komunikatem blokady — ta sama brama (`ocen_model_biegu`), co pojedynczy
+        bieg. Partia integracji 10 skasowała fantomową blokadę „SC_2F bez Z2" (Z2 = Z1
+        z modelu), więc nośnikiem cechy „brama blokuje” jest zwarcie doziemne bez Z0."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
-        s2f = _create_scenario(case_id, name="2F", fault_type="SC_2F")
+        s1f = _create_scenario(case_id, name="1F", fault_type="SC_1F")
 
         batch = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
-            json={"scenario_ids": [s2f["scenario_id"]]},
+            json={"scenario_ids": [s1f["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
 
         assert done["status"] == "FAILED"
         assert done["run_ids"] == []
@@ -549,7 +555,7 @@ class TestExecuteBatch:
         delete = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
         assert delete.status_code == 204
 
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FAILED"
         assert any("usunięty po utworzeniu serii" in e for e in done["errors"])
 
@@ -571,7 +577,7 @@ class TestExecuteBatch:
         )
         assert update.status_code == 200
 
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FAILED"
         assert any("zmieniony po utworzeniu serii" in e for e in done["errors"])
 
@@ -595,7 +601,7 @@ class TestExecuteBatch:
         # Usuwamy DRUGI w porządku wykonania.
         assert client.delete(f"{BASE_URL}/fault-scenarios/{drugi}").status_code == 204
 
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "PARTIAL"
         assert len(done["run_ids"]) == 1
         assert len(done["errors"]) == 1
@@ -618,14 +624,14 @@ class TestExecuteBatch:
         testu, gdzie jedna pozycja się powiodła)."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
-        s1 = _create_scenario(case_id, name="A", fault_type="SC_2F", element_ref="bus-main")
-        s2 = _create_scenario(case_id, name="B", fault_type="SC_2F", element_ref="bus-1")
+        s1 = _create_scenario(case_id, name="A", fault_type="SC_1F", element_ref="bus-main")
+        s2 = _create_scenario(case_id, name="B", fault_type="SC_1F", element_ref="bus-1")
 
         batch = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
 
         assert done["status"] == "FAILED"
         assert done["run_ids"] == []
@@ -640,14 +646,15 @@ class TestExecuteBatch:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        first = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+        first = wykonaj_serie(client, batch["batch_id"])
         assert first.status_code == 200
-        second = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+        assert first.json()["status"] == "FINISHED"
+        second = wykonaj_serie(client, batch["batch_id"])
         assert second.status_code == 409
         assert "wymagany CREATED" in second.json()["detail"]
 
     def test_wykonanie_nieznanej_serii_404(self):
-        response = client.post(f"{BASE_URL}/batches/{uuid4()}/execute")
+        response = wykonaj_serie(client, uuid4())
         assert response.status_code == 404
 
 
@@ -742,7 +749,7 @@ class TestTrwaloscPoRestarcie:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FINISHED"
 
         # Symuluj restart procesu: zniszcz silnik (zamyka WSZYSTKIE połączenia
@@ -804,7 +811,7 @@ class TestKopertaWspolna:
         # Koperta NIE zmienia się po wykonaniu — jest zapisem z CHWILI
         # UTWORZENIA (§0 C5: seria nie kopiuje migawki do pozycji, każda
         # pozycja czyta model na własny rachunek przy wykonaniu).
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["envelope"] == koperta
 
 
@@ -827,7 +834,7 @@ class TestSwiezoscPerPozycja:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["items"][0]["result_freshness"] == "FRESH"
 
         # Edytuj model PO wykonaniu serii (dodaj odbiór) — operacja na SUROWYM
@@ -870,7 +877,7 @@ class TestSwiezoscPerPozycja:
 
 class TestSolverInputJednoZrodlo:
     def test_konfiguracja_scenariusza_na_wierzchu_opcji(self):
-        """Naprawa klasy: `c_factor`/`thermal_time_seconds` scenariusza muszą
+        """Naprawa klasy: przełącznik `scenario`/`thermal_time_seconds` scenariusza muszą
         trafiać na WIERZCH opcji biegu (wykonawca kanoniczny czyta z wierzchu;
         dotąd wartości zagnieżdżone pod `config` były cicho ignorowane)."""
         from application.fault_scenario_service import solver_input_for_scenario
@@ -886,12 +893,12 @@ class TestSolverInputJednoZrodlo:
             name="Pin konfiguracji",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
-            config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.5),
+            config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.5),
         )
         options = solver_input_for_scenario(scenario)
-        assert options["c_factor"] == 1.05
+        assert options["scenario"] == "min" and "c_factor" not in options
         assert options["thermal_time_seconds"] == 0.5
-        assert options["config"]["c_factor"] == 1.05
+        assert options["config"]["scenariusz"] == "MIN"
         assert options["fault_type"] == "SC_3F"
         assert options["location"]["element_ref"] == "bus-x"
 
@@ -909,7 +916,7 @@ class TestSolverInputJednoZrodlo:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FINISHED"
 
         bieg_serii = client.get(f"{BASE_URL}/runs/{done['run_ids'][0]}").json()
@@ -938,7 +945,7 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FINISHED"
 
         run = get_run(_UUID(done["run_ids"][0]))
@@ -960,7 +967,7 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FINISHED"
 
         delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
@@ -1006,7 +1013,7 @@ def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypat
         json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
     ).json()
 
-    done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+    done = wykonaj_serie(client, batch["batch_id"]).json()
 
     assert done["status"] == "FINISHED", done
     assert len(widziane) == 2
@@ -1053,7 +1060,7 @@ def _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji: int):
 @pytest.mark.parametrize("na_pozycji", [1, 2])
 def test_odmowa_nazwana_pozycji_to_failed_pozycji_a_seria_dalej(monkeypatch, typ, na_pozycji):
     batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
-    done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+    done = wykonaj_serie(client, batch["batch_id"])
     assert done.status_code == 200, done.text
     body = done.json()
     assert body["status"] == "PARTIAL"
@@ -1068,16 +1075,15 @@ def test_odmowa_nazwana_pozycji_to_failed_pozycji_a_seria_dalej(monkeypatch, typ
 def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
     monkeypatch, typ, na_pozycji
 ):
-    """Dawniej `except Exception` robiło z błędu programu „scenariusz nieudany"; teraz
-    500, a seria NIE zostaje w RUNNING: bieżąca i niewykonane pozycje FAILED z nazwą
-    błędu wewnętrznego (bez treści wyjątku), wcześniejsze zachowują wynik."""
+    """Dawniej `except Exception` robiło z błędu programu „scenariusz nieudany"; błąd
+    programu zostaje błędem (ślad w dzienniku wykonawcy — karta DYNAMIKA-W-TLE: seria
+    liczy się w tle, więc nie ma żądania HTTP, które dostałoby 500), a seria NIE zostaje
+    w RUNNING: bieżąca i niewykonane pozycje FAILED z nazwą błędu wewnętrznego (bez
+    treści wyjątku), wcześniejsze zachowują wynik."""
     batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
-    # Bez `with`: lifespan modułowego klienta już związał `app.state` (drugi lifespan
-    # podmieniłby fabrykę bazy); ten klient tylko NIE przepuszcza wyjątku serwera.
-    surowy = TestClient(app, raise_server_exceptions=False)
-    done = surowy.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
-    assert done.status_code == 500
-    stan = client.get(f"{BASE_URL}/batches/{batch['batch_id']}").json()
+    done = wykonaj_serie(client, batch["batch_id"])
+    assert done.status_code == 200, done.text
+    stan = done.json()
     assert stan["status"] == ("FAILED" if na_pozycji == 1 else "PARTIAL")
     for pozycja in stan["items"][na_pozycji - 1 :]:
         assert pozycja["status"] == "FAILED"
@@ -1089,14 +1095,21 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
 
 @pytest.mark.parametrize(
     ("typ", "kod_http"),
-    [(ValueError, 409), (AttributeError, 500), (KeyError, 500), (TypeError, 500)],
+    [
+        (OdmowaDanychError, 409),
+        (ValueError, 500),
+        (AttributeError, 500),
+        (KeyError, 500),
+        (TypeError, 500),
+    ],
 )
 def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_globalny(
     monkeypatch, typ, kod_http
 ):
     """Karta #151: dawny `except Exception` → HTTPException 500 z treścią wyjątku chował
-    ślad (HTTPException nie trafia do dziennika). Teraz odmowa `ValueError` = 409, a błąd
-    programu idzie do globalnego handlera: 500 „Wewnętrzny błąd serwera" + ślad w logu."""
+    ślad (HTTPException nie trafia do dziennika). Karta ODMOWA-DANYCH-422: 409 daje wyłącznie
+    nazwana odmowa danych; obcy `ValueError` jest błędem programu i idzie, jak każdy inny,
+    do globalnego handlera: 500 „Wewnętrzny błąd serwera" + ślad w logu."""
     import enm.canonical_analysis as kanon
 
     def _zepsuty(**kwargs):

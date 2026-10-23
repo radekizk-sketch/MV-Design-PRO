@@ -1,5 +1,7 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
+import { indeksGaleziPolNn, szynyStacji } from '../../shared/szynyStacji';
+import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 type Context = Record<string, unknown> | undefined;
@@ -126,9 +128,13 @@ function findStationRefByBus(
     acceptableRefs.add(bus.id);
   }
 
-  return snapshot.substations.find((station) =>
-    station.bus_refs.some((stationBusRef) => acceptableRefs.has(stationBusRef)),
-  )?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`
+  // (szyny główne, zaciski pól SN, końce aparatów pól nN); pierwsza stacja modelu wygrywa.
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches);
+  return snapshot.substations.find((station) => {
+    const szyny = szynyStacji(station, snapshot.branches, indeksPolNn);
+    return [...acceptableRefs].some((ref) => szyny.has(ref));
+  })?.ref_id ?? null;
 }
 
 function isLowVoltageBus(bus: LegacyBus | null): bus is LegacyBus {
@@ -366,9 +372,8 @@ export function resolveStationRef(
       (transformer) => transformer.ref_id === elementRef || transformer.id === elementRef,
     )?.ref_id;
     if (transformerRef) {
-      return snapshot?.substations.find(
-        (station) => station.transformer_refs.includes(transformerRef),
-      )?.ref_id ?? null;
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      return stationRefOfTransformer(snapshot, transformerRef);
     }
 
     if (findBus(snapshot, elementRef)) {
@@ -543,6 +548,79 @@ export function listAllNnBusOptions(
     .filter((bus): bus is LegacyBus => isLowVoltageBus(bus) && bus.ref_id !== wyklucz)
     .map((bus) => ({ ref_id: bus.ref_id, name: bus.name, voltage_kv: bus.voltage_kv }))
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/** Odbiór nN modelu jako pozycja wyboru (kreator „Wyłącznik różnicowoprądowy nN"). */
+export interface ResolvedNnLoadOption {
+  ref_id: string;
+  name: string;
+  bus_ref: string;
+  bus_name: string;
+  /** Wyłącznik różnicowoprądowy już wstawiony w tor tego odbioru (`add_nn_rcd` znakuje
+   *  gałąź `meta.device_role = 'RCD'` + `meta.load_ref`) — `null`, gdy brak. */
+  rcd_name: string | null;
+}
+
+function nazwaRcdOdbioru(snapshot: EnergyNetworkModel, loadRef: string): string | null {
+  const rcd = snapshot.branches.find((branch) => {
+    const meta = asRecord(branch.meta);
+    return meta !== null && meta.device_role === 'RCD' && meta.load_ref === loadRef;
+  });
+  return rcd ? rcd.name || rcd.ref_id : null;
+}
+
+/**
+ * WSZYSTKIE odbiory modelu przyłączone do szyny w paśmie nN — tor zasilania instalacji
+ * odbiorczej, w który operacja `add_nn_rcd` wstawia wyłącznik różnicowoprądowy (backend
+ * odmawia dla odbioru spoza pasma nN kodem `nn.rcd_not_nn_band`, więc lista nie oferuje
+ * pozycji, których zapis i tak by odrzucono). Kolejność: nazwa, potem ref (deterministyczna).
+ */
+export function listNnLoadOptions(snapshot: EnergyNetworkModel | null): ResolvedNnLoadOption[] {
+  if (!snapshot) return [];
+  const opcje: ResolvedNnLoadOption[] = [];
+  for (const load of snapshot.loads ?? []) {
+    const bus = findBus(snapshot, load.bus_ref);
+    if (!isLowVoltageBus(bus)) continue;
+    opcje.push({
+      ref_id: load.ref_id,
+      name: load.name || load.ref_id,
+      bus_ref: bus.ref_id,
+      bus_name: bus.name || bus.ref_id,
+      rcd_name: nazwaRcdOdbioru(snapshot, load.ref_id),
+    });
+  }
+  return opcje.sort(
+    (left, right) => left.name.localeCompare(right.name) || left.ref_id.localeCompare(right.ref_id),
+  );
+}
+
+/**
+ * Odbiór nN wskazany kontekstem otwarcia kreatora RCD: jawne `load_ref` (menu odbioru),
+ * albo `element_ref`/`focus_ref`/`elementId` będący refem odbioru nN (akcja naprawcza
+ * `nn.brak_rcd`, zaznaczenie). Gdy kontekst wskazuje SZYNĘ nN, odbiór jest rozstrzygnięty
+ * wyłącznie wtedy, gdy na tej szynie jest DOKŁADNIE jeden odbiór nN — przy kilku kreator
+ * nie zgaduje i zostawia wybór projektantowi.
+ */
+export function resolveNnLoadRef(
+  context: Context,
+  snapshot: EnergyNetworkModel | null,
+): string | null {
+  const opcje = listNnLoadOptions(snapshot);
+  const kandydaci = [
+    readString(context?.load_ref),
+    readString(context?.element_ref),
+    readString(context?.focus_ref),
+    readString(context?.elementId),
+    readString(context?.bus_nn_ref),
+  ].filter((ref) => ref.length > 0);
+  for (const ref of kandydaci) {
+    if (opcje.some((opcja) => opcja.ref_id === ref)) return ref;
+  }
+  for (const ref of kandydaci) {
+    const naSzynie = opcje.filter((opcja) => opcja.bus_ref === ref);
+    if (naSzynie.length === 1) return naSzynie[0].ref_id;
+  }
+  return null;
 }
 
 export function listSnBusOptions(

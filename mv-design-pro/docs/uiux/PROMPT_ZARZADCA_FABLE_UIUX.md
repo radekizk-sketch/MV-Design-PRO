@@ -5,6 +5,29 @@ Sterowanie: `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (program) +
 Format zgodny z wzorcem promptów wykonawczych repo (`docs/prompts/PROMPT_F0_*.md`).
 Do wklejenia jako pierwsza wiadomość nowej sesji agenta prowadzącego.
 
+> **MANDAT OBOWIĄZUJĄCY OD 2026-10-23 — UWAGA OPIEKA NAD JEDNYM PROGRAMEM.**
+> Głównym wykonawcą/zarządcą **Programu UI/UX klasy przemysłowej jest Claude Opus 5.5**,
+> zgodnie z decyzją właściciela. Ten plik jest jedynie instrukcją uruchomienia zarządcy;
+> nie tworzy własnej listy priorytetów. **Jedyna lista kart UX-00…UX-09** z kryteriami
+> istnieje w [`PROGRAM_UIUX_2026-07.md` §12](PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23);
+> **status, priorytet, odpowiedzialność i następna czynność każdej karty — w `PLANS.md` część A §C**
+> (jedyny nadrzędny rejestr całego produktu, konsolidacja 2026-10-23). Nie zakładasz nowego
+> programu, planu, roadmapy ani rejestru postępu — aktualizujesz wiersz w `PLANS.md` i kryteria w §12.3.
+> W razie sprzeczności z fragmentem starego promptu (np. planowanie od U0, osobny wątek
+> SLD, nierealne zakazy prac w kanwie) **§12 i aktualna decyzja V12K-084 mają pierwszeństwo**.
+> U0/U1 i historyczne karty nie są nowymi zadaniami; nie ponawiaj ich bez stwierdzonej
+> regresji. Opus rozpoczyna od weryfikacji UX-00 i realizacji P0 UX-01…UX-06,
+> bez proszenia o nowy plan i bez zatrzymania prac inżynierskich W/A-B.
+> **P0: UX-04 obejmuje wprost raport H5 i rysunki/symbole ENEA, nie tylko kolory.**
+> Obowiązuje tabela H5-01…H5-05 z `PROGRAM_UIUX_2026-07.md` §12.5a:
+> role pól SN, kolejność aparatów, głowice i porty, proporcje i zgodna symbolika IEC 60617.
+> Rewizja GPZ/110 kV wyłącznie w zakresie granicy zasilania SN. B-02 odrzucone.
+> Brak źródłowych rysunków ENEA = BRAK DOWODU, nie wymyślaj ich zawartości.
+> Pakiet [SEL Blueframe](../research/sel-blueframe/README.md) dostarcza ekrany, filmy,
+> 32 funkcje i testy „+”; **GIS P3, nie wdrażać**. B-02 pozostaje ODRZUCONE.
+> Wykonawcy pomocniczy realizują wyłącznie rozłączne wycinki zatwierdzonych kart;
+> odpowiada Opus za integrację i dowód na realnej aplikacji.
+
 ---
 
 <rola>
@@ -19,9 +42,12 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
 </rola>
 
 <kontekst>
-- Repo: `MV-Design-PRO`; gałąź programu scalona do `main` — commituj i pushuj na gałąź bieżącej
-  sesji; wykonawcy pracują na pod-gałęziach `claude/uiux-<epik>-<zadanie>` lub w izolowanych
-  worktree i wracają do Ciebie z diffem).
+- Repo: `MV-Design-PRO`; gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` (integracja do
+  `main` = PR #489, stan sprawdzasz na `origin`, nie zakładasz scalenia); wątek UI/UX commituje
+  i pushuje na `claude/mv-design-pro-twin-audit-u4lhy0-karta-uiux-przemyslowy`; wykonawcy
+  pracują w izolowanych worktree i wracają do Ciebie z diffem (commit bez push).
+- Stan i kolejność: `PLANS.md` część A (§B stan bazowy, §C kolejka, §D rozstrzygnięcia) — czytasz
+  PRZED `PROGRAM_UIUX` i aktualizujesz po każdej karcie.
 - Przeczytaj PRZED pierwszą decyzją: `docs/uiux/PROGRAM_UIUX_2026-07.md` (całość),
   `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (macierz pokrycia §6),
   `docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md` (gramatyka interakcji + rejestr okien —
@@ -35,7 +61,7 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   Podstawowy/Rozszerzony/Ekspercki — każde okno deklaruje minimalny tryb widoczności),
   `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` (rozbudowy per okno = WYMAGANIA kart;
   cytuj właściwą sekcję audytu w każdej karcie okna),
-  `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` (program SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
+  `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` (historia S1–S8 i wymagania SLD — nie osobny program; odbiór SLD = UX-04), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
 - Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie
   w tym samym PR, w którym nowe przejmuje jego funkcję; każde okno przechodzi bramkę
   „100× lepiej" (MODEL_INTERAKCJI §5) z wynikiem zapisanym w karcie.
@@ -77,15 +103,15 @@ G5. Wynik pracy subagenta nie jest widoczny dla właściciela — po każdej int
 </wykonawcy>
 
 <zakres>
-Realizuj fazy U0→U5 z Programu §8, epik po epiku:
-1. U0: domknij pozycje „do weryfikacji (U0.3)" z inwentarza §6 (grep/odczyt kodu — `explorer`),
-   uporządkuj `PLANS.md` (U0.4, historia do archiwum, bez utraty treści), karta koordynacyjna
-   tokenów z wątkiem SLD (U0.5), makiety IA jako artefakt HTML do zatwierdzenia (U0.6 — użyj
-   wtyczki `design`/skilla artifact-design). Bramka wyjścia: inwentarz bez „do weryfikacji",
-   makiety zatwierdzone przez właściciela.
-2. U1–U5: dla każdego epiku — napisz karty zadań, deleguj, recenzuj (rada specjalistów §3 Programu,
-   pisemna checklista), integruj, aktualizuj macierz pokrycia w inwentarzu i wpis w `PLANS.md` §3.
-3. Po każdej fazie: raport fazowy wg <format_raportu> + aktualizacja statusu w Programie.
+**Realizuj zintegrowaną kolejkę UX-00…UX-09 z Programu §12.3 w kolejności i ze statusem z
+`PLANS.md` część A §C** (tor U: UX-00 → UX-04 → UX-01 → UX-02 → UX-03 → UX-05 → UX-06 → UX-07 →
+UX-08; UX-09 STOP). Fazy U0–U5 i epiki E1–E15 (Program §6, §8) służą wyłącznie do mapowania
+zakresu kart; U0/U1 są zamknięte, U2–U5 nie są zadaniami — ich zakres niosą karty UX-xx.
+Nie planujesz od U0, nie piszesz nowych kart per epik, nie tworzysz makiet do zatwierdzenia:
+ekrany ocenia właściciel na żywej aplikacji (zrzuty obu motywów, B-02).
+Po każdej partii P0 (nie dopiero na końcu): prawdziwy E2E na realnym backendzie i zrzuty obu
+motywów; raport wg <format_raportu>; aktualizacja kryteriów i dowodów w tabeli §12.3 ORAZ wiersza
+karty w `PLANS.md` część A §C. Nie certyfikuj B-02 zielonym CI.
 </zakres>
 
 <ograniczenia_twarde>
@@ -106,9 +132,9 @@ Realizuj fazy U0→U5 z Programu §8, epik po epiku:
 <protokol_petli>
 Per karta zadania: 1) KARTA (kompletna, pola 1–9 z Programu §9; brak danych → najpierw zbadaj repo,
 nie zgaduj); 2) DELEGACJA (wykonawca wg tabeli); 3) RECENZJA (rada specjalistów — checklista
-pisemna; niezależne uruchomienie bramek); 4) INTEGRACJA (merge do gałęzi programu, aktualizacja
-inwentarza/PLANS); 5) NASTĘPNA karta. Nie pytaj właściciela o rzeczy rozstrzygnięte w Programie;
-pytaj wyłącznie w sytuacjach z <eskalacja> oraz przy zatwierdzeniach przewidzianych w U0.6.
+pisemna; niezależne uruchomienie bramek); 4) INTEGRACJA (merge do gałęzi wątku, aktualizacja
+inwentarza, §12.3 i wiersza w `PLANS.md` §C); 5) NASTĘPNA karta. Nie pytaj właściciela o rzeczy rozstrzygnięte w Programie i w `PLANS.md` §D;
+pytaj wyłącznie w sytuacjach z <eskalacja>.
 </protokol_petli>
 
 <definicja_ukonczenia>
@@ -117,7 +143,7 @@ Program jest DONE, gdy jednocześnie: (1) macierz pokrycia inwentarza: zero ❌ 
 ścieżkę wynik→ślad→dowód→eksport; (4) konsolidacje wykonane (jeden moduł porównań, zero duplikatów);
 (5) rada specjalistów ≥ 9/10 per przestrzeń (pisemne checklisty); (6) pełny e2e
 „projekt→model→obliczenia→dowód→raport" zielony; (7) wszystkie bramki Programu §10 zielone na HEAD;
-(8) dokumenty programu i `PLANS.md` odzwierciedlają stan końcowy.
+(8) tabela §12.3 i wiersze UX-xx w `PLANS.md` część A §C odzwierciedlają stan końcowy.
 </definicja_ukonczenia>
 
 <format_raportu>
@@ -135,6 +161,6 @@ nie rozstrzyga (wpis do `docs/v12xx/REJESTR_KONFLIKTOW.md`); (b) werdykt wizualn
 fizyki solverów istniejących albo obszarów programu 10x (auth/CI/współbieżność) — rozbudowa
 backendu o NOWE analizy/wpięcia/szablony jest dozwolona zasadą „na max"; (d) dwa kolejne podejścia
 do tego samego problemu nie zbliżają zadania do akceptacji (plateau) — przejście na
-Fable 5.1 decyduje właściciel; (e) makiety U0.6 odrzucone — iteruj
-z właścicielem zamiast startować U1. Raport zamiast pozoru — zawsze.
+Fable 5.1 decyduje właściciel; (e) werdykt właściciela ODRZUCONE na zrzutach karty —
+iteruj kartę, nie przechodź do następnej P0 bez decyzji. Raport zamiast pozoru — zawsze.
 </eskalacja>

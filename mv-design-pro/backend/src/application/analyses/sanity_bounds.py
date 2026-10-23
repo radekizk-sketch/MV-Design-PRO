@@ -69,7 +69,11 @@ from application.analyses.power_flow_reconstruction import (
     wynik_rozplywu_z_biegu,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza, pola_danych_przyjetych_biegu
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -96,12 +100,12 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             nie został zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ocena wiarygodności Ik'' wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
@@ -114,12 +118,33 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             voltage_by_target.get(str(target_id)),
             row.get("ikss_ka"),
         )
+        # Dane przyjęte prądu punktu (tolerancja sieci nN z wartości roboczej — karta
+        # TOLERANCJA-NN-WARTOSC-ROBOCZA; linie 110 kV z wartością roboczą geometrii — karta
+        # LINIA-110): pasmo ocenia wynik liczony z tych danych. Addytywnie, gdy są.
+        dane = (
+            (
+                dana_przyjeta_tolerancji_nn(
+                    miejsce_pl="punkt zwarcia: "
+                    + opis_rodzaju_i_nazwy("szyna", nazwa_nadana(row.get("target_name")))
+                ),
+            )
+            if row.get("tolerancja_nn_robocza")
+            else ()
+        ) + dane_przyjete_galezi_wiersza(row)
         items.append(
             {
                 "target_id": target_id,
                 "element_id": row.get("element_id"),
                 "target_name": row.get("target_name"),
                 **verdict.to_dict(),
+                **(
+                    {
+                        "status_danych": "UNVALIDATED_INPUT",
+                        "dane_przyjete": [d.model_dump(mode="json") for d in dane],
+                    }
+                    if dane
+                    else {}
+                ),
             }
         )
 
@@ -229,12 +254,12 @@ def build_power_flow_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Pasma zdrowego rozsądku rozpływu wymagają przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
@@ -301,4 +326,7 @@ def build_power_flow_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             "summary": _summary_trojstanowy(obciazenia),
         },
         "straty": straty_verdict.to_dict(),
+        # Karta LINIA-110: pasma oceniają wynik rozpływu liczony z impedancją linii 110 kV
+        # z wartością roboczą geometrii — dane przyjęte widoku (addytywnie, gdy są).
+        **pola_danych_przyjetych_biegu(run.raw_result),
     }

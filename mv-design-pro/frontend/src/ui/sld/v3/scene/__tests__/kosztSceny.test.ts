@@ -349,87 +349,169 @@ interface OdciskiLod {
  * PASS (sufit `VERTICAL_LENGTH_BASELINE`/`VERTICAL_LENGTH_BY_CAUSE_BASELINE`,
  * ery LV DOMAIN PROJECTION, nigdy nie obniżony przy SUB-52s, pochłania
  * deltę bez zmiany progu).
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-SUBSTRAT, 2026-09-25) — WSZYSTKIE odciski
+ * przeliczone (sceny, declutter, plany; obie sieci × L0/L1/L2). Dwie przyczyny,
+ * rozdzielone pomiarem na fiksturach etapowych (ta sama sieć, zmiany wejścia
+ * dokładane KLASAMI, zrzuty sceny w meldunku karty):
+ *   (14) REGENERACJA FIKSTURY z budowniczego (pierwsza od 2024fb4b, 2026-09-05):
+ *        ziarno odcinka SN obejmuje od CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę
+ *        odcinka, więc WSZYSTKIE identyfikatory odcinków, szyn, stacji i źródeł nN
+ *        są nowe (922 ziarna, odwzorowanie 1:1 po pozycji w zrzucie ENM, zero
+ *        konfliktów). Sama zmiana identyfikatorów (etap S1: stara treść, nowe
+ *        identyfikatory) daje DOKŁADNIE odciski końcowe — nazwy (PL-ZNAKI, #140/#141,
+ *        8d17613c), komunikaty katalogowe (#142), pola addytywne modelu i zaokrąglenie
+ *        susceptancji (reguła zapisu liczb fikstur) NIE zmieniają sceny (etapy S2–S4 =
+ *        S1 co do bajtu). Mechanizm: kolejność ciągów odgałęzień w układzie rozstrzyga
+ *        remis `id.localeCompare` (`compareLineRunsForLayout`), a z niej płyną kody
+ *        fallback stacji odgałęzień (SLD-LOC) i kolejność pakowania pasm —
+ *        `totalVerticalSegmentLength` 21040/44016/44016 → 22752/45728/45728 (+1712
+ *        jednolicie na L0/L1/L2, `buildScene.test.ts` F9.7).
+ *   (15) NAPRAWA predykatu prześwitu kanału (`layout/columns.ts` `naruszaPrzeswit`):
+ *        odstęp RÓWNY prześwitowi przestał być kolizją, więc znikają FAŁSZYWE notatki
+ *        STOP „kanał zejścia lateralu przecina slot etykiety przęsła" — na starej
+ *        fiksturze sieci podwojonej 4 na każdym LOD (6/30/30 → 2/26/26), na nowej
+ *        fiksturze referencyjnej 1 na każdym LOD. DOWÓD, ŻE TO JEDYNA ZMIANA NAPRAWY:
+ *        scena z `meta.stopNotes` zastąpionym pustą listą jest CO DO BAJTU identyczna
+ *        przed i po naprawie (obie sieci, obie fikstury, L0/L1/L2), a declutter i plan
+ *        etykiet są identyczne — geometria rysunku nietknięta.
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-SUBSTRAT, kontynuacja, 2026-09-30) — przeliczone odciski;
+ * z 54 wpisów tablicy 16 bez zmian. Zmiana DANYCH rusza scenę i etykiety na KAŻDYM LOD
+ * (wiersz 4 pasma nazw stacji), zmiana KODU — scenę na każdym LOD, a etykiety WYŁĄCZNIE
+ * na L2 (sonda: kod HEAD i kod nowy na nowej fiksturze dają identyczne odciski
+ * declutteru i 7 z 7 planów na L0 i L1, 0 z 7 na L2). Atrybucja liść po liściu (sonda
+ * 2×2 kod HEAD/nowy × fikstura stara/nowa, meldunek karty):
+ *  · DANE (substrat budowany ścieżką produktu — magazyn modelu z promocją pól nN i
+ *    uzupełnieniem katalogowym): 33 stacje dostają odbiór katalogowy odpływów nN
+ *    (`#lv-load-drop` + `loadArrow` + wydłużona `#lv-bus`, wiersz 4 pasma nazw
+ *    „granica modelu — bez odbiorów nN" → „Odbiór ΣP…"), 20 stacji — wyższą sumę
+ *    odbioru, 4 wiersze DER przesunięte przez strzałkę odbioru; 199 aparatów pól nN
+ *    bez wiązania (53 wyłączniki główne, 126 odpływów, 20 pól źródłowych).
+ *  · KOD: aparat nN BEZ wiązania katalogowego nie jest już UNRESOLVED (199 notatek STOP
+ *    grafu elektrycznego znika, status SLD_VALID); łącznik sekcyjny „Łącznik sekcyjny
+ *    NO (rezerwa)" dostaje symbol (dwa półodcinki przycięte do jego portów) i nazwę na
+ *    L2; odcinek powiązania „Rezerwa pierścieniowa (odcinek NOP)" zamyka dwa końce
+ *    ogonów — dwa słupki „koniec otwarty" i ich etykiety zastępują dwa znaki
+ *    powiązania i dwa odsyłacze „powiązanie" (L2). Etykiety zmieniają się WYŁĄCZNIE na
+ *    L2, stąd declutter/plany L0/L1 bez zmian — i tak wychodzi w odciskach.
+ *
+ * AKTUALIZACJA ŚWIADOMA (ETYKIETA-STACJI-PRZELOTOWEJ, 2026-09-30) — przeliczone odciski;
+ * z 54 wpisów tablicy 16 bez zmian (L0: declutter i 7 z 7 planów w obu sieciach).
+ * Sonda 2×2 (kod HEAD/nowy × fikstura przed/po regeneracji): regeneracja fikstury NIE
+ * rusza żadnego odcisku; zmienia je WYŁĄCZNIE kod — jedna reguła rodzaju stacji
+ * (`ui/shared/rodzajStacji.ts`) w miejsce prezentacji „ostatnia w ciągu ⇒ końcowa":
+ *  · „Stacja L6-3" i „Stacja L7-4" (końce odcinka powiązania „Rezerwa pierścieniowa
+ *    (odcinek NOP)") — oba pola liniowe prowadzą do innych stacji ⇒ sylwetka L0 i podpis
+ *    L1/L2 „stacja końcowa" → „stacja przelotowa" (w sieci podwojonej po dwie kopie);
+ *  · 12 notatek STOP `station.type.terminal`/niezgodności deklaracji znika ze sceny L1/L2
+ *    (13 → 1, w podwojonej 26 → 2) — niezgodność deklaracji z topologią melduje odtąd
+ *    walidator (ostrzeżenie W043 z akcją naprawy), a nie notatka rysunku z identyfikatorem.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPT-478, 2026-10-15) — przeliczone odciski; z 54 wpisów tablicy
+ * 18 bez zmian (L0: scena, declutter i 7 z 7 planów w obu sieciach). Przyczyna WYŁĄCZNIE
+ * w DANYCH (kod SLD nietknięty): kontrola O-53 sumuje źródła zasilane przez ten sam
+ * transformator (V12K-022), więc konfiguracja mieszana PV 0,5 MW + BESS 0,5 MW (Σ S_n
+ * 1,1 MVA) na czterech stacjach odgałęzień substratu nie mieści się w 630 kVA — budowniczy
+ * (`sld_substrate_52s.py` krok 5(d)) przepina ich transformator na 1250 kVA, a fikstura
+ * regenerowana narzędziem repo. Jedyna różnica wejścia (diff fikstury): parametry tych
+ * czterech transformatorów (pozycja, S_n, u_k, straty) i wynik rozpływu substratu — zmienia
+ * to scenę i etykiety L1/L2; L0 bez zmian.
+ * Dawniej budowniczy dokładał magazyn mimo przekroczenia mocy transformatora.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, 2026-10-21) — trzy odciski SCENY sieci
+ * podwojonej (L0/L1/L2); declutter i plany bez zmian, sieć referencyjna bez zmian. Przyczyna
+ * WYŁĄCZNIE w treści komunikatów niezmienników elektrycznych (`electrical/invariants.ts`,
+ * `terminalGraph.ts`, partia 10: odmowy bez identyfikatorów — nazwa elementu zamiast
+ * `ref`), które scena niesie; sieć podwojona ma naruszenia niezmienników, referencyjna nie.
+ * Sonda: oba pliki przywrócone do stanu sprzed partii 10 → 8 z 8 testów tego pliku zielone.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, karta W2C-PLAN-ETYKIET, 2026-10-21) — 6 odcisków
+ * PLANU etykiet (obie sieci); odciski SCENY i DECLUTTERU bez zmian. Przyczyna WYŁĄCZNIE w
+ * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`): plan próbuje pełnego tekstu po każdej
+ * stronie kotwicy, zanim skróci napis — dawniej skracał po stronie zadeklarowanej („TV1” →
+ * „T…”, czytane jak transformator). Sonda: ten plik sprzed karty → 8 z 8 testów zielone.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'a701991c79abcc0306239b4cb80fd513',
-      declutter: '00eb03eda1bc39c491cc280d6f6a9c3a',
+      scena: '001d8e6a8f798131bc13479430cc6221',
+      declutter: '7b3f5739b2b54790f4ec28cb4df70cd0',
       plany: [
-        'c65fb4356ef44da5307ed55358ebf1b4',
-        '2ed95578f5f403ab6227bc9ee59f505f',
-        '1973b6089ddb8e818df4d64ae7ca6991',
-        '0e60d57d6c3e1e94e6c205377be042d9',
-        '08211a61c49b1f5b7171458039376022',
-        '88bb8ac8cbf89618b5ef8df6bec4d668',
-        '88bb8ac8cbf89618b5ef8df6bec4d668',
+        'e75f905bdb8cdcd336de41517bafb8d0',
+        'ab5d3ecd6aff7fa745be87346277a28f',
+        '52d9edbdb5f37d51e4db84b3654bbaab',
+        '3724c877d3aa82984dd02abe720aeed5',
+        '705da8f691981e8aa4d96c3762b0a0ab',
+        '362503944508f558874b1e412d402f34',
+        '362503944508f558874b1e412d402f34',
       ],
     },
     {
-      scena: 'bdc075cb55899e7b1f1b9b2decf2084f',
-      declutter: 'a0dc919370db047c3f81222f8dd9311a',
+      scena: 'a8696d92c937c1d547c597d8eebdb059',
+      declutter: 'de32421abfe56d2498bb3b88cf30a786',
       plany: [
-        '76c8b7d64f0cdcc1a49067f7b005bedb',
-        '0567de88219b44faae550b95c0a64ab8',
-        'edca883a0c9722fa821df7043cc61b3d',
-        'd82559dec4bcb649fd831f35a4d0e511',
-        '99ac527d93a6dc8d3cb4b6215eb6f47c',
-        '28c505637eab0a69ca9fe20f1b5e6276',
-        '28c505637eab0a69ca9fe20f1b5e6276',
+        'f57e9e8ca945efcc488705983df7d2d1',
+        '4b483d0146f0f9b872601ff9d8aeeafb',
+        'b31c6fee256b9287e5275778739a4aaa',
+        '229116bf9fc98b146a690e52328de0c5',
+        'f4e407fb21825d19ae8d6013ef4f7f48',
+        'f7506f785ea58af34c3b24802cc68366',
+        'f7506f785ea58af34c3b24802cc68366',
       ],
     },
     {
-      scena: '365814fa0978d7130b930040690824ea',
-      declutter: 'ffc8d354abd8d2c2f01a0a32d9298c58',
+      scena: 'c09afdae41dbaf72f184ff0b6ad80b30',
+      declutter: '8032ff0a9dd3688eeb0b3e0b76e094c8',
       plany: [
-        'af5b1cc0f94952e5313e8b903070d56f',
-        '8c84b4497a1de90b2e6de3d9c0076f8a',
-        '417ae859ca0e6f33823441b1f3b186b6',
-        'b22911c6444e88bd4012788595ee162b',
-        '0ce4f6d8bbb6659b8038722e421c2ae5',
-        '146506e476133ffe0ed75e4a4fa8de56',
-        '146506e476133ffe0ed75e4a4fa8de56',
+        '1b22b96d963d9765391b05963553d043',
+        'e2f437ab7267999592214294b9ce8a56',
+        'c772b7e3936f9f4c331b76674d43f327',
+        '0bc867586c16d00285ac148ecbbd19c5',
+        '7594523bba620130dc02f980fdeabf2d',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
+        '76af8b8bacf05059ac61b3b19ce85d9e',
       ],
     },
   ],
   podwojona: [
     {
-      scena: 'c362feda72f652e3e91a55c3704f59ee',
-      declutter: '96a6141a779dc70afefc853a7480be12',
+      scena: '4303d8c421380f1784fc13d179729982',
+      declutter: '4f488776de89329b8735c9fd2989656a',
       plany: [
-        '26be52c61f133278c997f834d8c05fc2',
-        '7b5a5fcf4b26999c3ce9e76d22917233',
-        'f71bd00477056245ff42b60e11ec632a',
-        '0b17ea8fbf77c8f7abf2edde6dd9bb01',
-        '2dc4641839d0666d6b722129486b91bd',
-        '29d42d24bfbdb273fdef233a499f09a0',
-        '29d42d24bfbdb273fdef233a499f09a0',
+        '06b04c6ddf7dcf58f8433e9ea72ff59c',
+        '816dcab274b4c36af0b2264b87fca542',
+        '5faec5858458cf42d55ebb5a69d8194f',
+        '70e68abcd4b7e7306502b0dc9cbd34cd',
+        'be7b774628b9a60f91eb95ebd3907f24',
+        'c22b0771b57969780944dfbe92c5c429',
+        'c22b0771b57969780944dfbe92c5c429',
       ],
     },
     {
-      scena: 'e81cc97b7eac93312ab9548c562d85dd',
-      declutter: '235de096da9cb53dffe633ed6381bbb4',
+      scena: '12d96c448dbbf96d16d8e70b6d2095da',
+      declutter: 'b2ccb3ef57c6b6e7b0575297b0770e53',
       plany: [
-        '27582e5dd94d1f5b124cdb394e125476',
-        '85f568dbdeb499f41084651a84993181',
-        '2bfa11a60f2cfcbf6158aa812410412d',
-        'de79ade39ca2d2bd9543514ae4d43739',
-        '77794d2d858a8129a9ae8ea0e922a7c8',
-        'e9bc15dbccc8ac3507b8d72777cee808',
-        'e9bc15dbccc8ac3507b8d72777cee808',
+        'e791a2f4fed507b51ed9572ec838b435',
+        '0a8d9a2a41c93eacb09808d21c057340',
+        'cf746819d46976764e97a7d45273cff1',
+        'b1104d367bda5c9e70095d6235d9a504',
+        'eb062aa48deead19d927d32680fd0f13',
+        '5532accf58fcd34c16619d9a80d27ca0',
+        '5532accf58fcd34c16619d9a80d27ca0',
       ],
     },
     {
-      scena: 'c26590fb30a25dd2a6f19ee4766d6bf5',
-      declutter: 'd3554a0688a066a1801642379018678f',
+      scena: 'edd857f0ed5c650afb44fceb64f315aa',
+      declutter: 'ffa61e5df7ad3f6b47efbcc195a31a3a',
       plany: [
-        '5355b948dca2bbcea54ac9bd7ce3c413',
-        '70b25ad61cb96c731597c0c50bdc1270',
-        '43d8f6bf85f609086df7e7078027ff93',
-        'bc7a771c792915639fd90d5848a1d964',
-        '561a9ce4dad19abcb71d5d3d27d99a54',
-        '572958f56d57bb2efb36ebb016b9f9cc',
-        '572958f56d57bb2efb36ebb016b9f9cc',
+        '91cd1c0d8ea2e0ffd92c39524b6332a7',
+        '9a76d195b471e0b591e7c7a99eaa1f14',
+        '5077fad1fada2faebff555feca0d63ee',
+        'c933e347ab5abe8bb49c7db2acde559c',
+        '6688be48987f1d370978971d383bf11c',
+        '4b322b94556377c0a5cd125234dafbba',
+        '4b322b94556377c0a5cd125234dafbba',
       ],
     },
   ],

@@ -1,49 +1,47 @@
 """Emit the COMPACT SLD network model (distilled from the 53-station ENM substrate) as a
 deterministic TypeScript fixture the SLD network auto-layout (E3) reads — the same generate-from-
 the-model pattern as ozeArchetypes2a.ts. Run: poetry run python scripts/emit_sld_network_fixture.py
+
+Zrodlo ENM i odcisku: ``enm_fikstury_substratu()`` — TEN SAM model (po regule zapisu liczb
+fikstur) co ``sldSubstrate52s.enm.json``, wiec ``source_hash`` rowna sie odciskowi w naglowku
+fikstury substratu. Test regeneracji: ``tests/application/test_companions_generated.py``.
 """
 
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_BACKEND = os.path.dirname(_HERE)
-sys.path.insert(0, os.path.join(_BACKEND, "src"))
-sys.path.append(os.path.join(_BACKEND, "tests"))
+_BACKEND = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND / "src"))
+sys.path.insert(0, str(_BACKEND))
 
-from golden.sld_network_model import (  # noqa: E402
+from tests.golden.sld_network_model import (  # noqa: E402
     distill_sld_network,
     render_sld_network_fixture,
 )
-from reference_networks.sld_substrate_52s import build_sld_substrate_52s  # noqa: E402
+from tests.reference_networks.sld_substrate_fixtures import enm_fikstury_substratu  # noqa: E402
 
-_OUT = os.path.normpath(
-    os.path.join(
-        _BACKEND,
-        "..",
-        "frontend",
-        "src",
-        "ui",
-        "sld",
-        "v2",
-        "station-rozdzielnia",
-        "autolayout",
-        "network",
-        "sldNetwork53.ts",
-    )
+_OUT = (
+    _BACKEND.parent
+    / "frontend"
+    / "src"
+    / "ui"
+    / "sld"
+    / "v2"
+    / "station-rozdzielnia"
+    / "autolayout"
+    / "network"
+    / "sldNetwork53.ts"
 )
 
 
 def main() -> None:
-    env = build_sld_substrate_52s()
-    model = distill_sld_network(env["enm"])
-    model["source_hash"] = env.get("snapshot_hash", "")
-    ts = render_sld_network_fixture(model)
-    os.makedirs(os.path.dirname(_OUT), exist_ok=True)
-    with open(_OUT, "w", encoding="utf-8") as fh:
-        fh.write(ts)
+    _wynik, enm, odcisk = enm_fikstury_substratu()
+    model = distill_sld_network(enm)
+    model["source_hash"] = odcisk
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    _OUT.write_text(render_sld_network_fixture(model), encoding="utf-8")
     print(
         f"wrote {_OUT}  ({len(model['stations'])} stations, {len(model['edges'])} edges, "
         f"nop={model['nop_station']})"

@@ -18,10 +18,11 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from pydantic import BaseModel, Field, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
-from .dynamika_modele import ParametryDynamiczne
+from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
 from .uziemienie import migruj_uziemienie_slownika
 
@@ -102,8 +103,31 @@ class MeasurementRating(BaseModel):
     burden_va: float | None = None
 
 
+#: Strona przekładnika, po której podana jest nastawa prądowa (``threshold_a``) — decyzja
+#: właściciela PZ-09 (D-34): nastawa przechowywana w jednostce JAWNIE zadeklarowanej w polu.
+#: ``A_WTORNY`` — ampery strony wtórnej przekładnika pola (tak nastawia się przekaźnik);
+#: ``A_PIERWOTNY`` — ampery strony pierwotnej. Prąd rozruchowy po stronie pierwotnej jest
+#: wielkością wyprowadzoną z przekładni przekładnika pola
+#: (``application/analyses/protection/ocena_nadpradowa.py``), nigdy domyślną.
+JednostkaProguPradowego = Literal["A_WTORNY", "A_PIERWOTNY"]
+
+#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LTI) i czas niezależny
+#: (DT) liczy rdzeń ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI)
+#: — ``protection_iec60255.compute_ieee_c37112_generic`` ze stałymi normy
+#: (``protection.curves.ieee_curves.IEEECurveParams``).
+KrzywaNastawy = Literal[
+    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
+]
+
+
 class ProtectionSetting(BaseModel):
-    """Nastawa zabezpieczenia (stub — bez pełnego solvera ochrony)."""
+    """Nastawa jednego stopnia (funkcji) zabezpieczenia zapisana w modelu (decyzja D-21).
+
+    Nastawy bazowe żyją przy urządzeniu zabezpieczeniowym w modelu; przypadek obliczeniowy
+    ich nie przechowuje. Ocena nadprądowa (``ocena_nadpradowa``) czyta je wprost stąd i
+    każdy brak (progu, jednostki progu, charakterystyki, zwłoki, mnożnika) nazywa kodem
+    gotowości — nie ma wartości domyślnych.
+    """
 
     function_type: Literal[
         "overcurrent_50",
@@ -121,8 +145,11 @@ class ProtectionSetting(BaseModel):
         "overfrequency_81O",
     ]
     threshold_a: float | None = None
+    threshold_unit: JednostkaProguPradowego | None = None
+    """Strona przekładnika, po której podano ``threshold_a`` (PZ-09). Addytywne; ``None`` =
+    jednostka niezadeklarowana — ocena urządzenia jest wstrzymana nazwanym kodem gotowości."""
     time_delay_s: float | None = None
-    curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI"] | None = None
+    curve_type: KrzywaNastawy | None = None
     time_multiplier: float | None = None
     """Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255 (SI/VI/EI/LTI).
 
@@ -248,6 +275,60 @@ class BranchBase(ENMElement):
     overrides: list[ParameterOverride] = []
 
 
+class PolozeniePrzewoduLinii(BaseModel):
+    """Położenie przewodu w przekroju poprzecznym linii [m] (karta LINIA-110).
+
+    ``x_m`` — odległość pozioma od osi słupa; ``y_m`` — ŚREDNIA wysokość przewodu nad ziemią
+    w przęśle (wysokość zawieszenia pomniejszona o 2/3 zwisu).
+    """
+
+    x_m: float
+    y_m: float
+
+
+class GeometriaSlupaLinii(BaseModel):
+    """Geometria słupa linii napowietrznej — DANA PROJEKTU (karta LINIA-110).
+
+    Każda składowa opcjonalna: ``None`` = projekt jej nie podaje, a obliczenie parametrów linii
+    biegnie z wartością roboczą rejestru ``network_model.catalog.wartosci_robocze`` (jakość
+    ``ESTIMATED``, kompletność dowodu ``NIEPELNY``). ``odgromowe == []`` to jawna deklaracja
+    linii BEZ przewodu odgromowego. ``liczba_w_wiazce`` — przewody w fazie (1 = przewód
+    pojedynczy, jak w standardzie ENEA linii 110 kV §4.1).
+    """
+
+    fazy: list[PolozeniePrzewoduLinii] | None = None
+    liczba_w_wiazce: int = 1
+    odstep_wiazki_m: float | None = None
+    odgromowe: list[PolozeniePrzewoduLinii] | None = None
+    przewod_odgromowy_ref: str | None = None
+    rezystywnosc_gruntu_ohm_m: float | None = None
+
+
+class ParametryLiniiZGeometrii(BaseModel):
+    """Proweniencja R′/X′/B′/Z′0 linii wyliczonych z geometrii (zapis operacji domenowej).
+
+    Operacja domenowa wpisuje wynik solvera ``parametry_linii_napowietrznej`` do pól impedancji
+    linii i tu zostawia ślad pochodzenia: metodę z wersją, odcisk wejścia (SHA-256 — ta sama
+    geometria i przewód dają ten sam odcisk), kompletność dowodu i składowe przyjęte jako
+    wartości robocze. Pełny ślad obliczenia (wzory, podstawienia) odtwarza deterministycznie
+    endpoint parametrów linii i pakiet dowodowy.
+    """
+
+    metoda: str
+    wersja_metody: str
+    odcisk_wejscia: str
+    kompletnosc_dowodu: Literal["PELNY", "NIEPELNY"]
+    czestotliwosc_hz: float
+    temperatura_przewodu_c: float
+    r1_temperatura_ohm_per_km: float
+    r0_bez_odgromowych_ohm_per_km: float
+    x0_bez_odgromowych_ohm_per_km: float
+    gmd_m: float
+    gmr_fazy_m: float
+    #: Składowe danych linii przyjęte jako wartości robocze (kolejność rejestru).
+    wartosci_robocze: list[str] = []
+
+
 class OverheadLine(BranchBase):
     type: Literal["line_overhead"] = "line_overhead"
     length_km: float
@@ -277,6 +358,11 @@ class OverheadLine(BranchBase):
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None
     endpoint_b_port: PortRef | None = None
+    # Karta LINIA-110: geometria słupa (dana projektu) i proweniencja parametrów linii
+    # policzonych z geometrii dla linii z przewodem z katalogu PRZEWOD_LINII_WN. Pola
+    # addytywne — `None` poza odciskiem ENM (`enm/hash.py`), linie SN bez zmian.
+    geometria_slupa: GeometriaSlupaLinii | None = None
+    parametry_z_geometrii: ParametryLiniiZGeometrii | None = None
 
 
 class Cable(BranchBase):
@@ -422,6 +508,13 @@ class Transformer(ENMElement):
     # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
     # nigdy domyślka.
     lv_earthing_system: UkladSieciNn | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): tolerancja napięcia sieci nN
+    # zasilanej z tego transformatora wg przypisów tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95;
+    # +10 % → c 1,10/0,90). JEDYNY nośnik wiersza nN tabeli c: czyta go `enm.tolerancja_nn`
+    # (węzły nN wyspy zasilanej) i K_T tego transformatora. Brak = wartość robocza rejestru
+    # `wartosci_robocze` z założeniem biegu `fault.c_tolerancja_nn_robocza` (karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA), nigdy cicha domyślka.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
     # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
@@ -487,8 +580,14 @@ class Source(ENMElement):
     r0_ohm: float | None = None
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None
-    c_max: float | None = None
-    c_min: float | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN zasilanej z tego źródła
+    # wprost na szynie nN (bez transformatora w modelu) — ten sam nośnik wiersza nN tabeli 1
+    # IEC 60909-0 co `Transformer.lv_voltage_tolerance` (+6 % → c 1,05/0,95; +10 % → c
+    # 1,10/0,90), rozwiązywany per wyspa nN przez `enm.tolerancja_nn`. Czytana wyłącznie, gdy
+    # szyna źródła leży w paśmie nN; brak przy takim źródle = wartość robocza rejestru z
+    # założeniem biegu `fault.c_tolerancja_nn_robocza`, nigdy cicha domyślka. Dawne pola `c_max`/`c_min` źródła
+    # (fantom: zapisywane, nigdy nieczytane — c dobiera wyłącznie `voltage_factor`) skasowane.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -510,6 +609,12 @@ class Load(ENMElement):
     # (`enm/domain_operations_v2.py`) i `update_element_parameters` — każdy przez
     # JEDEN walidator `enm/fazy_odbioru.py::waliduj_fazy_odbioru`.
     phases: PhaseSet | None = None
+    # Karta W5-E-TTIT: rezystancja uziomu instalacji odbiorczej R_A [Ω] — dana projektowa
+    # układów TT/IT (pętla doziemna przez R_A i R_B, napięcie dotykowe R_A·I_Δn — solver
+    # `network_model/solvers/petla_zwarcia_tt_it.py`). `None` = dana nieobecna (werdykt TT/IT
+    # odmawia kodem `nn.brak_r_a`), nigdy zero. Pole addytywne: `None` poza odciskiem
+    # (`enm/hash.py`), pisarze przez JEDEN walidator `enm/uziom_instalacji.py::waliduj_r_a`.
+    earth_electrode_r_ohm: Annotated[float, Field(gt=0)] | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     quantity: int | None = None
@@ -517,6 +622,14 @@ class Load(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    # Karta modeli odbiorow (O-49 pkt 2, O-56): model dynamiczny odbioru — KOPIA profilu
+    # katalogu `network_model.catalog.load_dynamic` wskazanego wiazaniem
+    # `materialized_params.dynamic_model_ref`, budowana WYLACZNIE przez
+    # `enm.dynamika_z_katalogu.materializuj_dynamike_odbioru` (operacja domenowa
+    # `set_load_dynamic_binding` i synchronizacja kazdej odpowiedzi operacji). Wymagany
+    # dla kazdego odbioru w biegu `dynamika_rms` (bramka `braki_modelu_dynamiki`).
+    # Pole addytywne: `None` poza odciskiem (`enm/hash.py`).
+    dynamika: ModelDynamicznyOdbioru | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1585,17 +1698,6 @@ class BayEarthFaultPath(BaseModel):
     earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
-class BayVerificationResult(BaseModel):
-    continuous_current_ok: bool | None = None
-    thermal_withstand_ok: bool | None = None
-    dynamic_withstand_ok: bool | None = None
-    ct_ok: bool | None = None
-    vt_ok: bool | None = None
-    cable_head_ok: bool | None = None
-    main_switch_ok: bool | None = None
-    whole_power_path_ok: bool | None = None
-
-
 class BayProofBinding(BaseModel):
     proof_ref: str
     primary_result_refs: list[str] = []
@@ -1613,7 +1715,6 @@ class BayProjectResults(BaseModel):
     main_power_flow_results_ref: str | None = None
     source_contributions_sc: list[BayShortCircuitSourceContribution] = []
     source_contributions_pf: list[BayPowerFlowSourceContribution] = []
-    verification: BayVerificationResult = Field(default_factory=BayVerificationResult)
     earth_fault_path: BayEarthFaultPath | None = None
     proof_binding: BayProofBinding
 
@@ -1736,7 +1837,12 @@ class KatalogProjektu(BaseModel):
     @model_validator(mode="after")
     def _unikalne_i_posortowane(self) -> KatalogProjektu:
         widziane: set[str] = set()
-        for rodzaj in ("line_types", "cable_types", "transformer_types", "karty_widmowe"):
+        for rodzaj in (
+            "line_types",
+            "cable_types",
+            "transformer_types",
+            "karty_widmowe",
+        ):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():

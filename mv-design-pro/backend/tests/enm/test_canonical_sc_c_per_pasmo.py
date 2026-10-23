@@ -2,8 +2,9 @@
 
 docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3 (kontynuacja P0.3, ścieżka
 ``enm/canonical_analysis.py::_execute_short_circuit`` — droga użytkownika przez
-ENM, osobna od ``application/solvers/short_circuit_binding.py`` użytego przez
-execution engine, gdzie P0.3 to samo wdrożenie już zrobił).
+ENM; dawna równoległa ścieżka ``application/solvers/short_circuit_binding.py::
+execute_short_circuit`` skasowana kartą TORY-TYLKO-W-TESTACH 2026-09-30 — jej dowody
+z ``tests/network_model/solvers/test_sc_lv_min_max.py`` przeniesione tu, sekcja 9).
 
 REUSE 1:1, zero duplikacji wzorów:
     - ``network_model.core.voltage_factor.c_for_node`` (Tabela 1 IEC 60909:
@@ -11,8 +12,9 @@ REUSE 1:1, zero duplikacji wzorów:
     - ``application.solvers.lv_temperature_correction.build_min_scenario_graph``
       (R_θ = R20·[1+0.004·(θk−20)] na KOPII grafu dla scenariusza MIN).
 
-Golden MV+LV (parametry identyczne z
-``tests/network_model/solvers/test_sc_lv_min_max.py`` dla porównywalności):
+Golden MV+LV (jedyne źródło parametrów: stałe modułu ``_SK_Q_MVA`` … ``_UN_LV_KV``
+poniżej; rachunek ręczny Ik''max na tych parametrach — sekcja 9 tego pliku; od karty
+TORY-TYLKO-W-TESTACH ``test_sc_lv_min_max.py`` nie zawiera już tej sieci):
 grid source Sk''=250 MVA 15 kV -> kabel SN 2 km -> TR 630 kVA 15/0,4 kV Dyn11
 uk=6% -> szyna nN -> kabel nN YAKY 4x120 60 m -> koniec obwodu nN.
 """
@@ -31,6 +33,8 @@ from enm.models import (
     Transformer,
 )
 from enm.store import reset_enm_store, set_enm
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.catalog_test_helpers import gpz_source_record
@@ -71,10 +75,17 @@ N2 = "N2_SZYNA_NN"
 N3 = "N3_KONIEC_NN"
 
 
-def _build_mv_lv_enm(name: str) -> EnergyNetworkModel:
+def _build_mv_lv_enm(
+    name: str, *, tolerancja: TolerancjaNapieciaNn | None = "PLUS_6"
+) -> EnergyNetworkModel:
     """Sieć SN+nN: GPZ -> kabel SN -> szyna SN -> TR 630 kVA -> szyna nN ->
     kabel nN -> koniec obwodu. Wszystkie gałęzie/TR/źródło mają catalog_ref
-    (E009 CATALOG-FIRST jest BLOKEREM w ENMValidator)."""
+    (E009 CATALOG-FIRST jest BLOKEREM w ENMValidator).
+
+    ``tolerancja`` — deklarowana tolerancja sieci nN na transformatorze (nośnik wiersza nN
+    tabeli 1 IEC 60909-0). Domyślnie +6 % (1,05/0,95) — wartości przypięte w tym pliku
+    liczono dla tego wiersza; ``None`` buduje sieć bez deklaracji — liczoną z wartością roboczą
+    rejestru (+10 %, karta TOLERANCJA-NN-WARTOSC-ROBOCZA), nie odmowę."""
     return EnergyNetworkModel(
         header=ENMHeader(name=name),
         buses=[
@@ -127,6 +138,7 @@ def _build_mv_lv_enm(name: str) -> EnergyNetworkModel:
                 uk_percent=_TR_UK_PERCENT,
                 pk_kw=_TR_PK_KW,
                 vector_group="Dyn11",
+                lv_voltage_tolerance=tolerancja,
                 catalog_ref="tr-15-04-630kva-dyn11",
                 catalog_namespace="mv_transformers",
                 parameter_source="CATALOG",
@@ -296,7 +308,9 @@ def test_scenario_min_uses_c_min_per_band_and_temperature_correction():
 
 
 # =============================================================================
-# 3. c_factor jawny w options -> OVERRIDE płaski dla wszystkich węzłów
+# 3. nadpisanie_c z uzasadnieniem -> OVERRIDE płaski dla wszystkich węzłów
+#    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: dawny klucz `c_factor` jest odmową —
+#    `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`)
 # =============================================================================
 
 
@@ -308,7 +322,7 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
         case_id=case_id,
         klucz_twin=case_id,
         analysis_type="short_circuit_sn",
-        options={"c_factor": 1.2},
+        options={"nadpisanie_c": {"wartosc": 1.2, "uzasadnienie": "Uzgodnienie z OSD"}},
     )
     result = execute_run(run.id)
 
@@ -323,6 +337,7 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
         row = rows[ref_to_graph_id(bus_ref)]
         assert row["c_factor"] == pytest.approx(1.2), bus_ref
         assert row["c_factor_override"] is True, bus_ref
+        assert row["c_zrodlo"] == "nadpisanie ręczne: Uzgodnienie z OSD", bus_ref
         assert row["scenario"] == "MAX", bus_ref
 
 
@@ -360,6 +375,7 @@ def test_backward_determinism_pure_mv_network_matches_flat_c_110():
             c_factor=1.10,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         )
         assert row["ikss_a"] == pytest.approx(reference.ikss_a), bus_ref
         assert row["ip_a"] == pytest.approx(reference.ip_a), bus_ref
@@ -586,7 +602,10 @@ def test_location_unknown_element_ref_is_explicit_refusal():
         ).id
     )
     assert result.status == "FAILED"
-    assert "nie-ma-takiego-wezla" in (result.error_message or "")
+    # Partia integracji 10: odmowa jawnie mówi, że węzła nie ma w modelu — identyfikator
+    # wskazania nie trafia do treści (zostaje w opcjach biegu `location.element_ref`).
+    assert "nie istnieje w modelu sieci" in (result.error_message or "")
+    assert "nie-ma-takiego-wezla" not in (result.error_message or "")
 
 
 def test_location_helper_bus_is_explicit_refusal():
@@ -608,7 +627,9 @@ def test_location_helper_bus_is_explicit_refusal():
         ).id
     )
     assert result.status == "FAILED"
-    assert N2 in (result.error_message or "")
+    # Partia integracji 10: węzeł nazwą z modelu, nie identyfikatorem.
+    assert "Węzeł zwarcia „Szyna nN”" in (result.error_message or "")
+    assert N2 not in (result.error_message or "")
     assert "pomocniczym" in (result.error_message or "")
 
 
@@ -685,3 +706,270 @@ def test_location_absent_keeps_all_nodes_parity():
     assert result.status == "FINISHED", result.error_message
     rows = _rows_by_node(result)
     assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in (N0, N1, N2, N3)}
+
+
+# =============================================================================
+# 9. Rachunek ręczny IEC 60909 i korekta R_θ na biegu kanonicznym
+# =============================================================================
+#
+# Karta TORY-TYLKO-W-TESTACH (2026-09-30): te dowody żyły dotąd w
+# `tests/network_model/solvers/test_sc_lv_min_max.py` na adapterze
+# `application.solvers.short_circuit_binding.execute_short_circuit` — torze bez
+# konsumenta w produkcie (skasowany). Przeniesione tutaj na bieg kanoniczny, na tę samą
+# sieć SN+nN (parametry identyczne), z intencją każdej asercji bez zmian.
+#
+# Rachunek ręczny (metoda sumowania impedancji szeregowych — dla sieci promieniowej z
+# jednym źródłem dokładnie to, co liczy solver Z-bus, więc tolerancja 1 % ma duży zapas):
+#
+#   Źródło:      |Z_Q| = c_max(SN)·Un²/Sk'' = 1,10·15²/250 = 0,9900 Ω
+#                X_Q = |Z_Q|/√(1+0,1²) = 0,9850868183 Ω, R_Q = 0,1·X_Q = 0,0985086818 Ω
+#   Kabel SN:    R = 0,253·2 = 0,506 Ω, X = 0,100·2 = 0,200 Ω (MAX, bez korekty)
+#   TR 630 kVA:  z = 0,06, r = (pk/1000)/Sr = 0,0126984127, x = √(z²−r²) = 0,0586408588
+#                K_T = 0,95·c_max(nN=1,05)/(1+0,6·x) = 0,9635963302
+#                Z_T = K_T·(r+jx)·(0,4²/0,63) = 0,0031075921 + j0,0143507597 Ω
+#   Z_N1 (15 kV) = Z_Q + Z_kabelSN = 0,6045086818 + j1,1850868183 Ω
+#   Z_N2 (0,4 kV) = Z_N1·(0,4/15)² + Z_T = 0,0035374649 + j0,0151934881 Ω,
+#                   |Z_N2| = 0,0155998634 Ω
+#   Ik''max(N2) = 1,05·400/(√3·|Z_N2|) = 15 544,18 A;  Ik''max(N1) = 7 160,67 A.
+
+_OCZEKIWANE_IKSS_N2_MAX_A = 15544.18
+_OCZEKIWANE_IKSS_N1_MAX_A = 7160.67
+_TOLERANCJA_RACHUNKU = 0.01  # 1 %
+
+
+def _bieg_zwarciowy(case_id: str, enm: EnergyNetworkModel, options: dict | None = None):
+    set_enm(case_id, enm)
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        **({"options": options} if options is not None else {}),
+    )
+    wynik = execute_run(run.id)
+    assert wynik.status == "FINISHED", wynik.error_message
+    assert wynik.raw_result is not None
+    return wynik
+
+
+def test_ikss_max_na_szynie_nn_i_sn_zgodny_z_rachunkiem_recznym():
+    """Ik''max na szynie nN (c=1,05) i SN (c=1,10) = rachunek ręczny w granicy 1 %."""
+    wynik = _bieg_zwarciowy("tory-reczny-max", _build_mv_lv_enm("Siec MV+LV — rachunek"))
+    wiersze = _rows_by_node(wynik)
+
+    wiersz_n2 = wiersze[ref_to_graph_id(N2)]
+    assert wiersz_n2["ikss_a"] == pytest.approx(_OCZEKIWANE_IKSS_N2_MAX_A, rel=_TOLERANCJA_RACHUNKU)
+    assert wiersz_n2["c_factor"] == pytest.approx(1.05)
+
+    wiersz_n1 = wiersze[ref_to_graph_id(N1)]
+    assert wiersz_n1["ikss_a"] == pytest.approx(_OCZEKIWANE_IKSS_N1_MAX_A, rel=_TOLERANCJA_RACHUNKU)
+    assert wiersz_n1["c_factor"] == pytest.approx(1.10)
+
+
+def test_korekta_r_theta_obniza_ikss_min_na_koncu_kabla_nn():
+    """Korekta R_θ w scenariuszu MIN nie jest pusta: Ik''min na końcu kabla nN z korektą
+    jest ściśle mniejszy niż Ik''min liczony tym samym c_min na grafie MIN BEZ korekty
+    (odniesienie izoluje wyłącznie wkład R_θ)."""
+    enm = _build_mv_lv_enm("Siec MV+LV — R_theta")
+    wynik_min = _bieg_zwarciowy("tory-r-theta", enm, {"scenario": "min"})
+    n3 = ref_to_graph_id(N3)
+
+    odniesienie_bez_korekty = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=map_enm_to_network_graph(enm, scenario="MIN"),
+        fault_node_id=n3,
+        c_factor=0.95,
+        tk_s=1.0,
+        czas_tb=czas_tb_roboczy(),
+    )
+    assert _rows_by_node(wynik_min)[n3]["ikss_a"] < odniesienie_bez_korekty.ikss_a
+
+    # Oba kable (SN θk=250 °C, nN θk=160 °C) skorygowane — jawnie w nocie White Box.
+    noty = {
+        nota["branch_id"]: nota for nota in wynik_min.raw_result["temperature_correction_notes"]
+    }
+    assert noty[ref_to_graph_id("C_SN")]["corrected"] is True
+    nota_nn = noty[ref_to_graph_id("C_NN")]
+    assert nota_nn["corrected"] is True
+    assert nota_nn["theta_k_c"] == pytest.approx(_THETA_LV_C)
+    assert nota_nn["r_theta_ohm_per_km"] > nota_nn["r20_ohm_per_km"]
+
+
+def test_kabel_bez_theta_k_bez_korekty_z_jawna_nota():
+    """Zero fabrykacji: kabel bez znanej temperatury zwarciowej zostaje w scenariuszu MIN
+    bez korekty, a nota White Box mówi o braku wprost (nie zgadujemy θk)."""
+    enm = _build_mv_lv_enm("Siec MV+LV — kabel bez theta_k")
+    kabel_nn = next(galaz for galaz in enm.branches if galaz.ref_id == "C_NN")
+    kabel_nn.short_circuit_temperature_c = None
+
+    wynik_min = _bieg_zwarciowy("tory-bez-theta", enm, {"scenario": "min"})
+
+    noty = {
+        nota["branch_id"]: nota for nota in wynik_min.raw_result["temperature_correction_notes"]
+    }
+    nota_nn = noty[ref_to_graph_id("C_NN")]
+    assert nota_nn["corrected"] is False
+    assert nota_nn["theta_k_c"] is None
+    assert "brak" in nota_nn["reason"].lower()
+
+
+# =============================================================================
+# 10. Sonda liczbowa wartości roboczej tolerancji nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)
+# =============================================================================
+#
+# Sieć jak w sekcji 9, transformator BEZ deklaracji tolerancji sieci nN: wyspa nN liczona z
+# wartością roboczą +10 % (IEC 60909-0 tab. 1: c_max 1,10, c_min 0,90 — wpisane RĘCZNIE, nie
+# z rejestru). Rachunek ręczny tą samą metodą sumowania impedancji co sekcja 9:
+#
+#   K_T(+10 %) = 0,95·1,10/(1+0,6·0,0586408588) = 1,0094818698
+#   Z_T = K_T·(r+jx)·(0,4²/0,63) = 0,0032555727 + j0,0150341292 Ω
+#   MAX: Z_N2 = Z_N1·(0,4/15)² + Z_T = 0,0036854455 + j0,0158768576 Ω
+#        I″k,max(N2) = 1,10·400/(√3·|Z_N2|) = 15 585,88 A
+#   MIN: źródło bez S″k,min — Z_Q z S″k i c_max SN (jak MAX); kabel SN z R_θ (θ_k 250 °C):
+#        R = 0,506·[1+0,004·(250−20)] = 0,97152 Ω; transformator bez korekty, K_T z c_max
+#        Z_N2 = 0,0040164820 + j0,0158768576 Ω
+#        I″k,min(N2) = 0,90·400/(√3·|Z_N2|) = 12 691,33 A
+
+_SONDA_ROBOCZA_IKSS_N2_A = {"MAX": 15585.88, "MIN": 12691.33}
+_SONDA_ROBOCZA_C_N2 = {"MAX": 1.10, "MIN": 0.90}
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_sonda_reczna_wartosci_roboczej_tolerancji_nn(scenariusz: str):
+    """I″k szyny nN sieci bez deklaracji = rachunek ręczny dla c 1,10/0,90 (wartość robocza
+    +10 %), a wiersz nazywa wartość roboczą w podstawie c i znaczniku."""
+    wynik = _bieg_zwarciowy(
+        f"sonda-robocza-{scenariusz}",
+        _build_mv_lv_enm("Sieć MV+LV — wartość robocza", tolerancja=None),
+        {"scenario": scenariusz.lower()},
+    )
+    wiersz = _rows_by_node(wynik)[ref_to_graph_id(N2)]
+    assert wiersz["c_factor"] == pytest.approx(_SONDA_ROBOCZA_C_N2[scenariusz])
+    assert wiersz["ikss_a"] == pytest.approx(_SONDA_ROBOCZA_IKSS_N2_A[scenariusz], rel=1e-6)
+    assert wiersz["c_zrodlo"] == (
+        f"IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), {scenariusz}"
+    )
+    assert wiersz["tolerancja_nn_robocza"] is True
+    # Szyna SN tej samej sieci: wiersz SN, bez znacznika (c węzła nie zależy od tolerancji nN).
+    assert "tolerancja_nn_robocza" not in _rows_by_node(wynik)[ref_to_graph_id(N1)]
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_wartosc_robocza_rowna_deklaracji_plus_10_w_liczbach(scenariusz: str):
+    """Wartość robocza liczy DOKŁADNIE to, co deklaracja +10 % (te same prądy w każdym
+    węźle) — różni ją wyłącznie podstawa c, znacznik wiersza i założenie biegu."""
+    robocza = _bieg_zwarciowy(
+        f"robocza-{scenariusz}",
+        _build_mv_lv_enm("Sieć", tolerancja=None),
+        {"scenario": scenariusz.lower()},
+    )
+    reset_canonical_runs()
+    deklaracja = _bieg_zwarciowy(
+        f"deklaracja-{scenariusz}",
+        _build_mv_lv_enm("Sieć", tolerancja="PLUS_10"),
+        {"scenario": scenariusz.lower()},
+    )
+    w_rob, w_dek = _rows_by_node(robocza), _rows_by_node(deklaracja)
+    assert set(w_rob) == set(w_dek)
+    for wezel, wiersz in w_dek.items():
+        for pole in ("ikss_a", "ip_a", "ith_a", "c_factor"):
+            assert w_rob[wezel][pole] == wiersz[pole], (wezel, pole)
+    kody_rob = [z["code"] for z in robocza.raw_result.get("zalozenia", [])]
+    kody_dek = [z["code"] for z in deklaracja.raw_result.get("zalozenia", [])]
+    # Jedyna różnica list założeń to JEDNO założenie tolerancji roboczej. Pozycja nie jest
+    # kontraktem: założenia modelu (assembler: źródło, tolerancja nN) poprzedzają założenia
+    # konfiguracji biegu (np. `fault.czas_tb_wartosc_robocza`, karta TB-WARTOSC-ROBOCZA).
+    tolerancja = "fault.c_tolerancja_nn_robocza"
+    assert kody_rob.count(tolerancja) == 1, kody_rob
+    assert [kod for kod in kody_rob if kod != tolerancja] == kody_dek
+
+
+# ---------------------------------------------------------------------------
+# 11. Dwie wyspy nN, jedna zadeklarowana (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)
+#
+# Iloczyn cech: {deklaracja wyspy A: +6 %, +10 %} × {wyspa B: brak deklaracji} × {MAX, MIN}.
+# Rozstrzygnięcie jest per wyspa galwaniczna: wartość robocza wyspy B nie przecieka do wyspy A
+# (wiersz, podstawa c, prąd), a założenie biegu jest JEDNO i nazywa transformator wyspy B.
+# ---------------------------------------------------------------------------
+
+N4 = "N4_SZYNA_NN_B"
+
+
+def _dwie_wyspy_nn(tolerancja_a: str, tolerancja_b: str | None) -> EnergyNetworkModel:
+    enm = _build_mv_lv_enm("Dwie wyspy nN", tolerancja=tolerancja_a)  # type: ignore[arg-type]
+    (tr1,) = enm.transformers
+    tr2 = tr1.model_copy(
+        update={
+            "ref_id": "TR2",
+            "name": "TR B 15/0,4 kV 630 kVA",
+            "lv_bus_ref": N4,
+            "lv_voltage_tolerance": tolerancja_b,
+        }
+    )
+    szyna_b = Bus(ref_id=N4, name="Szyna nN wyspy B", voltage_kv=_UN_LV_KV)
+    return enm.model_copy(update={"buses": [*enm.buses, szyna_b], "transformers": [tr1, tr2]})
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+@pytest.mark.parametrize("tolerancja_a", ["PLUS_6", "PLUS_10"])
+def test_dwie_wyspy_wartosc_robocza_tylko_w_wyspie_bez_deklaracji(
+    tolerancja_a: str, scenariusz: str
+):
+    opcje = {"scenario": scenariusz.lower()}
+    mieszana = _bieg_zwarciowy(
+        f"wyspy-{tolerancja_a}-{scenariusz}", _dwie_wyspy_nn(tolerancja_a, None), opcje
+    )
+    reset_canonical_runs()
+    zadeklarowana = _bieg_zwarciowy(
+        f"wyspy-dekl-{tolerancja_a}-{scenariusz}", _dwie_wyspy_nn(tolerancja_a, "PLUS_10"), opcje
+    )
+    w_mix, w_dek = _rows_by_node(mieszana), _rows_by_node(zadeklarowana)
+    # Wiersze bez odnośników dowodu związanych z identyfikatorem biegu (jedyna różnica tożsama).
+    s_mix, s_dek = _stripped_rows_by_node(mieszana), _stripped_rows_by_node(zadeklarowana)
+    etykieta_a = {"PLUS_6": "+6 %", "PLUS_10": "+10 %"}[tolerancja_a]
+    for ref in (N2, N3):
+        wiersz = w_mix[ref_to_graph_id(ref)]
+        assert "tolerancja_nn_robocza" not in wiersz, ref
+        assert wiersz["c_zrodlo"] == (
+            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta_a}, {scenariusz}"
+        )
+    wiersz_b = w_mix[ref_to_graph_id(N4)]
+    assert wiersz_b["tolerancja_nn_robocza"] is True
+    assert wiersz_b["c_zrodlo"] == (
+        f"IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), {scenariusz}"
+    )
+    # Liczby: wartość robocza wyspy B = deklaracja +10 %; wyspa A i szyny SN bez zmian.
+    assert set(w_mix) == set(w_dek)
+    for wezel, wiersz in w_dek.items():
+        for pole in ("ikss_a", "ip_a", "ith_a", "c_factor"):
+            assert w_mix[wezel][pole] == wiersz[pole], (wezel, pole)
+        if wezel != ref_to_graph_id(N4):
+            assert s_mix[wezel] == s_dek[wezel], wezel
+    zalozenia = [
+        z
+        for z in mieszana.raw_result.get("zalozenia", [])
+        if z["code"] == "fault.c_tolerancja_nn_robocza"
+    ]
+    assert [(z["element_ref"], z["scenariusz"]) for z in zalozenia] == [("TR2", scenariusz)]
+    assert "TR B 15/0,4 kV 630 kVA" in zalozenia[0]["message_pl"]
+    assert "Szyna nN wyspy B" in zalozenia[0]["message_pl"]
+    assert "TR 15/0,4 kV 630 kVA Dyn11" not in zalozenia[0]["message_pl"]
+    assert "fault.c_tolerancja_nn_robocza" not in {
+        z["code"] for z in zadeklarowana.raw_result.get("zalozenia", [])
+    }
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
+def test_bieg_na_samych_deklaracjach_bez_sladu_wartosci_roboczej(tolerancja: str):
+    """Determinizm i addytywność: sieć z deklaracją nie niesie żadnego śladu karty — brak
+    klucza `tolerancja_nn_robocza` w wierszach, brak założenia, podstawa c bez dopisku — a dwa
+    biegi tego samego wejścia mają ten sam `input_hash` i te same wiersze."""
+    pierwszy = _bieg_zwarciowy(f"det-a-{tolerancja}", _dwie_wyspy_nn(tolerancja, tolerancja))
+    reset_canonical_runs()
+    drugi = _bieg_zwarciowy(f"det-a-{tolerancja}", _dwie_wyspy_nn(tolerancja, tolerancja))
+    assert pierwszy.input_hash == drugi.input_hash
+    assert _stripped_rows_by_node(pierwszy) == _stripped_rows_by_node(drugi)
+    for wiersz in _rows_by_node(pierwszy).values():
+        assert "tolerancja_nn_robocza" not in wiersz
+        assert "wartość robocza" not in (wiersz.get("c_zrodlo") or "")
+    assert "fault.c_tolerancja_nn_robocza" not in {
+        z["code"] for z in pierwszy.raw_result.get("zalozenia", [])
+    }

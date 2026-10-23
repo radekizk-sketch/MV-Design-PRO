@@ -159,10 +159,22 @@ def test_voltage_violation_detected() -> None:
     assert view["voltage_violations"][0]["kind_pl"] == "przekroczenie U_max"
 
 
-def test_q_limits_and_provenance_from_converter_catalog() -> None:
+@pytest.mark.parametrize(
+    ("catalog_ref", "q_graniczne", "jakosc"),
+    [
+        # Karta producenta (ZWERYFIKOWANY): granice Q z karty są DATASHEET.
+        ("conv-pv-nn-sma-sc2475-0p434kv", 1.485, "DATASHEET"),
+        # Rekord bez karty producenta (NIEWERYFIKOWANY, źródło deklarowane): ESTIMATED —
+        # karta KATALOG-KOMPLETNY-PROWENIENCJA (2026-10-15).
+        ("pv_inv_sma_2500", 0.9, "ESTIMATED"),
+    ],
+)
+def test_q_limits_and_provenance_from_converter_catalog(
+    catalog_ref: str, q_graniczne: float, jakosc: str
+) -> None:
     # Brak GenLimits → granice i proweniencja z karty przekształtnika.
     run = _pf_run(
-        generators=[_gen("g1", "b1", q=0.1, q_min=None, q_max=None, catalog_ref="pv_inv_sma_2500")],
+        generators=[_gen("g1", "b1", q=0.1, q_min=None, q_max=None, catalog_ref=catalog_ref)],
         buses=[_bus("b1")],
         loads=[],
         bus_results=[{"bus_id": "n1", "v_pu": 1.0}],
@@ -170,10 +182,10 @@ def test_q_limits_and_provenance_from_converter_catalog() -> None:
     )
     view = build_reactive_adequacy_view(run)
     source = view["sources"][0]
-    assert source["q_min_mvar"] == pytest.approx(-0.9)
-    assert source["q_max_mvar"] == pytest.approx(0.9)
+    assert source["q_min_mvar"] == pytest.approx(-q_graniczne)
+    assert source["q_max_mvar"] == pytest.approx(q_graniczne)
     assert source["missing_data"] == []
-    assert view["provenance"]["worst_quality"] == "DATASHEET"
+    assert view["provenance"]["worst_quality"] == jakosc
 
 
 def test_not_converged_is_no_data() -> None:
@@ -252,7 +264,8 @@ def test_real_power_flow_run_produces_view_with_provenance() -> None:
         update={
             "q_mvar": 0.5,
             "limits": GenLimits(q_min_mvar=-0.9, q_max_mvar=0.9),
-            "catalog_ref": "pv_inv_sma_2500",
+            # Karta producenta (ZWERYFIKOWANY) — jedyne źródło jakości DATASHEET.
+            "catalog_ref": "conv-pv-nn-sma-sc2475-0p434kv",
         }
     )
     enm = enm.model_copy(update={"generators": gens})

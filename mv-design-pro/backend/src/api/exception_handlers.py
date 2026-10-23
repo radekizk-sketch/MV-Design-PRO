@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import traceback
 
+from api.odmowa_http import OdmowaHttpError, pola_odmowy
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from network_model.brak_zasobu import BrakZasobuError
+from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger("mv_design_pro")
 
@@ -36,22 +38,55 @@ def register_exception_handlers(app: FastAPI) -> None:
             headers={"X-Request-Id": request_id},
         )
 
-    @app.exception_handler(ValueError)
-    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    # Karta ODMOWA-DANYCH-422: 422 daje WYŁĄCZNIE nazwana odmowa `OdmowaDanychError` (reguła
+    # modelu, walidacja wejścia, brak danych projektowych). Dawny handler `ValueError` → 422
+    # przebierał KAŻDY `ValueError` — także błąd programu (uszkodzona fikstura, zły indeks,
+    # niezmiennik kontraktu) — za „błąd danych", z ostrzeżeniem bez śladu w dzienniku. Zwykły
+    # `ValueError` idzie teraz do handlera `Exception` wyżej: 500 i pełny ślad.
+    @app.exception_handler(OdmowaDanychError)
+    async def value_error_handler(request: Request, exc: OdmowaDanychError) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
-            "ValueError rid=%s path=%s: %s",
+            "OdmowaDanychError rid=%s path=%s: %s",
             request_id,
             request.url.path,
             str(exc),
         )
+        content: dict[str, object] = {
+            "detail": str(exc),
+            "request_id": request_id,
+            "error_type": "ValueError",
+        }
+        # Karty W10-2a / OD-17a, partia integracji 10: pola strukturalne odmowy (`kod`,
+        # `dane`, `rekordy`) addytywnie obok `detail` — jedna funkcja dla obu dróg odmowy.
+        content.update(pola_odmowy(exc))
         return JSONResponse(
             status_code=422,
-            content={
-                "detail": str(exc),
-                "request_id": request_id,
-                "error_type": "ValueError",
-            },
+            content=content,
+            headers={"X-Request-Id": request_id},
+        )
+
+    # Partia integracji 10: odmowa danych ze statusem innym niż 422 (409, 404, 400, 503)
+    # albo z prefiksem zdania — to samo ciało co wyżej, status z kontraktu routera.
+    @app.exception_handler(OdmowaHttpError)
+    async def odmowa_http_handler(request: Request, exc: OdmowaHttpError) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.warning(
+            "OdmowaHttpError rid=%s path=%s status=%s: %s",
+            request_id,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
+        content: dict[str, object] = {
+            "detail": exc.detail,
+            "request_id": request_id,
+            "error_type": "ValueError",
+        }
+        content.update(pola_odmowy(exc.odmowa))
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=content,
             headers={"X-Request-Id": request_id},
         )
 

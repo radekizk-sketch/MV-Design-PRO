@@ -30,7 +30,8 @@ export {
 } from './useNazwaObiektu';
 export type { NazwaObiektu } from './useNazwaObiektu';
 export type { WierszInformacjiAudytowych, InformacjeAudytoweProps } from './InformacjeAudytowe';
-export { KartaWerdyktu, type KartaWerdyktuProps } from './KartaWerdyktu';
+export { KartaWerdyktu, StanDanychWyniku, type KartaWerdyktuProps } from './KartaWerdyktu';
+export type { DanaPrzyjeta, StanDanych } from './werdykt';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
 export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';
@@ -40,7 +41,7 @@ export {
   useAkcjaOtworzDokumentacje,
   useAkcjaPorownajWarianty,
   useAkcjaPrzejdzDoPrzypadkow,
-  useAkcjaPrzejdzDoSchematu,
+  useAkcjaPrzejdzDoOcenyZabezpieczen,
   useAkcjaUruchomObliczenie,
 } from './akcjeStanuZerowego';
 export type { AkcjaStanuZerowego, NadpisanieAkcjiBiegu } from './akcjeStanuZerowego';
@@ -49,6 +50,7 @@ export type {
   EkranAnalizyProps,
   NaglowekAnalizy,
   WierszZalozenia,
+  AkcjaZalozenia,
   WartoscKomorki,
   DefinicjaKolumny,
   WierszTabeli,

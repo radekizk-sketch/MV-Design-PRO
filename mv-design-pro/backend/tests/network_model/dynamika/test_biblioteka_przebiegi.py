@@ -86,6 +86,7 @@ from tests.network_model.dynamika.biblioteka_urzadzen import (
     turbina,
     zloz_uklad,
 )
+from tests.walidacja_fizyczna import stanowisko
 
 #: Reaktancja zwarcia [Ohm] dajaca UMIARKOWANY zapad na szynie 15 kV przy bazie
 #: 100 MVA (Z_b = 2,25 Ohm, wiec 0,5 Ohm = 0,222 pu).
@@ -166,7 +167,9 @@ def mod_ukladu(uklad: UkladDwuwezlowy, nast: object) -> tuple[Mod, ...]:
     napiecia = np.array(
         [uklad.punkt_pracy.napiecia_pu[ident] for ident in model.identy_wezlow], dtype=complex
     )
-    kontekst = KontekstKroku(model, wejscie.odbiory, wejscie.urzadzenia, wejscie.nastawy)
+    odbiory = stanowisko.modele_odbiorow(wejscie.odbiory, wejscie.f_bazowa_hz)
+    stany = stanowisko.stany_z_odbiorami(odbiory, stany)
+    kontekst = KontekstKroku(model, odbiory, wejscie.urzadzenia, wejscie.nastawy)
     return mody(kontekst, stany, napiecia)
 
 

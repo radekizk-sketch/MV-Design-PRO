@@ -16,10 +16,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('station-rozdzielnia-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual'));
 
 const ARCHETYPES = ['T1', 'T2', 'T3', 'T4'] as const;
 
@@ -71,6 +73,7 @@ test.describe('sld:station-rozdzielnia:screenshot', () => {
       expect(consoleErrors, `no console/page errors for ${archetype}`).toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `station_${archetype}_composite.png`);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: outPath });
       console.log(`Saved: ${outPath}`);
       expect(fs.existsSync(outPath)).toBe(true);

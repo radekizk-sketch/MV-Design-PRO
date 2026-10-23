@@ -95,6 +95,12 @@ Kontekst docelowy: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:101` opisuj
 
 ## (e) TT/IT/RCD i pętla zwarcia nN
 
+> **Stan po W5-E-TTIT (2026-10-15):** TT/IT liczone — `solvers/petla_zwarcia_tt_it.py` przez jedyne wejście
+> `fault_loop_iec60364.compute_fault_loop` (wiersz `NotImplementedError` poniżej jest historyczny); serwis odmawia
+> NAZWANYM kodem braku danej (`nn.brak_r_a` / `nn.brak_r_b` / `nn.brak_rcd` / `nn.brak_pojemnosci_doziemnej`), nie „nie
+> dotyczy”; RCD = aparat w torze `APARAT_NN_RCD` (operacja `add_nn_rcd`, 56 rekordów katalogu); `POST /api/fault-loop/compute`
+> skasowany (ENDPOINTY-BEZ-KONSUMENTA). Tabela poniżej = pomiar z 2026-09-16 (archiwalny).
+
 | miejsce (plik:linia) | co niesie (pola) | pisze | czyta / importerzy (liczba) | uwaga |
 |---|---|---|---|---|
 | `backend/src/api/fault_loop.py:33-140` `POST /api/fault-loop/compute` | `fault_node_id, u_nom_v, phase_conductor{r,x}, return_conductor, transformer_impedance, upstream_impedance, network_type, protection_arrangement` — **ręczne R+X** | — | zarejestrowany: `api/main.py:23,177`; **0 konsumentów FE** (grep `fault-loop/compute` w `frontend/` = 0), **0 testów backendu** (grep w `backend/tests` = 0); dawny konsument `ui/sld/v2/fault-loop/FaultLoopResultPanel.tsx` **nie istnieje** | zgodne z mapą („0 testów, 0 FE"; K-F) |
@@ -178,7 +184,7 @@ Kontekst docelowy: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:101` opisuj
 
 | wielkość | PRZED | PO | uwaga |
 |---|---|---|---|
-| nośniki przechowywane uziemienia punktu neutralnego | 20 miejsc (14 backend + 6 frontend) | **2 nośniki JEDNEGO typu** `GroundingConfig`: `Transformer.hv_neutral/lv_neutral`, `Source.neutral_grounding` | projekcje czytające te nośniki (nie kopie): `v126_contracts._resolve_network_neutral`, `field_read_model`, E-29 składowe (`Source.neutral_grounding` + `Transformer.*_neutral`); typowane tym samym słownikiem: `BayEarthFaultPath.neutral_grounding_mode`, `MvNeutralGroundingItem.grounding_type`. Poza W5-A (świadomie): `mv_neutral_grounding_ref` (audyt 2), `v126_academic.py` (FROZEN, OD-24) |
+| nośniki przechowywane uziemienia punktu neutralnego | 20 miejsc (14 backend + 6 frontend) | **2 nośniki JEDNEGO typu** `GroundingConfig`: `Transformer.hv_neutral/lv_neutral`, `Source.neutral_grounding` | projekcje czytające te nośniki (nie kopie): `v126_contracts._resolve_network_neutral`, `field_read_model`, E-29 składowe (`Source.neutral_grounding` + `Transformer.*_neutral`); typowane tym samym słownikiem: `BayEarthFaultPath.neutral_grounding_mode`, `MvNeutralGroundingItem.grounding_type`. Poza W5-A (świadomie): `mv_neutral_grounding_ref` (audyt 2). `v126_academic.py` (FROZEN): fallbacki `neutral_earthing_type`/`neutral_grounding` :1306/:1732/:1820 NIE są pozostałością świadomą — OD-24 rozstrzygnięte 2026-09-30 (O-62), kasowane kartą V126-UCZCIWOSC (odmowa `v126.neutral_earthing_missing`) |
 | słowniki wartości typu punktu neutralnego | 5 | **1** (`network_model/core/uziemienie.py::TYPY_PUNKTU_NEUTRALNEGO`; front `types/uziemienie.ts` pinowany testem do snapshotu OpenAPI przez `GET /api/catalog/slowniki-uziemienia`) | `PUNKT_NEUTRALNY_UZIEMIONY` 16 → 0, `solid_grounded` 6 → 0, `EarthingType` FE 1 → 0, literały PL `BayEarthFaultPath` → literały kontraktu |
 | definicje zbioru TN-S/TN-C-S/TN-C/TT/IT | 4 | **1 w modelu** (`enm/models.py::UkladSieciNn`) + enum solvera FROZEN `fault_loop_iec60364.NetworkType` z JEDNĄ funkcją mapującą (`solver_input/uklad_sieci_nn.py`) i testem równości zbiorów; front 1 (`types/uziemienie.ts`), SLD (`enmToSldAdapter`, 2 renderery) na tym samym typie | `_NN_EARTHING_SYSTEMS` 2 → 0, `LvEarthingType` skasowany |
 | `nn_earthing_system` w `backend/src` | 14 | 4 (moduł migracji `enm/uziemienie.py` — allowlista guarda; docstringi; kod odmowy `station.invalid_nn_earthing_system`) | `backend/tests`: 19 plików → 5 (migracja + asercje NIEobecności) |

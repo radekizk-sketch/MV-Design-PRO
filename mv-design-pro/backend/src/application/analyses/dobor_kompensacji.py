@@ -103,9 +103,12 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, SondaKondensatora, apply_scenario
+from enm.slownik_komunikatow import opis_obiektu
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 _KV_TOLERANCE = 0.001
 
@@ -423,23 +426,27 @@ def build_compensation_sizing_view(
             szyna nie istnieje — komunikaty w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Dobór kompensacji wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):
-        raise ValueError("Wymagany cosφ (cos_phi_min) musi być w przedziale (0, 1].")
+        raise OdmowaDanychError("Wymagany cosφ musi być w przedziale (0, 1].")
 
     snapshot = run.snapshot or {}
     buses = _bus_index(snapshot)
     bus = buses.get(bus_ref)
     if bus is None:
-        raise ValueError(f"Wskazana szyna punktu przyłączenia nie istnieje w modelu: {bus_ref}.")
+        raise OdmowaNazwana(
+            "Wskazana szyna punktu przyłączenia nie istnieje w modelu.",
+            kod="kompensacja.szyna_spoza_modelu",
+            dane={"element_ref": bus_ref},
+        )
 
     # FAB-E (E1): voltage_kv jest polem WYMAGANYM na modelu szyny (enm/models.py)
     # — brak w snapshotcie oznacza uszkodzony zapis, nie szyne 0 kV. Fikcyjne
@@ -447,9 +454,12 @@ def build_compensation_sizing_view(
     # poziomu napiecia (_sorted_candidates), czyli fizycznie bezsensowny dobor.
     voltage_kv_raw = bus.get("voltage_kv")
     if voltage_kv_raw is None:
-        raise ValueError(
-            f"Szyna punktu przyłączenia {bus_ref!r} nie ma pola voltage_kv w snapshotcie "
-            "— zapis modelu jest uszkodzony, dobór kompensacji nie może się na nim oprzeć."
+        raise OdmowaNazwana(
+            f"{opis_obiektu(bus, 'Szyna')} punktu przyłączenia nie ma napięcia znamionowego "
+            "w zapisie modelu — zapis modelu jest uszkodzony, dobór kompensacji nie może się "
+            "na nim oprzeć.",
+            kod="kompensacja.szyna_bez_napiecia",
+            dane={"element_ref": bus_ref},
         )
     bus_kv = float(voltage_kv_raw)
     records = _sorted_candidates(bus_kv)
@@ -515,6 +525,7 @@ def build_compensation_sizing_view(
     return {
         "analysis": "compensation_sizing",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "bus_ref": bus_ref,
             "bus_name": bus.get("name"),

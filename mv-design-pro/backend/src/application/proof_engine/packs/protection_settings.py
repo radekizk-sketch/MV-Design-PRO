@@ -44,6 +44,7 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from werdykt import DanaPrzyjeta
 
 
 @dataclass
@@ -85,6 +86,10 @@ class ProtectionSettingsProofInput:
     delta_t_s: float = 0.3
     k_b: float = 1.2
     k_bth: float = 1.1
+
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte prądów zwarciowych wejścia (punkt w
+    #: sieci nN liczonej z wartością roboczą tolerancji) — ostrzeżenie podsumowania dowodu.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -414,6 +419,10 @@ class ProtectionSettingsProofPack:
                 ),
             },
             overall_status="PASS" if (all_passed and range_valid) else "FAIL",
+            warnings=tuple(
+                f"Prądy zwarciowe wejścia liczone z daną przyjętą: {d.nazwa_pl} — {d.powod_pl}"
+                for d in data.dane_przyjete
+            ),
         )
 
         proof = ProofDocument.create(

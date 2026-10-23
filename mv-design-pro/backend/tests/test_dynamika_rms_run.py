@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from tests.catalog_test_helpers import gpz_source_record  # noqa: E402
+from tests.utils.biegi import wykonaj_bieg
 
 
 def _reset_backend_state() -> None:
@@ -164,7 +165,7 @@ class TestOdmowaBiegu:
         )
         run_id = created.json()["id"]
 
-        executed = client.post(f"/api/execution/runs/{run_id}/execute")
+        executed = wykonaj_bieg(client, run_id)
         assert executed.status_code == 200
         payload = executed.json()
         assert payload["status"] == "FAILED"
@@ -201,7 +202,7 @@ class TestOdmowaBiegu:
             json={"analysis_type": "DYNAMIKA_RMS", "solver_input": {}},
         )
         run_id = created.json()["id"]
-        client.post(f"/api/execution/runs/{run_id}/execute")
+        wykonaj_bieg(client, run_id)
 
         wynik = client.get(f"/api/analysis-runs/{run_id}/results/dynamika")
         assert wynik.status_code == 404
@@ -772,7 +773,7 @@ def _uruchom_rozplyw(client: TestClient, case_id: str) -> str:
     )
     assert created.status_code == 201, created.text
     run_id = created.json()["id"]
-    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    executed = wykonaj_bieg(client, run_id)
     assert executed.status_code == 200, executed.text
     assert executed.json()["status"] == "DONE", executed.json()["error_message"]
     return str(run_id)
@@ -785,7 +786,7 @@ def _uruchom_dynamike(client: TestClient, case_id: str, solver_input: dict) -> d
     )
     assert created.status_code == 201, created.text
     run_id = created.json()["id"]
-    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    executed = wykonaj_bieg(client, run_id)
     assert executed.status_code == 200, executed.text
     return {"run_id": str(run_id), **executed.json()}
 

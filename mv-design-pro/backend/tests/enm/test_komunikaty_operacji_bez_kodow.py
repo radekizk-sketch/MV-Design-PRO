@@ -400,6 +400,10 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
     "enm/domain_operations_v2.py:brakujace_pola_agregatu": (
         "nazwy pól tabliczki agregatu z `pole()`"
     ),
+    "enm/domain_operations_v2.py:bledy": (
+        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
+        "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
+    ),
     "enm/slownik_komunikatow.py:opisy": (
         "opisy błędów walidacji złożone z nazw pól formularza i opisów rodzaju błędu"
     ),
@@ -952,12 +956,15 @@ def _male_pierwsze(tekst: str) -> str:
             "NAMESPACE_LABEL_PL",
             None,
         ),
-        (
-            slownik.NAZWY_RODZAJOW_GENERATORA_PL,
-            "ui/topology/modals/LoadDERModal.tsx",
-            "GEN_TYPE_LABELS",
-            None,
-        ),
+        # `slownik.NAZWY_RODZAJOW_GENERATORA_PL` był tu porównywany z `GEN_TYPE_LABELS`
+        # z `ui/topology/modals/LoadDERModal.tsx` — modalu bez montażu, skasowanego
+        # 2026-10-22 jako martwy kod (karta PODSTAWA-Q, commit 3). Parytet przypięty do
+        # martwego pliku nie dowodził, że użytkownik widzi te słowa. Żywy front nazywa
+        # rodzaje generatora pięcioma różnymi mapami (`ui/shared/generatorTypeLabels.ts`,
+        # `ui/network-build/InspectorEngineeringView.tsx`, `ui/shell/context-panels/
+        # OzContextPanel.tsx`, `ui/sld/shared/detailDrawerData.ts`, `ui2/wyniki/wzorzec/
+        # useNazwaObiektu.ts`), żadna nie jest równa słownikowi backendu — rozbieżność
+        # terminologii zgłoszona w meldunku karty do rozstrzygnięcia słownika kanonicznego.
         (
             slownik.NAZWY_STATUSOW_WERYFIKACJI_PL,
             "ui2/spaces/model/katalog/strings.ts",

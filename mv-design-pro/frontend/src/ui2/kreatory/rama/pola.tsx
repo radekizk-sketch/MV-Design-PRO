@@ -9,10 +9,42 @@
  * przez KaTeX (TekstZWzorami → MathInline) — surowe wzory tekstowe są zakazane.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import type { OpcjaWyboru, StatusPobrania } from './model';
 import { TekstZWzorami } from './tekstZWzorami';
+
+/** Limit prób fokusu (klatki animacji, ~1 s przy 60 Hz). */
+const LIMIT_KLATEK_FOKUSU = 60;
+
+/**
+ * Fokus pola po zamontowaniu (C-12: pole wskazane przez akcję naprawczą gotowości).
+ *
+ * `autoFocus` nie wystarcza: formularz akcji naprawczej montuje się w tej samej
+ * klatce, w której powłoka przełącza przestrzeń i rozwija panel inspektora — pole
+ * jest wtedy jeszcze niewidoczne, a element niewidoczny nie przyjmuje fokusu
+ * (zmierzone w e2e: fokus zostawał na `BODY`). Hook ponawia próbę co klatkę, aż
+ * pole stanie się widoczne (`getClientRects`), z jawnym limitem klatek.
+ */
+function useFokusPoZamontowaniu<T extends HTMLElement>(aktywny: boolean | undefined) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    if (!aktywny) return undefined;
+    let klatka = 0;
+    let uchwyt = 0;
+    const sprobuj = () => {
+      const el = ref.current;
+      if (!el || document.activeElement === el) return;
+      if (el.getClientRects().length > 0) el.focus();
+      if (document.activeElement !== el && klatka++ < LIMIT_KLATEK_FOKUSU) {
+        uchwyt = requestAnimationFrame(sprobuj);
+      }
+    };
+    sprobuj();
+    return () => cancelAnimationFrame(uchwyt);
+  }, [aktywny]);
+  return ref;
+}
 
 interface PolakoszulkaProps {
   etykieta: string;
@@ -59,6 +91,8 @@ export interface PoleTekstoweProps {
   blad?: string;
   pomoc?: string;
   tylkoOdczyt?: boolean;
+  /** Kursor w polu po zamontowaniu (np. pole wskazane przez akcję naprawczą gotowości). */
+  fokus?: boolean;
   testid?: string;
 }
 
@@ -71,8 +105,10 @@ export function PoleTekstowe({
   blad,
   pomoc,
   tylkoOdczyt,
+  fokus,
   testid,
 }: PoleTekstoweProps) {
+  const ref = useFokusPoZamontowaniu<HTMLInputElement>(fokus);
   return (
     <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
       <input
@@ -82,6 +118,7 @@ export function PoleTekstowe({
         placeholder={placeholder}
         readOnly={tylkoOdczyt}
         disabled={tylkoOdczyt}
+        ref={ref}
         aria-invalid={blad ? 'true' : undefined}
         data-testid={testid}
         onChange={onZmiana ? (e) => onZmiana(e.target.value) : undefined}
@@ -160,6 +197,8 @@ export interface PoleWyboruProps {
   blad?: string;
   pomoc?: string;
   wylaczone?: boolean;
+  /** Kursor w polu po zamontowaniu (np. pole wskazane przez akcję naprawczą gotowości). */
+  fokus?: boolean;
   testid?: string;
 }
 
@@ -172,14 +211,17 @@ export function PoleWyboru({
   blad,
   pomoc,
   wylaczone,
+  fokus,
   testid,
 }: PoleWyboruProps) {
+  const ref = useFokusPoZamontowaniu<HTMLSelectElement>(fokus);
   return (
     <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
       <select
         className="mvd-pole-select"
         value={wartosc}
         disabled={wylaczone}
+        ref={ref}
         aria-invalid={blad ? 'true' : undefined}
         data-testid={testid}
         onChange={(e) => onZmiana(e.target.value)}

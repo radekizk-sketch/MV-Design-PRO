@@ -26,7 +26,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { SldCanvasV3, scenePointToCameraWorld } from '../SldCanvasV3';
-import { SLD_CANVAS_DOCK_INSETS, STATION_INTERNAL_PANEL_MAX_WIDTH_PX } from '../toolbarLayout';
+import { SLD_CANVAS_DOCK_INSETS, stationInternalPanelWidthPx } from '../toolbarLayout';
 
 afterEach(() => cleanup());
 
@@ -125,7 +125,7 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
   it('ZASŁONA STANOWA wołającego (panel boczny) przesuwa kadr — inset nie jest stały', () => {
     const zPanelem = {
       ...SLD_CANVAS_DOCK_INSETS,
-      right: SLD_CANVAS_DOCK_INSETS.right + Math.min(STATION_INTERNAL_PANEL_MAX_WIDTH_PX, CANVAS.width - 24),
+      right: SLD_CANVAS_DOCK_INSETS.right + stationInternalPanelWidthPx(CANVAS.width),
     };
     const m = marginesy(1, zPanelem);
     // ORZECZENIE WŁAŚCIWE: treść nie wchodzi pod panel. Marginesu NIE mierzymy

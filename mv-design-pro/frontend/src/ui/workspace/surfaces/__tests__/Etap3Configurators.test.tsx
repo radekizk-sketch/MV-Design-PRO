@@ -128,22 +128,16 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('BayConfiguratorSurface (E-11)', () => {
-    it('renderuje BayConfigurator z domyślnymi propsami przy braku entityRef', () => {
+    // Intencja (przepisane 2026-10-15): bez referencji pola karta mówi, co zrobić, i NIE
+    // pokazuje żadnej sekcji ani oceny pola. Dawny szkielet ośmiu zakładek konfiguratora
+    // z tekstem zastępczym skasowano — karta pola czyta jeden model pola (osobny plik testów
+    // `BayConfiguratorSurface.kartaPola.test.tsx`).
+    it('bez referencji pola pokazuje wskazówkę i żadnej sekcji karty', () => {
       render(<BayConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('bay-configurator-surface')).toBeInTheDocument();
       expect(screen.getByText(/Brak referencji do pola SN/)).toBeInTheDocument();
-    });
-
-    it('renderuje 8 sekcji konfiguratora', () => {
-      render(<BayConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByText('Dane podstawowe')).toBeInTheDocument();
-      expect(screen.getByText('Aparatura pierwotna')).toBeInTheDocument();
-      expect(screen.getByText(/Przek/)).toBeInTheDocument();
-      expect(screen.getByText('Zabezpieczenia')).toBeInTheDocument();
-      expect(screen.getByText('Pomiary')).toBeInTheDocument();
-      expect(screen.getByText(/porty/)).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'Podgląd SLD' })).toBeInTheDocument();
-      expect(screen.getByText('Obliczenia')).toBeInTheDocument();
+      expect(screen.queryByTestId('bay-card-sections')).not.toBeInTheDocument();
+      expect(screen.queryByText(/zgodne z regułami/)).not.toBeInTheDocument();
     });
   });
 
@@ -260,6 +254,19 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               port_id: 'field/station-01/out:OUT',
               trunk_id: 'trunk/main-01',
               status: 'OTWARTY',
+            },
+          ],
+          // Karta POLE-ZAJĘTE: zajętość pola z modelu odczytu backendu — pole wyjściowe
+          // wolne (tak odpowiada `enm/zajetosc_pol.py` dla pola bez odcinka na zacisku).
+          line_fields: [
+            {
+              field_ref: 'field/station-01/out',
+              station_ref: 'stn/station-01/station',
+              bay_role: 'OUT',
+              attachment_bus_ref: 'stn/station-01/field-out-terminal',
+              occupied: false,
+              segment_refs: [],
+              corridor_refs: [],
             },
           ],
         } as never,
@@ -638,7 +645,23 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           line_runs: [],
           connection_nodes: [],
         } as never,
-        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+        // Karta POLE-ZAJĘTE: pole ODG wolne wg modelu odczytu backendu (`line_fields`).
+        logicalViews: {
+          trunks: [],
+          branches: [],
+          terminals: [],
+          line_fields: [
+            {
+              field_ref: 'field-odg',
+              station_ref: 'stn/station-branch/station',
+              bay_role: 'FEEDER',
+              attachment_bus_ref: 'stn/station-branch/field-odg-terminal',
+              occupied: false,
+              segment_refs: [],
+              corridor_refs: [],
+            },
+          ],
+        } as never,
       });
 
       render(
@@ -728,6 +751,33 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           branch_points: [],
           line_runs: [],
           connection_nodes: [],
+        } as never,
+        // Karta POLE-ZAJĘTE: zajętość portu pola liniowego z modelu odczytu backendu — pole
+        // wejściowe ma przyłączony odcinek (spoza tej migawki), wyjściowe jest wolne.
+        logicalViews: {
+          trunks: [],
+          branches: [],
+          terminals: [],
+          line_fields: [
+            {
+              field_ref: 'internal-field-in',
+              station_ref: 'stn/station-02/station',
+              bay_role: 'IN',
+              attachment_bus_ref: 'stn/station-02/sn_bus',
+              occupied: true,
+              segment_refs: ['seg/poza-migawka'],
+              corridor_refs: [],
+            },
+            {
+              field_ref: 'internal-field-out',
+              station_ref: 'stn/station-02/station',
+              bay_role: 'OUT',
+              attachment_bus_ref: 'stn/station-02/sn_bus',
+              occupied: false,
+              segment_refs: [],
+              corridor_refs: [],
+            },
+          ],
         } as never,
       });
 

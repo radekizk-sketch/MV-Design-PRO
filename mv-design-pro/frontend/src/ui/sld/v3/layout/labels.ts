@@ -71,6 +71,11 @@ export type OwnerKind =
   // (`#termination`, ref POLA, zweryfikowane pomiarem), które celują w aparat
   // słusznie i zepsułoby je jedno wspólne przestawienie.
   | 'segment-endpoint'   // adnotacja KOŃCA odcinka (koniec otwarty, odsyłacz ciągu dalszego)
+  // Karta SLD-SUBSTRAT (kontynuacja): NAZWA łącznika/wyłącznika sekcyjnego NA torze
+  // (`scene/elementyToru.ts`). Na rysunku aparat, w modelu GAŁĄŹ (switch/breaker) —
+  // własny rodzaj, żeby klik rozstrzygał się na gałąź, a nie na pole stacji jak
+  // `'apparatus'` (Q1/QE1 pól); rozjazd dopuszczony jawnie (`hitAreas`).
+  | 'lacznik-toru'       // nazwa łącznika sekcyjnego na torze ciągu (t3)
   | 'station-name'       // wiersz pasma nazw stacji (B5)
   | 'port-caption'       // podpis kierunku pola (t3, spec §9/§19.2: „⟨nazwa linii⟩ · kier. Sxx"/„odg. Sxx")
   | 'field-role'         // F10.2: oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/…, t3)
@@ -122,6 +127,7 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   'field-role': 'tozsamosc',
   der: 'tozsamosc',
   'no-point': 'tozsamosc',
+  'lacznik-toru': 'tozsamosc',
   'branch-point': 'tozsamosc',
   protection: 'dane',
   'port-caption': 'dane',
@@ -677,7 +683,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load' | 'branch-point';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load' | 'branch-point' | 'lacznik-toru';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;

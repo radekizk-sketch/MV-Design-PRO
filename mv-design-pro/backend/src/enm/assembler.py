@@ -23,13 +23,15 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
-from typing import Any
+from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
+from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE, zalozenia_z0_galezi
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
     jest_odbiorem_zip,
@@ -40,6 +42,7 @@ from enm.mapping import (
     build_grid_source_trace,
     build_zero_sequence_zbus,
     map_enm_to_network_graph,
+    skladowe_sieci_zerowej,
 )
 from enm.models import (
     FAZY_ODBIORU_JEDNOFAZOWEGO,
@@ -56,15 +59,28 @@ from enm.nazwy_elementow import (
     nazwa_po_identyfikatorze,
     zbuduj_indeks_nazw,
 )
+from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from enm.slownik_komunikatow import opis_elementu, opis_obiektu
+from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+from network_model.catalog.wartosci_robocze import zalozenia_parametrow_maszyn
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
 from network_model.core.graph import NetworkGraph
+from network_model.core.impedancja_przejscia import (
+    KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA,
+    OPISY_ODMOW_IMPEDANCJI,
+    impedancja_przejscia_obliczeniowa,
+    kod_odmowy_impedancji,
+)
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
-from network_model.core.voltage_factor import Scenario
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.core.ybus import S_BASE_MVA
+from network_model.nazwy import opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_odniesiona_do_napiecia_ohm,
     impedancja_wlasna_ohm,
@@ -93,6 +109,15 @@ from network_model.solvers.power_flow_unbalanced import (
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.whitebox.tracer import WhiteBoxStep, WhiteBoxTracer
 
+#: Kody odmów nazwanych składania wejścia solverów (identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10, klasa „identyfikator w treści odmowy").
+KOD_BATERIA_BEZ_SZYNY = "assembler.bateria_bez_szyny"
+KOD_BATERIA_DANE_ZNAMIONOWE = "assembler.bateria_dane_znamionowe"
+KOD_DWIE_REGULACJE_NA_SZYNIE = "assembler.dwie_regulacje_falownika_na_szynie"
+KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q = "assembler.regulacja_napiecia_bez_granic_q"
+KOD_WEZEL_PV_Z_REGULACJA_FALOWNIKA = "assembler.wezel_pv_z_regulacja_falownika"
+KOD_WEZEL_ZWARCIA_SCENARIUSZA = "assembler.wezel_zwarcia_scenariusza"
+
 
 def _graph_id_from_ref(ref_id: str) -> str:
     return str(uuid5(NAMESPACE_DNS, ref_id))
@@ -117,7 +142,7 @@ def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitTyp
     }
     if raw in mapping:
         return mapping[raw]
-    raise ValueError(f"Nieobsługiwany typ zwarcia: {raw}")
+    raise OdmowaDanychError(f"Nieobsługiwany typ zwarcia: {raw}")
 
 
 def _short_circuit_requires_z0(short_circuit_type: ShortCircuitType) -> bool:
@@ -223,7 +248,7 @@ def _normalize_power_flow_solver_method(raw_method: object) -> str:
         return "gauss-seidel"
     if normalized in {"FD", "FDLF", "FAST_DECOUPLED"}:
         return "fast-decoupled"
-    raise ValueError(f"Nieznany tryb rozpływu mocy: {raw_method}")
+    raise OdmowaDanychError(f"Nieznany tryb rozpływu mocy: {raw_method}")
 
 
 def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) -> list[ShuntSpec]:
@@ -254,21 +279,27 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
             continue
         ref_id = str(raw.get("ref_id") or "")
         bus_ref = str(raw.get("bus_ref") or "")
+        # Partia integracji 10: nazwa baterii z modelu w treści, identyfikator w `dane`.
+        bateria = opis_obiektu(raw, "Bateria kondensatorów")
         if not bus_ref:
-            raise ValueError(
-                f"Bateria kondensatorów '{ref_id}' nie ma przypisanej szyny (bus_ref)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma przypisanej szyny przyłączenia.",
+                kod=KOD_BATERIA_BEZ_SZYNY,
+                dane={"element_ref": ref_id},
             )
         rated_mvar = raw.get("rated_mvar")
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
-            raise ValueError(
-                f"Bateria kondensatorów '{ref_id}' nie ma dodatniej mocy "
-                f"znamionowej (rated_mvar)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma dodatniej mocy znamionowej Q_n.",
+                kod=KOD_BATERIA_DANE_ZNAMIONOWE,
+                dane={"element_ref": ref_id},
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
-            raise ValueError(
-                f"Bateria kondensatorów '{ref_id}' nie ma dodatniego napięcia "
-                f"znamionowego (rated_kv)."
+            raise OdmowaNazwana(
+                f"{bateria} nie ma dodatniego napięcia znamionowego U_n.",
+                kod=KOD_BATERIA_DANE_ZNAMIONOWE,
+                dane={"element_ref": ref_id},
             )
         # b_pu = Q_rated / S_base (positive susceptance for a capacitor).
         b_pu = float(rated_mvar) / base_mva
@@ -384,9 +415,12 @@ def _build_converter_control_by_node(
             continue
         node_id = _graph_id_from_ref(bus_ref.strip())
         if node_id in out:
-            raise ValueError(
-                f"Szyna {bus_ref.strip()} ma więcej niż jedno źródło z aktywną regulacją "
-                "falownika; kontrakt rozpływu dopuszcza jedną charakterystykę na węzeł"
+            raise OdmowaNazwana(
+                f"{opis_elementu(snapshot, bus_ref.strip(), 'Szyna')} ma więcej niż jedno "
+                "źródło z aktywną regulacją falownika; kontrakt rozpływu dopuszcza jedną "
+                "charakterystykę na węzeł",
+                kod=KOD_DWIE_REGULACJE_NA_SZYNIE,
+                dane={"element_ref": bus_ref.strip()},
             )
         # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
         # źródło prawdy (moc_bierna_wytworcy), tak samo jak w enm/mapping.py i
@@ -422,7 +456,7 @@ def _build_converter_control_by_node(
 KOD_WIELE_ZRODEL_W_WYSPIE = "source.multiple_grid_sources_in_island"
 
 
-class OdmowaWejsciaRozplywu(ValueError):
+class OdmowaWejsciaRozplywu(OdmowaDanychError):
     """Odmowa złożenia wejścia rozpływu z kodem gotowości kanonu (``READINESS_CODES``).
 
     ``kod`` = kod kanonu (ten sam, który emituje bramka gotowości
@@ -494,6 +528,9 @@ class WejscieRozplywu:
     wyspy: tuple[WyspaRozplywu, ...]
     pq_specs: tuple[PQSpec, ...]
     pv_specs: tuple[PVSpec, ...]
+    #: Założenia biegu (karta LINIA-110): linie 110 kV liczone z wartością roboczą geometrii
+    #: słupa — ten sam kształt co założenia biegu zwarciowego; pusta krotka = brak założeń.
+    zalozenia: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -518,9 +555,16 @@ class WejscieZwarcia:
     z0_bus: Any
     short_circuit_type: ShortCircuitType
     scenario_c: Scenario
-    c_factor_explicit: Any
-    c_factor_override: bool
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): ręczne nadpisanie c z uzasadnieniem albo
+    #: ``None`` — wtedy c dobiera ``voltage_factor.dobierz_c`` per węzeł (tabela 1).
+    nadpisanie_c: NadpisanieC | None
     tk_s: float
+    #: Karta TB-WARTOSC-ROBOCZA (B-01 (n)): czas wyłączenia t_b = t_min [s] PROJEKTANTA
+    #: z opcji biegu (``breaking_time_seconds`` — projekcja scenariusza zwarciowego) albo
+    #: ``None`` = scenariusz go nie podaje: t_b rozstrzyga się PER PUNKT ZWARCIA
+    #: (``application.solvers.short_circuit_binding.czas_tb_punktu`` — pola lokalne, inaczej
+    #: wartość robocza), obliczenie biegnie bez blokady.
+    tb_projektanta_s: float | None
     reportable_fault_node_ids: list[str]
     temperature_correction_notes: tuple[dict[str, Any], ...]
     graph_nodes: dict[str, dict[str, Any]]
@@ -547,6 +591,39 @@ class WejscieZwarcia:
     #: `application.autorytet_biegu_zwarciowego` przy odtwarzaniu proweniencji
     #: zapisanego biegu, bez ponownego przechodzenia po modelu.
     k_sc_znaczniki: tuple[str, ...]
+    #: Karta OD-14 (partia integracji 10): impedancja przejścia w miejscu zwarcia
+    #: Z_f = R_f + jX_f [Ω] z opcji biegu (`fault_impedance` — scenariusz w trybie IMPEDANCE,
+    #: `enm.scenariusze.opcje_biegu_ze_scenariusza`). ``None`` = zwarcie metaliczne IEC 60909.
+    impedancja_zwarcia: complex | None = None
+    #: Karta LINIA-110 (pkt 2): numer składowej spójnej sieci zerowej każdego węzła
+    #: ``solve_graph`` (``enm.mapping.skladowe_sieci_zerowej`` — ta sama macierz Y0 co ``z0_bus``)
+    #: — wyłącznie dla zwarć doziemnych z założeniem ``branch.z0_wartosc_robocza``; ``None`` =
+    #: Z0 nie wchodzi do biegu albo żadna gałąź nie ma R′0/X′0 z wartości roboczej.
+    skladowe_zerowe: Mapping[str, int] | None = None
+
+
+def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
+    """Z_f [Ω] z opcji biegu albo ``None`` (klucz nieobecny — zwarcie metaliczne).
+
+    Reguła danych z `network_model.core.impedancja_przejscia` (jedno źródło ze scenariuszem
+    i z rdzeniem IEC 60909): opcje podane wprost w żądaniu biegu, z pominięciem scenariusza,
+    przechodzą tę samą odmowę nazwaną co scenariusz (API 422 z kodem).
+    """
+    surowe = options.get(KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA)
+    if surowe is None:
+        return None
+    r_f = surowe.get("r_f_ohm") if isinstance(surowe, dict) else None
+    x_f = surowe.get("x_f_ohm") if isinstance(surowe, dict) else None
+    kod = kod_odmowy_impedancji(r_f, x_f)
+    if kod is not None:
+        raise OdmowaNazwana(
+            OPISY_ODMOW_IMPEDANCJI[kod],
+            kod=kod,
+            dane={"r_f_ohm": r_f, "x_f_ohm": x_f},
+        )
+    # `kod_odmowy_impedancji` zwraca `None` wyłącznie dla pary skończonych liczb; Z_f = 0
+    # to zwarcie metaliczne (ta sama funkcja co w rdzeniu — artefakt biegu bez flagi).
+    return impedancja_przejscia_obliczeniowa(float(cast(float, r_f)), float(cast(float, x_f)))
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -567,9 +644,10 @@ def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
     po niej jest deterministyczna i przenośna (CI-PARYTET-5); od CV-4.3 K3b te
     węzły są ponadto USUWANE z grafu solvera (``WejscieZwarcia.solve_graph``).
     """
-    wezly_odniesienia: set[str] = set()
+    # Źródło sieciowe bez Z_Q (odmowa odroczona, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) nadal jest
+    # odniesieniem topologii — jego brak danej odmawia konsument impedancji, nie ta kwalifikacja.
+    wezly_odniesienia: set[str] = set(graph.wezly_zrodel_sieciowych())
     for zrodla in (
-        graph.grid_sc_sources,
         graph.synchronous_machine_sources,
         graph.asynchronous_machine_sources,
     ):
@@ -701,7 +779,7 @@ def zloz_wejscie_rozplywu(
     # (``OdmowaWejsciaRozplywu``, kod ``source.multiple_grid_sources_in_island``).
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
-        raise ValueError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
+        raise OdmowaDanychError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
     # O-49 pkt 5: szyna, której odbiorów ZIP rozpływ nie odwzorowuje dokładnie (jeden
     # wielomian na szynę), jest odmową NAZWANĄ — nigdy cichym złym wynikiem. Ten sam
     # predykat czyta bramka gotowości (`_check_power_flow`). Dokładne odwzorowanie wielu
@@ -750,11 +828,12 @@ def zloz_wejscie_rozplywu(
         qmin = _oze_opt_float(meta.get("q_min_mvar"))
         qmax = _oze_opt_float(meta.get("q_max_mvar"))
         if qmin is None or qmax is None or qmin >= qmax:
-            raise ValueError(
-                f"Generator '{gen.get('ref_id')}' w trybie regulacji napięcia nie ma "
-                "kompletnych/spójnych granic mocy biernej (q_min_mvar < q_max_mvar) — "
-                "walidator ENM powinien odrzucić ten stan kodem "
-                "'generators.voltage_control_incomplete' przed uruchomieniem rozpływu."
+            raise OdmowaNazwana(
+                f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia nie ma "
+                "kompletnych i spójnych granic mocy biernej (Q_min < Q_max) — walidator "
+                "modelu odrzuca ten stan przed uruchomieniem rozpływu.",
+                kod=KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q,
+                dane={"element_ref": str(gen.get("ref_id") or "")},
             )
         pv_bounds_by_node[_graph_id_from_ref(bus_ref.strip())] = (qmin, qmax)
 
@@ -820,11 +899,19 @@ def zloz_wejscie_rozplywu(
                 f"Węzeł PV '{node_id}' nie ma granic mocy biernej w migawce — graf "
                 "podany assemblerowi nie odpowiada migawce ENM (niespójne wejście)."
             )
+        nastawa_u_pu = node.voltage_magnitude
+        if nastawa_u_pu is None:
+            # `Node.__post_init__` odmawia węzła PV bez nastawy, więc ta gałąź oznacza graf
+            # zbudowany z pominięciem konstruktora — odmowa nazwana, nie `float(None)`.
+            raise ValueError(
+                f"Węzeł PV '{node_id}' nie ma nastawy napięcia (voltage_magnitude) w grafie "
+                "podanym assemblerowi — niespójne wejście."
+            )
         pv_specs.append(
             PVSpec(
                 node_id=node_id,
                 p_mw=-float(node.active_power or 0.0),
-                u_pu=float(node.voltage_magnitude),
+                u_pu=float(nastawa_u_pu),
                 q_min_mvar=bounds[0],
                 q_max_mvar=bounds[1],
             )
@@ -842,11 +929,15 @@ def zloz_wejscie_rozplywu(
     # kształtowania) są już policzone.
     for pv_spec in pv_specs:
         if pv_spec.node_id in converter_control_by_node:
-            raise ValueError(
-                f"Szyna węzła PV '{pv_spec.node_id}' ma dodatkowo generator z aktywną "
-                "regulacją falownika (cosφ/Q(U)/statyzm P(f)) — węzeł PV niesie "
-                "WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu nie ma miejsca "
-                "na drugą, niezależną charakterystykę regulacji na tym samym węźle."
+            wezel_pv = graph.nodes.get(pv_spec.node_id)
+            raise OdmowaNazwana(
+                f"{opis_rodzaju_i_nazwy('Szyna', getattr(wezel_pv, 'name', None))} węzła PV "
+                "ma dodatkowo generator z aktywną regulacją falownika (cosφ/Q(U)/statyzm "
+                "P(f)) — węzeł PV niesie WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu "
+                "nie ma miejsca na drugą, niezależną charakterystykę regulacji na tym samym "
+                "węźle.",
+                kod=KOD_WEZEL_PV_Z_REGULACJA_FALOWNIKA,
+                dane={"wezel_ref": pv_spec.node_id},
             )
 
     options_solvera = PowerFlowOptions(
@@ -932,6 +1023,7 @@ def zloz_wejscie_rozplywu(
         wyspy=tuple(wyspy),
         pq_specs=tuple(pq_specs),
         pv_specs=tuple(pv_specs),
+        zalozenia=zalozenia_linii_wn(EnergyNetworkModel.model_validate(snapshot), None),
     )
 
 
@@ -966,23 +1058,33 @@ def zloz_wejscie_zwarcia(
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
     # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
-    # z korektą temperaturową R_θ na KOPII grafu. Reuse P0.3 1:1 — te same
-    # moduły co ścieżka execution engine (application/solvers/short_circuit_binding.py):
+    # z korektą temperaturową R_θ na KOPII grafu. Reuse P0.3 1:1 (dawna ścieżka execution
+    # engine skasowana — CV-3.3-A i TORY-TYLKO-W-TESTACH): moduły
     # ``network_model.core.voltage_factor.c_for_node`` i
     # ``application.solvers.lv_temperature_correction.build_min_scenario_graph``.
     # Zero duplikacji wzorów, solver FROZEN nietknięty.
     scenario_raw = str(options.get("scenario", "max")).strip().lower()
     if scenario_raw not in ("max", "min"):
-        raise ValueError(f"Nieznany scenariusz zwarcia: {scenario_raw!r} (oczekiwano 'max'/'min')")
+        raise OdmowaDanychError(
+            f"Nieznany scenariusz zwarcia: {scenario_raw!r} (oczekiwano 'max'/'min')"
+        )
     scenario_c: Scenario = "MAX" if scenario_raw == "max" else "MIN"
 
-    # Jawny c_factor w options = OVERRIDE płaski dla wszystkich węzłów (zachowanie
-    # wsteczne dla istniejących payloadów). Brak c_factor = AUTO per węzeł z jego
-    # własnego pasma napięciowego (patrz c_for_node w pętli poniżej).
-    c_factor_explicit: Any = options.get("c_factor")
-    c_factor_override = c_factor_explicit is not None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (decyzja O-59): jedynym nośnikiem c jest scenariusz
+    # (``scenario`` MAX/MIN → tabela 1 IEC 60909-0 per węzeł). Dawny klucz ``c_factor``
+    # (płaskie nadpisanie dla WSZYSTKICH węzłów, bez uzasadnienia) jest ODMOWĄ — bez
+    # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
+    if "c_factor" in options:
+        raise OdmowaDanychError(
+            "Opcja biegu `c_factor` została usunięta — współczynnik napięciowy c wynika ze "
+            "scenariusza (`scenario`: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
+            "z uzasadnieniem (`nadpisanie_c`: `{wartosc, uzasadnienie}`)."
+        )
+    nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 
     tk_s = float(options.get("thermal_time_seconds", 1.0))
+    tb_projektanta_s = czas_tb_z_danych(options.get(KLUCZ_OPCJI_CZASU_TB))
+    impedancja_zwarcia = impedancja_zwarcia_z_opcji(options)
 
     # PERF-SC-50: tryb wkładów gałęziowych. Domyślnie NA ŻĄDANIE (klucz nieobecny —
     # istniejące payloady i ich `input_hash` bez zmian); `in_run` jawnie z opcji albo z
@@ -999,7 +1101,7 @@ def zloz_wejscie_zwarcia(
     else:
         tryb_wkladow = str(tryb_wkladow_surowy).strip().lower()
     if tryb_wkladow not in ("on_demand", "in_run"):
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
             "(oczekiwano 'on_demand'/'in_run')"
         )
@@ -1057,7 +1159,7 @@ def zloz_wejscie_zwarcia(
     # `location` w opcjach = zachowanie bez zmian (wszystkie węzły raportowalne,
     # parytet z biegiem bez scenariusza). `location_type` BUS/NODE zawęża zbiór
     # do JEDNEGO wskazanego węzła (parytet fizyki z biegiem bez lokalizacji —
-    # ten sam solver, ten sam c_factor/tk_s, tylko inny podzbiór węzłów).
+    # ten sam solver, ten sam dobór c/tk_s, tylko inny podzbiór węzłów).
     # BRANCH/BRANCH_POINT to JAWNA ODMOWA: adapter obliczeniowy liczy zwarcie
     # wyłącznie w węźle grafu, a punkt pośredni na gałęzi wymagałby rozdzielenia
     # jej na dwie impedancje w miejscu zwarcia (assembler), którego solver
@@ -1067,33 +1169,47 @@ def zloz_wejscie_zwarcia(
     location_raw = options.get("location")
     if location_raw is not None:
         if not isinstance(location_raw, dict):
-            raise ValueError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
+            raise OdmowaDanychError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
         location_type = location_raw.get("location_type")
         element_ref = str(location_raw.get("element_ref") or "")
         if location_type in ("BUS", "NODE"):
             if not element_ref:
-                raise ValueError(
+                raise OdmowaDanychError(
                     "Lokalizacja zwarcia scenariusza nie wskazuje elementu (element_ref)"
                 )
             target_node_id = _graph_id_from_ref(element_ref)
             if target_node_id not in graph.nodes:
-                raise ValueError(
-                    f"Węzeł zwarcia {element_ref!r} ze scenariusza nie istnieje w modelu sieci"
+                raise OdmowaNazwana(
+                    "Węzeł zwarcia wskazany w scenariuszu nie istnieje w modelu sieci",
+                    kod=KOD_WEZEL_ZWARCIA_SCENARIUSZA,
+                    dane={"element_ref": element_ref},
                 )
             if target_node_id not in reportable_fault_node_ids:
-                raise ValueError(
-                    f"Węzeł zwarcia {element_ref!r} jest węzłem pomocniczym "
-                    "(skip_short_circuit_target) — nie jest raportowalnym punktem zwarcia"
+                raise OdmowaNazwana(
+                    f"{opis_elementu(snapshot, element_ref, 'Węzeł zwarcia')} jest węzłem "
+                    "pomocniczym (wyłączonym z punktów zwarcia) — nie jest raportowalnym "
+                    "punktem zwarcia",
+                    kod=KOD_WEZEL_ZWARCIA_SCENARIUSZA,
+                    dane={"element_ref": element_ref},
                 )
             reportable_fault_node_ids = [target_node_id]
         elif location_type in ("BRANCH", "BRANCH_POINT"):
             spec = READINESS_CODES["fault.location_on_branch_requires_assembler"]
-            raise ValueError(
-                f"{spec.message_pl} (element_ref={element_ref!r}, "
-                f"location_type={location_type!r})"
+            raise OdmowaNazwana(
+                spec.message_pl,
+                kod=spec.code,
+                dane={"element_ref": element_ref, "location_type": str(location_type)},
             )
         else:
-            raise ValueError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+            raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+    zalozenia_z0 = (
+        zalozenia_z0_galezi(enm, scenario_c)
+        if _short_circuit_requires_z0(short_circuit_type)
+        else ()
+    )
+    skladowe_zerowe = (
+        skladowe_sieci_zerowej(enm, solve_graph, scenario=scenario_c) if zalozenia_z0 else None
+    )
     zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
     # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc pozostaje
     # DEFAULT_FORBIDDEN"): ślad WHITE BOX założeń k_sc (`graph.
@@ -1123,6 +1239,16 @@ def zloz_wejscie_zwarcia(
             if wpis.get("zalozenie")
         )
         + k_sc_zalozenia
+        # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: wyspy nN liczone z wartością roboczą tolerancji.
+        + zalozenia_tolerancji_nn(enm, scenario_c)
+        # Karta LINIA-110: linie 110 kV z R′/X′/B′/Z′0 policzonymi z wartością roboczą geometrii.
+        + zalozenia_linii_wn(enm, scenario_c)
+        # Karta LINIA-110 (pkt 2): linie i kable z R′0/X′0 z założenia katalogu — wyłącznie
+        # zwarcia doziemne (Z0 nie wchodzi do 3F/2F).
+        + zalozenia_z0
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3): maszyny wirujące liczone z wartościami roboczymi
+        # parametrów (`graph.wartosci_robocze_maszyn`, wypełnione RAZ przez mapowanie ENM).
+        + zalozenia_parametrow_maszyn(graph.wartosci_robocze_maszyn, scenario_c)
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.
@@ -1137,9 +1263,9 @@ def zloz_wejscie_zwarcia(
         z0_bus=z0_bus,
         short_circuit_type=short_circuit_type,
         scenario_c=scenario_c,
-        c_factor_explicit=c_factor_explicit,
-        c_factor_override=c_factor_override,
+        nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
+        tb_projektanta_s=tb_projektanta_s,
         reportable_fault_node_ids=reportable_fault_node_ids,
         temperature_correction_notes=temperature_correction_notes,
         graph_nodes=graph_nodes,
@@ -1149,6 +1275,8 @@ def zloz_wejscie_zwarcia(
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,
         k_sc_znaczniki=k_sc_znaczniki,
+        impedancja_zwarcia=impedancja_zwarcia,
+        skladowe_zerowe=skladowe_zerowe,
     )
 
 
@@ -2062,6 +2190,19 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta))
     if admitancja_pominieta:
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta))
+    # Karta LINIA-110: linie 110 kV, których Z1 i Z0 policzono z wartością roboczą geometrii —
+    # ten sam zbiór (załączone) co założenia zwarć i rozpływu symetrycznego.
+    linie_robocze = [str(z["element_ref"]) for z in zalozenia_linii_wn(enm, None)]
+    if linie_robocze:
+        zalozenia.append(_zalozenie(KOD_GEOMETRIA_ROBOCZA, linie_robocze))
+    # Karta LINIA-110 (pkt 2): R′0/X′0 z założenia katalogu — wyłącznie gałęzie z realnym I0
+    # (``droga_zerowa.z_realnym_i0``: tylko ich Z0 wchodzi do równań solvera).
+    galezie_z0_robocze = [
+        str(z["element_ref"])
+        for z in zalozenia_z0_galezi(enm, None, galezie=droga_zerowa.z_realnym_i0)
+    ]
+    if galezie_z0_robocze:
+        zalozenia.append(_zalozenie(KOD_Z0_ROBOCZE, galezie_z0_robocze))
     if galezie_ze_sprzezeniem:
         zalozenia.append(
             _zalozenie(

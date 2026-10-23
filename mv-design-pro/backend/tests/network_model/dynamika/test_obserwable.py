@@ -46,10 +46,16 @@ from tests.network_model.dynamika.uklady import (
     nastawy,
     zbuduj_smib,
 )
+from tests.walidacja_fizyczna.stanowisko import (
+    U_MIN_TESTOWE_PU,
+    modele_odbiorow,
+    stany_z_odbiorami,
+)
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 #: Niepewnosc napiecia uzywana w testach jednostkowych czestotliwosci — WEJSCIE
 #: funkcji, nie nastawa solvera (od korekty par. 5 niepewnosc jest mierzona).
@@ -301,7 +307,7 @@ def test_kody_jakosci_sa_zamknietym_zbiorem_z_opisem() -> None:
     assert set(OPIS_JAKOSCI_PL) == kody
     assert len(kody) == 5
     # Trzy przyczyny niedostepnosci sa rozlaczne i nazwane (karta AB-1b.1 par. 0 pkt 7).
-    assert all(OPIS_JAKOSCI_PL[kod].startswith("niedostepna") for kod in kody if kod >= 2.0)
+    assert all(OPIS_JAKOSCI_PL[kod].startswith("niedostępna") for kod in kody if kod >= 2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -684,8 +690,9 @@ def _uklad_z_odbiorem(p_odbioru_pu: float) -> tuple[object, ...]:
         ra_pu=0.0,
         omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
     )
-    stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
-    return model, odbiory, (maszyna,), stany
+    modele = modele_odbiorow(odbiory)
+    stany = stany_z_odbiorami(modele, (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),))
+    return model, modele, (maszyna,), stany
 
 
 def test_niepewnosc_ogranicza_rzeczywisty_blad_takze_blisko_granicy_obciazalnosci() -> None:
@@ -798,7 +805,10 @@ def test_niepewnosc_rosnie_gdy_jakobian_algebry_staje_sie_gorzej_uwarunkowany() 
                 omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
             ),
         )
-        stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+        odbiory = modele_odbiorow(odbiory)
+        stany = stany_z_odbiorami(
+            odbiory, (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+        )
         rozwiazanie = rozwiaz_algebre(
             model,
             odbiory,
@@ -1228,20 +1238,34 @@ def test_a01_punkt_skorygowany_jest_krokiem_w_strone_rozwiazania() -> None:
     pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
     # Odtworzenie punktu skorygowanego z opublikowanej niepewnosci nie jest mozliwe (modul
     # gubi kierunek), wiec liczymy korekte tak, jak robi to produkcja, i sprawdzamy OBIE
-    # strony: krok „w dol" ma obnizyc residuum, krok „w gore" — podniesc.
-    from network_model.solvers.dynamika.siec import jakobian_algebry
+    # strony: krok „w dol" ma obnizyc residuum, krok „w gore" — podniesc. Korekta to krok
+    # Newtona z CZESCI PEWNEJ residuum `psi(r) = sign(r) max(|r| - rho, 0)` (karta
+    # PRZENOSNOSC-NIEPEWNOSCI); przy tolerancji 1e-4 residuum jest o jedenascie rzedow nad
+    # granica zaokraglen, wiec `psi` to `r` z dokladnoscia do `rho`, a estymata to modul
+    # korekty plus propagacja granicy `|J^-1 rho|`.
+    from network_model.solvers.dynamika.siec import (
+        granica_zaokraglen_residuum,
+        jakobian_algebry,
+    )
     from scipy.sparse import linalg as sparse_linalg
 
     liczba = model.liczba_wezlow
     reszta = residuum_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
+    granica = np.concatenate(
+        (granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia),) * 2
+    )
+    czesc_pewna = np.sign(reszta) * np.maximum(np.abs(reszta) - granica, 0.0)
     rozklad = sparse_linalg.splu(
         jakobian_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
     )
-    krok = rozklad.solve(reszta)
+    krok = rozklad.solve(czesc_pewna)
     korekta = krok[:liczba] + 1j * krok[liczba:]
+    dno = rozklad.solve(granica)
     assert np.allclose(
-        np.abs(korekta), pomiar.niepewnosc_napiecia_pu, rtol=1e-12
-    ), "produkcja liczy niepewnosc napiecia z innej wielkosci niz krok Newtona"
+        np.abs(korekta) + np.abs(dno[:liczba] + 1j * dno[liczba:]),
+        pomiar.niepewnosc_napiecia_pu,
+        rtol=1e-12,
+    ), "produkcja liczy niepewnosc napiecia z innej wielkosci niz krok Newtona czesci pewnej"
 
     norma = float(np.linalg.norm(reszta))
     w_dol = float(

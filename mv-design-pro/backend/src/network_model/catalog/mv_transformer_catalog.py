@@ -1,13 +1,15 @@
 """
 Katalog transformatorow SN — dane tabliczkowe i zwarciowe.
 
-ZRODLA DANYCH:
-- Transformatory WN/SN (110/15 kV, 110/20 kV):
-    PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42
-- Transformatory SN/nN (15/0.4 kV, 20/0.4 kV):
-    PN-EN 60076-11:2004 Tabl.A + Rozporzadzenie UE 2019/1783 Tier 2 / ABB katalog dystrybucyjny
-- Transformatory SN/nN dla zrodel falownikowych PV/BESS/FW:
-    referencyjne profile projektowe 15/0.5-6.3 kV oraz 20/0.5-6.3 kV
+ZRODLA DANYCH (proweniencja w polach rekordu, widoczna w karcie technicznej UI):
+- Jednostki istniejace WN/SN 110/15 i 110/20 kV (deklarowane ZREW T-42) oraz SN/nN
+    15/0,4 i 20/0,4 kV (deklarowane ABB / Trafo Zywiec, polscy producenci): straty sprzed
+    ekoprojektu, dokumenty niedolaczone — NIEWERYFIKOWANY, znacznik przekroczenia Tier 2.
+- Pozycje normatywne SN/nN 15/0,4 i 20/0,4 kV (olejowe i suche, 250–3150 kVA) oraz
+    blokowe PV/BESS/FW 15|20/0,385–1,0 kV (suche, 500–3150 kVA): straty = pulap Tier 2
+    rozporzadzenia (UE) 548/2014 w brzmieniu 2019/1783, u_k/i0/zaczepy = seria Siemens
+    GEAFOL — REFERENCYJNY (normatywna/typowa, nie egzemplarz producenta).
+- Karty producentow: Siemens GEAFOL Neo 4GY6364-1EC 2000 kVA 20/0,48 kV — ZWERYFIKOWANY.
 
 KONWENCJE:
 - rated_power_mva [MVA] — moc znamionowa
@@ -24,27 +26,53 @@ GRUPY POLACZEN:
 - Dyn11: trojkat-gwiazda z N, przesun. 330 stopni — typowy SN/nN
 - YNd11: gwiazda uziemiona-trojkat, przesun. 330 stopni — z uziemieniem
 
-METADATA:
-- verification_status: ZWERYFIKOWANY — parametry z kart katalogowych lub norm IEC
-- catalog_status: PRODUKCYJNY_V1 — gotowy do uzycia w obliczeniach produkcyjnych
-- source_reference: zrodlo danych (norma + katalog producenta)
+METADATA (proweniencja, ten sam mechanizm co w pozostalych katalogach):
+- verification_status: ZWERYFIKOWANY (karta producenta dolaczona cytatem z adresem),
+  REFERENCYJNY (pozycja normatywna/typowa), NIEWERYFIKOWANY (deklaracja bez dokumentu)
+- catalog_status: PRODUKCYJNY_V1 (karta producenta) / REFERENCYJNY_V1 (pozostale)
+- source_reference: cytat zrodla; verification_note: zakres i zastrzezenia
 - contract_version: "2.0" — zamrozony kontrakt katalogu
 
-TYPOSZEREG PRZEMYSLOWY:
-  WN/SN (110/15 kV): 10, 16, 25, 40, 63 MVA Yd11  — 5 mocy
-  WN/SN (110/20 kV): 10, 16, 25, 40, 63 MVA Yd11  — 5 mocy
-  SN/nN (15/0.4 kV): 63, 100, 160, 250, 400, 630, 1000, 1250, 1600, 2000, 2500 kVA Dyn11  — 11 mocy
-  SN/nN (15/0.4 kV): 630, 1000 kVA Yd11  — 2 mocy specjalne
-  SN/nN (20/0.4 kV): 63, 100, 160, 250, 400, 630, 1000, 1250, 1600 kVA Dyn11  — 9 mocy
-  SN/nN (20/0.4 kV): 630, 1000 kVA Yd11  — 2 mocy specjalne
-  SN/nN PV/BESS/FW: 15/0.5-6.3 kV i 20/0.5-6.3 kV - 142 rekordy referencyjne
-  Razem: 176 rekordow
+TYPOSZEREG (225 rekordow, pomiar 2026-10-15):
+  WN/SN 110/15 i 110/20 kV: 10, 16, 25, 40, 63 MVA Yd11 — 10 jednostek istniejacych
+  SN/nN 15|20/0,4 kV jednostki istniejace: 24 (Dyn11/Yd11, 63–2500 kVA)
+  SN/nN 15|20/0,4 kV normatywne Tier 2: 48 (olejowe i suche, 250–3150 kVA)
+  SN/nN blokowe 15|20/0,385|0,434|0,48|0,5|0,69|0,8|1,0 kV: 126 normatywnych (500–3150 kVA)
+  Karty producentow: 1; polscy producenci (deklarowane, niezweryfikowane): 16
 """
 
+import math
 from typing import Any
 
-from network_model.pochodne import kva_na_mva, mva_na_kva
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne import kva_na_mva
+
+#: Znacznik noty pozycji, ktorej straty przekraczaja pulap Tier 2 rozporzadzenia (UE)
+#: 548/2014 w brzmieniu (UE) 2019/1783 (jedno zrodlo prawdy dla danych i testu pary
+#: predykatow `test_katalog_proweniencja_kompletnosc.py`).
+ZNACZNIK_PRZEKROCZENIA_TIER2 = "PRZEKRACZA PUŁAP TIER 2"
+
+_SUFIKS_ZRODLA_ISTNIEJACEGO = (
+    " — wartości sprzed ekoprojektu (jednostki istniejące); dokument nie jest dołączony "
+    "do repozytorium (niezweryfikowany)"
+)
+
+#: Nota jednostek istniejacych SN/nN (pomiar 2026-10-15: kazda przekracza tab. I.1 Tier 2).
+NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN = (
+    f"{ZNACZNIK_PRZEKROCZENIA_TIER2} (UE 548/2014 w brzmieniu 2019/1783, tab. I.1/I.2): "
+    "jednostka istniejąca — straty sprzed ekoprojektu, nie opisuje transformatora "
+    "wprowadzanego dziś na rynek UE. Dla nowych projektów pozycje normatywne "
+    "„tr-sn-nn-…-tier2-…”. Deklarowana seria ABB RESIBLOC jest żywiczna (sucha), a rekord "
+    "podaje chłodzenie olejowe — sprzeczność danych bez dokumentu; pułap przekroczony "
+    "względem obu tabel (I.1 i I.2)."
+)
+
+#: Nota jednostek istniejacych WN/SN (pomiar 2026-10-15: PEI 99,44–99,64 % ponizej
+#: minimum tab. I.7 Tier 2 99,615–99,745 %).
+NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN = (
+    f"{ZNACZNIK_PRZEKROCZENIA_TIER2} (UE 548/2014 w brzmieniu 2019/1783, tab. I.7 — "
+    "minimalny PEI): jednostka istniejąca — straty sprzed ekoprojektu. Katalog nie ma "
+    "pozycji WN/SN zgodnej z Tier 2: brak karty producenta z kompletem P0/Pk/u_k."
+)
 
 # =============================================================================
 # TRANSFORMATORY WN/SN (110/15 kV) — Yd11
@@ -70,10 +98,12 @@ TRANSFORMER_WN_SN_110_15: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -94,10 +124,12 @@ TRANSFORMER_WN_SN_110_15: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -118,10 +150,12 @@ TRANSFORMER_WN_SN_110_15: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -142,10 +176,12 @@ TRANSFORMER_WN_SN_110_15: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -166,10 +202,12 @@ TRANSFORMER_WN_SN_110_15: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
 ]
@@ -199,10 +237,12 @@ TRANSFORMER_WN_SN_110_20: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -223,10 +263,12 @@ TRANSFORMER_WN_SN_110_20: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -247,10 +289,12 @@ TRANSFORMER_WN_SN_110_20: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -271,10 +315,12 @@ TRANSFORMER_WN_SN_110_20: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
     {
@@ -295,10 +341,12 @@ TRANSFORMER_WN_SN_110_20: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ZREW Transformatory",
             "standard": "PN-EN 60076-1:2011",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN,
         },
     },
 ]
@@ -330,10 +378,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -354,10 +404,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -378,10 +430,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -402,10 +456,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -426,10 +482,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -450,10 +508,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -474,10 +534,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -498,10 +560,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -522,10 +586,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -546,10 +612,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -570,10 +638,12 @@ TRANSFORMER_SN_NN_15_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
 ]
@@ -604,10 +674,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "Trafo Zywiec",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / Trafo Zywiec katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / Trafo Zywiec katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -628,10 +700,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -652,10 +726,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "Trafo Zywiec",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / Trafo Zywiec katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / Trafo Zywiec katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -676,10 +752,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -700,10 +778,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -724,10 +804,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -748,10 +830,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -772,10 +856,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -796,10 +882,12 @@ TRANSFORMER_SN_NN_20_04_DYN11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
 ]
@@ -829,10 +917,12 @@ TRANSFORMER_SN_NN_15_04_YD11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -853,10 +943,12 @@ TRANSFORMER_SN_NN_15_04_YD11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
 ]
@@ -881,10 +973,12 @@ TRANSFORMER_SN_NN_20_04_YD11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
     {
@@ -905,104 +999,423 @@ TRANSFORMER_SN_NN_20_04_YD11: list[dict[str, Any]] = [
             "tap_step_percent": 2.5,
             "manufacturer": "ABB",
             "standard": "PN-EN 60076-11:2004",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": "Deklarowane: PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog"
+            + _SUFIKS_ZRODLA_ISTNIEJACEGO,
             "contract_version": "2.0",
+            "verification_note": NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN,
         },
     },
 ]
 
 
 # =============================================================================
-# TRANSFORMATORY SN/nN DLA ZRODEL FALOWNIKOWYCH PV / BESS / FW
+# PROWENIENCJA KATALOGU TRANSFORMATOROW (karta KATALOG-KOMPLETNY-PROWENIENCJA, 2026-10-15)
+# =============================================================================
+#
+# Kazda pozycja niesie zrodlo w polach metadanych katalogu (`source_reference`,
+# `verification_status`, `catalog_status`, `verification_note`) — tych samych, ktore
+# pokazuje karta techniczna UI (`KartaTechniczna.tsx`, sekcja „Pochodzenie danych").
+# Trzy rodzaje proweniencji, rozpoznawalne po danych (bez osobnego mechanizmu):
+#
+# * KARTA PRODUCENTA — `verification_status = ZWERYFIKOWANY`, `source_reference` cytuje
+#   dokument producenta (typ, numer, adres, data dostepu);
+# * POZYCJA NORMATYWNA — `verification_status = REFERENCYJNY`, straty P0/Pk = PULAP Tier 2
+#   rozporzadzenia (UE) 548/2014 w brzmieniu (UE) 2019/1783, u_k/i0/zaczepy = seria
+#   Siemens GEAFOL (decyzja wlasciciela 2026-10-15: „normatywne teraz + karty producentow
+#   pozniej"). To NIE jest egzemplarz producenta — pozycja producenta dochodzi pozniej jako
+#   osobny rekord z karta PDF, bez zmiany tego mechanizmu;
+# * JEDNOSTKA ISTNIEJACA / DANE NIEZWERYFIKOWANE — `verification_status = NIEWERYFIKOWANY`,
+#   nota z `ZNACZNIK_PRZEKROCZENIA_TIER2`: straty przekraczaja pulap Tier 2, wiec pozycja
+#   nie opisuje transformatora wprowadzanego dzis na rynek UE.
+#
+# Para predykatow (regula KLASA, NIE INSTANCJA pkt 3): znacznik przekroczenia w nocie
+# i obliczona niezgodnosc z tabelami ponizej musza sie pokrywac w OBIE strony —
+# pilnuje `tests/network_model/catalog/test_katalog_proweniencja_kompletnosc.py`.
+
+#: Cytat rozporzadzenia — tabele I.1/I.2 (pulapy strat, Sr <= 3150 kVA) oraz I.4/I.5/I.7
+#: (minimalny PEI dla Sr > 3150 kVA i transformatorow duzej mocy).
+ZRODLO_TIER2 = (
+    "Rozporządzenie Komisji (UE) nr 548/2014, załącznik I, w brzmieniu rozporządzenia "
+    "(UE) 2019/1783 — Tier 2 (od 1.07.2021): tab. I.1 (olejowe) i I.2 (suche), "
+    "pułapy strat P0 i Pk; tekst: https://www.legislation.gov.uk/eur/2014/548/annex/I "
+    "(dostęp 2026-10-15)"
+)
+
+#: Cytat serii Siemens GEAFOL — zrodlo u_k, i0 i zakresu zaczepow pozycji normatywnych.
+ZRODLO_GEAFOL_UK = (
+    "Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of "
+    "ordering data for Standard 20kV/22kV/24kV” (str. 7): u_k 6 % dla 200–2500 kVA, "
+    "8 % dla 3150 kVA (przypisanie u_k z kolumny scalonej do wierszy jest interpretacją "
+    "układu tabeli), prąd jałowy i0 z kolumny „No-load Current”, zaczepy ±2×2,5 %; "
+    "https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-"
+    "8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)"
+)
+
+#: Tab. I.1 (olejowe, Um <= 24 kV / Um <= 1,1 kV), kolumny Tier 2: S_r [kVA] -> (Pk, P0) [W].
+#: Wiersz „<= 25" zapisany jako 25. P0 dla 1600 kVA = 1080 W (A0 - 10 % z 1200 W; pierwotny
+#: tekst 2014 mial blad „180", poprawiony rozporzadzeniem 2019/1783).
+TIER2_OLEJOWE_PK_P0_W: dict[int, tuple[float, float]] = {
+    25: (600.0, 63.0),
+    50: (750.0, 81.0),
+    100: (1250.0, 130.0),
+    160: (1750.0, 189.0),
+    250: (2350.0, 270.0),
+    315: (2800.0, 324.0),
+    400: (3250.0, 387.0),
+    500: (3900.0, 459.0),
+    630: (4600.0, 540.0),
+    800: (6000.0, 585.0),
+    1000: (7600.0, 693.0),
+    1250: (9500.0, 855.0),
+    1600: (12000.0, 1080.0),
+    2000: (15000.0, 1305.0),
+    2500: (18500.0, 1575.0),
+    3150: (23000.0, 1980.0),
+}
+
+#: Tab. I.2 (suche, Um <= 24 kV / Um <= 1,1 kV), kolumny Tier 2. Wiersz „<= 50" jako 50.
+TIER2_SUCHE_PK_P0_W: dict[int, tuple[float, float]] = {
+    50: (1500.0, 180.0),
+    100: (1800.0, 252.0),
+    160: (2600.0, 360.0),
+    250: (3400.0, 468.0),
+    400: (4500.0, 675.0),
+    630: (7100.0, 990.0),
+    800: (8000.0, 1170.0),
+    1000: (9000.0, 1395.0),
+    1250: (11000.0, 1620.0),
+    1600: (13000.0, 1980.0),
+    2000: (16000.0, 2340.0),
+    2500: (19000.0, 2790.0),
+    3150: (22000.0, 3420.0),
+}
+
+#: Tab. I.7 (olejowe duzej mocy, Um > 36 kV), Tier 2: S_r [MVA] -> minimalny PEI [%].
+TIER2_PEI_OLEJOWE_DUZEJ_MOCY_PROC: dict[float, float] = {
+    0.025: 98.251,
+    0.05: 98.891,
+    0.1: 99.093,
+    0.16: 99.191,
+    0.25: 99.283,
+    0.315: 99.320,
+    0.4: 99.369,
+    0.5: 99.398,
+    0.63: 99.437,
+    0.8: 99.473,
+    1.0: 99.484,
+    1.25: 99.487,
+    1.6: 99.494,
+    2.0: 99.502,
+    2.5: 99.514,
+    3.15: 99.518,
+    4.0: 99.532,
+    5.0: 99.548,
+    6.3: 99.571,
+    8.0: 99.593,
+    10.0: 99.615,
+    12.5: 99.640,
+    16.0: 99.663,
+    20.0: 99.684,
+    25.0: 99.700,
+    31.5: 99.712,
+    40.0: 99.724,
+    50.0: 99.734,
+    63.0: 99.745,
+    80.0: 99.758,
+    100.0: 99.770,
+    125.0: 99.780,
+    160.0: 99.790,
+    200.0: 99.797,
+}
+
+#: Seria Siemens GEAFOL 20/22/24 kV (broszura MSDT201901, str. 7): S_r [kVA] ->
+#: (u_k [%], i0 [%]). u_k z kolumny scalonej (6 % dla 200–2500, 8 % dla 3150).
+GEAFOL_24KV_UK_I0_PROC: dict[int, tuple[float, float]] = {
+    200: (6.0, 0.8),
+    250: (6.0, 0.8),
+    315: (6.0, 0.8),
+    400: (6.0, 0.8),
+    500: (6.0, 0.8),
+    630: (6.0, 0.6),
+    800: (6.0, 0.6),
+    1000: (6.0, 0.6),
+    1250: (6.0, 0.6),
+    1600: (6.0, 0.6),
+    2000: (6.0, 0.5),
+    2500: (6.0, 0.5),
+    3150: (8.0, 0.4),
+}
+
+RODZAJ_OLEJOWY = "olejowy"
+RODZAJ_SUCHY = "suchy"
+
+_TABELA_TIER2_WG_RODZAJU: dict[str, dict[int, tuple[float, float]]] = {
+    RODZAJ_OLEJOWY: TIER2_OLEJOWE_PK_P0_W,
+    RODZAJ_SUCHY: TIER2_SUCHE_PK_P0_W,
+}
+_NUMER_TABELI_TIER2: dict[str, str] = {RODZAJ_OLEJOWY: "I.1", RODZAJ_SUCHY: "I.2"}
+_CHLODZENIE_WG_RODZAJU: dict[str, str] = {RODZAJ_OLEJOWY: "ONAN", RODZAJ_SUCHY: "AN"}
+
+
+def rodzaj_izolacji_transformatora(cooling_class: str | None) -> str | None:
+    """Rodzaj izolacji z oznaczenia chlodzenia IEC 60076-2/-11 (pierwsza litera).
+
+    ``O``/``K``/``L`` — ciecz izolacyjna (olej mineralny, ciecz o wysokim punkcie zaplonu)
+    => tab. I.1; ``A`` — powietrze (transformator suchy) => tab. I.2. Brak oznaczenia ->
+    ``None`` (rodzaju nie da sie odczytac, nic nie jest zgadywane).
+    """
+    if not cooling_class:
+        return None
+    pierwsza = cooling_class.strip().upper()[:1]
+    if pierwsza in {"O", "K", "L"}:
+        return RODZAJ_OLEJOWY
+    if pierwsza == "A":
+        return RODZAJ_SUCHY
+    return None
+
+
+def pulap_strat_tier2_w(rodzaj: str, moc_kva: float) -> tuple[float, float] | None:
+    """Pulap (Pk, P0) [W] wg tab. I.1/I.2 Tier 2 dla mocy z zakresu tabeli.
+
+    Przypis „a" tabel: moce posrednie — interpolacja liniowa. Wiersz najnizszy tabeli
+    („<= 25"/„<= 50") obejmuje moce mniejsze. Moc > 3150 kVA lezy poza tab. I.1/I.2
+    (wymaganie PEI) -> ``None``.
+    """
+    tabela = _TABELA_TIER2_WG_RODZAJU[rodzaj]
+    moce = sorted(tabela)
+    if moc_kva > moce[-1]:
+        return None
+    if moc_kva <= moce[0]:
+        return tabela[moce[0]]
+    for dolna, gorna in zip(moce, moce[1:], strict=False):
+        if dolna <= moc_kva <= gorna:
+            udzial = (moc_kva - dolna) / (gorna - dolna)
+            pk_d, p0_d = tabela[dolna]
+            pk_g, p0_g = tabela[gorna]
+            return (pk_d + udzial * (pk_g - pk_d), p0_d + udzial * (p0_g - p0_d))
+    return None  # nieosiagalne: przedzial pokryty petla
+
+
+def _w_na_kw_bez_przekroczenia(wartosc_w: float) -> float:
+    """[W] -> [kW] z zaokragleniem W DOL do 0,1 W — pulap Tier 2 to wartosc MAKSYMALNA,
+    wiec zapis interpolowanego pulapu nie moze go przekroczyc nawet o ulamek wata."""
+    return math.floor(wartosc_w * 10.0 + 1e-9) / 10000.0
+
+
+def _token(value: float) -> str:
+    return f"{value:g}".replace(".", "p")
+
+
+def _pozycja_normatywna(
+    *,
+    item_id: str,
+    name: str,
+    moc_kva: int,
+    hv_kv: float,
+    lv_kv: float,
+    rodzaj: str,
+) -> dict[str, Any]:
+    """Pozycja NORMATYWNA: straty = pulap Tier 2, u_k/i0/zaczepy = seria GEAFOL.
+
+    i0: dla transformatora SUCHEGO z kolumny „No-load Current" tej samej serii (suchej,
+    zywicznej); dla OLEJOWEGO ``None`` — prad jalowy serii suchej nie przenosi sie na
+    rdzen transformatora olejowego, a zrodla dla serii olejowej brak (konsument zglasza
+    WARNING `transformer.no_load_params_missing`, nie zgaduje).
+    """
+    pulap = pulap_strat_tier2_w(rodzaj, float(moc_kva))
+    if pulap is None:
+        raise ValueError(f"{item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat")
+    pk_w, p0_w = pulap
+    uk_proc, i0_proc = GEAFOL_24KV_UK_I0_PROC[moc_kva]
+    tabela = _NUMER_TABELI_TIER2[rodzaj]
+    return {
+        "id": item_id,
+        "name": name,
+        "params": {
+            "rated_power_mva": kva_na_mva(moc_kva),
+            "voltage_hv_kv": hv_kv,
+            "voltage_lv_kv": lv_kv,
+            "uk_percent": uk_proc,
+            "pk_kw": _w_na_kw_bez_przekroczenia(pk_w),
+            "i0_percent": i0_proc if rodzaj == RODZAJ_SUCHY else None,
+            "p0_kw": _w_na_kw_bez_przekroczenia(p0_w),
+            "vector_group": "Dyn11",
+            "cooling_class": _CHLODZENIE_WG_RODZAJU[rodzaj],
+            "tap_min": -2,
+            "tap_max": 2,
+            "tap_step_percent": 2.5,
+            "standard": "UE 548/2014 (2019/1783) Tier 2",
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": f"{ZRODLO_TIER2} || u_k, i0, zaczepy: {ZRODLO_GEAFOL_UK}",
+            "contract_version": "2.0",
+            "verification_note": (
+                f"Pozycja NORMATYWNA/TYPOWA — nie egzemplarz producenta. Transformator "
+                f"{rodzaj} {moc_kva} kVA: Pk = {pk_w:.1f} W i P0 = {p0_w:.1f} W to pułap "
+                f"Tier 2 z tab. {tabela}"
+                + (
+                    " (interpolacja liniowa wg przypisu a tabeli)"
+                    if moc_kva not in (_TABELA_TIER2_WG_RODZAJU[rodzaj])
+                    else ""
+                )
+                + f"; u_k = {uk_proc:g} % z serii Siemens GEAFOL 20/22/24 kV"
+                + (
+                    f", i0 = {i0_proc:g} % z tej samej serii (suchej)"
+                    if rodzaj == RODZAJ_SUCHY
+                    else ", i0 — brak źródła dla transformatora olejowego (pole puste)"
+                )
+                + ". Dla HV 15 kV przyjęto serię Um 24 kV (tab. I.1/I.2 obejmuje Um ≤ 24 kV "
+                "łącznie). Pozycję producenta dopisuje się osobnym rekordem z karty PDF."
+            ),
+        },
+    }
+
+
+# =============================================================================
+# TRANSFORMATORY SN/nN 15/0,4 i 20/0,4 kV — NORMATYWNE Tier 2 (nowe projekty)
 # =============================================================================
 
-_INVERTER_LV_VOLTAGES_KV = (0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3)
-_INVERTER_TR_POWER_MVA_LOW_LV = (0.5, 0.63, 0.8, 1.0, 1.25, 1.6, 2.0, 2.5, 3.15, 4.0, 5.0)
-_INVERTER_TR_POWER_MVA_MEDIUM_LV = (1.0, 1.6, 2.5, 3.15, 4.0, 5.0, 6.3, 8.0, 10.0)
+#: Moce serii normatywnej 0,4 kV: wiersze serii GEAFOL (zrodlo u_k) od 250 kVA. Moce
+#: < 200 kVA (63/100/160) NIE maja zrodla u_k (seria GEAFOL 24 kV zaczyna sie od 200 kVA)
+#: — pozostaja wylacznie jako jednostki istniejace (ponizej), bez pozycji normatywnej.
+_MOCE_NORMATYWNE_04_KVA: tuple[int, ...] = (
+    250,
+    315,
+    400,
+    500,
+    630,
+    800,
+    1000,
+    1250,
+    1600,
+    2000,
+    2500,
+    3150,
+)
 
-
-def _catalog_token(value: float) -> str:
-    text = f"{value:g}".replace(".", "p")
-    return text
-
-
-def _kva_label(power_mva: float) -> str:
-    kva = mva_na_kva(power_mva)
-    return f"{int(kva)} kVA" if kva < 1000 else f"{power_mva:g} MVA"
-
-
-def _estimate_inverter_transformer_params(power_mva: float) -> dict[str, float]:
-    if power_mva <= 0.63:
-        return {"uk_percent": 5.0, "pk_kw_per_mva": 12.7, "p0_kw_per_mva": 2.1, "i0_percent": 1.5}
-    if power_mva <= 1.6:
-        return {"uk_percent": 6.0, "pk_kw_per_mva": 11.0, "p0_kw_per_mva": 1.7, "i0_percent": 1.2}
-    if power_mva <= 3.15:
-        return {"uk_percent": 6.0, "pk_kw_per_mva": 10.5, "p0_kw_per_mva": 1.5, "i0_percent": 1.0}
-    if power_mva <= 6.3:
-        return {"uk_percent": 7.0, "pk_kw_per_mva": 9.5, "p0_kw_per_mva": 1.2, "i0_percent": 0.8}
-    return {"uk_percent": 8.0, "pk_kw_per_mva": 8.8, "p0_kw_per_mva": 1.0, "i0_percent": 0.7}
-
-
-def _build_inverter_transformer_types(
-    sn_voltage_kv: float, lv_voltage_kv: float
-) -> list[dict[str, Any]]:
-    power_ratings = (
-        _INVERTER_TR_POWER_MVA_MEDIUM_LV
-        if powyzej_pasma_nn(lv_voltage_kv)
-        else _INVERTER_TR_POWER_MVA_LOW_LV
+TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
+    _pozycja_normatywna(
+        item_id=f"tr-sn-nn-{_token(_hv)}-04-{_moc}kva-dyn11-tier2-"
+        + ("olej" if _rodzaj == RODZAJ_OLEJOWY else "suchy"),
+        name=f"TR {_hv:g}/0.4 kV {_moc} kVA Dyn11 {_rodzaj} — normatywny Tier 2",
+        moc_kva=_moc,
+        hv_kv=_hv,
+        lv_kv=0.4,
+        rodzaj=_rodzaj,
     )
-    records: list[dict[str, Any]] = []
-    sn_token = _catalog_token(sn_voltage_kv)
-    lv_token = _catalog_token(lv_voltage_kv)
-    for power_mva in power_ratings:
-        power_token = _catalog_token(power_mva)
-        params = _estimate_inverter_transformer_params(power_mva)
-        records.append(
-            {
-                "id": f"tr-sn-nn-{sn_token}-{lv_token}-{power_token}mva-dyn11-inverter",
-                "name": (
-                    f"TR {sn_voltage_kv:g}/{lv_voltage_kv:g} kV "
-                    f"{_kva_label(power_mva)} Dyn11 PV/BESS/FW"
-                ),
-                "params": {
-                    "rated_power_mva": power_mva,
-                    "voltage_hv_kv": sn_voltage_kv,
-                    "voltage_lv_kv": lv_voltage_kv,
-                    "uk_percent": params["uk_percent"],
-                    "pk_kw": round(power_mva * params["pk_kw_per_mva"], 2),
-                    "i0_percent": params["i0_percent"],
-                    "p0_kw": round(power_mva * params["p0_kw_per_mva"], 2),
-                    "vector_group": "Dyn11",
-                    "cooling_class": "ONAN/ONAF" if power_mva >= 2.0 else "ONAN",
-                    "tap_min": -2,
-                    "tap_max": 2,
-                    "tap_step_percent": 2.5,
-                    "manufacturer": "MV-DESIGN-PRO reference",
-                    "standard": "PN-EN 60076-11 / IEC 60076-16",
-                    "verification_status": "REFERENCYJNY",
-                    "catalog_status": "REFERENCYJNY_V1",
-                    "source_reference": (
-                        "Referencyjny typoszereg transformatorów blokowych "
-                        "dla falowników PV/BESS/FW"
-                    ),
-                    "contract_version": "2.0",
-                    "verification_note": (
-                        "Profil referencyjny do doboru wariantowego; parametry strat "
-                        "i uk% wymagają potwierdzenia kartą producenta w projekcie wykonawczym."
-                    ),
-                },
-            }
-        )
-    return records
+    for _hv in (15.0, 20.0)
+    for _rodzaj in (RODZAJ_OLEJOWY, RODZAJ_SUCHY)
+    for _moc in _MOCE_NORMATYWNE_04_KVA
+]
+
+
+# =============================================================================
+# TRANSFORMATORY BLOKOWE ZRODEL PRZEKSZTALTNIKOWYCH PV / BESS / FW (nN/SN)
+# =============================================================================
+#
+# Art. 1 ust. 2 lit. b rozporzadzenia 548/2014: wylaczenie transformatorow
+# prostownikowych „nie obejmuje transformatorow ... dla zastosowan w turbinach wiatrowych
+# i fotowoltaice" — transformator blokowy PV/FW podlega Tier 2 tak jak dystrybucyjny.
+#
+# Napiecia strony nN: napiecia wyjsciowe falownikow z kart producentow w katalogu
+# przeksztaltnikow (0,385 kV — SMA SC 2200; 0,434 kV — SMA SC 2475; 0,48 kV — Tesla
+# Megapack 2 XL; 0,65 kV — strona sieci przeksztaltnika Vestas V112, General Specification
+# 0011-9181 i 0034-7282 tab. 3-2; 0,69 kV — typowe wyjscie turbin i PCS; 0,8 kV — Huawei
+# SUN2000-330KTL-H1) oraz napiecia referencyjnych
+# modeli obliczeniowych (0,5 i 1,0 kV). Wszystkie <= 1,1 kV, wiec tab. I.2 bez korekty I.3.
+# Wykonanie suche (zywiczne): jedyna karta producenta transformatora blokowego w zrodlach
+# (Siemens Energy GEAFOL Neo 2000 kVA 20/0,48 kV, nizej) jest sucha, a seria zrodlowa
+# u_k/i0 (GEAFOL) jest sucha — pozycja olejowa nie mialaby zrodla i0.
+#
+# Moce > 3150 kVA (dawne 4,0/5,0 MVA): rozporzadzenie podaje dla nich tylko minimalny PEI
+# (tab. I.4/I.5), z ktorego P0 i Pk osobno wyznaczyc sie nie da — pozycji brak (zablokowane
+# danymi). Transformatory blokowe turbin Vestas V112 (3450 kVA 10–35/0,65 kV Dyn5 — dok.
+# 0011-9181 tab. 3-3; 3750 kVA 11,1–22/0,65 kV Dyn5 — dok. 0034-7282 tab. 3-3) maja
+# w dokumentach u_k i straty, ale zgodnosci z Tier 2 powyzej 3150 kVA (minimalny PEI
+# tab. I.5) nie da sie ocenic bez tabeli, ktorej repozytorium nie cytuje, a 4000 kVA
+# 0,65/33 kV (deklaracja DNV V112-3.45) nie podaje u_k ani strat i ma 33 kV — pozycji
+# brak (zablokowane danymi). Strona dolna SN (dawne 3,15/6,0/6,3 kV): pulapy P0/Pk dalyby sie wyznaczyc
+# (tab. I.3: +10 % P0, +10 % Pk dla drugiego uzwojenia Um > 1,1 kV), ale zadne zrodlo
+# w materialach nie podaje u_k ani i0 transformatora SN/SN (seria GEAFOL obejmuje tylko
+# strone nN; IEC 60076-5 tab. 1 nieodczytana) — pozycji brak (zablokowane danymi), zamiast
+# dawnego szacunku bez zrodla.
+
+_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.48, 0.5, 0.65, 0.69, 0.8, 1.0)
+_MOCE_BLOKOWYCH_KVA: tuple[int, ...] = (500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150)
+
+
+def _etykieta_mocy(moc_kva: int) -> str:
+    return f"{moc_kva} kVA" if moc_kva < 1000 else f"{kva_na_mva(moc_kva):g} MVA"
 
 
 TRANSFORMER_SN_NN_INVERTER_BLOCK: list[dict[str, Any]] = [
-    record
-    for _sn_voltage in (15.0, 20.0)
-    for _lv_voltage in _INVERTER_LV_VOLTAGES_KV
-    for record in _build_inverter_transformer_types(_sn_voltage, _lv_voltage)
+    _pozycja_normatywna(
+        item_id=(
+            f"tr-sn-nn-{_token(_hv)}-{_token(_lv)}-{_token(kva_na_mva(_moc))}mva-dyn11-inverter"
+        ),
+        name=(
+            f"TR {_hv:g}/{_lv:g} kV {_etykieta_mocy(_moc)} Dyn11 PV/BESS/FW "
+            "suchy — normatywny Tier 2"
+        ),
+        moc_kva=_moc,
+        hv_kv=_hv,
+        lv_kv=_lv,
+        rodzaj=RODZAJ_SUCHY,
+    )
+    for _hv in (15.0, 20.0)
+    for _lv in _NAPIECIA_NN_BLOKOWYCH_KV
+    for _moc in _MOCE_BLOKOWYCH_KVA
+]
+
+
+# =============================================================================
+# KARTY PRODUCENTOW TRANSFORMATOROW
+# =============================================================================
+
+TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
+    {
+        "id": "tr-sn-nn-20-0p48-2mva-dyn11-siemens-geafol-neo-4gy6364",
+        "name": "Siemens Energy GEAFOL Neo 4GY6364-1EC 2000 kVA 20/0.48 kV Dyn11 (suchy)",
+        "params": {
+            "rated_power_mva": 2.0,
+            "voltage_hv_kv": 20.0,
+            "voltage_lv_kv": 0.48,
+            "uk_percent": 6.0,
+            # Pk120 gwarantowane (temperatura odniesienia klasy F wg IEC 60076-11).
+            "pk_kw": 16.0,
+            # Karta wg 548/2014 nie podaje pradu jalowego — pole puste, nie zgadywane.
+            "i0_percent": None,
+            "p0_kw": 2.34,
+            "vector_group": "Dyn11",
+            "cooling_class": "AN",
+            # Zaczepy karty: „±2,5; ±5 %" => -2..+2 po 2,5 %.
+            "tap_min": -2,
+            "tap_max": 2,
+            "tap_step_percent": 2.5,
+            "manufacturer": "Siemens Energy",
+            "standard": "IEC 60076-11:2018; UE 548/2014 (2019/1783)",
+            "verification_status": "ZWERYFIKOWANY",
+            "catalog_status": "PRODUKCYJNY_V1",
+            "source_reference": (
+                "Siemens Energy, „Product information requirements according to Commission "
+                "Regulation (EU) No 548/2014”, typ 4GY6364-1EC (Sr. B382978), GEAFOL Neo, "
+                "Budapeszt, grudzień 2025; https://assets.siemens-energy.com/dam/"
+                "21d60220-d7c1-473c-8eef-b3db0095a922/GEAFOL-Distribution-Transformer-"
+                "Information-acc--to-EU-Regulation-548-2014-pdf_Original%20file.pdf "
+                "(dostęp 2026-10-15)"
+            ),
+            "contract_version": "2.0",
+            "verification_note": (
+                "Karta producenta: Sr = 2000 kVA, Dyn11, U1 = 20 000 V, U2 = 480 V, chłodzenie "
+                "AN; P0 = 2340 W gwarantowane (1974 W zmierzone); Pk120 = 16 000 W "
+                "gwarantowane (15 174 W zmierzone; Pk75 = 14 000 W); u_k = 6 % ±10 %; "
+                "zaczepy ±2,5; ±5 %. Prąd jałowy — karta nie podaje (pole puste). "
+                "Wartości gwarantowane równe pułapowi Tier 2 tab. I.2 dla 2000 kVA."
+            ),
+        },
+    },
 ]
 
 
@@ -1013,16 +1426,7 @@ TRANSFORMER_SN_NN_INVERTER_BLOCK: list[dict[str, Any]] = [
 
 def get_all_transformer_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy transformatorow w katalogu."""
-    return (
-        TRANSFORMER_WN_SN_110_15
-        + TRANSFORMER_WN_SN_110_20
-        + TRANSFORMER_SN_NN_15_04_DYN11
-        + TRANSFORMER_SN_NN_20_04_DYN11
-        + TRANSFORMER_SN_NN_15_04_YD11
-        + TRANSFORMER_SN_NN_20_04_YD11
-        + TRANSFORMER_SN_NN_INVERTER_BLOCK
-        + TRANSFORMER_POLISH_PTPIRE  # K30-18 Polish manufacturer expansion
-    )
+    return TRANSFORMER_WN_SN_110_15 + TRANSFORMER_WN_SN_110_20 + get_sn_nn_transformer_types()
 
 
 def get_wn_sn_transformer_types() -> list[dict[str, Any]]:
@@ -1031,25 +1435,31 @@ def get_wn_sn_transformer_types() -> list[dict[str, Any]]:
 
 
 def get_sn_nn_transformer_types() -> list[dict[str, Any]]:
-    """Zwraca transformatory SN/nN dystrybucyjne i falownikowe PV/BESS/FW."""
+    """Zwraca transformatory SN/nN: jednostki istniejace, normatywne Tier 2, blokowe
+    PV/BESS/FW (normatywne) i pozycje z kart producentow."""
     return (
         TRANSFORMER_SN_NN_15_04_DYN11
         + TRANSFORMER_SN_NN_20_04_DYN11
         + TRANSFORMER_SN_NN_15_04_YD11
         + TRANSFORMER_SN_NN_20_04_YD11
+        + TRANSFORMER_SN_NN_04_TIER2
         + TRANSFORMER_SN_NN_INVERTER_BLOCK
-        + TRANSFORMER_POLISH_PTPIRE  # K30-18 Polish manufacturer expansion (SN/nN)
+        + TRANSFORMER_KARTY_PRODUCENTOW
+        + TRANSFORMER_POLISH_PTPIRE
     )
 
 
 def get_transformer_catalog_statistics() -> dict[str, Any]:
-    """Zwraca statystyki katalogu transformatorow."""
+    """Zwraca statystyki katalogu transformatorow (wszystko wyprowadzone z rekordow)."""
     all_types = get_all_transformer_types()
     wn_sn = get_wn_sn_transformer_types()
     sn_nn = get_sn_nn_transformer_types()
 
     vector_groups = sorted({t["params"]["vector_group"] for t in all_types})
     power_ratings = sorted({t["params"]["rated_power_mva"] for t in all_types})
+    napiecia = sorted(
+        {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in all_types}
+    )
 
     return {
         "liczba_transformatorow_ogolem": len(all_types),
@@ -1059,13 +1469,20 @@ def get_transformer_catalog_statistics() -> dict[str, Any]:
         "statusy_katalogowe": sorted({t["params"]["catalog_status"] for t in all_types}),
         "grupy_polaczen": vector_groups,
         "moce_znamionowe_mva": power_ratings,
-        "producenci": ["ZREW Transformatory", "ABB", "Trafo Zywiec", "MV-DESIGN-PRO reference"],
-        "napiecia_wn_sn": ["110/15 kV", "110/20 kV"],
+        "producenci": sorted(
+            {str(t["params"]["manufacturer"]) for t in all_types if t["params"].get("manufacturer")}
+        ),
+        "napiecia_wn_sn": [
+            f"{hv:g}/{lv:g} kV"
+            for hv, lv in napiecia
+            if (hv, lv)
+            in {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in wn_sn}
+        ],
         "napiecia_sn_nn": [
-            "15/0.4 kV",
-            "20/0.4 kV",
-            "15/0.5-6.3 kV PV/BESS/FW",
-            "20/0.5-6.3 kV PV/BESS/FW",
+            f"{hv:g}/{lv:g} kV"
+            for hv, lv in napiecia
+            if (hv, lv)
+            in {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in sn_nn}
         ],
     }
 
@@ -1091,17 +1508,18 @@ def get_transformer_catalog_quality_summary() -> dict[str, Any]:
 
 
 # =============================================================================
-# K30-18: TRANSFORMATORY SN/NN — POLSCY PRODUCENCI Z PTPiRE RECEPTKAMI
+# K30-18: TRANSFORMATORY SN/NN — POZYCJE Z DEKLAROWANYCH KATALOGOW POLSKICH PRODUCENTOW
 # =============================================================================
 #
-# Dane producentów polskich:
-# - WZL Kędzierzyn-Koźle: rodzina TPMnR (Transformator Przemysłowy MnR),
-#   typoszereg 250-1600 kVA Dyn11, hermetyzowany olejowy zgodny z PTPiRE.
-# - ZPUE Trafo Włoszczowa: transformatory hermetyczne TZH/TZE 100-2500 kVA
-# - Energen Polska: transformatory hermetycznym suchymi (TONr, TRn)
-# - Trafocomp: pełen typoszereg
-#
-# Wszystkie zgodne z PN-EN 60076-1 oraz Rozporzadzeniem UE 2019/1783 (Tier 2).
+# PROWENIENCJA (karta KATALOG-KOMPLETNY-PROWENIENCJA, pomiar 2026-10-15). Pozycje deklarowaly
+# zrodlo „katalog <producenta> 2024", status ZWERYFIKOWANY, zgodnosc z Tier 2 rozporzadzenia
+# (UE) 2019/1783 i certyfikat PTPiREE. Pomiar wzgledem tab. I.1/I.2 Tier 2: KAZDA z tych
+# pozycji przekracza pulap strat jalowych (np. ZPUE TZH 630 kVA: P0 = 0,81 kW > 0,54 kW),
+# wiec deklaracja zgodnosci jest sprzeczna z wlasnymi liczbami, a zaden z dokumentow nie
+# jest dolaczony do repozytorium. Status sprowadzony do prawdy: NIEWERYFIKOWANY, znacznik
+# przekroczenia w nocie, bez deklaracji Tier 2 i bez flagi certyfikatu PTPiREE (nie ma
+# dokumentu, ktory by ja potwierdzal). Liczby zostaja — sa jedynym sladem deklarowanego
+# zrodla i nie wolno ich „poprawic" bez karty producenta.
 
 
 def _polish_transformer(
@@ -1118,7 +1536,8 @@ def _polish_transformer(
     voltage_lv_kv: float = 0.4,
     vector_group: str,
     series: str = "",
-    source_reference: str = "Karta katalogowa producenta / PTPiRE",
+    source_reference: str,
+    cooling_class: str = "ONAN",
 ) -> dict[str, Any]:
     return {
         "id": item_id,
@@ -1132,18 +1551,25 @@ def _polish_transformer(
             "i0_percent": i0_percent,
             "p0_kw": p0_kw,
             "vector_group": vector_group,
-            "cooling_class": "ONAN",
+            "cooling_class": cooling_class,
             "tap_min": -2,
             "tap_max": 2,
             "tap_step_percent": 2.5,
             "manufacturer": manufacturer,
             "series": series,
-            "standard": "PN-EN 60076-11:2004 + EU 2019/1783 Tier 2",
-            "verification_status": "ZWERYFIKOWANY",
-            "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": source_reference,
+            "standard": "PN-EN 60076-1",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": (
+                f"Deklarowane: {source_reference} — dokument nie jest dołączony do "
+                "repozytorium i nie został odnaleziony (niezweryfikowany)"
+            ),
             "contract_version": "2.0",
-            "ptpire_certified": True,
+            "verification_note": (
+                f"{ZNACZNIK_PRZEKROCZENIA_TIER2} (UE 548/2014 w brzmieniu 2019/1783, "
+                "tab. I.1/I.2): deklaracja zgodności z Tier 2 sprzeczna z wartościami strat "
+                "— dane niezweryfikowane; dla nowych projektów pozycje normatywne Tier 2."
+            ),
         },
     }
 
@@ -1160,7 +1586,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         p0_kw=0.43,
         i0_percent=2.0,
         series="TPMnR",
-        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024",
         vector_group="Dyn11",
     ),
     _polish_transformer(
@@ -1173,7 +1599,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         p0_kw=0.61,
         i0_percent=1.6,
         series="TPMnR",
-        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024",
         vector_group="Dyn11",
     ),
     _polish_transformer(
@@ -1186,7 +1612,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         p0_kw=0.85,
         i0_percent=1.3,
         series="TPMnR",
-        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024",
         vector_group="Dyn11",
     ),
     _polish_transformer(
@@ -1199,7 +1625,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         p0_kw=1.25,
         i0_percent=1.1,
         series="TPMnR",
-        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024",
         vector_group="Dyn11",
     ),
     _polish_transformer(
@@ -1212,7 +1638,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         p0_kw=1.85,
         i0_percent=0.9,
         series="TPMnR",
-        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024",
         vector_group="Dyn11",
     ),
     # ZPUE Trafo Wloszczowa — TZH/TZE hermetyczne
@@ -1294,6 +1720,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
         vector_group="Dyn11",
+        cooling_class="AN",
     ),
     _polish_transformer(
         "energen-tonr-1000-15-04",
@@ -1307,6 +1734,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
         vector_group="Dyn11",
+        cooling_class="AN",
     ),
     _polish_transformer(
         "energen-tonr-1600-15-04",
@@ -1320,6 +1748,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
         vector_group="Dyn11",
+        cooling_class="AN",
     ),
     # Trafocomp - typowe rozmiary
     _polish_transformer(

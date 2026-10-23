@@ -112,6 +112,26 @@
   background: var(--mvd-sel);
 }
 
+.mvd-dynamika-parametry {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.mvd-dynamika-podstawa {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-podstawa summary {
+  cursor: pointer;
+}
+
+.mvd-dynamika-podstawa p {
+  margin: 4px 0;
+}
+
 .mvd-dynamika-stan[data-stan],
 .mvd-dynamika-stan-biegu {
   font-size: 12.5px;
@@ -326,4 +346,31 @@
   padding: 6px 8px;
   font-size: 11.5px;
   box-shadow: var(--mvd-shadow);
+}
+
+/* Karta DYNAMIKA-W-TLE: pasek postępu biegu w tle (czas symulacji z horyzontu). */
+.mvd-dynamika-postep {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 16rem;
+  flex: 1 1 16rem;
+}
+
+.mvd-dynamika-postep-pasek {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--mvd-surface-3, #e5e7eb);
+  overflow: hidden;
+}
+
+.mvd-dynamika-postep-wypelnienie {
+  height: 100%;
+  background: var(--mvd-accent, #2563eb);
+  transition: width 200ms linear;
+}
+
+.mvd-dynamika-postep-opis {
+  font-size: 0.8125rem;
+  color: var(--mvd-text-muted, #6b7280);
 }

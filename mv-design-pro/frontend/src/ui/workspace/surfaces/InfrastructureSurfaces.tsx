@@ -332,14 +332,15 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
 export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
   const ref = surface.entityRef ?? null;
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const branchPoint = useMemo(
     () => snapshot?.branch_points?.find((point) => point.ref_id === ref || point.id === ref) ?? null,
     [snapshot, ref],
   );
   const branchSourceRef = useMemo(
-    () => resolveBranchSourceRef(snapshot, ref, null, branchPoint?.bus_ref ?? null),
-    [branchPoint?.bus_ref, ref, snapshot],
+    () => resolveBranchSourceRef(snapshot, logicalViews, ref, null, branchPoint?.bus_ref ?? null),
+    [branchPoint?.bus_ref, logicalViews, ref, snapshot],
   );
   const branchSource = useMemo(
     () => (branchSourceRef ? resolveBranchSourceContext(snapshot, branchSourceRef) : null),

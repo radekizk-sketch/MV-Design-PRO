@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
@@ -75,7 +75,7 @@ beforeEach(() => {
 });
 
 describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
-  it('przycisk "↓ SVG" obecny i po kliku produkuje Blob SVG przez URL.createObjectURL', () => {
+  it('przycisk "↓ SVG" obecny i po kliku produkuje Blob SVG przez URL.createObjectURL', async () => {
     const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     // jsdom's `Blob` nie implementuje `.text()` — przechwytujemy treść PRZED
@@ -94,7 +94,9 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
 
     fireEvent.click(exportBtn);
 
-    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    // Eksport jest asynchroniczny od karty KASACJA-SCL-I-CIM-KLIENT (jedna ścieżka dla
+    // rysunku i modelu z serwera) — pobranie następuje po rozwiązaniu obietnicy.
+    await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalledTimes(1));
     expect(blobCtorSpy).toHaveBeenCalledTimes(1);
     const [parts, options] = blobCtorSpy.mock.calls[0];
     expect(options?.type).toContain('svg');
@@ -340,7 +342,8 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(panel).toBeInTheDocument();
     const scene = buildSceneV3(enm, 2);
     const presentIds = new Set(scene.symbols.map((s) => s.symbolId));
-    // Fixtura `sldSubstrate52s` niesie 20 rekordów `Load` — agregat 0,4 kV
+    // Fixtura `sldSubstrate52s` niesie rekordy `Load` (126 — magazyn modelu dokłada
+    // odbiór katalogowy każdemu odpływowi nN) — agregat 0,4 kV
     // jest naprawdę na scenie, więc panel MUSI go objaśnić (zero fabrykacji
     // działa w OBIE strony: nie pokazuje NIEobecnych, ale też nie gubi
     // OBECNYCH).
@@ -349,7 +352,9 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     // Każdy wpis symbolu w panelu odpowiada symbolowi REALNIE obecnemu na scenie.
     for (const item of panel.querySelectorAll('[data-testid^="sld-v3-legend-panel-item-"]')) {
       const id = item.getAttribute('data-testid')!.replace('sld-v3-legend-panel-item-', '');
-      if (id === 'cable' || id === 'openTerminal' || id === 'sn-neutral-earthing') continue;
+      // Wpisy LINII (nie symboli): kabel, koniec otwarty, znak powiązania (karta
+      // SLD-SUBSTRAT — rezerwa pierścieniowa substratu) i nota o punkcie neutralnym.
+      if (id === 'cable' || id === 'openTerminal' || id === 'tieMarker' || id === 'sn-neutral-earthing') continue;
       expect(presentIds.has(id as never)).toBe(true);
     }
   });
@@ -375,7 +380,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   // z legendą, a projektant, który jej nie chce, odznacza pole. Intencja
   // testów sprzed karty zachowana (opcja steruje TYLKO plikiem, nigdy kanwą),
   // zamieniona jest wyłącznie strona domyślna.
-  it('opcja eksportu „Dołącz legendę" domyślnie WŁĄCZONA ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', () => {
+  it('opcja eksportu „Dołącz legendę" domyślnie WŁĄCZONA ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', async () => {
     const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const RealBlob = globalThis.Blob;
@@ -388,7 +393,9 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(checkbox.checked).toBe(true);
 
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
-    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    // Eksport jest asynchroniczny od karty KASACJA-SCL-I-CIM-KLIENT (jedna ścieżka dla
+    // rysunku i modelu z serwera) — pobranie następuje po rozwiązaniu obietnicy.
+    await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalledTimes(1));
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
     expect(svgStr).toContain('sld-sheet-legend');
     expect(svgStr).toContain('Transformator dwuuzwojeniowy');
@@ -399,8 +406,8 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     vi.unstubAllGlobals();
   });
 
-  it('odznaczenie opcji „Dołącz legendę" ⇒ plik SVG bez grupy legendy', () => {
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+  it('odznaczenie opcji „Dołącz legendę" ⇒ plik SVG bez grupy legendy', async () => {
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const RealBlob = globalThis.Blob;
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
@@ -410,6 +417,9 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+    // Eksport jest asynchroniczny od karty KASACJA-SCL-I-CIM-KLIENT (jedna ścieżka dla
+    // rysunku i modelu z serwera) — pobranie następuje po rozwiązaniu obietnicy.
+    await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalledTimes(1));
 
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
     expect(svgStr).not.toContain('sld-sheet-legend');

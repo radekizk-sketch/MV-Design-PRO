@@ -38,6 +38,14 @@ nie mogą się ze sobą rozjechać; rozbicie ich na osobne „rodzaje pakietu" z
 projektanta do wyboru pozornego między pozycjami wyprowadzonymi z identycznych
 danych. Do 2026-08-08 dwa z tych trzech generatorów nie miały ANI JEDNEGO
 konsumenta.
+
+PARAMETRY LINII 110 kV (karta LINIA-110). Przebieg, którego model ma linie 110 kV
+z przewodem z katalogu (R′/X′/B′/Z′0 z geometrii słupa), niesie w pakiecie — KAŻDEGO
+rodzaju — dowód parametrów każdej takiej linii (``parametry_linii__<ref>.zip``): wynik
+zwarcia czy rozpływu stoi na tych parametrach, więc ich wywód jest częścią dokumentacji
+przebiegu. Pakiet zwarcia trójfazowego staje się wtedy zbiorczy (``zwarcie_3f`` + linie);
+przebieg bez takich linii dostaje pakiet bajt w bajt taki jak dotąd. Lista linii pochodzi
+z JEDNEJ funkcji (``_linie_wn_biegu``) czytanej i przez opis zawartości, i przez budowę.
 """
 
 from __future__ import annotations
@@ -50,8 +58,17 @@ from typing import Any
 from application.analyses.power_flow_reconstruction import graf_z_biegu
 from application.analyses.voltage_profile_view import _power_flow_result_v1
 from application.nazwy_biegu import nazwa_projektu_z_migawki
-from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
+from application.parametry_linii_wn import LiniaWNModelu, linie_wn_migawki
+from application.proof_engine.packs.p14_power_flow import (
+    P14PowerFlowInput,
+    P14PowerFlowProof,
+)
 from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
+from application.proof_engine.packs.parametry_linii_110kv import (
+    ParametryLinii110kVProof,
+    ParametryLiniiDowodInput,
+    rozroznik_linii,
+)
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
@@ -77,8 +94,12 @@ from application.solvers.voltage_drop_binding import (
     OdcinekSpadku,
     odcinki_spadku_napiecia,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.assembler import impedancja_zwarcia_z_opcji
+from enm.canonical_analysis import CanonicalRun, rozszerzenia_audit2_dla_opcji
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
@@ -147,8 +168,22 @@ _POWOD_BRAK_PUNKTOW = (
 )
 
 
-class PakietBieguError(ValueError):
+class PakietBieguError(OdmowaDanychError):
     """Pakietu nie da się zbudować dla tego biegu/punktu (powód po polsku)."""
+
+
+#: Wskazany punkt zwarcia nie należy do biegu (identyfikator w `dane["punkt"]`).
+KOD_PUNKT_SPOZA_BIEGU = "dowod.punkt_zwarcia_spoza_biegu"
+#: Wskazany odcinek nie należy do biegu rozpływu (identyfikator w `dane["odcinek"]`).
+KOD_ODCINEK_SPOZA_BIEGU = "dowod.odcinek_spoza_biegu"
+
+
+class WyborSpozaBieguError(PakietBieguError, OdmowaNazwana):
+    """Wskazany punkt albo odcinek nie należy do biegu (partia integracji 10).
+
+    Zdanie dla projektanta nie niesie identyfikatora — identyfikator wyboru jest polem
+    `dane` odmowy nazwanej, które handler HTTP przenosi do ciała odpowiedzi.
+    """
 
 
 @dataclass(frozen=True)
@@ -169,11 +204,12 @@ def rodzaj_pakietu_biegu(run: CanonicalRun) -> str | None:
     bierze się z jego danych (``to_execution_dict``), nigdy z nazwy ekranu, który
     o pakiet prosi.
     """
-    try:
-        rodzaj_biegu = run.to_execution_dict()["analysis_type"]
-    except (KeyError, ValueError):
-        # Rodzaj analizy nieznany torowi wykonawczemu = na pewno bez pakietu.
-        return None
+    # Każdy rodzaj biegu kanonicznego ma nazwę w torze wykonawczym
+    # (`_execution_analysis_type_for_run`); wyjątek stamtąd to błąd programu (nieznany
+    # rodzaj zapisanego biegu, nieznany stan), nie „bieg bez pakietu" — dawne
+    # `except (KeyError, ValueError): return None` przebierało go za odmowę 422
+    # „ten rodzaj obliczenia nie ma pakietu" (karta ODMOWA-DANYCH-422).
+    rodzaj_biegu = run.to_execution_dict()["analysis_type"]
     return _RODZAJ_PAKIETU_PO_BIEGU.get(str(rodzaj_biegu))
 
 
@@ -288,7 +324,7 @@ def dostepnosc_pakietu(run: CanonicalRun) -> dict[str, Any]:
         "powod_pl": None,
         "punkty": [p.to_dict() for p in punkty],
         "punkty_etykieta_pl": _ETYKIETA_PUNKTU_PL.get(rodzaj),
-        "zawartosc_pl": _zawartosc_pl(rodzaj, punkty),
+        "zawartosc_pl": _zawartosc_pl(rodzaj, punkty, _linie_wn_biegu(run)),
     }
 
 
@@ -314,24 +350,48 @@ _ZAWARTOSC_SPADKU_PL = (
     "Dowód spadku napięcia na trasie od źródła do wskazanego odcinka — łańcuch "
     "odcinków linii/kabla i granic transformatora (spadek_napiecia.zip)"
 )
+#: Główny dowód rodzajów punktowych w pakiecie zbiorczym (gdy przebieg ma linie 110 kV).
+_ZAWARTOSC_GLOWNEGO_DOWODU_PL: dict[str, str] = {
+    RODZAJ_SC3F: "Dowód zwarcia trójfazowego w wybranym punkcie (zwarcie_3f.zip)",
+    RODZAJ_SC_NIESYMETRYCZNE: (
+        "Dowody zwarć niesymetrycznych 1F-Z, 2F i 2F-Z w wybranym punkcie (SC1FZ.zip, "
+        "SC2F.zip, SC2FZ.zip)"
+    ),
+}
 _ZAWARTOSC_BEZ_ODCINKA_PL = (
     "Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla "
     "o znanej impedancji i długości."
 )
 
 
-def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu]) -> list[str]:
+def _zawartosc_linii_pl(linia: LiniaWNModelu) -> str:
+    return (
+        f"Dowód parametrów linii 110 kV {linia.nazwa}: R′, X′, B′ i Z′0 z geometrii słupa "
+        f"({rozroznik_linii(linia.branch_ref)}.zip)"
+    )
+
+
+def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu], linie: list[LiniaWNModelu]) -> list[str]:
     """Co PROJEKTANT znajdzie w pobranym pliku — opis prawdziwy dla TEGO biegu.
 
     Dla pakietu zbiorczego rozpływu lista zależy od danych: wiersz spadku napięcia
     pojawia się wtedy i tylko wtedy, gdy bieg ma odcinek (czyli gdy ``punkty`` są
-    niepuste — z tego samego źródła, z którego korzysta budowa).
+    niepuste — z tego samego źródła, z którego korzysta budowa). Wiersz dowodu
+    parametrów linii 110 kV — dla każdej linii z ``_linie_wn_biegu`` (to samo źródło,
+    z którego budowa składa dokumenty linii).
     """
+    dowody_linii = [_zawartosc_linii_pl(linia) for linia in linie]
     if rodzaj not in _RODZAJE_Z_ODCINKIEM:
-        return list(_ZAWARTOSC_PL)
+        if not dowody_linii:
+            return list(_ZAWARTOSC_PL)
+        return (
+            [_ZAWARTOSC_GLOWNEGO_DOWODU_PL[rodzaj]]
+            + dowody_linii
+            + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
+        )
     dowody = list(_ZAWARTOSC_ROZPLYWU_PL)
     dowody.append(_ZAWARTOSC_SPADKU_PL if punkty else _ZAWARTOSC_BEZ_ODCINKA_PL)
-    return dowody + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
+    return dowody + dowody_linii + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
 
 
 def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None) -> dict[str, Any]:
@@ -348,7 +408,11 @@ def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None)
 
 
 def zbuduj_pakiet_biegu(
-    run: CanonicalRun, *, punkt: str | None = None, nazwa_przypadku: str
+    run: CanonicalRun,
+    *,
+    punkt: str | None = None,
+    nazwa_przypadku: str,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy przebiegu: ``(nazwa_pliku, zawartość ZIP)``.
 
@@ -361,6 +425,10 @@ def zbuduj_pakiet_biegu(
     pierwszy z listy biegu (deterministycznie: najmniejszy identyfikator). Punkt
     spoza biegu i rodzaj bez pakietu kończą się ``PakietBieguError`` z powodem po
     polsku — API tłumaczy go na odpowiedź HTTP, a ekran pokazuje wprost.
+
+    ``uow_factory`` — fabryka UnitOfWork wołającego: bieg z konfiguracją audytu 2
+    stacji liczy się z jej rozszerzeniami, więc dowód zwarciowy tego biegu musi je
+    odczytać tak samo (`rozszerzenia_audit2_dla_opcji`) — jedna fizyka biegu i dowodu.
     """
     dostepnosc = dostepnosc_pakietu(run)
     if not dostepnosc["dostepny"]:
@@ -392,17 +460,19 @@ def zbuduj_pakiet_biegu(
     else:
         znaleziony = next((p for p in punkty if p.target_id == punkt), None)
         if znaleziony is None:
-            raise PakietBieguError(
-                f"Punkt zwarcia {punkt} nie występuje w tym przebiegu — "
-                "wybierz punkt z listy wyników."
+            raise WyborSpozaBieguError(
+                "Wskazany punkt zwarcia nie występuje w tym przebiegu — "
+                "wybierz punkt z listy wyników.",
+                kod=KOD_PUNKT_SPOZA_BIEGU,
+                dane={"punkt": punkt},
             )
         wybrany = znaleziony
 
     if rodzaj == RODZAJ_SC3F:
-        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek)
+        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek, uow_factory)
         nazwa_pliku = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
     else:
-        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek)
+        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek, uow_factory)
         nazwa_pliku = f"pakiet_dowodowy_zwarcia_niesymetryczne__{run.id}__{wybrany.target_id}.zip"
     return nazwa_pliku, zawartosc
 
@@ -424,12 +494,52 @@ def _wersja_solvera(run: CanonicalRun) -> str:
     return str(wersja) if wersja else "nieznana"
 
 
-def _c_factor(run: CanonicalRun) -> float:
-    return float(run.options.get("c_factor", 1.10))
+@dataclass(frozen=True)
+class _ParametryZwarciaBiegu:
+    """Parametry zwarcia ZAPISANE na biegu — ten sam odczyt, co assembler biegu.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): dowód nie dostaje liczby c (dawniej
+    `options.get("c_factor", 1.10)` — 1,10 także dla węzła nN i dla biegu MIN), tylko
+    scenariusz i nadpisanie biegu; c i jego podstawę dobiera warstwa wiązania tą samą
+    regułą co bieg (`voltage_factor.dobierz_c` przez `enm.assembler`).
+
+    Karta SC-IB-ITH-ZRODLA: t_b scenariusza biegu tą samą funkcją co assembler
+    (`czas_tb_z_danych` z klucza opcji biegu); ``None`` = t_b punktu rozstrzyga warstwa
+    wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA: pola lokalne albo wartość
+    robocza) — dowód opisuje I_b i i_DC policzone z TYM SAMYM t_b co wynik na ekranie.
+    """
+
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieC | None
+    tk_s: float
+    tb_s: float | None
+    rozszerzenia_audit2: dict[str, Any] | None
 
 
-def _tk_s(run: CanonicalRun) -> float:
-    return float(run.options.get("thermal_time_seconds", 1.0))
+def _parametry_zwarcia_biegu(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> _ParametryZwarciaBiegu:
+    scenariusz = str(run.options.get("scenario", "max")).strip().upper()
+    if scenariusz not in ("MAX", "MIN"):
+        raise PakietBieguError(
+            f"Bieg zapisał nieznany scenariusz zwarcia {scenariusz!r} — dowodu nie da się złożyć."
+        )
+    return _ParametryZwarciaBiegu(
+        scenariusz="MAX" if scenariusz == "MAX" else "MIN",
+        nadpisanie_c=nadpisanie_c_z_danych(run.options.get("nadpisanie_c")),
+        tk_s=float(run.options.get("thermal_time_seconds", 1.0)),
+        tb_s=czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB)),
+        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
+    )
+
+
+def _z_f_ohm(run: CanonicalRun) -> complex | None:
+    """Impedancja przejścia Z_f biegu (karta OD-14) — TEN SAM odczyt opcji co w assemblerze.
+
+    Pakiet dowodowy opisuje bieg, więc liczy się z tą samą Z_f, z którą liczył solver; dowód
+    metaliczny dla biegu z Z_f opisywałby inny prąd niż ten na ekranie wyników.
+    """
+    return impedancja_zwarcia_z_opcji(run.options)
 
 
 @dataclass(frozen=True)
@@ -475,6 +585,7 @@ def _zbuduj_rozplyw_zbiorczy(
     odcinek = _wybierz_odcinek(run, punkt)
     if odcinek is not None:
         pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, rozplyw, odcinek, naglowek)
+    pakiety.update(_dowody_linii_wn(run, context, naglowek))
     return zbuduj_zip_zbiorczy(pakiety)
 
 
@@ -491,9 +602,11 @@ def _wybierz_odcinek(run: CanonicalRun, punkt: str | None) -> OdcinekSpadku | No
         return odcinki[0] if odcinki else None
     znaleziony = next((o for o in odcinki if o.id_galezi == punkt), None)
     if znaleziony is None:
-        raise PakietBieguError(
-            f"Odcinek {punkt} nie występuje w tym przebiegu jako linia ani kabel o znanej "
-            "impedancji i długości — wybierz odcinek z listy."
+        raise WyborSpozaBieguError(
+            "Wskazany odcinek nie występuje w tym przebiegu jako linia ani kabel o znanej "
+            "impedancji i długości — wybierz odcinek z listy.",
+            kod=KOD_ODCINEK_SPOZA_BIEGU,
+            dane={"odcinek": punkt},
         )
     return znaleziony
 
@@ -517,7 +630,7 @@ def _zbuduj_dowod_rozplywu(
     )
     try:
         return P14PowerFlowProof.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
 
 
@@ -537,7 +650,7 @@ def _zbuduj_dowod_strat(
     )
     try:
         return P16LossesProof.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego strat: {exc}") from exc
 
 
@@ -583,7 +696,7 @@ def _zbuduj_dowod_spadku(
     )
     try:
         return zbuduj_zip_vdrop(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(
             f"Nie udało się złożyć pakietu dowodowego spadku napięcia: {exc}"
         ) from exc
@@ -594,7 +707,9 @@ def _zbuduj_sc3f(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
+    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
+    parametry = _parametry_zwarcia_biegu(run, uow_factory)
     pack_input = SC3FPackInput(
         project_name=naglowek.projekt,
         case_name=naglowek.przypadek,
@@ -602,13 +717,21 @@ def _zbuduj_sc3f(
         fault_node_id=punkt.target_id,
         run_timestamp=_znacznik_czasu(run),
         solver_version=_wersja_solvera(run),
-        c_factor=_c_factor(run),
-        tk_s=_tk_s(run),
+        scenariusz=parametry.scenariusz,
+        nadpisanie_c=parametry.nadpisanie_c,
+        tk_s=parametry.tk_s,
+        tb_s=parametry.tb_s,
+        rozszerzenia_audit2=parametry.rozszerzenia_audit2,
+        z_f_ohm=_z_f_ohm(run),
     )
     try:
-        return SC3FProofPack.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+        zwarcie = SC3FProofPack.generate_zip(pack_input, context)
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
+    dowody_linii = _dowody_linii_wn(run, context, naglowek)
+    if not dowody_linii:
+        return zwarcie
+    return zbuduj_zip_zbiorczy({"zwarcie_3f": zwarcie, **dowody_linii})
 
 
 def _zbuduj_sc_niesymetryczne(
@@ -616,7 +739,9 @@ def _zbuduj_sc_niesymetryczne(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
+    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
+    parametry = _parametry_zwarcia_biegu(run, uow_factory)
     try:
         pack_input = SCAsymmetricalProofPack.wejscie_ze_snapshotu(
             snapshot=run.snapshot,
@@ -625,14 +750,47 @@ def _zbuduj_sc_niesymetryczne(
             case_name=naglowek.przypadek,
             run_timestamp=_znacznik_czasu(run),
             solver_version=_wersja_solvera(run),
-            c_factor=_c_factor(run),
-            tk_s=_tk_s(run),
+            scenariusz=parametry.scenariusz,
+            nadpisanie_c=parametry.nadpisanie_c,
+            tk_s=parametry.tk_s,
+            rozszerzenia_audit2=parametry.rozszerzenia_audit2,
+            z_f_ohm=_z_f_ohm(run),
         )
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
-    return _spakuj_niesymetryczne(pack_input, context)
+    return _spakuj_niesymetryczne(pack_input, context, _dowody_linii_wn(run, context, naglowek))
 
 
-def _spakuj_niesymetryczne(pack_input: SCAsymmetricalPackInput, context: ProofPackContext) -> bytes:
+def _spakuj_niesymetryczne(
+    pack_input: SCAsymmetricalPackInput,
+    context: ProofPackContext,
+    dowody_linii: dict[str, bytes],
+) -> bytes:
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
-    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy(packs)
+    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy({**packs, **dowody_linii})
+
+
+def _linie_wn_biegu(run: CanonicalRun) -> list[LiniaWNModelu]:
+    """Linie 110 kV z geometrii w migawce przebiegu — JEDNO źródło dla opisu i budowy."""
+    return linie_wn_migawki(run.snapshot or {})
+
+
+def _dowody_linii_wn(
+    run: CanonicalRun, context: ProofPackContext, naglowek: _Naglowek
+) -> dict[str, bytes]:
+    """Dowód parametrów każdej linii 110 kV przebiegu (pusty słownik, gdy linii nie ma)."""
+    return {
+        rozroznik_linii(linia.branch_ref): ParametryLinii110kVProof.generate_zip(
+            ParametryLiniiDowodInput(
+                project_name=naglowek.projekt,
+                case_name=naglowek.przypadek,
+                run_timestamp=_znacznik_czasu(run),
+                branch_ref=linia.branch_ref,
+                nazwa_linii=linia.nazwa,
+                wynik=linia.wynik,
+                zgodny_z_modelem=linia.zgodny_z_modelem,
+            ),
+            context,
+        )
+        for linia in _linie_wn_biegu(run)
+    }

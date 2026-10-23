@@ -119,6 +119,13 @@ MAPA_SERII: tuple[Seria, ...] = (
         "CT/VT, warstwy wyników, zoom). Opis każdego kadru: `schemat-10/README.md`.",
     ),
     Seria(
+        "w5e_ttit",
+        "W5-E-TTIT — ochrona przeciwporażeniowa TT/IT na ekranie nN",
+        "Projekcja nN z nakładką SWZ przed i po karcie oraz panel odpływu z werdyktem "
+        "wyjaśnialnym układu TT (prąd RCD, czas wyłączenia z tabeli repo, limit napięcia "
+        "dotykowego bez podstawy). Zrzuty żywej aplikacji na realnym backendzie, oba motywy.",
+    ),
+    Seria(
         "ocena-2026-07",
         "Ocena 2026-07 — pierwsza runda oględzin",
         "GPZ, wszystkie poziomy szczegółu i sieć demonstracyjna z warstwą wyników "

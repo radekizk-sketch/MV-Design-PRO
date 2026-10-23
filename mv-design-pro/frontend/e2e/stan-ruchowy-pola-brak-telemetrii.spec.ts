@@ -23,10 +23,11 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const OUTPUT_DIR = path.resolve(
+import { katalogZrzutow } from './katalogZrzutow';
+const OUTPUT_DIR = katalogZrzutow(path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../docs/audit/visual/dowody',
-);
+));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -109,6 +110,8 @@ async function siecZPolem(
   const odcinki = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(odcinki.length).toBeGreaterThan(1);
   await operacja(request, studyCase.id, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: CB_ID,
     segment_id: odcinki[1],
     station_type: 'B',

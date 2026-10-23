@@ -160,9 +160,10 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
     OperatingScenario,
@@ -171,6 +172,7 @@ from enm.scenariusze import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.solvers.power_flow_newton_internal import build_slack_island
 
 #: Rodzaje gałęzi ENM kwalifikowane jako kontyngencja N-1 tej karty. Aparaty
@@ -727,18 +729,18 @@ def _wymagaj_inwentarza(run: CanonicalRun) -> list[_Element]:
     czytają JEDEN warunek, a nie dwa „dziś zgodne" (przypięte testem parzystości).
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Enumeracja N-1 wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     wszystkie = _inwentarz_elementow(run.snapshot or {})
     if not wszystkie:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Model nie zawiera żadnego kwalifikowanego elementu N-1 "
             "(linia napowietrzna, kabel, transformator)."
         )
@@ -858,14 +860,16 @@ def build_kontyngencje_n1_view(
     else:
         wskazane = sorted(set(element_refs))
         if not wskazane:
-            raise ValueError("Lista elementów do enumeracji jest pusta.")
+            raise OdmowaDanychError("Lista elementów do enumeracji jest pusta.")
         znane = {element.ref: element for element in wszystkie}
         nieznane = [ref for ref in wskazane if ref not in znane]
         if nieznane:
-            raise ValueError(
+            raise OdmowaNazwana(
                 "Wskazane elementy nie są kwalifikowanymi elementami N-1 modelu: "
-                + ", ".join(nieznane)
-                + "."
+                + ", ".join(nazwa_po_identyfikatorze(ref, run.snapshot) for ref in nieznane)
+                + ".",
+                kod="kontyngencje_n1.elementy_niekwalifikowane",
+                dane={"elementy_ref": tuple(nieznane)},
             )
         elementy = [znane[ref] for ref in wskazane]
 
@@ -903,6 +907,7 @@ def build_kontyngencje_n1_view(
     return {
         "analysis": "kontyngencje_n1",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "element_refs": refs,
             "kryteria": kryteria,

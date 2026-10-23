@@ -11,9 +11,11 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
 
@@ -120,6 +122,7 @@ test.describe('most-wygaszony:screenshot', () => {
         );
         await expect(strona.locator('html')).toHaveAttribute('data-theme', motyw.tryb);
 
+        await bramkaTresciMatematycznej(strona);
         await strona.screenshot({
           path: path.join(OUTPUT_DIR, `most-wygaszony-${motyw.plik}.png`),
         });

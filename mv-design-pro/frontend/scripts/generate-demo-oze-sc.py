@@ -4,9 +4,10 @@ companion realnego biegu zwarciowego (SC IEC 60909, per szyna SN).
 
 Bridge: backend ``build_demo_oze_sc_network()`` -> ``EnergyNetworkModel`` ->
 kanoniczny ``model_dump(mode='json')`` (ENM) ORAZ realny bieg SC uruchamiany
-DOKLADNIE torem kanonicznym ``_execute_short_circuit`` (te same
-``map_enm_to_network_graph`` + ``ShortCircuitIEC60909Solver.compute_3ph_short_circuit``
-iterowane po REPORTABLE wezlach — filtr ``_build_snapshot_graph_element_context``
+DOKLADNIE torem kanonicznym ``_execute_short_circuit`` (ten sam assembler
+``enm.assembler.zloz_wejscie_zwarcia``, t_b punktu z ``czas_tb_punktu`` i dyspozycja do
+FROZEN solvera ``wynik_zwarcia_punktu`` — karta TB-WARTOSC-ROBOCZA) iterowane po
+REPORTABLE wezlach — filtr ``_build_snapshot_graph_element_context``
 pomija helper/GPZ-section busy). ZERO fabrykacji: kazda wartosc Ik''/ip/Ith/Sk
 pochodzi z FROZEN solvera; companion NIE liczy niczego sam.
 
@@ -22,7 +23,6 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-import uuid
 
 _THIS = pathlib.Path(__file__).resolve()
 _FRONTEND = _THIS.parent.parent
@@ -31,25 +31,31 @@ _BACKEND = _REPO / "backend"
 sys.path.insert(0, str(_BACKEND / "src"))
 sys.path.insert(0, str(_BACKEND))
 
-from enm.assembler import _build_snapshot_graph_element_context  # noqa: E402
-from enm.mapping import map_enm_to_network_graph  # noqa: E402
-from enm.models import EnergyNetworkModel  # noqa: E402
-from network_model.solvers.short_circuit_iec60909 import (  # noqa: E402
-    ShortCircuitIEC60909Solver,
+from application.solvers.short_circuit_binding import (  # noqa: E402
+    czas_tb_punktu,
+    wynik_zwarcia_punktu,
 )
+from enm.assembler import (  # noqa: E402
+    _build_snapshot_graph_element_context,
+    zloz_wejscie_zwarcia,
+)
+from enm.mapping import ref_to_graph_id  # noqa: E402
+from enm.models import EnergyNetworkModel  # noqa: E402
+from network_model.core.voltage_factor import c_for_node, zrodlo_c_z_tabeli  # noqa: E402
 
 from tests.reference_networks.demo_oze_sc import build_demo_oze_sc_network  # noqa: E402
 
 _FIXED_TS = "2026-07-24T00:00:00Z"
-_C_FACTOR = 1.10
 _TK_S = 1.0
 _OUT_DIR = _FRONTEND / "scripts" / "demo-oze-sc"
 
 
 def _run_short_circuit(enm_dict: dict) -> dict:
     """Realny bieg SC 3F per REPORTABLE szyna SN — tor kanoniczny (read-only)."""
-    enm = EnergyNetworkModel.model_validate(enm_dict)
-    graph = map_enm_to_network_graph(enm)
+    wejscie = zloz_wejscie_zwarcia(
+        enm_dict, {"fault_type": "3F", "scenario": "max", "thermal_time_seconds": _TK_S}
+    )
+    graph = wejscie.graph
     ctx = _build_snapshot_graph_element_context(enm_dict)
     node_ctx = ctx.get("nodes", {})
 
@@ -67,20 +73,25 @@ def _run_short_circuit(enm_dict: dict) -> dict:
         ref = str(bus.get("ref_id") or "")
         if not ref:
             continue
-        ref_by_node[str(uuid.uuid5(uuid.NAMESPACE_DNS, ref))] = bus
+        ref_by_node[ref_to_graph_id(ref)] = bus
 
     bus_sc: dict[str, dict] = {}
     ik_values: list[float] = []
+    podstawy_c: set[tuple[float, str]] = set()
     for node_id in reportable:
         bus = ref_by_node.get(node_id)
         if bus is None:
             continue
-        result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph,
-            fault_node_id=node_id,
-            c_factor=_C_FACTOR,
-            tk_s=_TK_S,
-            include_branch_contributions=False,
+        # c_max z tabeli 1 IEC 60909-0 dla napięcia szyny (jedno źródło: voltage_factor;
+        # raportowane są wyłącznie szyny SN, więc tolerancja sieci nN nie dotyczy).
+        u_kv = float(bus["voltage_kv"])
+        c_max = c_for_node(u_kv, "MAX", tolerancja_nn=None)
+        podstawy_c.add((c_max, zrodlo_c_z_tabeli(u_kv, "MAX", tolerancja_nn=None)))
+        # Karta TB-WARTOSC-ROBOCZA: t_b punktu tą samą regułą co bieg (pola lokalne albo
+        # wartość robocza); fikstura niesie wyłącznie wielkości niezależne od t_b.
+        czas_tb = czas_tb_punktu(wejscie, node_id, c_factor=c_max, z_f_ohm=None)
+        result = wynik_zwarcia_punktu(
+            wejscie, node_id, c_factor=c_max, czas_tb=czas_tb, wklady=False, z_f_ohm=None
         )
         d = result.to_dict()
         ikss = float(d["ikss_a"])
@@ -98,7 +109,13 @@ def _run_short_circuit(enm_dict: dict) -> dict:
         ik_values.append(ikss)
 
     ik_values.sort()
+    # Jedna podstawa c dla całej fikstury (same szyny SN) — inaczej meta skłamałaby.
+    if len(podstawy_c) != 1:
+        raise RuntimeError(f"fikstura niesie jedną podstawę c, a bieg użył {sorted(podstawy_c)}")
+    ((c_factor, c_zrodlo),) = podstawy_c
     return {
+        "c_factor": c_factor,
+        "c_zrodlo": c_zrodlo,
         "bus_short_circuit": bus_sc,
         "converged": len(bus_sc) > 0,
         "bus_count": len(bus_sc),
@@ -107,29 +124,22 @@ def _run_short_circuit(enm_dict: dict) -> dict:
     }
 
 
-def _stabilize_technical_ids(dumped: dict) -> None:
-    """Wyprowadz techniczne `id` z `ref_id` — fixtura ma byc DETERMINISTYCZNA.
+def render_fikstur() -> dict[str, str]:
+    """Nazwa pliku -> PEŁNA treść fixtury (jeden tor dla zapisu i testu świeżości
+    ``backend/tests/application/test_fikstury_enm_generowane.py``)."""
+    from enm.hash import hash_migawki_enm  # noqa: PLC0415
 
-    Operacje domenowe nadaja rekordom losowy `uuid4()` jako klucz techniczny. To
-    poprawne w bazie (klucz nie niesie znaczenia), ale w PLIKU WERSJONOWANYM
-    znaczy, ze kazda regeneracja przy IDENTYCZNYM wejsciu daje inny plik — tu
-    227 zmienionych linii przy zerowej zmianie fizyki (wyniki SC bit-identyczne).
-    Nadpisujemy `id` deterministycznym UUID5 z `ref_id` (ta sama funkcja, ktorej
-    uzywa `enm.mapping._ref_to_uuid`), wiec plik zalezy wylacznie od modelu.
-    """
-    for key in sorted(dumped):
-        records = dumped.get(key)
-        if not isinstance(records, list):
-            continue
-        for record in records:
-            if isinstance(record, dict) and record.get("ref_id") and "id" in record:
-                record["id"] = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(record["ref_id"])))
+    from tests.golden.zapis_fikstur import (  # noqa: PLC0415
+        json_fikstury,
+        przypnij_identyfikatory_zrzutu,
+        zaokraglij_liczby,
+    )
 
-
-def main() -> int:
     result = build_demo_oze_sc_network()
-    enm_dict = result["enm"]
-    builder_hash = result["snapshot_hash"]
+    # Reguła zapisu liczb PRZED odciskiem i biegiem SC: fixtura jest modelem, a odcisk
+    # i wyniki zwarciowe są policzone z dokładnie tych wartości, które leżą w pliku.
+    enm_dict = zaokraglij_liczby(result["enm"])
+    builder_hash = hash_migawki_enm(enm_dict)
 
     model = EnergyNetworkModel.model_validate(enm_dict)
     dumped = model.model_dump(mode="json")
@@ -137,14 +147,11 @@ def main() -> int:
     header["created_at"] = _FIXED_TS
     header["updated_at"] = _FIXED_TS
     header["hash_sha256"] = builder_hash
-    _stabilize_technical_ids(dumped)
+    przypnij_identyfikatory_zrzutu(dumped)
 
     sc = _run_short_circuit(enm_dict)
     if not sc["converged"]:
-        print("BLAD: bieg SC nie zbiegl na zadnej szynie", file=sys.stderr)
-        return 1
-
-    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+        raise RuntimeError("bieg SC nie zbiegl na zadnej szynie")
 
     enm_fixture = {
         "_meta": {
@@ -166,7 +173,8 @@ def main() -> int:
         "_meta": {
             "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
             "builder_snapshot_hash": builder_hash,
-            "c_factor": _C_FACTOR,
+            "c_factor": sc["c_factor"],
+            "c_zrodlo": sc["c_zrodlo"],
             "tk_s": _TK_S,
             "analysis_type": "short_circuit_3f",
             "note": (
@@ -180,22 +188,27 @@ def main() -> int:
         "ikss_max_ka": sc["ikss_max_ka"],
         "bus_short_circuit": sc["bus_short_circuit"],
     }
+    return {
+        "demoOzeSc.enm.json": json_fikstury(enm_fixture),
+        "demoOzeSc.sc.json": json_fikstury(sc_fixture),
+    }
 
-    enm_path = _OUT_DIR / "demoOzeSc.enm.json"
-    sc_path = _OUT_DIR / "demoOzeSc.sc.json"
-    enm_path.write_text(
-        json.dumps(enm_fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    sc_path.write_text(
-        json.dumps(sc_fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"WROTE {enm_path}")
-    print(f"WROTE {sc_path}")
+
+def main() -> int:
+    from tests.golden.zapis_fikstur import tresc_z_kotwica  # noqa: PLC0415
+
+    tresci = render_fikstur()
+    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for nazwa, tresc in tresci.items():
+        # Kotwica w szumie: szum numeryki między maszynami nie trafia do repozytorium.
+        plik = _OUT_DIR / nazwa
+        plik.write_text(tresc_z_kotwica(plik, tresc), encoding="utf-8")
+        print(f"WROTE {_OUT_DIR / nazwa}")
+    enm = json.loads(tresci["demoOzeSc.enm.json"])["_meta"]
+    sc = json.loads(tresci["demoOzeSc.sc.json"])
     print(
-        f"stacje={result['station_count']} konfiguracje={result['config_count']} "
-        f"DER={result['der_count']} szyny_SC={sc['bus_count']} "
+        f"stacje={enm['station_count']} konfiguracje={enm['config_count']} "
+        f"DER={enm['der_count']} szyny_SC={sc['bus_count']} "
         f"Ik''=[{sc['ikss_min_ka']}..{sc['ikss_max_ka']}] kA"
     )
     return 0

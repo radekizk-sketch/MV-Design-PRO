@@ -18,6 +18,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 _FORMULA_REF = "B = Q / U² ; I_c = Q / (√3·U)"
 
 
@@ -41,9 +43,9 @@ def compute_shunt_compensator_preview(
     data: ShuntCompensatorPreviewInput,
 ) -> ShuntCompensatorPreviewResult:
     if data.rated_mvar <= 0.0:
-        raise ValueError("rated_mvar musi być dodatnie.")
+        raise OdmowaDanychError("rated_mvar musi być dodatnie.")
     if data.rated_kv <= 0.0:
-        raise ValueError("rated_kv musi być dodatnie.")
+        raise OdmowaDanychError("rated_kv musi być dodatnie.")
 
     q_var = data.rated_mvar * 1_000_000.0
     u_v = data.rated_kv * 1_000.0

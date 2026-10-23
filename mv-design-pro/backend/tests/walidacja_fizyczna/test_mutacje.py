@@ -25,7 +25,9 @@ from . import mutacje
 #: M26 i M27 (karta AB-1b.1): detektory tanie — bramka G19 (16 krotkich biegow pierscienia)
 #: + odmowa dawnego SO-1A w 1,18 s, oraz test lacznika rezerwowego G16 na sciezce uzytkownika.
 #: M29 (karta AB-1b.1 P5): bramka G20 (jeden bieg SMIB, ~5 s) i test kontraktu wyniku.
-SZYBKIE = ("M19", "M14", "M15", "M18", "M26", "M27", "M29")
+#: M40, M42 (karta modeli odbiorow): bramka G23 (20 krotkich biegow ukladu dwuwezlowego, ~4 s);
+#: M48: bramka G25 (macierz gotowosc - bieg na G16, ~3 s).
+SZYBKIE = ("M19", "M14", "M15", "M18", "M26", "M27", "M29", "M40", "M42", "M48")
 
 
 def test_samokontrola_mutacja_bez_skutku_jest_niewazna() -> None:

@@ -36,6 +36,16 @@ RUN poetry install --no-interaction --no-ansi
 # Ensure src/ packages are importable without poetry run
 ENV PYTHONPATH=/app/src
 
+# Polityka wątków BLAS obrazu — Z POMIARU PERF-DYN-0 (karta DYNAMIKA-W-TLE, 2026-09-30,
+# host 4 CPU bez obcego obciążenia, sieć złota 52 stacje, 5 źródeł GFL, 10 s symulacji,
+# 5 000 kroków): 1 wątek — 42,1 s, wątki domyślne (4) — 40,5 s (różnica 4 %, w szumie).
+# Rdzeń liczy układy rzadkie i małe operacje gęste, więc wątki BLAS nic nie dają, a przy
+# obcym obciążeniu nadsubskrypcja kosztuje rzędy wielkości (karta WATKI-BLAS-E2E: bieg
+# zwarciowy 866 s zamiast 6 s). Jeden wątek BLAS = ten sam czas, zero ryzyka.
+ENV OPENBLAS_NUM_THREADS=1
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
 EXPOSE 8000
 
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

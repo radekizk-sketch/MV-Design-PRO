@@ -175,11 +175,12 @@ import {
 import {
   resolveStationDirectionContext,
   stationBayCaptions,
-  classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { junctionDotGaps, interiorCrossings } from './crossings';
+import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
+import { elementyToru } from './elementyToru';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
@@ -196,6 +197,7 @@ import type {
   PreviewSymbol,
   StationCompactGlyphSummary,
 } from '../compose/preview';
+import { jestZnacznikiemToru } from './znacznikiToru';
 import type { StationDerGlyphKind } from '../symbols/glyphs';
 
 // ---------------------------------------------------------------------------
@@ -607,17 +609,33 @@ function splitPolylineIntoPieces(
         // Cięcie musi leżeć WEWNĄTRZ biegu (nie na wierzchołku), poza
         // zakazanymi pionami i być ściśle za poprzednim cięciem — inaczej
         // degeneracja.
-        const withinRun =
-          (dirX !== 0 && (cut.x - a.x) * dirX > 0 && (b.x - cut.x) * dirX > 0) ||
-          (dirY !== 0 && (cut.y - a.y) * dirY > 0 && (b.y - cut.y) * dirY > 0);
-        const offForbidden = dirX === 0 || !forbiddenX?.has(cut.x);
         const prev = cuts[cuts.length - 1];
         const prevRun = cutRunIdx[cutRunIdx.length - 1];
-        const monotone =
-          prev == null ||
-          prevRun < i ||
-          (prevRun === i && ((dirX !== 0 && (cut.x - prev.x) * dirX > 0) || (dirY !== 0 && (cut.y - prev.y) * dirY > 0)));
-        if (!withinRun || !offForbidden || !monotone) return [points];
+        const poprawne = (c: RouteVertex): boolean => {
+          const withinRun =
+            (dirX !== 0 && (c.x - a.x) * dirX > 0 && (b.x - c.x) * dirX > 0) ||
+            (dirY !== 0 && (c.y - a.y) * dirY > 0 && (b.y - c.y) * dirY > 0);
+          const offForbidden = dirX === 0 || !forbiddenX?.has(c.x);
+          const monotone =
+            prev == null ||
+            prevRun < i ||
+            (prevRun === i && ((dirX !== 0 && (c.x - prev.x) * dirX > 0) || (dirY !== 0 && (c.y - prev.y) * dirY > 0)));
+          return withinRun && offForbidden && monotone;
+        };
+        // Karta SLD-SUBSTRAT (kontynuacja): cięcie równych długości trafiające
+        // DOKŁADNIE w wierzchołek (narożnik trasy) odsuwamy o ±GRID w obrębie
+        // biegu, zamiast rezygnować z podziału — dotąd taki przypadek zwracał
+        // jedno przęsło i wołający gubił tożsamość wszystkich członów poza
+        // ostatnim (pomiar: ogon trzech odcinków za stacją S02 sieci „b2Mala" na
+        // L1/L2 — dwa odcinki modelu bez prymitywu na kanwie). Kolejność prób
+        // stała: wstecz, potem naprzód (deterministycznie).
+        if (!poprawne(cut)) {
+          const wstecz: RouteVertex = { x: cut.x - dirX * GRID, y: cut.y - dirY * GRID };
+          const naprzod: RouteVertex = { x: cut.x + dirX * GRID, y: cut.y + dirY * GRID };
+          if (poprawne(wstecz)) cut = wstecz;
+          else if (poprawne(naprzod)) cut = naprzod;
+          else return [points];
+        }
         cuts.push(cut);
         cutRunIdx.push(i);
         placed = true;
@@ -1011,27 +1029,14 @@ function dominantDerGlyphKind(
  *     szyny, gdy model MÓWI nN);
  *   - `derBehindTr` bez transformatora = sprzeczność modelu (źródło „za TR"
  *     w stacji bez TR) — jawny stopNote, glif nie rysuje nN bez pola TR. */
-/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7:
- *  JEDNA reguła prezentacji roli topologicznej stacji dla WSZYSTKICH LOD —
- *  typ WYPROWADZONY z TYPU elementów (`classifyStationTopologicalType`,
- *  spec §19.3), a stacja OSTATNIA w ciągu (drugie pole = wiszący koniec,
- *  nie NO) prezentuje się jako KOŃCOWA. Wydzielone, żeby L0 (sylwetka
- *  mini-RMU) i L1/L2 (etykieta typu) NIE mogły się rozjechać (zero cienia
- *  reguły — wcześniej logika żyła tylko w gałęzi lod>=1, przez co L0
- *  rysował KAŻDĄ stację dwustronnie, jak przelotową). */
-function presentedStationTopologicalType(
-  props: StationOnRunRendererProps,
-  terminalInRun: boolean,
-): {
-  readonly derived: ReturnType<typeof classifyStationTopologicalType>;
-  readonly presented: ReturnType<typeof classifyStationTopologicalType>;
-} {
-  const derived = classifyStationTopologicalType(props.snBays ?? []);
-  const presented =
-    terminalInRun && !props.isNop && derived === 'przelotowa' ? 'końcowa' : derived;
-  return { derived, presented };
-}
-
+/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7 + karta
+ *  ETYKIETA-STACJI-PRZELOTOWEJ: rola topologiczna stacji dla WSZYSTKICH LOD (sylwetka L0
+ *  i podpis L1/L2) to `props.topologicalType` — rodzaj WYPROWADZONY z topologii JEDNĄ regułą
+ *  produktu (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, §19.3),
+ *  którą adapter wpisuje w propsy. Reguła zawiera już „przelotowa ⇔ oba pola liniowe
+ *  POŁĄCZONE" (stacja z drugim polem wolnym albo z wiszącym odcinkiem jest końcowa). Dawna
+ *  druga reguła sceny (liczba pól `snBays` + „ostatnia stacja wiersza/ciągu") skasowana —
+ *  zależała od łamania arkusza i rozjeżdżała się z drzewem projektu. */
 /**
  * TR2W-BEZ-POLA: JEDNA prawda faktu domenowego „stacja ma transformator
  * SN/nN". Przed tą kartą L0 (sylwetka, niżej) i L1/L2 (`hasLvSection` w
@@ -1053,7 +1058,6 @@ function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
-  terminalInRun: boolean,
 ): StationCompactGlyphSummary {
   const hasTransformer = stationHasTransformerFact(props);
   const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
@@ -1062,13 +1066,13 @@ function stationCompactGlyphSummary(
       `station.der.behindTrBezTR: stacja „${props.name}" (${props.id}) — źródło DER na szynie nN (za TR), ale stacja bez transformatora; sprzeczność modelu ENM (GS-4), sylwetka L0 nie rysuje strony nN bez pola TR.`,
     );
   }
-  const { derived, presented } = presentedStationTopologicalType(props, terminalInRun);
+  const rodzaj = props.topologicalType;
   return {
-    sectioned: derived === 'sekcyjna',
-    // GS-5: pola liniowe sylwetki z ROLI stacji w ciągu (nie założenia
-    // „każda przelotowa"). Sekcyjna ⇒ dwustronna z definicji (mv_lv_
-    // sectional ma 2 pola liniowe) — mapuje na 'przelotowa' + `sectioned`.
-    lineTopology: presented === 'sekcyjna' ? 'przelotowa' : presented,
+    sectioned: rodzaj === 'sekcyjna',
+    // GS-5: pola liniowe sylwetki z RODZAJU stacji (jedna reguła produktu). Sekcyjna ⇒
+    // dwustronna z definicji (mv_lv_sectional ma 2 pola liniowe) — mapuje na
+    // 'przelotowa' + `sectioned`.
+    lineTopology: rodzaj === 'sekcyjna' ? 'przelotowa' : rodzaj,
     hasTransformer,
     derOnMv: dominantDerGlyphKind(derSources, ['sn', 'unknown']),
     derBehindTr,
@@ -1082,10 +1086,6 @@ function buildMeasureInput(
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   stopNotes: string[],
-  // Recenzja NO-GO 2026-07-17 pkt 7: stacja OSTATNIA w ciągu (drugie pole
-  // liniowe = wiszący koniec, nie NO) jest topologicznie KOŃCOWA — sama
-  // liczba pól w `snBays` tego nie widzi (pole jest, kabel z niego wisi).
-  terminalInRun = false,
 ): StationMeasureInput {
   if (lod === 0) {
     // L0 (spec §7 „stacje jako ∎16 z kodem Sxx + NO"): stacja = symbol
@@ -1093,10 +1093,9 @@ function buildMeasureInput(
     // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
     // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
     // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
-    // kodu, zero zmian w measure.ts. Walidacyjne stopNotes typu (§19.3)
-    // emitowane są WYŁĄCZNIE w gałęzi lod>=1 niżej (raz, nie per LOD) —
-    // ale ROLA topologiczna stacji (GS-5) liczona jest TĄ SAMĄ regułą
-    // (`presentedStationTopologicalType`) i wchodzi do `compactGlyph`.
+    // kodu, zero zmian w measure.ts. ROLA topologiczna stacji (GS-5) to ten
+    // sam rodzaj, który podpisuje L1/L2 (`props.topologicalType`, jedna reguła
+    // produktu) i wchodzi do `compactGlyph`.
     // GS-1 (V12K-137, GAP §10.4): L0 niesie SYLWETKĘ mini-RMU — typ stacji/TR/
     // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
     // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
@@ -1105,43 +1104,22 @@ function buildMeasureInput(
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
-      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes, terminalInRun),
+      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes),
     };
   }
   const includeCableAndPorts = lod === 2;
-  // F10.2 (spec §19.3, V12K-034): typ stacji WYPROWADZONY z topologii
-  // (liczba pól liniowych + obecność sprzęgła w `snBays`) — `props.
-  // topologicalType` (dana `Substation.station_type`, adapter v2,
-  // `classifyTopologicalType` NIEZMIENIONE) służy WYŁĄCZNIE walidacji
-  // niezgodności (ostrzeżenie w `stopNotes`, BEZ cichego nadpisania
-  // rysunku — spec §19.3 „dana degradowana do walidacji").
+  // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ: podpis rodzaju to
+  // rodzaj WYPROWADZONY z topologii jedną regułą produktu (`props.topologicalType`, adapter
+  // v2 ← `ui/shared/rodzajStacji.ts`). Niezgodność z deklaracją `Substation.station_type`
+  // zgłasza walidator backendu (W043, ostrzeżenie z akcją naprawczą, bez identyfikatorów
+  // w tekście) — scena nie emituje własnej notatki niezgodności.
   const snBays = props.snBays ?? [];
-  // GS-5: JEDNA reguła wyprowadzenia i prezentacji typu dla wszystkich LOD
-  // (`presentedStationTopologicalType` wyżej) — tu dodatkowo jawne stopNotes
-  // walidacyjne (emitowane raz, w gałęzi szczegółowej).
-  const { derived: derivedType, presented: presentedType } =
-    presentedStationTopologicalType(props, terminalInRun);
-  if (derivedType !== props.topologicalType) {
-    stopNotes.push(
-      `station.type.mismatch: stacja „${props.name}" (${props.id}) — dana Substation.station_type ⇒ „${props.topologicalType}", topologia (pola liniowe/sprzęgło z snBays) ⇒ „${derivedType}"; rysunek pokazuje wyprowadzenie z topologii (spec §19.3).`,
-    );
-  }
-  // Recenzja NO-GO 2026-07-17 pkt 7: „przelotowa ⇔ oba pola liniowe
-  // POŁĄCZONE". Stacja terminalna ciągu (bez następnej stacji; NO-punkt
-  // wyłączony — tam drugie pole JEST okablowane do sąsiedniego ciągu)
-  // prezentuje się jako KOŃCOWA, a rozjazd względem liczby pól idzie w
-  // jawny stopNote.
-  if (presentedType !== derivedType) {
-    stopNotes.push(
-      `station.type.terminal: stacja „${props.name}" (${props.id}) — pola liniowe sugerują „${derivedType}", ale drugie pole kończy się wiszącym odcinkiem (stacja ostatnia w ciągu, bez NO) — rysunek pokazuje „${presentedType}" (recenzja NO-GO 2026-07-17 pkt 7).`,
-    );
-  }
   return {
     id: props.id,
     name: props.name,
     stationCode: props.stationCode ?? null,
     transformerRatedKva: props.transformerRatedKva ?? null,
-    stationTypeLabel: stationTypeLabelPl(presentedType),
+    stationTypeLabel: stationTypeLabelPl(props.topologicalType),
     snBays,
     bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
     // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
@@ -1187,13 +1165,6 @@ function buildRowLayout(
   // pierwszego przęsła wiersza mierzyłaby tekst „GPZ ↔ …", a rysowany byłby
   // „S12 ↔ S13 …" (rozjazd measure↔draw, wzór pkt 13 recenzji NO-GO).
   entryNodeCode: string = gpzNodeCode,
-  // S9-1 (łamanie arkusza): czy OSTATNIA stacja tej listy jest ostatnią stacją
-  // CAŁEGO ciągu. Dla wiersza arkusza `k < R-1` NIE jest — a od tego zależy
-  // prezentacja roli topologicznej („końcowa" vs „przelotowa",
-  // `presentedStationTopologicalType`, recenzja NO-GO 2026-07-17 pkt 7).
-  // Bez tego rozróżnienia złamanie arkusza KŁAMAŁOBY o topologii: stacja w
-  // środku magistrali rysowałaby się jako koniec ciągu.
-  runEndsAtLastStation = true,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
@@ -1205,7 +1176,7 @@ function buildRowLayout(
   // oba zestawy są indeksowo zgodne (`composeRowStation` zipuje kolumny z
   // renderInputs po indeksie, sekcja 5/6).
   const buildInputs = (measureLod: SceneLod, notes: string[]): StationMeasureInput[] => {
-    const arr = stationIds.map((id, idx) => {
+    const arr = stationIds.map((id) => {
       const props = stationById.get(id);
       if (!props) {
         notes.push(
@@ -1215,16 +1186,7 @@ function buildRowLayout(
       }
       const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
       const captions = stationBayCaptions(props.snBays ?? [], context);
-      // pkt 7 (recenzja NO-GO 2026-07-17): ostatnia stacja ciągu = terminalna
-      // (za nią żadna stacja; ewentualny ogon ENM to wiszący koniec §16-v3).
-      return buildMeasureInput(
-        props,
-        measureLod,
-        captions,
-        derSourcesByStationId,
-        notes,
-        runEndsAtLastStation && idx === stationIds.length - 1,
-      );
+      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId, notes);
     });
     let valid = arr.filter((m): m is StationMeasureInput => m != null);
     // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
@@ -1821,6 +1783,13 @@ function connectViaCorridor(
  * używana też w sekcji 6 (`stripTopY`, tam zostawiony jawny wzór z historycznych
  * powodów, wynik identyczny).
  */
+/** Poziom biegu otwartego ciągu głównego (wiersz 0 bez stacji): pod blokiem GPZ
+ *  z odstępem 2×GRID — JEDNO źródło dla trasy biegu i kotwic punktów
+ *  odgałęźnych na nim (karta SLD-SUBSTRAT, kontynuacja). */
+function openRunCorridorY(gpzGeometry: { readonly bbox: V3Rect }): number {
+  return snapUp(gpzGeometry.bbox.y + gpzGeometry.bbox.height) + 2 * GRID;
+}
+
 function stripTopYOf(layout: RowLayout): number {
   return layout.blockTopY + layout.bandsResult.bands.B4.height - DESCENT_STRIP_HEIGHT;
 }
@@ -1974,7 +1943,10 @@ interface ResolvedBranchOrigin {
    *  Dla `station-bay` == `originOwnerRef`; dla `branch-point` — stacja
    *  POPRZEDZAJĄCA punkt na ciągu (`TrunkBranchPoint.upstreamNodeRef`). */
   readonly channelOwnerRef: string;
-  readonly originRow: RowStation;
+  /** Wiersz stacji-origin. `null` WYŁĄCZNIE dla punktu odgałęźnego, którego
+   *  węzłem poprzedzającym jest GPZ (kanał w szczelinie GPZ → kolumna 0,
+   *  `GpzChannelSlot`) — punkt nie ma stacji, a trasa startuje w kotwicy toru. */
+  readonly originRow: RowStation | null;
   readonly branchPos: number;
   /** Port odgałęźny pola stacji. `null` dla punktu odgałęźnego — jego port leży
    *  NA TORZE magistrali (kanał × korytarz międzystacyjny), więc jest znany
@@ -1993,6 +1965,9 @@ function resolveBranchOrigin(
   // punkt NIE pobiera kolejnego `branchPos` — dostaje swoją, już ustaloną.
   branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   branchPointPos: ReadonlyMap<string, number>,
+  /** Karta SLD-SUBSTRAT (kontynuacja): węzeł poprzedzający punkt odgałęźny może
+   *  być GPZ — wtedy nie ma wiersza stacji, a kanał leży w szczelinie GPZ. */
+  gpzId: string | null,
 ): ResolvedBranchOrigin | null {
   const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
   if (originOwnerRef != null) {
@@ -2018,9 +1993,9 @@ function resolveBranchOrigin(
   const bpRef = run.branchOriginStationRef ?? null;
   const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
   if (!bp) return null;
-  const originRow = mainRowById.get(bp.upstreamNodeRef);
+  const originRow = mainRowById.get(bp.upstreamNodeRef) ?? null;
   const branchPos = branchPointPos.get(bp.refId);
-  if (!originRow || branchPos == null) return null;
+  if ((originRow == null && bp.upstreamNodeRef !== gpzId) || branchPos == null) return null;
   return {
     kind: 'branch-point',
     originOwnerRef: bp.refId,
@@ -2049,7 +2024,15 @@ function computeLateralChannelX(
   mainColumns: readonly ColumnResult[],
   originOwnerRef: string,
   branchPos: number,
+  gpzSlot: GpzChannelSlot | null = null,
 ): number | null {
+  // Karta SLD-SUBSTRAT (kontynuacja): węzeł poprzedzający = GPZ. GPZ nie jest
+  // kolumną wiersza, więc kanał leży w ZAREZERWOWANEJ szczelinie między prawą
+  // krawędzią GPZ a kolumną 0 (`GpzChannelSlot`, sekcja 3) — ten sam krok
+  // `LATERAL_CHANNEL_STEP` dla kolejnych punktów/odgałęzień tej szczeliny.
+  if (gpzSlot != null && originOwnerRef === gpzSlot.gpzId) {
+    return snapToGrid(gpzSlot.baseX + branchPos * LATERAL_CHANNEL_STEP);
+  }
   const col = mainColumns.find((c) => c.stationId === originOwnerRef);
   if (!col) return null;
   return snapToGrid(col.x + col.width + GRID + branchPos * LATERAL_CHANNEL_STEP);
@@ -2081,6 +2064,16 @@ function computeLateralChannelX(
  * (katalogowe `branch_ports_count > 1`) dostaje WŁASNY kanał i dojeżdża do niego
  * sub-poziomem pod korytarzem (patrz trasa w sekcji 6).
  */
+/** Karta SLD-SUBSTRAT (kontynuacja): szczelina kanałów zejść punktów
+ *  odgałęźnych, których węzłem poprzedzającym jest GPZ — rezerwowana w sekcji 3
+ *  (przesunięcie magistrali `mainRowDx`) PRZED kolumną 0, bo kolumna 0 nie może
+ *  ustąpić kanałowi (`insertColumnChannels`, degeneracja c). */
+interface GpzChannelSlot {
+  readonly gpzId: string;
+  /** X pierwszego kanału szczeliny (kolejne: `+ branchPos × LATERAL_CHANNEL_STEP`). */
+  readonly baseX: number;
+}
+
 interface RowChannelPlan {
   /** Kanał zejścia per `topologyRun.id` (laterale pól i odgałęzienia punktów). */
   readonly byRunId: ReadonlyMap<string, number>;
@@ -2090,6 +2083,30 @@ interface RowChannelPlan {
   readonly branchPosByBranchPointRef: ReadonlyMap<string, number>;
 }
 
+/** Karta SLD-SUBSTRAT (kontynuacja): liczba kanałów zejść w szczelinie GPZ —
+ *  jeden na punkt odgałęźny z węzłem poprzedzającym GPZ, plus jeden na KAŻDE
+ *  kolejne odgałęzienie z tego samego punktu (pierwsze dziedziczy kanał punktu —
+ *  ta sama reguła co krok (3) `computeRowChannelPlan`). */
+function countGpzBranchPointChannels(
+  trunkBranchPoints: readonly TrunkBranchPoint[],
+  topologyRuns: readonly SldTopologyRun[],
+  cableRunById: ReadonlyMap<string, SldCableRun>,
+  gpzId: string,
+): number {
+  let count = 0;
+  for (const bp of trunkBranchPoints) {
+    if (bp.upstreamNodeRef !== gpzId) continue;
+    const runs = topologyRuns.filter(
+      (run) =>
+        run.kind === 'branch' &&
+        run.branchOriginStationRef === bp.refId &&
+        (cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) == null,
+    );
+    count += Math.max(1, runs.length);
+  }
+  return count;
+}
+
 function computeRowChannelPlan(
   branchRuns: readonly SldTopologyRun[],
   rowBranchPoints: readonly TrunkBranchPoint[],
@@ -2097,6 +2114,7 @@ function computeRowChannelPlan(
   mainRowById: ReadonlyMap<string, RowStation>,
   branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   mainColumns: readonly ColumnResult[],
+  gpzSlot: GpzChannelSlot | null,
 ): RowChannelPlan {
   const byRunId = new Map<string, number>();
   const byBranchPointRef = new Map<string, number>();
@@ -2105,7 +2123,7 @@ function computeRowChannelPlan(
 
   // (1) Laterale z PÓL stacji — zachowanie sprzed karty, bit w bit.
   for (const run of branchRuns) {
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map());
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map(), gpzSlot?.gpzId ?? null);
     if (!origin || origin.kind !== 'station-bay') continue;
     const channelX = computeLateralChannelX(mainColumns, origin.channelOwnerRef, origin.branchPos);
     if (channelX == null) continue;
@@ -2117,7 +2135,7 @@ function computeRowChannelPlan(
   for (const bp of rowBranchPoints) {
     const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
     usage.set(bp.upstreamNodeRef, branchPos + 1);
-    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos, gpzSlot);
     if (channelX == null) continue;
     byBranchPointRef.set(bp.refId, channelX);
     branchPosByBranchPointRef.set(bp.refId, branchPos);
@@ -2139,7 +2157,7 @@ function computeRowChannelPlan(
     }
     const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
     usage.set(bp.upstreamNodeRef, branchPos + 1);
-    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos, gpzSlot);
     if (channelX != null) byRunId.set(run.id, channelX);
   }
 
@@ -3178,7 +3196,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     entryNodeCode: string,
     entryFromAbove: boolean,
     notes: string[],
-    runEndsAtLastStation = true,
   ): RowLayout =>
     buildRowLayout(
       ids,
@@ -3192,7 +3209,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       entryFromAbove,
       TOP_LEVEL_FIELD_CLEARANCE,
       entryNodeCode,
-      runEndsAtLastStation,
     );
 
   // Sonda geometrii NIEZŁAMANEGO ciągu — WYŁĄCZNIE źródło szerokości kolumn dla
@@ -3262,7 +3278,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       start === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(start - 1),
       start > 0,
       [],
-      endExclusive === trunkStationIds.length,
     ).bandsResult.totalHeight;
     bandHeightCache.set(key, value);
     return value;
@@ -3289,7 +3304,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           rowIndex === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(range.start - 1),
           rowIndex > 0,
           stopNotes,
-          range.endExclusive === trunkStationIds.length,
         ),
       )
     : mainTrunkRun
@@ -3335,6 +3349,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
    *  `spanStart` etykiety (BEZ zmiany geometrii trasy — trasa wciąż zaczyna
    *  się w prawdziwym `gpzPort.x`). */
   let gpzRightEdgeX = 0;
+  let gpzChannelSlot: GpzChannelSlot | null = null;
   if (gpzData) {
     // F9.4: pass1 (Y-alignment tylko) NIE potrzebuje `gridSources` — port
     // zaczepu magistrali (`findGpzTrunkPort`) jest niezależny od symbolu
@@ -3385,7 +3400,26 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       );
     }
     gpzRightEdgeX = gpzLayout.bbox.x + gpzLayout.bbox.width;
-    mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
+    // Karta SLD-SUBSTRAT (kontynuacja): punkty odgałęźne, których węzłem
+    // poprzedzającym jest GPZ (np. ZKSN na pierwszym odcinku, stacja klienta w
+    // odgałęzieniu), mają kanał zejścia w szczelinie GPZ → kolumna 0. Kolumna 0
+    // nie ustępuje kanałom (`insertColumnChannels`, degeneracja c), więc szczelina
+    // jest rezerwowana TU, przesunięciem magistrali: jeden krok kanału na każde
+    // zejście (punkt + kolejne odgałęzienia z tego samego punktu) i drugi odstęp
+    // GPZ_TRUNK_GAP przed kolumną 0. Brak takich punktów ⇒ rezerwa 0, geometria
+    // bez zmian.
+    const gpzChannelCount = countGpzBranchPointChannels(
+      trunkBranchPoints,
+      sldData.topologyRuns,
+      cableRunById,
+      gpzData.id,
+    );
+    gpzChannelSlot =
+      gpzChannelCount > 0 ? { gpzId: gpzData.id, baseX: snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP } : null;
+    mainRowDx =
+      snapUp(gpzRightEdgeX) +
+      GPZ_TRUNK_GAP +
+      (gpzChannelCount > 0 ? gpzChannelCount * LATERAL_CHANNEL_STEP + GPZ_TRUNK_GAP : 0);
     // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
     // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
     gpzGeometry = gpzLayout;
@@ -3620,6 +3654,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       mainRowById,
       branchPointByRef,
       rowLayout.columnsResult.columns,
+      sheetRowIndex === 0 ? gpzChannelSlot : null,
     );
     const lateralChannelXById = channelPlan.byRunId;
     const trunkForbiddenCutXs = new Set<number>([
@@ -3629,7 +3664,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     /** ODG-RYSUNEK: KOTWICE punktów odgałęźnych TEGO wiersza — kanał × korytarz
      *  międzystacyjny wiersza. Kluczem jest ref członu, który w punkcie się
      *  KOŃCZY (`upstreamSegmentRef`), bo dokładnie tam tnie się łańcuch przęsła. */
-    const branchPointCorridorY = interStationCorridorY(rowLayout, lod);
+    // Karta SLD-SUBSTRAT (kontynuacja): w wierszu 0 BEZ stacji ciąg główny jest
+    // biegiem otwartym pod GPZ (`openRunCorridorY`) — kotwica punktu leży na TYM
+    // poziomie, inaczej nie trafiłaby w tor i punkt zostałby bez symbolu.
+    const branchPointCorridorY =
+      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry
+        ? openRunCorridorY(gpzGeometry)
+        : interStationCorridorY(rowLayout, lod);
     const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
     const rowAnchorByRef = new Map<string, RouteVertex>();
     for (const bp of rowBranchPoints) {
@@ -3913,22 +3954,48 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const gpzBbox = gpzGeometry!.bbox;
-        const belowY = snapUp(gpzBbox.y + gpzBbox.height) + 2 * GRID;
-        const xEnd = Math.max(mainRowDx, snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN);
+        const belowY = openRunCorridorY(gpzGeometry!);
+        // Karta SLD-SUBSTRAT (kontynuacja): bieg otwarty sięga ZA ostatnią
+        // kotwicę punktu odgałęźnego, który na nim leży (np. ZKSN na pierwszym
+        // odcinku, stacja klienta w odgałęzieniu) — ta sama reguła co ogon ciągu.
+        const anchorXs = paths
+          .map((sp) => rowAnchorBySegmentRef.get(sp.segmentRef)?.point.x)
+          .filter((x): x is number => x != null);
+        const xEnd = Math.max(
+          mainRowDx,
+          snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN,
+          ...anchorXs.map((x) => snapUp(x) + OPEN_RUN_PIECE_SPAN),
+        );
+        const segmentRefs = paths.map((sp) => sp.segmentRef);
+        const pieces =
+          anchorXs.length > 0
+            ? trunkChainPieces(
+                [
+                  { x: gpzPort.x, y: gpzPort.y },
+                  { x: gpzPort.x, y: belowY },
+                  { x: xEnd, y: belowY },
+                ],
+                segmentRefs,
+                rowTrunkChainContext,
+                consumedBranchAnchors,
+                stopNotes,
+              )
+            : [];
         paths.forEach((sp, i) => {
           const to = xEnd - (paths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
           const points: RouteVertex[] =
-            i === 0
-              ? [
-                  { x: gpzPort.x, y: gpzPort.y },
-                  { x: gpzPort.x, y: belowY },
-                  { x: to, y: belowY },
-                ]
-              : [
-                  { x: xEnd - (paths.length - i) * OPEN_RUN_PIECE_SPAN, y: belowY },
-                  { x: to, y: belowY },
-                ];
+            pieces.length === paths.length
+              ? [...pieces[i]]
+              : i === 0
+                ? [
+                    { x: gpzPort.x, y: gpzPort.y },
+                    { x: gpzPort.x, y: belowY },
+                    { x: to, y: belowY },
+                  ]
+                : [
+                    { x: xEnd - (paths.length - i) * OPEN_RUN_PIECE_SPAN, y: belowY },
+                    { x: to, y: belowY },
+                  ];
           const isLast = i === paths.length - 1;
           allSegments.push({
             points,
@@ -4060,6 +4127,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
       const origin = resolveBranchOrigin(
         run, cableRunById, mainRowById, usage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+        gpzData?.id ?? null,
       );
       if (!origin) continue;
       if (lateralChannelXById.get(run.id) == null) continue;
@@ -4320,6 +4388,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     const origin = resolveBranchOrigin(
       run, cableRunById, mainRowById, branchOriginUsage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+      gpzData?.id ?? null,
     );
     if (!origin) {
       stopNotes.push(
@@ -4819,6 +4888,34 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         placement: 'below',
         clearance: 2 * GRID,
       });
+    }
+  }
+
+  // -- 6c. ELEMENTY NA TORZE (karta SLD-SUBSTRAT, kontynuacja): łączniki
+  // sekcyjne, węzły nazwane i powiązania pierścieniowe — położenie z geometrii
+  // odcinków już narysowanych (`scene/elementyToru.ts`), więc PO wszystkich
+  // wierszach i odgałęzieniach.
+  {
+    const toru = elementyToru(snapshot, allSegments, lod);
+    allSegments.splice(0, allSegments.length, ...toru.segments);
+    allSymbols.push(...toru.symbols);
+    simpleAnchored.push(...toru.labels);
+    stopNotes.push(...toru.stopNotes);
+    // Koniec zamknięty powiązaniem: etykieta „koniec otwarty" staje się odsyłaczem
+    // powiązania (ten sam slot, krótszy tekst — zero nowych kolizji), z refem
+    // POWIĄZANIA (klik prowadzi do odcinka, który ten koniec zamyka).
+    for (let i = 0; i < openTerminalLabels.length; i++) {
+      const etykieta = openTerminalLabels[i];
+      const ref = etykieta.ownerRef.replace(/#open-terminal-label$/, '');
+      const powiazanie = toru.zamknieteKonceOdcinkow.get(ref);
+      if (powiazanie == null || ref === etykieta.ownerRef) continue;
+      const text = 'powiązanie';
+      openTerminalLabels[i] = {
+        ...etykieta,
+        ownerRef: `${powiazanie}#powiazanie-label-${ref}`,
+        text,
+        rect: { ...etykieta.rect, width: measureLabelWidth(text, etykieta.labelClass) },
+      };
     }
   }
 
@@ -5941,41 +6038,44 @@ export function allSheetContinuationsMarked(scene: SceneV3): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// F10.2 (spec §19.3, V12K-034) — station_type_topology_probe: typ stacji
-// WYPROWADZONY z topologii; dana `station_type` służy WYŁĄCZNIE walidacji
-// (niezgodność ⇒ `missingData`/ostrzeżenie w `stopNotes`, NIE cichy
-// nadpisanie rysunku — dowiedzione już PRZEZ `buildMeasureInput` wyżej,
-// funkcja niżej to NIEZALEŻNA sonda na poziomie snapshotu ENM, do użycia
-// przez skrypt akceptacyjny/testy bez budowania pełnej sceny).
+// F10.2 (spec §19.3, V12K-034) — station_type_topology_probe (karta
+// ETYKIETA-STACJI-PRZELOTOWEJ): (a) podpis rodzaju KAŻDEJ stacji na scenie ==
+// rodzaj wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`,
+// lustro backendu `enm/rodzaj_stacji.py`); (b) deklaracja `station_type` nie zmienia
+// rysunku (niezgodność zgłasza walidator backendu W043) — sprawdza skrypt akceptacyjny
+// podmianą deklaracji; (c) 3 pola liniowe ⇒ „odgałęźna" — parytet reguły z backendem.
+// Sonda NIEZALEŻNA od adaptera: rodzaj liczy wprost z migawki ENM, podpis czyta ze sceny.
 // ---------------------------------------------------------------------------
 
-export interface StationTypeTopologyMismatch {
+export interface StationTypeLabelGap {
   readonly stationId: string;
-  readonly dataType: StationOnRunRendererProps['topologicalType'];
-  readonly derivedType: StationOnRunRendererProps['topologicalType'];
+  readonly label: string;
+  readonly expected: string | null;
 }
 
-/**
- * Uruchamia adapter v2 (`buildSldDataFromSnapshot`) + klasyfikator
- * topologiczny (`classifyStationTopologicalType`) na WSZYSTKICH stacjach
- * snapshotu i zwraca te, gdzie wyprowadzenie z topologii NIE zgadza się z
- * ręczną daną `Substation.station_type` (`props.topologicalType`).
- * NIEZALEŻNA od `buildSceneV3`/`buildMeasureInput` (nie re-używa ich
- * wewnętrznego stanu) — druga, osobna ścieżka dowodowa dla wyroczni
- * `station_type_topology_probe`.
- */
-export function stationTypeTopologyMismatches(
+/** Podpisy rodzaju stacji na scenie (tekst „stacja …" pisany małą literą — wiersz danych
+ *  bloku stacji), które nie są rodzajem wyprowadzonym z topologii tej stacji. */
+export function stationTypeLabelGaps(
+  scene: SceneV3,
   snapshot: EnergyNetworkModel,
-): readonly StationTypeTopologyMismatch[] {
-  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
-  const mismatches: StationTypeTopologyMismatch[] = [];
-  for (const s of sldData.stations) {
-    const derivedType = classifyStationTopologicalType(s.snBays ?? []);
-    if (derivedType !== s.topologicalType) {
-      mismatches.push({ stationId: s.id, dataType: s.topologicalType, derivedType });
-    }
+): readonly StationTypeLabelGap[] {
+  const gaps: StationTypeLabelGap[] = [];
+  for (const [stationId, text] of stationTypeLabels(scene)) {
+    const wynik = rodzajStacji(snapshot, stationId);
+    const expected = wynik ? `stacja ${NAZWA_RODZAJU_STACJI_PL[wynik.rodzaj]}` : null;
+    if (text !== expected) gaps.push({ stationId, label: text, expected });
   }
-  return mismatches;
+  return gaps;
+}
+
+/** Podpisy rodzaju stacji na scenie (stacja → tekst), posortowane — do porównania dwóch
+ *  scen (np. przed i po podmianie deklaracji `station_type`). Właściciel wiersza pasma nazw
+ *  to `${stacja}#name-row-N` — stacja to część przed `#`. */
+export function stationTypeLabels(scene: SceneV3): readonly (readonly [string, string])[] {
+  return scene.labels
+    .filter((label) => label.text.startsWith('stacja '))
+    .map((label) => [label.ownerRef.split('#')[0], label.text] as const)
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -6001,8 +6101,7 @@ export interface BayTemplateGap {
  *  (a) `RMU_LINE` konwencji: ZERO symboli `breaker`/`currentTransformer`
  *      i ≥1 `loadBreakSwitch`,
  *  (b) `RMU_TRANSFORMER` konwencji: ≥1 `earthSwitch`.
- * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`), jak
- * `stationTypeTopologyMismatches`. Pola nienarysowane (L0 — stacje
+ * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`). Pola nienarysowane (L0 — stacje
  * zbiorcze) poza zakresem (nie ma czego mierzyć).
  */
 export function bayTemplateGaps(scene: SceneV3, snapshot: EnergyNetworkModel): readonly BayTemplateGap[] {
@@ -6116,10 +6215,11 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
   // dostaje tu wyjątku — jest legalny wyłącznie przez DOTYK słupka
   // (`pointTouchesSegment` niżej); zwykły wolny koniec dalej daje lukę
   // (test negatywny w `buildScene.openTerminal.test.ts`).
-  if (seg.meta?.kind === 'openTerminal') return true;
   // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — jak słupek
   // terminalny: ich WŁASNE końce są krańcami rysowanej kreski, nie portami.
-  if (seg.meta?.kind === 'sheetContinuation') return true;
+  // Znak powiązania (`scene/elementyToru.ts`) — kreska jak słupek końca.
+  // Wszystkie trzy: jedna lista znaczników toru (`jestZnacznikiemToru`).
+  if (jestZnacznikiemToru(seg)) return true;
   const ref = seg.meta?.ownerRef;
   return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
@@ -6393,6 +6493,9 @@ function verticalCauseOfRole(
   // S9-1: kreski znaku ciągu dalszego są POZIOME (zero pionów) — klasyfikacja
   // dla kompletności audytu, gdyby marker kiedyś zmienił orientację.
   if (kind === 'sheetContinuation') return 'slupek-terminalny';
+  // Znak powiązania stoi DOKŁADNIE tam, gdzie stałby słupek końca otwartego —
+  // ta sama przyczyna pionu (kreska poprzeczna do biegu poziomego).
+  if (kind === 'tieMarker') return 'slupek-terminalny';
   // Dołączenia nN / DER / źródło sieci — obrys pola nN pod stacją.
   if (kind === 'lv' || r.includes('#lv-') || r.includes('#der-row') || r.endsWith('#grid-source-drop')) return 'footprint';
   // Kolumna GPZ (pola WN-SN, transformator, kotwica pola, mostki WN).
@@ -8305,7 +8408,7 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
     // §16-v3: słupek terminalny (`kind==='openTerminal'`) to MARKER końca
     // biegu, nie trasa — nosi ownerRef biegu (sufiks `#open-terminal`) dla
     // tożsamości, ale nie podlega hierarchii grubości tras §22.4.
-    if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation') continue;
+    if (jestZnacznikiemToru(s)) continue;
     if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
       gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
     }

@@ -517,10 +517,10 @@ class ArcFlashBuilder:
                 symbol="I_arc",
                 formula_latex=(
                     r"I_{arc,600} = 10^{k_1+k_2\lg I_{bf}+k_3\lg G}\cdot"
-                    r"\sum_{i} k_{i}\,I_{bf}^{\,p_i}\quad(\text{Eq.1, kotwa }600\text{ V});\quad"
+                    r"\sum_{i} k_{i}\,I_{bf}^{\,p_i}\quad(\text{Eq.1, kotwa }600\text{ V});\quad "
                     r"I_{arc} = \left[\left(\tfrac{0{,}6}{U}\right)^{2}"
                     r"\!\left(\tfrac{1}{I_{arc,600}^{2}}-\tfrac{0{,}6^{2}-U^{2}}"
-                    r"{0{,}6^{2}\,I_{bf}^{2}}\right)\right]^{-1/2}\quad(\text{Eq.25});\quad"
+                    r"{0{,}6^{2}\,I_{bf}^{2}}\right)\right]^{-1/2}\quad(\text{Eq.25});\quad "
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(

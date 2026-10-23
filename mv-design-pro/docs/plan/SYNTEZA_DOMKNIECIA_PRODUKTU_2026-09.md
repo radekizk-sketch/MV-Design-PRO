@@ -119,7 +119,8 @@ naprawialny w miejscu; świeżość wyników z koperty rewizji; wynik zawsze pok
 `analysis/voltage_profile/*` + `GET /api/quality/voltage-profile` ↔ `ui/voltage-profile/*` (0 wywołań trasy, 0 importów
 komponentu; B6 — rozstrzygane w W3-J/W6); `stability_rms` (0 konsumentów); `power_flow_unbalanced` (bez projektu nN
 fazowego); `validate_selectivity` (operacja bez ekranu); `sld_overrides` (trzy magazyny, jeden konsument); CGMES
-(1 843 linie, 46 testów, 0 tras); `load_profile_ref` (zapis bez odczytu); `der_dynamic` katalog ↔ `frt_hvrt` (stałe
+(1 843 linie, 46 testów, 0 tras — stan pomiaru; od 2026-09-30 eksport ma trasę `…/enm/eksport-cgmes` i pozycję
+menu eksportu, karta KASACJA-SCL-I-CIM-KLIENT; import nadal bez trasy); `load_profile_ref` (zapis bez odczytu); `der_dynamic` katalog ↔ `frt_hvrt` (stałe
 `tp/tiq/K` zaszyte — OD-15(b)); `GET /api/oze-analysis/frt-trajectories` ↔ ocena NC RfG (ewaluator nie czyta
 trajektorii); `certificate_evidence` w biegu NC RfG ↔ dokumenty (dowód certyfikacji dopięty, ale bez stopnia
 dowodowego testów); readiness `stability`/`frt_hvrt` ↔ rzeczywista zdolność (deklaruje gotowość ścieżki bez fizyki).
@@ -173,7 +174,7 @@ ENM: parametry dynamiczne maszyn synchronicznych (Xd, X'd, X''d, T'd0, T''d0, H,
 (odbiory, generacja, ceny) z konsumentem; `OperatingScenario` o zdarzenia w czasie (`FaultDelta`, `der_trip`,
 zmiana topologii, komendy regulacji); `CanonicalRun` o kontrakt wyniku czasowego (ResultSet dynamiczny, D-08(b));
 readiness per rodzina źródła i per zdolność; profile WOS z wersją i datą obowiązywania (D-10); katalog `APARAT_SN`
-o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17).
+o klasę 36 kV (brak danych — OD-17); Reference Engine o pozostałych OSD (OD-17). Rozstrzygnięcie 2026-09-30 (O-65/O-73): dane w trzech rozłącznych pakietach P1/P2/P3 (P-K w `DANE_WLASCICIELA_O59_2026-09.md`); od karty OD-17a (2026-09-30) brak pakietu operatora przypadku, certyfikatu WiPWC albo danych karty producenta kończy się jedną nazwaną odmową z kodem w polu (`BRAK_PAKIETU_OSD:<operator>` / `BRAK_KARTY_PRODUCENTA:<pola>` / `BRAK_CERTYFIKATU_WIPWC:<model>`); otwarte po stronie właściciela same dane.
 
 ### 12. Co wymaga wymiany?
 
@@ -193,7 +194,7 @@ harmonicznej z modelu nasycenia (G4 — W6-8, po OD-15(d)); pętla zwarcia TT/IT
 fazowego (W5); zwarcie doziemne sieci kompensowanej end-to-end (Y0 z uziemienia z modelu, Ic/Petersen, U_dot/U_krok z
 geometrii — W8); selektywność SN↔nN (B5 — W4); straty roczne i bilans energii (QSTS — W6-6); impedancja harmoniczna
 i skan częstotliwościowy/rezonans (W6-7); VUF wg składowych (OD-15(c)); odtworzenie zasilania/NOP (W10); model
-kosztowy (OD-16).
+kosztowy (OD-16). Rozstrzygnięcie 2026-09-30 (O-65/O-73): osobny, wersjonowany cennik `catalog/cenniki/cennik_RRRR-MM.yaml` powiązany z typem po `type_id` (nie pole typu niemutowalnego), stan źródła per wartość (ZWERYFIKOWANE/WSKAZANE/NIEUSTALONE), zero przeliczania inflacją; brak cennika = odmowa `BRAK_CENNIKA` z listą `type_id`, nigdy ciche zero; algebra kosztu strat wyłącznie w `network_model/pochodne/koszty.py`; mechanizm wdrożony kartą W10-2a (2026-09-30); otwarte po stronie właściciela ceny typów i cena energii strat, format dostawy P-J.
 
 ### 14. Jakich symulacji brakuje? (czas)
 
@@ -283,8 +284,9 @@ Nastawy poza modelem (druga prawda) i brak zapisu z koordynacji do `BayProtectio
 polaryzacja), admitancyjnych, 21, 87T, 25, 50BF, grup nastaw, macierzy TRIP; brak relacji „zabezpieczenie → chroniona
 gałąź" (przestrzenie kluczy prądów zwarciowych i roboczych rozłączne — zmierzone przez wątek badawczy; blokuje
 związanie prądu roboczego z biegiem rozpływu w koordynacji — A-4 wprowadza relację w W4); selektywność SN↔nN;
-koordynacja LoM z SPZ; iniekcja wtórna i czas zadziałania vs nastawa (W11); IEC 61850/SCL (decyzja zakresu — poza
-kolejką do W11).
+koordynacja LoM z SPZ; iniekcja wtórna i czas zadziałania vs nastawa (W11); IEC 61850/SCL (ROZSTRZYGNIĘTE 2026-09-30,
+decyzja K-14/D-41: poza wersją 1 — klientowy szkielet SCD skasowany, moduł SCL wyłącznie po danych właściciela D1–D8
+jako adapter backendowy).
 
 ### 21. Jakie luki istnieją w raportach?
 
@@ -498,7 +500,7 @@ i dokumentach, readiness per rodzina, nakładka czasu na SLD, wszystkie wzory w 
 | **W6-2** | rdzeń `dynamika/`: konwencje, sieć, DAE, całkowanie, zdarzenia, re-inicjalizacja, skończoność, tożsamość; SMIB klasyczny | W6-1 | równowaga ‖f‖, całka pierwsza, CCT równych pól, drabina rzędu, determinizm; wyrocznia ANDES SMIB (job opcjonalny) |
 | **W6-3** | urządzenia: SM 4. rzędu + AVR/GOV/PSS; GFL (PLL, ogranicznik, Iq); GFM; BESS z SOC i bazami; wiatr typ 3/4 | W6-2 | ANDES GENROU+SEXS+TGOV1; bilans energii; okno SOC; inwentarz ryzyka postaci |
 | **W6-4** | scenariusze zdarzeń z modelu SN (zwarcie w węźle z Z_f, wyłączenie, wyspa), wielozdarzeniowość, PPC | W6-3 | niezmienniczość permutacji ZMIERZONA na klasie; re-init z Δy raportowanym prawdziwie |
-| **W6-5** | ewaluator WOS jako konsument (T01–T04, T14–T18), certyfikat/wniosek/studium z „Podstawą", profile wersjonowane, **OD-20** kasacja `stability_rms`/`frt_hvrt` i przepięcie ewaluatora (B-01) | W6-4 + OD-20 + OD-21 | test T14 może wypaść negatywnie; zgodność z profilem i wersją; pakiet dowodowy dynamiki |
+| **W6-5** | ewaluator WOS jako konsument (T01–T04, T14–T18), certyfikat/wniosek/studium z „Podstawą", profile wersjonowane, **OD-20** kasacja `stability_rms`/`frt_hvrt` i przepięcie ewaluatora (B-01) | W6-4 + OD-20 + OD-21 | test T14 może wypaść negatywnie; zgodność z profilem i wersją; pakiet dowodowy dynamiki **2026-09-30 (O-59 pkt 2, O-70):** kasacja `stability_rms` od zaraz (0 konsumentów), `frt_hvrt` wewnątrz AB-1c po migracji toru T3 — w delegacji O-5 (b); „OD-5c” = O-5 lit. (c) korekta LFSM-O w GFL, realizacja w AB-2 (B-01), nie dane właściciela. |
 | **W6-6** | QSTS + BESS dyspozycja (9 trybów → reguły P(t)/SOC(t)), straty roczne, obciążalność TR 60076-7, hosting z magazynem | W6-3 (BESS) | bilans energii, parytet z rozpływem pojedynczym, profil w kopercie |
 | **W6-7** | jakość: flicker do solvera bez zmiany liczb, VUF, harmoniczne pod „Jakość", EN 50160 raport, profil napięcia w ekranie (B6) | W3-J | parytet liczb, raport z proweniencją |
 | **W6-8** | koordynacja izolacji + pakiet dowodowy (H3/H9), udar (G4 po OD-15(d)) pod kanonem | OD-15(d) | parytet z V12.6, kasacja duplikatu tabeli BIL |
@@ -542,7 +544,7 @@ nie produkt), **ODRZUCIĆ**.
 
 | # | Rozstrzygnięcie | Uzasadnienie / dowód |
 |---|---|---|
-| **A-1** | **Granica produktu = SN 6–36 kV + TR SN/nN + nN 0,4 kV; WN wyłącznie jako równoważnik źródła** (S''kQ, I''kQ, R/X, U_n górnej strony w danych źródła). Jawna szyna WN w modelu jest niedozwolona; walidator ENM odrzuca szynę o U_n > 36 kV z nazwanym powodem; zakres napięć jest ZADEKLAROWANY jako kontrakt (nie wynika z zawartości katalogu). | OD-19 (NR na jawnej szynie 110 kV → rozwiązanie zdegenerowane); §J.5 shadow review (zakres nigdzie niezadeklarowany); misja §52 |
+| **A-1** | **[ODRZUCONE 2026-09-30 decyzją OD-19 opcja 1 (O-59/O-65), konflikt V12K-350 — 9 budowniczych złotych ma szyny > 36 kV; zapis niżej zostaje jako historia.]** **Granica produktu = SN 6–36 kV + TR SN/nN + nN 0,4 kV; WN wyłącznie jako równoważnik źródła** (S''kQ, I''kQ, R/X, U_n górnej strony w danych źródła). Jawna szyna WN w modelu jest niedozwolona; walidator ENM odrzuca szynę o U_n > 36 kV z nazwanym powodem; zakres napięć jest ZADEKLAROWANY jako kontrakt (nie wynika z zawartości katalogu). | OD-19 (NR na jawnej szynie 110 kV → rozwiązanie zdegenerowane); §J.5 shadow review (zakres nigdzie niezadeklarowany); misja §52 |
 | **A-2** | **Trzecia oś proweniencji — stopień dowodowy wyniku** w `solver_input/provenance.py` (`EvidenceTier`, `ClaimKind`, `CapabilityEvidence`, rejestr fail-closed; nieznana zdolność = `UNVALIDATED_MODEL`); mapowanie `test_id → (capability_id, claim_kind)` dla T01–T20 w rejestrze (POZA solverem FROZEN); konsumenci: `_execute_dynamic_stability`, certyfikat, wniosek OSD, studium, macierz NC RfG (API `POST /api/ncrfg-tests/run` opakowuje wynik solvera polami addytywnymi `reporting_status`/`proof_status`/`evidence_limitations`/`evidence_note_pl`/`evidence` per test — w warstwie API/aplikacji, kontrakt solvera nietknięty), ekrany ocen. Żadna zdolność dynamiczna nie ma dziś statusu `VALIDATED_SIMULATION`. | §0 p. 1; D-00/D-09 wątku; zasada „wynik istnieje ≠ wynik pozytywny ≠ wynik jest dowodem" |
 | **A-3** | **K_sc DEFAULT_FORBIDDEN**: `InverterSource.k_sc: float \| None` (jedno pole; wartość efektywna i pochodzenie WYPROWADZANE), trzy stany (deklaracja / brak → domyślka systemowa jawnie oznaczona w śladzie / dane niepoprawne → blokada), zamknięty kontrakt zdolności zależnych od wkładu falownikowego (`ZdolnoscMiarodajna`: zwarcia jako podstawa doboru, nastawy, koordynacja, pakiety dowodowe — blokowane przy domyślce; rozpływ/topologia/schemat dostępne), **granica autorytetu wyniku**: pakiet dowodowy doboru aparatury i koordynacja czytają wielkości z ZAPISANEGO biegu (`run_id`, bieg MIN osobno), liczby w żądaniu są echem (rozbieżność = 422), pieczęć wiązania sześciu wielkości; readiness: brak deklaracji `k_sc` = `blocked` dla zdolności zależnych (nie `partial`), rozpływ nadal `ready`. | dyrektywa właściciela 2026-09-16 (§41: „K_sc pozostaje DEFAULT_FORBIDDEN"); §0 p. 4–5; P0-DELTA-03 wątku; KATALOGI §2.4 (skutek: istniejące projekty z OZE bez kart producentów tracą miarodajność zwarciową dla doboru — zamierzony, uczciwy) |
 | **A-4** | Relacja „zabezpieczenie → chroniona gałąź" wchodzi do modelu w W4 (`BayProtectionControlUnit.protected_branch_ref`), żeby prąd roboczy koordynacji dało się związać z biegiem rozpływu tą samą pieczęcią co prąd zwarciowy. | pomiar wątku: przestrzenie kluczy rozłączne (12 zwarciowych / 6 roboczych / 0 wspólnych) |
@@ -563,8 +565,8 @@ nie produkt), **ODRZUCIĆ**.
 | ID | Decyzja | Dlaczego właściciel |
 |---|---|---|
 | **OD-20** | **B-01 pakiet W6**: (a) ewaluator T14/T15/T16/T17/T18 w `solvers/ncrfg_ptpiree/engine.py` przepięty na konsumpcję `ResultSetDynamicV1` (koniec tautologii), (b) kasacja `network_model/solvers/stability_rms/**` i `network_model/solvers/frt_hvrt/**` po W6-5, (c) `capability_id` w `TEST_CATALOG` (opcjonalnie — mapowanie żyje w rejestrze A-2, więc (c) jest wygodą, nie koniecznością). Do czasu zgody: bezpiecznik A-6. | edycja `network_model/solvers/**` |
-| **OD-21** | Dokumenty źródłowe wymagań WOS 2025: programy ramowe testów PTPiREE (wer. 3.0, obowiązuje od 2026-01-01), IRiESD 2025 pięciu OSD z datami obowiązywania, warunki przyłączenia dla profili — właściciel dostarcza albo potwierdza pobranie z publicznych stron OSD; do czasu: profile w repo z adnotacją „wersja niezweryfikowana ze źródłem". | dane spoza repo; treści normatywnych nie fabrykuję |
-| **OD-22** | Skutek A-3 dla istniejących projektów z OZE bez kart producentów: dobór/nastawy/dowody BLOKOWANE do uzupełnienia `k_sc` (uczciwe) — właściciel potwierdza świadomie (jak w wątku badawczym) lub wskazuje okres przejściowy z widocznym znacznikiem „domyślka systemowa" w dokumencie. Domyślnie wdrażam BLOKADĘ (dyrektywa „DEFAULT_FORBIDDEN"). **Pomiar S-2 (2026-09-16, odbiór, drzewo scalone):** BLOKADA wdrożona (kod gotowości `inverter.k_sc_default_forbidden`: `partial` dla biegu zwarciowego, `blocked` dla doboru/nastaw/pakietów); na fiksturach repo 4 z 11 sieci OZE tracą miarodajność dla doboru (rejestr `tests/reference_networks/builders.py`: GN04, GN05, GN06a, GN06b — rekordy katalogowe `conv-pv-nn-0p5mw-0p4kv`/`conv-bess-nn-0p5mw-0p4kv` bez deklaracji `k_sc`), substrat archetypów stacji 0/8 (jawne `k_sc`); bazy projektów użytkowników w tym środowisku nie ma, więc liczba dotyczy fixtur, nie danych produkcyjnych. | wpływ na istniejące projekty użytkowników |
+| **OD-21** | Dokumenty źródłowe wymagań WOS 2025: programy ramowe testów PTPiREE (wer. 3.0, obowiązuje od 2026-01-01), IRiESD 2025 pięciu OSD z datami obowiązywania, warunki przyłączenia dla profili — właściciel dostarcza albo potwierdza pobranie z publicznych stron OSD; do czasu: profile w repo z adnotacją „wersja niezweryfikowana ze źródłem". | dane spoza repo; treści normatywnych nie fabrykuję **Rozstrzygnięte 2026-09-30 (O-60/O-61, klaster C):** dostawy PER DOKUMENT, nie per wiersz: DANE-OD21-WOS, DANE-OD21-PTPIREE, DANE-OD21-WIPWC, DANE-OD21-OSD-<enea|energa|pge|tauron|pse> (PSE = OSP z IRiESP w tej samej warstwie), DANE-OD21-JAKOSC — specyfikacje P-D…P-H w `DANE_WLASCICIELA_O59_2026-09.md`; kolejność przyjmowania WOS → PTPiREE → WiPWC → OSD; każda dostawa = YAML + `bramka_danych_profilu.py --zapisz` + przeliczenie `skrot_profilu` + fikstura `ncrfg_katalog.json`; jedyny kod = karta OD-21-KOD (B-01, zgoda O-61); S_k,min/X/R per projekt w `ConnectionConditions` (O-60); pobranie ze stron OSD wyłącznie po wyraźnej zgodzie właściciela ze wskazaniem wydania. |
+| **OD-22** | Skutek A-3 dla istniejących projektów z OZE bez kart producentów: dobór/nastawy/dowody BLOKOWANE do uzupełnienia `k_sc` (uczciwe) — właściciel potwierdza świadomie (jak w wątku badawczym) lub wskazuje okres przejściowy z widocznym znacznikiem „domyślka systemowa" w dokumencie. Domyślnie wdrażam BLOKADĘ (dyrektywa „DEFAULT_FORBIDDEN"). **Pomiar S-2 (2026-09-16, odbiór, drzewo scalone):** BLOKADA wdrożona (kod gotowości `inverter.k_sc_default_forbidden`: `partial` dla biegu zwarciowego, `blocked` dla doboru/nastaw/pakietów); na fiksturach repo 4 z 11 sieci OZE tracą miarodajność dla doboru (rejestr `tests/reference_networks/builders.py`: GN04, GN05, GN06a, GN06b — rekordy katalogowe `conv-pv-nn-0p5mw-0p4kv`/`conv-bess-nn-0p5mw-0p4kv` bez deklaracji `k_sc`), substrat archetypów stacji 0/8 (jawne `k_sc`); bazy projektów użytkowników w tym środowisku nie ma, więc liczba dotyczy fixtur, nie danych produkcyjnych. | wpływ na istniejące projekty użytkowników **Potwierdzone 2026-09-30 (O-66): bez zmian** (DEFAULT_FORBIDDEN poza delegacją O-59); wzorzec ROBOCZY + blokada autorytetu rozszerzony na ADR-021 K2 i OD-14 (SI-117+ w `network_model/core/zdolnosci_wkladu_zwarciowego.py`); test klasy konsumentów obejmuje W4-1…W4-4 i pakiet Equipment (karta OD-22-DOC-TEST). |
 | **OD-23** | PR #471 (Codex, 2026-08-10) — zastąpiony; do zamknięcia przez właściciela. | cudzy PR |
 | **OD-24** | Domyślne wartości fizyki w rdzeniu FROZEN `v126_academic.py` (fallbacki `neutral_earthing_type`, stała VUF 0,0) — kasacja po zgodzie; W5 pinuje wejście z modelu niezależnie (karta W5 §1 p. 12). | B-01 |
 | **OD-25** | Nowy moduł solvera pętli zwarcia TT/IT z RCD (`solvers/petla_zwarcia_tt_it.py`, IEC 60364-4-41 411.5.3/411.6) — model, katalog i gotowość nazwana w W5-E bez solvera (karta W5 §1 p. 8). | B-01 |
@@ -587,7 +589,7 @@ nie produkt), **ODRZUCIĆ**.
    jako dowód) → W6-1.
 4. **Klasy projektów akceptacyjnych A–F = DoD produktu** (§60): każda ma test e2e na realnym backendzie jako bramkę
    CI (dziś: A przez import — W1; E nazwana w W8; C zależy od W6-5; D od W5; B od W10; F od W10).
-5. **Poza kolejką (bez zmian):** D-11 (hasz kolekcji ENM), B-01-RI, G11 (trójuzwojeniowe), IEC 61850 (decyzja zakresu
+5. **Poza kolejką (bez zmian):** D-11 (hasz kolekcji ENM), B-01-RI, G11 (trójuzwojeniowe), IEC 61850 (decyzja zakresu ROZSTRZYGNIĘTA 2026-09-30, O-71: BRAK — świadomie, D-41; klientowy szkielet SCL i klientowy CIM kasowane, CGMES z backendu jedynym eksportem modelu; moduł SCL wyłącznie po danych D1–D8 — P-I
    przy W11).
 
 ---

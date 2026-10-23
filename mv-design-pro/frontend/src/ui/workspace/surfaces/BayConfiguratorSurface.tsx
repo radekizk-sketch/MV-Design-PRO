@@ -1,105 +1,126 @@
 /**
- * BayConfiguratorSurface (E-11) — wrapper konfiguratora pola SN.
+ * Powierzchnia „Pole SN" (ekran E-11) — karta pola z JEDNEGO modelu pola.
  *
- * Etap 3 dostawy: udostępnia istniejący BayConfigurator (8 sekcji + 6 reguł
- * walidacji R1-R6) jako powierzchnię workspace. Dane bay'a czytane z snapshotu
- * (snapshot.bays); gdy brak — minimalny kontekst rezerwowy.
+ * Treść karty pochodzi z tego samego modelu odczytu co karta pola w inspektorze
+ * (`GET /api/cases/{id}/enm/field-view`, `useFieldReadModel`) i jest składana TĄ SAMĄ funkcją
+ * (`buildBaySections`), więc powierzchnia i inspektor nie mogą się rozjechać: aparaty pierwotne
+ * (także złożone z łączników gałęzi), tor pomiarowy, zabezpieczenie, uzależnienia, wyniki
+ * projektowe i wywód pola, katalog producenta (`useKatalogPola`) i jawne zaciski `Bay.ports`.
+ * Schemat pola to `BayWindowSchematic` z tego samego modelu.
+ *
+ * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
+ * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
+ * domyślna „OUT", sekcje sprzęgła `SEC-1/SEC-2`, „pole rezerwowe" przy braku pola) — werdykt
+ * „pole zgodne z regułami" bez podstawy w modelu. Skasowana razem z tamtym kontekstem.
  */
-
 import { useMemo } from 'react';
 
-import { BayConfigurator } from '../../network-build/bay-configurator/BayConfigurator';
-import type {
-  BayRoleForValidation,
-  BayValidationContext,
-} from '../../network-build/bay-configurator/bayValidation';
+import { BayWindowSchematic } from '../../field/BayWindowSchematic';
+import { useFieldReadModel } from '../../field/useFieldReadModel';
+import { useKatalogPola } from '../../field/useKatalogPola';
+import { buildBaySections, SectionBlock } from '../../network-build/InspectorEngineeringView';
+import { useAppStateStore } from '../../app-state';
+import { fieldRoleLabelOrNullPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 interface BayConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
 }
 
-const DEFAULT_BAY_CONTEXT: BayValidationContext = {
-  bayRole: 'OUT',
-  designation: 'pole rezerwowe',
-  hasOutgoingRun: false,
-  isReserveSlot: true,
-  hasOutflowPort: true,
-  couplerSectionRefs: [],
-};
-
-export function BayConfiguratorSurface(props: BayConfiguratorSurfaceProps): JSX.Element {
-  const { surface } = props;
-  const snapshot = useSnapshotStore((state) => state.snapshot);
+export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps): JSX.Element {
   const bayRef = surface.entityRef ?? null;
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const readinessIssues = useProblemyGotowosci();
+  const { itemsByBayId, itemsByBayRef, isLoading, error } = useFieldReadModel();
 
-  const { designation, context } = useMemo(() => {
-    if (!bayRef) {
-      return { designation: 'Pole niewybrane', context: DEFAULT_BAY_CONTEXT };
-    }
-    if (!snapshot) {
-      return {
-        designation: bayRef,
-        context: { ...DEFAULT_BAY_CONTEXT, designation: bayRef },
-      };
-    }
-    const bay = (snapshot.bays ?? []).find(
-      (b: { ref_id: string }) => b.ref_id === bayRef,
-    ) as
-      | {
-          ref_id: string;
-          name?: string;
-          bay_role?: string;
-          reserve_slot?: boolean;
-        }
-      | undefined;
-    if (!bay) {
-      return {
-        designation: bayRef,
-        context: { ...DEFAULT_BAY_CONTEXT, designation: bayRef },
-      };
-    }
-    const role: BayRoleForValidation =
-      bay.bay_role && ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE'].includes(bay.bay_role)
-        ? (bay.bay_role as BayRoleForValidation)
-        : 'OUT';
-    return {
-      designation: bay.name ?? bayRef,
-      context: {
-        bayRole: role,
-        designation: bay.name ?? bayRef,
-        hasOutgoingRun: false,
-        isReserveSlot: Boolean(bay.reserve_slot),
-        hasOutflowPort: role !== 'MEASUREMENT',
-        couplerSectionRefs: role === 'COUPLER' ? ['SEC-1', 'SEC-2'] : [],
-      },
-    };
-  }, [bayRef, snapshot]);
+  const bayInModel = useMemo(
+    () => (bayRef
+      ? snapshot?.bays?.find((bay) => bay.id === bayRef || bay.ref_id === bayRef) ?? null
+      : null),
+    [snapshot, bayRef],
+  );
+  const item = useMemo(() => {
+    if (!bayRef) return null;
+    return itemsByBayId.get(bayRef)
+      ?? itemsByBayRef.get(bayRef)
+      ?? (bayInModel
+        ? itemsByBayId.get(bayInModel.id) ?? itemsByBayRef.get(bayInModel.ref_id) ?? null
+        : null);
+  }, [bayRef, bayInModel, itemsByBayId, itemsByBayRef]);
+
+  const katalog = useKatalogPola(
+    item?.canonical_model.base_model.bay_template_ref,
+    item?.canonical_model.base_model.switchgear_family_ref,
+  );
+  const bayName = item?.bay_name ?? bayInModel?.name ?? bayRef ?? 'Pole SN';
+  const { sections } = useMemo(
+    () => buildBaySections(
+      item,
+      isLoading,
+      error,
+      readinessIssues,
+      bayRef ?? '',
+      bayName,
+      katalog,
+      bayInModel?.ports ?? null,
+    ),
+    [item, isLoading, error, readinessIssues, bayRef, bayName, katalog, bayInModel],
+  );
+  const roleLabel = item
+    ? fieldRoleLabelOrNullPl(item.canonical_model.base_model.bay_role)
+    : null;
 
   return (
     <div data-testid="bay-configurator-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-11 · Konfigurator pola SN
+          Karta pola SN
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {designation}
-        </h2>
-        {!bayRef && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
-            Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
-            modelu lub kliknij pole w SLD i wybierz "Otwórz okno pola".
-          </p>
-        )}
+        <h2 className="mt-1 text-base font-semibold text-scada-text">{bayName}</h2>
+        {roleLabel && <p className="mt-0.5 text-xs text-scada-muted">{roleLabel}</p>}
       </div>
-      <div className="flex-1 overflow-auto rounded border border-scada-border">
-        <BayConfigurator
-          bayId={bayRef ?? 'unselected'}
-          designation={designation}
-          bayContext={context}
-        />
-      </div>
+      {!bayRef ? (
+        <p
+          data-testid="bay-card-no-ref"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+        >
+          Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
+          modelu lub kliknij pole w SLD i wybierz &quot;Otwórz kartę pola&quot;.
+        </p>
+      ) : snapshot && !bayInModel && !item && !isLoading ? (
+        <p
+          data-testid="bay-card-missing"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+        >
+          Wskazane pole nie występuje w modelu sieci. Wybierz istniejące pole z nawigatora modelu.
+        </p>
+      ) : (
+        <div
+          data-testid="bay-card-sections"
+          className="grid flex-1 grid-cols-1 gap-3 overflow-auto rounded border border-scada-border bg-white xl:grid-cols-[minmax(0,1fr)_320px]"
+        >
+          <div className="min-w-0">
+            {sections.map((section, index) => (
+              <SectionBlock
+                key={`${section.id}:${index}`}
+                section={section}
+                elementId={bayRef}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+              />
+            ))}
+          </div>
+          {item && (
+            <div className="min-w-0">
+              <BayWindowSchematic item={item} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

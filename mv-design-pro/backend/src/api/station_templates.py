@@ -1,7 +1,7 @@
-"""Station Templates API — K30-16/V12T-016, 73+ templates across 15 categories.
+"""Station Templates API — K30-16/V12T-016, 71 templates across 15 categories.
 
 REST endpoints:
-- GET /api/station-templates — list all 73+ templates
+- GET /api/station-templates — list all 71 templates
 - GET /api/station-templates?category=<cat> — filter by category
 - GET /api/station-templates/{template_id} — full schema + editable params
 - GET /api/station-templates/categories — list 15 categories with counts
@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.station_templates import (
     TEMPLATE_CATEGORY_LABELS_PL,
     StationTemplate,
@@ -38,6 +39,7 @@ from application.station_templates.user_store import (
     zapisz_szablon_uzytkownika as save_user_template,
 )
 from fastapi import APIRouter, Body, HTTPException, Query, Request
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
@@ -66,15 +68,21 @@ def klucz_przypadku(case_id: str) -> str:
     przekształceniem wejścia, postać niekanoniczna jest ODRZUCANA jawnym
     błędem, nigdy po cichu naprawiana.
 
-    Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
+    Podnosi ``OdmowaDanychError`` dla identyfikatora spoza kontraktu (także dla tekstu,
+    który nie jest UUID) — treść po polsku i bez echa identyfikatora (partia integracji 10).
     """
     # ŻADNEGO `strip()` ani innego oczyszczenia: każde przekształcenie wejścia jest
     # tym samym defektem co normalizacja UUID, tylko o jeden znak mniej widocznym.
-    kanoniczny = str(UUID(case_id))
+    try:
+        kanoniczny = str(UUID(case_id))
+    except ValueError as exc:
+        raise OdmowaDanychError(
+            "Identyfikator przypadku w adresie nie jest poprawnym identyfikatorem UUID."
+        ) from exc
     if kanoniczny != case_id:
-        raise ValueError(
-            f"identyfikator przypadku '{case_id}' nie jest w postaci kanonicznej "
-            f"('{kanoniczny}'). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
+        raise OdmowaDanychError(
+            "Identyfikator przypadku w adresie nie jest w postaci kanonicznej (małe litery "
+            "szesnastkowe z łącznikami). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
             "więc postać niekanoniczna wskazywałaby inny wpis niż operacje domenowe."
         )
     return case_id
@@ -123,31 +131,30 @@ def preview_station_template(
     from application.station_templates.apply import (
         TemplateApplyError,
         _cascade_manufacturer_choice,
-        _first_default_choice,
         _resolve_sn_bay_roles,
         _resolve_sn_field_specs,
         _resolve_station_type,
-        _resolve_transformer_ref_for_template,
+        rozstrzygnij_parametry_szablonu,
     )
 
     overrides = request.params_override
     profile = request.catalog_profile
 
-    # Resolve effective config
-    sn_bays_count = int(overrides.get("sn_bays_count", template.schema.sn_bays_count.default))
-    nn_feeders_count = int(
-        overrides.get("nn_feeders_count", template.schema.nn_feeders_count.default)
-    )
-    der_count = int(overrides.get("der_total_count", template.schema.der_total_count.default))
-    transformer_count = int(
-        overrides.get("transformer_count", template.schema.transformer_count.default)
-    )
-
-    transformer_ref = _resolve_transformer_ref_for_template(
-        template,
-        overrides=overrides,
-        catalog_profile=profile,
-    )
+    # Parametry projektanta, skład DER, transformator stacji i tory jednostek DER-SN z TEJ
+    # SAMEJ funkcji co zastosowanie szablonu — jedna odmowa (HTTP 422 z kodem klasy odmowy)
+    # zamiast dawnych cichych `int(...)`.
+    try:
+        parametry = rozstrzygnij_parametry_szablonu(template, overrides, profile)
+    except TemplateApplyError as exc:
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
+        ) from exc
+    sklad_der = parametry.sklad_der
+    sn_bays_count = parametry.sn_bays_count
+    nn_feeders_count = parametry.nn_feeders_count
+    der_count = len(sklad_der)
+    transformer_count = parametry.transformer_count
+    transformer_ref = parametry.transformer_ref
     cb_catalog = overrides.get("nn_feeder_cb_ref") or _cascade_manufacturer_choice(
         template.schema.nn_feeder_cb_options, profile
     )
@@ -164,17 +171,30 @@ def preview_station_template(
 
     der_summary = []
     for der_spec in template.schema.der_options:
-        der_ref = overrides.get(f"der_{der_spec.kind}_ref") or _first_default_choice(
-            der_spec.catalog_options
-        )
+        pary = [
+            (j, tor)
+            for j, tor in zip(sklad_der, parametry.tory_der_sn, strict=True)
+            if j.spec is der_spec
+        ]
+        tor = pary[0][1] if pary else None
         der_summary.append(
             {
                 "kind": der_spec.kind,
-                "catalog_ref": der_ref,
+                # Bez jednostek tej technologii (liczba 0) — pozycja i moc nie dotyczą.
+                "catalog_ref": pary[0][0].catalog_ref if pary else None,
+                "p_mw_each": pary[0][0].p_mw_each if pary else None,
                 "connection_variant": der_spec.connection_variant_options[0],
-                "expected_count_per_kind": max(
-                    1, der_count // max(1, len(template.schema.der_options))
-                ),
+                "expected_count_per_kind": len(pary),
+                # Tor jednostki po stronie SN (addytywne): WŁASNY transformator blokowy,
+                # kabel SN i aparat pola źródłowego z kaskady doboru — te same refy
+                # materializuje zastosowanie. `None` dla jednostek po stronie nN.
+                "block_transformer_ref": tor.transformator_ref if tor else None,
+                "block_transformer_name": tor.transformator_nazwa if tor else None,
+                "block_transformer_sn_mva": tor.transformator_sn_mva if tor else None,
+                "required_apparent_power_mva_each": tor.moc_wymagana_mva if tor else None,
+                "inverter_output_kv": tor.napiecie_falownika_kv if tor else None,
+                "mv_cable_ref": tor.kabel_ref if tor else None,
+                "mv_field_apparatus_ref": tor.aparat_ref if tor else None,
             }
         )
 
@@ -201,7 +221,7 @@ def preview_station_template(
         "template_name_pl": template.name_pl,
         "category": template.category.value,
         "nc_rfg_type": template.nc_rfg_type,
-        "station_type": _resolve_station_type(template),
+        "station_type": _resolve_station_type(bay_roles),
         "catalog_profile_applied": profile,
         "effective_config": {
             "transformer_ref": transformer_ref,
@@ -252,8 +272,8 @@ def apply_station_template(
     try:
         # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
         case_id_kanoniczny = klucz_przypadku(request.case_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=400) from exc
 
     # JEDYNE miejsce tlumaczenia case_id -> klucz magazynu ENM (CV-1-W) — 404
     # gdy przypadek nie nalezy do zadnego projektu.
@@ -421,12 +441,12 @@ _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
     TemplateCategory.TYPOWA_SN_NN: "Standardowe stacje dystrybucyjne 100-2500 kVA",
     TemplateCategory.SLUPOWA: "Stacje słupowe ZSP (50-400 kVA, wieś)",
     TemplateCategory.ZKSN_WNETRZOWA: "Stacje wnętrzowe z RMU (630-2500 kVA, miasto)",
-    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV 5-250 kW (NC RfG typ A-C)",
-    TemplateCategory.FARMA_PV: "Farmy PV SN 0.5-5 MW z block transformer",
+    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV 8-250 kW (NC RfG typ A-B)",
+    TemplateCategory.FARMA_PV: "Farmy PV SN 0,66-4,95 MW, falowniki z transformatorami blokowymi nN/SN",
     TemplateCategory.BESS: "Magazyny BESS 0.5-5 MW z usługami systemowymi",
     TemplateCategory.HYBRYDOWA: "Farmy hybrydowe PV + BESS",
     TemplateCategory.PRZEMYSLOWA: "Stacje przemysłowe odbiorcze (zakłady, silniki)",
-    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe (Vestas V90/V112)",
+    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe, turbiny z transformatorami blokowymi nN/SN",
     TemplateCategory.SEKCYJNA: "Stacje sekcyjne/pętlowe z NOP/SZR",
     TemplateCategory.GPZ_110_SN: "GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem",
     TemplateCategory.ROZDZIELNIA_SIECIOWA: "Rozdzielnie sieciowe RS/RSM — bez transformatora",

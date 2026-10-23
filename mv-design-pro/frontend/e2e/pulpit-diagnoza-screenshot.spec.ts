@@ -9,10 +9,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/fala11');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/fala11'));
 
 const THEMES = ['light', 'dark'] as const;
 
@@ -51,6 +53,7 @@ test.describe('fala11:screenshot', () => {
       expect(consoleErrors, `no console/page errors for pulpit/${theme}`).toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `pulpit_mapa_nba_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: outPath });
       expect(fs.existsSync(outPath)).toBe(true);
     });
@@ -87,6 +90,7 @@ test.describe('fala11:screenshot', () => {
       expect(consoleErrors, `no console/page errors for diagnoza/${theme}`).toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `diagnoza_przebiegu_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: outPath });
       expect(fs.existsSync(outPath)).toBe(true);
     });

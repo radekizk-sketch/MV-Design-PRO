@@ -178,17 +178,17 @@ Patrz `SLD_INDUSTRIAL_SPEC_v1.md` § 3.2 — szczegółowa lista 50+ symboli IEC
 
 ## 7. PV / BESS / FW z PCC
 
-### 7.1 PCC (Point of Common Coupling)
+### 7.1 Punkt przyłączenia DER (obiekt umowny `GridConnectionPoint`, ADR-027)
 
-- PCC to **punkt przyłączenia DER** do sieci OSD (zwykle szyna SN GPZ lub szyna stacji odbiorowej)
-- Wizualnie: **wyróżniony marker** (kropka z annotation „PCC") + linia łącząca DER z polem stacji nadrzędnej
-- Zgodnie z NC RfG: profil operatora (FRT, Q-U, cos φ(P)) wiązany z DER
+- Punkt przyłączenia to **obiekt umowny** wskazujący terminal fizyki (`terminal_ref` — zwykle szyna SN GPZ lub szyna stacji odbiorowej) i warunki OSD (`connection_conditions_ref`: moc przyłączeniowa, cos φ, S_k,min, X/R); NIE jest węzłem ani parametrem solvera (K-19, V12K-347; zakaz w modelu fizyki pilnuje `pcc_zero_guard`)
+- Wizualnie: **wyróżniony znacznik na zacisku** (kropka z etykietą „punkt przyłączenia") + linia łącząca DER z polem stacji nadrzędnej; do wdrożenia obiektu (po W5-T) etykieta opisuje terminal, do którego przyłączony jest `Source`
+- Zgodnie z NC RfG: profil operatora (FRT, Q-U, cos φ(P)) wiązany z DER przez `compliance_profile`
 
 ### 7.2 PV
 
 - Symbol `pv.svg` + falownik (`pv_inverter_nc_rfg.svg` — z parametrami FRT/Q-U na annotation)
 - TR opcjonalny (jeśli przyłączenie do SN; bez TR jeśli do nN)
-- PCC marker
+- znacznik punktu przyłączenia (§7.1)
 
 ### 7.3 BESS
 

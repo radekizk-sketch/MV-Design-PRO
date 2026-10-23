@@ -190,33 +190,43 @@ def check_sld_menu_path() -> list[str]:
     return errors
 
 
-def check_modal_registry() -> list[str]:
-    ids: set[str] = set()
-    candidates = [
-        FRONTEND_SRC / "ui" / "topology" / "modals" / "index.ts",
-        FRONTEND_SRC / "ui" / "topology" / "modals" / "modalRegistry.ts",
-        FRONTEND_SRC / "ui" / "network-build" / "modals" / "modalRegistry.ts",
-    ]
-    legacy_pattern = re.compile(r"MODAL_[A-Z_]+")
-    component_pattern = re.compile(r"export\s+\{\s*([A-Z][A-Za-z0-9]*Modal)\s*\}")
-    for registry_file in candidates:
-        if not registry_file.exists():
-            continue
-        content = read(registry_file)
-        ids.update(match.group() for match in legacy_pattern.finditer(content))
-        ids.update(match.group(1) for match in component_pattern.finditer(content))
+OPERATION_SURFACE_REGISTRY_FILE = (
+    FRONTEND_SRC / "ui" / "topology" / "modals" / "operationSurfaceRegistry.ts"
+)
+#: Wpis rejestru powierzchni: `entry('operacja_kanoniczna', 'KomponentDostawcy', ...)`.
+_WPIS_POWIERZCHNI = re.compile(r"entry\(\s*'(\w+)',\s*'([A-Z][A-Za-z0-9]*)'")
+#: Próg sanity (nie dokładny pin) — chroni przed katastroficznym wyczyszczeniem
+#: rejestru, nie przed pojedynczą, zweryfikowaną kasacją. Pomiar 2026-10-22: 30 wpisów.
+MIN_WPISOW_POWIERZCHNI = 30
 
-    print(f"  Registered modal ids/components: {len(ids)}")
-    # Próg sanity (nie dokładny pin) — chroni przed katastroficznym
-    # wyczyszczeniem rejestru, nie przed pojedynczą, zweryfikowaną kasacją.
-    # Karta K7c-FE: `GridSourceModal` usunięty jako martwy kod (zero
-    # konsumentów w `src`/`e2e`, potwierdzone grepem przed kasacją — kreator
-    # `KreatorZrodloZasilania` (ui2) jest jedynym, żywym dostawcą operacji
-    # `add_grid_source_sn`, patrz `dialog_completeness_guard.py`), więc próg
-    # zmierzony do NOWEJ, poprawnej liczby (10 → 9) zamiast zamrożenia starej.
-    if len(ids) < 9:
-        return [f"Modal registry has only {len(ids)} entries/components; expected at least 9"]
-    return []
+
+def check_modal_registry() -> list[str]:
+    """Rejestr powierzchni operacji: każdy dostawca dialogu jest ŻYWYM komponentem.
+
+    Dawniej liczono eksporty `*Modal` z `ui/topology/modals/index.ts` — modale bez
+    żadnego montażu (`TopologyPanel` nie był nigdzie renderowany), więc próg strażnika
+    był spełniany przez martwy kod. Modale skasowano (karta PODSTAWA-Q, commit 3);
+    jedynym rejestrem operacja → dostawca jest `OPERATION_SURFACE_REGISTRY`, a każdy
+    jego komponent musi istnieć jako plik `.tsx` w `frontend/src` (inaczej klik
+    akcji naprawczej otwierałby powierzchnię bez dostawcy).
+    """
+    content = read(OPERATION_SURFACE_REGISTRY_FILE)
+    wpisy = _WPIS_POWIERZCHNI.findall(content)
+    print(f"  Operation surface registry entries: {len(wpisy)}")
+    errors: list[str] = []
+    if len(wpisy) < MIN_WPISOW_POWIERZCHNI:
+        errors.append(
+            f"Operation surface registry has only {len(wpisy)} entries; "
+            f"expected at least {MIN_WPISOW_POWIERZCHNI}"
+        )
+    pliki = {plik.stem for plik in FRONTEND_SRC.rglob("*.tsx") if "__tests__" not in plik.parts}
+    for operacja, komponent in wpisy:
+        if komponent not in pliki:
+            errors.append(
+                f"Operation surface '{operacja}' points at component '{komponent}' "
+                "with no .tsx file in frontend/src (dead provider)"
+            )
+    return errors
 
 
 def main() -> int:

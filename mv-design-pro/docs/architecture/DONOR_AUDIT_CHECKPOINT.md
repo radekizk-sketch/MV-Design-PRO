@@ -623,6 +623,7 @@ Guard: `tests/enm/test_polityka_hash_kolekcji.py` — zbiór wyjątków ZAMKNIĘ
 Iniekcja nowej kolekcji → **FAILED**.
 
 ### F-29. RI — blokada utrzymana, warianty rozdzielone
+**Stan 2026-09-30: wariant A WYKONANY (karta PROT-LTI, zgoda O-59 OD-15(e)) — blokada zdjęta.** Zapis poniżej historyczny.
 Potwierdzone ponownie: `RI = (120,0, 1,0)` = **Long-Time Inverse**; prawdziwej RI
 (`t = TMS/(0,339 − 0,236/M)`) **nie ma nigdzie w repo**. Etykieta i LaTeX **trafiają do
 dowodu** (`protection_iec60255.py:531` i `:542`). Rozdzielone w karcie: **wariant A** —

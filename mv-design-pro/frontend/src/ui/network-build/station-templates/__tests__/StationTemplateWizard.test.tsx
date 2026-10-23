@@ -280,6 +280,26 @@ describe('StationTemplateWizard', () => {
     ).toBeNull();
   });
 
+  it('obciążenie odpływu nN jest polem kreatora i trafia do nadpisań podglądu', async () => {
+    render(<StationTemplateWizard targetSegmentRef="seg/abc/segment" />);
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('params-tab-nn_feeders'));
+    // Parametr szablonu `nn_load_default_kw` (backend: zakres + dobór transformatora stacji).
+    const pole = screen
+      .getByTestId('param-num-Obciążenie odpływu nN [kW]')
+      .querySelector('input') as HTMLInputElement;
+    expect(pole.value).toBe('50');
+    fireEvent.change(pole, { target: { value: '120' } });
+    expect(pole.value).toBe('120');
+  });
+
   it('protection tab shows E2Tango option with PTPiREE badge', async () => {
     render(<StationTemplateWizard targetSegmentRef="seg/x/segment" />);
     await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
@@ -394,5 +414,197 @@ describe('StationTemplateWizard', () => {
     // Verify success display
     expect(screen.getByText(/Station ref:/)).toBeTruthy();
     expect(onAppliedSuccess).toHaveBeenCalledWith(applyMock);
+  });
+});
+
+
+describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
+  const BESS_05 = {
+    catalog_ref: 'conv-bess-nn-0p5mw-0p69kv',
+    label_pl: 'BESS 0,5 MW / 1 MWh 0,69 kV',
+    namespace: 'ZRODLO_NN_BESS',
+  };
+  const BESS_1 = {
+    catalog_ref: 'conv-bess-nn-1mw-0p69kv',
+    label_pl: 'BESS 1 MW / 2 MWh 0,69 kV',
+    namespace: 'ZRODLO_NN_BESS',
+  };
+  // Odpowiedzi 1:1 z backendu (`tpl_hybrid_pv0p99_bess1`, pomiar 2026-10-15): falownik PV
+  // z kartą producenta, BESS jako model referencyjny (jawny wyjątek katalogu).
+  const PV_HUAWEI = {
+    catalog_ref: 'conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv',
+    label_pl: 'Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV)',
+    namespace: 'ZRODLO_NN_PV',
+    default: true,
+  };
+  const hybridTemplate = {
+    ...MOCK_TEMPLATE_FULL,
+    id: 'tpl_hybrid_pv0p99_bess1',
+    name_pl: 'Hybryda PV 0,99 MW + BESS 1 MW/2 MWh',
+    category: 'hybrydowa',
+    schema: {
+      ...MOCK_TEMPLATE_FULL.schema,
+      der_total_count: {
+        default: 4,
+        min_value: 2,
+        max_value: 20,
+        step: 1,
+        label_pl: 'Liczba modułów DER (PV + BESS)',
+      },
+      der_options: [
+        {
+          kind: 'PV',
+          label_pl: 'Falownik PV przez własny transformator blokowy nN/SN',
+          catalog_options: [PV_HUAWEI],
+          default_count: 3,
+          default_p_mw_each: 0.33,
+          default_catalog_ref: PV_HUAWEI.catalog_ref,
+          connection_variant_options: ['block_transformer'],
+        },
+        {
+          kind: 'BESS',
+          label_pl: 'Magazyn BESS przez własny transformator blokowy nN/SN',
+          // Pierwsza opcja listy (0,5 MW) NIE jest tą, którą backend wybierze dla jednostki
+          // 1 MW — kreator ma pokazać pozycję z kontraktu (`default_catalog_ref`).
+          catalog_options: [BESS_05, BESS_1],
+          default_count: 1,
+          default_p_mw_each: 1,
+          default_catalog_ref: BESS_1.catalog_ref,
+          connection_variant_options: ['block_transformer'],
+        },
+      ],
+    },
+  };
+
+  it('pokazuje pozycję katalogu z doboru backendu, edytuje liczby i wysyła je do podglądu', async () => {
+    const previewBodies: Record<string, unknown>[] = [];
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/station-templates/categories') {
+        return Promise.resolve(_mockResponse(MOCK_CATEGORIES));
+      }
+      if (url === '/api/station-templates/tpl_hybrid_pv0p99_bess1') {
+        return Promise.resolve(_mockResponse(hybridTemplate));
+      }
+      if (url === '/api/station-templates/tpl_hybrid_pv0p99_bess1/preview' && init?.method === 'POST') {
+        previewBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        return Promise.resolve(
+          _mockResponse({
+            template_id: 'tpl_hybrid_pv0p99_bess1',
+            template_name_pl: hybridTemplate.name_pl,
+            category: 'hybrydowa',
+            nc_rfg_type: 'B',
+            station_type: 'inline',
+            catalog_profile_applied: null,
+            effective_config: {
+              transformer_ref: 'tr-sn-nn-15-04-63kva-dyn11',
+              transformer_count: 1,
+              sn_bays_count: 3,
+              sn_bay_roles: ['IN', 'MEASUREMENT', 'OUT'],
+              sn_fields: [],
+              sn_manufacturer: 'ZPUE_WLOSZCZOWA',
+              nn_feeders_count: 0,
+              nn_feeder_cb_ref: null,
+              protection_relay_ref: null,
+              der_total_count: 5,
+              der_mix: [
+                {
+                  kind: 'PV',
+                  catalog_ref: PV_HUAWEI.catalog_ref,
+                  p_mw_each: 0.33,
+                  connection_variant: 'block_transformer',
+                  expected_count_per_kind: 3,
+                  block_transformer_ref: 'tr-sn-nn-15-0p8-0p5mva-dyn11-inverter',
+                  block_transformer_name: 'TR 15/0.8 kV 500 kVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
+                  block_transformer_sn_mva: 0.5,
+                  required_apparent_power_mva_each: 0.33,
+                  inverter_output_kv: 0.8,
+                  mv_cable_ref: 'cable-polish-yhakxs-1c-50',
+                  mv_field_apparatus_ref: 'sw-ls-abb-nal-24kv-400a',
+                },
+                {
+                  kind: 'BESS',
+                  // Backend dobiera pozycję do mocy jednostki 1,5 MW (O-53): 2 MW, nie 1 MW.
+                  catalog_ref: 'conv-bess-nn-2mw-0p69kv',
+                  p_mw_each: 1.5,
+                  connection_variant: 'block_transformer',
+                  expected_count_per_kind: 2,
+                  block_transformer_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
+                  block_transformer_name: 'TR 15/0.69 kV 2.5 MVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
+                  block_transformer_sn_mva: 2.5,
+                  required_apparent_power_mva_each: 2.2,
+                  inverter_output_kv: 0.69,
+                  mv_cable_ref: 'cable-polish-yhakxs-1c-50',
+                  mv_field_apparatus_ref: 'sw-ls-abb-nal-24kv-400a',
+                },
+              ],
+            },
+            estimated_elements_count: 10,
+          }),
+        );
+      }
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) } as Response);
+    });
+
+    render(
+      <StationTemplateWizard
+        initialTemplateId="tpl_hybrid_pv0p99_bess1"
+        targetSegmentRef="seg/abc/segment"
+      />,
+    );
+    await waitFor(() => screen.getByTestId('wizard-step-content-location'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('params-tab-der'));
+
+    const bessSelect = screen
+      .getByTestId('choice-Katalog BESS')
+      .querySelector('select') as HTMLSelectElement;
+    expect(bessSelect.value).toBe(BESS_1.catalog_ref);
+
+    const pv = screen.getByTestId('param-int-Liczba jednostek PV');
+    const bess = screen.getByTestId('param-int-Liczba jednostek BESS');
+    expect((pv.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('3');
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('1');
+    // Suma nie jest osobnym polem dla kilku technologii — tylko wynikiem liczebności.
+    expect(screen.queryByTestId('param-int-Liczba modułów DER (PV + BESS)')).toBeNull();
+    fireEvent.change(bess.querySelector('input[type="number"]') as HTMLInputElement, {
+      target: { value: '2' },
+    });
+    expect((bess.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('2');
+    expect(screen.getByText(/Łączna liczba modułów DER: 5/)).toBeTruthy();
+    // Pkt 7.2: moc jednostki jest polem kreatora (`der_<rodzaj>_p_mw_each`), wysyłanym do
+    // backendu bez przeliczeń — dobór pozycji i toru robi backend.
+    const mocBess = screen
+      .getByTestId('param-num-Moc jednostki BESS [MW]')
+      .querySelector('input') as HTMLInputElement;
+    expect(mocBess.value).toBe('1');
+    fireEvent.change(mocBess, { target: { value: '1.5' } });
+    expect(mocBess.value).toBe('1.5');
+
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-profile'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-preview'));
+    await waitFor(() => screen.getByText(/3× PV 0.33 MW, conv-pv-nn-huawei-sun2000-330ktl-h1-0p8kv/));
+    expect(screen.getByText(/2× BESS 1.5 MW, conv-bess-nn-2mw-0p69kv/)).toBeTruthy();
+    // Tor jednostki po stronie SN: własny transformator blokowy z doboru backendu.
+    const trBess = screen.getByTestId('preview-tr-blokowy-BESS');
+    expect(trBess.textContent).toContain(
+      '2× TR 15/0.69 kV 2.5 MVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
+    );
+    expect(trBess.textContent).toContain('Sn 2.5 MVA, wymagane 2.2 MVA na jednostkę');
+    expect(screen.getByTestId('preview-tr-blokowy-PV').textContent).toContain(
+      '3× TR 15/0.8 kV 500 kVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
+    );
+
+    // Ostatnie ciało podglądu przez indeks, nie `Array.prototype.at` — `lib` projektu to ES2020
+    // (bramka typów `tsconfig_gate_guard`: TS2550 poza bramką podniósł dług z 62 do 63).
+    const override = previewBodies[previewBodies.length - 1]?.params_override as Record<
+      string,
+      unknown
+    >;
+    expect(override.der_BESS_count).toBe(2);
+    expect(override.der_BESS_p_mw_each).toBe(1.5);
+    expect(override.der_total_count).toBe(5);
   });
 });

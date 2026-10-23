@@ -629,24 +629,6 @@ DOZWOLONE: dict[str, tuple[int, str]] = {
         "network_model/solvers/ncrfg_ptpiree/engine.py:NcRfgPtpireeSolver._statyzm:"
         "tekst_argument:zakres_stosowalnosci_pl:.test_id"
     ): (1, _KOD_TESTU_PROFILU),
-    (
-        "network_model/solvers/short_circuit_iec60909.py:ShortCircuitIEC60909Solver."
-        "_append_transformer_kt_trace:argument:title:branch_id"
-    ): (
-        1,
-        "Rdzeń FROZEN (B-01). Zapas `branch.name or branch_id` nie odpala: mapowanie ENM → "
-        "graf (`enm/mapping.py`) nadaje każdej gałęzi grafu nazwę przez `nazwa_elementu` "
-        "(nazwa z modelu albo opis rodzaju, nigdy pusta).",
-    ),
-    (
-        "network_model/solvers/short_circuit_iec60909.py:ShortCircuitIEC60909Solver."
-        "_build_branch_contributions_for_thevenin:argument:title:branch_id"
-    ): (
-        1,
-        "Rdzeń FROZEN (B-01): tytuł kroku śladu wkładu Thevenina składa identyfikator gałęzi "
-        "grafu BEZ nazwy. Naprawa wymaga zgody właściciela na edycję rdzenia (bramka B-01) — "
-        "zgłoszone w meldunku karty #144 jako decyzja właściciela, nie obejście.",
-    ),
 }
 
 

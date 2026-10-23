@@ -95,8 +95,21 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `CatalogRepository(uow.session)`, które zawsze kończyło się połkniętym `TypeError`
     # (3 błędy `call-arg`) ⇒ 226/35 → 223/34; pomiar na scalonym drzewie partii 5 (AB-P1,
     # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
-    assert modul.BASELINE_ERRORS == 223
-    assert modul.BASELINE_FILES == 34
+    # Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (d)): 20 błędów w rdzeniach
+    # B-01 (`power_flow_newton_internal.py` 19, `short_circuit_iec60909.py` 1) ⇒ 203/32.
+    # Decyzja B-01 partii integracji 9 (delegacja O-59): 5 błędów rdzenia `v126_academic.py`
+    # usuniętych u źródła ⇒ 198/31.
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16): baza `bd3a87f4` 224/35 (commit 3/n
+    # karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`) → 199/26 — błędy
+    # w plikach dotkniętych kartą naprawione u źródła (lista przy `BASELINE_*` w guardzie;
+    # różnica zbiorów `mypy src` baza/drzewo karty = 25 zdjętych, zero nowych).
+    # Partia integracji 11: scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK na czubek po partii 9 —
+    # 198/31 → 174/23 (pomiar `mypy src` na drzewie scalonym; zero nowych względem bazy i karty).
+    # Karta SC-IB-ITH-ZRODLA (B-01 pozycja (n)): 174/23 -> 169/22 — pomiar `mypy src` na bazie
+    # `4ccfa9320` i na drzewie karty; zdjęte 5 błędów (`machine_sc_iec60909.py` 4,
+    # `equipment_proof/generator.py` 1), zero nowych (opis przy `BASELINE_*` w guardzie).
+    assert modul.BASELINE_ERRORS == 169
+    assert modul.BASELINE_FILES == 22
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.proof_engine.lv_circuit_verification_binding import (
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
@@ -25,6 +26,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.cable_ampacity_derating import wspolczynniki_nn
 from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
@@ -152,10 +154,11 @@ def download_lv_circuit_verification_pack(
             vdrop_delta_u_total_percent=payload.vdrop_delta_u_total_percent,
             apparatus_branch_ref=payload.apparatus_branch_ref,
         )
-    except ValueError as exc:
-        raise HTTPException(
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się złożyć dowodu obwodu nN: {exc}",
+            prefiks="Nie udało się złożyć dowodu obwodu nN",
         ) from exc
 
     if wynik["status"] != "OK":
@@ -234,10 +237,11 @@ def preview_lv_circuit_verification_pack(
             vdrop_delta_u_total_percent=payload.vdrop_delta_u_total_percent,
             apparatus_branch_ref=payload.apparatus_branch_ref,
         )
-    except ValueError as exc:
-        raise HTTPException(
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się złożyć dowodu obwodu nN: {exc}",
+            prefiks="Nie udało się złożyć dowodu obwodu nN",
         ) from exc
 
     if wynik["status"] != "OK":

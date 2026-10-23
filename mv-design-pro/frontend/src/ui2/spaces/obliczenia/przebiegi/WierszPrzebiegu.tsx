@@ -11,9 +11,11 @@ import { formatCzas, PRZEBIEGI_STRINGS as T } from './strings';
 
 const WARIANT_STATUSU: Record<RunStatus, string> = {
   PENDING: 'mvd-tag-mut',
+  QUEUED: 'mvd-tag-mut',
   RUNNING: 'mvd-tag-warn',
   DONE: 'mvd-tag-ok',
   FAILED: 'mvd-tag-err',
+  CANCELLED: 'mvd-tag-mut',
 };
 
 interface WierszPrzebieguProps {

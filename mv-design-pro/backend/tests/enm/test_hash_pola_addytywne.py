@@ -69,11 +69,27 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # poza odciskiem); test pisarzy i odcisku: `test_pola_art4_i_nastawy_poza_haszem_gdy_none`.
     # Odbiór Pakietu C (O-50): `Generator.deklaracje_modulu` — to samo prawo; test odcisku:
     # `tests/enm/test_deklaracje_modulu.py::test_deklaracje_poza_odciskiem_gdy_none`.
+    # Karta modeli odbiorów (O-56): `Load.dynamika` (kopia profilu katalogu odbiorów) — to
+    # samo prawo; test odcisku: `test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none` niżej.
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `Transformer.lv_voltage_tolerance` i
+    # `Source.lv_voltage_tolerance` (tolerancja sieci nN, wiersz nN tabeli 1 IEC 60909-0) —
+    # to samo prawo; test odcisku: `tests/enm/test_tolerancja_nn_iloczyn_cech.py`
+    # (odciski modelu bez deklaracji równe zmierzonym na stanie sprzed karty).
+    # Karta LINIA-110: `OverheadLine.geometria_slupa` i `OverheadLine.parametry_z_geometrii`
+    # (linia 110 kV z przewodem z katalogu) — to samo prawo; test odcisku:
+    # `tests/enm/test_linia_110kv_wpiecie.py::test_odcisk_modelu_bez_linii_110kv_bez_zmian`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
-        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
-        "loads": ("phases",),
-        "transformers": ("lv_earthing_system",),
-        "branches": ("screen_bonding",),
+        "sources": (
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+            "u_set_pu",
+            "neutral_grounding",
+            "lv_voltage_tolerance",
+        ),
+        "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
+        "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
         "generators": (
             "dynamika",
             "modele_widmowe",
@@ -117,3 +133,36 @@ def test_input_hash_nie_zalezy_od_pol_none() -> None:
     a = compute_input_hash(enm)
     b = compute_input_hash(EnergyNetworkModel.model_validate(_migawka_sprzed_karty(enm)))
     assert a == b
+
+
+def test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none() -> None:
+    """Karta modeli odbiorów: migawka z odbiorem bez bloku `Load.dynamika` haszuje jak zapis
+    sprzed karty (klucza nie było); blok z katalogu ZMIENIA odcisk (to jest dana biegu)."""
+    from enm.dynamika_modele import ModelDynamicznyOdbioru, ProweniencjaParametrow
+    from enm.models import Load
+
+    def z_odbiorem(dynamika: ModelDynamicznyOdbioru | None) -> EnergyNetworkModel:
+        enm = _enm()
+        enm.loads.append(
+            Load(ref_id="o1", name="Odbiór", bus_ref="b1", p_mw=1.0, q_mvar=0.2, dynamika=dynamika)
+        )
+        return enm
+
+    bez_bloku = z_odbiorem(None)
+    migawka = bez_bloku.model_dump(mode="json")
+    sprzed_karty = bez_bloku.model_dump(mode="json")
+    for odbior in sprzed_karty["loads"]:
+        odbior.pop("dynamika")
+    assert "dynamika" in migawka["loads"][0]
+    assert hash_migawki_enm(migawka) == hash_migawki_enm(sprzed_karty)
+    assert compute_enm_hash(bez_bloku) == hash_migawki_enm(sprzed_karty)
+
+    z_blokiem = z_odbiorem(
+        ModelDynamicznyOdbioru(
+            proweniencja=ProweniencjaParametrow(zrodlo="profil_typowy_normy", odniesienie="x"),
+            u_min_pu=0.7,
+            t_pomiaru_czestotliwosci_s=None,
+        )
+    )
+    assert compute_enm_hash(z_blokiem) != compute_enm_hash(bez_bloku)
+    assert compute_input_hash(z_blokiem) != compute_input_hash(bez_bloku)

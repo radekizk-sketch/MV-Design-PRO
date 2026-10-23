@@ -161,9 +161,12 @@ def _stacja(snap: dict[str, Any], nn_earthing: dict[str, Any] | None) -> dict[st
             "sn_voltage_kv": 15.0,
             "nn_voltage_kv": 0.4,
         },
+        # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte) — odgałęzienie
+        # ze stacji (test ekranu kabla odgałęzienia) wychodzi z wolnego pola odgałęźnego.
         "sn_fields": [
             {"field_role": "LINIA_IN"},
             {"field_role": "LINIA_OUT"},
+            {"field_role": "LINIA_ODG"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
@@ -210,6 +213,34 @@ class TestKreatorStacji:
         result = _stacja(snap, nn_earthing)
         assert result["error_code"] == kod
         assert result.get("snapshot") is None
+
+    @pytest.mark.parametrize(
+        ("tolerancja", "kod"),
+        [
+            ("PLUS_6", None),
+            ("PLUS_10", None),
+            (None, None),
+            ("PLUS_8", "station.invalid_lv_voltage_tolerance"),
+            ("+6 %", "station.invalid_lv_voltage_tolerance"),
+        ],
+    )
+    def test_tolerancja_sieci_nn_na_transformatorze_stacji(self, tolerancja, kod):
+        """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `nn_earthing.lv_voltage_tolerance` — wiersz nN
+        tabeli 1 IEC 60909-0 (+6 %: c 1,05/0,95; +10 %: c 1,10/0,90) na transformatorze
+        stacji, ten sam blok co układ sieci nN; brak = brak deklaracji (nie domyślka)."""
+        result, _ = _gpz_z_odcinkiem()
+        snap = _ok(result)
+        nn_earthing: dict[str, Any] = {"lv_system": "TN-C-S"}
+        if tolerancja is not None:
+            nn_earthing["lv_voltage_tolerance"] = tolerancja
+        result = _stacja(snap, nn_earthing)
+        if kod is not None:
+            assert result["error_code"] == kod
+            assert result.get("snapshot") is None
+            return
+        snap = _ok(result)
+        tr = next(t for t in snap["transformers"] if t["ulv_kv"] < 1.0)
+        assert tr.get("lv_voltage_tolerance") == tolerancja
 
     def test_brak_bloku_zostawia_transformator_bez_ukladu_nie_domyslke(self):
         result, _ = _gpz_z_odcinkiem()

@@ -12,6 +12,7 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
 
 // =============================================================================
 // Helpers
@@ -68,11 +69,12 @@ export function TransformerCard({ elementId }: { elementId: string }) {
     [snapshot, transformer],
   );
 
+  // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
   const parentStation = useMemo(
-    () =>
-      snapshot?.substations?.find((s) =>
-        s.transformer_refs?.includes(elementId),
-      ),
+    () => {
+      const stationRef = stationRefOfTransformer(snapshot, elementId);
+      return snapshot?.substations?.find((s) => s.ref_id === stationRef);
+    },
     [snapshot, elementId],
   );
 

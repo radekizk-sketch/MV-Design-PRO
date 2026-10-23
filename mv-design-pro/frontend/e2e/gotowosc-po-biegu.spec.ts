@@ -23,12 +23,15 @@
  * e2e/gotowosc-jedna-prawda.spec.ts (real backend).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { wykonajBiegDoKonca } from './biegi';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
+const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
@@ -44,7 +47,8 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
   };
 };
 
@@ -160,6 +164,8 @@ async function zbudujSiecGotowaDoObliczen(
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -185,7 +191,9 @@ async function zbudujSiecGotowaDoObliczen(
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -247,20 +255,11 @@ async function uruchomBiegScPrzezApi(request: APIRequestContext, caseId: string)
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };
 
-  const executeResponse = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`, {
-    timeout: 90000,
-  });
-  expect(executeResponse.ok(), await executeResponse.text()).toBeTruthy();
-
-  const deadline = Date.now() + 15000;
-  let lastStatus = 0;
-  while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${run.id}/results/index`);
-    lastStatus = response.status();
-    if (response.ok()) return run.id;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`results/index nie jest gotowy dla runu ${run.id} (status=${lastStatus})`);
+  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202) — gotowość to stan biegu
+  // DONE z `GET /api/execution/runs/{id}` (jeden pomocnik `biegi.ts`), nie odpowiedź
+  // `results/index`, która jest 200 także dla biegu w toku (indeks bez wierszy).
+  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
+  return run.id;
 }
 
 async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {

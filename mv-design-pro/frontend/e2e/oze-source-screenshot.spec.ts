@@ -10,10 +10,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('oze-source-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual'));
 
 const ARCHETYPES = ['G1', 'G2', 'G3', 'G4-PVTR', 'G5-BESS', 'G5-WIND-T4', 'G8-BIOGAZ', 'G7-WIND-ASYNC', 'G6-WIND-DFIG'] as const;
 
@@ -56,6 +58,7 @@ test.describe('sld:oze-source:screenshot', () => {
       expect(consoleErrors, `no console/page errors for ${archetype}`).toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `oze_${archetype}_composite.png`);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: outPath });
       console.log(`Saved: ${outPath}`);
       expect(fs.existsSync(outPath)).toBe(true);

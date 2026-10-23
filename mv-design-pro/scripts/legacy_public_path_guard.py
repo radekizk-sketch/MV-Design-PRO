@@ -13,7 +13,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import api_lifecycle_guard  # noqa: E402
+import arch_guard  # noqa: E402
 import canonical_ops_guard  # noqa: E402
+from importy_ast import (  # noqa: E402
+    ImportPonadKorzen,
+    moduly_dotkniete,
+    pakiet_pliku,
+    pod_prefiksem,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
@@ -42,8 +49,8 @@ FORBIDDEN_IMPORTS = {
     # Karta CV-3.3-A2 (2026-09-05): klaster osierocony kasacja E3/E2-widmo
     # (jedyny wolajacy w src/) domkniety osobno. sc_binding_meta.py i
     # short_circuit_to_resultset_v1.py / protection_to_resultset_v1.py
-    # ZOSTAJA — zamrozone przez resultset_v1_schema_guard.py, decyzja
-    # wlasciciela (B-01), NIE kasowane.
+    # skasowane pozniej, w karcie RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda
+    # B-01 w O-59) — ich bramka wskrzeszenia jest w resultset_v1_schema_guard.py.
     "application.result_mapping.load_flow_to_resultset_v1",
     "application.result_mapping.protection_to_overlay_v1",
     "domain.analysis_kind",
@@ -420,7 +427,12 @@ FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
 # przywroconego `protection_engine_v1.py`, wiec nie dalo sie ich przywrocic
 # bez zerwania importu do skasowanej reszty). `api/execution_runs.py:119` i
 # `solver_input/eligibility.py:263` mialy TYLKO komentarz o `protection_
-# engine_v1` — poprawiony na fakt (silnik ZOSTAJE, B-01, nie skasowany).
+# engine_v1` — poprawiony na fakt. AKTUALIZACJA 2026-09-30 (karta
+# RESULTSET-MARTWE-MAPPERY, zgoda B-01 w O-59): oba przywrocone pliki
+# (`domain/protection_engine_v1.py`, `application/result_mapping/
+# protection_to_resultset_v1.py`) SKASOWANE razem z `test_protection_engine_v1.py`;
+# bramka ich wskrzeszenia (pliki + nazwy definicji) zyje w JEDNYM miejscu —
+# `scripts/resultset_v1_schema_guard.py::check_resultset_dead_mappers_resurrection`.
 # Rownolegle skasowana martwa `_compute_tcc_curve` (0 wywolan) i zaslepka
 # `calculate_tcc_curve` (`tcc.legacy_write_disabled`, operacja domenowa BEZ
 # fizyki, NIE czesc drugiego silnika) razem z rejestracja w
@@ -431,10 +443,11 @@ FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
 # `FORBIDDEN_W3A_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
 # gdziekolwiek w `backend/src`, (3) zadna nazwa z `FORBIDDEN_W3A_FUNCTION_NAMES`
 # nie wraca jako DEFINICJA (ast.FunctionDef/AsyncFunctionDef) gdziekolwiek w
-# `backend/src`. Klasy/funkcje `domain/protection_engine_v1.py` i
-# `application/result_mapping/protection_to_resultset_v1.py` (PRZYWROCONE,
-# istnieja legalnie) CELOWO NIE sa na tych listach — zakazanie ich nazw
-# zlapaloby falsz-pozytyw na plikach, ktore prawnie istnieja.
+# `backend/src`. Klasy/funkcje skasowanych w RESULTSET-MARTWE-MAPPERY
+# `domain/protection_engine_v1.py` i `application/result_mapping/
+# protection_to_resultset_v1.py` CELOWO NIE sa na tych listach — pilnuje ich
+# jedna bramka w `resultset_v1_schema_guard.py` (dwa predykaty tej samej klasy
+# w dwoch guardach = dryf).
 W3A_LEGACY_RELATIVE_PATHS: dict[str, str] = {
     "application/protection_current_resolver.py": "resolver prądu SC->Protection Engine v1 (bridge PR-27)",
     "domain/protection_current_source.py": "typy domenowe bridge'a SC<->Protection Engine v1 (PR-27)",
@@ -457,6 +470,12 @@ FORBIDDEN_W3A_CLASS_NAMES = {
 FORBIDDEN_W3A_FUNCTION_NAMES = {
     # enm/domain_operations_v2.py — zaslepka bez fizyki (tcc.legacy_write_disabled)
     "calculate_tcc_curve",
+    # Karta BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zaslepki z odmowa i selektywnosc z
+    # kolejnosci listy (prad 10 x nastawa) — nastawy pisze `update_protection_settings`,
+    # selektywnosc liczy koordynacja E-28 na jednej sciezce oceny.
+    "update_relay_settings",
+    "link_relay_to_field",
+    "validate_selectivity",
 }
 
 # Karta W3-C1 (2026-09-09) — bramka wskrzeszenia KASACJI V12K-189. Metodyka nastaw
@@ -693,6 +712,24 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
+#: Drzewa skladni wspoldzielone przez bramki jednego biegu. Kazda z ~20 bramek
+#: przechodzila caly `backend/src` od nowa i parsowala te same ~750 plikow (pomiar
+#: 2026-09-30: 11 303 wywolan `ast.parse` na bieg, ~1/3 czasu). Klucz to sciezka
+#: i TRESC pliku, wiec zmiana pliku miedzy biegami (samotesty z iniekcja) nigdy nie
+#: zwraca starego drzewa. Bramki tylko czytaja drzewa (zadna ich nie modyfikuje).
+_DRZEWA_PY: dict[tuple[str, str], ast.Module] = {}
+
+
+def parsuj_py(path: Path) -> ast.Module:
+    tekst = read_text(path)
+    klucz = (str(path), tekst)
+    drzewo = _DRZEWA_PY.get(klucz)
+    if drzewo is None:
+        drzewo = ast.parse(tekst, filename=str(path))
+        _DRZEWA_PY[klucz] = drzewo
+    return drzewo
+
+
 def zrodlo_istnieje(path: Path, wzorce: tuple[str, ...] = ("*.py",)) -> bool:
     """Czy pod sciezka istnieje ZRODLO: plik albo katalog z choc jednym plikiem
     zrodlowym (`wzorce`, domyslnie `*.py`; dla frontendu `*.ts`/`*.tsx`) na
@@ -728,14 +765,60 @@ def active_api_module_paths() -> list[Path]:
     return sorted(module_paths)
 
 
+def importy_zakazanych_modulow(
+    tree: ast.AST, path: Path, prefiksy: tuple[str, ...] | frozenset[str] | set[str]
+) -> list[tuple[int, str, bool]]:
+    """(wiersz, moduł, ponad_korzeniem) dla każdej instrukcji importu, która ładuje moduł
+    z `prefiksy` (moduł albo jego podmoduł) — JEDEN predykat dla wszystkich trzech
+    sprawdzeń importów zastanych (publiczne trasy, K2, TRACE-V2).
+
+    Rozwiązanie wg semantyki interpretera (`scripts/importy_ast.py`): import względny
+    (`from .unified_runs import router` w `api/*.py`), `import api.unified_runs` i nazwa
+    sprowadzona z pakietu (`from application import reference_networks`) to te same
+    wejścia co `from api.unified_runs import …`. Do 2026-09-30 sprawdzenia czytały samo
+    `ImportFrom.module` i pomijały `ast.Import`. Import względny ponad korzeń drzewa
+    (interpreter: `ImportError`) jest zgłaszany jako naruszenie — bramka nie zgaduje celu.
+    """
+    try:
+        pakiet = pakiet_pliku(path, BACKEND_SRC_DIR)
+    except ValueError:
+        pakiet = ""
+    trafienia: list[tuple[int, str, bool]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Import | ast.ImportFrom):
+            continue
+        try:
+            moduly = moduly_dotkniete(pakiet, node)
+        except ImportPonadKorzen:
+            assert isinstance(node, ast.ImportFrom)
+            trafienia.append((node.lineno, "." * node.level + (node.module or ""), True))
+            continue
+        for modul in moduly:
+            if pod_prefiksem(modul, prefiksy):
+                trafienia.append((node.lineno, modul, False))
+                break
+    return trafienia
+
+
+def _opis_importu(rel_path: str, lineno: int, modul: str, ponad_korzeniem: bool) -> str:
+    if ponad_korzeniem:
+        return (
+            f"[legacy-public-import] {rel_path}:{lineno}: {modul} — import względny ponad "
+            "korzeń drzewa importów (interpreter: ImportError); bramka nie rozstrzyga celu"
+        )
+    return f"[legacy-public-import] {rel_path}:{lineno}: {modul}"
+
+
 def check_legacy_public_paths() -> list[str]:
     violations: list[str] = []
     for module_path in active_api_module_paths():
-        tree = ast.parse(read_text(module_path), filename=str(module_path))
+        tree = parsuj_py(module_path)
         rel_path = module_path.relative_to(ROOT).as_posix()
+        for lineno, modul, ponad in importy_zakazanych_modulow(
+            tree, module_path, FORBIDDEN_IMPORTS
+        ):
+            violations.append(_opis_importu(rel_path, lineno, modul, ponad))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module in FORBIDDEN_IMPORTS:
-                violations.append(f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module}")
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
                 violations.append(f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}")
             if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_NAMES:
@@ -762,7 +845,7 @@ def check_study_case_engine_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_ENGINE_CLASS_NAMES:
@@ -828,7 +911,7 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_C4_CLASS_NAMES:
@@ -857,7 +940,7 @@ def check_cv42_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_CV42_CLASS_NAMES:
@@ -889,7 +972,7 @@ def check_cv43_a4_resurrection() -> list[str]:
     gwarantował. Guard pilnuje, żeby żaden z trzech bytów nie wrócił."""
     violations: list[str] = []
     if CV43_A4_ENM_MODULE.exists():
-        tree = ast.parse(read_text(CV43_A4_ENM_MODULE), filename=str(CV43_A4_ENM_MODULE))
+        tree = parsuj_py(CV43_A4_ENM_MODULE)
         rel_path = CV43_A4_ENM_MODULE.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if (
@@ -903,7 +986,7 @@ def check_cv43_a4_resurrection() -> list[str]:
                     "nie może wrócić"
                 )
     if CV43_A4_V126_MODULE.exists():
-        tree = ast.parse(read_text(CV43_A4_V126_MODULE), filename=str(CV43_A4_V126_MODULE))
+        tree = parsuj_py(CV43_A4_V126_MODULE)
         rel_path = CV43_A4_V126_MODULE.relative_to(ROOT).as_posix()
         # Przypisanie NAJWYŻSZEGO POZIOMU (`tree.body`, nie `ast.walk`) — zmienna
         # lokalna o tej samej nazwie wewnątrz funkcji pomocniczej nie jest tym
@@ -961,7 +1044,7 @@ def check_w1_legacy_persistence_resurrection() -> list[str]:
         return violations
     models_path = BACKEND_SRC_DIR / W1_MODELS_RELATIVE_PATH
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
@@ -1079,21 +1162,16 @@ def check_k2_reference_networks_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
+            for lineno, modul, ponad in importy_zakazanych_modulow(
+                tree, py_file, FORBIDDEN_K2_MODULE_PREFIXES
+            ):
+                violations.append(
+                    _opis_importu(rel_path, lineno, modul, ponad)
+                    + ("" if ponad else " (dawny dialekt benchmarków, usunięty kartą K2)")
+                )
             for node in ast.walk(tree):
-                if (
-                    isinstance(node, ast.ImportFrom)
-                    and node.module is not None
-                    and any(
-                        node.module == prefix or node.module.startswith(prefix + ".")
-                        for prefix in FORBIDDEN_K2_MODULE_PREFIXES
-                    )
-                ):
-                    violations.append(
-                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
-                        "(dawny dialekt benchmarków, usunięty kartą K2)"
-                    )
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1133,7 +1211,7 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
@@ -1164,10 +1242,9 @@ def check_w3a_second_engine_resurrection() -> list[str]:
     `network_model/solvers/protection_iec60255.py` (`compute_idmt_generic`),
     jedyny zywy tor `protection_sn` jest w `application/protection_analysis/
     engine.py` (adapter na jadro). `domain/protection_engine_v1.py` i
-    `application/result_mapping/protection_to_resultset_v1.py` ZOSTAJA (B-01
-    STOP — chronione przez `solver_boundary_guard.py`/
-    `resultset_v1_schema_guard.py`, patrz komentarz przy
-    `W3A_LEGACY_RELATIVE_PATHS`) — celowo POZA zakresem tego sprawdzenia."""
+    `application/result_mapping/protection_to_resultset_v1.py` (skasowane w karcie
+    RESULTSET-MARTWE-MAPPERY) pilnuje `resultset_v1_schema_guard.py` — celowo POZA
+    zakresem tego sprawdzenia (jedna bramka na klase)."""
     violations: list[str] = []
     for rel, label in W3A_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
@@ -1176,7 +1253,7 @@ def check_w3a_second_engine_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
@@ -1212,7 +1289,7 @@ def check_w3c1_overcurrent_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
@@ -1369,7 +1446,7 @@ def check_trace_v2_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES:
@@ -1377,18 +1454,13 @@ def check_trace_v2_resurrection() -> list[str]:
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
                     )
-                if (
-                    isinstance(node, ast.ImportFrom)
-                    and node.module is not None
-                    and any(
-                        node.module == prefix or node.module.startswith(prefix + ".")
-                        for prefix in FORBIDDEN_TRACE_V2_MODULE_PREFIXES
-                    )
-                ):
-                    violations.append(
-                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
-                        '(klaster "slad v2", skasowany karta TRACE-V2)'
-                    )
+            for lineno, modul, ponad in importy_zakazanych_modulow(
+                tree, py_file, FORBIDDEN_TRACE_V2_MODULE_PREFIXES
+            ):
+                violations.append(
+                    _opis_importu(rel_path, lineno, modul, ponad)
+                    + ("" if ponad else ' (klaster "slad v2", skasowany karta TRACE-V2)')
+                )
     if FRONTEND_SRC_DIR.exists():
         for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
             for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
@@ -1470,11 +1542,11 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
     `FORBIDDEN_W3J_FUNCTION_NAMES` nie wraca jako DEFINICJA gdziekolwiek w
     `backend/src`, (3) `frontend/src/ui/voltage-profile/**` nie istnieje,
     (4) `VoltageProfileChart`/`VoltageHeatmapLegend` nie wracaja pod INNA
-    sciezka frontendu. `analysis/power_flow/{result,solver,types,analysis}.py`
-    (pozostala czesc pakietu PF v2 — `PowerFlowSolver`, `PowerFlowResult`,
-    limity `BusVoltageLimitSpec` skonfigurowane PRZEZ wolajacego) ZOSTAJA —
-    celowo POZA zakresem tego sprawdzenia, bo karta kasuje wylacznie
-    detektor/eksport z zaszytymi DOMYSLNYMI progami, nie caly pakiet."""
+    sciezka frontendu. Z pakietu PF v2 zostaja `analysis/power_flow/{result,types}.py`
+    (`PowerFlowResult` FROZEN i reeksport kontraktu wejscia solvera). Adapter
+    `solver.py`/`analysis.py`/`_internal.py` (`PowerFlowSolver`, detekcja naruszen
+    wzgledem `bus_limits`/`branch_limits`) skasowany kartą TORY-TYLKO-W-TESTACH
+    (2026-09-30) — jego bramka: `check_tory_testowe_resurrection`."""
     violations: list[str] = []
     for rel, label in W3J_BACKEND_MODULE_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
@@ -1482,7 +1554,7 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
             violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-J)")
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3J_CLASS_NAMES:
@@ -1522,6 +1594,144 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
     return violations
 
 
+# Karta TORY-TYLKO-W-TESTACH (2026-09-30) — tory obliczen bez konsumenta w produkcie
+# (tylko testy) skasowane; w produkcie jedna sciezka kazdego obliczenia (bieg kanoniczny):
+#   (1) adapter rozplywu w warstwie interpretacji `analysis/power_flow/{solver,analysis,
+#       _internal}.py` (`PowerFlowSolver`, `solve_power_flow`, `assemble_power_flow_result`,
+#       detekcja naruszen wzgledem `bus_limits`/`branch_limits`, ktorych zaden producent
+#       nie wypelnial),
+#   (2) `application/solvers/short_circuit_binding.py::execute_short_circuit` z wlasna
+#       regula c (`_resolve_c_factor`) — rownolegle do `enm/assembler.py::
+#       zloz_wejscie_zwarcia`,
+#   (3) galaz awaryjna pakietu dowodowego stanu fazowego SN (pakiet liczyl solver, gdy
+#       wynik nie byl podany),
+#   (4) pakiet `analysis/machine_short_circuit/` (interpretacja wkladow maszyn bez
+#       konsumenta; wklady z wywodem daje `api/proof_pack.py::sc3f_contributions`).
+TORY_TESTOWE_SCIEZKI_BACKEND = {
+    "analysis/power_flow/solver.py": "adapter PowerFlowSolver wolajacy solver NR w analizie",
+    "analysis/power_flow/analysis.py": "assemble_power_flow_result i martwa detekcja naruszen",
+    "analysis/power_flow/_internal.py": "reeksport gwiazdka wnetrza solvera NR",
+    "analysis/machine_short_circuit": "interpretacja wkladow maszyn bez konsumenta",
+}
+#: Definicje zakazane w calym `backend/src` (nazwy jednoznaczne dla skasowanych torow).
+TORY_TESTOWE_DEFINICJE = frozenset(
+    {
+        "PowerFlowSolver",
+        "solve_power_flow",
+        "assemble_power_flow_result",
+        "execute_short_circuit",
+        "interpret_machine_contributions",
+        "MachineContributionInterpretation",
+        "MachineContributionFinding",
+    }
+)
+#: Definicje zakazane PER PLIK (nazwy, ktore gdzie indziej sa legalne — np. metoda
+#: `_build_violations` adekwatnosci mocy biernej).
+TORY_TESTOWE_DEFINICJE_PLIKOWE: dict[str, frozenset[str]] = {
+    "analysis/power_flow/__init__.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "analysis/power_flow/result.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "analysis/power_flow/types.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "application/solvers/short_circuit_binding.py": frozenset({"_resolve_c_factor"}),
+}
+#: Pakiet dowodowy stanu fazowego SN nie wola solvera (pakiet opisuje wynik).
+TORY_TESTOWE_PAKIET_FAZOWY = "application/proof_engine/packs/phase_state_sn.py"
+#: Karta TORY-POPRAWKI (2026-09-30): bramka pakietu fazowego pilnuje DOSTEPU, nie nazwy.
+#: Pierwsza wersja rozpoznawala tylko Name/Attribute/ImportFrom `PhaseStateSNSolver`, wiec
+#: `getattr(modul, "PhaseStateSNSolver")`, `vars(modul)[...]`, reeksport innym modulem
+#: i `.solve(...)` na obiekcie solvera przechodzily. Teraz ta sama regula co warstwa
+#: analizy w `arch_guard` (jedna implementacja: rozwiazywanie pochodzenia nazw, import
+#: dynamiczny i refleksja fail-closed) z polityka: modul solvera stanu fazowego chroniony,
+#: z niego wolno wylacznie typy danych wejscia/wyniku (lista zamknieta ponizej, pomiar
+#: 2026-09-30: pakiet sprowadza PHASE_ORDER, PhaseStateSNInput, PhaseStateSNResult).
+#: Do tego w pakiecie: kazde wywolanie atrybutu `.solve(...)` i napis `PhaseStateSNSolver`
+#: (pakiet opisuje GOTOWY wynik, niczego nie rozwiazuje).
+TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO = arch_guard.PolitykaDostepu(
+    chronione=("network_model.solvers.phase_state_sn",),
+    dozwolone={
+        "network_model.solvers.phase_state_sn": frozenset(
+            {
+                "PHASE_ORDER",
+                "OpenPhaseFlags",
+                "PhaseStateSNFlags",
+                "PhaseStateSNInput",
+                "PhaseStateSNResult",
+                "PhaseUnbalanceIndices",
+                "PhaseValues",
+            }
+        )
+    },
+    dowiedzione=(),
+    warstwa="pakiet dowodowy stanu fazowego SN",
+    nazwa_listy="TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO",
+)
+
+
+def check_tory_testowe_resurrection() -> list[str]:
+    """Karta TORY-TYLKO-W-TESTACH (2026-09-30): skasowane tory obliczen bez konsumenta
+    nie wracaja — patrz komentarz nad `TORY_TESTOWE_SCIEZKI_BACKEND`."""
+    violations: list[str] = []
+    znak = "karta TORY-TYLKO-W-TESTACH — jedna sciezka obliczenia: bieg kanoniczny"
+    for sciezka, opis in TORY_TESTOWE_SCIEZKI_BACKEND.items():
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: {opis} ({znak}) — nie odtwarzaj"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tree = parsuj_py(py_file)
+        plikowe = TORY_TESTOWE_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
+        for nazwa, lineno in _definicje_py(tree):
+            if nazwa in TORY_TESTOWE_DEFINICJE or nazwa in plikowe:
+                violations.append(f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})")
+        if rel_src == TORY_TESTOWE_PAKIET_FAZOWY:
+            violations.extend(_solver_w_pakiecie_fazowym(tree, py_file, rel_path, znak))
+    return violations
+
+
+def _solver_w_pakiecie_fazowym(
+    tree: ast.Module, py_file: Path, rel_path: str, znak: str
+) -> list[str]:
+    """Dostep pakietu dowodowego stanu fazowego SN do solvera (patrz
+    `TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO`)."""
+    violations: list[str] = []
+    try:
+        dostep = arch_guard.naruszenie_dostepu(
+            tree, py_file, BACKEND_SRC_DIR, TORY_TESTOWE_POLITYKA_PAKIETU_FAZOWEGO
+        )
+    except ImportPonadKorzen as blad:
+        dostep = str(blad)
+    if dostep is not None:
+        violations.append(
+            f"[resurrected-name] {rel_path}: PhaseStateSNSolver w zasiegu pakietu — {dostep} "
+            f"({znak})"
+        )
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            trafienie = node.id == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Attribute):
+            trafienie = node.attr == "PhaseStateSNSolver"
+        elif isinstance(node, ast.alias):
+            trafienie = node.name == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Constant):
+            trafienie = node.value == "PhaseStateSNSolver"
+        elif isinstance(node, ast.Call):
+            trafienie = isinstance(node.func, ast.Attribute) and node.func.attr == "solve"
+        else:
+            trafienie = False
+        if trafienie:
+            violations.append(
+                f"[resurrected-name] {rel_path}:{getattr(node, 'lineno', 0)}: "
+                "PhaseStateSNSolver / .solve(...) — pakiet dowodowy nie liczy solvera, wynik "
+                f"podaje wolajacy ({znak})"
+            )
+    return violations
+
+
 def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
     """S-3 (2026-09-16): drugi silnik zgodnosci NC RfG (`checker.py`, T1–T18,
     `no_module`) i martwa wyspa kliencka `station-der/{NcRfgComplianceBadge,
@@ -1538,7 +1748,7 @@ def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_S3_CLASS_NAMES:
@@ -1581,7 +1791,7 @@ def check_uniewazniacz_resurrection() -> list[str]:
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        tree = parsuj_py(py_file)
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
@@ -1630,7 +1840,8 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # `_bez_komentarzy_ts` dla TS).
 #
 # POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
-# `stability_rms` (rdzen B-01, `scripts/rdzenie_b01.py`) i C47
+# `stability_rms` (skasowany w karcie B01-RUNDA-1 — bramka `check_abp1_dynamika_resurrection`,
+# `B01I_*`) i C47
 # `application/stability/voltage_trajectory.py` (C47 skasowany w karcie AB-P1 — bramka
 # `check_abp1_dynamika_resurrection`), B2 reguly
 # `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
@@ -1752,7 +1963,11 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "POWER_FLOW_EQUATION_REGISTRY POWER_FLOW_PROOF_STEP_ORDER",
         "A35",
     ),
-    *_be_def("network_model/proof/power_flow_proof_export.py", "export_proof_to_pdf_simple", "A35"),
+    *_be_def(
+        "network_model/proof/power_flow_proof_export.py",
+        "export_proof_to_pdf_simple",
+        "A35",
+    ),
     _be_sciezka("network_model/catalog/drift_detection.py", "A39"),
     *_be_def(
         "network_model/catalog/drift_detection.py",
@@ -1766,8 +1981,16 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     _be_sciezka("analysis/protection_curves_it/renderer_svg.py", "B8"),
     _be_sciezka("analysis/protection_curves_it/renderer_pdf.py", "B8"),
     *_be_def("analysis/protection_curves_it/builder.py", "ProtectionCurvesITBuilder", "B8"),
-    *_be_def("analysis/protection_curves_it/renderer_svg.py", "render_protection_curves_svg", "B8"),
-    *_be_def("analysis/protection_curves_it/renderer_pdf.py", "render_protection_curves_pdf", "B8"),
+    *_be_def(
+        "analysis/protection_curves_it/renderer_svg.py",
+        "render_protection_curves_svg",
+        "B8",
+    ),
+    *_be_def(
+        "analysis/protection_curves_it/renderer_pdf.py",
+        "render_protection_curves_pdf",
+        "B8",
+    ),
     *_be_def(
         "analysis/protection_curves_it/models.py",
         "ProtectionCurvesITView.normative_status",
@@ -1775,7 +1998,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         zasieg="plik",
     ),
     *_be_def(
-        "analysis/arc_flash/models.py", "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE", "B14"
+        "analysis/arc_flash/models.py",
+        "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE",
+        "B14",
     ),
     *_be_def(
         "solver_input/provenance.py",
@@ -1838,11 +2063,17 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     _be_sciezka("domain/result_set.py", "C55"),
     *_be_def(
-        "domain/result_set.py", "OverlayElement OverlayLegendEntry build_overlay_payload", "C55"
+        "domain/result_set.py",
+        "OverlayElement OverlayLegendEntry build_overlay_payload",
+        "C55",
     ),
     # --- Obszar D: frontend/src/ui2 ----------------------------------------
     *_fe_wzorzec("ui2/wyniki/koordynacja/SekcjaNastaw.tsx", ("spelniony",), "D50"),
-    *_fe_def("ui2/wyniki/wrazliwosc/strings.ts", "istotnoscDecyzji IstotnoscWrazliwosci", "D58"),
+    *_fe_def(
+        "ui2/wyniki/wrazliwosc/strings.ts",
+        "istotnoscDecyzji IstotnoscWrazliwosci",
+        "D58",
+    ),
     # --- Obszar E: frontend/src/ui -----------------------------------------
     _fe_sciezka("ui/shared/normativeLabels.ts", "E2"),
     *_fe_def(
@@ -1858,7 +2089,10 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E14",
     ),
     *_fe_def(
-        "ui/power-flow-results/types.ts", "SEVERITY_LABELS SEVERITY_COLORS", "E14", zasieg="plik"
+        "ui/power-flow-results/types.ts",
+        "SEVERITY_LABELS SEVERITY_COLORS",
+        "E14",
+        zasieg="plik",
     ),
     *_fe_def(
         "ui/shared/analysisCaseContext.ts",
@@ -1900,23 +2134,33 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E23",
     ),
     *_fe_def("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "buildLoadFlowOverlay", "E23"),
-    *_fe_def("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "adaptZeroSequenceToOverlay", "E23"),
+    *_fe_def(
+        "ui/sld-overlay/ZeroSequenceOverlayAdapter.ts",
+        "adaptZeroSequenceToOverlay",
+        "E23",
+    ),
     *_fe_def("ui/sld-overlay/OltcOverlayAdapter.ts", "adaptOltcControlToOverlay", "E23"),
     *_fe_def("ui/sld-overlay/useOverlayRuntime.ts", "useOverlayRuntime", "E23"),
     # E24: zaszyty napis zgodnosci usuniety, a nastepnie caly panel razem z
     # nieosiagalna przegladarka sladu (X1) — plik nie wraca w zadnej postaci.
     _fe_sciezka("ui/proof/TraceMetadataPanel.tsx", "E24"),
     *_fe_def(
-        "ui/proof/TraceMetadataPanel.tsx", "TraceMetadataPanel TraceMetadataPanelEmpty", "E24"
+        "ui/proof/TraceMetadataPanel.tsx",
+        "TraceMetadataPanel TraceMetadataPanelEmpty",
+        "E24",
     ),
     _fe_sciezka("ui/engineering-readiness/DataGapPanel.tsx", "E25"),
     _fe_sciezka("ui/engineering-readiness/EngineeringReadinessPanel.tsx", "E25"),
     _fe_sciezka("ui/engineering-readiness/ReadinessLivePanel.tsx", "E25"),
     *_fe_def(
-        "ui/engineering-readiness/DataGapPanel.tsx", "DataGapPanel classifyDataGapGroup", "E25"
+        "ui/engineering-readiness/DataGapPanel.tsx",
+        "DataGapPanel classifyDataGapGroup",
+        "E25",
     ),
     *_fe_def(
-        "ui/engineering-readiness/EngineeringReadinessPanel.tsx", "EngineeringReadinessPanel", "E25"
+        "ui/engineering-readiness/EngineeringReadinessPanel.tsx",
+        "EngineeringReadinessPanel",
+        "E25",
     ),
     *_fe_def(
         "ui/engineering-readiness/ReadinessLivePanel.tsx",
@@ -1925,7 +2169,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     _fe_sciezka("ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "E27"),
     *_fe_def(
-        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "AnalysisEligibilityPanel", "E27"
+        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx",
+        "AnalysisEligibilityPanel",
+        "E27",
     ),
     _fe_sciezka("ui/issue-panel", "E29"),
     *_fe_def("ui/issue-panel/IssuePanel.tsx", "IssuePanel", "E29"),
@@ -1933,7 +2179,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     _fe_sciezka("ui/schema-completeness/SchemaCompletenessPanel.tsx", "E30"),
     _fe_sciezka("ui/schema-completeness/index.ts", "E30"),
     *_fe_def(
-        "ui/schema-completeness/SchemaCompletenessPanel.tsx", "SchemaCompletenessPanel", "E30"
+        "ui/schema-completeness/SchemaCompletenessPanel.tsx",
+        "SchemaCompletenessPanel",
+        "E30",
     ),
     _fe_sciezka("ui/workspace/WorkspaceOperationalBar.tsx", "E40"),
     *_fe_def("ui/workspace/WorkspaceOperationalBar.tsx", "WorkspaceOperationalBar", "E40"),
@@ -1958,7 +2206,9 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E53",
     ),
     *_fe_wzorzec(
-        "ui/network-build/build-sidebar/ReadinessSection.tsx", ("DEFAULT_READINESS_ITEMS",), "E53"
+        "ui/network-build/build-sidebar/ReadinessSection.tsx",
+        ("DEFAULT_READINESS_ITEMS",),
+        "E53",
     ),
     _fe_sciezka("ui/comparison/comparisonDeltaVisualization.ts", "E59"),
     *_fe_def(
@@ -1973,10 +2223,18 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_fe_def("ui/inspector/ReadOnlyPropertyGrid.tsx", "ReadOnlyPropertyGrid", "E64"),
     *_fe_def("ui/inspector/ValueProvenancePopover.tsx", "ValueProvenanceIcon", "E64"),
     _fe_sciezka("ui/reference-patterns", "E66"),
-    *_fe_def("ui/reference-patterns/ReferencePatternsPage.tsx", "ReferencePatternsPage", "E66"),
+    *_fe_def(
+        "ui/reference-patterns/ReferencePatternsPage.tsx",
+        "ReferencePatternsPage",
+        "E66",
+    ),
     *_fe_def("ui/reference-patterns/store.ts", "useReferencePatternsStore", "E66"),
     _fe_sciezka("ui/study-cases/ProtectionCaseConfigPanel.tsx", "E67"),
-    *_fe_def("ui/study-cases/ProtectionCaseConfigPanel.tsx", "ProtectionCaseConfigPanel", "E67"),
+    *_fe_def(
+        "ui/study-cases/ProtectionCaseConfigPanel.tsx",
+        "ProtectionCaseConfigPanel",
+        "E67",
+    ),
     *_fe_def("ui/protection-curves/types.ts", "COORDINATION_STATUS_COLORS", "E68"),
     *_fe_def(
         "ui/protection-curves/types.ts",
@@ -1985,11 +2243,18 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         zasieg="plik",
     ),
     *_fe_wzorzec(
-        "ui/protection-curves/types.ts", ("NOT_COORDINATED", "coordinationResults"), "E68"
+        "ui/protection-curves/types.ts",
+        ("NOT_COORDINATED", "coordinationResults"),
+        "E68",
     ),
     *_fe_wzorzec(
         "ui/sld/v2/canvas/SldDetailDrawer.tsx",
-        ("drawer-cable-spadek", "Klasa zgodności", "maxVoltageDropPct", "maxLoadingPct"),
+        (
+            "drawer-cable-spadek",
+            "Klasa zgodności",
+            "maxVoltageDropPct",
+            "maxLoadingPct",
+        ),
         "E70",
     ),
     *_fe_wzorzec(
@@ -2039,11 +2304,19 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_fe_def("ui/proof/TraceToc.tsx", "TraceToc", "X1"),
     *_fe_def("ui/proof/TraceStepView.tsx", "TraceStepView TraceStepViewEmpty", "X1"),
     *_fe_def("ui/proof/traceUrlState.ts", "readTraceStateFromUrl generateTraceDeepLink", "X1"),
-    *_fe_def("ui/proof/compare/TraceCompareView.tsx", "TraceCompareView TraceComparePage", "X1"),
+    *_fe_def(
+        "ui/proof/compare/TraceCompareView.tsx",
+        "TraceCompareView TraceComparePage",
+        "X1",
+    ),
     *_fe_def("ui/proof/compare/TraceDiffList.tsx", "TraceDiffList", "X1"),
     *_fe_def("ui/proof/compare/diffTrace.ts", "diffTraces", "X1"),
     *_fe_def("ui/proof/export/exportTracePdf.ts", "exportTracePdf generateTracePdfHtml", "X1"),
-    *_fe_def("ui/proof/export/exportTraceJsonl.ts", "generateTraceJsonl downloadTraceJsonl", "X1"),
+    *_fe_def(
+        "ui/proof/export/exportTraceJsonl.ts",
+        "generateTraceJsonl downloadTraceJsonl",
+        "X1",
+    ),
     *_fe_def("ui/proof/search/TraceSearchBar.tsx", "TraceSearchBar", "X1"),
     *_be_def(
         "domain/protection_device.py",
@@ -2075,9 +2348,15 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     *_be_def("compliance/nc_rfg_modul.py", "modul_nc_rfg NcRfgModul", "BC"),
     *_be_def(
-        "application/ncrfg_compliance/model_bridge.py", "certificate_status_z_tabliczki", "BC"
+        "application/ncrfg_compliance/model_bridge.py",
+        "certificate_status_z_tabliczki",
+        "BC",
     ),
-    *_be_def("network_model/solvers/ncrfg_ptpiree/contracts.py", "PtpireeCertificateStatus", "BC"),
+    *_be_def(
+        "network_model/solvers/ncrfg_ptpiree/contracts.py",
+        "PtpireeCertificateStatus",
+        "BC",
+    ),
     *_be_def(
         "catalog/profiles/nc_rfg/loader.py",
         "NcRfgProfileLoader NcRfgComplianceTest SUPPORTED_OPERATORS",
@@ -2133,7 +2412,11 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "D2",
     ),
     *_fe_def("ui/workspace/surfaces/NcRfgTestsTab.tsx", "NcRfgTestsTab", "D2"),
-    *_fe_def("ui/network-build/station-der/certyfikatPtpiree.ts", "statusCertyfikatuPtpiree", "D2"),
+    *_fe_def(
+        "ui/network-build/station-der/certyfikatPtpiree.ts",
+        "statusCertyfikatuPtpiree",
+        "D2",
+    ),
     *_fe_def(
         "ui/network-build/station-der/derRemoteCatalogs.ts",
         "fetchNcRfgModuleClassification NcRfgModuleLetter",
@@ -2163,11 +2446,26 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "wierszeZgodnosciPrzekrojowej",
         "D2",
     ),
-    *_fe_def("ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts", "BrakiModulu", "D2", zasieg="plik"),
-    *_fe_def("ui2/oze/pulpit/strings.ts", "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU", "D2"),
-    *_fe_def("ui2/oze/pulpit/pulpitModel.ts", "StatusPulpitu zgodnoscModulu ZgodnoscModulu", "D2"),
     *_fe_def(
-        "ui2/oze/wniosek/strings.ts", "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL", "D2"
+        "ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts",
+        "BrakiModulu",
+        "D2",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/pulpit/strings.ts",
+        "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/pulpit/pulpitModel.ts",
+        "StatusPulpitu zgodnoscModulu ZgodnoscModulu",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/wniosek/strings.ts",
+        "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL",
+        "D2",
     ),
     *_fe_def("ui2/oze/krzywe/krzyweModel.ts", "istotnoscWerdyktuPQ", "D2"),
     *_fe_def("ui2/oze/studium/studiumModel.ts", "werdyktPokryciaPL", "D2"),
@@ -2390,7 +2688,7 @@ def check_pakiet_l_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             lokalne = plikowe.get(rel_src, {})
             for nazwa, lineno in _definicje_py(tree):
                 trafiony = globalne.get(nazwa) or lokalne.get(nazwa)
@@ -2458,9 +2756,10 @@ def check_pakiet_l_resurrection() -> list[str]:
 #   rzuty profilu katalogowego na slowniki solverow poza rdzeniem
 #        (`to_stability_parameters`, `stability_model_kind`, `to_frt_parameters` — zero
 #        wolajacych produkcyjnych).
-# POZA bramka: T4 — solver `network_model/solvers/stability_rms/**` jest rdzeniem B-01 na
-# liscie `scripts/rdzenie_b01.py`; karta go NIE kasuje (zmiana listy B-01 wymaga decyzji
-# wlasciciela nazwanej w karcie zdejmujacej wpis — zgoda O-5(b)/O-54 czeka na ten krok).
+# T4 — solver `network_model/solvers/stability_rms/**` (zero konsumentow produkcyjnych):
+# SKASOWANY w karcie B01-RUNDA-1 (decyzja B-01 z 2026-09-30, delegacja wlasciciela O-59,
+# pozycja (i) planu A/B §12.2) razem z wpisem „Stabilnosc RMS" listy `scripts/rdzenie_b01.py`;
+# bramka pilnuje, ze sciezka i jej symbole publiczne nie wracaja (`B01I_*` nizej).
 # Pilnowane sa FAKTY: sciezki zrodel, DEFINICJE symboli (AST, dokstring/komentarz nie
 # jest naruszeniem), nazwa `DYNAMIC_STABILITY` jako identyfikator i napisy tras/kodow
 # w kodzie backendu (literaly napisowe poza dokstringami) oraz frontendu (bez komentarzy).
@@ -2526,6 +2825,19 @@ ABP1_NAPISY: tuple[str, ...] = (
 )
 #: Napisy wylacznie frontendowe (import skasowanych fikstur sceny).
 ABP1_NAPISY_FRONTEND: tuple[str, ...] = ("stabilnosc_scena_",)
+#: Pozycja (i) planu A/B §12.2 — skasowany solver RMS bez sprzezenia z siecia (T4).
+B01I_SCIEZKI_BACKEND: tuple[str, ...] = ("network_model/solvers/stability_rms",)
+#: Symbole publiczne skasowanego solvera (nazwy swoiste — definicja nie wraca NIGDZIE
+#: w `backend/src`; nazwy ogolne kontraktu, np. `DisturbanceEvent`, zostaja wolne dla
+#: rdzenia `dynamika`).
+B01I_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {
+        "run_stability_rms",
+        "StabilitySolverAdapter",
+        "StabilitySolverInput",
+        "StabilityResult",
+    }
+)
 
 
 def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
@@ -2556,10 +2868,20 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     komentarz nad `ABP1_SCIEZKI_BACKEND`."""
     violations: list[str] = []
     znak = "karta AB-P1 — jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    znak_b01i = (
+        "decyzja B-01 z 2026-09-30, pozycja (i) — solver stability_rms skasowany, "
+        "jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    )
     for sciezka in ABP1_SCIEZKI_BACKEND:
         if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
             violations.append(
                 f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    for sciezka in B01I_SCIEZKI_BACKEND:
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak_b01i}) — "
+                "nie odtwarzaj"
             )
     for sciezka in ABP1_SCIEZKI_FRONTEND:
         if zrodlo_istnieje(FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")):
@@ -2575,12 +2897,16 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             plikowe = ABP1_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
             for nazwa, lineno in _definicje_py(tree):
                 if nazwa in ABP1_DEFINICJE_BACKEND or nazwa in plikowe:
                     violations.append(
                         f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+                if nazwa in B01I_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak_b01i})"
                     )
             for node in ast.walk(tree):
                 nazwa_id = (
@@ -2612,6 +2938,365 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     return violations
 
 
+# Karta AB-1b.3b (modele odbiorow, 2026-09-25, decyzja O-55): blok `Load.dynamika` (profil
+# katalogu z napieciem przejscia `U_min` i stala pomiaru czestotliwosci `T_f`) jest WYMAGANY
+# dla kazdego odbioru biegu `dynamika_rms`, a odbior czuly czestotliwosciowo ma estymator
+# katowy. Tym samym znikaja, bez powrotu:
+#   * odmowa `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu` (odbior bez `U_min` w wezle
+#     zwarcia metalicznego — brak `U_min` jest dzis brakiem danych PRZED biegiem);
+#   * bramka G8 (`g8_granica_odmowy`, `ZAPADY_G8_PU`, pomiar `G8_granica_odmowy_zlamana`) —
+#     opisywala granice odmowy odbioru bez przejscia, a takiego odbioru nie ma;
+#   * wariant `u_min_pu = None` odbioru nie-impedancyjnego (`charakterystyka_stalej_mocy`
+#     z `u_min_pu=None` albo z adnotacja dopuszczajaca `None`);
+#   * odmowa `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany` (w jej miejscu estymator).
+# Komentarz/dokstring nazywajacy kasacje NIE jest naruszeniem (AST; `_bez_komentarzy_ts`).
+AB1B3B_KODY: tuple[str, ...] = (
+    "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu",
+    "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany",
+)
+AB1B3B_IDENTYFIKATORY: frozenset[str] = frozenset(
+    {
+        "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
+        "KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO",
+        "g8_granica_odmowy",
+        "ZAPADY_G8_PU",
+    }
+)
+AB1B3B_NAPISY_BRAMKI: tuple[str, ...] = ("G8_granica_odmowy_zlamana",)
+#: Katalog testow backendu — bramka G8 zyla w `tests/walidacja_fizyczna`.
+BACKEND_TESTS_DIR = ROOT / "backend" / "tests"
+
+
+def _nazwy_wezla(node: ast.AST) -> list[str]:
+    """Nazwy, ktore wezel AST wprowadza albo czyta: zmienna, atrybut, definicja, import."""
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.Attribute):
+        return [node.attr]
+    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return [node.name]
+    if isinstance(node, ast.ImportFrom | ast.Import):
+        return [alias.asname or alias.name for alias in node.names]
+    return []
+
+
+def _wariant_u_min_none(node: ast.AST) -> bool:
+    """`charakterystyka_stalej_mocy(u_min_pu=None)` albo jej definicja dopuszczajaca `None`."""
+    if isinstance(node, ast.Call):
+        funkcja = node.func
+        nazwa = (
+            funkcja.id
+            if isinstance(funkcja, ast.Name)
+            else funkcja.attr if isinstance(funkcja, ast.Attribute) else None
+        )
+        return nazwa == "charakterystyka_stalej_mocy" and any(
+            slowo.arg == "u_min_pu"
+            and isinstance(slowo.value, ast.Constant)
+            and slowo.value.value is None
+            for slowo in node.keywords
+        )
+    if isinstance(node, ast.FunctionDef) and node.name == "charakterystyka_stalej_mocy":
+        argumenty = [*node.args.args, *node.args.kwonlyargs]
+        return any(
+            argument.arg == "u_min_pu"
+            and argument.annotation is not None
+            and any(slowo in ast.unparse(argument.annotation) for slowo in ("None", "Optional"))
+            for argument in argumenty
+        )
+    return False
+
+
+def check_ab1b3b_odbiory_resurrection() -> list[str]:
+    """Karta AB-1b.3b: kasacje z decyzji O-55 nie wracaja — patrz komentarz nad
+    `AB1B3B_KODY`."""
+    violations: list[str] = []
+    znak = "karta AB-1b.3b — model dynamiczny odbioru z katalogu, estymator czestotliwosci"
+    pliki = [
+        *(sorted(BACKEND_SRC_DIR.rglob("*.py")) if BACKEND_SRC_DIR.exists() else []),
+        *(sorted(BACKEND_TESTS_DIR.rglob("*.py")) if BACKEND_TESTS_DIR.exists() else []),
+    ]
+    # Filtr tekstowy PRZED drzewem skladniowym: plik bez zadnego z tokenow nie moze zawierac
+    # naruszenia (nazwy, napisy i wywolanie maja te tokeny doslownie), a parsowanie calego
+    # drzewa testow kosztowaloby sekundy przy kazdym biegu straznika.
+    tokeny = (
+        *AB1B3B_IDENTYFIKATORY,
+        *AB1B3B_KODY,
+        *AB1B3B_NAPISY_BRAMKI,
+        "charakterystyka_stalej_mocy",
+    )
+    for py_file in pliki:
+        tekst = read_text(py_file)
+        if not any(token in tekst for token in tokeny):
+            continue
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tree = ast.parse(tekst, filename=str(py_file))
+        for node in ast.walk(tree):
+            for nazwa in _nazwy_wezla(node):
+                if nazwa in AB1B3B_IDENTYFIKATORY:
+                    violations.append(
+                        f"[resurrected-name] {rel_path}:{node.lineno}: {nazwa} ({znak})"
+                    )
+            if _wariant_u_min_none(node):
+                violations.append(
+                    f"[resurrected-pattern] {rel_path}:{node.lineno}: odbior stalej mocy bez "
+                    f"napiecia przejscia (u_min_pu=None) ({znak})"
+                )
+        for napis, lineno in _napisy_kodu_py(tree):
+            for zakazany in AB1B3B_KODY + AB1B3B_NAPISY_BRAMKI:
+                if zakazany in napis:
+                    violations.append(
+                        f"[resurrected-string] {rel_path}:{lineno}: {zakazany!r} ({znak})"
+                    )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                surowy = read_text(ts_file)
+                if not any(zakazany in surowy for zakazany in AB1B3B_KODY):
+                    continue
+                tekst = _bez_komentarzy_ts(surowy)
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for zakazany in AB1B3B_KODY:
+                    if zakazany in tekst:
+                        violations.append(
+                            f"[resurrected-pattern] {rel_path}: {zakazany!r} ({znak})"
+                        )
+    return violations
+
+
+# Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30, decyzja K-14/D-41 doradcy
+# architektonicznego z delegacja wlasciciela O-59) — JEDEN eksport modelu sieci:
+# CGMES (IEC 61970-552 EQ + TP) budowany WYLACZNIE w backendzie
+# (`application/cgmes/service.py::export_cgmes` za bramka kompletnosci
+# `application/cgmes/kompletnosc.py`, trasa `GET /api/cases/{case_id}/enm/
+# eksport-cgmes`). Skasowane, bo liczyly ten sam eksport drugi raz albo nie mialy
+# konsumenta (pomiar grepem PRZED i PO w meldunku karty):
+#   * klientowy szkielet SCL/SCD (`exportIec61850.ts`) — 0 konsumentow poza menu,
+#     brak IED/LDevice; modul SCL powstanie wylacznie po danych wlasciciela D1–D8
+#     jako adapter BACKENDOWY, nigdy w przegladarce;
+#   * klientowy „minimalny CIM" (`exportCim.ts`) + mapowanie ENM
+#     (`v3/export/exportModelData.ts`) — druga sciezka obok backendowego CGMES;
+#   * martwa sciezka eksportu v2 (`SldExportButton.tsx`, `downloadSldExport.ts`,
+#     `exportSvg.ts`, `exportPdf.ts` — ten ostatni jawny szkielet „NIE generuje
+#     bajtow") — 0 konsumentow produkcyjnych, jedyna sciezka rysunku to
+#     `v3/export/sldExport.ts`;
+#   * `ui/reports/osdOperatorPresets.ts` — 0 konsumentow, jedyne miejsce
+#     deklarujace „Plik SCD ... (dla SCADA)" jako zalacznik produktu;
+#   * `NAMING_PRESETS` (`ui/shared/fileNamingConvention.ts`) — 0 konsumentow,
+#     druga, zegarowa konwencja nazw eksportu schematu (preset `sld_export` z
+#     formatami 'scd'/'cim') obok jedynej `v3/export/exportNames.ts`;
+#   * backendowe `export_eq_tp_bytes` (`infrastructure/cgmes/cgmes_exporter.py`) —
+#     po wpieciu bramki kompletnosci druga, NIEBRAMKOWANA droga do bajtow CGMES
+#     bez konsumenta.
+# Formaty 'iec61850'/'cim'/'scd' nie wracaja do rejestru menu (`formats.ts`).
+KASACJA_SCL_CIM_SCIEZKI_FRONTEND: tuple[str, ...] = (
+    "ui/sld/v2/export/exportIec61850.ts",
+    "ui/sld/v2/export/exportCim.ts",
+    "ui/sld/v2/export/exportSvg.ts",
+    "ui/sld/v2/export/exportPdf.ts",
+    "ui/sld/v2/export/downloadSldExport.ts",
+    "ui/sld/v2/export/SldExportButton.tsx",
+    "ui/sld/v3/export/exportModelData.ts",
+    "ui/reports/osdOperatorPresets.ts",
+)
+KASACJA_SCL_CIM_DEFINICJE_FRONTEND: tuple[str, ...] = (
+    "generateIec61850Scd",
+    "downloadIec61850Scd",
+    "generateCimRdfXml",
+    "downloadCimRdfXml",
+    "buildIec61850Input",
+    "buildCimInput",
+    "iec61850ObjectCount",
+    "cimObjectCount",
+    "SldExportButton",
+    "downloadSldSvg",
+    "downloadSldSvgBySelector",
+    "exportSldSvg",
+    "buildPdfExportSpec",
+    "OSD_OPERATOR_PRESETS",
+    "NAMING_PRESETS",
+)
+KASACJA_SCL_CIM_DEFINICJE_BACKEND: frozenset[str] = frozenset({"export_eq_tp_bytes"})
+#: Rejestr formatow menu eksportu — jedyne miejsce, gdzie identyfikator formatu
+#: staje sie pozycja menu.
+KASACJA_SCL_CIM_REJESTR_FORMATOW = "ui/sld/v3/export/formats.ts"
+_TS_ZAKAZANY_FORMAT_MODELU = re.compile(r"""['"](iec61850|cim|scd)['"]""")
+
+
+def _ts_definicja(nazwa: str) -> re.Pattern[str]:
+    return re.compile(
+        r"^[ \t]*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?"
+        rf"(?:function|const|let|var|class|interface|type|enum)\s+{re.escape(nazwa)}\b",
+        re.MULTILINE,
+    )
+
+
+def check_kasacja_scl_cim_klient_resurrection() -> list[str]:
+    """Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): klientowe eksportery modelu
+    sieci (SCL/SCD, CIM), martwa sciezka eksportu v2, presety bez konsumenta i
+    niebramkowana droga do bajtow CGMES nie wracaja — patrz komentarz nad
+    `KASACJA_SCL_CIM_SCIEZKI_FRONTEND`."""
+    violations: list[str] = []
+    znak = (
+        "karta KASACJA-SCL-I-CIM-KLIENT — jedynym eksportem modelu sieci jest CGMES "
+        "z backendu (decyzja K-14/D-41)"
+    )
+    for sciezka in KASACJA_SCL_CIM_SCIEZKI_FRONTEND:
+        if (FRONTEND_SRC_DIR / sciezka).exists():
+            violations.append(
+                f"[resurrected-module] frontend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+
+    if FRONTEND_SRC_DIR.exists():
+        wzorce = {n: _ts_definicja(n) for n in KASACJA_SCL_CIM_DEFINICJE_FRONTEND}
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for nazwa, wzorzec in wzorce.items():
+                    if wzorzec.search(tekst):
+                        violations.append(f"[resurrected-definition] {rel_path}: {nazwa} ({znak})")
+        rejestr = FRONTEND_SRC_DIR / KASACJA_SCL_CIM_REJESTR_FORMATOW
+        if rejestr.exists():
+            for trafienie in _TS_ZAKAZANY_FORMAT_MODELU.finditer(
+                _bez_komentarzy_ts(read_text(rejestr))
+            ):
+                violations.append(
+                    f"[resurrected-format] frontend/src/{KASACJA_SCL_CIM_REJESTR_FORMATOW}: "
+                    f"format {trafienie.group(1)!r} w rejestrze menu ({znak})"
+                )
+
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            for nazwa, lineno in _definicje_py(tree):
+                if nazwa in KASACJA_SCL_CIM_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+    return violations
+
+
+# --- Karta DYNAMIKA-W-TLE (2026-09-30): martwa infrastruktura kolejki — bramka wskrzeszenia ---
+# Celery (0 zadań `@app.task`/`shared_task`, 0 importerów `api.celery_app`), Redis (jedyny
+# czytelnik `REDIS_URL` — Celery) i MongoDB (`motor`, 0 importów) skasowane procedurą jako
+# zadeklarowana infrastruktura bez konsumenta (ta sama klasa: usługa w compose + zależność
+# w pyproject, której żaden kod nie woła). Wykonanie biegów w tle to wykonawca W PROCESIE
+# API (`application/execution/wykonawca.py`, decyzja O-57 pkt 2). Poniższe sprawdza, że
+# moduł, zależności i usługi NIE wracają bez decyzji właściciela.
+CELERY_MODULE = BACKEND_SRC_DIR / "api" / "celery_app.py"
+#: Importy zakazane w `backend/src` (AST `Import`/`ImportFrom`, nie tekst w komentarzu).
+FORBIDDEN_QUEUE_IMPORTS = ("celery", "redis", "aioredis", "motor", "pymongo")
+#: Zależności zakazane w `backend/pyproject.toml` (klucz tabeli `[tool.poetry.dependencies]`).
+FORBIDDEN_QUEUE_DEPENDENCIES = ("celery", "redis", "motor", "pymongo", "kombu")
+#: Usługi zakazane w `docker-compose.yml` (klucz usługi na drugim poziomie wcięcia).
+FORBIDDEN_COMPOSE_SERVICES = ("celery-worker", "celery", "redis", "mongodb", "mongo")
+BACKEND_PYPROJECT = ROOT / "backend" / "pyproject.toml"
+DOCKER_COMPOSE = ROOT / "docker-compose.yml"
+
+
+def check_dynamika_w_tle_queue_resurrection() -> list[str]:
+    """Karta DYNAMIKA-W-TLE: Celery/Redis/MongoDB nie wracają — ani jako moduł, ani jako
+    import, zależność czy usługa compose."""
+    violations: list[str] = []
+    znak = "karta DYNAMIKA-W-TLE — biegi liczy wykonawca w procesie API"
+    if zrodlo_istnieje(CELERY_MODULE):
+        violations.append(
+            f"[resurrected-module] {CELERY_MODULE.relative_to(ROOT).as_posix()}: "
+            f"usunięty ({znak}) — nie odtwarzaj"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                nazwy: list[str] = []
+                if isinstance(node, ast.Import):
+                    nazwy = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    nazwy = [node.module]
+                for nazwa in nazwy:
+                    korzen = nazwa.split(".")[0]
+                    if korzen in FORBIDDEN_QUEUE_IMPORTS:
+                        violations.append(
+                            f"[resurrected-import] {rel_path}:{node.lineno}: import {nazwa} "
+                            f"({znak}) — zakazany"
+                        )
+    if BACKEND_PYPROJECT.exists():
+        w_zaleznosciach = False
+        for numer, linia in enumerate(read_text(BACKEND_PYPROJECT).splitlines(), start=1):
+            if linia.strip().startswith("["):
+                w_zaleznosciach = linia.strip() == "[tool.poetry.dependencies]"
+                continue
+            if not w_zaleznosciach:
+                continue
+            klucz = linia.split("=", 1)[0].strip().strip('"')
+            if klucz in FORBIDDEN_QUEUE_DEPENDENCIES:
+                violations.append(
+                    f"[resurrected-dependency] backend/pyproject.toml:{numer}: {klucz} "
+                    f"({znak}) — zależność bez konsumenta"
+                )
+    if DOCKER_COMPOSE.exists():
+        for numer, linia in enumerate(read_text(DOCKER_COMPOSE).splitlines(), start=1):
+            if (
+                linia.startswith("  ")
+                and not linia.startswith("   ")
+                and linia.rstrip().endswith(":")
+            ):
+                usluga = linia.strip()[:-1]
+                if usluga in FORBIDDEN_COMPOSE_SERVICES:
+                    violations.append(
+                        f"[resurrected-service] docker-compose.yml:{numer}: usługa {usluga} "
+                        f"({znak}) — bez konsumenta"
+                    )
+    return violations
+
+
+# --- Partia integracji 10 (2026-10-16): fasada krzywych bez konsumenta — bramka wskrzeszenia ---
+# `protection/curves/curve_calculator.py` (`CurveDefinition`, `CurvePoint`, `CurveStandard`,
+# `calculate_curve_points`, `calculate_trip_time`) nie miala ani jednego importera
+# produkcyjnego ani testowego (pomiar grepem przy kasacji); krzywe licza adaptery
+# `iec_curves`/`ieee_curves` delegujace do rdzenia IEC 60255. Druga fasada tej samej
+# powierzchni wrocilaby jako trzecia sciezka liczenia czasu zadzialania.
+PARTIA10_SKASOWANE_SCIEZKI_BACKEND: tuple[str, ...] = ("protection/curves/curve_calculator.py",)
+#: Definicje skasowanej fasady — zakazane w calym `backend/src` (nazwy bez kolizji: pomiar).
+PARTIA10_SKASOWANE_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {"CurveDefinition", "calculate_curve_points", "CurveStandard"}
+)
+
+
+def check_partia10_kasacja_resurrection() -> list[str]:
+    """Partia integracji 10: fasada `curve_calculator.py` bez konsumenta nie wraca —
+    patrz komentarz nad `PARTIA10_SKASOWANE_SCIEZKI_BACKEND`."""
+    violations: list[str] = []
+    znak = "partia integracji 10 — fasada krzywych bez konsumenta"
+    for sciezka in PARTIA10_SKASOWANE_SCIEZKI_BACKEND:
+        if (BACKEND_SRC_DIR / sciezka).exists():
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            for nazwa, lineno in _definicje_py(tree):
+                if nazwa in PARTIA10_SKASOWANE_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2630,10 +3315,15 @@ def main() -> int:
         + check_trace_v2_resurrection()
         + check_w3g1_run_trigger_orphan_resurrection()
         + check_w3j_voltage_criteria_resurrection()
+        + check_tory_testowe_resurrection()
         + check_s3_ncrfg_second_engine_resurrection()
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
         + check_abp1_dynamika_resurrection()
+        + check_ab1b3b_odbiory_resurrection()
+        + check_kasacja_scl_cim_klient_resurrection()
+        + check_dynamika_w_tle_queue_resurrection()
+        + check_partia10_kasacja_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

@@ -19,7 +19,8 @@ Reuse-mapa (dowód "zero nowej fizyki"):
   NIETKNIĘTY) → Ik'' z Z1 i współczynnika napięciowego c.
 - `network_model.core.voltage_factor.c_for_node` (JEDNO źródło tabeli c wg
   IEC 60909-0 Tab.1, już używane przez `TransformerBranch.
-  get_voltage_factor_c_max/min` i `short_circuit_binding.py`) → c(MAX/MIN).
+  get_voltage_factor_c_max` i assembler zwarć `enm/assembler.py`) → c(MAX/MIN) z
+  tolerancją sieci nN szyny (`enm.tolerancja_nn`; karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
 - `enm.mapping.build_zero_sequence_zbus` (sieć Z0 solvera zwarciowego dla
   zwarć 1F/2F+G, NIETKNIĘTA) → Z0 na szynie HV, best-effort (patrz
   `_hv_zero_sequence_ohm`).
@@ -48,11 +49,22 @@ from application.analyses.fault_loop.service import (
     restrict_graph_to_island_of,
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from enm.dane_przyjete_galezi import dane_przyjete_wezla
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
-from network_model.core.voltage_factor import c_for_node
+from enm.tolerancja_nn import wyspy_wezlow_nn
+from network_model.catalog.wartosci_robocze import (
+    dane_przyjete_maszyn,
+    rozstrzygnij_tolerancje_nn,
+)
+from network_model.core.voltage_factor import (
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -87,7 +99,7 @@ def _hv_zero_sequence_ohm(
     """
     try:
         graph = map_enm_to_network_graph(enm)
-    except ValueError:
+    except OdmowaDanychError:
         return None, "Topologia sieci SN niepoprawna — Z0 nieobliczalne."
     # Ta sama wyspa zasilania co dla Z1 (`compute_upstream_hv_thevenin`) —
     # węzły odcięte otwartym łącznikiem nie mogą czynić sieci osobliwą.
@@ -102,7 +114,7 @@ def _hv_zero_sequence_ohm(
         return None, "Szyna HV poza rozwiązywalną siecią — Z0 nieobliczalne."
     try:
         z0_bus = build_zero_sequence_zbus(enm, graph)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         return None, str(exc)
     z_base_ohm = builder.get_zbase_ohm(hv_node_id)
     z0_ohm = complex(z0_bus[node_index, node_index]) * z_base_ohm
@@ -162,7 +174,29 @@ def _build_upstream_equivalent_snapshot_surowy(
             "transformer_ref": trafo.ref_id,
         }
 
-    c_factor = c_for_node(trafo.uhv_kv, scenario)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c szyny strony górnej z tabeli 1 z klasą tolerancji
+    # sieci nN TEJ szyny (`enm.tolerancja_nn`; dla szyny SN bez znaczenia). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa zawsze ustalona — deklaracja wyspy albo wartość
+    # robocza rejestru (szyna strony górnej w paśmie nN spoza wysp modelu — napięcie szyny
+    # rozbieżne z napięciem transformatora — to sieć nN bez elementu zasilającego).
+    wyspa_gornej = wyspy_wezlow_nn(enm).get(trafo.hv_bus_ref)
+    rozstrzygniecie_gornej = (
+        wyspa_gornej.rozstrzygniecie
+        if wyspa_gornej is not None
+        else (rozstrzygnij_tolerancje_nn(()) if w_pasmie_nn(trafo.uhv_kv) else None)
+    )
+    tolerancja_gornej = (
+        rozstrzygniecie_gornej.wartosc if rozstrzygniecie_gornej is not None else None
+    )
+    c_factor = c_for_node(trafo.uhv_kv, scenario, tolerancja_nn=tolerancja_gornej)
+    c_zrodlo = zrodlo_c_z_tabeli(
+        trafo.uhv_kv,
+        scenario,
+        tolerancja_nn=tolerancja_gornej,
+        tolerancja_nn_robocza=(
+            rozstrzygniecie_gornej is not None and rozstrzygniecie_gornej.robocza
+        ),
+    )
     un_hv_v = kv_na_v(trafo.uhv_kv)
     ikss_a = compute_ikss(
         un_v=un_hv_v,
@@ -178,6 +212,12 @@ def _build_upstream_equivalent_snapshot_surowy(
     rx_ratio = (r1_ohm / x1_ohm) if x1_ohm != 0 else None
 
     z0_ohm, z0_missing_reason_pl = _hv_zero_sequence_ohm(enm, hv_equiv.hv_bus_ref)
+    # Karta LINIA-110 (kontrakt werdyktu §3): Z1/Sk″ zawierają linie 110 kV z wartością roboczą
+    # geometrii z wyspy szyny, a Z0 — R′0/X′0 z wartości roboczej katalogu ze składowej sieci
+    # zerowej szyny. Te same predykaty co wiersze biegu zwarciowego (`dane_przyjete_wezla`).
+    dane_przyjete = dane_przyjete_wezla(
+        enm, trafo.hv_bus_ref, ze_skladowa_zerowa=z0_ohm is not None
+    )
 
     operating_state_id = compute_switching_snapshot_hash(enm)
     model_hash = compute_enm_hash(enm)
@@ -224,12 +264,18 @@ def _build_upstream_equivalent_snapshot_surowy(
         "z0_missing_reason_pl": z0_missing_reason_pl,
         "rx_ratio": rx_ratio,  # werdykt: R/X
         "c_factor": c_factor,  # WHITE BOX: współczynnik c faktycznie użyty dla scenario_id
+        "c_zrodlo": c_zrodlo,  # WHITE BOX: podstawa c (tabela 1 IEC 60909-0, pasmo, scenariusz)
         "scenario_id": scenario,  # werdykt: scenarioId
         "operating_state_id": operating_state_id,  # werdykt: operatingStateId
         "calculation_run_id": calculation_run_id,  # werdykt: calculationRunId
         "model_revision": enm.header.revision,  # werdykt: modelRevision
         "model_hash": model_hash,  # werdykt: /hash
         "missing_data": [],
+        # Karty LINIA-110 i PODSTAWA-Q (kontrakt werdyktu §3), addytywnie — WYŁĄCZNIE gdy Z1/Z0
+        # stoi na wartości roboczej (linia 110 kV, R′0/X′0 katalogu, parametr maszyny wirującej
+        # wyspy węzła SN): wpisy maszyn, status danych i JEDNA lista danych przyjętych —
+        # równoważnik na danych projektu bez zmian (odcisk projekcji nN bit w bit).
+        **_dane_przyjete_kotwicy(dane_przyjete, hv_equiv.parametry_robocze_maszyn),
         "note_pl": (
             "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
             "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "
@@ -238,6 +284,25 @@ def _build_upstream_equivalent_snapshot_surowy(
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
     }
+
+
+def _dane_przyjete_kotwicy(
+    dane_galezi: tuple[dict[str, Any], ...],
+    wpisy_maszyn: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    """Pola kotwicy dla danych przyjętych: gałęzie z wartością roboczą impedancji (karta
+    LINIA-110) i wartości robocze maszyn (karta PODSTAWA-Q) — jedna lista ``dane_przyjete``
+    i jeden ``status_danych`` (kontrakt werdyktu §3), wpisy maszyn osobno."""
+    dane = list(dane_galezi) + [
+        d.model_dump(mode="json") for d in dane_przyjete_maszyn(wpisy_maszyn, wielkosc="ikss")
+    ]
+    pola: dict[str, Any] = {}
+    if wpisy_maszyn:
+        pola["parametry_robocze_maszyn"] = [dict(w) for w in wpisy_maszyn]
+    if dane:
+        pola["status_danych"] = "UNVALIDATED_INPUT"
+        pola["dane_przyjete"] = dane
+    return pola
 
 
 def build_upstream_equivalent_snapshot(

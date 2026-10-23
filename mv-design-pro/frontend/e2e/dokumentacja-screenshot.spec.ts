@@ -11,10 +11,12 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/dokumentacja');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/dokumentacja'));
 
 const THEMES = ['light', 'dark'] as const;
 
@@ -54,6 +56,7 @@ test.describe('dokumentacja:screenshot', () => {
       expect(consoleErrors, `no console/page errors for dokumentacja/${theme}`).toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `hub_dokumentacji_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: outPath });
       expect(fs.existsSync(outPath)).toBe(true);
     });

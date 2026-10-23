@@ -43,6 +43,7 @@ from enm.models import (
     Transformer,
 )
 from enm.store import reset_enm_store, set_enm
+from network_model.odmowa_danych import OdmowaNazwana
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -247,8 +248,14 @@ class TestMissingFieldsAreNotFabricatedZero:
                 del bus["voltage_kv"]
         zmutowany = dataclasses.replace(run, snapshot=snapshot)
 
-        with pytest.raises(ValueError, match="voltage_kv"):
+        # Partia integracji 10: odmowa nazwana — szyna nazwą z migawki, identyfikator i klucz
+        # pola w `dane`/`kod`, nie w treści.
+        with pytest.raises(OdmowaNazwana) as exc:
             build_compensation_sizing_view(zmutowany, bus_ref="bus_pcc", cos_phi_min=0.95)
+        assert "nie ma napięcia znamionowego" in str(exc.value)
+        assert "bus_pcc" not in str(exc.value) and "voltage_kv" not in str(exc.value)
+        assert exc.value.kod == "kompensacja.szyna_bez_napiecia"
+        assert exc.value.dane == {"element_ref": "bus_pcc"}
 
 
 def test_candidates_only_from_catalog_matching_voltage() -> None:
@@ -441,13 +448,13 @@ def test_rejects_unfinished_run() -> None:
 
 def test_rejects_cos_phi_out_of_range() -> None:
     run = _golden_run()
-    with pytest.raises(ValueError, match="cos_phi_min"):
-        build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=1.5)
-    with pytest.raises(ValueError, match="cos_phi_min"):
-        build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=0.0)
+    for cos_phi_min in (1.5, 0.0):
+        with pytest.raises(ValueError, match=r"^Wymagany cosφ musi być w przedziale \(0, 1\]\.$"):
+            build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=cos_phi_min)
 
 
 def test_rejects_unknown_bus() -> None:
     run = _golden_run()
-    with pytest.raises(ValueError, match="szyna punktu przyłączenia nie istnieje"):
+    with pytest.raises(OdmowaNazwana, match="szyna punktu przyłączenia nie istnieje") as exc:
         build_compensation_sizing_view(run, bus_ref="brak", cos_phi_min=0.95)
+    assert exc.value.dane == {"element_ref": "brak"}

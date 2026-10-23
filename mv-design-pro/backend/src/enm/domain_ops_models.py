@@ -138,14 +138,23 @@ class FixActionItem(_FrozenBase):
     element_ref: str | None = None
     """Opcjonalna referencja do elementu docelowego."""
 
+    modal_type: str | None = None
+    """Typ okna naprawczego zgłoszony przez walidator (np. 'SourceModal')."""
+
+    payload_hint: dict[str, Any] | None = None
+    """Podpowiedź treści formularza (np. wymagane pole, przestrzeń katalogu)."""
+
     panel: str | None = None
-    """Panel UI, który należy otworzyć."""
+    """Panel UI, który należy otworzyć ('catalog', 'transformer_panel')."""
 
     step: str | None = None
     """Krok kreatora, do którego należy przejść."""
 
     focus: str | None = None
-    """Pole formularza, na które należy ustawić fokus."""
+    """Element, na którym ustawić fokus nawigacji (identyfikator elementu modelu).
+
+    Pole formularza do fokusu niesie kanon (`canonical_fix_navigation.focus` zgłoszenia).
+    """
 
     message_pl: str = ""
     """Komunikat dla użytkownika w języku polskim."""
@@ -776,6 +785,11 @@ class AddGridSourceSNPayload(_FrozenBase):
     manual_equivalent: dict[str, Any] | None = None
     """Ręczna umowa równoważna dla źródła GPZ, gdy katalog nie jest używany."""
 
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN, gdy źródło przyłączono wprost do szyny nN (wiersz nN
+    tabeli 1 IEC 60909-0) → ``Source.lv_voltage_tolerance``; szyna źródła spoza pasma nN
+    albo wartość spoza słownika to odmowa `source.invalid_lv_voltage_tolerance`."""
+
 
 class SegmentSpec(_FrozenBase):
     """Specyfikacja segmentu linii/kabla.
@@ -969,6 +983,19 @@ class ConnectSecondaryRingSNPayload(_FrozenBase):
     """Opcjonalna nazwa pierścienia."""
 
 
+class PrzepnijElementNaPolePayload(_FrozenBase):
+    """Payload operacji: przepnij_element_na_pole (karta POLA-W-TORZE, akcja naprawcza W042).
+
+    Przepina element z szyny głównej stacji na zacisk pola, które mu służy.
+    """
+
+    element_ref: str
+    """Odcinek terenowy SN albo transformator leżący na szynie głównej stacji."""
+
+    field_ref: str | None = None
+    """Pole docelowe — bez niego pole wskazane przez walidator (wolne pole właściwej roli)."""
+
+
 class SetNormalOpenPointPayload(_FrozenBase):
     """Payload operacji: set_normal_open_point.
 
@@ -1014,6 +1041,11 @@ class AddTransformerSNNNPayload(_FrozenBase):
 
     station_ref: str | None = None
     """Opcjonalna referencja stacji, do której należy transformator."""
+
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN zasilanej z transformatora (wiersz nN tabeli 1
+    IEC 60909-0); tylko dla strony dolnej w paśmie nN, inaczej odmowa
+    `transformer.invalid_lv_voltage_tolerance`."""
 
 
 class AssignCatalogToElementPayload(_FrozenBase):
@@ -1180,6 +1212,11 @@ class DerBlockTransformerSpec(_FrozenBase):
     loadability_pu: float | None = None
     """Dopuszczalne obciążenie (przeciążalność) TR blokowego [pu]. Brak → domyślnie 1,0
     (konserwatywnie, PN-EN 60076-7). Konsumowane przez walidację mocy TR (D1 wymaganie 5)."""
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN strony wtórnej (wiersz nN tabeli 1 IEC 60909-0:
+    PLUS_6 → c 1,05/0,95; PLUS_10 → c 1,10/0,90) → ``Transformer.lv_voltage_tolerance``.
+    Brak = brak deklaracji: zwarcia w sieci z tym TR liczą wartość roboczą rejestru z
+    założeniem biegu ``fault.c_tolerancja_nn_robocza``, nigdy cicha domyślka."""
 
 
 class DerMvFieldConfigurationSpec(_FrozenBase):
@@ -1358,6 +1395,9 @@ class AddNNLoadPayload(_FrozenBase):
     phases: PhaseSet | None = None
     """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
 
+    earth_electrode_r_ohm: float | None = None
+    """Rezystancja uziomu instalacji odbiorczej R_A [Ω] (W5-E-TTIT, układy TT/IT); brak = dana nieobecna."""
+
     load_name: str | None = None
     load_label: str | None = None
 
@@ -1496,6 +1536,35 @@ class SecondaryConnectorViewV1(_FrozenBase):
     """Identyfikator segmentu zamykającego pierścień."""
 
 
+class LineFieldV1(_FrozenBase):
+    """Zajętość pola rozdzielnicy SN — pochodna Snapshot (karta POLE-ZAJĘTE).
+
+    Liczona JEDNĄ funkcją backendu (`enm.zajetosc_pol`); front czyta ją, żeby rozstrzygnąć
+    dostępność punktu startu ciągu, i nie liczy zajętości sam.
+    """
+
+    field_ref: str
+    """Identyfikator pola (specyfikacja `meta.field_specs` stacji albo GPZ)."""
+
+    station_ref: str
+    """Stacja albo GPZ, do której należy pole."""
+
+    bay_role: str
+    """Rola pola w modelu (IN/OUT/FEEDER/TR/…)."""
+
+    attachment_bus_ref: str | None = None
+    """Punkt przyłączenia odcinka: własny zacisk pola albo szyna pola."""
+
+    occupied: bool
+    """Czy pole ma już przyłączony odcinek albo przydzielony ciąg."""
+
+    segment_refs: list[str] = []
+    """Odcinki terenowe przyłączone fizycznie do pola (więcej niż jeden = błąd modelu)."""
+
+    corridor_refs: list[str] = []
+    """Ciągi przydzielone polu deklaratywnie (przydział pola GPZ)."""
+
+
 class LogicalViewsV1(_FrozenBase):
     """Pełne widoki logiczne — deterministyczna pochodna Snapshot.
 
@@ -1514,6 +1583,9 @@ class LogicalViewsV1(_FrozenBase):
 
     terminals: list[TerminalRef] = []
     """Wszystkie terminale dostępne w sieci (agregat)."""
+
+    line_fields: list[LineFieldV1] = []
+    """Zajętość pól rozdzielnic SN (karta POLE-ZAJĘTE)."""
 
 
 # ===========================================================================

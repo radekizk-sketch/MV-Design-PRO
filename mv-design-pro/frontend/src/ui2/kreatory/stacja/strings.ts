@@ -39,6 +39,8 @@ export const STACJA_STRINGS = {
   szablonWybrany: 'Szablon użyty do wypełnienia',
   szablonBrakWyboru: 'Bez szablonu (praca od zera)',
   szablonBlad: 'Nie udało się pobrać biblioteki szablonów stacji.',
+  szablonPodgladOdmowa:
+    'Podgląd szablonu odrzucony — transformator, pola i zabezpieczenie nie zostały przejęte z doboru szablonu: ',
   szablonPusty: 'Ta kategoria nie zawiera szablonów.',
   /** Stan ładowania listy — oddzielony od pustego, żeby „nie ma" nie padało przed odpowiedzią. */
   szablonLaduje: 'Pobieranie szablonów wybranej kategorii…',
@@ -397,15 +399,28 @@ export const STACJA_STRINGS = {
   polaBrakTrTytul: 'Stacja z transformatorem bez pola transformatorowego',
   polaBrakTrOpis:
     'Ta stacja tworzy transformator SN/nN, a lista pól nie zawiera pola transformatorowego. '
-    + 'Odejście od szyny SN realizuje się polem, więc konfiguracja pozostanie niekompletna: '
-    + 'na schemacie transformator dostanie znacznik braku pola, panel gotowości zgłosi ostrzeżenie, '
-    + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
-    + 'działają bez zmian — to legalny stan roboczy.',
+    + 'Transformator przyłącza się do zacisku pola transformatorowego — aparat tego pola leży '
+    + 'w jego torze prądowym, więc wyłączenie pola odłącza transformator. Bez tego pola stacji '
+    + 'nie da się zapisać: dodaj pole transformatorowe (w rozdzielnicy blokowej wybierz blok '
+    + 'z jednostką transformatorową).',
+  polaToruBrakTytul: 'Brak pola liniowego w torze odcinka',
+  polaToruBrakOpis: (nazwy: string, koniecOdcinka: boolean): string =>
+    (koniecOdcinka
+      ? 'Stacja zamyka odcinek: odcinek dochodzi do zacisku pola liniowego wejściowego, '
+        + 'a aparat tego pola leży w jego torze. '
+      : 'Stacja jest wstawiana w odcinek: część od strony zasilania kończy się na zacisku pola '
+        + 'liniowego wejściowego, a dalsza część wychodzi z zacisku pola liniowego wyjściowego — '
+        + 'aparaty tych pól leżą w torze odcinka. ')
+    + `Lista pól nie zawiera: ${nazwy}. Bez tych pól stacji nie da się zapisać `
+    + '(w rozdzielnicy blokowej wybierz blok z takimi jednostkami).',
+  polaDodajPoleToru: (nazwa: string): string => `Dodaj: ${nazwa.toLowerCase()}`,
+  polaToruBrakStopka: (nazwy: string): string =>
+    `Stacja wymaga pól toru: ${nazwy} — dodaj je w kroku „Pola rozdzielnicy SN”.`,
   polaPrzywrocTr: 'Dodaj pole transformatorowe',
   // Nazwa roli z kanonu słownictwa ról pól (karta #141).
   wierszPoleTr: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
   wierszPoleTrJest: 'W rozdzielnicy',
-  wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
+  wierszPoleTrBrak: 'Brak — wymagane do zapisu',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   // SLD-GEN-POLA — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
   podgladOpisRysunku:
@@ -503,6 +518,11 @@ export const STACJA_STRINGS = {
   // Kontrola.
   kontrolaTytul: 'Kontrola stacji',
   wierszTyp: 'Rodzaj',
+  /** Rodzaj wynikający ze składu pól i umiejscowienia (zgodny z deklaracją). */
+  rodzajWynikowy: (rodzaj: string) => `Stacja ${rodzaj} (ze składu pól)`,
+  /** Rodzaj wynikający ze składu pól różni się od deklaracji z kroku „Rodzaj”. */
+  rodzajNiezgodny: (rodzaj: string, deklaracja: string) =>
+    `Stacja ${rodzaj} ze składu pól — zadeklarowano: ${deklaracja}`,
   wierszUmiejscowienie: 'Umiejscowienie',
   wierszTransformator: 'Transformator',
   wierszNn: 'Blok nN',
@@ -663,6 +683,11 @@ export const STACJA_STRINGS = {
   uziemienieUkladPomoc:
     'TN-C-S to typowy układ dystrybucyjny nN. IT stosuje się tam, gdzie wymagana jest ciągłość '
     + 'zasilania przy pierwszym doziemieniu (z kontrolą stanu izolacji).',
+  uziemienieTolerancja: 'Tolerancja napięcia sieci nN',
+  uziemienieTolerancjaPomoc:
+    'Wybiera wiersz nN tabeli 1 IEC 60909-0, z którego obliczenie dobiera współczynnik '
+    + 'napięciowy c węzłów nN (scenariusz MAX i MIN). +10 % to typowa sieć 230/400 V '
+    + '(IEC 60038, PN-EN 50160); +6 % — gdy operator deklaruje węższą tolerancję.',
   uziemieniePunkt: 'Punkt neutralny transformatora (nN)',
   uziemieniePunktOpcje: [
     { id: 'directly_grounded', etykieta: 'Bezpośrednio uziemiony' },
@@ -674,6 +699,12 @@ export const STACJA_STRINGS = {
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
   uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
+  uziemienieRezystancjaUziomuStacji: 'Rezystancja uziomu stacji R_B [Ω]',
+  uziemienieRezystancjaUziomuStacjiPomoc:
+    'Uziom punktu neutralnego transformatora (uziemionego bezpośrednio). W układzie TT pętla '
+    + 'zwarcia doziemnego domyka się przez uziom stacji R_B i uziom instalacji odbiorczej R_A '
+    + '(IEC 60364-4-41 §411.5) — bez R_B analiza TT odmawia nazwanym kodem. W układach TN wartość '
+    + 'jest zapisywana w modelu, ale pętla L-PE/L-PEN jej nie czyta.',
   uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:

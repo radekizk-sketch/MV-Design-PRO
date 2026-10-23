@@ -12,7 +12,7 @@ z ładnym `B1` nie sprawdziłaby niczego: strażnik ma widzieć to, co widzi
 projektant.
 
 Uruchomienie (z katalogu `backend/`):
-    poetry run python tests/ci/generuj_odpowiedzi_v126.py
+    poetry run python -m tests.ci.generuj_odpowiedzi_v126
 Parytet pliku z bieżącym solverem pilnuje `tests/ci/test_v126_odpowiedzi_fixtury.py`.
 
 PRZELICZENIA FIXTURY — ŚWIADOME, Z WARTOŚCIAMI PRZED I PO
@@ -93,7 +93,6 @@ zmian (solver FROZEN nietknięty); zmienia się kształt i etykiety:
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -252,10 +251,9 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
 
 def main() -> None:
     odpowiedzi = zbuduj_odpowiedzi()
-    SCIEZKA_FIXTURY.write_text(
-        json.dumps(odpowiedzi, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    from tests.golden.zapis_fikstur import json_fikstury
+
+    SCIEZKA_FIXTURY.write_text(json_fikstury(odpowiedzi), encoding="utf-8")
     print(f"zapisano {len(odpowiedzi)} rodzajów → {SCIEZKA_FIXTURY}")
 
 

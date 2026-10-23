@@ -9,6 +9,8 @@ spójności i znajdowania wysp.
 from collections.abc import Iterable
 
 import networkx as nx
+from network_model.nazwy import opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaNazwana
 
 from .branch import Branch
 from .grid_source import GridShortCircuitSource
@@ -18,6 +20,36 @@ from .node import Node, NodeType
 from .station import Station
 from .switch import Switch
 from .topologia import skladowe_spojne
+
+#: Kody odmów grafu IR (pole `kod` odmowy nazwanej; identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10, klasa „identyfikator w treści odmowy").
+KOD_GRAF_ELEMENT_POWTORZONY = "graf.element_powtorzony"
+KOD_GRAF_WEZEL_SPOZA_GRAFU = "graf.wezel_spoza_grafu"
+KOD_GRAF_PETLA_WLASNA = "graf.petla_wlasna"
+KOD_GRAF_BRAK_WEZLA_BILANSUJACEGO = "graf.brak_wezla_bilansujacego"
+KOD_GRAF_WIELE_WEZLOW_BILANSUJACYCH = "graf.wiele_wezlow_bilansujacych"
+
+
+def _odmowa_powtorzenia(rodzaj: str, element: object, element_id: str) -> OdmowaNazwana:
+    """Element o identyfikatorze już obecnym w grafie (identyfikator w `dane`)."""
+    return OdmowaNazwana(
+        f"{opis_rodzaju_i_nazwy(rodzaj, getattr(element, 'name', None))} występuje w grafie "
+        "sieci dwukrotnie — każdy element modelu wchodzi do grafu jeden raz.",
+        kod=KOD_GRAF_ELEMENT_POWTORZONY,
+        dane={"element_ref": element_id},
+    )
+
+
+def _odmowa_wezla_spoza_grafu(
+    rodzaj: str, element: object, element_id: str, koniec: str, wezel_id: str
+) -> OdmowaNazwana:
+    """Element przyłączony do węzła, którego nie ma w grafie (oba identyfikatory w `dane`)."""
+    return OdmowaNazwana(
+        f"{opis_rodzaju_i_nazwy(rodzaj, getattr(element, 'name', None))}: {koniec} nie należy "
+        "do grafu sieci — element nie ma do czego się przyłączyć.",
+        kod=KOD_GRAF_WEZEL_SPOZA_GRAFU,
+        dane={"element_ref": element_id, "wezel_ref": wezel_id},
+    )
 
 
 class NetworkGraph:
@@ -70,6 +102,11 @@ class NetworkGraph:
         # w karcie katalogowej konwertera. Metadana mostu, nie wejście solvera —
         # network_model/solvers/** jej nie czyta (B-01, solver nietknięty).
         self.k_sc_assumptions_trace: list[dict] = []
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): wartości robocze parametrów maszyn
+        # wirujących (x″d, cos φ_r, I_LR/I_rM, η_r, p) — id źródła → wpisy rejestru
+        # `wartosci_robocze.wpis_parametru_maszyny`. Metadana mostu ENM → graf dla śladu biegu
+        # i danych przyjętych werdyktów; solvery jej nie czytają (liczą z pól źródła).
+        self.wartosci_robocze_maszyn: dict[str, tuple[dict, ...]] = {}
         self._graph: nx.MultiGraph = nx.MultiGraph()
 
     def add_node(self, node: Node) -> None:
@@ -98,7 +135,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID już istnieje.
         """
         if node.id in self.nodes:
-            raise ValueError(f"Węzeł o ID '{node.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Węzeł", node, node.id)
 
         self.nodes[node.id] = node
         self._graph.add_node(node.id)
@@ -124,16 +161,17 @@ class NetworkGraph:
             ValueError: Gdy gałąź łączy węzeł sam ze sobą.
         """
         if branch.id in self.branches:
-            raise ValueError(f"Gałąź o ID '{branch.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Gałąź", branch, branch.id)
 
-        if branch.from_node_id not in self.nodes:
-            raise ValueError(f"Węzeł początkowy '{branch.from_node_id}' nie istnieje w grafie.")
-
-        if branch.to_node_id not in self.nodes:
-            raise ValueError(f"Węzeł końcowy '{branch.to_node_id}' nie istnieje w grafie.")
+        for koniec, wezel_id in (
+            ("węzeł początkowy", branch.from_node_id),
+            ("węzeł końcowy", branch.to_node_id),
+        ):
+            if wezel_id not in self.nodes:
+                raise _odmowa_wezla_spoza_grafu("Gałąź", branch, branch.id, koniec, wezel_id)
 
         if branch.from_node_id == branch.to_node_id:
-            raise ValueError(f"Gałąź nie może łączyć węzła '{branch.from_node_id}' samego ze sobą.")
+            raise self._odmowa_petli_wlasnej("Gałąź", branch, branch.id, branch.from_node_id)
 
         # Dodaj gałąź do słownika
         self.branches[branch.id] = branch
@@ -171,18 +209,17 @@ class NetworkGraph:
             ValueError: Gdy łącznik łączy węzeł sam ze sobą.
         """
         if switch.id in self.switches:
-            raise ValueError(f"Łącznik o ID '{switch.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Łącznik", switch, switch.id)
 
-        if switch.from_node_id not in self.nodes:
-            raise ValueError(f"Węzeł początkowy '{switch.from_node_id}' nie istnieje w grafie.")
-
-        if switch.to_node_id not in self.nodes:
-            raise ValueError(f"Węzeł końcowy '{switch.to_node_id}' nie istnieje w grafie.")
+        for koniec, wezel_id in (
+            ("węzeł początkowy", switch.from_node_id),
+            ("węzeł końcowy", switch.to_node_id),
+        ):
+            if wezel_id not in self.nodes:
+                raise _odmowa_wezla_spoza_grafu("Łącznik", switch, switch.id, koniec, wezel_id)
 
         if switch.from_node_id == switch.to_node_id:
-            raise ValueError(
-                f"Łącznik nie może łączyć węzła '{switch.from_node_id}' samego ze sobą."
-            )
+            raise self._odmowa_petli_wlasnej("Łącznik", switch, switch.id, switch.from_node_id)
 
         self.switches[switch.id] = switch
 
@@ -198,6 +235,18 @@ class NetworkGraph:
                 name=switch.name,
             )
 
+    def _odmowa_petli_wlasnej(
+        self, rodzaj: str, element: object, element_id: str, wezel_id: str
+    ) -> OdmowaNazwana:
+        """Gałąź albo łącznik łączący węzeł sam ze sobą (identyfikatory w `dane`)."""
+        wezel = opis_rodzaju_i_nazwy("węzeł", self.nodes[wezel_id].name)
+        return OdmowaNazwana(
+            f"{opis_rodzaju_i_nazwy(rodzaj, getattr(element, 'name', None))} łączy {wezel} "
+            "sam ze sobą — element musi mieć dwa różne końce.",
+            kod=KOD_GRAF_PETLA_WLASNA,
+            dane={"element_ref": element_id, "wezel_ref": wezel_id},
+        )
+
     def add_inverter_source(self, source: InverterSource) -> None:
         """
         Dodaje źródło falownikowe do grafu sieci.
@@ -210,9 +259,11 @@ class NetworkGraph:
             ValueError: Gdy węzeł docelowy nie istnieje.
         """
         if source.id in self.inverter_sources:
-            raise ValueError(f"Źródło falownikowe o ID '{source.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Źródło falownikowe", source, source.id)
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise _odmowa_wezla_spoza_grafu(
+                "Źródło falownikowe", source, source.id, "węzeł przyłączenia", source.node_id
+            )
         self.inverter_sources[source.id] = source
 
     def remove_inverter_source(self, source_id: str) -> None:
@@ -273,9 +324,11 @@ class NetworkGraph:
     def add_synchronous_machine_source(self, source: SynchronousMachineSource) -> None:
         """Register a synchronous-machine SC source (voltage behind Z″_G)."""
         if source.id in self.synchronous_machine_sources:
-            raise ValueError(f"Maszyna synchroniczna o ID '{source.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Maszyna synchroniczna", source, source.id)
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise _odmowa_wezla_spoza_grafu(
+                "Maszyna synchroniczna", source, source.id, "węzeł przyłączenia", source.node_id
+            )
         self.synchronous_machine_sources[source.id] = source
 
     def get_synchronous_machine_sources(self) -> list[SynchronousMachineSource]:
@@ -289,9 +342,11 @@ class NetworkGraph:
     def add_asynchronous_machine_source(self, source: AsynchronousMachineSource) -> None:
         """Register an asynchronous-machine SC source (voltage behind Z_M)."""
         if source.id in self.asynchronous_machine_sources:
-            raise ValueError(f"Maszyna asynchroniczna o ID '{source.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Maszyna asynchroniczna", source, source.id)
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise _odmowa_wezla_spoza_grafu(
+                "Maszyna asynchroniczna", source, source.id, "węzeł przyłączenia", source.node_id
+            )
         self.asynchronous_machine_sources[source.id] = source
 
     def get_asynchronous_machine_sources(self) -> list[AsynchronousMachineSource]:
@@ -307,16 +362,30 @@ class NetworkGraph:
     def add_grid_sc_source(self, source: GridShortCircuitSource) -> None:
         """Rejestruje zasilanie systemowe (SEM za Z_Q) w węźle przyłączenia."""
         if source.id in self.grid_sc_sources:
-            raise ValueError(f"Źródło sieciowe o ID '{source.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Źródło sieciowe", source, source.id)
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise _odmowa_wezla_spoza_grafu(
+                "Źródło sieciowe", source, source.id, "węzeł przyłączenia", source.node_id
+            )
         self.grid_sc_sources[source.id] = source
 
     def get_grid_sc_sources(self) -> list[GridShortCircuitSource]:
-        """Czynne źródła sieciowe, deterministycznie posortowane po id."""
+        """Czynne źródła sieciowe (z Z_Q), deterministycznie posortowane po id.
+
+        Konsument impedancji Z_Q.
+        """
         sources = [s for s in self.grid_sc_sources.values() if s.in_service]
         sources.sort(key=lambda s: s.id)
         return sources
+
+    def wezly_zrodel_sieciowych(self) -> list[str]:
+        """Węzły przyłączenia czynnych źródeł sieciowych — topologia.
+
+        Dla odczytów, które pytają WYŁĄCZNIE, gdzie sieć zasilająca wchodzi do grafu (wyspy z
+        odniesieniem, kierunek zasilania), nie o jej impedancję; posortowane, bez powtórzeń.
+        """
+        wezly = {s.node_id for s in self.grid_sc_sources.values() if s.in_service}
+        return sorted(wezly)
 
     def remove_node(self, node_id: str) -> None:
         """
@@ -331,7 +400,11 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
+            raise OdmowaNazwana(
+                "Węzła wskazanego do usunięcia nie ma w grafie sieci.",
+                kod=KOD_GRAF_WEZEL_SPOZA_GRAFU,
+                dane={"wezel_ref": node_id},
+            )
 
         # Znajdź i usuń wszystkie gałęzie połączone z tym węzłem
         branches_to_remove = [
@@ -484,7 +557,7 @@ class NetworkGraph:
             ValueError: Gdy stacja o podanym ID już istnieje.
         """
         if station.id in self.stations:
-            raise ValueError(f"Stacja o ID '{station.id}' już istnieje w grafie.")
+            raise _odmowa_powtorzenia("Stacja", station, station.id)
         self.stations[station.id] = station
 
     def remove_station(self, station_id: str) -> None:
@@ -600,12 +673,19 @@ class NetworkGraph:
         slack_ids = self.get_slack_node_ids()
 
         if len(slack_ids) == 0:
-            raise ValueError("Brak węzła SLACK w sieci.")
+            raise OdmowaNazwana(
+                "Sieć nie ma węzła bilansującego (SLACK).", kod=KOD_GRAF_BRAK_WEZLA_BILANSUJACEGO
+            )
 
         if len(slack_ids) > 1:
-            raise ValueError(
-                f"W sieci znajduje się {len(slack_ids)} węzłów SLACK ({', '.join(slack_ids)}) — "
-                "wskaż szynę bilansującą jawnie (po jednej na wyspę)."
+            opisy = ", ".join(
+                opis_rodzaju_i_nazwy("węzeł", self.nodes[wezel_id].name) for wezel_id in slack_ids
+            )
+            raise OdmowaNazwana(
+                f"W sieci jest {len(slack_ids)} węzłów bilansujących (SLACK): {opisy} — "
+                "wskaż szynę bilansującą jawnie (po jednej na wyspę).",
+                kod=KOD_GRAF_WIELE_WEZLOW_BILANSUJACYCH,
+                dane={"wezly_ref": tuple(slack_ids)},
             )
 
         return self.nodes[slack_ids[0]]
@@ -678,6 +758,12 @@ class NetworkGraph:
             if grid_source.node_id in zbior:
                 podgraf.add_grid_sc_source(grid_source)
         podgraf.k_sc_assumptions_trace = list(self.k_sc_assumptions_trace)
+        podgraf.wartosci_robocze_maszyn = {
+            id_zrodla: wpisy
+            for id_zrodla, wpisy in self.wartosci_robocze_maszyn.items()
+            if id_zrodla in podgraf.synchronous_machine_sources
+            or id_zrodla in podgraf.asynchronous_machine_sources
+        }
         return podgraf
 
     def is_connected(self) -> bool:

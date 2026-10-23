@@ -31,6 +31,7 @@ decyzją, nie cichym przyrostem.
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 import json
 import re
@@ -42,6 +43,20 @@ from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.models import EnergyNetworkModel
 
+from tests.ci.tolerancja_fikstur import (
+    HEX_SKROTU,
+    PASMO_BEZWYMIAROWYCH,
+    PASMO_ZERA_FIXTUR,
+    POLA_BEZWYMIAROWE_OGRANICZONE,
+    POLA_SKROTOW_NIEPRZENOSNYCH,
+    POLA_TEKSTU_Z_LICZBAMI,
+    RTOL_FIXTUR,
+    ZIARNO_IDENTYFIKATORA_ENM,
+    klasy_rownosci_skrotow,
+    liczby_rowne,
+    roznice_z_tolerancja,
+    skroty_nieprzenosne,
+)
 from tests.golden.enm_builders.dynamika_projektanta import (
     NAZWA_KONCA_MAGISTRALI,
     NAZWA_ODCINKA_ZWARCIA,
@@ -54,249 +69,6 @@ _spec = importlib.util.spec_from_file_location("eksport_fixtur_harnessu", _SKRYP
 assert _spec is not None and _spec.loader is not None
 eksport = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(eksport)
-
-
-#: Tolerancja WZGLĘDNA liczb fixtur. POMIAR (CI run 35290801270, job `pytest`,
-#: commit 8d795200 — 7 czerwonych przy 15 878 zielonych): największa zmierzona
-#: rozbieżność międzymaszynowa to `estymacja $.measurements[9].normalized_residual`
-#: 1.4209582645767669 (sesja) vs 1.4209749416592783 (runner) = 1,2·10⁻⁵ względnie;
-#: druga co do wielkości `$.measurements[5].normalized_residual` = 6,8·10⁻⁶,
-#: `$.white_box[2].gain_matrix_g[0][4]` = 1,2·10⁻⁶. Próg 1·10⁻⁴ to zapas ×8,5 nad
-#: zmierzonym maksimum (limit karty: ×10). Rozwiązanie WLS jest najczulszą
-#: wielkością tego zbioru (residuum znormalizowane dzieli się przez pierwiastek
-#: kowariancji residuum, która przy niskiej redundancji lokalnej dąży do zera) —
-#: gdyby przyszły bieg CI przekroczył ten próg, odpowiedzią NIE jest podniesienie
-#: progu, tylko pytanie, czy ta wielkość ma prawo być w fiksturze.
-RTOL_FIXTUR = 1e-4
-
-#: Pasmo martwe zera (bezwzględne). POMIAR: największe zmierzone „zero numeryczne”
-#: między maszynami to człon 1,27454e-09 w śladzie składowych
-#: (`skladowe $.white_box_trace[2].substitution`: 5,11591e-13 na sesji wobec
-#: 1,27454e-09 na runnerze, OBOK członu −j 10162,6 w tym samym wyrażeniu) — obie
-#: wartości są fizycznie zerem części rzeczywistej Z₀. Pasmo 1·10⁻⁸ to zapas ×7,8
-#: nad tym pomiarem (limit karty: ×10) i ×43 nad najgorszą różnicą sondy szumu
-#: BLAS (`zwarcia $.branch_flow_trace[].result.i_contrib_a`: 2,3·10⁻¹⁰).
-#: Pasmo obowiązuje tylko wtedy, gdy OBIE wartości w nim leżą — 1e-9 wobec 5,0 to
-#: nadal różnica. Poprzednie 1e-6 było o dwa rzędy ZA SZEROKIE: zrównywało z zerem
-#: realne współczynniki katalogowe tablic łuku (`arcflash
-#: $.coefficient_table.incident_energy.VOA|V2700.k[6]` = 8,346e-07).
-PASMO_ZERA_FIXTUR = 1e-8
-
-#: Pasmo BEZWZGLEDNE dla wielkosci BEZWYMIAROWYCH OGRANICZONYCH (ilorazow o
-#: naturalnej skali 1). POWOD, NIE WYGODA: dla takiej wielkosci tolerancja
-#: WZGLEDNA jest zlym przyrzadem, gdy licznik ilorazu daza do zera przy skonczonym
-#: mianowniku — `cos phi` galezi niosacej praktycznie sama moc bierna wychodzi
-#: rzedu 1e-7 i jego blad wzgledny jest nieograniczony, choc bezwzgledny jest
-#: znikomy. POMIAR (CI run 35305960018, job `pytest`, commit 07d93d01):
-#: `koordynacja $.rows[2].cos_phi` 3.9231140792499414e-07 (sesja) wobec
-#: 3.923647677786405e-07 (runner) = 5,336e-11 BEZWZGLEDNIE (1,36e-4 wzglednie,
-#: tuz nad RTOL). Pasmo 1e-9 to zapas x18,7 nad tym pomiarem.
-#: DLACZEGO TO NIE OSLEPIA TESTU: regula dziala jako ALTERNATYWA obok tolerancji
-#: wzglednej, wiec jedyne, co traci porownanie, to czulosc PONIZEJ 1e-9 W
-#: WARTOSCI BEZWZGLEDNEJ — piec rzedow ponizej czwartego miejsca po przecinku,
-#: ktore te wielkosci pokazuja na ekranie, i osiem rzedow ponizej progow
-#: normowych (cos phi 0,90/0,95). Zadna realna regresja nie miesci sie ponizej.
-PASMO_BEZWYMIAROWYCH = 1e-9
-
-#: Pola z klasy wyzej. Lista ZAMKNIETA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
-#: Czlonkostwo rozstrzyga DEFINICJA wielkosci (iloraz ograniczony do [-1, 1]),
-#: nie zaobserwowany zakres w fiksturach:
-#:   * `cos_phi` = P/S, |cos phi| <= 1 z definicji;
-#:   * `fraction` = udzial, [0, 1] z definicji (dzis 1,6e-17, czyli i tak w pasmie
-#:     zera — wchodzi jako czlonek KLASY, nie jako lata na dzisiejsza wartosc);
-#:   * `voltage_unbalance_u2_u1` = U2/U1, [0, 1] z definicji (dzis 0,0).
-#: SWIADOMIE POZA LISTA: `rx_ratio` (R/X bywa > 1, nie jest ograniczony),
-#: `iq_bierny_pu` (prad w jednostkach wzglednych moze przekroczyc 1 w przeciazeniu)
-#: — dla nich naturalna skala to ich wlasna wartosc, wiec tolerancja wzgledna jest
-#: przyrzadem wlasciwym.
-POLA_BEZWYMIAROWE_OGRANICZONE: frozenset[str] = frozenset(
-    {
-        "cos_phi",
-        "fraction",
-        "voltage_unbalance_u2_u1",
-    }
-)
-
-#: Pola, których wartość jest SKRÓTEM policzonym nad liczbami nieprzenośnymi
-#: (wynik solvera). Lista ZAMKNIĘTA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
-#: Źródła: (a) tabela pomiaru CI 35290801270 (`result_hash`, `export_ref`,
-#: `deterministic_signature`, `analysis_case_context.reproducibility.result_hash`);
-#: (b) sonda szumu BLAS (szum względny 1e-12 wstrzyknięty w wyniki `np.linalg.*`,
-#: deterministyczny jako funkcja WEJŚCIA) na komplecie fixtur — rozjechały się
-#: dokładnie te pola i żadne inne.
-#: ŚWIADOMIE POZA LISTĄ: `input_hash`, `snapshot_hash`, `snapshot_ref`, `enm_hash`,
-#: `model_hash`, `options_hash`, `solver_input_hash`, `catalog_fingerprint`,
-#: `catalog_materialization_hash`, `hash_sha256`, `semantic_fingerprint`,
-#: `effect_signature`, `deterministic_id`, `snapshot_id` — to skróty nad WEJŚCIEM;
-#: sonda nie ruszyła ich przy 1e-12 i bieg CI ich nie zgłosił. Są najsilniejszym
-#: sygnałem, jaki ten test ma (dryf danych wejściowych), więc ich wyłączenie
-#: oślepiłoby go na realną regresję.
-POLA_SKROTOW_NIEPRZENOSNYCH: frozenset[str] = frozenset(
-    {
-        "analysis_id",
-        "deterministic_hash",
-        "deterministic_signature",
-        "estimate_id",
-        "export_ref",
-        "proof_hash",
-        "proof_id",
-        "proof_ref",
-        "report_hash",
-        "report_id",
-        "report_ref",
-        "result_hash",
-        "source_proof_hash",
-        "source_result_hash",
-        "value",
-        # Karta AB-P1: odcisk punktu pracy biegu dynamiki to skrót nad NAPIĘCIAMI
-        # i MOCAMI rozwiązania rozpływu (wynik solvera, nie wejście) — ta sama klasa
-        # co `result_hash`. Pozostałe odciski tożsamości biegu (`odcisk_migawki`,
-        # `odcisk_nastaw_solvera`, `odcisk_harmonogramu`, `odcisk_implementacji`) są
-        # skrótami nad WEJŚCIEM i zostają w porównaniu dokładnym.
-        "odcisk_punktu_pracy",
-    }
-)
-
-#: Pola tekstowe niosące liczby POLICZONE (ślad White Box, uzasadnienia, etykiety
-#: metryk raportu). Porównanie: struktura napisu DOKŁADNIE, liczby w napisie tą
-#: samą tolerancją co liczby JSON — człon numerycznie zerowy nie może wywracać
-#: porównania. Lista ZAMKNIĘTA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
-#: Pomiar: skan kompletu fixtur po kluczach tekstowych niosących liczbę o ≥4
-#: cyfrach znaczących albo w notacji wykładniczej. Reguła NIE jest globalna dla
-#: wszystkich napisów, bo identyfikatory bywają mylone z liczbami (fragment UUID
-#: `…-5e63-…` jest poprawnym literałem zmiennoprzecinkowym, `31.12.2026` datą) —
-#: poza tą listą napisy porównuje się DOKŁADNIE.
-POLA_TEKSTU_Z_LICZBAMI: frozenset[str] = frozenset(
-    {
-        "description_pl",
-        "latex",
-        "result_pl",
-        "slad_pl",
-        "substitution",
-        "substitution_latex",
-        "substitution_pl",
-        "tekst",
-        "uzasadnienie_pl",
-        "value",
-        "wartosc_pl",
-        "why_pl",
-        "wiodacy_opis_pl",
-        "wscr_why_pl",
-        "z_tk_formula_latex",
-    }
-)
-
-#: Ciąg szesnastkowy skrótu w napisie (goły albo po prefiksie rodzaju, np.
-#: `proof:short-circuit:<64hex>`, `report:v126:<rodzaj>:<16hex>`).
-_HEX_SKROTU = re.compile(r"[0-9a-f]{16,}")
-#: Ziarno identyfikatora elementu ENM (`enm/domain_operations._make_id`: `prefiks/<ziarno>/ścieżka`)
-#: — tożsamość domenowa nadana deterministycznie z referencji modelu (tor DER-SN sceny
-#: „akademickie": `pv/<ziarno>/der/producer_nn_bus`), nie skrót wyniku; pin kształtu skrótów
-#: (16/64 znaki) go nie dotyczy.
-_ZIARNO_IDENTYFIKATORA_ENM = re.compile(r"(?<=/)[0-9a-f]{32}(?=/)")
-#: Literał liczbowy w tekście. Odgrodzony z obu stron od znaków alfanumerycznych i
-#: kropki, żeby `15kv`, `v1.2.3` ani `lvrt_conv-pv-1mw` nie były czytane jak liczby.
-_LICZBA_W_TEKSCIE = re.compile(
-    r"(?<![0-9A-Za-z_.])[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?(?![0-9A-Za-z_])"
-)
-#: UUID w tekście — jego fragmenty bywają poprawnymi literałami liczbowymi
-#: (`c767-5e63-8e7e`), więc leżące w nim „liczby” są częścią SZKIELETU napisu.
-_UUID_W_TEKSCIE = re.compile(
-    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
-)
-
-
-def liczby_rowne(a: float, b: float, klucz: str | None = None) -> bool:
-    """Równość liczb w klasie przenośności: pasmo martwe zera, pasmo wielkości
-    bezwymiarowych ograniczonych (tylko dla pól tej klasy) albo tolerancja względna."""
-    if a == b:
-        return True
-    if abs(a) <= PASMO_ZERA_FIXTUR and abs(b) <= PASMO_ZERA_FIXTUR:
-        return True
-    if klucz in POLA_BEZWYMIAROWE_OGRANICZONE and abs(a - b) <= PASMO_BEZWYMIAROWYCH:
-        return True
-    return abs(a - b) <= RTOL_FIXTUR * max(abs(a), abs(b))
-
-
-def szkielet_skrotu(tekst: str) -> str:
-    """Napis ze skrótami zastąpionymi znacznikiem DŁUGOŚCI — prefiks rodzaju
-    (`proof:short-circuit:` wobec `proof:power-flow:`) i długość ciągu zostają
-    porównywane dokładnie, treść skrótu wypada."""
-    return _HEX_SKROTU.sub(lambda m: f"<{len(m.group(0))}hex>", tekst)
-
-
-def _rozbij_tekst(tekst: str) -> tuple[str, list[str]]:
-    """(szkielet napisu, literały liczbowe) — liczby w UUID zostają w szkielecie."""
-    zakazane = [m.span() for m in _UUID_W_TEKSCIE.finditer(tekst)]
-    szkielet: list[str] = []
-    liczby: list[str] = []
-    koniec = 0
-    for m in _LICZBA_W_TEKSCIE.finditer(tekst):
-        if any(p <= m.start() and m.end() <= k for p, k in zakazane):
-            continue
-        szkielet.append(tekst[koniec : m.start()])
-        szkielet.append("\x00")
-        liczby.append(m.group(0))
-        koniec = m.end()
-    szkielet.append(tekst[koniec:])
-    return "".join(szkielet), liczby
-
-
-def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str, klucz: str | None = None) -> list[str]:
-    szkielet_a, liczby_a = _rozbij_tekst(zloty)
-    szkielet_b, liczby_b = _rozbij_tekst(teraz)
-    if szkielet_a != szkielet_b:
-        return [f"{sciezka}: struktura tekstu {zloty!r} != {teraz!r}"]
-    return [
-        f"{sciezka}: liczba w tekście {a} != {b} (poza tolerancją; {zloty!r} != {teraz!r})"
-        for a, b in zip(liczby_a, liczby_b, strict=True)
-        if not liczby_rowne(float(a), float(b), klucz)
-    ]
-
-
-def roznice_z_tolerancja(
-    zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
-) -> list[str]:
-    """Lista ścieżek, na których fixtura z repo różni się od odpowiedzi backendu."""
-    if isinstance(zloty, bool) or isinstance(teraz, bool):
-        # `bool` jest częścią kontraktu (True != 1): typ i wartość dokładnie.
-        if type(zloty) is type(teraz) and zloty == teraz:
-            return []
-        return [f"{sciezka}: {zloty!r} != {teraz!r}"]
-    if isinstance(zloty, int | float) and isinstance(teraz, int | float):
-        if isinstance(zloty, int) and isinstance(teraz, int):
-            return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
-        if liczby_rowne(float(zloty), float(teraz), klucz):
-            return []
-        return [f"{sciezka}: {zloty!r} != {teraz!r} (poza tolerancją)"]
-    if isinstance(zloty, dict) and isinstance(teraz, dict):
-        if set(zloty) != set(teraz):
-            return [f"{sciezka}: klucze {sorted(set(zloty) ^ set(teraz))}"]
-        return [
-            r for k in zloty for r in roznice_z_tolerancja(zloty[k], teraz[k], f"{sciezka}.{k}", k)
-        ]
-    if isinstance(zloty, list) and isinstance(teraz, list):
-        if len(zloty) != len(teraz):
-            return [f"{sciezka}: długość listy {len(zloty)} != {len(teraz)}"]
-        return [
-            r
-            for i, (a, b) in enumerate(zip(zloty, teraz, strict=True))
-            for r in roznice_z_tolerancja(a, b, f"{sciezka}[{i}]", klucz)
-        ]
-    if isinstance(zloty, str) and isinstance(teraz, str):
-        if (
-            klucz in POLA_SKROTOW_NIEPRZENOSNYCH
-            and _HEX_SKROTU.search(zloty)
-            and _HEX_SKROTU.search(teraz)
-        ):
-            # Skrót nad liczbami nieprzenośnymi: kształt dokładnie, treść poza
-            # porównaniem międzymaszynowym (stabilność lokalna pilnuje determinizm).
-            if szkielet_skrotu(zloty) == szkielet_skrotu(teraz):
-                return []
-            return [f"{sciezka}: kształt skrótu {zloty!r} != {teraz!r}"]
-        if klucz in POLA_TEKSTU_Z_LICZBAMI:
-            return _roznice_w_tekscie(zloty, teraz, sciezka, klucz)
-    return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
 
 
 def test_roznice_z_tolerancja_rozroznia_szum_od_regresji() -> None:
@@ -417,6 +189,109 @@ def test_tekst_sladu_porownywany_po_strukturze_i_liczbach() -> None:
     assert roznice_z_tolerancja({"opis": sesja}, {"opis": runner}) != []
 
 
+def _wklad(prad_ka: float) -> dict[str, object]:
+    return {"branch_id": "tr_sn_nn", "source_id": "THEVENIN_GRID", "i_ka": prad_ka}
+
+
+def _slad(prad_a: float) -> dict[str, object]:
+    return {"key": "thevenin_flow_x", "result": {"fraction": 0.0, "i_contrib_a": prad_a}}
+
+
+@pytest.mark.parametrize(
+    "pole,wpis", [("branch_contributions", _wklad), ("branch_flow_trace", _slad)]
+)
+@pytest.mark.parametrize("nadmiar_po_stronie_fikstury", [True, False])
+def test_listy_rozplywu_porownywane_scisle(
+    pole: str, wpis: object, nadmiar_po_stronie_fikstury: bool
+) -> None:
+    """Karta PROG-ZERA-WKLADOW: naprawa u źródła (jeden próg |I| < 1e-6 A w rdzeniu) usuwa
+    obejście z `8f20bdd3c` — długość list rozpływu znów jest różnicą. Iloczyn cech: {wkład
+    gałęzi, ślad podziału} × {nadmiarowy wpis po stronie fikstury, po stronie backendu} ×
+    {wpis o prądzie w paśmie zera (1,4e-17), wpis realny (0,002)}: KAŻDY nadmiarowy wpis jest
+    różnicą. Rdzeń nie publikuje już wpisu 1,4e-17 na żadnej maszynie, więc taki rozjazd
+    znaczyłby regresję progu, nie szum — maskowanie go byłoby testem maskującym defekt."""
+    stale = [wpis(81.9)]  # type: ignore[operator]
+    for nadmiar in (wpis(1.4e-17), wpis(0.002)):  # type: ignore[operator]
+        dluzsza = [*stale, nadmiar]
+        a, b = (dluzsza, stale) if nadmiar_po_stronie_fikstury else (stale, dluzsza)
+        assert roznice_z_tolerancja({pole: a}, {pole: b}) == [
+            f"$.{pole}: długość listy {len(a)} != {len(b)}"
+        ]
+
+
+def _pominiety(i_ka: float, kat_deg: float | None, branch_id: str = "tr_sn_nn") -> dict:
+    return {
+        "branch_id": branch_id,
+        "branch_name": "TR SN/nN",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": i_ka,
+        "kat_deg": kat_deg,
+    }
+
+
+def test_kat_wkladu_pominietego_porownywany_jak_kazde_pole() -> None:
+    """Karta KAT-WKLADU-POMINIETEGO: rdzeń nie publikuje kąta fazora wkładu pominiętego
+    (``kat_deg`` = ``None`` — kąt nieokreślony poniżej progu), więc porównanie fixtur NIE ma
+    wykluczenia tego pola (dawna lista `POLA_KATA_WKLADU_POMINIETEGO` maskowała defekt
+    produktu: publikowany kąt szumu 166,0° vs −177,0° między jądrami BLAS). Iloczyn cech
+    zestawienia `wklady_pominiete`: {kąt None po obu stronach, liczba po jednej stronie,
+    dwie różne liczby} × {moduł w paśmie zera} — liczba kąta jest RÓŻNICĄ (regresja
+    publikacji kąta szumu, nie szum), a None = None przechodzi; skład (inna gałąź) i długość
+    listy — porównywane ściśle; moduł wpisu [kA] leży w paśmie zera (relacja progu)."""
+    from network_model.solvers.short_circuit_contributions import PROG_WKLADU_POMIJALNEGO_A
+
+    # Relacja progu i pasma zera: każdy moduł wpisu pominiętego [kA] leży w paśmie zera.
+    assert PROG_WKLADU_POMIJALNEGO_A / 1000.0 <= PASMO_ZERA_FIXTUR
+    k = "wklady_pominiete"
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, None)]}) == []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, 37.2)]}) != []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(1e-12, 37.2)]}, {k: [_pominiety(1e-12, None)]}) != []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(1e-12, -12.0)]}, {k: [_pominiety(2e-12, 171.0)]}) != []
+    )
+    # skład: inna gałąź = różnica
+    assert (
+        roznice_z_tolerancja(
+            {k: [_pominiety(0.0, None)]}, {k: [_pominiety(0.0, None, branch_id="inna")]}
+        )
+        != []
+    )
+    # długość listy = różnica (wpis pominięty na jednej maszynie, brak na drugiej)
+    assert roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: []}) != []
+
+
+def test_fixtury_nie_niosa_kata_wkladu_pominietego() -> None:
+    """Każdy wpis zestawienia `wklady_pominiete` w fixturach z generatora ma ``kat_deg``
+    = ``None`` i każdy wpis `wklady_zrodel` klasy ``POMINIETY`` też — fixtura z liczbą
+    w tym polu znaczyłaby publikację kąta szumu (karta KAT-WKLADU-POMINIETEGO). Pin
+    niepustości: co najmniej jedna fixtura niesie wpis pominięty (inaczej test byłby pusty)."""
+    wpisy: list[dict[str, Any]] = []
+
+    def _zbierz(w: Any) -> None:
+        if isinstance(w, dict):
+            for klucz, wartosc in w.items():
+                if klucz == "wklady_pominiete" and isinstance(wartosc, list):
+                    wpisy.extend(wartosc)
+                elif klucz == "wklady_zrodel" and isinstance(wartosc, list):
+                    wpisy.extend(x for x in wartosc if x.get("klasa") == "POMINIETY")
+                _zbierz(wartosc)
+        elif isinstance(w, list):
+            for x in w:
+                _zbierz(x)
+
+    for sciezka in sorted(eksport.FIXTURES_DIR.glob("*.json")):
+        _zbierz(json.loads(sciezka.read_text(encoding="utf-8")))
+    assert wpisy
+    assert [w for w in wpisy if w["kat_deg"] is not None] == []
+
+
 def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
     """Obie listy są ZAMKNIĘTE: dopisanie pola musi być świadomą zmianą tego pinu,
     nie cichym przyrostem (deklaracja bez testu = fałszywa pewność)."""
@@ -517,29 +392,16 @@ def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze()
 def test_json_w_repo_rowny_odpowiedzi_backendu(nazwa: str) -> None:
     sciezka = eksport.FIXTURES_DIR / f"{nazwa}.json"
     assert sciezka.exists(), f"brak {sciezka} — uruchom scripts/eksport_fixtur_harnessu.py"
-    roznice = roznice_z_tolerancja(
-        json.loads(sciezka.read_text(encoding="utf-8")), eksport.FIXTURY[nazwa]()
-    )
+    roznice = roznice_z_tolerancja(json.loads(sciezka.read_text(encoding="utf-8")), _swieza(nazwa))
     assert roznice == [], "\n".join(roznice)
 
 
-def _skroty_nieprzenosne(
-    dane: object, sciezka: str = "$", klucz: str | None = None
-) -> dict[str, str]:
-    """Wszystkie wartości pól z `POLA_SKROTOW_NIEPRZENOSNYCH` o kształcie skrótu."""
-    if isinstance(dane, dict):
-        znalezione: dict[str, str] = {}
-        for k, v in dane.items():
-            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}.{k}", k))
-        return znalezione
-    if isinstance(dane, list):
-        znalezione = {}
-        for i, v in enumerate(dane):
-            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}[{i}]", klucz))
-        return znalezione
-    if isinstance(dane, str) and klucz in POLA_SKROTOW_NIEPRZENOSNYCH and _HEX_SKROTU.search(dane):
-        return {sciezka: dane}
-    return {}
+@functools.cache
+def _swieza(nazwa: str) -> Any:
+    """Świeża odpowiedź fixtury liczona RAZ na proces testów — porównanie z repo i test
+    spójności grup biegów czytają tę samą odpowiedź (pełny przebieg generatora ~50 s).
+    Wywołujący nie mutują wyniku."""
+    return eksport.FIXTURY[nazwa]()
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
@@ -551,25 +413,23 @@ def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
     # obrębie jednej maszyny dwa kolejne wyliczenia dają ten sam skrót, a jego
     # kształt jest pinowany z pomiaru (16 znaków hex dla identyfikatorów
     # `proof:v126:…`/`report:v126:…`, 64 dla skrótów pełnych).
-    skroty_a = _skroty_nieprzenosne(pierwsze)
-    skroty_b = _skroty_nieprzenosne(drugie)
+    skroty_a = skroty_nieprzenosne(pierwsze)
+    skroty_b = skroty_nieprzenosne(drugie)
     assert skroty_a == skroty_b
     for sciezka, wartosc in skroty_a.items():
-        bez_ziaren = _ZIARNO_IDENTYFIKATORA_ENM.sub("", wartosc)
-        dlugosci = {len(m.group(0)) for m in _HEX_SKROTU.finditer(bez_ziaren)}
+        bez_ziaren = ZIARNO_IDENTYFIKATORA_ENM.sub("", wartosc)
+        dlugosci = {len(m.group(0)) for m in HEX_SKROTU.finditer(bez_ziaren)}
         assert dlugosci <= {16, 64}, (nazwa, sciezka, wartosc)
 
 
-def test_fixtury_niosa_skroty_nieprzenosne() -> None:
+def test_fixtury_niosaskroty_nieprzenosne() -> None:
     """Pin inwentarza: pola wyłączone z porównania międzymaszynowego MUSZĄ w
     fikstrach realnie występować. Gdyby zniknęły, lista wyłączeń stałaby się
     martwa i milcząco osłabiałaby test przy następnym ich powrocie."""
     obecne: set[str] = set()
     for sciezka in sorted(eksport.FIXTURES_DIR.glob("*.json")):
         dane = json.loads(sciezka.read_text(encoding="utf-8"))
-        obecne.update(
-            klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in _skroty_nieprzenosne(dane)
-        )
+        obecne.update(klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in skroty_nieprzenosne(dane))
     # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików). 2026-09-24 (Pakiet D2, luka
     # §5.2): skróty sekcji wniosku i studium liczone nad sekcją skwantyzowaną
     # (`kontrakt_liczb.kwantyzuj_kontrakt`) — sonda szumu BLAS na 90 fixturach nie rusza
@@ -607,6 +467,7 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
         "der_count",
         "pominiete",
         "certyfikaty_odrzucone",
+        "certyfikaty_brakujace",
         "bieg",
     }
     assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU
@@ -904,9 +765,13 @@ def test_zwarcia_wklady_pokrywaja_wszystkie_punkty_wynikow() -> None:
 def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
     """Karta W3-G3/Z-3: rozpływ gałęziowy MUSI pokazywać OBA tory — sieci
     nadrzędnej (`THEVENIN_GRID`) i falownika (`gen_pv`) — inaczej fixtura nie
-    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`)."""
-    rozplyw = eksport.zwarcia_rozplyw_scena_zwarcia()
-    assert rozplyw["target_id"] == eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`). Dotyczy punktu
+    DOMYŚLNEGO ekranu (pierwszy wiersz wyników); kompletność mapy dla wszystkich punktów
+    przypina `test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu`."""
+    mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+    domyslny = eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    rozplyw = mapa[domyslny]
+    assert rozplyw["target_id"] == domyslny
     wpisy = rozplyw["branch_contributions"] or []
     zrodla = {wpis["source_id"] for wpis in wpisy}
     assert "THEVENIN_GRID" in zrodla, "brak toru sieci nadrzędnej w rozpływie"
@@ -928,6 +793,33 @@ def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
         assert wpis["branch_id"] in refy_galezi_zlotej, (wpis["branch_id"], wpisy)
         assert wpis["from_node_id"] in refy_szyn_zlotej, (wpis["from_node_id"], wpisy)
         assert wpis["to_node_id"] in refy_szyn_zlotej, (wpis["to_node_id"], wpisy)
+
+
+@pytest.mark.parametrize("robocza", [False, True], ids=["deklarowana", "robocza"])
+def test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu(robocza: bool) -> None:
+    """Rozpływ i ślad podziału prądu (jedna odpowiedź `…/short-circuit/rozplyw`) muszą być
+    w fiksturze dla KAŻDEGO punktu zwarcia biegu sceny — makieta harnessu znająca jeden
+    punkt dawała „Nie udało się pobrać" po wyborze innego punktu (zmierzone: szyna nN sceny
+    wartości roboczej). Iloczyn: scena z deklaracją × scena na wartości roboczej; każdy
+    punkt × identyfikator biegu sceny × własny `target_id` × co najmniej jeden tor."""
+    if robocza:
+        wyniki = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+        mapa = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    else:
+        wyniki = eksport.zwarcia_wyniki_scena_zwarcia()
+        mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA
+    punkty = [row["target_id"] for row in wyniki["rows"]]
+    assert list(mapa) == punkty, "kolejność mapy = kolejność wierszy biegu (determinizm)"
+    nn = [row["target_id"] for row in wyniki["rows"] if "pasmo nN" in row["c_zrodlo"]]
+    assert nn, "scena musi nieść punkt nN — to on pokazywał błąd pobrania"
+    for target_id, odpowiedz in mapa.items():
+        assert odpowiedz["target_id"] == target_id
+        assert odpowiedz["run_id"] == run_id
+        _run_idy_nie_sa_uuid(odpowiedz)
+        wpisy = odpowiedz["branch_contributions"] or []
+        assert any(abs(w["i_ka"]) > 0 for w in wpisy), (target_id, wpisy)
 
 
 def test_zwarcia_pasmo_strona_max_jest_biegiem_kotwicy() -> None:
@@ -955,6 +847,50 @@ def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
     assert set(wiersze_max) == set(wiersze_min)
     for target_id, ikss_min in wiersze_min.items():
         assert ikss_min < wiersze_max[target_id], (target_id, ikss_min, wiersze_max[target_id])
+
+
+def test_scena_tolerancji_roboczej_liczy_na_wartosci_roboczej_wszystkimi_sekcjami() -> None:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena `zwarcia-tolerancja-robocza` — sieć złota bez
+    deklaracji tolerancji sieci nN. Wyniki niosą założenie `fault.c_tolerancja_nn_robocza`
+    wskazujące transformator SN/nN i pole deklaracji; WYŁĄCZNIE wiersz szyny nN ma znacznik
+    i podstawę c „(wartość robocza)"; prąd szyny nN jest większy niż w scenie z deklaracją
+    +6 % (c_max 1,10 > 1,05), szyny SN/WN bez zmiany podstawy; wkłady i rozpływ pochodzą
+    z TEGO SAMEGO biegu (zbiór punktów, identyfikator biegu)."""
+    robocza = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+    deklarowana = eksport.zwarcia_wyniki_scena_zwarcia()
+    assert robocza["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    _run_idy_nie_sa_uuid(robocza)
+    (zalozenie,) = (z for z in robocza["zalozenia"] if z["code"] == "fault.c_tolerancja_nn_robocza")
+    assert zalozenie["element_ref"] == "tr_sn_nn"
+    assert zalozenie["element_type"] == "Transformer"
+    assert zalozenie["parametr"] == "lv_voltage_tolerance"
+    assert "fault.c_tolerancja_nn_robocza" not in {z["code"] for z in deklarowana["zalozenia"]}
+    ik_deklarowane = {w["target_id"]: w["ikss_ka"] for w in deklarowana["rows"]}
+    for wiersz in robocza["rows"]:
+        nn = "pasmo nN" in wiersz["c_zrodlo"]
+        assert bool(wiersz.get("tolerancja_nn_robocza")) is nn, wiersz["c_zrodlo"]
+        assert ("(wartość robocza)" in wiersz["c_zrodlo"]) is nn
+        if nn:
+            assert wiersz["ikss_ka"] > ik_deklarowane[wiersz["target_id"]]
+    wklady = eksport.zwarcia_wklady_scena_tolerancja_robocza()
+    assert set(wklady) == {w["target_id"] for w in robocza["rows"]}
+    rozplyw = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+    assert set(rozplyw) == {w["target_id"] for w in robocza["rows"]}
+    pasmo = eksport.zwarcia_pasmo_scena_tolerancja_robocza()
+    assert pasmo["run_id_kotwicy"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    # Migawka sceny = model biegu: transformator SN/nN BEZ deklaracji tolerancji (formularz
+    # „Zmień wartość" nie może pokazać +6 % sieci złotej), nazwy elementów dla mostu nazw.
+    migawka = eksport.zwarcia_migawka_scena_tolerancja_robocza()
+    nn = [t for t in migawka["transformers"] if t["ulv_kv"] < 1.0]
+    assert nn and all(t["lv_voltage_tolerance"] is None for t in nn), nn
+    assert all(t["name"] for t in nn)
+    elementy = {z["element_ref"] for z in robocza["zalozenia"] if z.get("element_ref")}
+    refy_migawki = {
+        e["ref_id"]
+        for klucz in ("transformers", "generators", "buses", "branches", "sources")
+        for e in migawka.get(klucz, [])
+    }
+    assert elementy <= refy_migawki, elementy - refy_migawki
 
 
 # ---------------------------------------------------------------------------
@@ -1088,7 +1024,12 @@ def test_cieplna_scena_ocena_ma_pozycje_z_realnym_pradem_i_dowod_na_niej() -> No
     _run_idy_nie_sa_uuid(wynik)
     items = wynik["ocena"]["items"]
     assert len(items) >= 1
-    najwiekszy = max(items, key=lambda p: (p["i_fault_a"], p["branch_id"]))
+    # Karta PROG-ZERA-WKLADOW: pozycja gałęzi poza drogą zwarcia nie podaje prądu (None —
+    # wkład pominięty na podstawie tolerancji numerycznej to nie zero), więc maksimum
+    # liczy się po pozycjach z prądem.
+    z_pradem = [p for p in items if p["i_fault_a"] is not None]
+    assert z_pradem, "co najmniej jedna galaz musi niesc prad zwarcia"
+    najwiekszy = max(z_pradem, key=lambda p: (p["i_fault_a"], p["branch_id"]))
     assert najwiekszy["i_fault_a"] > 0.0, "co najmniej jedna galaz musi niesc realny prad zwarcia"
     dowody = eksport.cieplna_scena_dowody()["dowody"]
     # Karta #145: dowód dla KAŻDEGO wiersza oceny (projektant klika dowolną gałąź) —
@@ -1117,7 +1058,7 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
     assert wynik["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
     assert wynik["pf_run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA_PF
     _run_idy_nie_sa_uuid(wynik)
-    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False))
     odcinek = refy.odcinek_zwarcia
     assert [(z["rodzaj"], z["ref"]) for z in wynik["zdarzenia_wykonane"]] == [
         ("zwarcie_galezi", odcinek),
@@ -1146,7 +1087,9 @@ def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
 
 def test_dynamika_scena_gotowosc_przed_i_po_wiazaniu_katalogowym() -> None:
     przed = eksport.dynamika_scena_gotowosc_brak()
-    pv_ref = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False)).pv
+    pv_ref = refy_sieci(
+        build_dynamika_projektanta_enm(z_modelem_pv=False, z_modelem_odbioru=False)
+    ).pv
     pv_przed = next(z for z in przed["zrodla"] if z["ref_id"] == pv_ref)
     assert pv_przed["stan"] == "brak"
     assert pv_przed["akcja_naprawcza"]["kod"] == "der.dynamika_missing"
@@ -1180,12 +1123,15 @@ def test_falowniki_rozplyw_gpz_feeder_niesie_tor_gpz_i_tor_falownika_na_realnej_
         eksport.BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
     )
     tekst_gpz_feeder = sciezka_gpz_feeder.read_text(encoding="utf-8")
+    # Nazwa gałęzi w wyniku = nazwa tej gałęzi w MODELU (karta SLD-SUBSTRAT: dawny pin
+    # „Odcinek <identyfikator>" utrwalał nazwę z kodu maszynowego sprzed karty #144).
+    nazwy_galezi = {b["ref_id"]: b["name"] for b in json.loads(tekst_gpz_feeder)["enm"]["branches"]}
 
     assert len(wynik["flows"]) == 2, wynik["flows"]
     tor_gpz, tor_falownika = wynik["flows"]
 
     assert tor_gpz["source_id"] == "THEVENIN_GRID"
-    assert tor_gpz["branch_name"] == f"Odcinek {eksport._REF_BRANCH_SEGMENT_L_S01}"
+    assert tor_gpz["branch_name"] == nazwy_galezi[eksport._REF_BRANCH_SEGMENT_L_S01]
     assert eksport._REF_BRANCH_SEGMENT_L_S01 in tekst_gpz_feeder, (
         "branch_id toru sieci nadrzędnej musi być REF-em rzeczywiście "
         "istniejącym w topologii renderowanej przez kanwę (gpzFeeder.enm.json)"
@@ -1194,7 +1140,7 @@ def test_falowniki_rozplyw_gpz_feeder_niesie_tor_gpz_i_tor_falownika_na_realnej_
     assert tor_gpz["i_ka"] > 1.0, "prąd sieci nadrzędnej musi być dominujący (rząd kA, nie A)"
 
     assert tor_falownika["source_id"] == "gen_pv_s02"
-    assert tor_falownika["branch_name"] == f"Odcinek {eksport._REF_BRANCH_SEGMENT_L_S02}"
+    assert tor_falownika["branch_name"] == nazwy_galezi[eksport._REF_BRANCH_SEGMENT_L_S02]
     assert eksport._REF_BRANCH_SEGMENT_L_S02 in tekst_gpz_feeder, (
         "branch_id toru falownika musi być REF-em rzeczywiście istniejącym "
         "w topologii renderowanej przez kanwę (gpzFeeder.enm.json)"
@@ -1215,21 +1161,36 @@ def test_falowniki_rozplyw_gpz_feeder_dominujacy_wplyw_ignoruje_szum_sprzezenia(
     """`_dominujacy_wplyw_na_galezi` musi wybrać wpis o NAJWIĘKSZYM |i_ka| —
     czerwona iniekcja: lista z jednym wpisem-szumem (kierunek przeciwny,
     wartość znikoma) i jednym wpisem dominującym musi zwrócić dominujący,
-    niezależnie od kolejności w liście wejściowej."""
+    niezależnie od kolejności w liście wejściowej. Dopasowanie po TOŻSAMOŚCI gałęzi
+    (`branch_id`), nie po nazwie wyświetlanej (karta SLD-SUBSTRAT) — wpis INNEJ gałęzi
+    o tej samej nazwie nie może przejąć roli dominującego."""
     dominujacy = {
+        "branch_id": "X",
         "branch_name": "Odcinek X",
         "source_id": "DOMINUJACY",
         "i_ka": 9.12,
         "direction": "from_to",
     }
     szum = {
+        "branch_id": "X",
         "branch_name": "Odcinek X",
         "source_id": "SZUM",
         "i_ka": -0.0005,
         "direction": "to_from",
     }
+    obca_ta_sama_nazwa = {
+        "branch_id": "Z",
+        "branch_name": "Odcinek X",
+        "source_id": "OBCA",
+        "i_ka": 50.0,
+        "direction": "from_to",
+    }
     assert eksport._dominujacy_wplyw_na_galezi([szum, dominujacy], "X") == dominujacy
     assert eksport._dominujacy_wplyw_na_galezi([dominujacy, szum], "X") == dominujacy
+    assert (
+        eksport._dominujacy_wplyw_na_galezi([obca_ta_sama_nazwa, szum, dominujacy], "X")
+        == dominujacy
+    )
     assert eksport._dominujacy_wplyw_na_galezi([szum], "Y") is None
     assert eksport._dominujacy_wplyw_na_galezi([], "X") is None
 
@@ -1563,3 +1524,299 @@ def test_krzywe_pq_sceny_niosa_rekord_ocena_bez_statusu_widoku(nazwa: str, statu
         assert widok["punkty"]
     typy = [rekord["id"] for rekord in eksport.krzywe_konwertery_scen()]
     assert widok["typ_katalogowy"]["id"] in typy
+
+
+# ---------------------------------------------------------------------------
+# Tryb `--sprawdz` tylko czyta (inwentarz AUTOTESTY-W-DRZEWIE, 2026-09-30): wcześniej
+# `main` tworzył katalog fikstur przed rozgałęzieniem na zapis i porównanie, więc
+# porównanie na drzewie bez katalogu zostawiało po sobie nowy katalog w repozytorium.
+# Para: tryb zapisu na tym samym brakującym katalogu tworzy go i zapisuje fiksturę.
+# ---------------------------------------------------------------------------
+
+
+def _eksport_na_brakujacym_katalogu(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    katalog = tmp_path / "harness-fixtures" / "generated"
+    monkeypatch.setattr(eksport, "FIXTURES_DIR", katalog)
+    monkeypatch.setattr(eksport, "FIXTURY", {"probka": lambda: {"wartosc": 1}})
+    return katalog
+
+
+def test_sprawdz_na_brakujacym_katalogu_nie_tworzy_go_i_melduje_rozjazd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    katalog = _eksport_na_brakujacym_katalogu(monkeypatch, tmp_path)
+    assert eksport.main(["--sprawdz"]) == 1
+    assert not katalog.exists()
+    assert not katalog.parent.exists()
+    assert f"[rozjazd] {katalog / 'probka.json'}" in capsys.readouterr().out
+
+
+def test_zapis_na_brakujacym_katalogu_tworzy_go_i_zapisuje(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    katalog = _eksport_na_brakujacym_katalogu(monkeypatch, tmp_path)
+    assert eksport.main([]) == 0
+    assert json.loads((katalog / "probka.json").read_text(encoding="utf-8")) == {"wartosc": 1}
+    assert eksport.main(["--sprawdz"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scena koordynacji: punkt zwarcia KAŻDEJ oceny zabezpieczenia ma wiersz w OBU biegach.
+# Intencja testu karty AB-1b.3b-NA-PARTII-6 (dawniej na atrapie miejsca urządzenia
+# `koordynacja_scena_miejsca`, skasowanej przez kartę BIEG-ZABEZPIECZEN-Z-MODELU):
+# punkt, pod którym ocena czyta prąd zwarciowy (po POLA-W-TORZE szyna raportowa pola,
+# `enm.tor_pola.szyna_raportowa`), musi być węzłem raportowanym przez bieg MAX, na którym
+# ocena stoi, i przez bieg MIN — inaczej ekran koordynacji odmówiłby pary MIN. Dziś
+# ocena powstaje w backendzie (`ocena_nadpradowa`), więc test przypina daną fikstur
+# sceny: ocena + oba biegi zwarciowe (partia integracji 7).
+# ---------------------------------------------------------------------------
+
+
+def _fikstura_repo(nazwa: str) -> dict[str, Any]:
+    return json.loads((eksport.FIXTURES_DIR / f"{nazwa}.json").read_text(encoding="utf-8"))
+
+
+def test_koordynacja_punkt_zwarcia_oceny_ma_wiersz_w_obu_biegach() -> None:
+    ocena = _fikstura_repo("koordynacja_scena_ocena")
+    oceny = ocena["evaluations"]
+    assert oceny, "scena koordynacji bez ocen zabezpieczeń"
+    bieg_max = _fikstura_repo("koordynacja_scena_zwarcia_max")
+    assert ocena["sc_run_id"] == bieg_max["run_id"], "ocena nie stoi na biegu MAX sceny"
+    for nazwa_biegu in ("koordynacja_scena_zwarcia_max", "koordynacja_scena_zwarcia_min"):
+        punkty = {w["target_id"] for w in _fikstura_repo(nazwa_biegu)["rows"]}
+        for wpis in oceny:
+            assert wpis["fault_target_id"] in punkty, (
+                nazwa_biegu,
+                wpis["nazwa_urzadzenia_pl"],
+                wpis["nazwa_punktu_pl"],
+            )
+
+
+# ---------------------------------------------------------------------------
+# Kotwica w szumie rozstrzygana GRUPOWO (decyzja architekta 2026-10-22). Skróty nieprzenośne
+# (`result_hash`, `proof_id`…) leżą w tolerancji każdego pliku z osobna, więc reguła per plik
+# zostawiała stary skrót w pliku zmienionym tylko w skrócie, a wpisywała nowy do pliku z
+# TEGO SAMEGO biegu zmienionego ponad tolerancję: `skladowe_scena_wynik` (e9cdf3f0…) wobec
+# `skladowe_scena_slad` (e0db4e76…) i `dynamika_scena_przebiegi` (23428460…) wobec
+# `dynamika_scena_wyniki` (9911d913…). Grupy wyprowadza generator z deklaracji biegów
+# (`RUN_ID_*`/`_UUID_*`). Iloczyn cech reguły: {zmiana tylko skrótu, zmiana ponad tolerancję}
+# × {jedna fixtura grupy, wszystkie} × fixtura innego biegu obok (musi zostać nietknięta).
+# ---------------------------------------------------------------------------
+
+_SKROT_STARY = "a" * 64
+_SKROT_NOWY = "b" * 64
+
+
+def _fikstura_biegu(token: str, skrot: str, ik_ka: float) -> dict[str, Any]:
+    return {
+        "run_id": token,
+        "analysis_case_context": {"reproducibility": {"result_hash": skrot}},
+        "ikss_ka": ik_ka,
+    }
+
+
+def _zapisz_na_dysk(katalog: Path, fikstury: dict[str, dict[str, Any]]) -> dict[str, str]:
+    katalog.mkdir(parents=True, exist_ok=True)
+    teksty = {nazwa: eksport._json(dane) for nazwa, dane in fikstury.items()}
+    for nazwa, tekst in teksty.items():
+        (katalog / f"{nazwa}.json").write_text(tekst, encoding="utf-8")
+    return teksty
+
+
+def _skrot_wyniku(tekst: str) -> str:
+    return str(json.loads(tekst)["analysis_case_context"]["reproducibility"]["result_hash"])
+
+
+@pytest.mark.parametrize("zakres", ["jedna", "wszystkie"])
+@pytest.mark.parametrize("zmiana", ["tylko_skrot", "ponad_tolerancje"])
+def test_kotwica_rozstrzyga_grupe_biegu_razem(tmp_path: Path, zmiana: str, zakres: str) -> None:
+    """Zmiana (nowy skrót; przy `ponad_tolerancje` także liczba ×1,5) w JEDNEJ fixturze
+    grupy albo we WSZYSTKICH. Z dysku zostaje wyłącznie grupa, w której wszystkie fixtury
+    zmieniły tylko skrót, i to RAZEM (relacja równości skrótów bez zmian); każdy inny
+    przypadek odświeża całą grupę. Zawsze: zapisane skróty mają relację równości świeżej
+    odpowiedzi, a fixtura innego biegu, zmieniona tylko w skrócie, zostaje z dysku."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    inny_bieg = eksport.RUN_ID_SCENY_DYNAMIKA
+    ik_dysk = {"wynik": 10.0, "slad": 20.0}
+    na_dysku = _zapisz_na_dysk(
+        tmp_path,
+        {
+            **{n: _fikstura_biegu(bieg, _SKROT_STARY, ik) for n, ik in ik_dysk.items()},
+            "inny": _fikstura_biegu(inny_bieg, _SKROT_STARY, 30.0),
+        },
+    )
+    zmienione = {"slad"} if zakres == "jedna" else {"wynik", "slad"}
+    mnoznik = 1.5 if zmiana == "ponad_tolerancje" else 1.0
+    swieze = {
+        n: _fikstura_biegu(
+            bieg,
+            _SKROT_NOWY if n in zmienione else _SKROT_STARY,
+            ik * (mnoznik if n in zmienione else 1.0),
+        )
+        for n, ik in ik_dysk.items()
+    }
+    swieze["inny"] = _fikstura_biegu(inny_bieg, _SKROT_NOWY, 30.0)
+    teksty_swieze = {nazwa: eksport._json(dane) for nazwa, dane in swieze.items()}
+
+    zapis = eksport.tresci_do_zapisu(teksty_swieze, tmp_path)
+
+    grupa_z_dysku = zmiana == "tylko_skrot" and zakres == "wszystkie"
+    for nazwa in ("wynik", "slad"):
+        oczekiwane = na_dysku[nazwa] if grupa_z_dysku else teksty_swieze[nazwa]
+        assert zapis[nazwa] == oczekiwane, (zmiana, zakres, nazwa)
+    rowne_swiezo = _skrot_wyniku(teksty_swieze["wynik"]) == _skrot_wyniku(teksty_swieze["slad"])
+    assert (_skrot_wyniku(zapis["wynik"]) == _skrot_wyniku(zapis["slad"])) == rowne_swiezo
+    assert zapis["inny"] == na_dysku["inny"]
+
+
+@pytest.mark.parametrize("zmieniona", ["wynik", "slad"])
+def test_kotwica_zmiana_ponad_tolerancje_w_jednej_odswieza_skrot_drugiej(
+    tmp_path: Path, zmieniona: str
+) -> None:
+    """Przypadek zmierzony (`skladowe`, `dynamika`): ten sam bieg daje nowy skrót obu
+    fixturom, a tylko jedna zmienia się ponad tolerancję. Reguła per plik zostawiała w
+    drugiej stary skrót; grupowa — wpisuje obu nowy."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(
+        tmp_path,
+        {n: _fikstura_biegu(bieg, _SKROT_STARY, 10.0) for n in ("wynik", "slad")},
+    )
+    swieze = {
+        n: eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 15.0 if n == zmieniona else 10.0))
+        for n in ("wynik", "slad")
+    }
+    zapis = eksport.tresci_do_zapisu(swieze, tmp_path)
+    assert zapis == swieze
+    assert {_skrot_wyniku(t) for t in zapis.values()} == {_SKROT_NOWY}
+
+
+def test_kotwica_nie_konserwuje_zastanego_rozjazdu_skrotow_grupy(tmp_path: Path) -> None:
+    """Stan zastany (repo po regule per plik): dwa skróty jednego biegu na dysku, a świeża
+    odpowiedź różni się od każdego pliku wyłącznie w tolerancji. Relacja równości skrótów
+    na dysku ≠ świeżej → grupa dostaje świeżą treść (spójny skrót)."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(
+        tmp_path,
+        {
+            "wynik": _fikstura_biegu(bieg, _SKROT_STARY, 10.0),
+            "slad": _fikstura_biegu(bieg, _SKROT_NOWY, 10.0),
+        },
+    )
+    swieze = {n: eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 10.0)) for n in ("wynik", "slad")}
+    assert eksport.tresci_do_zapisu(swieze, tmp_path) == swieze
+
+
+def test_kotwica_brak_pliku_czlonka_odswieza_cala_grupe(tmp_path: Path) -> None:
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(tmp_path, {"wynik": _fikstura_biegu(bieg, _SKROT_STARY, 10.0)})
+    swieze = {
+        "wynik": eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 10.0)),
+        "slad": eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 20.0)),
+    }
+    assert eksport.tresci_do_zapisu(swieze, tmp_path) == swieze
+
+
+def test_grupy_biegow_rozrozniaja_token_bedacy_prefiksem_innego(tmp_path: Path) -> None:
+    """`run-sc-scena-zwarcia` jest prefiksem `run-sc-scena-zwarcia-robocza` — dwa biegi,
+    dwie grupy; skrót zmieniony ponad tolerancję w biegu roboczym nie odświeża kotwicy."""
+    kotwica = eksport.RUN_ID_SCENY_ZWARCIA
+    robocza = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    assert robocza.startswith(kotwica)
+    na_dysku = _zapisz_na_dysk(
+        tmp_path,
+        {
+            "kotwica": _fikstura_biegu(kotwica, _SKROT_STARY, 10.0),
+            "robocza": _fikstura_biegu(robocza, _SKROT_STARY, 10.0),
+        },
+    )
+    swieze = {
+        "kotwica": eksport._json(_fikstura_biegu(kotwica, _SKROT_NOWY, 10.0)),
+        "robocza": eksport._json(_fikstura_biegu(robocza, _SKROT_NOWY, 15.0)),
+    }
+    zapis = eksport.tresci_do_zapisu(swieze, tmp_path)
+    assert zapis == {"kotwica": na_dysku["kotwica"], "robocza": swieze["robocza"]}
+
+
+def test_grupy_biegow_sa_spojnymi_skladowymi_i_deterministyczne() -> None:
+    niesione = {
+        "c": frozenset({"t2"}),
+        "a": frozenset({"t1"}),
+        "b": frozenset({"t1", "t2"}),
+        "d": frozenset({"t3"}),
+        "e": frozenset(),
+    }
+    oczekiwane = [("a", "b", "c"), ("d",), ("e",)]
+    assert eksport.grupy_biegow(niesione) == oczekiwane
+    assert eksport.grupy_biegow(dict(reversed(list(niesione.items())))) == oczekiwane
+
+
+def test_tokeny_biegow_pochodza_z_deklaracji_generatora() -> None:
+    tokeny = set(eksport.tokeny_biegow_generatora())
+    stale = {
+        wartosc if isinstance(wartosc, str) else str(wartosc)
+        for nazwa, wartosc in vars(eksport).items()
+        if (nazwa.startswith("RUN_ID_") and isinstance(wartosc, str))
+        or (nazwa.startswith("_UUID_") and isinstance(wartosc, eksport.UUID))
+    }
+    assert tokeny == stale
+    assert {eksport.RUN_ID_SCENY_SKLADOWE, eksport.RUN_ID_SCENY_DYNAMIKA} <= tokeny
+    assert str(eksport._UUID_PF_SCENY_WNIOSEK) in tokeny
+
+
+def test_tylko_domyka_wybor_do_pelnych_grup_biegow(tmp_path: Path) -> None:
+    """`--tylko` przelicza całe grupy: token z dysku wybranej fixtury dociąga fixtury tego
+    biegu, a ich tokeny — kolejne (punkt stały); fixtura obcego biegu zostaje poza."""
+    t1, t2, t3 = (
+        eksport.RUN_ID_SCENY_SKLADOWE,
+        eksport.RUN_ID_SCENY_DYNAMIKA,
+        eksport.RUN_ID_SCENY_OLTC,
+    )
+    _zapisz_na_dysk(
+        tmp_path,
+        {
+            "a": {"run_id": t1},
+            "b": {"run_id": t1, "drugi": t2},
+            "c": {"run_id": t2},
+            "obca": {"run_id": t3},
+        },
+    )
+    policzone: list[str] = []
+
+    def policz(nazwa: str) -> str:
+        policzone.append(nazwa)
+        return eksport._json({"nazwa": nazwa})
+
+    swieze = eksport.domknij_do_grup(["a"], tmp_path, policz, ["a", "b", "c", "obca"])
+    assert sorted(swieze) == ["a", "b", "c"]
+    assert sorted(policzone) == ["a", "b", "c"]
+
+
+def test_fikstury_jednego_biegu_maja_w_repo_te_same_skroty() -> None:
+    """Spójność repo: w każdej grupie biegu RELACJA RÓWNOŚCI skrótów nieprzenośnych
+    (`klasy_rownosci_skrotow` — ten sam predykat co reguła zapisu generatora) jest w JSON w
+    repo taka sama jak w świeżej odpowiedzi: jeden bieg = jeden `result_hash`/`proof_id` we
+    wszystkich swoich fixturach. Skrót świeżej odpowiedzi dzielony przez dwie RÓŻNE grupy =
+    grupowanie z deklaracji generatora nie pokrywa rzeczywistego współdzielenia (reguła
+    grupowa nie gwarantowałaby wtedy spójności) — też czerwony."""
+    wzorzec = eksport.wzorzec_tokenow(eksport.tokeny_biegow_generatora())
+    niesione = {
+        nazwa: eksport.tokeny_fixtury(
+            eksport.FIXTURES_DIR / f"{nazwa}.json", eksport._json(_swieza(nazwa)), wzorzec
+        )
+        for nazwa in eksport.FIXTURY
+    }
+    grupy = eksport.grupy_biegow(niesione)
+    grupa_fixtury = {nazwa: indeks for indeks, grupa in enumerate(grupy) for nazwa in grupa}
+    bledy: list[str] = []
+    for klasa in klasy_rownosci_skrotow({n: _swieza(n) for n in eksport.FIXTURY}):
+        if len({grupa_fixtury[nazwa] for nazwa, _ in klasa}) > 1:
+            bledy.append(f"skrót dzielony przez różne grupy biegów: {sorted(klasa)}")
+    for grupa in grupy:
+        swieze = klasy_rownosci_skrotow({n: _swieza(n) for n in grupa})
+        w_repo = klasy_rownosci_skrotow({n: _fikstura_repo(n) for n in grupa})
+        if w_repo != swieze:
+            bledy.append(
+                f"grupa {grupa}: w repo {sorted(map(sorted, w_repo - swieze))}, "
+                f"świeżo {sorted(map(sorted, swieze - w_repo))}"
+            )
+    assert bledy == [], "\n".join(bledy)

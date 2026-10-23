@@ -28,6 +28,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   insert_zksn_on_segment_sn: 'Wstawiono ZKSN na segmencie',
   connect_secondary_ring_sn: 'Zamknięto pierścień wtórny',
   set_normal_open_point: 'Ustawiono punkt normalnie otwarty (NOP)',
+  przepnij_element_na_pole: 'Zmieniono przyłączenie elementu na zacisk pola stacji',
   append_station_on_endpoint: 'Dodano stację na końcu segmentu SN',
   add_shunt_compensator_sn: 'Dodano kompensator bocznikowy SN',
   add_surge_arrester_sn: 'Dodano ogranicznik przepięć SN',
@@ -47,6 +48,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   add_nn_cable_segment: 'Dodano odcinek kablowy nN',
   add_nn_switch_device: 'Dodano aparat łączeniowy nN',
   add_nn_section_coupler: 'Dodano sprzęgło sekcyjne nN',
+  add_nn_rcd: 'Dodano wyłącznik różnicowoprądowy nN',
   split_nn_segment: 'Podzielono odcinek nN',
   merge_nn_segments: 'Scalono odcinki nN',
   remove_nn_element: 'Usunięto element nN',
@@ -67,10 +69,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // Karta W3-B (mapa 4 #3): edycja obwodu wtórnego PO utworzeniu przekładnika.
   set_measurement_secondary_circuit: 'Zapisano obwód wtórny przekładnika',
   add_relay: 'Dodano przekaźnik zabezpieczeniowy',
-  update_relay_settings: 'Zaktualizowano nastawy przekaźnika',
-  link_relay_to_field: 'Powiązano przekaźnik z polem',
-  calculate_tcc_curve: 'Obliczono krzywą TCC',
-  validate_selectivity: 'Zwalidowano selektywność',
+  update_protection_settings: 'Zapisano nastawy zabezpieczenia',
   // Editing
   delete_element: 'Usunięto element',
   rename_element: 'Zmieniono nazwę elementu',
@@ -81,6 +80,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // wiązania katalogowe wytwórcy — a obie zmieniają wynik analiz.
   set_connection_conditions: 'Zapisano warunki przyłączenia OSD',
   set_der_catalog_bindings: 'Zapisano wiązania katalogowe wytwórcy',
+  set_load_dynamic_binding: 'Zapisano wiązanie modelu dynamicznego odbioru',
   dodaj_karte_widmowa_projektu: 'Dodano kartę widmową do katalogu projektu',
   // DER variants (nN bus/feeder/source-field)
   bus_nn_add_converter_source_pv: 'Dodano PV na szynie nN',

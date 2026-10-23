@@ -45,6 +45,7 @@ from enm.canonical_analysis import (  # noqa: E402
 )
 from infrastructure.persistence.repositories.canonical_run_repository import (  # noqa: E402
     _STANY_NIEPRZEJMOWALNE,
+    _STANY_NIEPRZEJMOWALNE_DO_WYKONANIA,
     canonical_run_repository_scope,
 )
 
@@ -174,7 +175,7 @@ def test_przejecie_wygrywa_dokladnie_jeden_watek(baza_biegow: str) -> None:
     assert zapisany.started_at is not None
 
 
-@pytest.mark.parametrize("stan_startowy", sorted(_STANY_NIEPRZEJMOWALNE))
+@pytest.mark.parametrize("stan_startowy", sorted(_STANY_NIEPRZEJMOWALNE_DO_WYKONANIA))
 def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(
     stan_startowy: str, baza_biegow: str
 ) -> None:
@@ -188,6 +189,46 @@ def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(
     zapisany = get_run(run.id)
     assert zapisany is not None
     assert zapisany.status == stan_startowy, "stan biegu zmieniony mimo odmowy przejęcia"
+
+
+def test_bieg_z_kolejki_da_sie_przejac_do_wykonania(baza_biegow: str) -> None:
+    """QUEUED → RUNNING tym samym atomowym UPDATE, co CREATED → RUNNING (karta
+    DYNAMIKA-W-TLE): wykonawca w tle startuje bieg przyjęty do kolejki."""
+    run = _bieg(status="QUEUED")
+
+    with canonical_run_repository_scope() as repozytorium:
+        przejety = repozytorium.claim_for_execution(run.id, started_at=datetime.now(UTC))
+
+    assert przejety is True
+    assert get_run(run.id).status == "RUNNING"  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("stan_startowy", sorted(_STANY_NIEPRZEJMOWALNE))
+def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_wstawic_do_kolejki(
+    stan_startowy: str, baza_biegow: str
+) -> None:
+    """Do kolejki wchodzi WYŁĄCZNIE bieg CREATED: bieg w kolejce, w toku albo
+    zakończony nie daje się zlecić drugi raz (drugi `POST …/execute` = przegrany)."""
+    run = _bieg(status=stan_startowy)
+
+    with canonical_run_repository_scope() as repozytorium:
+        przyjety = repozytorium.claim_for_queue(run.id)
+
+    assert przyjety is False, f"bieg w stanie {stan_startowy} wszedł do kolejki"
+    assert get_run(run.id).status == stan_startowy  # type: ignore[union-attr]
+
+
+def test_kolejka_przyjmuje_dokladnie_jeden_z_rownoleglych_zlecen(baza_biegow: str) -> None:
+    """Poziom repozytorium: `claim_for_queue` jest atomowe jak `claim_for_execution`."""
+    run = _bieg(status="CREATED")
+
+    def zlec() -> bool:
+        with canonical_run_repository_scope() as repozytorium:
+            return repozytorium.claim_for_queue(run.id)
+
+    wyniki = _rownolegle(zlec)
+    assert wyniki.count(True) == 1, f"do kolejki weszło {wyniki.count(True)} zleceń"
+    assert get_run(run.id).status == "QUEUED"  # type: ignore[union-attr]
 
 
 @pytest.mark.parametrize("stan_startowy", ["CREATED"])
@@ -204,7 +245,7 @@ def test_execute_run_liczy_analize_dokladnie_raz(
     wejscia = 0
     zamek = threading.Lock()
 
-    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         with zamek:
             wejscia += 1
@@ -229,7 +270,7 @@ def test_execute_run_nie_powtarza_biegu_zakonczonego(
     run = _bieg(status="FINISHED")
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -251,22 +292,28 @@ def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie(baza_biegow: str) 
     na jawne — i pinujemy je testem, bo deklaracja bez testu to falszywa pewnosc.
     """
     osierocony = _bieg(status="RUNNING")
+    # Karta DYNAMIKA-W-TLE: kolejka wykonawcy zyje w procesie — bieg QUEUED po
+    # restarcie jest osierocony tak samo jak RUNNING.
+    osierocony_w_kolejce = _bieg(status="QUEUED")
     nietkniety_utworzony = _bieg(status="CREATED")
     nietkniety_finished = _bieg(status="FINISHED")
+    nietkniety_cancelled = _bieg(status="CANCELLED")
 
     zamkniete = zamknij_osierocone_biegi()
 
-    assert zamkniete == 1, f"zamknieto {zamkniete} biegow zamiast 1"
-    po = get_run(osierocony.id)
-    assert po is not None
-    assert po.status == "FAILED"
-    assert po.finished_at is not None
-    assert (
-        po.error_message and "restart procesu" in po.error_message
-    ), "powod musi nazywac przyczyne, a nie byc pustym FAILED"
+    assert zamkniete == 2, f"zamknieto {zamkniete} biegow zamiast 2"
+    for osierocony_bieg in (osierocony, osierocony_w_kolejce):
+        po = get_run(osierocony_bieg.id)
+        assert po is not None
+        assert po.status == "FAILED"
+        assert po.finished_at is not None
+        assert (
+            po.error_message and "restart procesu" in po.error_message
+        ), "powod musi nazywac przyczyne, a nie byc pustym FAILED"
     # Zamiatanie NIE dotyka biegow, ktore nie sa osierocone.
     assert get_run(nietkniety_utworzony.id).status == "CREATED"  # type: ignore[union-attr]
     assert get_run(nietkniety_finished.id).status == "FINISHED"  # type: ignore[union-attr]
+    assert get_run(nietkniety_cancelled.id).status == "CANCELLED"  # type: ignore[union-attr]
 
 
 def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
@@ -283,7 +330,7 @@ def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
 
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -347,7 +394,7 @@ def test_przegrany_dostaje_stan_biezacy_i_nie_dotyka_wiersza(
 
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -523,7 +570,7 @@ def test_przejecie_jest_atomowe_takze_na_postgresie(
     wejscia = 0
     zamek = threading.Lock()
 
-    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         with zamek:
             wejscia += 1

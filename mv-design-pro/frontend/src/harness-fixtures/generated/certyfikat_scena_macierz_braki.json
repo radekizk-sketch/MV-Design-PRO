@@ -1865,7 +1865,7 @@
             },
             "margines": {
               "wartosc": {
-                "wartosc": 0.04999999999999993,
+                "wartosc": 0.05,
                 "jednostka": "p.u. (U_n)"
               },
               "definicja_latex": "m = x_{\\lim}(t^{*}) - x(t^{*})",
@@ -1875,7 +1875,7 @@
                 "jednostka": "p.u. (U_n)"
               },
               "skala_rodzaj": "LIMIT",
-              "wzgledny": 0.05882352941176463,
+              "wzgledny": 0.0588235294118,
               "niedefiniowalny": false,
               "powod_pl": null
             },
@@ -2193,7 +2193,7 @@
               "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
               "symbol_latex": "Q_{\\min}",
               "wartosc": {
-                "wartosc": -0.330749354005168,
+                "wartosc": -0.330749354005,
                 "jednostka": "p.u. (P_n modułu)"
               },
               "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
@@ -2221,7 +2221,7 @@
             },
             "margines": {
               "wartosc": {
-                "wartosc": 0.000749354005167957,
+                "wartosc": 0.000749354005168,
                 "jednostka": "p.u. (P_n modułu)"
               },
               "definicja_latex": "m = x_{\\lim} - x",
@@ -2231,7 +2231,7 @@
                 "jednostka": "p.u. (P_n modułu)"
               },
               "skala_rodzaj": "LIMIT",
-              "wzgledny": 0.0022707697126301725,
+              "wzgledny": 0.00227076971263,
               "niedefiniowalny": false,
               "powod_pl": null
             },

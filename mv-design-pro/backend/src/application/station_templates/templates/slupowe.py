@@ -6,6 +6,8 @@ zazwyczaj prostsza: 1 pole liniowe IN, 2-4 odpływy nN.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from application.station_templates._choices import (
     CT_OPTIONS,
     DER_PV_NN,
@@ -21,6 +23,8 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    obciazenie_odplywu_param,
+    typ_modulu_nc_rfg_skladu,
 )
 
 
@@ -30,14 +34,16 @@ def _slupowa(
     description_pl: str,
     *,
     default_feeders: int,
-    with_der: bool = False,
-    nc_rfg_type: str | None = None,
+    obciazenie_odplywu_kw: float = 50.0,
+    pv_count: int = 0,
 ) -> StationTemplate:
-    der_options = (DER_PV_NN,) if with_der else ()
+    # Prosument: falowniki SMA Sunny Tripower 10.0 (karta producenta) — moc = liczba × 10 kW.
+    der_options = (replace(DER_PV_NN, default_count=pv_count),) if pv_count else ()
+    nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 0.4) if der_options else None
     der_count = TemplateParamInt(
-        default=1 if with_der else 0,
+        default=pv_count,
         min_value=0,
-        max_value=4,
+        max_value=10,
         label_pl="Liczba falowników PV",
     )
     return StationTemplate(
@@ -48,7 +54,8 @@ def _slupowa(
         use_case_pl="Stacja słupowa terenowa, niska gęstość odbiorów.",
         nc_rfg_type=nc_rfg_type,
         icon="station-pole",
-        tags=("słupowa", "ZSP", "wiejska"),
+        # Znacznik typu modułu jak w pozostałych szablonach z DER (jedna prawda z `nc_rfg_type`).
+        tags=("słupowa", "ZSP", "wiejska", *((f"NC_RfG_{nc_rfg_type}",) if nc_rfg_type else ())),
         schema=TemplateSchema(
             transformer_options=TR_OPTIONS_SMALL,
             sn_switchgear_manufacturers=("ZPUE_WLOSZCZOWA", "ELEKTROMETAL"),
@@ -63,6 +70,7 @@ def _slupowa(
                 default=default_feeders, min_value=1, max_value=4, label_pl="Liczba odpływów nN"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
+            nn_load_default_kw=obciazenie_odplywu_param(obciazenie_odplywu_kw),
             der_options=der_options,
             der_total_count=der_count,
             ct_options=CT_OPTIONS,
@@ -78,12 +86,18 @@ SLUPOWE_TEMPLATES = (
         "Stacja słupowa 50 kVA, 1 pole, 2 odpływy",
         "Mała wieś / kolonia (50 kVA) — słup pojedynczy.",
         default_feeders=2,
+        # Transformator 63 kVA (typoszereg 50 kVA nie istnieje w katalogu): 2 × 20 kW przy
+        # cosφ 0,95 = 42 kVA. Dawne 2 × 50 kW (105 kVA) przekraczały transformator, który
+        # szablon obiecuje nazwą (pomiar 2026-10-15).
+        obciazenie_odplywu_kw=20.0,
     ),
     _slupowa(
         "tpl_slupowa_100kva",
         "Stacja słupowa 100 kVA, 1 pole, 2 odpływy",
         "Standardowa wieś (100 kVA).",
         default_feeders=2,
+        # 2 × 45 kW przy cosφ 0,95 = 95 kVA ≤ 100 kVA (dawne 2 × 50 kW = 105 kVA).
+        obciazenie_odplywu_kw=45.0,
     ),
     _slupowa(
         "tpl_slupowa_160kva",
@@ -106,9 +120,9 @@ SLUPOWE_TEMPLATES = (
     _slupowa(
         "tpl_slupowa_400kva_prosument",
         "Stacja słupowa 400 kVA + PV prosument 50 kW",
-        "400 kVA z mikroinstalacją prosumencką PV 50 kW (NC RfG typ A).",
+        "400 kVA z instalacją prosumencką PV 50 kW: 5 falowników SMA Sunny Tripower 10.0 "
+        "(10 kVA, 0,4 kV).",
         default_feeders=4,
-        with_der=True,
-        nc_rfg_type="A",
+        pv_count=5,
     ),
 )

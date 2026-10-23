@@ -82,8 +82,13 @@ def build_ieee_13bus_enm() -> BenchmarkEnm:
         enm, slack_lit="BUS-650", slack_ref=bus_slack, edges=_EDGES
     )
 
+    # Strona 0,48 kV to sieć nN (pasmo do 1 kV): Tolerancja sieci nN +6 % (wiersz nN tabeli 1 IEC 60909-0) — karta WSPOLCZYNNIK-C-JEDEN-NOSNIK.
     enm, bus_634 = dodaj_transformator(
-        enm, hv_bus_ref=bus_map["BUS-633"], catalog_ref="bench_ieee13bus_xfm1", lv_voltage_kv=0.48
+        enm,
+        hv_bus_ref=bus_map["BUS-633"],
+        catalog_ref="bench_ieee13bus_xfm1",
+        lv_voltage_kv=0.48,
+        lv_voltage_tolerance="PLUS_6",
     )
     bus_map["BUS-634"] = bus_634
 

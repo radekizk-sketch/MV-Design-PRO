@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from network_model.catalog import lv_ampacity_iec60364_5_52 as _tablice_nn
+from network_model.odmowa_danych import OdmowaDanychError
 
 # ---------------------------------------------------------------------------
 # Wspolny "ksztalt" wspolczynnikow korekcyjnych (SN i nN) — JEDNO miejsce
@@ -90,7 +91,7 @@ class WspolczynnikiObciazalnosci:
             ("f_grupa", self.f_grupa),
         ):
             if not 0.0 < wartosc <= 1.5:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Współczynnik {pole} musi leżeć w zakresie (0; 1,5] — otrzymano {wartosc}."
                 )
 
@@ -174,7 +175,7 @@ def zestaw_warunkow(nazwa: str) -> WspolczynnikiObciazalnosci:
     zestaw = ZESTAWY_WARUNKOW.get(nazwa)
     if zestaw is None:
         dostepne = ", ".join(sorted(ZESTAWY_WARUNKOW))
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany zestaw warunków ułożenia: {nazwa}. Dostępne: {dostepne}. "
             f"{OGRANICZENIE_ZESTAWOW_PL}"
         )
@@ -190,7 +191,7 @@ def wspolczynniki_wlasne(
     w dokumentacji projektu — a to jest jedyny powod, dla ktorego korekta istnieje.
     """
     if not opis_pl or not opis_pl.strip():
-        raise ValueError("Współczynniki własne wymagają opisu warunków ułożenia.")
+        raise OdmowaDanychError("Współczynniki własne wymagają opisu warunków ułożenia.")
     return WspolczynnikiObciazalnosci(
         nazwa=NAZWA_WLASNE,
         etykieta_pl=opis_pl.strip(),
@@ -214,7 +215,7 @@ def obciazalnosc_skorygowana(
     implementacji tego samego mnozenia gdziekolwiek indziej.
     """
     if obciazalnosc_katalogowa_a <= 0.0:
-        raise ValueError("Obciążalność katalogowa musi być dodatnia.")
+        raise OdmowaDanychError("Obciążalność katalogowa musi być dodatnia.")
     return obciazalnosc_katalogowa_a * wspolczynniki.iloczyn
 
 
@@ -241,7 +242,7 @@ def wspolczynniki_z_opisu(
     if klucz != NAZWA_WLASNE:
         return zestaw_warunkow(klucz)
     if f_grunt is None or f_wiazka is None or f_grupa is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Własne warunki ułożenia wymagają trzech współczynników "
             "(f_grunt, f_wiazka, f_grupa) oraz opisu warunków."
         )
@@ -328,7 +329,7 @@ class WspolczynnikiObciazalnosciNN:
             ("f_grupowanie", self.f_grupowanie),
         ):
             if not 0.0 < wartosc <= 1.3:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Współczynnik {pole} musi leżeć w zakresie (0; 1,3] — otrzymano {wartosc}."
                 )
 
@@ -383,7 +384,7 @@ def _wpis_tablicy_temperatury_nn(
     wpis = tablica.get((izolacja, klucz_temp))
     if wpis is None:
         dostepne = sorted(temp for (iz, temp) in tablica if iz == izolacja)
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Brak zweryfikowanej korekty temperatury dla środowiska '{srodowisko}', "
             f"izolacji {izolacja}, {temperatura_c:g}°C w rejestrze G-D1. "
             f"Dostępne temperatury dla {izolacja} ({srodowisko}): {dostepne}. "
@@ -398,7 +399,7 @@ def _wpis_tablicy_rezystywnosci_gruntu_nn(rezystywnosc_km_w: float) -> _tablice_
     wpis = _tablice_nn.TABLICA_REZYSTYWNOSCI_GRUNTU_NN.get(klucz)
     if wpis is None:
         dostepne = sorted(_tablice_nn.TABLICA_REZYSTYWNOSCI_GRUNTU_NN)
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Brak zweryfikowanej korekty rezystywności cieplnej gruntu dla "
             f"{rezystywnosc_km_w:g} K·m/W w rejestrze G-D1. Dostępne wartości: {dostepne}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
@@ -418,7 +419,7 @@ def _wpis_tablicy_grupowania_nn(
     wpis = tablica.get(liczba_obwodow)
     if wpis is None:
         dostepne = sorted(tablica)
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Brak zweryfikowanej korekty grupowania dla środowiska '{srodowisko}' i "
             f"{liczba_obwodow} obwodów w rejestrze G-D1. Dostępne liczby obwodów: {dostepne}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
@@ -445,20 +446,20 @@ def wspolczynniki_nn(
     dostepnych wartosci — nigdy cichej interpolacji ani przyblizenia.
     """
     if srodowisko not in _SRODOWISKA_NN:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznane środowisko ułożenia: {srodowisko!r}. Dozwolone: {_SRODOWISKA_NN}."
         )
     if izolacja not in _IZOLACJE_NN:
-        raise ValueError(f"Nieznany typ izolacji: {izolacja!r}. Dozwolone: {_IZOLACJE_NN}.")
+        raise OdmowaDanychError(f"Nieznany typ izolacji: {izolacja!r}. Dozwolone: {_IZOLACJE_NN}.")
     if liczba_obwodow < 1:
-        raise ValueError("Liczba obwodów musi być >= 1.")
+        raise OdmowaDanychError("Liczba obwodów musi być >= 1.")
     if srodowisko == "grunt" and rezystywnosc_gruntu_km_w is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ułożenie w gruncie wymaga rezystywności cieplnej gruntu "
             "(rezystywnosc_gruntu_km_w, K·m/W)."
         )
     if srodowisko == "powietrze" and rezystywnosc_gruntu_km_w is not None:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Rezystywność cieplna gruntu nie dotyczy ułożenia w powietrzu "
             "(rezystywnosc_gruntu_km_w musi być None)."
         )

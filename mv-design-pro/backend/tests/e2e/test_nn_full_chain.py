@@ -191,7 +191,7 @@ from application.analyses.fault_loop.service import (
 )
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
 from application.analyses.swz.service import build_swz_view
-from enm.canonical_analysis import CanonicalRun, run_power_flow_now, run_short_circuit_now
+from enm.canonical_analysis import CanonicalRun
 from enm.hash import compute_enm_hash
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
@@ -208,6 +208,8 @@ from network_model.solvers.power_flow_types import (
     PQSpec,
     SlackSpec,
 )
+
+from tests.utils.biegi import run_power_flow_now, run_short_circuit_now
 
 # ---------------------------------------------------------------------------
 # Pozycje katalogowe (§0.1: katalog-first, żadna wymyślona)
@@ -449,7 +451,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             # musi deklarować układ sieci nN. TN-C-S — dominujący układ dla stacji
             # SN/nN w Polsce (patrz komentarz `_LV_LOCAL_GROUND_CONNECTIONS` w
             # `application/analyses/fault_loop/service.py`).
-            "nn_earthing": {"lv_system": "TN-C-S"},
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
         },
     )
 
@@ -1126,13 +1128,18 @@ class TestNnFullChain:
         model = get_enm(_KLUCZ)
         view = build_fault_loop_view_at_point(model, _REFS["station_ref"], _REFS["leaf_silnik_bus"])
         assert view["status"] == "OK", view
-        assert view["hop_count"] == 3, "Trasa Silnik M1 = K1 + aparat K2 (0 Ω) + K2 = 3 hopy"
+        # POLA-W-TORZE: strona dolna transformatora leży za WYŁĄCZNIKIEM GŁÓWNYM nN (aparat pola
+        # transformatorowego nN w torze transformator → szyna nN), więc trasa od zacisku
+        # transformatora ma o jeden aparat (0 Ω) więcej.
+        assert (
+            view["hop_count"] == 4
+        ), "Trasa Silnik M1 = wyłącznik główny nN (0 Ω) + K1 + aparat K2 (0 Ω) + K2 = 4 hopy"
         fl = view["fault_loop"]
         assert fl["ik_min_a"] > 0.0
         assert fl["ik_max_a"] >= fl["ik_min_a"]
         assert fl["white_box_trace"], "Brak White Box śladu pętli zwarcia w punkcie"
 
-        # Pętla w punkcie DALSZYM od źródła (3 hopy) musi mieć WIĘKSZĄ
+        # Pętla w punkcie DALSZYM od źródła (4 hopy) musi mieć WIĘKSZĄ
         # impedancję (dłuższa trasa kablowa) niż pętla u źródła (KROK 5,
         # trasa zerodługościowa) → NIŻSZY prąd zwarcia — ta sama fizyka
         # promieniowej sieci co sanity KROK 4 dla Ikss 3-fazowego.
@@ -1273,7 +1280,14 @@ class TestNnFullChain:
         ten wniosek fizyczny jest NIEZMIENIONY względem stanu przed kartą D1
         (nie jest artefaktem zmiany Iz′: Icu nie zależy od Iz′)."""
         model = get_enm(_KLUCZ)
-        trafo = next(t for t in model.transformers if t.lv_bus_ref == _REFS["rgnn_bus"])
+        # POLA-W-TORZE: transformator zasila RGnN przez wyłącznik główny nN (strona dolna na
+        # zacisku aparatu, nie na szynie) — transformator ścieżki zasilania z JEDNEGO predykatu.
+        from enm.domain_operations_v2 import transformatory_sciezki_zasilania
+
+        trafo_ref = transformatory_sciezki_zasilania(
+            model.model_dump(mode="json"), _REFS["rgnn_bus"]
+        )[0]["ref_id"]
+        trafo = next(t for t in model.transformers if t.ref_id == trafo_ref)
         iz_prime_a_rgnn = trafo.sn_mva * 1000.0 / (math.sqrt(3.0) * trafo.ulv_kv)
         assert iz_prime_a_rgnn == pytest.approx(
             1804.2, abs=0.1

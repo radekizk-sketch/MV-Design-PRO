@@ -169,7 +169,7 @@ def test_rodzina_d_nie_liczy_przypadkowej_liczby_karty() -> None:
     [
         # Inline: wykladnik literalem != 2.0 (SI/NI, A=0.14, B=0.02).
         "x = tms * 0.14 / (m ** 0.02 - 1.0)\n",
-        # Inline: wykladnik literalem 1.0 (VI/RI) — odejmowanie 1 (int, nie float).
+        # Inline: wykladnik literalem 1.0 (VI/LTI) — odejmowanie 1 (int, nie float).
         "x = tms * 13.5 / (m ** 1.0 - 1)\n",
         # Inline: wykladnik literalem 2.0 (EI) — MIMO ze rodzina C tez rozpoznaje
         # `m**2.0`, tu jest ODEJMOWANIE w mianowniku dzielenia, nie mnozenie
@@ -181,8 +181,8 @@ def test_rodzina_d_nie_liczy_przypadkowej_liczby_karty() -> None:
         # `math.pow(m, b)` jako WYWOLANIE, nie ast.BinOp(Pow) — INLINE wariant
         # ksztaltu uzytego (przez zmienna posrednia) w `domain/
         # protection_engine_v1.py::iec_curve_time_seconds` (drugi silnik IDMT,
-        # B-01 STOP — ZOSTAJE, nie skasowany; patrz test ponizej dla
-        # dwupoziomowej posredniosci i test udokumentowanego ograniczenia).
+        # skasowany w karcie RESULTSET-MARTWE-MAPPERY 2026-09-30; patrz test ponizej
+        # dla dwupoziomowej posredniosci i test udokumentowanego ograniczenia).
         "import math\nx = tms * a / (math.pow(m, b) - 1.0)\n",
         # Wywolanie bare `pow(...)`.
         "x = tms * a / (pow(m, b) - 1.0)\n",
@@ -220,8 +220,8 @@ def test_rodzina_e_wykrywa_dwupoziomowa_posredniosc() -> None:
     """`m_power_b = math.pow(m, b)` (osobne przypisanie), POTEM
     `denominator = m_power_b - 1.0`, POTEM `a / denominator` — DRUGI poziom
     pośredniości (potęga sama jest nazwą, nie inline), dokładnie kształt
-    `domain/protection_engine_v1.py::iec_curve_time_seconds` (drugi silnik
-    IDMT, B-01 STOP)."""
+    skasowanego `domain/protection_engine_v1.py::iec_curve_time_seconds` (drugi
+    silnik IDMT, karta RESULTSET-MARTWE-MAPPERY 2026-09-30)."""
     kod = (
         "import math\n"
         "def f(m, b, a, tms):\n"
@@ -238,11 +238,12 @@ def test_rodzina_e_nie_lapie_mianownika_za_zaslonieta_warunkowym_ponownym_przypi
     gdy `denominator` jest PONOWNIE przypisany wewnątrz `if` (numeryczny
     guard/floor, jak `if denominator <= 1e-12: denominator = 1e-12`), ostatnie
     przypisanie w PROSTYM przejściu tekstowym wygrywa i zasłania fizykę —
-    DOKŁADNIE kształt `iec_curve_time_seconds` w `domain/
-    protection_engine_v1.py` (B-01 STOP, karta W3-A): guard tego NIE łapie.
-    Ten test PRZYPINA fałszywy negatyw jako świadomy, nie cichy — poprawność
-    formuły w tym miejscu pilnuje B-01 (edycja wymaga sankcji właściciela),
-    nie ten guard."""
+    DOKŁADNIE kształt `iec_curve_time_seconds` w skasowanym `domain/
+    protection_engine_v1.py` (karta RESULTSET-MARTWE-MAPPERY 2026-09-30): guard
+    tego NIE łapie. Ten test PRZYPINA fałszywy negatyw jako świadomy, nie cichy;
+    jedyna znana instancja zniknęła z kasacją pliku, a jej powrót zatrzymuje
+    `resultset_v1_schema_guard.py::check_resultset_dead_mappers_resurrection`
+    (nazwa `iec_curve_time_seconds` na liście zakazanych definicji)."""
     kod = (
         "import math\n"
         "def f(m, b, a, tms):\n"
@@ -319,11 +320,33 @@ def test_rodzina_g_wykrywa_u2_przez_s(kod: str) -> None:
     assert _wzorce(kod).get("G_z_u2_s", 0) == 1
 
 
-def test_rodzina_g_nie_liczy_gdy_kwadrat_nie_jest_wprost_licznikiem() -> None:
-    """Formuły wieloczłonowe (np. `x_pu * U**2 / S` — reaktancja z pu i mocy)
-    są poza zakresem karty (dokumentowane jako znalezisko, nie naprawiane) —
-    kwadrat musi być WPROST licznikiem dzielenia, nie częścią mnożenia."""
-    kod = "x = xd_pu * (u_kv ** 2) / s_mva\n"
+@pytest.mark.parametrize(
+    "kod",
+    [
+        # Karta C3: dawniej poza zasięgiem (kwadrat ukryty w iloczynie) — tak przeszły
+        # formuły eksportera CGMES. Kwadrat NAPIĘCIA jako czynnik licznika albo mianownika.
+        "x = xd_pu * (u_kv ** 2) / s_mva\n",
+        "z = trafo.uk_percent / 100.0 * uhv_v ** 2 / sn_va\n",
+        "r = pk_w * uhv_v ** 2 / sn_va ** 2\n",
+        "b = mva_to_va(cap.rated_mvar) / kv_to_v(cap.rated_kv) ** 2\n",
+        "b = q_mvar / u_kv ** 2\n",
+        "d = (r * p + x * q) / segment.u_n_kv ** 2\n",
+    ],
+)
+def test_rodzina_g_wykrywa_kwadrat_napiecia_jako_czynnik(kod: str) -> None:
+    assert _wzorce(kod).get("G_z_u2_s", 0) == 1
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "e = c * v * i * t / working_distance ** 2\n",
+        "y = 1.0 / i_arc_ka ** 2\n",
+        "k = numerator / sum_sn ** 2\n",
+        "z = a * b / c\n",
+    ],
+)
+def test_rodzina_g_nie_liczy_kwadratu_bez_markera_napiecia(kod: str) -> None:
     assert _wzorce(kod).get("G_z_u2_s", 0) == 0
 
 
@@ -668,18 +691,16 @@ def test_jednostki_naprawde_istnieje_i_niesie_rodzine_j() -> None:
 def test_pin_stanu_repozytorium() -> None:
     """Zapadka = pomiar (obie strony). Wzrost = formuła fizyczna poza
     pochodne/; spadek = obniż ZASTANE. Karta K2 (2026-09-09) skasowała
-    `application/reference_networks/**`; po W3-C1 (kasacja
-    `application/analyses/protection/overcurrent/**`) i W3-C2 (kasacja
-    `application/analyses/protection/line_overcurrent_setting/**`) zapadka
-    rodzin E i J tych plików jest PUSTA — ale zapadka jako całość NIE jest
-    pusta: zostaje jeden trwały wyjątek architektoniczny,
-    `application/result_mapping/short_circuit_to_resultset_v1.py` (2×
-    J_skalowanie_jednostek) — plik jest na PROTECTED_FILES w
-    `scripts/resultset_v1_schema_guard.py` (kontrakt ResultSet v1 zamrożony
-    na stałe, karta CV-3.3-A2), więc te dwa literały `/1000.0` nigdy nie
-    trafią do `pochodne/jednostki.py` (B-01, CLAUDE.md)."""
+    `application/reference_networks/**`; W3-C1 i W3-C2 skasowały pliki rodzin E
+    i J. Ostatni wpis — `application/result_mapping/short_circuit_to_resultset_v1.py`
+    (2× J_skalowanie_jednostek, „trwały wyjątek" pod PROTECTED_FILES) — okazał się
+    martwym mapperem i zniknął z kasacją pliku w karcie RESULTSET-MARTWE-MAPPERY
+    (2026-09-30, zgoda B-01 w O-59). Zapadka jest PUSTA i może taka zostać."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) == {"application/result_mapping/short_circuit_to_resultset_v1.py"}
+    # Karta C4: cztery trafienia rodziny G ujawnione w C3 przeniesione do `pochodne/`;
+    # RESULTSET-MARTWE-MAPPERY skasowała ostatni wpis (rodzina J) — zapadka pusta.
+    assert ZASTANE == {}
+    assert zmierz() == {}
 
 
 def test_rodzina_e_zastane_jest_pusta_po_w3c1() -> None:

@@ -43,6 +43,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
+from network_model.odmowa_danych import OdmowaDanychError
 
 _SUM_TOL = 1e-6
 
@@ -86,15 +87,15 @@ class ZipCoeffs:
 def validate_zip_coeffs(c: ZipCoeffs) -> None:
     """Validate the ZIP polynomial (Rule: no guessing — reject malformed input)."""
     if c.v0_pu <= 0.0:
-        raise ValueError(f"ZIP v0_pu must be > 0, got {c.v0_pu}")
+        raise OdmowaDanychError(f"ZIP v0_pu must be > 0, got {c.v0_pu}")
     if c.f0_hz <= 0.0:
-        raise ValueError(f"ZIP f0_hz must be > 0, got {c.f0_hz}")
+        raise OdmowaDanychError(f"ZIP f0_hz must be > 0, got {c.f0_hz}")
     for label, a, b, k in (("P", c.a_p, c.b_p, c.c_p), ("Q", c.a_q, c.b_q, c.c_q)):
         for name, val in ((f"a_{label}", a), (f"b_{label}", b), (f"c_{label}", k)):
             if not (0.0 <= val <= 1.0):
-                raise ValueError(f"ZIP {name} must be in [0, 1], got {val}")
+                raise OdmowaDanychError(f"ZIP {name} must be in [0, 1], got {val}")
         if abs(a + b + k - 1.0) > _SUM_TOL:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"ZIP {label} coefficients must sum to 1, got {a + b + k} (a={a}, b={b}, c={k})"
             )
 

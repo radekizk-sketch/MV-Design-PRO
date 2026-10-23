@@ -36,9 +36,9 @@ def _device_rating_from_payload(payload_device: DeviceRatingPayload) -> DeviceRa
     u_m_kv = payload_device.u_m_kv
     i_cu_ka = payload_device.i_cu_ka
     i_cu_not_applicable = False
+    katalog = resolve_um_icu_from_catalog(payload_device.type_ref)
 
     if payload_device.type_ref and u_m_kv is None and i_cu_ka is None:
-        katalog = resolve_um_icu_from_catalog(payload_device.type_ref)
         if katalog.found_in_catalog:
             u_m_kv = katalog.u_m_kv
             i_cu_ka = katalog.i_cu_ka
@@ -55,6 +55,10 @@ def _device_rating_from_payload(payload_device: DeviceRatingPayload) -> DeviceRa
         t_th_s=payload_device.t_th_s,
         meta=payload_device.meta,
         i_cu_not_applicable=i_cu_not_applicable,
+        # Rodzaj aparatu jest cechą POZYCJI katalogu, nie liczbą tabliczkową — czytany
+        # zawsze, gdy ``type_ref`` wskazuje pozycję (także przy jawnych U_m/I_cu klienta):
+        # bezpiecznik wybiera wielkość kryterium wyłączania I_k'' (karta SC-IB-ITH-ZRODLA).
+        bezpiecznik=katalog.bezpiecznik,
     )
 
 
@@ -117,6 +121,10 @@ def download_equipment_proof_pack(
         device=_device_rating_from_payload(payload.device),
         required_fault_results=wielkosci_kontraktu_klienta(wejscie.wielkosci),
         proweniencja=wejscie.proweniencja,
+        tolerancja_nn_robocza=wejscie.tolerancja_nn_robocza,
+        dane_galezi=wejscie.dane_galezi,
+        zalozenia_zaniku=wejscie.zalozenia_zaniku,
+        parametry_robocze_maszyn=wejscie.parametry_robocze_maszyn,
         project_name=nazwa_projektu_z_migawki(bieg.snapshot if bieg is not None else None),
         case_name=nazwa_przypadku_z_bazy(payload.case_id, uow_factory),
     )

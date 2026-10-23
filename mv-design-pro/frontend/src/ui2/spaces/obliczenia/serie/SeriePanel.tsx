@@ -50,19 +50,23 @@ import { SERIE_STRINGS as T } from './strings';
  * ma dokładnie ten sam, poprawnie typowany wzorzec dla biegów). */
 const WARIANT_STATUSU_SERII: Record<SeriaWiersz['status'], string> = {
   CREATED: 'mvd-tag-mut',
+  QUEUED: 'mvd-tag-mut',
   RUNNING: 'mvd-tag-warn',
   FINISHED: 'mvd-tag-ok',
   FAILED: 'mvd-tag-err',
   PARTIAL: 'mvd-tag-warn',
+  CANCELLED: 'mvd-tag-mut',
 };
 
 /** Wariant tagu statusu BIEGU pozycji serii — słownik `RunStatus` (TEN SAM
  * wzorzec co `ui2/spaces/obliczenia/przebiegi/WierszPrzebiegu.tsx`). */
 const WARIANT_STATUSU_BIEGU: Record<RunStatus, string> = {
   PENDING: 'mvd-tag-mut',
+  QUEUED: 'mvd-tag-mut',
   RUNNING: 'mvd-tag-warn',
   DONE: 'mvd-tag-ok',
   FAILED: 'mvd-tag-err',
+  CANCELLED: 'mvd-tag-mut',
 };
 
 /** Ogłoszenie PO WYKONANIU serii — trójstanowe (karta CV-3.3-C: PARTIAL
@@ -70,6 +74,7 @@ const WARIANT_STATUSU_BIEGU: Record<RunStatus, string> = {
 function ogloszeniePoWykonaniu(status: SeriaWiersz['status']): string {
   if (status === 'FINISHED') return T.seriaZakonczona;
   if (status === 'PARTIAL') return T.seriaCzesciowa;
+  if (status === 'CANCELLED') return T.seriaAnulowana;
   return T.seriaNieudana;
 }
 
@@ -91,6 +96,7 @@ export function SeriePanel({
   const setStudyCaseId = useBatchRunsStore((s) => s.setStudyCaseId);
   const utworzIWykonajSerie = useBatchRunsStore((s) => s.utworzIWykonajSerie);
   const wykonajSerie = useBatchRunsStore((s) => s.wykonajSerie);
+  const anulujSerie = useBatchRunsStore((s) => s.anulujSerie);
   const wykonywanie = useBatchRunsStore((s) => s.isExecuting);
   const bladListy = useBatchRunsStore((s) => s.listError);
   const bladAkcji = useBatchRunsStore((s) => s.actionError);
@@ -330,6 +336,16 @@ export function SeriePanel({
                     onClick={() => void wykonajPonownie(seria.id)}
                   >
                     {T.wykonaj}
+                  </button>
+                )}
+                {(seria.status === 'QUEUED' || seria.status === 'RUNNING') && (
+                  <button
+                    type="button"
+                    className="mvd-serie-akcja mvd-serie-akcja--wtorna"
+                    data-testid={`mvd-serie-anuluj-${seria.id}`}
+                    onClick={() => void anulujSerie(seria.id).catch(() => undefined)}
+                  >
+                    {T.anulujSerie}
                   </button>
                 )}
               </header>

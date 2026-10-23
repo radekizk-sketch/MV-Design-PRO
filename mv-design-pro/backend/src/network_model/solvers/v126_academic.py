@@ -9,9 +9,28 @@ from itertools import combinations
 from typing import Any
 
 import numpy as np
+from network_model.odmowa_danych import (
+    RODZAJ_ELEMENT,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 JsonDict = dict[str, Any]
+
+#: Kod odmowy wejścia (rekord strukturalny `RekordOdmowy`): bilans strat bez P0 transformatora.
+KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH = "v126.transformator_bez_strat_jalowych"
+#: Kod odmowy wejścia: karta przekształtnika bez pól obowiązkowych modelu Z_conv(f) (SSCI).
+KOD_SSCI_BRAK_POL_KARTY = "v126.ssci_brak_pol_karty_falownika"
+#: Pola obowiązkowe karty przekształtnika dla Z_conv(f) → opis dla projektanta. JEDNO źródło
+#: predykatu braku (`_brakujace_pola_karty_zconv`) dla odmowy modelu i wyniku „dane
+#: niekompletne" analizy SSCI (partia integracji 10: treść bez kluczy pól kontraktu).
+POLA_KARTY_ZCONV: tuple[tuple[str, str], ...] = (
+    ("current_loop_bandwidth_hz", "pasmo pętli prądowej"),
+    ("pll_bandwidth_hz", "pasmo pętli synchronizacji fazowej (PLL)"),
+    ("filter_l_pu", "indukcyjność filtra wyjściowego"),
+)
 
 # 1.1 (V126-JEZYK, 2026-08-07): ślad WHITE BOX niesie DODATKOWO polską postać
 # wyniku kroku z jednostką (`result_pl`), a teksty podstawień i sprawdzeń jednostek
@@ -26,6 +45,28 @@ JsonDict = dict[str, Any]
 # podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
 # rodzajów zmieniają się RAZ, razem z wersją.
 V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
+
+
+def _brakujace_pola_karty_zconv(converter: Any) -> list[str]:
+    """Klucze pól obowiązkowych karty przekształtnika, których brak (kolejność kontraktu)."""
+    return [pole for pole, _opis in POLA_KARTY_ZCONV if getattr(converter, pole) is None]
+
+
+def _odmowa_brak_pol_karty_zconv(converter: Any) -> OdmowaWejsciaRdzenia:
+    """Odmowa strukturalna: kod, treść bez identyfikatora i kluczy, odwołanie do przekształtnika
+    (element migawki ENM — zdanie z nazwą składa `enm.zdania_odmow_rdzenia`)."""
+    brakujace = _brakujace_pola_karty_zconv(converter)
+    opisy = [opis for pole, opis in POLA_KARTY_ZCONV if pole in brakujace]
+    return OdmowaWejsciaRdzenia(
+        [
+            RekordOdmowy(
+                KOD_SSCI_BRAK_POL_KARTY,
+                "Model impedancji przekształtnika Z_conv(f) wymaga pól karty przekształtnika; "
+                f"brakuje: {', '.join(opisy)}.",
+                (OdwolanieElementu(RODZAJ_ELEMENT, converter.ref),),
+            )
+        ]
+    )
 
 
 def _canonical_payload(payload: Any) -> str:
@@ -157,7 +198,7 @@ class V126AcademicSolver:
         elif analysis_type == V126AnalysisType.UNCERTAINTY_SENSITIVITY:
             result = self._uncertainty(model, trace)
         else:
-            raise ValueError(f"Nieobslugiwany typ analizy V12.6: {analysis_type}")
+            raise ValueError(f"Nieobsługiwany typ analizy V12.6: {analysis_type}")
 
         envelope = {
             "contract": "AcademicAnalysisResultV1",
@@ -594,8 +635,10 @@ class V126AcademicSolver:
           - resistance R_f is frequency-independent (skin effect out of scope).
 
         MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
-        filter_l_pu. Missing any of these raises ValueError (caught by the caller
-        and surfaced as missing-data — NO fallback / NO fabricated value).
+        filter_l_pu. Missing any of these raises the structural refusal
+        `KOD_SSCI_BRAK_POL_KARTY` (`OdmowaWejsciaRdzenia`, reference to the converter); the
+        caller `_ssci_impedance` checks the SAME predicate (`_brakujace_pola_karty_zconv`)
+        first and surfaces missing-data — NO fallback / NO fabricated value.
 
         ``f_base_hz`` — częstotliwość podstawowa sieci, KEYWORD BEZ WARTOŚCI
         DOMYŚLNEJ. Wcześniej ``w_base`` stało tu na zaszytym ``2π·50``, mimo że
@@ -609,19 +652,8 @@ class V126AcademicSolver:
         f_ci = converter.current_loop_bandwidth_hz
         f_pll = converter.pll_bandwidth_hz
         l_f = converter.filter_l_pu
-        missing = [
-            name
-            for name, value in (
-                ("current_loop_bandwidth_hz", f_ci),
-                ("pll_bandwidth_hz", f_pll),
-                ("filter_l_pu", l_f),
-            )
-            if value is None
-        ]
-        if missing:
-            raise ValueError(
-                "Brak obowiazkowych pol karty falownika dla Z_conv(f): " + ", ".join(missing)
-            )
+        if f_ci is None or f_pll is None or l_f is None:
+            raise _odmowa_brak_pol_karty_zconv(converter)
         r_f = converter.filter_r_pu if converter.filter_r_pu is not None else 0.0
         t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
 
@@ -698,8 +730,8 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "message_pl": (
-                    "Analiza SSCI (Z_grid/Z_conv) wymaga przeksztaltnika (falownika) "
-                    "w modelu. Brak przeksztaltnika — analiza niewykonana."
+                    "Analiza SSCI (Z_grid/Z_conv) wymaga przekształtnika (falownika) "
+                    "w modelu. Brak przekształtnika — analiza niewykonana."
                 ),
                 "missing_fields": ["converter"],
                 "sanity": _sanity_block([], has_inputs=False),
@@ -710,37 +742,25 @@ class V126AcademicSolver:
         if bus_idx is None:
             return {
                 "status": "dane niekompletne",
-                "message_pl": (
-                    f"Przeksztaltnik '{converter.ref}' wskazuje na nieistniejacy wezel "
-                    f"'{converter.bus_ref}'."
-                ),
+                "converter_ref": converter.ref,
+                "bus_ref": converter.bus_ref,
+                "message_pl": "Przekształtnik wskazuje węzeł przyłączenia, którego nie ma w modelu.",
                 "missing_fields": ["converter.bus_ref"],
                 "sanity": _sanity_block([], has_inputs=False),
             }
 
         frequencies = self._ssci_frequencies_hz()
 
-        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
-        try:
-            self._z_conv_components(converter, frequencies[0], f_base_hz=model.base_frequency_hz)
-        except ValueError as exc:
-            f_ci = converter.current_loop_bandwidth_hz
-            f_pll = converter.pll_bandwidth_hz
-            l_f = converter.filter_l_pu
-            missing = [
-                name
-                for name, value in (
-                    ("current_loop_bandwidth_hz", f_ci),
-                    ("pll_bandwidth_hz", f_pll),
-                    ("filter_l_pu", l_f),
-                )
-                if value is None
-            ]
+        # Probe Z_conv mandatory fields once (clear missing-data, no fabrication) — ten sam
+        # predykat co odmowa `_z_conv_components` (`_brakujace_pola_karty_zconv`).
+        missing = _brakujace_pola_karty_zconv(converter)
+        if missing:
+            opisy = [opis for pole, opis in POLA_KARTY_ZCONV if pole in missing]
             trace.add(
                 "ssci_impedance_missing_card_fields",
                 "Z_conv(jw) wymaga: current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu",
                 {"converter_ref": converter.ref, "missing": missing},
-                str(exc),
+                "Brak obowiązkowych pól karty przekształtnika dla Z_conv(f): " + ", ".join(opisy),
                 {"status": "dane niekompletne"},
                 "Brak danych karty przekształtnika; wartości zastępczych się nie podstawia.",
                 result_pl=("Brak danych karty przekształtnika"),
@@ -750,8 +770,8 @@ class V126AcademicSolver:
                 "converter_ref": converter.ref,
                 "bus_ref": converter.bus_ref,
                 "message_pl": (
-                    "Analiza SSCI wymaga pol karty falownika (pasmo petli pradowej, "
-                    "pasmo PLL, indukcyjnosc filtra). Brakuje: " + ", ".join(missing)
+                    "Analiza SSCI wymaga pól karty falownika (pasmo pętli prądowej, "
+                    "pasmo PLL, indukcyjność filtra). Brakuje: " + ", ".join(opisy)
                 ),
                 "missing_fields": missing,
                 "sanity": _sanity_block([], has_inputs=False),
@@ -872,13 +892,13 @@ class V126AcademicSolver:
         l_finite = all(_finite(row["re"], row["im"]) for row in l_rows)
         sanity = _sanity_block(
             [
-                ("z_grid_finite", z_grid_finite, "Z_grid nieskonczone/NaN"),
-                ("z_conv_finite", z_conv_finite, "Z_conv nieskonczone/NaN"),
-                ("minor_loop_finite", l_finite, "L(f) nieskonczone/NaN"),
+                ("z_grid_finite", z_grid_finite, "Z_grid nieskończone/NaN"),
+                ("z_conv_finite", z_conv_finite, "Z_conv nieskończone/NaN"),
+                ("minor_loop_finite", l_finite, "L(f) nieskończone/NaN"),
                 (
                     "negative_resistance_present",
                     re_zconv_min < 0.0,
-                    "Brak strefy Re(Z_conv)<0 ponizej pasma PLL — mechanizm SSCI nieobecny",
+                    "Brak strefy Re(Z_conv)<0 poniżej pasma PLL — mechanizm SSCI nieobecny",
                 ),
             ],
             has_inputs=True,
@@ -1811,14 +1831,17 @@ class V126AcademicSolver:
         # prostu nic o pojemności nie mówi. Rozróżnienie ma skutek: gdy żaden
         # element nie niesie B, suma wychodzi 0 i przed kartą MOST-WEJSCIA-V126
         # ocena meldowała „brak ryzyka" wyłącznie z braku danych.
-        galezie_z_susceptancja = [
-            branch for branch in model.branches if branch.b_siemens_per_km is not None
+        # Pary (B, ℓ) wyłącznie gałęzi z daną o susceptancji — ta sama kolejność i te same
+        # mnożenia co przed decyzją B-01 partii integracji 9 (zawężenie typu `float | None`
+        # wprost w parze, nie w drugim przebiegu po liście).
+        b_i_dlugosc = [
+            (b, branch.length_km)
+            for branch in model.branches
+            if (b := branch.b_siemens_per_km) is not None
         ]
-        suma_b_l = sum(
-            branch.b_siemens_per_km * branch.length_km for branch in galezie_z_susceptancja
-        )
+        suma_b_l = sum(b * length_km for b, length_km in b_i_dlugosc)
         siec_izolowana = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
-        ferro_ocenialne = bool(galezie_z_susceptancja) or not siec_izolowana
+        ferro_ocenialne = bool(b_i_dlugosc) or not siec_izolowana
         ferro_risk = siec_izolowana and suma_b_l > 1e-5
         trace.add(
             "trv_inrush_ferro",
@@ -2125,8 +2148,25 @@ class V126AcademicSolver:
                     "current_a": _round(current, 3),
                 }
             )
+        # Straty jałowe P0 nieznane (`p0_kw is None`, legalny brak w modelu) to brak danych,
+        # nie zero strat: bilans strat i LCC odmawia z rekordem strukturalnym (decyzja B-01
+        # partii integracji 9; wcześniej `None + float` kończył bieg błędem programu).
+        bez_p0 = sorted(t.ref for t in model.transformers if t.p0_kw is None)
+        if bez_p0:
+            raise OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH,
+                        "Bilans strat i koszt cyklu życia wymagają strat jałowych P0 z karty "
+                        f"katalogowej transformatora; transformatorów bez P0: {len(bez_p0)}.",
+                        tuple(OdwolanieElementu(RODZAJ_ELEMENT, ref) for ref in bez_p0),
+                    )
+                ]
+            )
         transformer_kw = sum(
-            transformer.p0_kw + transformer.pk_kw * 0.45**2 for transformer in model.transformers
+            p0_kw + transformer.pk_kw * 0.45**2
+            for transformer in model.transformers
+            if (p0_kw := transformer.p0_kw) is not None
         )
         total_kw += transformer_kw
         energy_price = float(model.parameters.get("energy_price_pln_per_kwh", 0.65))
@@ -2181,8 +2221,7 @@ class V126AcademicSolver:
 
     def _benchmark_validation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         references = model.parameters.get("benchmark_references")
-        references_provided = isinstance(references, list) and len(references) > 0
-        if not references_provided:
+        if not isinstance(references, list) or not references:
             # D-14 / K-09: NIE fabrykujemy zaliczających literałów (calc≈ref) — to
             # był cichy fałsz (zawsze PASS niezależnie od solvera). Bez realnych
             # referencji (IEEE 9/14/39, CIGRE MV) z wartościami policzonymi przez

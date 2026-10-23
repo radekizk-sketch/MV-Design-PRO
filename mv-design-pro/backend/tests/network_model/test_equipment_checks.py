@@ -242,7 +242,11 @@ def test_ct_slad_white_box_ma_kroki_z_podstawieniem() -> None:
     ]
     for krok in wynik.white_box_trace:
         assert set(krok) >= {"step", "key", "title", "formula_latex", "inputs", "result", "notes"}
-        assert krok["formula_latex"].startswith("$$")
+        # Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX goły w polach `*_latex`,
+        # pole prozy `substitution` nie jest wypełniane zapisem matematycznym.
+        assert krok["formula_latex"] and "$" not in krok["formula_latex"]
+        assert krok["substitution_latex"] and "$" not in krok["substitution_latex"]
+        assert "substitution" not in krok
     krok_rp = wynik.white_box_trace[0]
     # Ślad zapisuje wielkości z zaokrągleniem do 6 miejsc (determinizm zapisu):
     # 0,2155125 Ω → 0,215512 Ω. Tolerancja obejmuje właśnie to zaokrąglenie.

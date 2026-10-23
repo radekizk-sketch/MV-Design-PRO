@@ -151,7 +151,7 @@ const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
 };
 
 /** Stan źródła podstawy — lustro `werdykt.wyjasnienie.NAZWA_STANU_ZRODLA_PL`. */
-const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
+export const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
   ZWERYFIKOWANE: 'zweryfikowane',
   WSKAZANE: 'wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)',
   NIEUSTALONE: 'nieustalone',
@@ -360,7 +360,12 @@ function liczbaZeZnakiem(wartosc: number): string {
   });
 }
 
-/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie). */
+/** Wielkość z jednostką; jednostka bezwymiarowa „1" nie jest dopisywana (jak w backendzie).
+ *  Eksportowana (`wielkoscPl`) dla tabelki karty obwodu nN — jeden zapis liczb rekordu. */
+export function wielkoscPl(w: Wielkosc, zeZnakiem = false): string {
+  return wielkosc(w, zeZnakiem);
+}
+
 function wielkosc(w: Wielkosc, zeZnakiem = false): string {
   const tekst = zeZnakiem ? liczbaZeZnakiem(w.wartosc) : liczba(w.wartosc);
   return w.jednostka === '1' ? tekst : `${tekst} ${w.jednostka}`;
@@ -499,6 +504,39 @@ function ListaDanych({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Stan danych wejściowych i lista danych przyjętych (kontrakt werdyktu §3): nazwa wielkości,
+ * wartość z jednostką, jakość danej i powód (źródło wartości). Ten sam zapis w dowodzie karty
+ * werdyktu i w każdym wyniku, który niesie `status_danych` z listą `dane_przyjete` — np. wkłady
+ * i rozpływ punktu zwarcia. Zero logiki: stan i lista przychodzą z backendu; stanu, którego
+ * odpowiedź nie niesie (`null`), zapis nie dopowiada — pokazuje wtedy samą listę.
+ */
+export function StanDanychWyniku({
+  stan,
+  dane,
+  testId,
+}: {
+  readonly stan: StanDanych | null;
+  readonly dane: readonly DanaPrzyjeta[];
+  readonly testId: string;
+}) {
+  return (
+    <>
+      {stan !== null && (
+        <Para nazwa={TEKSTY.statusDanych}>
+          <span data-testid={`${testId}-stan-danych`}>{NAZWA_STANU_DANYCH_PL[stan]}</span>
+        </Para>
+      )}
+      {dane.length > 0 && (
+        <div className="mvd-werdykt-podsekcja">
+          <span className="mvd-werdykt-para-nazwa">{TEKSTY.danePrzyjete}:</span>
+          <ListaDanych dane={dane} testId={`${testId}-dane-przyjete`} />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -742,15 +780,11 @@ function TrescDowodu({ dowod, testId }: { readonly dowod: StatusDowodu; readonly
       <Para nazwa={TEKSTY.statusModelu}>
         {nazwaStatusuModelu(dowod.status_modelu)}
       </Para>
-      <Para nazwa={TEKSTY.statusDanych}>
-        {NAZWA_STANU_DANYCH_PL[dowod.status_danych.stan]}
-      </Para>
-      {dowod.status_danych.dane_przyjete.length > 0 && (
-        <div className="mvd-werdykt-podsekcja">
-          <span className="mvd-werdykt-para-nazwa">{TEKSTY.danePrzyjete}:</span>
-          <ListaDanych dane={dowod.status_danych.dane_przyjete} testId={`${testId}-dane-przyjete`} />
-        </div>
-      )}
+      <StanDanychWyniku
+        stan={dowod.status_danych.stan}
+        dane={dowod.status_danych.dane_przyjete}
+        testId={testId}
+      />
       <Para nazwa={TEKSTY.domenaWalidacji}>
         {dowod.w_domenie_walidacji === null
           ? TEKSTY.domenaNieokreslona
@@ -1176,6 +1210,8 @@ export interface EtykietaWerdyktuProps {
   /** Status maszynowy rekordu — wyłącznie atrybut `data-status` (filtry, testy), nigdy tekst. */
   readonly status?: StatusWerdyktu | null;
   readonly testid?: string;
+  /** Wariant zwarty (prostokątny, mniejsze pismo) do tabel arkusza — ta sama etykieta i kolor. */
+  readonly zwarta?: boolean;
 }
 
 /**
@@ -1184,11 +1220,11 @@ export interface EtykietaWerdyktuProps {
  * Szczegół rekordu pokazuje `KartaWerdyktu`; plakietka nie zastępuje karty (§9: etykieta bez
  * wyjaśnienia nie jest odpowiedzią inżynierską — konsument zawsze prowadzi do karty).
  */
-export function EtykietaWerdyktu({ etykieta, status = null, testid }: EtykietaWerdyktuProps) {
+export function EtykietaWerdyktu({ etykieta, status = null, testid, zwarta = false }: EtykietaWerdyktuProps) {
   const styl: StylKarty = { '--mvd-werdykt-kolor': SEMANTYKA_KOLOR[etykieta.semantyka] };
   return (
     <span
-      className="mvd-werdykt-plakietka"
+      className={zwarta ? 'mvd-werdykt-plakietka mvd-werdykt-plakietka--zwarta' : 'mvd-werdykt-plakietka'}
       style={styl}
       data-testid={testid}
       data-semantyka={etykieta.semantyka}

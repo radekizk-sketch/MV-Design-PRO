@@ -280,6 +280,35 @@ def moc_pozorna_z_czynnej_mva(moc_czynna_mw: float, cos_phi: float) -> float:
     return moc_czynna_mw / cos_phi
 
 
+def moc_pozorna_maszyny_asynchronicznej_mva(
+    moc_znamionowa_mw: float, sprawnosc: float, cos_phi: float
+) -> float:
+    """Moc pozorna znamionowa maszyny asynchronicznej S_rM = P_rM/(η_r·cos φ_r) [MVA].
+
+    IEC 60909-0:2016 pkt 6.7: P_rM to moc ZNAMIONOWA (mechaniczna na wale), nie punkt pracy.
+    Para z ``moc_znamionowa_maszyny_asynchronicznej_mw`` — jedna zależność normy w obu
+    kierunkach, w jednym miejscu (predykaty parami). Kolejność działań jak w dawnym
+    ``AsynchronousMachineSource.sr_mva`` (identyczne liczby).
+    """
+    return moc_znamionowa_mw / (sprawnosc * cos_phi)
+
+
+def moc_znamionowa_maszyny_asynchronicznej_mw(
+    moc_pozorna_mva: float, sprawnosc: float, cos_phi: float
+) -> float:
+    """Moc znamionowa maszyny asynchronicznej P_rM = S_rM·η_r·cos φ_r [MW] (odwrotność
+    ``moc_pozorna_maszyny_asynchronicznej_mva``, IEC 60909-0:2016 pkt 6.7) — gdy tabliczka
+    podaje moc pozorną znamionową, a nie moc mechaniczną."""
+    return moc_pozorna_mva * (sprawnosc * cos_phi)
+
+
+def moc_pozorna_z_czynnej_i_biernej_mva(moc_czynna_mw: float, moc_bierna_mvar: float) -> float:
+    """Moc pozorna z czynnej i biernej: S = √(P² + Q²) (odbiór z jawną mocą bierną —
+    moc wymagana transformatora stacji szablonu, gdy projektant podał Q zamiast cosφ).
+    """
+    return math.hypot(moc_czynna_mw, moc_bierna_mvar)
+
+
 def tan_phi_z_cos_phi(cos_phi: float) -> float:
     """tanφ z cosφ: tanφ = tan(acos(cosφ)) — nastawa mocy biernej z zadanego
     współczynnika mocy (polecenie OSD, tabliczka znamionowa katalogu).
@@ -360,6 +389,66 @@ def impedancja_odniesiona_do_napiecia_ohm(
     return impedancja_ohm * (napiecie_odniesienia_kv / napiecie_wlasne_kv) ** 2
 
 
+def reaktancja_z_jednostek_wzglednych_ohm(
+    reaktancja_pu: float, napiecie_kv: float, moc_mva: float
+) -> float:
+    """Reaktancja w omach z wartości względnej: X[Ω] = x[pu]·U²/S (U[kV], S[MVA]).
+
+    Karta C4: kopia wyrażenia `network_model/core/machine.py::
+    SynchronousMachineSource.x_subtransient_ohm` (X″d = x″d·U²rG/S_rG, IEC 60909-0
+    §6.3) w TEJ SAMEJ kolejności działań — `(x·U²)/S`. Siostra zespolonej
+    ``impedancja_z_jednostek_wzglednych_ohm`` (tam `z·(U²/S)`, inna łączność — do 1 ULP
+    różnicy), dlatego osobna funkcja: przeniesienie bez zmiany ostatniego bitu.
+    """
+    return reaktancja_pu * (napiecie_kv**2) / moc_mva
+
+
+def skladowa_spadku_napiecia_procent(
+    impedancja_ohm: float, moc: float, napiecie_kv: float
+) -> float:
+    """Składowa spadku napięcia odcinka [%]: ΔU = Z·S/U²·100 (Z[Ω], S[MW|Mvar], U[kV]).
+
+    Karta C4: kopia wyrażeń pakietu dowodowego VDROP
+    (`application/proof_engine/proof_generator.py`): ΔU_R = R·P/U²·100 i
+    ΔU_X = X·Q/U²·100 — ta sama kolejność działań `(Z·S)/U²·100`. Para (R, P) albo
+    (X, Q) — jedna formuła, dwie fizyczne etykiety.
+    """
+    return (impedancja_ohm * moc) / (napiecie_kv**2) * 100
+
+
+def spadek_procentowy_przy_innym_napieciu(
+    spadek_procent: float, napiecie_kv: float, napiecie_nowe_kv: float
+) -> float:
+    """Spadek napięcia [%] przeliczony na inne napięcie znamionowe: ΔU' = ΔU·(U/U')².
+
+    Ta sama moc i impedancja, inne napięcie: ΔU% ∝ 1/U² (składowe `Z·S/U²` wyżej).
+    Karta C4: kopia `analysis/lf_sensitivity/builder.py::_drivers_for_u_nom` w tej samej
+    kolejności działań `ΔU·U²/U'²`.
+    """
+    return spadek_procent * (napiecie_kv**2) / (napiecie_nowe_kv**2)
+
+
+def susceptancja_z_mocy_biernej_s(moc_bierna_mvar: float, napiecie_kv: float) -> float:
+    """Susceptancja baterii kondensatorów: B = Q/U² [S] (Q[Mvar], U[kV]; Mvar/kV² = S).
+
+    Karta C4: eksport CGMES baterii (`infrastructure/cgmes/cgmes_exporter._emit_shunt`,
+    ``LinearShuntCompensator.bPerSection``). Postać `Q/U²` (dwa zaokrąglenia) jest
+    dokładniejsza niż `1/(U²/Q)` (trzy) — pomiar karty: na siatce 11 × 9 (Q × U)
+    niepoprawnie zaokrąglonych 13 wobec 28, identycznych na 10 cyfrach eksportu.
+    Odwrotność: ``moc_bierna_z_susceptancji_mvar``.
+    """
+    return moc_bierna_mvar / (napiecie_kv**2)
+
+
+def moc_bierna_z_susceptancji_mvar(susceptancja_s: float, napiecie_kv: float) -> float:
+    """Moc bierna baterii z susceptancji: Q = B·U² [Mvar] (B[S], U[kV]).
+
+    Para ``susceptancja_z_mocy_biernej_s`` — import CGMES baterii
+    (`infrastructure/cgmes/cgmes_importer._importuj_kondensatory`).
+    """
+    return susceptancja_s * (napiecie_kv**2)
+
+
 # =============================================================================
 # Rodzina H — susceptancja z pojemności, B = 2πf·C (karta W3-F §0.6)
 # =============================================================================
@@ -422,3 +511,37 @@ def udzial_mocy_biernej_pu(moc_bierna_mvar: float, moc_bazowa_mw: float) -> floa
     wołającego (brak mocy = brak wejścia, nie dzielenie przez zero).
     """
     return moc_bierna_mvar / moc_bazowa_mw
+
+
+# =============================================================================
+# Rodzina J — przekładnia przekładnika prądowego (karta BIEG-ZABEZPIECZEN-Z-MODELU)
+# =============================================================================
+
+
+def prad_pierwotny_z_wtornego_a(
+    prad_wtorny_a: float,
+    prad_znamionowy_pierwotny_a: float,
+    prad_znamionowy_wtorny_a: float,
+) -> float:
+    """Prąd strony pierwotnej przekładnika z prądu strony wtórnej:
+    I₁ = I₂ · I₁n / I₂n (przekładnia znamionowa, IEC 61869-2 §3.4.3).
+
+    Decyzja PZ-09 (D-34): nastawa przekaźnika jest podawana po stronie wtórnej,
+    a prąd rozruchowy po stronie pierwotnej jest wielkością wyprowadzoną z
+    przekładni przekładnika pola z modelu. Brak przekładni i walidacja
+    (``I₂n > 0``) zostają u wołającego (``ocena_nadpradowa``).
+    """
+    return prad_wtorny_a * prad_znamionowy_pierwotny_a / prad_znamionowy_wtorny_a
+
+
+def prad_wtorny_z_pierwotnego_a(
+    prad_pierwotny_a: float,
+    prad_znamionowy_pierwotny_a: float,
+    prad_znamionowy_wtorny_a: float,
+) -> float:
+    """Prąd strony wtórnej przekładnika z prądu strony pierwotnej:
+    I₂ = I₁ · I₂n / I₁n — odwrotność ``prad_pierwotny_z_wtornego_a`` (nastawa podana
+    po stronie pierwotnej porównywana z zakresem katalogu przekaźnika, który jest
+    cechą strony wtórnej). Walidacja ``I₁n > 0`` u wołającego.
+    """
+    return prad_pierwotny_a * prad_znamionowy_wtorny_a / prad_znamionowy_pierwotny_a

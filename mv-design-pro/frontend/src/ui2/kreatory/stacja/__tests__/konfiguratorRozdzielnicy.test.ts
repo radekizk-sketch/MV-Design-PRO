@@ -482,22 +482,41 @@ describe('blok fabryczny RMU → pola stacji', () => {
     const jednostki = rozlozBlok(BLOK_LLT);
     expect(jednostki.map((j) => j.jednostka.unit_code)).toEqual(['L', 'L', 'T']);
     expect(jednostki.map((j) => j.pozycja)).toEqual([1, 2, 3]);
-    expect(jednostki.map((j) => j.rola)).toEqual(['LINIA_OUT', 'LINIA_OUT', 'TRANSFORMATOROWE']);
+    // Tor bloku: pierwsza jednostka liniowa przyjmuje rolę wejściową (odcinek od strony
+    // zasilania kończy się na jej zacisku), kolejne zostają odpływowe.
+    expect(jednostki.map((j) => j.rola)).toEqual(['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE']);
+  });
+
+  it('blok z jednostką dopływową zachowuje role wyrobu; blok bez jednostek liniowych — bez roli wejściowej', () => {
+    const zDoplywem: BlokFabryczny = {
+      ...BLOK_LLT,
+      units: [jednostka('L', 'liniowe_doplywowe', ['switch_disconnector']), ...BLOK_LLT.units.slice(1)],
+    };
+    expect(rozlozBlok(zDoplywem).map((j) => j.rola)).toEqual([
+      'LINIA_IN',
+      'LINIA_OUT',
+      'TRANSFORMATOROWE',
+    ]);
+    const samTransformator: BlokFabryczny = { ...BLOK_LLT, units: [BLOK_LLT.units[2]] };
+    expect(rozlozBlok(samTransformator).map((j) => j.rola)).toEqual(['TRANSFORMATOROWE']);
   });
 
   it('buduje pola z jednostek — stabilne, ROZRÓŻNIALNE klucze bliźniaczych jednostek', () => {
     const pola = polaZBloku(
       BLOK_LLT,
-      (rola) => (rola === 'TRANSFORMATOROWE' ? 'tpl-t' : 'tpl-l'),
+      // Karta dla roli wejściowej RÓŻNA od karty jednostki liniowej — test rozróżnia,
+      // czy szablon pochodzi z funkcji jednostki (wyrobu), czy z roli toru.
+      (rola) => (rola === 'TRANSFORMATOROWE' ? 'tpl-t' : rola === 'LINIA_OUT' ? 'tpl-l' : 'tpl-inna'),
       (rola) => (rola === 'TRANSFORMATOROWE' ? 'apar-fuse' : 'apar-ds'),
     );
     expect(pola).toHaveLength(3);
     expect(new Set(pola.map((p) => p.id)).size).toBe(3);
     expect(pola.map((p) => p.field_role)).toEqual([
-      'LINIA_OUT',
+      'LINIA_IN',
       'LINIA_OUT',
       'TRANSFORMATOROWE',
     ]);
+    // Karta katalogowa z funkcji jednostki: obie jednostki „L" to ta sama celka rodziny.
     expect(pola.map((p) => p.bay_template_ref)).toEqual(['tpl-l', 'tpl-l', 'tpl-t']);
     expect(pola.map((p) => p.apparatus_catalog_ref)).toEqual([
       'apar-ds',
@@ -537,7 +556,7 @@ describe('blok fabryczny RMU → pola stacji', () => {
       unit_sequence: 'L-L-M-T',
     };
     const pola = polaZBloku(blokZPomiarem, () => 'tpl', () => 'apar');
-    expect(pola.map((p) => p.field_role)).toEqual(['LINIA_OUT', 'LINIA_OUT', 'TRANSFORMATOROWE']);
+    expect(pola.map((p) => p.field_role)).toEqual(['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE']);
     expect(pola.map((p) => p.factory_unit_index)).toEqual([1, 2, 4]);
   });
 

@@ -11,20 +11,25 @@ maszynie o 4 rdzeniach.
 
 REGULA. `siec.granica_zaokraglen_residuum` daje granice bledu, z jakim residuum jest w ogole
 obliczalne: `rho_k = gamma_m (sum_j |Y_kj||V_j| + sum_t |I_t|)` (Higham 2002, lemat 3.1).
-Residuum mieszczace sie w tej granicy w KAZDEJ skladowej nie niesie informacji o bledzie —
-estymata jest wtedy `J^-1 rho` (deterministyczna). Residuum znaczace idzie droga `J^-1 r`
-bez zmian (przypina to `test_obserwable.py::test_a01_punkt_skorygowany_jest_krokiem_w_strone_
-rozwiazania`, a tu dodatkowo iloczyn z sieciami ponizej).
+Residuum rozklada sie na czesc PEWNIE obecna `psi(r) = sign(r) max(|r| - rho, 0)` i reszte
+mieszczaca sie w `rho`; estymata to `|J^-1 psi(r)| + |J^-1 rho|` (korekta 2026-09-30, karta
+PRZENOSNOSC-NIEPEWNOSCI). Na dnie zaokraglen (`psi = 0`) zostaje sama propagacja granicy
+(deterministyczna); daleko nad dnem estymata jest krokiem Newtona `|J^-1 r|` z dokladnoscia
+do `rho`. Dawna regula (`J^-1 r` przy choc jednej skladowej ponad granica) byla nieciagla na
+progu i tuz nad nim spadala do 1,4-7,4 % propagacji granicy (pomiar spacerem po ULP ponizej).
 
-ILOCZYN CECH: {residuum: szum na granicy zaokraglen, znaczace} x {siec: SMIB z odbiorem
-i zwarciem, siec z galezia slepa za przekladnia zespolona, scena harnessu} x {jadro OpenBLAS:
-domyslne, Prescott na x86-64} x {liczba watkow BLAS: 1, 2}. Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji
-w czasie biegu), nie z recznie zlozonego punktu.
+ILOCZYN CECH: {residuum: szum na granicy zaokraglen, tuz nad progiem czesci pewnej,
+znaczace} x {siec: SMIB z odbiorem i zwarciem, siec z galezia slepa za przekladnia zespolona,
+scena harnessu} x {jadro OpenBLAS: domyslne, Prescott na x86-64} x {liczba watkow BLAS: 1, 2}.
+Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji w czasie biegu),
+nie z recznie zlozonego punktu; punkty tuz nad progiem powstaja z probek na dnie przez
+przesuniecie napiecia wezla o kolejne liczby zmiennoprzecinkowe.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import platform
 import subprocess
@@ -39,6 +44,7 @@ from network_model.solvers.dynamika import (
     HarmonogramDynamiki,
     SilnikDynamiki,
     WejscieDynamiki,
+    ZmianaOdbioru,
     ZwarcieWezla,
     obserwable,
 )
@@ -52,9 +58,10 @@ from network_model.solvers.dynamika.siec import (
 )
 from scipy.sparse import linalg as sparse_linalg
 
-from tests.ci.test_fixtury_harnessu import roznice_z_tolerancja
+from tests.ci.test_fixtury_harnessu import RTOL_FIXTUR, roznice_z_tolerancja
 from tests.network_model.dynamika.uklady import (
     X_ZWARCIA_PLYTKIEGO_OHM,
+    charakterystyka_czula,
     nastawy,
     zbuduj_smib_z_odbiorem,
 )
@@ -98,9 +105,40 @@ def _wejscie_smib_ze_zwarciem() -> WejscieDynamiki:
     )
 
 
+def _wejscie_smib_z_odbiorem_czulym(*, odlaczany: bool) -> WejscieDynamiki:
+    """SMIB z odbiorem CZULYM czestotliwosciowo (stan estymatora): zwarcie plytkie w wezle
+    odbioru — w zapadzie i po nim estymator zostaje za faza szyny (`e != 0`), wiec prad
+    odbioru przy jego stanie rozni sie od pradu charakterystyki przy `f_n`; wariant
+    `odlaczany` — odbior odlaczony zdarzeniem na zywej szynie i przylaczony z powrotem (probki
+    z odbiorem BEZ obwodu, ktorego prad nie wchodzi do wiersza)."""
+    uklad = zbuduj_smib_z_odbiorem(q_odbioru_pu=0.05, charakterystyka=charakterystyka_czula())
+    zdarzenia: tuple[Any, ...] = (
+        ZwarcieWezla(
+            t_s=0.1,
+            wezel="GEN",
+            typ="3F",
+            r_f_ohm=0.0,
+            x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
+            t_usuniecia_s=0.2,
+            sposob_usuniecia="samoczynne",
+        ),
+    )
+    if odlaczany:
+        zdarzenia = (
+            ZmianaOdbioru(0.05, "ODB1", False),
+            *zdarzenia,
+            ZmianaOdbioru(0.3, "ODB1", True),
+        )
+    return uklad.wejscie(
+        HarmonogramDynamiki(zdarzenia), nastawy(horyzont_s=0.5, krok_wyjscia_s=0.02)
+    )
+
+
 SIECI = {
     "smib_z_odbiorem_i_zwarciem": _wejscie_smib_ze_zwarciem,
     "galaz_slepa_za_przekladnia_zespolona": wejscie_z_galezia_slepa,
+    "smib_z_odbiorem_czulym_i_zwarciem": lambda: _wejscie_smib_z_odbiorem_czulym(odlaczany=False),
+    "smib_z_odbiorem_czulym_odlaczanym": lambda: _wejscie_smib_z_odbiorem_czulym(odlaczany=True),
 }
 
 
@@ -125,10 +163,17 @@ def _wywolania(wejscie: WejscieDynamiki, monkeypatch: pytest.MonkeyPatch) -> lis
 
 
 def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
-    """Ta sama granica liczona wprost z gestej Ybus — petla po wierszach, bez kodu produkcji."""
+    """Ta sama granica liczona wprost z gestej Ybus — petla po wierszach, bez kodu produkcji.
+
+    Skladniki wiersza to prady elementow, ktore wiersz NAPRAWDE sumuje: odbiory Z OBWODEM przy
+    SWOIM stanie estymatora (`prad_pu(x, V)`, nie charakterystyka przy `f_n`) i urzadzenia;
+    krotka stanow jest wyrownana z `(*odbiory, *urzadzenia)`.
+    """
     ybus = w.model.ybus.toarray()
     liczba = w.model.liczba_wezlow
     ograniczone = dict(ograniczenia_napiecia(w.model, w.urzadzenia))
+    stany_odbiorow = w.stany[: len(w.odbiory)]
+    stany_urzadzen = w.stany[len(w.odbiory) :]
     wynik = np.zeros(liczba)
     for k in range(liczba):
         if k in ograniczone:
@@ -136,7 +181,7 @@ def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
             narzucone = (
                 0j
                 if indeks is None
-                else w.urzadzenia[indeks].napiecie_bez_obciazenia(w.stany[indeks])
+                else w.urzadzenia[indeks].napiecie_bez_obciazenia(stany_urzadzen[indeks])
             )
             m = 2
             wynik[k] = (m * JEDNOSTKA_ZAOKRAGLENIA / (1 - m * JEDNOSTKA_ZAOKRAGLENIA)) * (
@@ -147,12 +192,12 @@ def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
             abs(ybus[k, j]) * abs(complex(w.napiecia[j])) for j in range(liczba) if ybus[k, j] != 0
         ]
         prady = [
-            abs(prad_wstrzykiwany_pu(o, complex(w.napiecia[k])))
-            for o in w.odbiory
-            if w.model.indeks_wezla[o.wezel] == k
+            abs(o.prad_pu(s, complex(w.napiecia[k])))
+            for o, s in zip(w.odbiory, stany_odbiorow, strict=True)
+            if w.model.indeks_wezla[o.wezel] == k and o.przylaczony
         ] + [
             abs(u.prad_pu(s, complex(w.napiecia[k])))
-            for u, s in zip(w.urzadzenia, w.stany, strict=True)
+            for u, s in zip(w.urzadzenia, stany_urzadzen, strict=True)
             if w.model.indeks_wezla[u.wezel] == k
         ]
         m = len(skladniki_y) + len(prady) + 3
@@ -175,12 +220,36 @@ def _estymata_z_wektora(w: _Wywolanie, wektor: np.ndarray) -> np.ndarray:
 def test_granica_zaokraglen_to_suma_modulow_skladnikow_wiersza(
     siec: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Granica = suma modulow skladnikow wiersza, ktore residuum NAPRAWDE sumuje.
+
+    Iloczyn {odbior: bez stanu, ze stanem przylaczony, ze stanem odlaczony zdarzeniem} x
+    {stan estymatora: w rownowadze, za faza szyny} — asercje niepustosci na koncu mowia, ze
+    siec czula ma probki, w ktorych prad odbioru przy jego stanie rozni sie od pradu
+    charakterystyki przy `f_n` (granica liczona z charakterystyki by sie rozjechala), a siec
+    z odlaczaniem — probki z odbiorem bez obwodu (granica sumujaca go by sie rozjechala).
+    """
+    za_faza = 0
+    bez_obwodu = 0
     for w in _wywolania(SIECI[siec](), monkeypatch):
         produkcja = granica_zaokraglen_residuum(
             w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia
         )
         assert np.all(np.isfinite(produkcja)) and np.all(produkcja >= 0.0)
         np.testing.assert_allclose(produkcja, _granica_niezalezna(w), rtol=1e-12, atol=0.0)
+        for odbior, stan in zip(w.odbiory, w.stany[: len(w.odbiory)], strict=True):
+            napiecie = complex(w.napiecia[w.model.indeks_wezla[odbior.wezel]])
+            if not odbior.przylaczony:
+                bez_obwodu += int(
+                    prad_wstrzykiwany_pu(odbior.odbior, napiecie, odbior.f_bazowa_hz) != 0
+                )
+            elif odbior.nazwy_stanow and abs(odbior.prad_pu(stan, napiecie)) != abs(
+                prad_wstrzykiwany_pu(odbior.odbior, napiecie, odbior.f_bazowa_hz)
+            ):
+                za_faza += 1
+    if siec.startswith("smib_z_odbiorem_czulym"):
+        assert za_faza > 0, "brak probek z estymatorem za faza szyny — cecha niepokryta"
+    if siec == "smib_z_odbiorem_czulym_odlaczanym":
+        assert bez_obwodu > 0, "brak probek z odbiorem bez obwodu — cecha niepokryta"
 
 
 @pytest.mark.parametrize("siec", sorted(SIECI))
@@ -209,12 +278,31 @@ def test_estymata_przy_residuum_szumu_jest_propagacja_granicy(
     assert szum > 0, "bieg nie mial ani jednej probki z residuum na granicy zaokraglen"
 
 
+def _czesc_pewna(reszta: np.ndarray, granica: np.ndarray) -> np.ndarray:
+    """`psi(r) = sign(r) max(|r| - rho, 0)` wprost ze wzoru, bez kodu produkcji."""
+    granica_rzeczywista = np.concatenate((granica, granica))
+    return np.sign(reszta) * np.maximum(np.abs(reszta) - granica_rzeczywista, 0.0)
+
+
 @pytest.mark.parametrize("siec", sorted(SIECI))
-def test_estymata_przy_residuum_znaczacym_jest_krokiem_newtona(
+def test_estymata_przy_residuum_znaczacym_to_czesc_pewna_plus_dno(
     siec: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Residuum ponad granica (punkt przesuniety o 1e-6 pu): `u_V = |J^-1 r|` bez zmian."""
-    for w in _wywolania(SIECI[siec](), monkeypatch)[:3]:
+    """Residuum ponad granica (punkt przesuniety o 1e-6 pu): `u_V = |J^-1 psi(r)| + |J^-1 rho|`,
+    a daleko nad dnem to wciaz krok Newtona `|J^-1 r|` (intencja dawnego testu tej sciezki).
+
+    „Daleko nad dnem" jest wlasnoscia WEZLA, nie punktu: w sieci z galezia slepa skladowa
+    kroku Newtona w jednym wezle ma 1,6e-22 pu przy 1e-6 pu w pozostalych — ponizej
+    rozdzielczosci samego podstawienia LU, ktorego blad jest rzedu `u` razy NAJWIEKSZA
+    skladowa rozwiazania. Odleglosc estymaty od kroku Newtona jest wiec ograniczona
+    propagacja granicy przez modul odwrotnosci plus blad podstawien: `r - psi(r)` i `rho`
+    maja skladowe nie wieksze od `rho`, wiec `| u_V - |J^-1 r| | <= 2 (|J^-1| rho)` na wezle
+    (nierownosc trojkata; `|J^-1|` — modul elementow odwrotnosci gestej, sieci testowe maja
+    po kilka wezlow), z zapasem 1e-9 najwiekszej skladowej kroku na zaokraglenia podstawien.
+    """
+    wywolania = _wywolania(SIECI[siec](), monkeypatch)[:3]
+    monkeypatch.undo()
+    for w in wywolania:
         przesuniete = w.napiecia.copy()
         wolne = [k for k in range(w.model.liczba_wezlow) if k not in set(w.model.pozycje_zerowe)]
         przesuniete[wolne] += 1.0e-6
@@ -222,17 +310,140 @@ def test_estymata_przy_residuum_znaczacym_jest_krokiem_newtona(
         granica = granica_zaokraglen_residuum(
             w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete
         )
-        assert np.any(np.abs(reszta) > np.concatenate((granica, granica))), "residuum nieznaczace"
+        czesc_pewna = _czesc_pewna(reszta, granica)
+        assert np.any(czesc_pewna != 0.0), "residuum nieznaczace"
         pomiar = obserwable.pochodna_napiec_z_niepewnoscia(
             w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete
         )
         przesuniety = _Wywolanie(w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete, pomiar)
+        dno = _estymata_z_wektora(przesuniety, np.concatenate((granica, granica)))
         np.testing.assert_allclose(
             pomiar.niepewnosc_napiecia_pu,
-            _estymata_z_wektora(przesuniety, reszta),
+            _estymata_z_wektora(przesuniety, czesc_pewna) + dno,
             rtol=1e-12,
             atol=0.0,
         )
+        liczba = w.model.liczba_wezlow
+        odwrotnosc = np.abs(
+            np.linalg.inv(
+                jakobian_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete).toarray()
+            )
+        )
+        propagacja = odwrotnosc @ np.concatenate((granica, granica))
+        granica_rygorystyczna = 2.0 * np.hypot(propagacja[:liczba], propagacja[liczba:])
+        krok_newtona = _estymata_z_wektora(przesuniety, reszta)
+        odstep = np.abs(pomiar.niepewnosc_napiecia_pu - krok_newtona)
+        assert np.all(
+            odstep <= granica_rygorystyczna + 1.0e-9 * float(np.max(krok_newtona))
+        ), "estymata odbiega od kroku Newtona o wiecej niz propagacja granicy zaokraglen"
+        assert np.any(
+            krok_newtona > 1.0e6 * granica_rygorystyczna
+        ), "zaden wezel nie jest daleko nad dnem — przypadek nie sprawdza drogi Newtona"
+        assert np.all(
+            pomiar.niepewnosc_napiecia_pu >= dno * (1.0 - 1.0e-12)
+        ), "estymata ponizej propagacji dna"
+
+
+#: Najwiecej kolejnych liczb zmiennoprzecinkowych, o ktore przesuwamy czesc rzeczywista
+#: napiecia wezla, szukajac progu czesci pewnej. Pomiar 2026-09-30: prog wypada po 1-7
+#: przesunieciach (residuum rosnie o |Y_kk| ulp(V_k) na krok, a granica to gamma_m razy suma
+#: modulow wiersza, czyli kilka ulp) — zapas trzech rzedow wielkosci.
+NAJWIECEJ_KROKOW_ULP = 4096
+
+
+def _prog_czesci_pewnej(w: _Wywolanie, wezel: int) -> tuple[np.ndarray, np.ndarray] | None:
+    """Para punktow rozniacych sie JEDNA liczba zmiennoprzecinkowa czesci rzeczywistej napiecia
+    wezla: ostatni na dnie zaokraglen (`psi = 0`) i pierwszy z czescia pewna (`psi != 0`)."""
+    ponizej = w.napiecia.copy()
+    for _ in range(NAJWIECEJ_KROKOW_ULP):
+        powyzej = ponizej.copy()
+        powyzej[wezel] = complex(np.nextafter(ponizej[wezel].real, np.inf), ponizej[wezel].imag)
+        reszta = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+        granica = granica_zaokraglen_residuum(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+        if np.any(_czesc_pewna(reszta, granica) != 0.0):
+            return ponizej, powyzej
+        ponizej = powyzej
+    return None
+
+
+@pytest.mark.parametrize("siec", sorted(SIECI))
+def test_estymata_tuz_nad_progiem_czesci_pewnej_nie_spada_pod_dno(
+    siec: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Na progu czesci pewnej estymata jest CIAGLA i nie schodzi ponizej propagacji dna.
+
+    DEFEKT (pomiar 2026-09-30). Dawna regula brala `|J^-1 r|`, gdy choc jedna skladowa `r`
+    wyszla ponad granice. Tuz nad progiem reszta residuum jest szumem, a `|J^-1 r|` spadalo
+    do 1,4-7,4 % propagacji granicy w punkcie rozniacym sie JEDNA liczba zmiennoprzecinkowa
+    od punktu na dnie; w SO-1a (probka 372) — do 4,6e-15 Hz wobec 1,1e-10 Hz. Ktora strona
+    progu wypadla w danej probce, zalezalo od jadra BLAS.
+
+    Punkty sa pochodna RZECZYWISTEJ sciezki: kazda probka biegu na dnie x kazdy wezel zywy,
+    przesuniety o kolejne liczby zmiennoprzecinkowe az do progu. Sprawdzamy: `u_V` nad
+    progiem >= propagacji dna, skok `u_V` przez prog <= `|J^-1 psi|` (ciaglosc wzgledem czesci
+    pewnej), `u_Vdot` nad progiem nie mniejsze niz ponizej (w granicy szumu roznicy
+    skonczonej, `RTOL_FIXTUR`). Asercje niepustosci: przypadki istnieja, dawna regula spadalaby
+    w nich pod dno, a `u_Vdot` jest mierzone na probkach, w ktorych jest dodatnie.
+    """
+    wywolania = _wywolania(SIECI[siec](), monkeypatch)
+    # Podsluch zdjety PRZED wlasnymi wywolaniami estymatora — inaczej dopisywalby je do
+    # iterowanej listy i petla nigdy by sie nie skonczyla.
+    monkeypatch.undo()
+    progi = 0
+    z_pochodna = 0
+    najnizsza_dawna = math.inf
+    for w in wywolania:
+        reszta = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+        granica = granica_zaokraglen_residuum(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+        if np.any(_czesc_pewna(reszta, granica) != 0.0):
+            continue
+        zywe = np.abs(w.napiecia) > 0.0
+        zywe[list(w.model.pozycje_zerowe)] = False
+        for wezel in np.flatnonzero(zywe & (w.napiecia.real != 0.0)):
+            para = _prog_czesci_pewnej(w, int(wezel))
+            assert (
+                para is not None
+            ), f"wezel {wezel}: brak progu czesci pewnej w {NAJWIECEJ_KROKOW_ULP} krokach"
+            ponizej, powyzej = para
+            przed = obserwable.pochodna_napiec_z_niepewnoscia(
+                w.model, w.odbiory, w.urzadzenia, w.stany, ponizej
+            )
+            po = obserwable.pochodna_napiec_z_niepewnoscia(
+                w.model, w.odbiory, w.urzadzenia, w.stany, powyzej
+            )
+            reszta_po = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+            granica_po = granica_zaokraglen_residuum(
+                w.model, w.odbiory, w.urzadzenia, w.stany, powyzej
+            )
+            punkt_po = _Wywolanie(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej, po)
+            dno_po = _estymata_z_wektora(punkt_po, np.concatenate((granica_po, granica_po)))
+            skladnik_pewny = _estymata_z_wektora(punkt_po, _czesc_pewna(reszta_po, granica_po))
+            dawna = _estymata_z_wektora(punkt_po, reszta_po)
+
+            assert np.all(
+                po.niepewnosc_napiecia_pu[zywe] >= dno_po[zywe] * (1.0 - 1.0e-12)
+            ), "estymata tuz nad progiem ponizej propagacji dna zaokraglen"
+            skok = np.abs(po.niepewnosc_napiecia_pu[zywe] - przed.niepewnosc_napiecia_pu[zywe])
+            assert np.all(
+                skok <= skladnik_pewny[zywe] + 1.0e-9 * przed.niepewnosc_napiecia_pu[zywe]
+            ), "estymata nieciagla na progu czesci pewnej"
+            najnizsza_dawna = min(najnizsza_dawna, float(np.min(dawna[zywe] / dno_po[zywe])))
+
+            baza = przed.niepewnosc_pochodnej_pu_s[zywe]
+            nad = po.niepewnosc_pochodnej_pu_s[zywe]
+            mierzalne = np.isfinite(baza) & np.isfinite(nad) & (baza > 0.0)
+            if np.any(mierzalne):
+                assert np.all(
+                    nad[mierzalne] >= baza[mierzalne] * (1.0 - RTOL_FIXTUR)
+                ), "niepewnosc pochodnej tuz nad progiem ponizej niepewnosci na dnie"
+                z_pochodna += 1
+            progi += 1
+    assert progi > 0, "bieg nie mial probek na dnie zaokraglen — test niczego nie sprawdzil"
+    assert z_pochodna > 0, "zaden prog nie mial dodatniej niepewnosci pochodnej"
+    assert najnizsza_dawna < 0.5, (
+        f"dawna regula nie spadalaby tu pod dno (min {najnizsza_dawna:.3e}) — przypadki nie "
+        "rozrozniaja reguly"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +460,22 @@ spec = importlib.util.spec_from_file_location(
 )
 eksport = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(eksport)
-json.dump(eksport.FIXTURY["dynamika_scena_przebiegi"](), sys.stdout, sort_keys=True)
+from network_model.solvers.dynamika import SilnikDynamiki
+from tests.walidacja_fizyczna.test_niepewnosc_na_granicy_zaokraglen import (
+    _wejscie_smib_z_odbiorem_czulym,
+)
+bieg = SilnikDynamiki(_wejscie_smib_z_odbiorem_czulym(odlaczany=True)).uruchom()
+json.dump(
+    {
+        "scena_harnessu": eksport.FIXTURY["dynamika_scena_przebiegi"](),
+        "odbior_czuly": {
+            "os_czasu_s": list(bieg.os_czasu_s),
+            "probki": {klucz: list(szereg) for klucz, szereg in bieg.probki.items()},
+        },
+    },
+    sys.stdout,
+    sort_keys=True,
+)
 """
 
 
@@ -296,6 +522,12 @@ def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
     """Ta sama scena w iloczynie {jadro OpenBLAS} x {1, 2 watki}: komparator fikstur harnessu
     nie widzi ZADNEJ roznicy miedzy zadna para wariantow.
 
+    Druga siec w tym samym procesie — SMIB z odbiorem CZULYM czestotliwosciowo, zwarciem
+    i odlaczeniem odbioru (karta AB-1b.3b-NA-CZUBKU): kanaly odbioru ze stanem
+    (`f_odbioru_hz@`, `kat_pomiaru_rad@`) i czestotliwosc szyny z pochodna niosaca wklad
+    stanu odbioru sa niezalezne od jadra i liczby watkow tak samo jak scena harnessu, ktora
+    odbiorow ze stanem nie ma.
+
     Obejmuje wszystkie kanaly naraz: katy pradow (rozdzielczosc rozwiazania), czestotliwosc,
     jej estymate niepewnosci i kod jakosci (granica zaokraglen residuum, spojna inicjalizacja
     algebry w `t = 0`, krok roznicy pochodnej), moduly i moce. Przed karta
@@ -306,6 +538,15 @@ def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
         (jadro, watki): _scena(watki, jadro) for jadro in JADRA_OPENBLAS for watki in (1, 2)
     }
     (wzorzec_klucz, wzorzec), *reszta = warianty.items()
+    assert any(
+        klucz.startswith("f_odbioru_hz@") for klucz in wzorzec["odbior_czuly"]["probki"]
+    ), "siec z odbiorem czulym bez kanalu czestotliwosci odbioru — cecha niepokryta"
     for klucz, wariant in reszta:
         roznice = roznice_z_tolerancja(wzorzec, wariant)
         assert roznice == [], f"{wzorzec_klucz} wobec {klucz}:\n" + "\n".join(roznice[:20])
+    # W obrebie JEDNEGO jadra liczba watkow nie zmienia ani jednego bitu: polityka procesu
+    # `network_model/watki_blas.py` liczy kazda biblioteke BLAS jednym watkiem niezaleznie od
+    # `OPENBLAS_NUM_THREADS` (karta DETERMINIZM-HISTORII-PROCESU). Tolerancja wyzej zostaje
+    # dla osi jadra — inny procesor to inne jadro OpenBLAS i inne ostatnie bity.
+    for jadro in JADRA_OPENBLAS:
+        assert warianty[(jadro, 1)] == warianty[(jadro, 2)], f"jadro {jadro}: 1 wobec 2 watkow"

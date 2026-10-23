@@ -1,0 +1,34 @@
+# Cennik typów katalogowych — wersja 2026-09 (karta W10-2a, decyzja OD-16).
+#
+# PUSTY SZABLON. Cen nie wpisuje się z pamięci: każda pozycja wymaga jawnego źródła
+# (oferta, cennik producenta, wskaźnik OSD) z datą. Stan ZWERYFIKOWANE/WSKAZANE bez dokumentu
+# albo daty zostaje przy wczytaniu obniżony do NIEUSTALONE z uwagą.
+#
+# Aktualizacja cen = NOWY plik cennik_RRRR-MM.yaml (plik wydany się nie zmienia); brak
+# przeliczania inflacją. Wiązanie z katalogiem wyłącznie po type_id (strażnik:
+# scripts/cennik_guard.py — type_id w katalogu, waluta, data cen w miesiącu wersji, stan źródła).
+#
+# Postać pozycji (jednostka: "szt." albo "km" — jak w liście materiałowej):
+#   - type_id: <identyfikator typu katalogowego>
+#     jednostka: "szt."
+#     capex_pln: <cena jednostkowa zakupu i montażu albo null>
+#     opex_pln_rok: <roczny koszt eksploatacji na jednostkę albo null>
+#     zrodlo:
+#       status: WSKAZANE            # ZWERYFIKOWANE | WSKAZANE | NIEUSTALONE
+#       dokument: <oferta / cennik producenta / wskaźnik OSD, z numerem>
+#       data: RRRR-MM-DD
+#       uwagi_pl: null
+wersja: "2026-09"
+waluta: PLN
+data_cen: 2026-09-30
+opis_pl: >-
+  Szablon cennika bez pozycji — właściciel nie dostarczył jeszcze cen typów katalogowych;
+  każda funkcja kosztowa zwraca odmowę braku cennika z listą typów.
+energia_strat:
+  cena_pln_mwh: null
+  zrodlo:
+    status: NIEUSTALONE
+    dokument: null
+    data: null
+    uwagi_pl: cena energii do wyceny strat nie została dostarczona przez właściciela
+pozycje: []

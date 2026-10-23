@@ -91,13 +91,17 @@ def _wynik_hoppela() -> ProtectionSettingsResult:
 
 # Rodzina e2TANGO 450/600/800/1000/1200 (karta techniczna producenta, DT wśród
 # krzywych deklarowanych) — rodzina LEGACY 400/600/.../2000_V0 (NIEWERYFIKOWANY,
-# tylko IEC_NI) nie obsługuje DT: wymaganie Hoppela (curve="DT") jest z definicji
+# tylko IEC_SI) nie obsługuje DT: wymaganie Hoppela (curve="DT") jest z definicji
 # niezgodne, więc nie nadaje się do testu mapowania kluczy producenta.
 @pytest.mark.parametrize("device_id", ["EM_E2TANGO_450", "EM_E2TANGO_1000"])
-def test_vendor_mapping_for_elektrometal_dt_devices(device_id: str) -> None:
+def test_vendor_mapping_for_elektrometal_dt_devices(
+    jednostka_zakresu_testu: tuple[float, float], device_id: str
+) -> None:
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id=device_id)
+    wynik = dopasuj_do_aparatu(
+        wymaganie, device_id=device_id, przekladnia_a=jednostka_zakresu_testu
+    )
 
     assert wynik["compatible"] is True
     vendor_mapping = wynik["vendor_mapping"]
@@ -114,21 +118,31 @@ def test_vendor_mapping_for_elektrometal_dt_devices(device_id: str) -> None:
     assert "EM.ETANGO.EF.50N.PICKUP_A" not in vendor_settings
 
 
-def test_elektrometal_dt_family_rejects_legacy_iec_ni_only_device() -> None:
-    """Rodzina legacy (400-2000_V0) deklaruje wyłącznie IEC_NI — wymaganie
+def test_elektrometal_dt_family_rejects_legacy_iec_ni_only_device(
+    jednostka_zakresu_testu: tuple[float, float]
+) -> None:
+    """Rodzina legacy (400-2000_V0) deklaruje wyłącznie IEC_SI — wymaganie
     definite-time Hoppela jest z nią niezgodne krzywą, nie fabrykowaną zgodą."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik = dopasuj_do_aparatu(wymaganie, device_id="EM_ETANGO_400_V0")
+    wynik = dopasuj_do_aparatu(
+        wymaganie, device_id="EM_ETANGO_400_V0", przekladnia_a=jednostka_zakresu_testu
+    )
 
     assert wynik["compatible"] is False
     assert "UNSUPPORTED_CURVE" in wynik["violations"]
 
 
-def test_elektrometal_vendor_mapping_is_deterministic() -> None:
+def test_elektrometal_vendor_mapping_is_deterministic(
+    jednostka_zakresu_testu: tuple[float, float]
+) -> None:
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="EM_E2TANGO_450")
-    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="EM_E2TANGO_450")
+    wynik1 = dopasuj_do_aparatu(
+        wymaganie, device_id="EM_E2TANGO_450", przekladnia_a=jednostka_zakresu_testu
+    )
+    wynik2 = dopasuj_do_aparatu(
+        wymaganie, device_id="EM_E2TANGO_450", przekladnia_a=jednostka_zakresu_testu
+    )
 
     assert wynik1 == wynik2

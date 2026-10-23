@@ -70,6 +70,13 @@ export interface FaultMarker {
 }
 
 /**
+ * Krzywa na wykresie czasowo-prądowym — dokładnie te pola, które wykres czyta: punkty
+ * policzone w backendzie, nazwa, kolor i widoczność. Krzywa złożona urządzenia (kilka stopni) nie ma
+ * jednej normy ani jednego wariantu charakterystyki, więc wykres ich nie wymaga.
+ */
+export type KrzywaWykresuTcc = Pick<ProtectionCurve, 'id' | 'name_pl' | 'color' | 'points' | 'enabled'>;
+
+/**
  * Complete curve definition for editor.
  */
 export interface ProtectionCurve {
@@ -228,18 +235,6 @@ export const PROTECTION_CURVES_LABELS = {
     refresh: 'Odswiez',
   },
 
-  curveTypes: {
-    // IEC 60255
-    SI: 'Normalna odwrotna (SI)',
-    VI: 'Bardzo odwrotna (VI)',
-    EI: 'Ekstremalnie odwrotna (EI)',
-    LTI: 'Dlugoczasowa odwrotna (LTI)',
-    DT: 'Czas niezalezny (DT)',
-    // IEEE C37.112
-    MI: 'Umiarkowanie odwrotna (MI)',
-    STI: 'Krotkoczas. odwrotna (STI)',
-  },
-
   standards: {
     IEC: 'IEC 60255',
     IEEE: 'IEEE C37.112',
@@ -267,24 +262,3 @@ export const CURVE_COLORS = [
   '#be123c', // rose
 ] as const;
 
-/**
- * IEC curve type options for select.
- */
-export const IEC_CURVE_OPTIONS: { value: IECCurveType; label: string }[] = [
-  { value: 'SI', label: 'Normalna odwrotna (SI)' },
-  { value: 'VI', label: 'Bardzo odwrotna (VI)' },
-  { value: 'EI', label: 'Ekstremalnie odwrotna (EI)' },
-  { value: 'LTI', label: 'Dlugoczasowa odwrotna (LTI)' },
-  { value: 'DT', label: 'Czas niezalezny (DT)' },
-];
-
-/**
- * IEEE curve type options for select.
- */
-export const IEEE_CURVE_OPTIONS: { value: IEEECurveType; label: string }[] = [
-  { value: 'MI', label: 'Umiarkowanie odwrotna (MI)' },
-  { value: 'VI', label: 'Bardzo odwrotna (VI)' },
-  { value: 'EI', label: 'Ekstremalnie odwrotna (EI)' },
-  { value: 'STI', label: 'Krotkoczas. odwrotna (STI)' },
-  { value: 'DT', label: 'Czas niezalezny (DT)' },
-];

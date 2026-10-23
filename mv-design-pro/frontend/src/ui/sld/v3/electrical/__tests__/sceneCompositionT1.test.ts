@@ -129,10 +129,26 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
   function withUnresolvedQf01(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     const branch = branchByRef(enm, STACJA_B_REFS.qf01Ref);
+    // Karta SLD-SUBSTRAT (kontynuacja): „nierozpoznany" = aparat Z wiązaniem
+    // katalogowym, którego rodzaju dane nie rozstrzygają; brak wiązania to brak
+    // katalogu (pozycja gotowości), nie naruszenie grafu — przypadek niżej.
+    (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
     (branch as { catalog_namespace: string | null }).catalog_namespace = null;
     (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
     return enm;
   }
+
+  it('aparat BEZ wiązania katalogowego w torze aktywnym: scena SLD_VALID, bez ostrzeżenia grafu — brak katalogu blokuje analizy, nie rysunek', () => {
+    const enm = buildStacjaBFixture();
+    const branch = branchByRef(enm, STACJA_B_REFS.qf01Ref);
+    (branch as { catalog_ref: string | null }).catalog_ref = null;
+    (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+    (branch as { materialized_params: Record<string, unknown> | null }).materialized_params = null;
+    const scene = buildSceneV3(enm, 2);
+    expect(scene.meta.electricalGraphStatus).toBe('SLD_VALID');
+    // Partia integracji 10: ostrzeżenie nazywa aparat nazwą z modelu („QF-01”), nie refem.
+    expect(scene.meta.stopNotes.some((n) => n.includes('„QF-01”'))).toBe(false);
+  });
 
   it('status sceny SLD_INVALID z kodem UNRESOLVED_ACTIVE_APPARATUS (graf elektryczny CAŁEJ sieci)', () => {
     const scene = buildSceneV3(withUnresolvedQf01(), 2);
@@ -140,9 +156,17 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
     expect(scene.meta.electricalGraphViolations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(true);
   });
 
-  it('ostrzeżenie w stopNotes wskazuje ref aparatu (WHITE BOX, widoczne w audycie) — NIE cichy rysunek', () => {
+  it('ostrzeżenie w stopNotes wskazuje aparat (WHITE BOX, widoczne w audycie) — NIE cichy rysunek', () => {
+    // Intencja bez zmian: ostrzeżenie jednoznacznie wskazuje aparat. Partia integracji 10:
+    // treść nazywa go nazwą z modelu, ref zostaje w polu strukturalnym `elementRefs`
+    // (z niego interfejs wiąże nawigację) i NIE trafia do zdania.
     const scene = buildSceneV3(withUnresolvedQf01(), 2);
-    expect(scene.meta.stopNotes.some((n) => n.includes(STACJA_B_REFS.qf01Ref))).toBe(true);
+    expect(scene.meta.stopNotes.some((n) => n.includes('Gałąź „QF-01”'))).toBe(true);
+    expect(scene.meta.stopNotes.some((n) => n.includes(STACJA_B_REFS.qf01Ref))).toBe(false);
+    const naruszenie = scene.meta.electricalGraphViolations.find(
+      (v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS',
+    );
+    expect(naruszenie?.elementRefs).toEqual([STACJA_B_REFS.qf01Ref]);
   });
 
   it('projekcja SN NADAL nie rysuje aparatu nN (ani rozpoznanego, ani nierozpoznanego) — portal jest niezmienny', () => {

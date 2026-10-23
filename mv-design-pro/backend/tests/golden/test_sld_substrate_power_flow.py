@@ -469,8 +469,13 @@ def test_maintenance_refuses_scenario_that_leaves_the_station_energized(
     nie cichym companionem bez przyciemnionej stacji. Dwa warianty rozjazdu:
     scenariusz bez nadpisań (nic nie odłączone — złapałby to sam warunek
     „de_energized niepuste") oraz scenariusz wyłączający WYŁĄCZNIE wyłączniki pól
-    tej stacji (odłącza terminale pól, więc `de_energized` jest NIEPUSTE, a szyna
-    SN stacji pozostaje zasilona — warunek „niepuste" by to przepuścił)."""
+    tej stacji, na których zaciskach NIE leży odcinek SN (pole transformatorowe:
+    odłącza zacisk pola i transformator, więc `de_energized` jest NIEPUSTE, a szyna
+    SN stacji pozostaje zasilona przez pola liniowe — warunek „niepuste" by to
+    przepuścił). Karta POLA-W-TORZE: odcinki leżą na zaciskach pól liniowych, więc
+    wyłączenie WSZYSTKICH wyłączników pól odłącza stację naprawdę — intencję
+    wariantu (odłączone terminale, zasilona szyna) niesie teraz podzbiór pól bez
+    odcinka."""
     import tests.golden.sld_substrate_power_flow as modul
 
     enm = EnergyNetworkModel.model_validate(substrate["enm"])
@@ -478,8 +483,19 @@ def test_maintenance_refuses_scenario_that_leaves_the_station_energized(
     if wariant == "bez_nadpisan":
         nadpisania: tuple[str, ...] = ()
     else:
-        nadpisania = tuple(ref for ref in pelny.out_of_service if "/sn_field_breaker/" in ref)
-        assert nadpisania, "wybrana stacja substratu ma wyłączniki pól SN"
+        galezie = {b.ref_id: b for b in enm.branches}
+        szyny_odcinkow = {
+            szyna
+            for b in enm.branches
+            if b.type in ("cable", "line_overhead")
+            for szyna in (b.from_bus_ref, b.to_bus_ref)
+        }
+        nadpisania = tuple(
+            ref
+            for ref in pelny.out_of_service
+            if "/sn_field_breaker/" in ref and galezie[ref].to_bus_ref not in szyny_odcinkow
+        )
+        assert nadpisania, "wybrana stacja substratu ma pole SN bez odcinka (pole TR)"
     rozjechany = OperatingScenario(
         scenario_id=pelny.scenario_id,
         name=pelny.name,

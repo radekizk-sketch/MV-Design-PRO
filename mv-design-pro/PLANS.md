@@ -1,16 +1,249 @@
-# MV-DESIGN-PRO Operational Plan
+# MV-DESIGN-PRO — JEDEN PLAN WYKONAWCZY (rejestr nadrzędny)
 
-**Version:** 5.1
-**Status:** LIVING DOCUMENT — **SUPERSEDOWANY OPERACYJNIE (2026-09-16):** stan operacyjny prowadzą `docs/evidence/CONVERGENCE_EVIDENCE.md` §A, `docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` §8 i `docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md`; sekcje poniżej opisują stan z 2026-08-05 i nie są źródłem prawdy o stanie repo.
-**Last updated:** 2026-08-05
-**Stan operacyjny śledzi rejestr [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) (do V12K-322); poniższe sekcje statusowe mogą być starsze niż rejestr.**
-**Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
-**Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
-**Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
+**Wersja:** 6.0 (konsolidacja 2026-10-23, misja właściciela „jeden obowiązujący plan wykonawczy")
+**Status:** LIVING — **JEDYNY NADRZĘDNY REJESTR POSTĘPU, PRIORYTETÓW I ODPOWIEDZIALNOŚCI** całego produktu.
+**Ostatnia aktualizacja:** 2026-10-23 (czubek gałęzi programu `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281`; `main` = `8f7ed3c27`, PR #489 OPEN)
+**Kanon (nadrzędny wobec tego planu):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md), konstytucja programu konwergencji (`docs/architecture/*`), [`docs/system/`](docs/system/), `CLAUDE.md` (hierarchia dokumentów). Ten plan nie zmienia kanonu — porządkuje wykonanie.
+**Część B (od sekcji „Archiwum operacyjne") to historia:** zapis sesji 2026-05…2026-08 zachowany bez zmian treści; nie jest źródłem statusu.
 
 ---
 
-## 1. Project Status Summary
+## A. Reguły jednego planu
+
+1. **Jedno miejsce postępu.** Status, priorytet, odpowiedzialny i następna czynność każdej karty
+   programu istnieją w tabeli §C tego pliku. Dokumenty dziedzinowe niosą WYMAGANIA TECHNICZNE,
+   kryteria odbioru i karty (treść zadań) — bez własnych, konkurencyjnych harmonogramów:
+   - UI/UX: `docs/uiux/PROGRAM_UIUX_2026-07.md` §12 (karty UX-00…UX-09, kryteria H5-01…H5-05, testy T+01…T+10) oraz §6/§8 (epiki E1–E15, fazy U0–U5 jako mapa zakresu);
+   - domena i fizyka: `docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` (wycinki W1–W12, karty `KARTA_W*`), `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` (sekwencja A/B §5, decyzje O-xx §2, rejestr przyrostów §7, bramki §12, karty §14), `docs/plan/KARTY_OTWARTE_2026-09.md`;
+   - SLD: `docs/sld/SLD_CAD_SPEC_V3.md` (wiążąca), `docs/plan/PLAN_SLD_REWORK.md` (fazy S1–S8 — historia wykonana; F1–F5 zastąpione), `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` (wymagania);
+   - inżynieria 10x: `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (F0–F4 jako zakres, statusy w §C);
+   - stan repo i dług: `STAN_REPO.md` (pomiar, pakiet wznowienia §7); dowody CI i kart: `docs/evidence/CONVERGENCE_EVIDENCE.md`.
+   Aktualizacja wiersza w §C jest obowiązkowa przy każdej partii integracji; wiersz w §7 planu A/B
+   albo w macierzy §12.3 programu UI/UX NIE zastępuje wiersza tutaj.
+2. **Role (decyzje właściciela, bez zmian):** Fable 5.1 — główny zarządca programu, integrator
+   gałęzi, decyzje B-01 po niezależnej weryfikacji (dyrektywa 2026-10-15); Opus 5.5 — zarządca
+   wykonawczy programu UI/UX klasy przemysłowej (kolejka UX-00…UX-09); wykonawcy wg
+   `.claude/agents/` i `ORKIESTRACJA_AGENTOW.md`; właściciel — bramki B-01 (rdzeń FROZEN;
+   zdelegowana architektowi) i B-02 (werdykt wizualny SLD — **NADAL ODRZUCONE**, nie certyfikuje
+   go zielone CI ani agent).
+3. **Zakres bez nowych programów.** Nie istnieje osobny „program SEL", „plan H5", „program SLD"
+   ani „panel postępu". SEL Blueframe (`docs/research/sel-blueframe/`) to materiał referencyjny
+   i kryteria kart UX-01…UX-07; H5/ENEA to kryteria odbioru karty UX-04 (H5-01…H5-05); GIS/MDI
+   to UX-09 = P3/STOP; prace 110 kV wyłącznie jako granica zasilania SN (bez pól WN, przekładników,
+   napędów, uziemników i osobnego modułu 110 kV).
+4. **Status nie jest odbiorem.** Słownik: `DOMKNIĘTA` = dowód w repo (commit + regresja + CI
+   albo wiersz dowodowy w §7 planu A/B / `CONVERGENCE_EVIDENCE`); `W TOKU`; `OTWARTA` (karta
+   istnieje albo zakres nazwany, praca nierozpoczęta); `DO WERYFIKACJI` (deklaracja bez dowodu
+   w repo — liczy się jako nieukończona); `ZABLOKOWANA` (bramka właściciela albo dane
+   OD-xx); `ODRZUCONE` (werdykt właściciela); `STOP` (zakaz wdrażania). Deklaracja „wykonane"
+   bez dowodu zostaje `DO WERYFIKACJI`; procent programu liczy wyłącznie `DOMKNIĘTA`.
+5. **Priorytety:** P0 — ścieżka krytyczna produktu i naprawy funkcjonalno-inżynierskie
+   (integracja do `main`, prawdziwe SLD SN, uczciwość wyników, ścieżka projektanta end-to-end);
+   P1 — sekwencja A/B i program W po zależnościach, karty rdzenia z audytów; P2 — jakość tekstu,
+   dokumenty wynikowe, commissioning; P3 — integracje zewnętrzne, GIS (STOP).
+6. **Identyfikatory są trwałe.** ID z dokumentów źródłowych (W1–W12, UX-00…UX-09, H5-01…H5-05,
+   T+01…T+10, U0–U5, E1–E15, AB-*, AB-H*, S1–S8, F0–F4 programu 10x, karty nazwane WIELKIMI
+   LITERAMI) nie są przenumerowywane. Kolizje nazw (W1–W5 „wygaszanie mostu wyników" w części B,
+   F1–F5 trzech różnych programów, F1–F11 SLD V3) rozstrzyga §D.
+
+## B. Stan bazowy (pomiar 2026-10-23, nie deklaracja)
+
+| Pozycja | Stan | Dowód |
+|---|---|---|
+| Gałąź programu | `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281` (partia integracji 2 linii programu `0e7a5e7d6` + PR #490 pakiet SEL + PR #491 UX-04 H5/ENEA) | `git log`, PR #490/#491 MERGED |
+| `main` | `8f7ed3c27`, przodek gałęzi programu; PR #489 integracja → `main` **OPEN** (296 commitów, 2 213 plików) | GitHub PR #489 |
+| CI na `0e7a5e7d6` | 9/9 workflowów zielonych | GitHub Actions |
+| Weryfikacja lokalna przed scaleniem #489 | **NIEDOKOŃCZONA** — pełny backend przerwany dwukrotnie restartem kontenera (ostatnio 38 %); `guardy_z_ci.py` + samotesty 3 908 zielone; `npm test`, type-check, lint, e2e 4 shardy — do wykonania | logi sesji integratora |
+| Pełna regresja (ostatnia zmierzona) | backend 39 083 passed (KATALOG-APARATURA-WN, 2026-10-23, gałąź UI/UX); vitest 893 pliki / 16 269 (tamże); bramka scalenia partii 2: pytest 38 798, vitest 4 604, guardy RC=0 | plan A/B §7 wiersze 2026-10-23 |
+| PR nie do scalenia | #475 (laboratorium dynamiki, RESEARCH ONLY), #488 (audyt rdzenia — źródło kart, „NIE SCALAĆ JAKO ZWALIDOWANEJ NORMY") | plan A/B §14.4 |
+| Program UI/UX | stan bazowy **niezweryfikowany po PR #489** — audyt UX-00 pierwszy (PROGRAM §12.6); ostatni audyt bramek U2–U5: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (U2 8/11, U3 7/9, U4 3/7, U5 4/9 — sierpień, nieaktualny) | PROGRAM §8, §12.6 |
+| SLD | program SCHEMAT-10 S1–S8 i SLD V3 F1–F11 wykonane kodowo (2026-07); audyt wizualny 2026-10-20: **NO-GO**; ocena właściciela rundy H5: **3/10**; B-02 ODRZUCONE | `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md`, PROGRAM §12.5a |
+| Rysunki ENEA Z.1, Z.4–Z.8 | **BRAK ŹRÓDŁA w repo** — brak = BRAK DOWODU, treści nie wymyśla się | `find` 2026-10-23 |
+| Dane właściciela | pakiety P-A…P-N (`docs/plan/DANE_WLASCICIELA_O59_2026-09.md`) — warunki kart oznaczonych OD-xx; decyzje otwarte: O-5, O-57 (częściowo), O-67, O-74, O-70(c) | plan A/B §2 |
+
+## C. Jedna kolejka zadań
+
+Kolumny: `ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność`.
+Kolejność w tabeli = kolejność wykonania wewnątrz priorytetu (tory równoległe wg §D.2).
+Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7;
+`PROGRAM §12.3` — do macierzy `docs/uiux/PROGRAM_UIUX_2026-07.md`.
+
+### C.1 P0 — ścieżka krytyczna produktu
+
+| ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
+|---|---|---|---|---|---|---|---|
+| INT-489 | Integracja gałęzi programu → `main` (PR #489, merge commit, bez squasha) | P0 | W TOKU | Fable (integrator) | CI 9/9 na czubku; pełna weryfikacja lokalna (backend, `guardy_z_ci.py`, `npm test` dwa kroki, type-check, lint, e2e 4 shardy); porównanie czerwieni z bazą | PR #489 OPEN; CI 9/9 na `0e7a5e7d6`; samotesty guardów 3 908 passed | dokończyć weryfikację na `a5996c281`, komentarz z kodami wyjścia, merge commit; po scaleniu `main` = czubek programu |
+| JEDEN-PLAN | Konsolidacja planów (ta karta) | P0 | DO WERYFIKACJI | Fable | — | commit `bafd30392` na `…-karta-jeden-plan` (6 plików dokumentacji, 0 plików aplikacji); 12 guardów dokumentów RC=0, self-testy guardów 40 passed; CI na gałęzi karty: 7 workflowów (e2e filtrowane ścieżką — zmiana bez `frontend/**`/`backend/**`) | po CI zielonym fast-forward gałęzi programu (czubek PR #489 przesuwa się); odbiór planu przez właściciela; dalsze zmiany statusów wyłącznie w tym pliku |
+| UX-00 | Audyt stanu bazowego UI/UX po PR #489 (rzeczywisty HEAD, nie raport sierpniowy) | P0 | DO WERYFIKACJI | Opus (zarządca UI/UX) | INT-489 (HEAD), T+01…T+10 z `docs/research/sel-blueframe/KONTRAKT_DLA_OPUSA.md` §3 | — | tabela `UX-ID \| jest → wykonano \| commit \| jednostkowe \| E2E real \| zrzuty \| ocena właściciela` (PROGRAM §12.6) |
+| UX-04 | SLD SN wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617 (H5-01…H5-05; 110 kV tylko granica zasilania; jedna kanwa `SldCanvasV3`) | P0 | OTWARTA (H5 3/10, B-02 ODRZUCONE, audyt 2026-10-20 NO-GO) | Opus; werdykt — właściciel (B-02) | rysunki ENEA (BRAK ŹRÓDŁA → wpis BRAK DOWODU), ENM/PortRef, W7 (SLD jako projekcja ENM) dla trwałej geometrii | PROGRAM §12.5a macierz H5: wszystkie OCZEKUJE/ODRZUCONE | macierz rysunek → aparat/port ENM → symbol → zrzut → werdykt; pary ENEA ↔ SLD; zrzuty obu motywów do oceny właściciela |
+| UX-04/GPZ-H5-APARATURA | Cała aparatura pól SN GPZ w ENM/katalogu (U_m 7,2 kV, rola `surge_ground`, sprzęgło z `catalog_ref`, pickery z filtrem napięciowym, „brak danych/nie dotyczy" w karcie technicznej) | P0 | OTWARTA (materiał na gałęzi `…-aparatura-wn-wklad-sn`, nie do scalenia wprost) | wątek UI/UX (gałąź `…-karta-uiux-przemyslowy`); B-01 — Fable | KATALOG-APARATURA-WN ✓ (2026-10-23) | — | karta z inwentarzem klasy, testy iloczynu cech, wpis statusu tutaj i H5-02 |
+| UX-04/GPZ-H5-SKLADOWA-ZEROWA | Składowa zerowa po stronie `enm/mapping.py`: Z_U z `GroundingConfig`, `Transformer.hv_neutral`, kasacja stałej `1e6`, trzy nazwane przyczyny braku wyniku | P0 | OTWARTA | wątek UI/UX; B-01 — Fable | — (rdzeń B-01 nietknięty; strona rdzenia = Y0-WYSPY) | — | karta + testy; warunek dla ZEROWA-POJEMNOSCI |
+| UX-01 | Inteligentny „+" w legalnych punktach elektrycznych (T+01, T+04, T+05; H5-04) | P0 | OTWARTA (mechanizmy istnieją: `SldCommandService`, `sldActionExecutor`, operacje domenowe — do oceny) | Opus | UX-00; PortRef; W7 | PROGRAM §12.3 | ocena istniejących mechanizmów → karta naprawcza; dowód na tym samym SLD |
+| UX-02 | Automatyczna topologia i rozmieszczenie: stacja na odcinku, pierścień, DER, portal nN, odmowa backendu (T+02/03/06/07/08/09) | P0 | OTWARTA | Opus | UX-01 | PROGRAM §12.3 | j.w. |
+| UX-03 | Inspektor, drzewo, walidacja, źródło danych i status każdej wartości (SEL A07, B01, B03, B05, B06, C03) | P0 | OTWARTA | Opus | UX-00 | PROGRAM §12.3 | j.w. |
+| UX-05 | Obliczenia i nakładki na ten sam SLD; wynik → wywód White Box → dowód; brak fikcyjnych liczb i pozornych werdyktów | P0 | CZĘŚCIOWE / NIEODEBRANE PRZEKROJOWO | Opus; fizyka — linia programu | W2 ✓, W4-1, W5, W6 (dostawcy funkcji); DANE-PRZYJETE-EKRANY; WKLADY-BEZ-ZRODLA | PROGRAM §12.3 | przekrojowy odbiór z E2E na realnym backendzie |
+| UX-05/WKLADY-BEZ-ZRODLA | Tabela „Wkłady do zwarcia" pomija źródło sieciowe (fałszywy 100 % udział generatora): wiersze z `wklady_zrodel`, szczegół maszyny z `/api/proof/sc3f/contributions` | P0 | OTWARTA | wątek UI/UX | WKLAD-ZRODLA ✓ (PARTIA-ZWARC) | — | naprawa + test iloczynu (źródło sieciowe × maszyna × falownik × wkład pominięty) |
+| UX-05/DANE-PRZYJETE-EKRANY | Dyskretny zapis danych przyjętych (ZASADA NR 4) przy każdym wyniku (~35 miejsc `StanDanychWyniku`), `status_danych=UNVALIDATED_INPUT` w trzech emiterach | P0 | W TOKU (`753e1763a`, `5703c2d29` WIP; selektor „najnowszy przebieg" w 11 miejscach bez biegu vitest; backend przerwany z 9 czerwonymi) | Fable (karta linii programu) | — | §7 2026-10-23 | domknąć selektor + vitest, 9 czerwonych u źródła, zrzuty obu motywów, integracja po INT-489 |
+| UX-05/STRAZNIKI-GALEZI-UIUX | Czerwone strażniki gałęzi UI/UX: `domain_ops_unified_guard`, `tsconfig_gate_guard`, `werdykt_wyjasnialny_guard` (próg 1 kV liczony we froncie), ruff `pobierz_zrodla_techniczne.py`, `inwentarz_katalogow_guard` | P0 | OTWARTA | wątek UI/UX | — | — | naprawa u źródła przed kolejnym pushem gałęzi |
+| UX-06 | Pełna ścieżka projektanta od GPZ do raportu w jednej aplikacji; T+01…T+10 + Playwright na realnym backendzie, oba motywy | P0 | NIEODEBRANE | Opus; werdykt — właściciel | UX-01…UX-05, W9 | PROGRAM §12.3 | scenariusz §12.5 jako E2E, zrzuty do oceny |
+| W4-1 / BIEG-ZABEZPIECZEN-Z-MODELU | Ocena zabezpieczeń z nastaw modelu (zacisk z toru pola, odmowy danych, szyny stacji z jednego źródła) | P0 | DOMKNIĘTA przez wykonawcę (`1551dc49`), przeniesiona na partię 6/7 (BIEG-ZABEZPIECZEN-NA-PARTII-6) — odbiór integratora wykonany w partii 7 | Fable | POLA-W-TORZE ✓ | §7 2026-10-15 (PARTIA-INTEGRACJI-7) | wiersz zamknięty; W4-2 w P1 |
+| SIEC-ZLOTA-KATALOG | Sieć złota deklaruje katalog, 7 odwołań nie istnieje (zasila sceny harnessu i zrzuty B-02) | P0 | OTWARTA (karta gotowa w `KARTY_OTWARTE_2026-09.md`) | worker (tor D) | — | — | wykonać; dowód: harness fikstur generatorem |
+| GOTOWOSC-DER-BACKEND | Próg 87T z `?? 0` daje „niewymagane" przy braku mocy — słownik gotowości z backendu | P0 | OTWARTA (karta gotowa) | worker (tor D) | — | — | wykonać; warunek CICHE-ZERO |
+| AB-H0b | N-1 V12.6 bez etykiety „szacunek bez rozpływu", stałe V12.6 bez podstawy — lista pozycji | P0 | OTWARTA (lista, karta do napisania) | Fable → worker | AB-H0 ✓ | — | karta z `KARTY_OTWARTE`, wykonanie |
+| B-02 | Werdykt wizualny SLD (bramka właściciela) | P0 (bramka) | ODRZUCONE (historia werdyktów: 1/10 2026-05-28; 0/10 i 3/10 sierpień; 5/10 2026-09-02; powierzchnie analityczne 8,5/10 2026-09-10; odpływ nN TT/IT 0/10 2026-10-15; audyt 2026-10-20 NO-GO; runda H5 3/10) | właściciel | zrzuty żywej aplikacji w obu motywach z UX-04/UX-06 | brak jednego rejestru werdyktów — od teraz ten wiersz | po każdej partii UX-04 nowe zrzuty; werdykt tylko właściciela |
+
+### C.2 P1 — sekwencja A/B, program W, karty rdzenia z audytów
+
+| ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
+|---|---|---|---|---|---|---|---|
+| AB-1b.3b | Odbiory stanowe rdzenia dynamiki (niezmienniki chwili zero) | P1 | DOMKNIĘTA (partia 7; mutacje 55/55) | Fable | AB-1b.3a ✓ | §7 2026-09-30, 2026-10-15 | — |
+| DYNAMIKA-W-TLE | Wykonawca biegów w procesie API (202 + odpytywanie, anulowanie, postęp; kasacja Celery/Redis/MongoDB) | P1 (warunek AB-1b.2 pakiet E, AB-1c, AB-6) | DOMKNIĘTA (partia 8) | Fable | — | §7 2026-10-15/16 | — |
+| AB-1b.2 + AB-1d_min | Rdzeń L5: zdarzenia warunkowe, emulator jako stymulus, ogranicznik na prądzie, P_available, kanały; wyrocznia GFL z ogranicznikiem i ΔU od U_pre (pakiety 0/A/B/C/D → E/F/G/H) | P1 (ścieżka krytyczna A/B) | OTWARTA (karta `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) | worker-rdzeń; B-01 — Fable | AB-1b.3b ✓, DYNAMIKA-W-TLE ✓ | — | start pakietów 0/A/B/C/D; mutacje M52–M66 |
+| KATALOG-DYNAMIKI-BRAKI | Przestrzeń katalogowa maszyny synchronicznej (warunek AB-1c), magazyn: sprawność i okno SOC (warunek AB-4a) | P1 | OTWARTA (szkic §0) | worker; dane — właściciel (OD-17) | dane OD-17 dla magazynu | — | karta; część maszyny synchronicznej bez danych właściciela |
+| AB-1c | Cztery wymagania NC RfG z kryteriami składowymi, obwiednia jako warunek wstępny, SPGM-B, jeden tor, kasacja `frt_hvrt` | P1 | OTWARTA (szkic §0) | worker-rdzeń; B-01 — Fable | AB-1b.2, AB-1d_min, KATALOG-DYNAMIKI-BRAKI (maszyna), DYNAMIKA-W-TLE ✓ | — | po AB-1b.2 |
+| AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 | Dalsza sekwencja A/B (walidacja ANDES, LFSM-O/RoCoF, biblioteka Q/P i silnik indukcyjny, DFIG, BESS RMS, widmo BESS, IEC 60255 i wyspy, CCT/małosygnałowa, filtry i udziały, QSTS/straty roczne/IEC 60076-7, miernik jakości energii) | P1 | OTWARTA (plan A/B §5, §11; strażnik `plan_ab_zaleznosci_guard`) | worker-rdzeń; B-01 — Fable | łańcuch wg STAN_REPO §7 D | — | po AB-1c, w kolejności strażnika |
+| AB-H1 | Solver harmoniczny `solvers/harmoniczne/` (Y(f), THD/TDD z definicji, skan Z_th(f), migotanie, kryterium emisji) + kasacja funkcji v126 | P1 (tor równoległy H, może biec od zaraz) | OTWARTA (bez karty) | worker-rdzeń | AB-H0 ✓, AB-1a ✓ | — | karta z §11 i §81 planu A/B; wyrocznie i mutacje |
+| AB-H2 → AB-H3 → AB-H4 | Supraharmoniczne, filtry/udziały/wrażliwość, pomiar jakości energii | P1 | OTWARTA | worker-rdzeń | AB-H1; AB-3 (migawki); W6-K | — | po AB-H1 |
+| W6-K | Niesymetria w czasie, funkcje ziemnozwarciowe, Y_012(f)/Y_abc(f) | P1 | OTWARTA | worker-rdzeń | W5-A ✓, W5-D ✓, AB-H2 | — | po AB-H2 |
+| W5-B → W5-C → W5-T → SZABLONY-NN | Typowany `Bay` z `field_specs`; stan łączeniowy jedna prawda; TT/IT/RCD reszta; szablony nN (W5-A, W5-D, W5-E ✓) | P1 (tor M) | OTWARTA (karty do napisania z `KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md` §1) | worker; B-01 — Fable | W5-A ✓ | W5-E-TTIT: §7 2026-10-15 | W5-B pierwszy (warunek W4-1 pełnego, W4-2, W7) |
+| W4-0 | `ProtectionCapabilityRegistry` + testy tożsamości SUPPORTED (ADR-022) | P1 | DO WERYFIKACJI (0 trafień nazwy w `backend/src` 2026-10-23 — rejestr może istnieć pod inną nazwą albo nie istnieć) | Fable → explorer | PROT-LTI ✓ (partia 9) | — | pomiar w repo; jeśli brak — karta |
+| W4-2 | Funkcje 67/67N, 21, 87T, 25, 50BF, grupy nastaw, TRIP matrix; nastawy jako ASSET w ENM (W4-1 model), override jako delta przypadku (W4-3), kasacja duplikatów IDMT (W4-4) | P1 (tor Z) | OTWARTA | worker; B-01 — Fable (rozszerzenia solverów = osobna prośba B-01) | W5-B, OD-18 | — | po W5-B; wejście do AB-5 |
+| W7 | SLD jako projekcja ENM: `SldSemanticGraphV1` z backendu, trwałe nadpisania geometrii w ENM, kasacja `application/sld/**`, `TopologyView` backendu zamiast BFS klienta | P1 (dostawca dla UX-04/UX-01) | OTWARTA | Fable → worker | W5 (terminale), CV-4.4 | — | po W5-B/W5-C; koordynacja z UX-04 |
+| W8 / CV-6 | Sieć kompensowana G01 end-to-end (Y0 z uziemienia modelu, Petersen, SC_1F → U_dot/U_krok, 51N/67N, wyrocznie OD-3) | P1 | OTWARTA (NOT_BUILT) | worker-rdzeń; B-01 — Fable | W4-2, W5 | — | po W5; karta W8-OD3 zależy od W8 i W5 (O-72) |
+| BILANS-THEVENIN | Bilans prądów w węźle zwarcia na fazorach (`short_circuit_iec60909.py`, rdzeń B-01) | P1 (kolejka rdzenia z audytu PR #488) | OTWARTA | worker-rdzeń; B-01 — Fable | — | plan A/B §14.4 | pierwsza karta rdzenia po INT-489; sonda liczbowa z podstawą IEC 60909-0:2016 |
+| Y0-WYSPY | Szyna SLACK bez impedancji źródła (`core/ybus.py:188`) + inwentarz klasy stałych 1e6 w rdzeniu | P1 | OTWARTA | worker-rdzeń | — (strona `enm/mapping.py` = GPZ-H5-SKLADOWA-ZEROWA) | §14.4 | po BILANS-THEVENIN |
+| CZESTOTLIWOSC | Twarde 50 Hz w `short_circuit_core.py` → parametr sieci | P1 | OTWARTA | worker-rdzeń; B-01 — Fable | — | §14.4 | kolejno |
+| PROFIL-NORMY | Profil IEC 60909-0:2016 jawny w wyniku i śladzie; wydanie 2026 tylko jako odrębny profil zablokowany do czasu tekstu normy (P-N) | P1 | OTWARTA | worker-rdzeń; B-01 — Fable | dane P-N (tekst wydania 2026) | §14.4, §14.1 ostatni wiersz | kolejno |
+| ZEROWA-POJEMNOSCI | B0 tylko przy warunku IEC 60909-0 pkt 5.2 f) | P1 | OTWARTA | worker-rdzeń | GPZ-H5-SKLADOWA-ZEROWA | §14.4 | po scaleniu składowej zerowej z wątku UI/UX |
+| KONSUMENCI-IB | Przegląd konsumentów I_b po SC-IB-ITH-ZRODLA (ResultSet, dowód SC3F, eksport, dobór aparatury) | P1 | OTWARTA | explorer → worker | SC-IB-ITH-ZRODLA ✓ (partia 13) | §14.4 | inwentarz klasy, naprawy |
+| SLOWNIK-GENERATOR-PL | Słownik kanoniczny `NAZWY_RODZAJOW_GENERATORA_PL` czytany przez front | P1 | OTWARTA | worker | — | §14.4 | wykonać |
+| SC-WYROCZNIA-SN-TR-NN | Wyrocznia integracyjna GPZ 15 kV – kabel – TR 1000 kVA – odpływ nN (±6 % i ±10 %) | P1 | OTWARTA | worker-rdzeń | C-TOLERANCJA-NN ✓; stany aparatów — POLA-W-TORZE ✓ | §14.2/§14.4 | wykonać (liczby potwierdzone ręcznie w §14.1) |
+| KSR-SKLAD-DER | Skład PV/BESS szablonów hybrydowych (`apply.py:507`, `:1223` — `i % len(der_options)`) | P1 | OTWARTA | worker | rozstrzygnięcie karty PR-478; przed O-53b | §14.2 | wykonać |
+| SZABLONY-BEZ-DOMYSLOW | Domyślne dane szablonów (`apply.py:231, :324, :482, :948, :1235`; klasa CICHE-ZERO) | P1 | OTWARTA | worker | sposób uziemienia po W5-B (W5-E ✓) | §14.2 | pozostałe instancje od razu |
+| O-53b | Reguła mocy źródeł × transformator tylko dla jednego źródła; kasacja tras piszących model z pominięciem operacji | P1 (tor D) | OTWARTA (karta gotowa) | worker | KSR-SKLAD-DER | — | wykonać |
+| CICHE-ZERO | `?? 0` / `or 0.0` zasilające decyzję (front 258 + 25, backend 57 + 11 + 3); `false_zero_guard` w trybie ścisłym z budżetem 0 | P1 (tor D) | OTWARTA (szkic §0) | worker | GOTOWOSC-DER-BACKEND | — | karta, wykonanie, zapadka |
+| O-52 | Łagodne rzutowanie pydantic na granicach danych; strażnik AST `strict=True` | P1→P2 (tor D) | OTWARTA (szkic §0) | worker | ODMOWA-DANYCH-422 ✓ | — | po CICHE-ZERO |
+| ENDPOINTY-BEZ-KONSUMENTA | Kasacja tras bez konsumenta (w tym `/api/switchgear` z martwym modelem — KSR-P0-ZAPIS/POLA) | P1 (tor D) | OTWARTA (karta gotowa) | worker | ODMOWA-DANYCH-422 ✓ | — | wykonać |
+| GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE | Strażnik granic importów rdzenia dynamiki (importy względne o poziom za głęboko), autotesty w drzewie | P1 | DO WERYFIKACJI (commity wykonawcy `f1c27d8a`, `ce138c51` na gałęzi programu; odbiór integratora nie zapisany) | Fable | — | STAN_REPO §7 B | pomiar na czubku; wiersz zamknąć albo kartę dokończyć |
+| SZYNY-STACJI-LUSTRO | Przynależność szyny do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`) zamiast dwóch połówek we froncie | P1 | DOMKNIĘTA (partia 6 — `PARTIA-INTEGRACJI-9` wiersz §7 wymienia kartę) | Fable | — | §7 2026-09-30 (AB-1b.3b-NA-PARTII-6 lista kart partii 6) | — |
+| SLD-SUBSTRAT faza 2 | Fikstury SLD generatorem; każdy element modelu rysowany | P1 | DOMKNIĘTA (partia 6) | Fable | — | §7 2026-09-30 | — |
+| UX-07 | Wersje projektu, szkic, cofnij/ponów, porównanie A/B, stany przed/po, sekwencja przełączeń (SEL A11, A12, D01, D04, D05) | P1 | OTWARTA (DO OCENY) | Opus | W9 (rewizje jako operacja domenowa), W10-2 (`NetworkVariation`) | PROGRAM §12.3 | po P0 UI/UX |
+| W9 | Tok pracy inżyniera: cel projektu z DoD per klasa, NBA E6–E8 z realnych danych, role jako projekcje (ADR-029), rollback do rewizji, CAS w kliencie | P1 (tor D) | OTWARTA | Fable → worker | W1 ✓ | — | po W10-1 wg toru D |
+| W10-1 | Dobór przekroju kabla/linii z pakietem dowodowym (IEC 60364-5-52 / IEC 60287 / katalog SN) | P1 (tor D) | OTWARTA | worker; B-01 — Fable | W1 ✓ | — | pierwsza karta toru D po P0 |
+| 10x-F0…F1 | Program 10x: bramki CI (F0.1–F0.5), perymetr (F1.1–F1.6); F0.6 ✓ (V12K-199) | P1 | DO WERYFIKACJI (statusy F0.1–F0.5, F1.x nie zmierzone w tej konsolidacji; część zrealizowana przez `guardy_z_ci.py`, `mypy_ratchet_guard`, bramkę scalenia) | Fable → explorer | — | `PLAN_PRZEBUDOWY_10X_2026-07.md` §5–§6 | pomiar per pozycja; wiersz per pozycję po pomiarze |
+
+### C.3 P2 — jakość tekstu, dokumenty wynikowe, commissioning
+
+| ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
+|---|---|---|---|---|---|---|---|
+| KSR-KRYTERIA-POMIAR | Kryteria T02/T03/T05/T06/T12/T14/T15/T17 i G02/G03/G07/G09/G12/G14 bez karty — pomiar stanu kodu, test albo karta | P2 | OTWARTA | explorer → worker | — | plan A/B §14.3 | wykonać po kartach P1 KSR |
+| KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2 | Klasy tekstu dla projektanta (identyfikatory maszynowe w komunikatach, format liczb PL, znaki PL) | P2 (tor D) | OTWARTE (karty gotowe) | worker | — | PL-ZNAKI §7 2026-09-25 (częściowa) | kolejno po P1 toru D |
+| UX-08 | Szablony i instancje, kopiowanie parametrów, eksporty (SEL B08, C04, D06) | P2 | OTWARTA | Opus | UX-03 | PROGRAM §12.3 | po P1 UI/UX |
+| W10-2 | BOM całego projektu, model kosztowy (OD-16), `NetworkVariation`, pakiet do podpisu, rejestr założeń (W10-2a CENNIK-ODMOWY-PAKIETOW ✓ partia 8) | P2 | OTWARTA (częściowo: W10-2a ✓) | worker | W10-1, W9, dane OD-16 | §7 2026-10-16 | po W10-1 |
+| W11 | Commissioning / as-built: cykl życia, FAT/SAT, iniekcja wtórna, as-built → linia bazowa | P2 | OTWARTA | worker | W4-2, W9 | — | po W9 |
+| 10x-F2…F4 | Program 10x: współbieżność, god-file containment, dalsze bramki | P2 | DO WERYFIKACJI | Fable → explorer | 10x-F0…F1 | `PLAN_PRZEBUDOWY_10X_2026-07.md` | pomiar; W-WSPOLBIEZNOSC częściowo w CI-WSPOLBIEZNOSC (V12K-325) |
+| OD-xx dane właściciela | Pakiety P-A…P-N (`DANE_WLASCICIELA_O59_2026-09.md`) — m.in. OD-15 (FRT), OD-16 (koszty), OD-17 (magazyn), OD-18 (nastawy), P-N (tekst IEC 60909-0:2026) | P2 (bramka danych) | ZABLOKOWANA (dane właściciela) | właściciel | — | plan A/B §12 (OD-21) | karty zależne biegną na wartościach roboczych `ESTIMATED` (ZASADA NR 4) tam, gdzie to parametr urządzenia; podstawa limitu pozostaje BRAK_PODSTAWY |
+
+### C.4 P3 — integracje zewnętrzne (GIS: STOP)
+
+| ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
+|---|---|---|---|---|---|---|---|
+| UX-09 | GIS, MDI, mapy, import geograficzny, DNP3/SCADA (SEL C01, C02, C05, D07) | P3 | STOP (decyzja właściciela 2026-10-23 — nie wdrażać) | — | osobne polecenie właściciela | PROGRAM §12.3 | brak |
+| W12 | CAD round-trip (DXF z tożsamością bloków), GIS (WGS84/EPSG), MCP jako lokalna płaszczyzna sterowania (W12-MCP, O-71); CGMES końcówka ✓ (KASACJA-SCL-I-CIM-KLIENT, partia 8) | P3 | OTWARTA (częściowo: CGMES ✓); część GIS = STOP jak UX-09 | — | W7, W9 | §7 2026-10-16 | po W9/W7; GIS nie przed decyzją właściciela |
+| G11 | Transformatory trójuzwojeniowe | P3 | OTWARTA (poza W1–W12, kanon: „przyszłość") | — | decyzja zakresu | MAPA §8 aneks | brak |
+
+### C.5 Domknięte wycinki i programy (bez odtwarzania zadań)
+
+| ID | Obszar | Status | Dowód |
+|---|---|---|---|
+| W1 | Jedna prawda sieci od pierwszego bajtu (import XLSX → ENM, kasacja legacy ORM, CV-4.4) | DOMKNIĘTA 2026-09-09 | MAPA §9/§10, `CONVERGENCE_EVIDENCE` §E/§F |
+| W2 (+ W2-B, W2-C) | Zero fabrykacji — uczciwość ekranów | DOMKNIĘTA 2026-09-09 (odbiór `9bebcb9d`) | MAPA §10, CI 9/9 `39794b58` |
+| W3 fale 1–3 (+ W3-J, V12.7) | Konwergencja duplikatów fizyki | DOMKNIĘTA 2026-09-16 | `KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md`, `c307e95f` |
+| W5-A, W5-D, W5-E | Uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny, TT/IT | DOMKNIĘTE (2026-09-16, 2026-09-30, 2026-10-15) | MAPA §8, §7 2026-10-15 |
+| W6-0, W6-1…W6-3 | Bezpieczniki S-1…S-5, fundament czasu | DOMKNIĘTE (2026-09-16/18, 2026-09-30) | STAN_REPO §1–§2; W6-4/W6-5 → AB-1b.1/AB-1c; W6-6 → AB-6b; W6-8 po OD-17 |
+| AB-0, AB-1a, AB-H0, AB-1b.1, AB-P1, AB-1b.3a/3b | Fundament A/B: kontrakt werdyktu, dziedziny, rdzeń L5, bieg kanoniczny dynamiki w UI | DOMKNIĘTE | plan A/B §7 2026-09-22…10-15 |
+| Partie integracji 1–13 + PARTIA-ZWARC + partia 2 linii programu | Scalenia kart na gałąź programu z pełną regresją | DOMKNIĘTE (ostatnia: `0e7a5e7d6`, CI 9/9) | plan A/B §7 |
+| SC-IB-ITH-ZRODLA, C-TOLERANCJA-NN, WYTRZYMALOSC-PRAD-POLA, CT-JEDEN-WERDYKT, WSPOLCZYNNIK-C-JEDEN-NOSNIK, PROT-LTI, BEZ-POJEMNOSCI, WKLAD-ZRODLA, DETERMINIZM-HISTORII-PROCESU, LINIA-110, PODSTAWA-Q, KATALOG-APARATURA-WN | Karty zwarciowe i katalogowe z audytów PR #477/#488 | DOMKNIĘTE | plan A/B §14.4, §7 2026-10-16…23 |
+| POLE-ZAJĘTE, POLA-W-TORZE, DOWOD-CIEPLNY, ODMOWA-DANYCH-422, SLD-SUBSTRAT, SZYNY-STACJI-LUSTRO, ETYKIETA-STACJI-PRZELOTOWEJ, W5-E-TTIT | Partie 6–9 | DOMKNIĘTE | plan A/B §7 2026-09-30…10-16 |
+| SCHEMAT-10 S1–S8 (+ GS-1…GS-5) | SLD: gramatyka stacji, etykiety, kolor, motyw, goldeny, layout, LOD | DOMKNIĘTE kodowo 2026-07-22/23 (V12K-141/142/146); **nie zamyka B-02** | `PLAN_SLD_REWORK.md` §0 |
+| SLD V3 F1–F11 | Przebudowa CAD/SCADA wg `SLD_CAD_SPEC_V3` | DOMKNIĘTA kodowo 2026-07-16; odbiór wizualny 2026-10-20 **NO-GO** → UX-04 | część B §3.4, `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md` |
+| PLAN_SLD_REWORK F1–F5 | Fazy historyczne | ZASTĄPIONE przez S1–S8 (DoD F1–F5 pozostają `[ ]` i nie są zadaniami) | `PLAN_SLD_REWORK.md` §0 |
+| U0, U1 (E1, E2, E15) | Program UI/UX: porządek i kanon, powłoka | ZAMKNIĘTE 2026-07-15 (część B §3.-1); kryterium „makiety U0.6" nieobowiązujące | PROGRAM §8 |
+| U2–U5 (E3–E14) | Program UI/UX: model, obliczenia, specjalistyczne, scalenie | CZĘŚCIOWE wg audytu sierpniowego; stan bieżący mierzy UX-00; zadania prowadzą karty UX-01…UX-08 | PROGRAM §8, §12 |
+| ZWARCIA-PRO F1–F5, V12.6 academic, E13 łańcuch, fale wygaszania mostu wyników W1–W5 (część B) | Programy zamknięte 2026-07 | DOMKNIĘTE | część B §3.-2, §3.-1 |
+| PR #490, #491 | Pakiet SEL Blueframe; UX-04 = H5/ENEA/PN-EN 60617 | SCALONE 2026-10-23 na gałąź programu | GitHub |
+
+## D. Rozstrzygnięcia sprzeczności (konsolidacja 2026-10-23)
+
+| # | Sprzeczność | Rozstrzygnięcie |
+|---|---|---|
+| D1 | Nagłówek PLANS 5.1 ogłaszał plan „supersedowanym" przez `CONVERGENCE_EVIDENCE` §A, MAPA §8 i SYNTEZĘ; część B §8 mówiła „current truth: this PLANS.md"; wiersz 6 wskazywał `REJESTR_KONFLIKTOW`; PROGRAM §12.2 nazywał PLANS „skrótem postępu" | PLANS.md = jedyny nadrzędny rejestr postępu, priorytetów i odpowiedzialności (§A.1). `CONVERGENCE_EVIDENCE`, MAPA, SYNTEZA, plan A/B §7, PROGRAM §12.3 i `REJESTR_KONFLIKTOW` pozostają dokumentami DOWODOWYMI i technicznymi; żaden z nich nie prowadzi własnej kolejki statusów konkurencyjnej wobec §C |
+| D2 | Dwa „jedyne programy": PROGRAM §12 („jedyny aktywny plan wykonawczy UI/UX") i misja domknięcia (W1–W12 nadrzędne) | Oba są PODPROGRAMAMI jednego planu: PROGRAM §12 prowadzi treść kart UI/UX, plan A/B i MAPA — treść kart domeny; priorytety między nimi ustala §C (Fable) |
+| D3 | Program SLD: `PLAN_SLD_REWORK` F1–F5 „LIVING" (SYSTEM_SPEC, INDEX) vs §0 „zastąpione S1–S8" vs PROMPT_ZARZADCA „program SLD" vs PROGRAM §2.3 „SLD w jednym programie" (V12K-084) | Osobnego programu SLD nie ma: S1–S8 i SLD V3 wykonane kodowo, odbiór wizualny i naprawa funkcjonalno-inżynierska = UX-04 (H5-01…H5-05), projekcja z ENM = W7. `PLAN_SLD_REWORK` = historia i wymagania |
+| D4 | Ocena H5 3/10 i „runda H5" bez daty; „H5" oznacza też układ 110 kV w `SZABLONY_STACJI` | H5-xx = kryteria UX-04 (PROGRAM §12.5a); układ stacji H5 to pojęcie katalogowe. 110 kV tylko jako granica zasilania SN |
+| D5 | Rysunki ENEA Z.1, Z.4–Z.8 cytowane jako dowód, nieobecne w repo; `REFERENCE_ENGINE_RESEARCH_OSD_ENEA` używa Z1–Z3 dla zeszytów standardu | Brak pliku = BRAK ŹRÓDŁA w macierzy H5 (nie wymyśla się treści). Z1–Z3 (zeszyty) ≠ Z.1/Z.4–Z.8 (rysunki rundy H5) — różne oznaczenia, obie listy zachowane |
+| D6 | B-02: 8,5/10 (powierzchnie analityczne, 2026-09-10) vs ODRZUCONE (SLD, 2026-10-23); brak jednego rejestru werdyktów | Wiersz B-02 w §C.1 jest rejestrem werdyktów per powierzchnia; stan bramki = ODRZUCONE do nowego werdyktu właściciela na zrzutach z UX-04 |
+| D7 | Część B §4 (2026-05-13): TODO dla SI-100, VDROP/Earthing, fault-loop nN, DOCX — sprzeczne z §3.6/§3.7 (DONE) | §4 części B jest historyczny; pozycje DONE wg §3.6/§3.7 i inwentarza funkcji; fault-loop nN domknięty kartą W5-E-TTIT. Żadna z nich nie wraca do §C |
+| D8 | Część B §7 nazywała `docs/spec` „SOURCE OF TRUTH" wbrew §3.5 i `CLAUDE.md` (ARCHIWALNY) | `docs/spec` ARCHIWALNY (priorytet 9); wpis części B §7 opatrzony notą |
+| D9 | Kolizje identyfikatorów: W1–W5 (część B = fale wygaszania mostu wyników ≠ MAPA W1–W5), F1–F5 (SLD rework, ZWARCIA-PRO, program 10x F0–F4), F1–F11 (SLD V3), V12K-026 (dwa znaczenia) | W §C obowiązują znaczenia MAPA (W), PROGRAM (UX/U/E), plan A/B (AB), 10x (`10x-F`), SLD (`S`, `SLD V3 F1–F11`); część B zachowuje stare znaczenia jako historia |
+| D10 | Część B §3.-1 „`[ ] U1 W TOKU`" vs „FAZA U1 ZAMKNIĘTA 2026-07-15"; PROGRAM §8 U0 DoD „makiety zatwierdzone" vs PROMPT (e) „makiety odrzucone" | U0 i U1 ZAMKNIĘTE (PROGRAM §8); makiety U0.6 nie są kryterium (ekrany ocenia właściciel na żywej aplikacji — B-02, dyrektywa 2026-07-18 pkt 8) |
+| D11 | Numer PR pakietu SEL: README „PR #489" vs PROGRAM „PR #490" | Pakiet SEL = PR #490 (scalony); PR #489 = integracja do `main` |
+| D12 | §12.1 PROGRAM „P2 po odbiorze kluczowego przepływu" vs KONTRAKT „P2 jeśli nie blokuje P0/P1" vs REJESTR „P2 tylko po P0" | Obowiązuje §C: P2 po P0 UI/UX (UX-00…UX-06) i bez blokowania P1 |
+| D13 | Bramki PROGRAM §10: `vitest run --no-file-parallelism` (archiwalne) vs CI i `CLAUDE.md`: `npm test` (dwa kroki, pula `forks`) | `npm test` (karta SZYBKIE-TESTY 2026-09-30); tekst §10 poprawiony |
+| D14 | Część B §3.0 cytuje `docs/plan/PLAN_10_10_GLOBAL_SN.md` (nie istnieje) | Odnośnik historyczny; istniejący odpowiednik: `docs/plan/PLAN_10_10_FOLLOWUP.md`; §C nie cytuje planów 10/10 |
+| D15 | Gałąź wątku UI/UX (`…-karta-uiux-przemyslowy`) prowadzi trzecią przestrzeń identyfikatorów (UI-01…UI-19, W5-UI-xx, karty K1…K9, GPZ-MODEL, GPZ-H5-*) w dokumentach `KONTRAKT_UIUX_PRZEMYSLOWY_2026-10.md`, `PLAN_UIUX_PRZEMYSLOWY_2026-10.md`, `KOORDYNACJA_WATKOW_2026-10.md` (nieobecnych na HEAD programu); PROGRAM §12 ma UX-xx/H5-xx; brak mapowania między nimi | Jedyna kolejka UI/UX = UX-00…UX-09 (§C). Karty K1…K9 i UI-xx tej gałęzi to karty wykonawcze wewnątrz UX-01…UX-06 (K1 POWLOKA/K2 → UX-06, K3 GEOMETRIA-STACJI/K4/K5 KREATOR-STACJI/K6a TOPOLOGIA-API → UX-02/UX-04, K6 INSPEKTOR/K7 DRZEWO-GOTOWOSC → UX-03, K8 WYNIKI → UX-05, K9 WERYFIKACJA → UX-06); GPZ-H5-APARATURA i GPZ-H5-SKLADOWA-ZEROWA wpisane w §C.1 pod UX-04. Przy scaleniu tej gałęzi jej dokumenty dostają nagłówek „karty wykonawcze UX-xx, bez własnego statusu" |
+| D16 | Hashe commitów cytowane w części B §3.-1 (91 tokenów, m.in. `a75b7e9`, `fd630d8`, `077ef75`) nie są obiektami tego repozytorium (`git cat-file -t` 2026-10-23); dowód tych wpisów nie jest odtwarzalny | Wpisy części B pozostają historią z etykietą „dowód nieodtwarzalny w repo"; żaden z nich nie zasila statusu DOMKNIĘTA w §C bez ponownego pomiaru (UX-00) |
+| D17 | `INWENTARZ_FUNKCJI_2026-07.md` §6: tabela 37 ✅ / 10 ◐ / 0 ❌ (48 wierszy) vs bilanse tekstowe 27/18/0 i 27/17/1 oraz deklaracja „45 wierszy" | Prawdą jest tabela; bilanse tekstowe są historyczne. 10 pozycji ◐ to zakres UX-05/UX-06/UX-08 (nie nowe epiki) |
+
+### D.2 Tory równoległe i ścieżka krytyczna
+
+Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
+
+| Tor | Kolejność (ID z §C) |
+|---|---|
+| I — integracja (Fable) | INT-489 → JEDEN-PLAN → partie integracji kolejnych kart (fast-forward programu po CI 9/9 i niezależnej weryfikacji) |
+| U — UI/UX (Opus) | UX-00 → UX-04 (z GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 STOP |
+| R — rdzeń dynamiki | AB-1b.2 (0/A/B/C/D → E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
+| H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
+| S — rdzeń zwarciowy (B-01 architekta) | BILANS-THEVENIN → Y0-WYSPY → CZESTOTLIWOSC → PROFIL-NORMY → ZEROWA-POJEMNOSCI (po GPZ-H5-SKLADOWA-ZEROWA) → KONSUMENCI-IB → SLOWNIK-GENERATOR-PL → SC-WYROCZNIA-SN-TR-NN |
+| M — model ENM | W5-B → W5-C → W5-T → SZABLONY-NN → W7 → W8 |
+| Z — zabezpieczenia | W4-0 (pomiar) → W4-2 → wejście do AB-5 |
+| D — dokumenty, UX, higiena | P0: SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, AB-H0b; P1: O-53b, KSR-SKLAD-DER, SZABLONY-BEZ-DOMYSLOW, CICHE-ZERO, O-52, ENDPOINTY-BEZ-KONSUMENTA; P2: KSR-KRYTERIA-POMIAR, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2; W10-1 → W9 → W10-2 → W11 → W12 |
+
+Ścieżka krytyczna produktu: INT-489 → UX-00 → UX-04 → UX-01/02 → UX-05 → UX-06 (odbiór właściciela) równolegle z R (AB-1b.2 → AB-1c) i M (W5-B → W7, dostawca dla UX-04/UX-01).
+
+## E. Liczniki (stan 2026-10-23)
+
+| Miara | Wartość |
+|---|---|
+| Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 64 |
+| w tym P0 / P1 / P2 / P3 | 19 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
+| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 3, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 56 |
+| DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 5 |
+| ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 1 |
+| Pozycje domknięte §C.5 (programy i karty, bez odtwarzania) | 16 wierszy zbiorczych |
+| Dokumenty scalone w jeden rejestr | 12: PLANS 5.1, PROGRAM_UIUX §8/§12, PROMPT_ZARZADCA, MAPA §8, PLAN_AB §2/§5/§7/§11/§14, PLAN_SLD_REWORK §0, STAN_REPO §7 B–D, sel-blueframe (README, GALERIA, REJESTR_32, KONTRAKT), audyty SLD 2026-10-20 ×2, PROMPT_KONTYNUACJI_2026-10-23 |
+| Duplikaty scalone | SLD: 4 źródła statusu (PLANS §3.-2b/§3.3/§3.4, PLAN_SLD_REWORK §0, PROMPT „program SLD", audyty 2026-10-20) → UX-04 + §C.5; UI/UX: 3 (PLANS §3.-1, PROGRAM §8, PROGRAM §12.3) + 1 przestrzeń kart gałęzi UI/UX (UI-xx/K-xx) → UX-xx; fizyka: 3 (STAN_REPO §7 B/C, plan A/B §14.4, MAPA §8) → §C.2; B-02: 9 rozproszonych werdyktów → wiersz B-02 |
+
+Liczniki przelicza się przy każdej zmianie §C (polecenie w `scripts/` nie istnieje — liczenie ręczne, wynik w tym miejscu).
+
+---
+
+# Część B — Archiwum operacyjne (PLANS 5.1, stan 2026-08-05; historia, nie status)
+
+> Sekcje poniżej zachowano bez zmiany treści (z wyjątkiem oznaczeń zduplikowanych numerów i not
+> konsolidacyjnych). Status zadań prowadzi wyłącznie część A §C. Znaczenia identyfikatorów
+> W1–W5 i F1–F5 w tej części są historyczne (część A §D.9).
+
+**Version:** 5.1 (archiwum)
+**Status (archiwalny):** sekcje opisują stan z 2026-08-05.
+**Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
+**Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
+**Historical active work:** § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
+
+---
+
+## 1. Project Status Summary (archiwalne liczby z 2026-07; pomiar bieżący: `STAN_REPO.md` §1 i `CLAUDE.md` „Project Status")
 
 MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system with:
 - 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP models,
@@ -108,7 +341,24 @@ Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty 
       delty zatwierdzone przez właściciela (kroki Ib/I²t w dowodzie SC3F, porównanie
       I²t w doborze aparatów, delty bilansu w porównaniach A/B)
 
-### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
+### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (historia prac; status kart UX-xx w części A §C)
+
+> **AKTUALIZACJA WŁAŚCICIELSKA 2026-10-23 — JEDEN PROGRAM UI/UX PROWADZONY PRZEZ OPUSA.**
+> Jedyna kolejka operacyjna UI/UX, jego decyzje, statusy i reguły odbioru są w
+> [`docs/uiux/PROGRAM_UIUX_2026-07.md` §12](docs/uiux/PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23).
+> Materiały [SEL Blueframe](docs/research/sel-blueframe/README.md) to referencje
+> i kryteria UX-01…UX-06, **nie osobny program ani kolejka**. Historyczne plany SLD
+> i W1–W12 są technicznymi specyfikacjami / mapą zdolności produktu; AB zachowuje
+> własną fizykę i dowody, ale ekrany/UI prowadzi program Opusa.
+> **P0: UX-04 obejmuje również rundę H5: przebudowa SLD wg rysunków ENEA,
+> symbole PN-EN 60617, układ aparatów/pól SN, czytelność i B-02.**
+> Granica 110 kV tylko niezbędna dla modelu SN, bez rozwijania WN.
+> **P0:** inteligentny znak „+” na SLD, automatyczne operacje ENM, wspólny
+> inspektor, walidacja, motywy, White Box i pełny tor E2E.
+> **GIS: P3/STOP. B-02: ODRZUCONE.**
+> Wpisy poniżej (U0–U5, stare postępy i raporty) to **historia prac**,
+> nie bieżące procenty ani alternatywna lista zadań. Realne postępy aktualizuje
+> się wyłącznie w §12 programu i skrótowo tutaj.
 
 Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
 [`docs/uiux/PROGRAM_UIUX_2026-07.md`](docs/uiux/PROGRAM_UIUX_2026-07.md) (fazy U0–U5),
@@ -827,7 +1077,7 @@ edytować `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**` oraz warstwy 10x;
 łańcuch domykamy do ostatniego klika (w tym glify/rendering SLD) bez odkładania. Rygor
 jakości bez zmian (pełna regresja warstwy + guardy + determinizm + FROZEN/golden nietknięte).
 
-### 3.-2 SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
+### 3.-2b SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
 
 Gałąź `claude/sld-schema-cad-scada-rqvz73`. Przebudowa SLD do jakości CAD/SCADA
 zakończona w całości: fazy F1–F11 (spec `docs/sld/SLD_CAD_SPEC_V3.md`,
@@ -936,7 +1186,7 @@ naprawione DWA defekty produktu: martwy lewy klik w elementy kanwy
 (pointer-capture przekierowywał click na tło) i selekcja transformatora
 (bay-ref zamiast realnego refu + odporność na modele z pustym `bays`).
 
-### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
+### 3.-1b ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
 
 Podczas F9.6 przebudowy SLD v3 (`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` § F9.8) wykryto i
 NIEZALEŻNIE POTWIERDZONO (reprodukcja z dwóch ścieżek) pre-istniejącą podwójną negację znaku mocy:
@@ -1445,7 +1695,7 @@ Zakres zakończony w tym etapie:
 
 ---
 
-## 4. Next Priorities
+## 4. Next Priorities (HISTORYCZNE, 2026-05-13 — pozycje TODO rozstrzygnięte w części A §D.7; aktualna kolejka: część A §C)
 
 ### 4.0 P0 (po cleanupie 2026-05-13)
 
@@ -1522,7 +1772,7 @@ Zakres zakończony w tym etapie:
 
 ---
 
-## 7. Canonical Documentation
+## 7. Canonical Documentation (archiwalne; `docs/spec/` jest ARCHIWALNY wg `CLAUDE.md` priorytet 9 — część A §D.8)
 
 | Document | Location | Status |
 |----------|----------|--------|
@@ -1538,20 +1788,19 @@ Zakres zakończony w tym etapie:
 
 All historical ExecPlans (01-16) are archived in `docs/audit/historical_execplans/`.
 They document the evolution of the project but are NOT part of the canonical plan.
-Current truth: this PLANS.md document.
+Current truth (2026-10-23): część A tego pliku (§C).
 
 ---
 
-**END OF OPERATIONAL PLAN**
 
 
-### 3.0.4 SLD Reset — canonical cutover
+### 3.0.4b SLD Reset — canonical cutover (dopisane po znaczniku końca planu 5.1)
 
 - [x] Wyłączono dane demo w głównym widoku SLD (`App.tsx` -> `SldEditorPage useDemo={false}`).
 - [x] Spis inwentaryzacyjny starego/nowego pipeline i kanonicznego cutover: `docs/SLD_RESET_CANONICAL.md`.
 - [x] Krytyczny browser E2E działa na realnym backendzie i potwierdza brak mutacji snapshot hash po run/results.
 
-### 3.0.5 SLD proof package — 4 referencyjne sieci w głównej ścieżce
+### 3.0.5b SLD proof package — 4 referencyjne sieci w głównej ścieżce
 
 - [x] `#sld-view` obsługuje query `ref=leaf|pass|branch|ring` i ładuje kanoniczne dane topologiczne bez osobnego ekranu pomocniczego.
 - [x] Dodano `referenceTopologies.ts`: jawne dane wejściowe 4 sieci + przejście przez `buildVisualGraphFromTopology` i `computeLayout` (GPZ/trunk/branch/stacja/ring/NOP).
@@ -1567,6 +1816,10 @@ Current truth: this PLANS.md document.
 
 ---
 
+
+**END OF OPERATIONAL PLAN (część B, archiwum)**
+
+---
 
 ## 9. Archiwum sesji operacyjnych
 

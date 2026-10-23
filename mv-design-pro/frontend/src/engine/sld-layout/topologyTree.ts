@@ -4,9 +4,10 @@
  * @see docs/sld/SLD_GEOMETRY_CONTRACT_V1.md §2
  *
  * Algorytm (deterministyczny, zero heurystyk pozycyjnych):
- *  1. Mapuj każdą szynę → stacja (stationId z czytnika LUB fallback z prefiksu ref_id
- *     `stn/<id>` / `gpz/<id>`; szyny pól-terminali nie są w `bus_refs`, ale należą do
- *     stacji wg prefiksu — to wiąże laterale z ich stacją macierzystą).
+ *  1. Mapuj każdą szynę → stacja (`stationId` z czytnika: jedno lustro backendu
+ *     `szynyStacji` — szyny główne, zaciski pól SN i końce aparatów pól nN; zacisk pola
+ *     nie jest w `bus_refs`, ale należy do stacji z deklaracji `field_specs` — to wiąże
+ *     laterale z ich stacją macierzystą bez rozpoznawania po wzorcu nazwy).
  *  2. Zbuduj graf stacji z gałęzi CABLE/LINE. Szyny pośrednie (bus/...) bez stacji =
  *     węzły przelotowe; kontraktowane (deg-2) do krawędzi stacja→stacja.
  *  3. Korzeń = stacja zawierająca szynę źródła (GPZ).
@@ -55,23 +56,6 @@ export interface TopologyTree {
 
 const INTERMEDIATE_PREFIX = 'BUS:';
 
-/** Stacja właściciel danej szyny: stationId z czytnika lub prefiks ref_id. */
-function busOwnerStation(
-  busId: string,
-  busStationId: string | null,
-): string | null {
-  if (busStationId) return busStationId;
-  if (busId.startsWith('stn/')) {
-    const id = busId.split('/')[1];
-    if (id) return `stn/${id}/station`;
-  }
-  if (busId.startsWith('gpz/')) {
-    const id = busId.split('/')[1];
-    if (id) return `gpz/${id}/substation`;
-  }
-  return null;
-}
-
 /** Klucz węzła grafu dla szyny: stacja lub węzeł pośredni. */
 function nodeKeyForBus(busId: string, owner: string | null): string {
   return owner ?? INTERMEDIATE_PREFIX + busId;
@@ -95,7 +79,7 @@ export function buildTopologyTree(snapshot: TopologyInputV1): TopologyTree {
   const resolveBusNode = (busId: string): string => {
     const cached = busToNode.get(busId);
     if (cached) return cached;
-    const owner = busOwnerStation(busId, busStationId.get(busId) ?? null);
+    const owner = busStationId.get(busId) ?? null;
     const key = nodeKeyForBus(busId, owner);
     busToNode.set(busId, key);
     return key;

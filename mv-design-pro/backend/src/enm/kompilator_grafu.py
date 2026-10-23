@@ -50,10 +50,23 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
+from network_model.nazwy import opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 class BenchmarkBuildError(RuntimeError):
-    """Operacja domenowa odrzuciła krok budowy sieci benchmarkowej."""
+    """Operacja domenowa odrzuciła krok budowy sieci benchmarkowej.
+
+    Treść to komunikat operacji domenowej dla projektanta (import arkusza, migracja modelu
+    zastanego, odtworzenie archiwum pokazują ją wprost); nazwa operacji jest polem
+    `operacja`, nie częścią treści (partia integracji 10 — kod operacji to identyfikator
+    maszynowy).
+    """
+
+    def __init__(self, komunikat: str, *, operacja: str | None = None) -> None:
+        super().__init__(komunikat)
+        self.operacja = operacja
 
 
 @dataclass(frozen=True)
@@ -72,6 +85,18 @@ class EdgeSpec:
     dlugosc_m: float = 1000.0
     rodzaj: str = "LINIA"
     name: str | None = None
+    #: Kategoria katalogu typu odcinka, gdy NIE wynika z rodzaju (``LINIA`` → ``LINIA_SN``,
+    #: ``KABEL`` → ``KABEL_SN``): przewód linii 110 kV z katalogu ``PRZEWOD_LINII_WN`` (karta
+    #: LINIA-110). ``None`` = kategoria domyślna rodzaju — ładunek operacji bez zmian.
+    catalog_namespace: str | None = None
+
+
+def _segment_z_kategoria(segment: dict[str, Any], catalog_namespace: str | None) -> dict[str, Any]:
+    """Segment operacji budowy odcinka z jawną kategorią katalogu (``catalog_binding``), gdy
+    jest podana — inaczej segment bez zmian (ten sam ładunek, te same identyfikatory)."""
+    if catalog_namespace is None:
+        return segment
+    return {**segment, "catalog_binding": {"catalog_namespace": catalog_namespace}}
 
 
 def _nazwa_krawedzi(krawedz: EdgeSpec) -> str:
@@ -112,7 +137,7 @@ def wykonaj(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[
     """
     result = execute_domain_operation(enm_dict=enm, op_name=op_name, payload=payload)
     if result.get("error"):
-        raise BenchmarkBuildError(f"{op_name}: {result['error']}")
+        raise BenchmarkBuildError(str(result["error"]), operacja=op_name)
     return result["snapshot"]
 
 
@@ -141,6 +166,7 @@ def dodaj_zrodlo_slack(
     line_fields_count: int,
     source_name: str = "GPZ",
     u_set_pu: float | None = None,
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
     napięciu (`skip_hv_transformer=True` — CV-4.3 K1: sieć referencyjna z
@@ -160,6 +186,10 @@ def dodaj_zrodlo_slack(
     czyta (slack jest idealny); zwarcia liczone na bliźniakach PF są wynikiem
     tego założenia (parytet asemblera pilnuje ich determinizmu, NIE zgodności z
     literaturą — literatura nie podaje wyniku).
+
+    ``lv_voltage_tolerance`` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tolerancja sieci nN, gdy
+    szyna bilansująca leży w paśmie nN (sieć nN bez transformatora w modelu, np. CIGRE LV):
+    źródło jest wtedy nośnikiem wiersza nN tabeli 1 IEC 60909-0; ``None`` = brak deklaracji.
     """
     enm = wykonaj(
         enm,
@@ -175,6 +205,11 @@ def dodaj_zrodlo_slack(
             },
             "line_fields_count": max(line_fields_count, 1),
             "source_name": source_name,
+            **(
+                {"lv_voltage_tolerance": lv_voltage_tolerance}
+                if lv_voltage_tolerance is not None
+                else {}
+            ),
         },
     )
     bus_ref = _gpz_substation(enm)["bus_refs"][0]
@@ -189,6 +224,7 @@ def kontynuuj_z_pola(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Pierwsze odejście z pola liniowego GPZ (`continue_trunk_segment_sn`).
@@ -205,13 +241,16 @@ def kontynuuj_z_pola(
         "continue_trunk_segment_sn",
         {
             "field_ref": field_ref,
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -226,6 +265,7 @@ def rozpocznij_z_pola(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Kolejne (drugie, trzecie, ...) odejście z GPZ (`start_branch_segment_sn`).
@@ -238,13 +278,16 @@ def rozpocznij_z_pola(
         "start_branch_segment_sn",
         {
             "from_ref": f"{field_ref}.BRANCH",
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -259,6 +302,7 @@ def kontynuuj_z_szyny(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Odejście z DOWOLNEJ zwykłej szyny (nie GPZ) — dowolna liczba wywołań
@@ -271,13 +315,16 @@ def kontynuuj_z_szyny(
         "continue_trunk_segment_sn",
         {
             "from_terminal_id": from_bus_ref,
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -293,6 +340,7 @@ def zamknij_pierscien(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
 ) -> dict[str, Any]:
     """Domknij pierścień/oczko między DWIEMA istniejącymi szynami."""
     return wykonaj(
@@ -302,7 +350,10 @@ def zamknij_pierscien(
             "from_bus_ref": from_bus_ref,
             "to_bus_ref": to_bus_ref,
             "ring_name": name,
-            "segment": {"rodzaj": rodzaj, "dlugosc_m": dlugosc_m, "catalog_ref": catalog_ref},
+            "segment": _segment_z_kategoria(
+                {"rodzaj": rodzaj, "dlugosc_m": dlugosc_m, "catalog_ref": catalog_ref},
+                catalog_namespace,
+            ),
         },
     )
 
@@ -418,6 +469,7 @@ def dodaj_transformator(
     lv_bus_ref: str | None = None,
     hv_voltage_kv: float | None = None,
     off_nominal_ratio: float | None = None,
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Transformator SN/nN — tworzy NOWĄ szynę LV, gdy `lv_bus_ref` nie podano
     (CV-4.3 K1, rozszerzenie `add_transformer_sn_nn` — zob. jego docstring), albo
@@ -436,8 +488,14 @@ def dodaj_transformator(
     literaturową bez opisanej regulacji), jeden krok o rozmiarze dokładnie
     `(off_nominal_ratio - 1) * 100 %` od neutralnej pozycji 0 do 1, po stronie
     HV — `tau = 1 + (1-0)*step_percent/100 = off_nominal_ratio`.
+
+    `lv_voltage_tolerance` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — tolerancja sieci nN strony
+    dolnej (wiersz nN tabeli 1 IEC 60909-0), podawana operacji `add_transformer_sn_nn`
+    (ten sam predykat zapisu); `None` = brak deklaracji.
     """
     payload: dict[str, Any] = {"transformer_catalog_ref": catalog_ref}
+    if lv_voltage_tolerance is not None:
+        payload["lv_voltage_tolerance"] = lv_voltage_tolerance
     if hv_bus_ref is not None:
         payload["hv_bus_ref"] = hv_bus_ref
     elif hv_voltage_kv is not None and lv_bus_ref is not None:
@@ -533,6 +591,7 @@ def zbuduj_topologie(
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
+                    catalog_namespace=edge.catalog_namespace,
                     bus_name=other_lit,
                 )
                 gpz_first_departure_done = True
@@ -545,6 +604,7 @@ def zbuduj_topologie(
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
+                    catalog_namespace=edge.catalog_namespace,
                     bus_name=other_lit,
                 )
         else:
@@ -555,6 +615,7 @@ def zbuduj_topologie(
                 dlugosc_m=edge.dlugosc_m,
                 name=_nazwa_krawedzi(edge),
                 rodzaj=edge.rodzaj,
+                catalog_namespace=edge.catalog_namespace,
                 bus_name=other_lit,
             )
         bus_map[other_lit] = new_ref
@@ -587,6 +648,7 @@ def zbuduj_topologie(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
         )
         branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
@@ -646,6 +708,7 @@ def rozbuduj_z_dowolnej_szyny(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
             bus_name=other_lit,
         )
         bus_map[other_lit] = new_ref
@@ -673,6 +736,7 @@ def rozbuduj_z_dowolnej_szyny(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
         )
         branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
@@ -705,6 +769,10 @@ class TransformatorSpec:
     lv_lit: str
     catalog_ref: str
     name: str | None = None
+    #: Tolerancja napięcia sieci nN zasilanej z transformatora (PLUS_6 / PLUS_10) — podawana
+    #: operacji `add_transformer_sn_nn` przy tworzeniu (ten sam predykat zapisu co kreator);
+    #: ``None`` = brak deklaracji.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 @dataclass(frozen=True)
@@ -721,6 +789,9 @@ class ZrodloSpec:
     ik3_min_ka: float | None = None
     rx_ratio_min: float | None = None
     u_set_pu: float | None = None
+    #: Tolerancja napięcia sieci nN, gdy źródło leży na szynie nN (PLUS_6 / PLUS_10) —
+    #: podawana operacji `add_grid_source_sn`; ``None`` = brak deklaracji.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 @dataclass(frozen=True)
@@ -760,72 +831,85 @@ class WynikKompilacji:
     load_map: dict[str, str] = field(default_factory=dict)
 
 
-class BladGrafuWejsciowego(ValueError):
+class BladGrafuWejsciowego(OdmowaDanychError):
     """Graf wejściowy nie daje się skompilować — komunikat nazywa element i przyczynę."""
 
 
 def _sprawdz_graf(graf: GrafDoKompilacji) -> dict[str, SzynaSpec]:
+    # Partia integracji 10: komunikat nazywa element TĄ SAMĄ nazwą, którą dostanie w modelu
+    # (szyna i transformator — `name`; odcinek — `_nazwa_krawedzi`: jawna nazwa albo
+    # oznaczenie nadane przez człowieka), nigdy identyfikatorem maszynowym; szyna spoza grafu jest opisana rolą
+    # (początkowa, końcowa, strona górna/dolna), bo nazwy nieistniejącej szyny nie ma.
     szyny: dict[str, SzynaSpec] = {}
     for szyna in graf.szyny:
         if szyna.lit in szyny:
-            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('szyna', szyna.name)} zadeklarowana dwukrotnie"
+            )
         if szyna.voltage_kv <= 0:
-            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}': napięcie musi być dodatnie")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('szyna', szyna.name)}: napięcie musi być dodatnie"
+            )
         szyny[szyna.lit] = szyna
     if not graf.zrodla:
         raise BladGrafuWejsciowego("graf bez źródła systemowego — nie ma skąd zacząć budowy")
     identyfikatory: set[str] = set()
     for odcinek in graf.odcinki:
+        opis_odcinka = opis_rodzaju_i_nazwy("odcinek", _nazwa_krawedzi(odcinek))
         if odcinek.edge_id in identyfikatory:
-            raise BladGrafuWejsciowego(f"gałąź '{odcinek.edge_id}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(f"{opis_odcinka}: gałąź zadeklarowana dwukrotnie")
         identyfikatory.add(odcinek.edge_id)
-        for koniec in (odcinek.from_lit, odcinek.to_lit):
+        for rola, koniec in (("początkowa", odcinek.from_lit), ("końcowa", odcinek.to_lit)):
             if koniec not in szyny:
-                raise BladGrafuWejsciowego(
-                    f"odcinek '{odcinek.edge_id}': szyna '{koniec}' nie istnieje w grafie"
-                )
+                raise BladGrafuWejsciowego(f"{opis_odcinka}: szyna {rola} nie istnieje w grafie")
         if odcinek.from_lit == odcinek.to_lit:
-            raise BladGrafuWejsciowego(f"odcinek '{odcinek.edge_id}' łączy szynę samą ze sobą")
+            raise BladGrafuWejsciowego(f"{opis_odcinka} łączy szynę samą ze sobą")
         u_od, u_do = szyny[odcinek.from_lit].voltage_kv, szyny[odcinek.to_lit].voltage_kv
         if abs(u_od - u_do) > 1e-9:
             raise BladGrafuWejsciowego(
-                f"odcinek '{odcinek.edge_id}' łączy szyny o różnych napięciach "
+                f"{opis_odcinka} łączy szyny o różnych napięciach "
                 f"({u_od:g} kV / {u_do:g} kV) — zmiana poziomu napięcia wymaga transformatora"
             )
     for trafo in graf.transformatory:
+        opis_trafo = opis_rodzaju_i_nazwy("transformator", trafo.name)
         if trafo.edge_id in identyfikatory:
-            raise BladGrafuWejsciowego(f"gałąź '{trafo.edge_id}' zadeklarowana dwukrotnie")
+            raise BladGrafuWejsciowego(f"{opis_trafo}: gałąź zadeklarowana dwukrotnie")
         identyfikatory.add(trafo.edge_id)
-        for koniec in (trafo.hv_lit, trafo.lv_lit):
+        for rola, koniec in (("strony górnej", trafo.hv_lit), ("strony dolnej", trafo.lv_lit)):
             if koniec not in szyny:
-                raise BladGrafuWejsciowego(
-                    f"transformator '{trafo.edge_id}': szyna '{koniec}' nie istnieje w grafie"
-                )
+                raise BladGrafuWejsciowego(f"{opis_trafo}: szyna {rola} nie istnieje w grafie")
         if trafo.hv_lit == trafo.lv_lit:
-            raise BladGrafuWejsciowego(f"transformator '{trafo.edge_id}' łączy szynę samą ze sobą")
-        if szyny[trafo.hv_lit].voltage_kv < szyny[trafo.lv_lit].voltage_kv:
+            raise BladGrafuWejsciowego(f"{opis_trafo} łączy szynę samą ze sobą")
+        szyna_hv, szyna_lv = szyny[trafo.hv_lit], szyny[trafo.lv_lit]
+        if szyna_hv.voltage_kv < szyna_lv.voltage_kv:
             raise BladGrafuWejsciowego(
-                f"transformator '{trafo.edge_id}': strona HV ('{trafo.hv_lit}', "
-                f"{szyny[trafo.hv_lit].voltage_kv:g} kV) ma niższe napięcie niż strona LV "
-                f"('{trafo.lv_lit}', {szyny[trafo.lv_lit].voltage_kv:g} kV)"
+                f"{opis_trafo}: strona górna ({opis_rodzaju_i_nazwy('szyna', szyna_hv.name)}, "
+                f"{szyna_hv.voltage_kv:g} kV) ma niższe napięcie niż strona dolna "
+                f"({opis_rodzaju_i_nazwy('szyna', szyna_lv.name)}, {szyna_lv.voltage_kv:g} kV)"
             )
     szyny_zrodel: set[str] = set()
     for zrodlo in graf.zrodla:
         if zrodlo.lit not in szyny:
-            raise BladGrafuWejsciowego(f"źródło '{zrodlo.name}': szyna '{zrodlo.lit}' nie istnieje")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: szyna przyłączenia nie istnieje"
+            )
         if zrodlo.lit in szyny_zrodel:
             raise BladGrafuWejsciowego(
-                f"szyna '{zrodlo.lit}' ma więcej niż jedno źródło systemowe — model niesie "
+                f"{opis_rodzaju_i_nazwy('szyna', szyny[zrodlo.lit].name)} ma więcej niż jedno "
+                "źródło systemowe — model niesie "
                 "jedno źródło sieciowe na szynę zasilającą"
             )
         szyny_zrodel.add(zrodlo.lit)
         if zrodlo.sk3_mva is None and zrodlo.ik3_ka is None:
             raise BladGrafuWejsciowego(
-                f"źródło '{zrodlo.name}': podaj moc zwarciową Sk'' albo prąd zwarciowy Ik''"
+                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: podaj moc zwarciową Sk'' albo "
+                "prąd zwarciowy Ik''"
             )
     for odbior in graf.odbiory:
         if odbior.lit not in szyny:
-            raise BladGrafuWejsciowego(f"odbiór '{odbior.name}': szyna '{odbior.lit}' nie istnieje")
+            raise BladGrafuWejsciowego(
+                f"{opis_rodzaju_i_nazwy('odbiór', odbior.name)}: szyna przyłączenia nie istnieje"
+            )
     return szyny
 
 
@@ -908,6 +992,11 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         "line_fields_count": max(odcinki_przy_szynie.get(zrodlo.lit, 0), 1),
                     }
                 ],
+                **(
+                    {"lv_voltage_tolerance": zrodlo.lv_voltage_tolerance}
+                    if zrodlo.lv_voltage_tolerance is not None
+                    else {}
+                ),
             },
         )
         nowe_zrodlo = next(s for s in enm["sources"] if s["ref_id"] not in przed)
@@ -958,6 +1047,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
+                        catalog_namespace=odcinek.catalog_namespace,
                         bus_name=szyny[lit_nowej].name,
                     )
                 else:
@@ -969,6 +1059,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
+                        catalog_namespace=odcinek.catalog_namespace,
                         bus_name=szyny[lit_nowej].name,
                     )
             else:
@@ -979,6 +1070,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     dlugosc_m=odcinek.dlugosc_m,
                     name=_nazwa_krawedzi(odcinek),
                     rodzaj=odcinek.rodzaj,
+                    catalog_namespace=odcinek.catalog_namespace,
                     bus_name=szyny[lit_nowej].name,
                 )
             wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
@@ -992,6 +1084,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     hv_bus_ref=ref_biezacej,
                     catalog_ref=trafo.catalog_ref,
                     lv_voltage_kv=szyny[lit_nowej].voltage_kv,
+                    lv_voltage_tolerance=trafo.lv_voltage_tolerance,
                 )
             else:
                 enm, ref_nowej = dodaj_transformator(
@@ -999,6 +1092,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     lv_bus_ref=ref_biezacej,
                     hv_voltage_kv=szyny[lit_nowej].voltage_kv,
                     catalog_ref=trafo.catalog_ref,
+                    lv_voltage_tolerance=trafo.lv_voltage_tolerance,
                 )
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo
@@ -1015,7 +1109,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
     if nieosiagalne:
         raise BladGrafuWejsciowego(
             "szyny nieosiągalne z żadnego źródła systemowego (wyspa bez zasilania): "
-            + ", ".join(nieosiagalne)
+            + ", ".join(opis_rodzaju_i_nazwy("szyna", szyny[lit].name) for lit in nieosiagalne)
         )
 
     # krawędzie zamykające — oba końce istnieją
@@ -1033,6 +1127,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                 dlugosc_m=odcinek.dlugosc_m,
                 name=_nazwa_krawedzi(odcinek),
                 rodzaj=odcinek.rodzaj,
+                catalog_namespace=odcinek.catalog_namespace,
             )
             wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
                 "ref_id"
@@ -1044,6 +1139,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                 hv_bus_ref=wynik.bus_map[trafo.hv_lit],
                 lv_bus_ref=wynik.bus_map[trafo.lv_lit],
                 catalog_ref=trafo.catalog_ref,
+                lv_voltage_tolerance=trafo.lv_voltage_tolerance,
             )
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo

@@ -22,7 +22,9 @@ import type { DefinicjaKolumny, NazwaObiektu, WartoscKomorki, WierszTabeli } fro
 import { refDowoduPorownania } from './dowodPorownania';
 import {
   ZWARCIA_POROWNANIE_STRINGS as SZ,
+  fmtCzasTb,
   fmtData,
+  fmtDeltaCzasTb,
   fmtDeltaKA,
   fmtDeltaKA2s,
   fmtDeltaMVA,
@@ -72,6 +74,17 @@ export const KOLUMNY_PUNKTOW_ZWARCIOWYCH: DefinicjaKolumny[] = [
   { klucz: 'i2tA', etykieta: SZ.kolI2tA, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
   { klucz: 'i2tB', etykieta: SZ.kolI2tB, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
   { klucz: 'i2tD', etykieta: SZ.kolI2tD, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
+  // Karta TB-WARTOSC-ROBOCZA: Ib, iDC(tb) i tb punktu — tryb ekspercki; komórka tb strony
+  // z wartością roboczą niesie dopisek (pochodzenie z backendu, nie zgadywane).
+  { klucz: 'ibA', etykieta: SZ.kolIbA, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'ibB', etykieta: SZ.kolIbB, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'ibD', etykieta: SZ.kolIbD, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'idcA', etykieta: SZ.kolIdcA, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'idcB', etykieta: SZ.kolIdcB, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'idcD', etykieta: SZ.kolIdcD, jednostka: SZ.jednKA, mono: true, tylkoEkspercki: true },
+  { klucz: 'tbA', etykieta: SZ.kolTbA, jednostka: SZ.jednS, mono: true, tylkoEkspercki: true },
+  { klucz: 'tbB', etykieta: SZ.kolTbB, jednostka: SZ.jednS, mono: true, tylkoEkspercki: true },
+  { klucz: 'tbD', etykieta: SZ.kolTbD, jednostka: SZ.jednS, mono: true, tylkoEkspercki: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -280,6 +293,44 @@ export function naWierszePunktowZwarciowych(
       refB,
     );
 
+    const ib = trio(
+      p.ib_ka_a,
+      p.ib_ka_b,
+      p.delta_ib_ka,
+      p.delta_ib_percent,
+      fmtKA,
+      fmtDeltaKA,
+      refA,
+      refB,
+    );
+    const idc = trio(
+      p.i_dc_ka_a,
+      p.i_dc_ka_b,
+      p.delta_i_dc_ka,
+      p.delta_i_dc_percent,
+      fmtKA,
+      fmtDeltaKA,
+      refA,
+      refB,
+    );
+    // t_b strony z wartością roboczą: dopisek z flagi backendu (`tb_wartosc_robocza_*`).
+    const tb = trio(
+      p.tb_s_a,
+      p.tb_s_b,
+      p.delta_tb_s,
+      p.delta_tb_percent,
+      fmtCzasTb,
+      fmtDeltaCzasTb,
+      refA,
+      refB,
+    );
+    const tbA = p.tb_wartosc_robocza_a === true && typeof p.tb_s_a === 'number'
+      ? { ...tb.a, wartosc: `${tb.a.wartosc}${SZ.tbRobocza}` }
+      : tb.a;
+    const tbB = p.tb_wartosc_robocza_b === true && typeof p.tb_s_b === 'number'
+      ? { ...tb.b, wartosc: `${tb.b.wartosc}${SZ.tbRobocza}` }
+      : tb.b;
+
     return {
       // Karta #145: nazwa punktu z mostu nazw wyników (migawka modelu), nazwa z wyniku
       // tylko dla obiektu spoza migawki — nigdy identyfikator.
@@ -311,6 +362,15 @@ export function naWierszePunktowZwarciowych(
       i2tA: i2t.a,
       i2tB: i2t.b,
       i2tD: i2t.d,
+      ibA: ib.a,
+      ibB: ib.b,
+      ibD: ib.d,
+      idcA: idc.a,
+      idcB: idc.b,
+      idcD: idc.d,
+      tbA,
+      tbB,
+      tbD: tb.d,
     };
   });
 }

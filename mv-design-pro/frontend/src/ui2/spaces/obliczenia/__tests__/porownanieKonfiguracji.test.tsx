@@ -7,8 +7,8 @@ import { studyCaseFixture } from './fixtures';
 
 function rozne() {
   return [
-    studyCaseFixture('K1', 'Stan normalny', { config: { c_factor_max: 1.1 } }),
-    studyCaseFixture('K2', 'Zwarcia maks.', { config: { c_factor_max: 1.05 } }),
+    studyCaseFixture('K1', 'Stan normalny', { config: { base_mva: 100 } }),
+    studyCaseFixture('K2', 'Zwarcia maks.', { config: { base_mva: 75 } }),
   ];
 }
 
@@ -36,7 +36,7 @@ describe('PorownanieKonfiguracji — tabela różnic', () => {
     render(<PorownanieKonfiguracji przypadki={rozne()} ladowanie={false} blad={null} />);
     expect(screen.getByText('Stan normalny')).toBeInTheDocument();
     expect(screen.getByText('Zwarcia maks.')).toBeInTheDocument();
-    expect(screen.getByText('1.05')).toBeInTheDocument();
+    expect(screen.getByText('75')).toBeInTheDocument();
   });
 
   it('wiersz różniący się ma znacznik i klasę mvd-rozne', () => {
@@ -49,10 +49,10 @@ describe('PorownanieKonfiguracji — tabela różnic', () => {
 
   it('„Tylko różnice" ukrywa wiersze identyczne', () => {
     render(<PorownanieKonfiguracji przypadki={rozne()} ladowanie={false} blad={null} />);
-    expect(screen.getByText(CONFIG_FIELD_LABELS.base_mva)).toBeInTheDocument();
+    expect(screen.getByText(CONFIG_FIELD_LABELS.max_iterations)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-porownanie-tylko-roznice'));
-    expect(screen.queryByText(CONFIG_FIELD_LABELS.base_mva)).not.toBeInTheDocument();
-    expect(screen.getByText(CONFIG_FIELD_LABELS.c_factor_max)).toBeInTheDocument();
+    expect(screen.queryByText(CONFIG_FIELD_LABELS.max_iterations)).not.toBeInTheDocument();
+    expect(screen.getByText(CONFIG_FIELD_LABELS.base_mva)).toBeInTheDocument();
   });
 
   it('identyczne konfiguracje → komunikat „bez różnic"', () => {

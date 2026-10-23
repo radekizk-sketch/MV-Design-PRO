@@ -58,7 +58,7 @@ def sprawdz_zakresy_waznosci(
     """
     if wartosci.shape[0] != len(adresy):
         raise AssertionError(
-            f"sprawdz_zakresy_waznosci: {wartosci.shape[0]} wartosci wobec {len(adresy)} adresow"
+            f"sprawdz_zakresy_waznosci: {wartosci.shape[0]} wartości wobec {len(adresy)} adresów"
         )
     ponizej = wartosci < dolne - margines_arytmetyczny(dolne, nastawy)
     powyzej = wartosci > gorne + margines_arytmetyczny(gorne, nastawy)
@@ -85,9 +85,9 @@ def sprawdz_zakresy_waznosci(
         przekroczenia.append(abs(wartosc - granica))
     raise OdmowaDynamiki(
         KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
-        f"Stan poza zakresem waznosci modelu przy t={t_s} s: {'; '.join(opisy)}. "
-        "Od tej chwili przebieg nie pochodzi z zadnego modelu — zalozenia badania "
-        "leza poza zakresem waznosci tego urzadzenia.",
+        f"Stan poza zakresem ważności modelu przy t={t_s} s: {'; '.join(opisy)}. "
+        "Od tej chwili przebieg nie pochodzi z żadnego modelu — założenia badania "
+        "leżą poza zakresem ważności tego urządzenia.",
         t_s=t_s,
         adresy=tuple(adresy_zle),
         indeksy=tuple(int(indeks) for indeks in np.flatnonzero(poza)),

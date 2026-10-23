@@ -38,6 +38,8 @@ class ProofType(StrEnum):
     AUDIT2_VT_GROUNDING_VALIDATION = "AUDIT2_VT_GROUNDING_VALIDATION"
     # Karta P0.10 (nN): pakiet dowodowy weryfikacji obwodu nN (10 kroków, G-21).
     LV_CIRCUIT_VERIFICATION = "LV_CIRCUIT_VERIFICATION"
+    # Karta LINIA-110: parametry linii napowietrznej 110 kV z geometrii słupa.
+    OVERHEAD_LINE_PARAMETERS = "OVERHEAD_LINE_PARAMETERS"
 
 
 class LoadElementKind(StrEnum):
@@ -396,6 +398,10 @@ class ProofHeader:
     voltage_factor: float | None = None
     source_bus: str | None = None
     target_bus: str | None = None
+    #: Podstawa współczynnika c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — „IEC 60909-0 tab. 1,
+    #: pasmo SN, MAX" albo „nadpisanie ręczne: <uzasadnienie>". Pole addytywne: klucz w
+    #: ``to_dict`` tylko, gdy ustawione (dowody bez c — bajtowo te same).
+    voltage_factor_zrodlo: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -410,6 +416,11 @@ class ProofHeader:
             "voltage_factor": self.voltage_factor,
             "source_bus": self.source_bus,
             "target_bus": self.target_bus,
+            **(
+                {"voltage_factor_zrodlo": self.voltage_factor_zrodlo}
+                if self.voltage_factor_zrodlo is not None
+                else {}
+            ),
         }
 
 

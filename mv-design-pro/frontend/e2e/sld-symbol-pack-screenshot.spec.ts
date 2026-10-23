@@ -19,10 +19,12 @@ import * as fs from 'node:fs';
 import * as crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
+import { katalogZrzutow } from './katalogZrzutow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('sld-symbol-pack-harness.html');
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/cad');
+const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/cad'));
 
 const SYMBOLE_CAD = [
   'cad.wylacznik',
@@ -44,11 +46,12 @@ const SYMBOLE_CAD = [
   'cad.zabezpieczenie',
   'cad.zacisk',
   'cad.wezel',
+  'cad.wylacznikRoznicowopradowy',
 ] as const;
 
-const ZE_STANEM = ['cad.wylacznik', 'cad.wylacznikInstalacyjny', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
+const ZE_STANEM = ['cad.wylacznik', 'cad.wylacznikInstalacyjny', 'cad.wylacznikRoznicowopradowy', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
 /** Pozycje tablicy rozpoznawalności (klucz w dokumencie pakietu §6). */
-const POZYCJE_ROZPOZNANIA = 26;
+const POZYCJE_ROZPOZNANIA = 28;
 
 function sha256Pliku(sciezka: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(sciezka)).digest('hex');
@@ -106,6 +109,7 @@ test.describe('sld-symbol-pack:screenshot', () => {
         expect(wypelnioneZamkniety).toBe(wypelnioneOtwarty);
       }
       const plik = path.join(OUTPUT_DIR, `${wariant.plik}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: plik, fullPage: true });
       skroty.set(wariant.plik, sha256Pliku(plik));
       console.log(`Saved: ${plik}`);
@@ -132,6 +136,7 @@ test.describe('sld-symbol-pack:screenshot', () => {
     }
     await expect(tablica.locator('text[data-cad="mark"]')).toHaveCount(2);
     const plik = path.join(OUTPUT_DIR, 'rozpoznanie_mono.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: plik, fullPage: true });
     console.log(`Saved: ${plik}`);
     expect(bledy, `błędy konsoli: ${bledy.join(' | ')}`).toEqual([]);

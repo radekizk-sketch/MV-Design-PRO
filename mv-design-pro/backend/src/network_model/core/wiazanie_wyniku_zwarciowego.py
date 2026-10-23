@@ -64,6 +64,14 @@ POLA_WYNIKU_ZWARCIOWEGO: tuple[str, ...] = (
     "tk_s",
     "kappa",
     "rx_ratio",
+    # Karta SC-IB-ITH-ZRODLA: wielkości kryterium wyłączania (I_b, t_b, i_DC(t_b)) — bez
+    # nich podmiana I_b w żądaniu doboru aparatury byłaby niewidoczna dla pieczęci.
+    "ib_a",
+    "tb_s",
+    "i_dc_a",
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (pola lokalne albo wartość robocza) —
+    # podmiana pochodzenia (wartość robocza podana jako projektowa) zmienia odcisk.
+    "tb_zrodlo",
 )
 
 #: Moduły, których treść składa się na odcisk implementacji solvera zwarciowego.
@@ -72,8 +80,18 @@ POLA_WYNIKU_ZWARCIOWEGO: tuple[str, ...] = (
 #: wskazywać na kod, który liczył zwarcie.
 MODULY_IMPLEMENTACJI_ZWARCIOWEJ: tuple[str, ...] = (
     "network_model/solvers/short_circuit_iec60909.py",
+    # Karta SC-IB-ITH-ZRODLA: κ, i_p, I_th, I_b i i_DC liczy rdzeń wspólny, a μ, q maszyn
+    # moduł maszynowy — odcisk bez nich przypisywałby liczby kodowi, który ich nie liczył.
+    "network_model/solvers/short_circuit_core.py",
+    "network_model/solvers/machine_sc_iec60909.py",
+    "network_model/core/czas_wylaczenia.py",
     "network_model/core/wklad_zwarciowy_przeksztaltnika.py",
     "network_model/core/inverter.py",
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): impedancja maszyny wirującej (Z″_GK, Z_M, R/X)
+    # i wartości robocze jej parametrów (x″d, cos φ_r, I_LR/I_rM, η_r, p) z rejestru — ta sama
+    # migawka liczy inne prądy, gdy zmieni się propozycja rejestru albo model maszyny.
+    "network_model/core/machine.py",
+    "network_model/catalog/wartosci_robocze.py",
 )
 
 

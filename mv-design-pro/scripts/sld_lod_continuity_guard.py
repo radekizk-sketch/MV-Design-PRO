@@ -50,6 +50,9 @@ REQUIRED_CONTINUITY_APPARATUS = [
     "loadBreakSwitch",
     "fuseSwitch",
     "noPoint",
+    # Łącznik/wyłącznik sekcyjny NA torze ciągu (glify z portami W/E).
+    "lineSwitch",
+    "lineBreaker",
 ]
 # Powody braków, które wyrocznia MUSI umieć zgłosić (i test — sprawdzić).
 REQUIRED_GAP_REASONS = [

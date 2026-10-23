@@ -11,14 +11,20 @@
  * w przestrzeni „Wyniki" przez deep-link `setWynikiTab`).
  *
  * Reużywa istniejącej infrastruktury wiązania (V12K-073): `selectElement`
- * (property-grid) + `centerSldOnElement` (zoom na SLD) + `setActiveSpace`
+ * (property-grid) + `centerSldOnElement` (zoom na SLD) + `przejdzDoPrzestrzeni`
  * + `setWynikiTab` (deep-link zakładki — wzorzec z `HubDokumentacji`).
+ *
+ * C-12 (klasa akcji naprawczych): przejście idzie JEDNĄ nawigacją powłoki
+ * (`przejdzDoPrzestrzeni`, kanon D1) — dawny goły `setActiveSpace` zostawiał trasę
+ * nadrzędną (np. `#analysis` przebiegu), która przykrywała przestrzeń docelową.
+ * Pilnuje `nawigacja_jeden_kanon_guard` (reguła F).
  * ZERO fizyki, ZERO mutacji modelu — wyłącznie selekcja i nawigacja.
  */
 
 import { useCallback } from 'react';
 
 import { useSelectionStore } from '../../../ui/selection/store';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../shell/useShellStore';
 import type { ElementType } from '../../../ui/types';
 import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
@@ -31,7 +37,6 @@ export function usePoprawWModelu(): (
 ) => void {
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   return useCallback(
     (ref, typ, nazwa, rodzaj) => {
@@ -44,12 +49,12 @@ export function usePoprawWModelu(): (
         // (np. „Dobór kompensacji") pre-selekcjonuje węzeł zamiast kazać
         // inżynierowi wybierać go ponownie ręcznie.
         setWynikiTab(cel.zakladka, ref);
-        setActiveSpace('wyniki');
+        przejdzDoPrzestrzeni('wyniki');
       } else {
         centerSldOnElement(ref);
-        setActiveSpace('schemat');
+        przejdzDoPrzestrzeni('schemat');
       }
     },
-    [selectElement, centerSldOnElement, setActiveSpace, setWynikiTab],
+    [selectElement, centerSldOnElement, setWynikiTab],
   );
 }

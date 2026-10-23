@@ -207,8 +207,42 @@ BACKEND = ROOT / "backend"
 # pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
 # przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
 # vs drzewo karty = dokladnie te 3 wiersze).
-BASELINE_ERRORS = 223
-BASELINE_FILES = 34
+# Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B par. 12.2 (d)): 223/34 -> 203/32.
+# Zniknelo dokladnie 20 bledow w dwoch rdzeniach B-01: `power_flow_newton_internal.py` 19
+# (14 attr-defined + 5 assignment — jedna zmienna petli `spec` dla PVSpec/PQSpec/limitow;
+# rozdzielone nazwami zmiennych petli) i `short_circuit_iec60909.py` 1 (union-attr na
+# `builder: object | None` — adnotacje `AdmittanceMatrixBuilder | None` / `np.ndarray | None`,
+# zdjete trzy `type: ignore`). Zero nowych (roznica zbiorow `mypy src` baza vs drzewo karty =
+# dokladnie te wiersze; nowy `enm/zdania_odmow_rdzenia.py` bez bledow).
+# Decyzja B-01 partii integracji 9 (2026-10-16, delegacja O-59): 203/32 -> 198/31. Zniklo
+# dokladnie 5 bledow w rdzeniu `v126_academic.py` (2x operator + 2x misc: `float | None`
+# w sumie B*l zawezony w parze (b, l) i P0 transformatora — brak P0 to odmowa z rekordem,
+# nie `None + float`; 1x union-attr: referencje benchmarku zawezone `isinstance`). Zero
+# nowych (roznica zbiorow `mypy src` drzewo partii przed/po = dokladnie te wiersze).
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-10-16, baza `bd3a87f4` = 224/35, bo commit 3/n
+# tej karty zostawił `call-arg` w `lv_domain/upstream_equivalent.py`): 224/35 -> 199/26.
+# Naprawione w plikach dotkniętych kartą: `upstream_equivalent.py` (brak `tolerancja_nn`),
+# `czas_wylaczenia_galezi.py` (3: zmienna pętli o trzech typach źródeł, typ stanów
+# przeglądu wszerz), `lv_temperature_correction.py` (6: zmienna pętli o czterech typach
+# źródeł), `typ_sieci_solvera` przyjmuje `str` i sam odmawia wartości spoza słownika
+# (6 wołań w `fault_loop/service.py`, `swz/service.py`, `nn_device_selection.py`,
+# `lv_circuit_verification_binding.py`), `nn_device_selection.py` (5: zmienna `gate` o
+# trzech typach wyniku), `assembler.py` (nastawa PV `float | None` z odmową nazwaną),
+# `ocena_nadpradowa.py` (2: granice zakresu zawężone jawnie, typ wpływów źródeł).
+# Partia integracji 11 (2026-10-16): scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK na czubek po
+# partii 9: 198/31 -> 174/23. POMIAR `mypy src` (mypy 1.19.1) na bazie `9d5168ea3` (198/31),
+# na czubku karty (199/26) i na drzewie scalonym (174/23); roznica zbiorow (plik, komunikat)
+# drzewo scalone minus baza = 0 i drzewo scalone minus karta = 0 — zero nowych, 24 zdjete
+# (bledy naprawione w karcie w plikach, ktore partia 9 zostawila bez zmian).
+# Karta SC-IB-ITH-ZRODLA (B-01 pozycja (n), baza `4ccfa9320` = 174/23): 174/23 -> 169/22.
+# POMIAR `mypy src` (mypy 1.19.1) na bazie i na drzewie karty; roznica zbiorow (plik,
+# komunikat) karta minus baza = 0, baza minus karta = dokladnie 5 wierszy:
+# `machine_sc_iec60909.py` 4 (3x attr-defined `p_per_pole_mw` na maszynie synchronicznej +
+# 1x assignment: jedna zmienna petli dla maszyn sync/async — wklad maszyny liczy teraz jedna
+# funkcja z jawnym `p_per_pole_mw` per rodzaj) i `equipment_proof/generator.py` 1 (arg-type
+# `_value_or_missing` — wielkosc kryterium wylaczania czytana jako liczba z jednego zrodla).
+BASELINE_ERRORS = 169
+BASELINE_FILES = 22
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

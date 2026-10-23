@@ -54,6 +54,35 @@ class MaterializationResult:
     error_code: str | None = None
     error_message_pl: str | None = None
 
+    def __post_init__(self) -> None:
+        # Kontrakt wyniku: nieudana materializacja ZAWSZE niesie niepusty kod i komunikat,
+        # udana — żadnego. Wołający czytają kod wprost (`kod_odmowy`), bez zapasu; dawny
+        # zapas `"catalog.materialization_failed"` był kodem, którego żaden producent nie
+        # emitował (przegląd karty PARTIA-6-BACKEND).
+        if self.success:
+            assert (
+                self.error_code is None and self.error_message_pl is None
+            ), "udana materializacja nie niesie kodu ani komunikatu odmowy"
+        else:
+            assert self.error_code and self.error_code.strip(), "odmowa materializacji bez kodu"
+            assert (
+                self.error_message_pl and self.error_message_pl.strip()
+            ), "odmowa materializacji bez komunikatu"
+
+    @property
+    def kod_odmowy(self) -> str:
+        """Kod nieudanej materializacji — gwarantowany przez ``__post_init__``."""
+        assert not self.success and self.error_code is not None, "wynik udany nie ma kodu odmowy"
+        return self.error_code
+
+    @property
+    def komunikat_odmowy_pl(self) -> str:
+        """Komunikat nieudanej materializacji — gwarantowany przez ``__post_init__``."""
+        assert (
+            not self.success and self.error_message_pl is not None
+        ), "wynik udany nie ma komunikatu odmowy"
+        return self.error_message_pl
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
@@ -91,12 +120,14 @@ class MaterializationError:
 _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.KABEL_SN.value: "get_cable_type",
     CatalogNamespace.LINIA_SN.value: "get_line_type",
+    CatalogNamespace.PRZEWOD_LINII_WN.value: "get_overhead_conductor_type",
     CatalogNamespace.TRAFO_SN_NN.value: "get_transformer_type",
     CatalogNamespace.APARAT_SN.value: "get_mv_apparatus_type",
     CatalogNamespace.APARAT_NN.value: "get_lv_apparatus_type",
     CatalogNamespace.KABEL_NN.value: "get_lv_cable_type",
     CatalogNamespace.APARAT_NN_MCB.value: "get_lv_breaker_mcb_type",
     CatalogNamespace.WKLADKA_NN.value: "get_lv_fuse_link_type",
+    CatalogNamespace.APARAT_NN_RCD.value: "get_lv_rcd_type",
     CatalogNamespace.CT.value: "get_ct_type",
     CatalogNamespace.VT.value: "get_vt_type",
     CatalogNamespace.OGRANICZNIK_SN.value: "get_surge_arrester_type",
@@ -308,8 +339,8 @@ def materialize_snapshot_elements(
         if not result.success:
             errors.append(
                 MaterializationError(
-                    code=result.error_code or "catalog.materialization_failed",
-                    message_pl=result.error_message_pl or "Błąd materializacji",
+                    code=result.kod_odmowy,
+                    message_pl=result.komunikat_odmowy_pl,
                     element_id=element.get("id"),
                     namespace=binding.catalog_namespace,
                 )

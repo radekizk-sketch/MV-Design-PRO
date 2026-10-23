@@ -41,6 +41,7 @@ export const ZWARCIA_STRINGS = {
   bilansIp: 'Prąd udarowy ip',
   bilansIth: 'Prąd cieplny zastępczy Ith',
   bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
+  bilansIdc: 'Składowa nieokresowa iDC(tb)',
   bilansIk: 'Prąd zwarciowy ustalony Ik',
   bilansSk: 'Moc zwarciowa Sk"',
   bilansI2t: 'Energia cieplna I²t',
@@ -50,21 +51,45 @@ export const ZWARCIA_STRINGS = {
   bilansXk: 'Reaktancja zastępcza Xk',
   bilansZk: 'Impedancja zastępcza (Thevenin) |Zk|',
   bilansC: 'Współczynnik napięciowy c',
+  bilansCZrodlo: 'Podstawa współczynnika c',
   bilansUn: 'Napięcie znamionowe przed zwarciem Un',
   bilansTk: 'Czas trwania zwarcia tk',
   bilansTb: 'Czas wyłączenia tb',
+  // Karta TB-WARTOSC-ROBOCZA: tb punktu będący wartością roboczą — dyskretna etykieta,
+  // źródło z backendu i akcja prowadząca do tb scenariusza zwarciowego.
+  bilansTbRobocza: 'wartość robocza',
+  bilansTbZmien: 'Zmień wartość',
 
   // Założenia (parametry przebiegu, W-602)
   zalMetoda: 'Metoda obliczeń',
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
+  zalCzasWylaczenia: 'Czas wyłączenia tb',
+  zalCzasWylaczeniaPunkt: 'w punkcie zwarcia',
+  zalozeniePunkty: (liczba: number) =>
+    `Dotyczy punktów zwarcia: ${liczba} (oznaczenie „wartość robocza" w bilansie punktu).`,
+  zalozenieBiegu: 'Bieg zwarciowy',
   // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
   // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
-  zalWspolczynnikCAuto: 'dobierany automatycznie per węzeł',
-  zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tryb `auto_per_wezel` albo `nadpisanie`
+  // z uzasadnieniem; podstawa c każdego węzła — w bilansie punktu (`c_zrodlo`).
+  zalWspolczynnikCAuto: (scenariusz: string | null) =>
+    scenariusz
+      ? `IEC 60909-0 tab. 1 per węzeł, scenariusz ${scenariusz}`
+      : 'IEC 60909-0 tab. 1 per węzeł',
+  zalWspolczynnikCAutoUwaga:
+    'Wartość c dobrana z tabeli 1 IEC 60909-0 dla pasma napięciowego każdego węzła (nN z zadeklarowaną tolerancją sieci, SN, WN) — podstawę c punktu pokazuje bilans IEC 60909 wybranego punktu.',
+  zalWspolczynnikCNadpisanie: (wartosc: string, uzasadnienie: string) =>
+    `${wartosc} — nadpisanie ręczne: ${uzasadnienie}`,
+  zalWspolczynnikCNadpisanieUwaga: (uzasadnienie: string) =>
+    `Nadpisanie ręczne dla wszystkich węzłów biegu — uzasadnienie: ${uzasadnienie}`,
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
+  // Karta OD-14: zwarcie przez impedancję przejścia Z_f zapisane na biegu.
+  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia Z_f',
+  zalImpedancjaPrzejsciaUwaga:
+    'Zwarcie przez impedancję przejścia — wynik poza zakresem normy IEC 60909, która definiuje prąd zwarcia metalicznego. Nie jest podstawą doboru aparatury, wytrzymałości, nastaw nadprądowych ani dowodu w punkcie przyłączenia.',
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',
@@ -75,7 +100,11 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Nie udało się pobrać rozbicia maszynowego dla tego punktu (brak migawki modelu albo błąd pobierania). Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+    'Brak migawki modelu albo parametrów biegu potrzebnych do rozbicia maszynowego tego punktu. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+  wkladyBlad: 'Nie udało się pobrać wkładów do zwarcia.',
+  wkladyBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
+  wkladyLadowanie: 'Pobieranie wkładów do zwarcia dla tego punktu…',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',
 
   // Sekcja wkładów — filtr, wykres udziałów, szczegół źródła (karta W-A F2)
@@ -107,9 +136,21 @@ export const ZWARCIA_STRINGS = {
   rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
   rozplywNiedostepnyOpis:
     'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
+  rozplywBlad: 'Nie udało się pobrać rozpływu prądu zwarciowego.',
+  rozplywBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
+  rozplywLadowanie: 'Pobieranie rozpływu prądu zwarciowego dla tego punktu…',
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
+  // Karta PROG-ZERA-WKLADOW: wkład pominięty na podstawie tolerancji numerycznej —
+  // nazwa 1:1 z rdzenia (`NAZWA_WKLADU_POMINIETEGO`), próg wyłącznie z odpowiedzi.
+  rozplywPominieteTytul: 'Wkłady pominięte na podstawie tolerancji numerycznej',
+  rozplywPominieteOpis:
+    'Pary źródło × gałąź policzone przez solver, których moduł prądu jest poniżej progu tolerancji numerycznej. To nie jest zero i nie jest wkład z tabeli powyżej: wpisy nie wchodzą do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Moduł |I| obcięty do 3 cyfr znaczących w stronę zera. Kąt fazora nie jest określony: poniżej progu fazor jest resztą arytmetyki zmiennoprzecinkowej, a jego kąt zależy od maszyny, nie od sieci.',
+  katNieokreslony: 'nie określono',
+  rozplywKolTor: 'Tor obliczenia',
+  rozplywKolKat: 'Kąt fazora',
 
   // Sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW, TH-1)
   sladRozplywuTytul: 'Podział prądu zwarciowego — ślad obliczeń',
@@ -122,6 +163,7 @@ export const ZWARCIA_STRINGS = {
   sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
   sladRozplywuPustyOpis:
     'Rozpływ policzony, ale ślad obliczeń dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
+  sladRozplywuLadowanie: 'Pobieranie śladu podziału prądu zwarciowego dla tego punktu…',
   sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
   sladRozplywuBladOpis:
     'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
@@ -195,6 +237,13 @@ export const ZWARCIA_STRINGS = {
   // scenariusz po polsku; kod gotowości założenia nie jest tekstem dla projektanta.
   zalozenieEtykieta: (nazwaZrodla: string) => `Źródło ${nazwaZrodla}`,
   zalozenieUwaga: (scenariuszPL: string) => `Scenariusz ${scenariuszPL}`,
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): założenie
+  // `fault.c_tolerancja_nn_robocza` dotyczy sieci nN (element zasilający albo jej szyna),
+  // nie źródła — etykieta nazywa tolerancję i element z modelu; treść (co przyjęto, dla
+  // jakich węzłów, dlaczego) wprost z backendu. Znacznik i akcja — dyskretnie, obok.
+  zalozenieTolerancjiNn: (nazwaElementu: string) => `Tolerancja napięcia sieci nN — ${nazwaElementu}`,
+  znacznikWartosciRoboczej: 'wartość robocza',
+  zmienWartosc: 'Zmień wartość',
 
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',
@@ -352,6 +401,30 @@ export function typMaszynyPL(token: string): string {
  * → „sieć nadrzędna" (źródło zastępcze Thevenina). Pozostałe źródła (falowniki /
  * maszyny) pokazywane po ich identyfikatorze — read-only, bez fizyki.
  */
+/**
+ * Opis progu wkładu pominiętego z WARTOŚCI ODPOWIEDZI (odbicie jedynej definicji
+ * rdzenia, `prog_wkladu_pominietego_a`) — ten sam zapis co tytuł kroku śladu
+ * (`|I| < 1e-6 A`); frontend nie ma własnej stałej progu.
+ */
+export function opisProguPominietego(progA: number): string {
+  return `|I| < ${progA.toExponential()} A`;
+}
+
+/** Nota pod tabelą rozpływu: ile wpisów pominięto i względem jakiego progu. */
+export function notaWkladowPominietych(liczba: number, progA: number): string {
+  return `Wkłady pominięte na podstawie tolerancji numerycznej (${opisProguPominietego(progA)}): ${liczba}. Nie są zerem i nie ma ich w tabeli — zestawienie z surowym modułem prądu w trybie eksperckim.`;
+}
+
+/** Tor rdzenia, którym policzono wkład pominięty — etykieta PL (kod nie trafia na ekran). */
+const TOR_POMINIETEGO_PL: Readonly<Record<'thevenin' | 'falownik', string>> = {
+  thevenin: 'sieć zastępcza (podział prądu Thevenina)',
+  falownik: 'superpozycja falownikowa',
+};
+
+export function torPominietegoPL(tor: 'thevenin' | 'falownik'): string {
+  return TOR_POMINIETEGO_PL[tor];
+}
+
 const ZRODLO_ROZPLYWU_PL: Record<string, string> = {
   THEVENIN_GRID: 'sieć nadrzędna',
 };

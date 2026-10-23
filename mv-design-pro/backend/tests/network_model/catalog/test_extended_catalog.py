@@ -26,6 +26,7 @@ from network_model.catalog.types import (
     SourceSystemType,
     VTType,
 )
+from network_model.odmowa_danych import OdmowaNazwana
 
 
 class TestCatalogNamespace:
@@ -39,6 +40,7 @@ class TestCatalogNamespace:
             "KABEL_NN",
             "APARAT_NN_MCB",
             "WKLADKA_NN",
+            "APARAT_NN_RCD",  # karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (RCCB/RCBO)
             "CT",
             "VT",
             "OBCIAZENIE",
@@ -54,6 +56,7 @@ class TestCatalogNamespace:
             "KOMPENSATOR_SN",
             "PTPIREE_CERTYFIKAT_GENERATORA",
             "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
+            "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected
@@ -240,6 +243,7 @@ class TestMaterializationContracts:
             "KABEL_NN",
             "APARAT_NN_MCB",
             "WKLADKA_NN",
+            "APARAT_NN_RCD",  # karta W5-E-TTIT — wyłącznik różnicowoprądowy nN (RCCB/RCBO)
             "CT",
             "VT",
             "OBCIAZENIE",
@@ -248,6 +252,7 @@ class TestMaterializationContracts:
             "ZRODLO_NN_BESS",
             "ZABEZPIECZENIE",
             "NASTAWY_ZABEZPIECZEN",
+            "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
         }
         actual = set(MATERIALIZATION_CONTRACTS.keys())
         missing = required - actual
@@ -275,7 +280,7 @@ class TestConverterDerivationCompleteness:
     (nie "STALY_COS_PHI")."""
 
     def test_pv_derivation_rejects_missing_sn_mva(self):
-        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+        with pytest.raises(OdmowaNazwana, match="nie ma pola") as odmowa:
             CatalogRepository.from_records(
                 line_types=[],
                 cable_types=[],
@@ -288,9 +293,14 @@ class TestConverterDerivationCompleteness:
                     }
                 ],
             )
+        # Partia integracji 10: kod w polu, treść z nazwą typu, bez identyfikatora rekordu.
+        assert odmowa.value.kod == "catalog.type_incomplete"
+        assert "catalog.type_incomplete" not in str(odmowa.value)
+        assert "„PV bez" in str(odmowa.value) or "„BESS" in str(odmowa.value)
+        assert "_bad" not in str(odmowa.value)
 
     def test_pv_derivation_rejects_missing_pmax_mw(self):
-        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+        with pytest.raises(OdmowaNazwana, match="nie ma pola") as odmowa:
             CatalogRepository.from_records(
                 line_types=[],
                 cable_types=[],
@@ -303,9 +313,14 @@ class TestConverterDerivationCompleteness:
                     }
                 ],
             )
+        # Partia integracji 10: kod w polu, treść z nazwą typu, bez identyfikatora rekordu.
+        assert odmowa.value.kod == "catalog.type_incomplete"
+        assert "catalog.type_incomplete" not in str(odmowa.value)
+        assert "„PV bez" in str(odmowa.value) or "„BESS" in str(odmowa.value)
+        assert "_bad" not in str(odmowa.value)
 
     def test_bess_derivation_rejects_missing_e_kwh(self):
-        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+        with pytest.raises(OdmowaNazwana, match="nie ma pola") as odmowa:
             CatalogRepository.from_records(
                 line_types=[],
                 cable_types=[],
@@ -318,6 +333,11 @@ class TestConverterDerivationCompleteness:
                     }
                 ],
             )
+        # Partia integracji 10: kod w polu, treść z nazwą typu, bez identyfikatora rekordu.
+        assert odmowa.value.kod == "catalog.type_incomplete"
+        assert "catalog.type_incomplete" not in str(odmowa.value)
+        assert "„PV bez" in str(odmowa.value) or "„BESS" in str(odmowa.value)
+        assert "_bad" not in str(odmowa.value)
 
     def test_pv_derivation_succeeds_with_complete_data(self):
         """Predykaty parami — dana JAWNA: komplet pól, derywacja się udaje."""

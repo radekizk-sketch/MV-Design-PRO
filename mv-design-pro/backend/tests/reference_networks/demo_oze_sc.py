@@ -24,6 +24,7 @@ from tests.reference_networks.sld_substrate_52s import (
     _GPZ_SOURCE_REF,
     _LINE_REF,
     _TRAFO_DER_LARGE,
+    _TRAFO_MIXED_DER,
     _TRAFO_STANDARD,
     _add_der,
     _add_station_load,
@@ -116,6 +117,9 @@ def _add_der_sn_block(
                 "rated_power_mva": 1.0,
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": 0.4,
+                # Tolerancja napięcia sieci nN po stronie przekształtnika (wiersz nN tabeli 1
+                # IEC 60909-0) — K_T bloku i c węzła nN z tej samej deklaracji.
+                "lv_voltage_tolerance": "PLUS_6",
                 "catalog_ref": _TR_BLOCK,
                 "catalog_binding": {
                     "catalog_namespace": _TR_BLOCK_NS,
@@ -193,7 +197,9 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     {
         "key": "HYB_PV_BESS_NN",
         "label_pl": "Hybryda PV + BESS za transformatorem (nN, 0.5 + 0.5 MW)",
-        "trafo": _TRAFO_STANDARD,
+        # Σ S_n źródeł 1,1 MVA na jednym transformatorze (kontrola O-53 sumuje źródła tego
+        # samego TR — V12K-022, karta GPT-478): 630 kVA ich nie mieści.
+        "trafo": _TRAFO_MIXED_DER,
         "ders": [
             ("PV", "nn_side", _PV_0P5, _PV_NS, 0.5),
             ("BESS", "nn_side", _BESS_0P5, _BESS_NS, 0.5),
@@ -226,7 +232,9 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     {
         "key": "HYB_FW_PV_NN",
         "label_pl": "Hybryda wiatr + PV za transformatorem (nN, 2.0 + 0.5 MW)",
+        # Σ S_n 2,75 MVA > 2,5 MVA największego TR 15/0,4 kV — dwie jednostki 2×2500 kVA.
         "trafo": _TRAFO_DER_LARGE,
+        "trafo_n_parallel": 2,
         "ders": [
             ("FW", "nn_side", _FW_2P0, _FW_NS, 2.0),
             ("PV", "nn_side", _PV_0P5, _PV_NS, 0.5),
@@ -241,7 +249,9 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     {
         "key": "HYB_PV_BESS_FW_NN",
         "label_pl": "Potrojna hybryda PV + BESS + wiatr za transformatorem (nN)",
+        # Σ S_n 3,3 MVA — dwie jednostki 2×2500 kVA.
         "trafo": _TRAFO_DER_LARGE,
+        "trafo_n_parallel": 2,
         "ders": [
             ("PV", "nn_side", _PV_0P5, _PV_NS, 0.5),
             ("BESS", "nn_side", _BESS_0P5, _BESS_NS, 0.5),
@@ -357,7 +367,13 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
         target_frac = (i + 1) / (n_stations + 1)
         seg_idx = max(0, min(n_segs - 1, int(target_frac * n_segs)))
         seg_ref = segs[seg_idx]
-        enm = _add_trunk_station(enm, seg_ref, f"Stacja S{i + 1}", trafo_ref=config["trafo"])
+        enm = _add_trunk_station(
+            enm,
+            seg_ref,
+            f"Stacja S{i + 1}",
+            trafo_ref=config["trafo"],
+            trafo_n_parallel=config.get("trafo_n_parallel", 1),
+        )
         ref = _latest_station_ref(enm)
         if ref:
             station_refs.append(ref)

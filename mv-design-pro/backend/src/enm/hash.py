@@ -61,15 +61,34 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
     # + W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (jedyny
     # nośnik po kasacji `Bus.grounding`; migawki bez opisu haszują jak przed kartą).
-    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
+    # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN źródła przyłączonego
+    # wprost do szyny nN (wiersz nN tabeli 1 IEC 60909-0) — podana zmienia c i Z_Q.
+    "sources": (
+        "sk3_min_mva",
+        "ik3_min_ka",
+        "rx_ratio_min",
+        "u_set_pu",
+        "neutral_grounding",
+        "lv_voltage_tolerance",
+    ),
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
     # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
-    "loads": ("phases",),
+    # + karta modeli odbiorow (O-56): blok modelu dynamicznego odbioru `Load.dynamika` —
+    # kopia profilu katalogu `load_dynamic`. `None` = odbior bez modelu dynamicznego
+    # (dzisiejsze biegi SC/PF go nie czytaja); podany blok zmienia wejscie biegu
+    # `dynamika_rms`, wiec zmienia odcisk.
+    # + karta W5-E-TTIT: uziom instalacji odbiorczej R_A (`None` = dana nieobecna, poza
+    # odciskiem; podana wartość zmienia wynik pętli TT/IT, więc zmienia odcisk).
+    "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
-    "transformers": ("lv_earthing_system",),
-    "branches": ("screen_bonding",),
+    # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
+    # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
+    "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+    # + karta LINIA-110: geometria słupa linii 110 kV i proweniencja parametrów z geometrii
+    # (`None` = linia bez obliczenia z geometrii — każda linia SN sprzed karty).
+    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
@@ -104,16 +123,29 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
 _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
 
+#: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
+#: semantyczna — tam ich nigdy nie bylo) zachowuje jako `null`, wedlug tej samej zasady co
+#: `_POLA_SKASOWANE_W_ODCISKU`. Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `Source.c_max`/`c_min`
+#: (fantom — zapisywane, nigdy nieczytane; c dobiera wyłącznie `voltage_factor`) — kazda
+#: migawka ze zrodlem niosla `"c_max": null, "c_min": null`. Zrodlo, ktore MIALO wartosc,
+#: zmienia odcisk (wartosc nie wchodzila do zadnego obliczenia). Przypiete testem
+#: `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`.
+_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_max", "c_min")}
 
-def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
+
+def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
-    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`
+    (pola skasowane spoza projekcji semantycznej — wylacznie w postaci pelnej)."""
     item.pop("id", None)
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
         if pole in item and item[pole] is None:
             del item[pole]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
+    if pelna:
+        for pole in _POLA_SKASOWANE_W_ODCISKU_PELNYM.get(key, ()):
+            item.setdefault(pole, None)
 
 
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
@@ -246,7 +278,7 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
     (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
     `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
     wynik = {k: item[k] for k in include if k in item}
-    _postac_kanoniczna_elementu(wynik, key)
+    _postac_kanoniczna_elementu(wynik, key, pelna=False)
     return wynik
 
 
@@ -398,6 +430,53 @@ def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
     data = _kopia_pod_hash(snapshot)
     _strip_uuids(data)
     return _canonical_sha256(data)
+
+
+#: Kolekcje opisujące WYŁĄCZNIE zabezpieczenia i ich przekładniki — nie wchodzą do żadnego
+#: obliczenia rozpływu ani zwarcia (solver nie czyta ani nastaw, ani przekładni).
+_KOLEKCJE_ZABEZPIECZEN = ("protection_assignments", "measurements")
+#: Pola nagłówka zmieniane przez KAŻDĄ edycję (rewizja) albo będące etykietą (nazwa, opis) —
+#: nie są treścią sieci liczonej przez solver.
+_POLA_NAGLOWKA_POZA_SIECIA = ("revision", "name", "description")
+
+
+def hash_sieci_bez_zabezpieczen(snapshot: dict[str, Any]) -> str:
+    """Odcisk SIECI liczonej przez solver — migawka bez zabezpieczeń i przekładników.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): nastawy żyją w modelu, więc ich edycja zmienia
+    migawkę i rewizję modelu, ale NIE zmienia sieci, którą policzył bieg zwarciowy. Ocena
+    zabezpieczeń czyta nastawy z BIEŻĄCEGO modelu, a topologię i rozpływ prądu zwarciowego z
+    biegu źródłowego — wolno jej to zrobić wyłącznie wtedy, gdy oba opisują TĘ SAMĄ sieć. Ten
+    odcisk jest jedynym kryterium tej równości (stany łączników WCHODZĄ do odcisku — zmieniają
+    rozpływ). Migawka wołającego nie jest modyfikowana.
+    """
+    data = _kopia_pod_hash(snapshot)
+    for klucz in _KOLEKCJE_ZABEZPIECZEN:
+        data.pop(klucz, None)
+    naglowek = data.get("header")
+    if isinstance(naglowek, dict):
+        data["header"] = {k: v for k, v in naglowek.items() if k not in _POLA_NAGLOWKA_POZA_SIECIA}
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
+def siec_biegu_zgodna_z_modelem(
+    snapshot_biegu: dict[str, Any] | None, snapshot_modelu: dict[str, Any]
+) -> bool:
+    """Czy bieg (migawka ``snapshot_biegu``) policzono dla TEJ SAMEJ sieci co model?
+
+    JEDYNY predykat zgodności sieci biegu zwarciowego z modelem dla oceny zabezpieczeń — wołają
+    go: tworzenie biegu ``protection_sn`` (``canonical_analysis._validate_protection_sc_reference``),
+    świeżość wyniku tego biegu (``api/protection_runs._swiezosc_wyniku``) i koordynacja E-28
+    (``coordination/z_biegow._sprawdz_siec``). Wejście i wyjście tej samej decyzji z jednego
+    źródła: wynik, który tworzenie przepuściło, nie może zostać uznany za nieaktualny innym
+    kryterium (i odwrotnie). Bieg bez migawki nie jest zgodny z żadną siecią.
+    """
+    if snapshot_biegu is None:
+        return False
+    return hash_sieci_bez_zabezpieczen(snapshot_biegu) == hash_sieci_bez_zabezpieczen(
+        snapshot_modelu
+    )
 
 
 def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:

@@ -1,4 +1,12 @@
-"""Farmy PV SN — 5 templates (0.5-5 MW, SN-side block transformer)."""
+"""Farmy PV SN — 5 szablonów (0,66–4,95 MW, falowniki z kartą producenta, każdy z własnym
+transformatorem blokowym nN/SN).
+
+Przeprojektowanie 2026-10-15 (decyzja właściciela): skład = liczba falowników × moc z karty
+producenta, bez jednostek pracujących poniżej mocy znamionowej. Dawne „500 kW / 1 / 2 / 3 /
+5 MW" składały się z pozycji referencyjnej 0,5 MW bez karty; katalog z kartami ma Huawei
+SUN2000-330KTL-H1 (330 kVA) i SMA Sunny Central 2200 / 2475 (2,2 / 2,475 MVA), więc moce
+szablonów są wielokrotnościami tych kart. Typ modułu NC RfG wynika ze składu
+(`schema.typ_modulu_nc_rfg_skladu`)."""
 
 from __future__ import annotations
 
@@ -10,7 +18,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
-    TR_BLOCK_PV_OPTIONS,
+    TR_OPTIONS_POTRZEBY_WLASNE,
     VT_OPTIONS,
 )
 from application.station_templates.schema import (
@@ -19,6 +27,7 @@ from application.station_templates.schema import (
     TemplateCategory,
     TemplateParamInt,
     TemplateSchema,
+    typ_modulu_nc_rfg_skladu,
 )
 
 
@@ -29,8 +38,9 @@ def _farma(
     *,
     pv_count: int,
     pv_p_mw_each: float,
-    nc_rfg_type: str,
 ) -> StationTemplate:
+    der_options = (replace(DER_PV_SN, default_p_mw_each=pv_p_mw_each, default_count=pv_count),)
+    nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 15.0)
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,
@@ -41,7 +51,7 @@ def _farma(
         icon="station-pv-farm",
         tags=("farma PV", "OZE", "block_transformer", f"NC_RfG_{nc_rfg_type}"),
         schema=TemplateSchema(
-            transformer_options=TR_BLOCK_PV_OPTIONS,
+            transformer_options=TR_OPTIONS_POTRZEBY_WLASNE,
             sn_bays_count=TemplateParamInt(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),
@@ -55,9 +65,7 @@ def _farma(
                 default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN (usługi)"
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
-            der_options=(
-                replace(DER_PV_SN, default_p_mw_each=pv_p_mw_each, default_count=pv_count),
-            ),
+            der_options=der_options,
             der_total_count=TemplateParamInt(
                 default=pv_count, min_value=1, max_value=20, label_pl="Liczba falowników PV"
             ),
@@ -70,43 +78,43 @@ def _farma(
 
 FARMY_PV_TEMPLATES = (
     _farma(
-        "tpl_farma_pv_500kw",
-        "Farma PV 500 kW z block TR 0.4/15 kV",
-        "Mała farma 500 kW przyłączona z 1 falownikiem PV.",
-        pv_count=1,
-        pv_p_mw_each=0.5,
-        nc_rfg_type="B",
-    ),
-    _farma(
-        "tpl_farma_pv_1mw",
-        "Farma PV 1 MW, 2× falownik, block TR 1.25 MVA",
-        "Standardowa farma 1 MW: 2 falowniki 500 kW.",
+        "tpl_farma_pv_0p66mw",
+        "Farma PV 0,66 MW, 2× Huawei SUN2000-330KTL-H1",
+        "Mała farma 0,66 MW: 2 falowniki Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV), każdy "
+        "z własnym transformatorem blokowym nN/SN.",
         pv_count=2,
-        pv_p_mw_each=0.5,
-        nc_rfg_type="B",
+        pv_p_mw_each=0.33,
     ),
     _farma(
-        "tpl_farma_pv_2mw",
-        "Farma PV 2 MW, 4× falownik 500 kW",
-        "Średnia farma 2 MW z 4 falownikami.",
-        pv_count=4,
-        pv_p_mw_each=0.5,
-        nc_rfg_type="B",
+        "tpl_farma_pv_0p99mw",
+        "Farma PV 0,99 MW, 3× Huawei SUN2000-330KTL-H1",
+        "Farma 0,99 MW: 3 falowniki Huawei SUN2000-330KTL-H1 (330 kVA, 0,8 kV), każdy z własnym "
+        "transformatorem blokowym nN/SN.",
+        pv_count=3,
+        pv_p_mw_each=0.33,
     ),
     _farma(
-        "tpl_farma_pv_3mw",
-        "Farma PV 3 MW (NC RfG typ C)",
-        "Duża farma 3 MW: NC RfG typ C — usługi systemowe wymagane.",
-        pv_count=6,
-        pv_p_mw_each=0.5,
-        nc_rfg_type="C",
+        "tpl_farma_pv_2p2mw",
+        "Farma PV 2,2 MW, SMA Sunny Central 2200",
+        "Farma 2,2 MW: falownik centralny SMA Sunny Central 2200 (2,2 MVA, 0,385 kV) "
+        "z transformatorem blokowym nN/SN.",
+        pv_count=1,
+        pv_p_mw_each=2.2,
     ),
     _farma(
-        "tpl_farma_pv_5mw",
-        "Farma PV 5 MW (typ D, pełne usługi grid)",
-        "Bardzo duża farma 5 MW: NC RfG typ D — pełen zakres grid services.",
-        pv_count=10,
-        pv_p_mw_each=0.5,
-        nc_rfg_type="D",
+        "tpl_farma_pv_4p4mw",
+        "Farma PV 4,4 MW, 2× SMA Sunny Central 2200",
+        "Farma 4,4 MW: 2 falowniki centralne SMA Sunny Central 2200 (2,2 MVA, 0,385 kV), każdy "
+        "z własnym transformatorem blokowym nN/SN.",
+        pv_count=2,
+        pv_p_mw_each=2.2,
+    ),
+    _farma(
+        "tpl_farma_pv_4p95mw",
+        "Farma PV 4,95 MW, 2× SMA Sunny Central 2475",
+        "Farma 4,95 MW: 2 falowniki centralne SMA Sunny Central 2475 (2,475 MVA, 0,434 kV), "
+        "każdy z własnym transformatorem blokowym nN/SN.",
+        pv_count=2,
+        pv_p_mw_each=2.475,
     ),
 )

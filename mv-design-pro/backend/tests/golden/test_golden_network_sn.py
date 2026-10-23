@@ -12,6 +12,7 @@ import math
 
 import pytest
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.node import NodeType
 from network_model.core.switch import SwitchState, SwitchType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
@@ -233,6 +234,7 @@ class TestGoldenNetworkShortCircuitBenchmarks:
             fault_node_id=bus_id,
             c_factor=1.10,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
     def test_sc3f_at_gpz_bus(self, gn):
