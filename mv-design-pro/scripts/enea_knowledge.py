@@ -157,7 +157,10 @@ def pdf_pages(path: Path) -> list[str]:
         if process.returncode:
             raise RuntimeError("pdftotext: " + process.stderr.strip()[:250])
         text = process.stdout
-        pages = [p for p in text.split("\f") if p.strip()]
+        pages = text.split("\f")
+        # Zachowaj strony bez warstwy tekstowej, aby numer PDF pozostał dokładny.
+        if pages and not pages[-1].strip():
+            pages.pop()
     else:
         try:
             import fitz
