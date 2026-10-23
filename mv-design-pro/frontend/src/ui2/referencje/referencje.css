@@ -53,3 +53,45 @@
 .mvd-refwybor-akcja:hover {
   background: var(--mvd-panel);
 }
+
+/* Wykaz źródeł ENEA w panelu referencji, bez wprowadzania nowej przestrzeni UI. */
+.mvd-enea-sources {
+  flex: 1 0 100%;
+  min-width: 0;
+}
+.mvd-enea-body {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+.mvd-enea-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.mvd-enea-filters [aria-pressed="true"] {
+  font-weight: 700;
+  border-color: var(--mvd-ink);
+}
+.mvd-enea-list {
+  margin: 0;
+  padding: 0 0 0 20px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.mvd-enea-list li {
+  margin: 7px 0;
+  font-size: 12px;
+}
+.mvd-enea-list a {
+  color: var(--mvd-ink);
+  text-decoration: underline;
+}
+.mvd-enea-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
