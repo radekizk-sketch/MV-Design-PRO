@@ -42,6 +42,8 @@ export interface WartoscParametruAparatu {
   readonly powod_projektanta_pl: string | null;
   readonly powod_braku_pl: string | null;
   readonly opis_zrodla_pl: string;
+  /** Zależność uzasadnienia propozycji w LaTeX — wyłącznie dla wartości z propozycji. */
+  readonly wzor_latex?: string;
 }
 
 /** Znamiona wytrzymałości aparatu — każda liczba z pochodzeniem. */

@@ -202,6 +202,10 @@ class PropozycjaWartosci:
     ``wartosc is None`` wyłącznie we WZORCU propozycji zależnej od elementu (moc znamionowa
     maszyny z punktu pracy elementu): rejestr dla formularza podaje regułę, a rozstrzygnięcie
     parametru elementu podstawia liczbę (``rozstrzygnij_parametry_maszyny``).
+
+    Teksty (``odniesienie``, ``uzasadnienie_pl``, ``wplyw_pl``) są prozą bez wzorów; zależność,
+    na której stoi propozycja, niesie ``wzor_latex`` (kontrakt prezentacji inżynierskiej:
+    matematyka wyłącznie z pola ``*_latex``) — przechodzi do ``DanaPrzyjeta.wzor_latex``.
     """
 
     parametr: str
@@ -211,6 +215,7 @@ class PropozycjaWartosci:
     odniesienie: str
     uzasadnienie_pl: str
     wplyw_pl: str
+    wzor_latex: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -222,6 +227,7 @@ class PropozycjaWartosci:
             "odniesienie": self.odniesienie,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wplyw_pl": self.wplyw_pl,
+            **({"wzor_latex": self.wzor_latex} if self.wzor_latex is not None else {}),
         }
 
 
@@ -293,6 +299,13 @@ class WartoscRozstrzygnieta:
             return f"dana karty katalogowej ({self.pochodzenie_karty})"
         return self.powod_braku_pl or "parametr nieustalony"
 
+    def wzor_latex(self) -> str | None:
+        """Wzór uzasadnienia propozycji (``DanaPrzyjeta.wzor_latex``) — wyłącznie dla wartości
+        z propozycji; to samo źródło co ``opis_zrodla_pl`` (predykaty parami)."""
+        if self.pochodzenie == "PROPOZYCJA" and self.propozycja is not None:
+            return self.propozycja.wzor_latex
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "parametr": self.parametr,
@@ -306,6 +319,7 @@ class WartoscRozstrzygnieta:
             "powod_projektanta_pl": self.powod_projektanta_pl,
             "powod_braku_pl": self.powod_braku_pl,
             "opis_zrodla_pl": self.opis_zrodla_pl(),
+            **({"wzor_latex": wzor} if (wzor := self.wzor_latex()) is not None else {}),
         }
 
 
@@ -431,12 +445,16 @@ def _propozycja_i_dyn(i_th: WartoscRozstrzygnieta) -> tuple[PropozycjaWartosci |
             odniesienie=_ODNIESIENIE_I_DYN,
             uzasadnienie_pl=(
                 "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową "
-                f"I_p = {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}·I_k dla 50 Hz z prądu "
-                f"krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
+                f"dla 50 Hz: prąd szczytowy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)} raza większy "
+                f"od prądu krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
             ),
             wplyw_pl=(
                 "limit dynamiczny wynika z relacji normowej, nie z próby typu konkretnego "
                 "aparatu"
+            ),
+            wzor_latex=(
+                rf"I_\mathrm{{p}} = {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ).replace(',', '{,}')}"
+                r"\,I_\mathrm{k}"
             ),
         ),
         None,
@@ -922,6 +940,8 @@ class PropozycjaDanejLinii:
     odniesienie: str
     uzasadnienie_pl: str
     wplyw_pl: str
+    #: Zależność wpływu w LaTeX (proza ``wplyw_pl`` bez wzoru) — ``DanaPrzyjeta.wzor_latex``.
+    wzor_latex: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -931,6 +951,7 @@ class PropozycjaDanejLinii:
             "odniesienie": self.odniesienie,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wplyw_pl": self.wplyw_pl,
+            **({"wzor_latex": self.wzor_latex} if self.wzor_latex is not None else {}),
         }
 
 
@@ -944,10 +965,15 @@ _PROPOZYCJA_FAZ = PropozycjaDanejLinii(
         "i Z′0 linii biegło od razu"
     ),
     wplyw_pl=(
-        "reaktancja i susceptancja zależą od logarytmu odległości faz: przy 50 Hz zmiana "
-        "średniej odległości faz o +25 % / −25 % zmienia X′1 o ok. +0,014 / −0,018 Ω/km "
-        "(ωμ0/(2π)·ln 1,25 i ·ln 0,75), a impedancja zerowa zależy także od wysokości "
-        "zawieszenia"
+        "reaktancja i susceptancja zależą od logarytmu średniej odległości faz: przy 50 Hz "
+        "zwiększenie tej odległości o 25 % zwiększa reaktancję składowej zgodnej o ok. "
+        "0,014 Ω/km, a zmniejszenie o 25 % zmniejsza ją o ok. 0,018 Ω/km; impedancja "
+        "składowej zerowej zależy także od wysokości zawieszenia"
+    ),
+    wzor_latex=(
+        r"\Delta X'_1 = \frac{\omega \mu_0}{2\pi} \ln\frac{D'_\mathrm{sr}}{D_\mathrm{sr}}"
+        r",\quad \frac{\omega \mu_0}{2\pi} \ln 1{,}25 \approx +0{,}014~\Omega/\mathrm{km}"
+        r",\quad \frac{\omega \mu_0}{2\pi} \ln 0{,}75 \approx -0{,}018~\Omega/\mathrm{km}"
     ),
 )
 _PROPOZYCJA_ODGROMOWE = PropozycjaDanejLinii(
@@ -985,10 +1011,13 @@ _PROPOZYCJA_REZYSTYWNOSCI = PropozycjaDanejLinii(
     odniesienie=_ODNIESIENIE_REZYSTYWNOSCI,
     uzasadnienie_pl="Projekt nie podaje rezystywności gruntu wzdłuż trasy linii",
     wplyw_pl=(
-        "rezystywność wpływa wyłącznie na impedancję składowej zerowej: przy 50 Hz X′0 linii "
-        "bez przewodu odgromowego rośnie o ok. 0,22 Ω/km na dekadę rezystywności "
-        "(3·ωμ0/(4π)·ln 10, pierwszy wyraz szeregu Carsona); przewód odgromowy tę zależność "
-        "osłabia"
+        "rezystywność wpływa wyłącznie na impedancję składowej zerowej: przy 50 Hz reaktancja "
+        "składowej zerowej linii bez przewodu odgromowego rośnie o ok. 0,22 Ω/km na każdy "
+        "dziesięciokrotny wzrost rezystywności (pierwszy wyraz szeregu Carsona); przewód "
+        "odgromowy tę zależność osłabia"
+    ),
+    wzor_latex=(
+        r"\Delta X'_0 = 3\,\frac{\omega \mu_0}{4\pi} \ln 10 \approx 0{,}22~\Omega/\mathrm{km}"
     ),
 )
 
@@ -1054,7 +1083,12 @@ class DanaLiniiRozstrzygnieta:
             "wartosc_robocza": self.robocza,
             "propozycja": self.propozycja.to_dict() if self.robocza else None,
             "opis_zrodla_pl": self.opis_zrodla_pl(),
+            **({"wzor_latex": wzor} if (wzor := self.wzor_latex()) is not None else {}),
         }
+
+    def wzor_latex(self) -> str | None:
+        """Wzór wpływu wartości roboczej (``DanaPrzyjeta.wzor_latex``); dana projektu — brak."""
+        return self.propozycja.wzor_latex if self.robocza else None
 
 
 @dataclass(frozen=True)
@@ -1154,8 +1188,29 @@ def rozstrzygnij_dane_linii_wn(
     )
 
 
-def _opis_polozen_pl(polozenia: Sequence[Sequence[float]]) -> str:
-    return ", ".join(f"({liczba_pl(x)} m; {liczba_pl(y)} m)" for x, y in polozenia)
+def _liczba_ze_znakiem_pl(wartosc: float) -> str:
+    """``liczba_pl`` z typograficznym minusem (−3,5, nie -3,5)."""
+    return liczba_pl(wartosc).replace("-", "−")
+
+
+def opis_polozen_pl(polozenia: Sequence[Sequence[float]]) -> str:
+    """Położenia przewodów (x; y) jedną jednostką na końcu: „(−3,5; 15), (3,5; 15) m”."""
+    pary = ", ".join(
+        f"({_liczba_ze_znakiem_pl(x)}; {_liczba_ze_znakiem_pl(y)})" for x, y in polozenia
+    )
+    return f"{pary} m"
+
+
+def nazwa_przewodu_linii_wn(ref: str) -> str:
+    """Nazwa typu przewodu linii 110 kV z katalogu (``PRZEWOD_LINII_WN``) — postać wartości
+    danej przyjętej. Odwołanie spoza katalogu to błąd danych linii, nie domysł nazwy."""
+    # Import w funkcji: katalog przewodów importuje ``mv_cable_line_catalog``, a ten — ten moduł.
+    from .hv_overhead_conductor_catalog import get_all_overhead_conductor_types
+
+    for rekord in get_all_overhead_conductor_types():
+        if rekord["id"] == ref:
+            return str(rekord["name"])
+    raise KeyError(f"Typ przewodu linii 110 kV {ref!r} nie należy do katalogu.")
 
 
 def dane_przyjete_linii_wn(
@@ -1170,19 +1225,21 @@ def dane_przyjete_linii_wn(
     wynik: list[DanaPrzyjeta] = []
     for skladowa in dane.robocze:
         wartosc: Wielkosc | None = None
-        opis = skladowa.opis_zrodla_pl()
+        opis_wartosci: str | None = None
         if skladowa.parametr == PARAMETR_LINII_REZYSTYWNOSC:
             wartosc = Wielkosc(wartosc=float(skladowa.wartosc), jednostka="Ω·m")
         elif skladowa.parametr in (PARAMETR_LINII_FAZY, PARAMETR_LINII_ODGROMOWE):
-            opis = f"{opis} Położenia (x; y): {_opis_polozen_pl(skladowa.wartosc)}."
+            opis_wartosci = opis_polozen_pl(skladowa.wartosc)
         else:
-            opis = f"{opis} Typ katalogowy: {skladowa.wartosc}."
+            opis_wartosci = nazwa_przewodu_linii_wn(str(skladowa.wartosc))
         wynik.append(
             DanaPrzyjeta(
                 nazwa_pl=f"{skladowa.propozycja.nazwa_pl} ({miejsce_pl})",
                 wartosc=wartosc,
-                powod_pl=opis,
+                powod_pl=skladowa.opis_zrodla_pl(),
                 jakosc=FieldQuality.ESTIMATED,
+                wartosc_opis_pl=opis_wartosci,
+                wzor_latex=skladowa.wzor_latex(),
             )
         )
     return tuple(wynik)
@@ -1206,28 +1263,43 @@ def dane_przyjete_linii_wn(
 KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU = "wartosci_robocze"
 
 ZALOZENIE_R0_TRZY_R1 = (
-    "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
-    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+    "rezystancja składowej zerowej przyjęta jako trzykrotność rezystancji składowej zgodnej — "
+    "założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej "
+    "tej pozycji, żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_X0_TRZY_X1 = (
-    "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
-    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+    "reaktancja składowej zerowej przyjęta jako trzykrotność reaktancji składowej zgodnej — "
+    "założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej "
+    "tej pozycji, żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_R0_ZYLA_POWROTNA = (
-    "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
+    "rezystancja składowej zerowej przyjęta jako suma rezystancji składowej zgodnej "
+    "i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
     "wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje "
     "składowej zerowej tej pozycji"
 )
 ZALOZENIE_R_ZYLY_POWROTNEJ = (
-    "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg "
-    "IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; "
-    "przekrój znamionowy, nie zmierzony"
+    "rezystancja żyły powrotnej wyznaczona z rezystywności materiału w 20 °C i przekroju "
+    "odczytanego z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg "
+    "IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, "
+    "nie zmierzony"
 )
 ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
-    "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału "
-    "(IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej "
-    "żyły powrotnej"
+    "prąd jednosekundowy żyły powrotnej wyznaczony z przekroju i jednosekundowej gęstości "
+    "prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent "
+    "nie podaje wytrzymałości cieplnej żyły powrotnej"
 )
+
+#: Założenie katalogu → jego zależność w LaTeX (``DanaPrzyjeta.wzor_latex``). Proza założenia
+#: (zapisywana w pozycji katalogu i w gałęzi) opisuje zależność słownie; wzór idzie osobnym
+#: polem (kontrakt prezentacji inżynierskiej). Klucz = tekst założenia — to, co gałąź niesie.
+WZORY_ZALOZEN_KATALOGU_LATEX: Mapping[str, str] = {
+    ZALOZENIE_R0_TRZY_R1: r"R'_0 = 3\,R'_1",
+    ZALOZENIE_X0_TRZY_X1: r"X'_0 = 3\,X'_1",
+    ZALOZENIE_R0_ZYLA_POWROTNA: r"R'_0 = R'_1 + R'_\mathrm{p}",
+    ZALOZENIE_R_ZYLY_POWROTNEJ: r"R'_\mathrm{p} = \frac{\rho_{20}}{S_\mathrm{p}}",
+    ZALOZENIE_ITH_ZYLY_POWROTNEJ: r"I_\mathrm{th,p}(1\,\mathrm{s}) = j_\mathrm{th}\,S_\mathrm{p}",
+}
 
 #: Pola składowej zerowej gałęzi objęte daną przyjętą (kolejność stała — determinizm).
 POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
@@ -1289,15 +1361,19 @@ def pola_z0_robocze(
 def dana_przyjeta_z0(
     *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
-    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4).
+
+    Wzór założenia z ``WZORY_ZALOZEN_KATALOGU_LATEX``; tekst założenia spoza rejestru (dana
+    gałęzi niepochodząca z tego katalogu) idzie bez wzoru — proza opisuje zależność słownie."""
     return DanaPrzyjeta(
         nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
         powod_pl=(
-            f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
-            "albo pomiar)."
+            f"{_zdanie(zalozenie[:1].upper() + zalozenie[1:])} Zmień wartość: {etykieta} "
+            "w parametrach odcinka (dane producenta albo pomiar)."
         ),
         jakosc=FieldQuality.ESTIMATED,
+        wzor_latex=WZORY_ZALOZEN_KATALOGU_LATEX.get(zalozenie),
     )
 
 
@@ -1439,6 +1515,7 @@ def _propozycja_maszyny(
     odniesienie: str,
     uzasadnienie_pl: str,
     wplyw_pl: str,
+    wzor_latex: str | None = None,
 ) -> PropozycjaWartosci:
     return PropozycjaWartosci(
         parametr=parametr,
@@ -1448,13 +1525,20 @@ def _propozycja_maszyny(
         odniesienie=odniesienie,
         uzasadnienie_pl=uzasadnienie_pl,
         wplyw_pl=wplyw_pl,
+        wzor_latex=wzor_latex,
     )
 
 
 _ODNIESIENIE_MOCY_Z_PUNKTU_PRACY = (
     "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu "
-    "pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa"
+    "pracy elementu (moduł mocy czynnej podzielony na liczbę jednostek) przyjęta jako moc "
+    "znamionowa"
 )
+#: Zależności IEC 60909-0:2016 pkt 6.7 i 9.1.2 maszyny asynchronicznej (LaTeX).
+_WZOR_MOCY_POZORNEJ_ASYNCHRONICZNEJ = (
+    r"S_\mathrm{rM} = \frac{P_\mathrm{rM}}{\eta_\mathrm{r} \cos\varphi_\mathrm{r}}"
+)
+_WZOR_MOCY_NA_PARE_BIEGUNOW = r"m = \frac{P_\mathrm{rM}}{p}"
 
 #: Propozycje wartości roboczych każdej rodziny maszyn — JEDYNE miejsce tych liczb (model
 #: maszyny w ``network_model.core.machine`` nie ma domyślek: każdą wartość podaje mapowanie
@@ -1466,8 +1550,8 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             PARAMETR_MOC_POZORNA_MASZYNY,
             None,
             odniesienie=(
-                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez cos φ_rG "
-                f"(S_rG = P/cos φ_rG); {_NORMA_MASZYN} pkt 6.3 wymaga S_rG z danych maszyny"
+                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez znamionowy współczynnik "
+                f"mocy; {_NORMA_MASZYN} pkt 6.3 wymaga S_rG z danych maszyny"
             ),
             uzasadnienie_pl=(
                 "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy "
@@ -1478,6 +1562,7 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
                 "mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, "
                 "niż wykazuje obliczenie"
             ),
+            wzor_latex=r"S_\mathrm{rG} = \frac{P}{\cos\varphi_\mathrm{rG}}",
         ),
         PARAMETR_XD: _propozycja_maszyny(
             PARAMETR_XD,
@@ -1518,8 +1603,8 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             None,
             odniesienie=(
                 f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}; {_NORMA_MASZYN} pkt 6.7 i 9.1.2 wymagają "
-                "mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), "
-                "m = P_rM/p)"
+                "mocy znamionowej P_rM z danych maszyny (z niej wynika moc pozorna S_rM i moc "
+                "na parę biegunów m)"
             ),
             uzasadnienie_pl=(
                 "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej "
@@ -1530,6 +1615,7 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
                 "parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — "
                 "maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
             ),
+            wzor_latex=rf"{_WZOR_MOCY_POZORNEJ_ASYNCHRONICZNEJ},\quad {_WZOR_MOCY_NA_PARE_BIEGUNOW}",
         ),
         PARAMETR_PARY_BIEGUNOW: _propozycja_maszyny(
             PARAMETR_PARY_BIEGUNOW,
@@ -1537,31 +1623,35 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             odniesienie=(
                 "założenie zachowawcze: tabliczka nie podaje liczby par biegunów ani prędkości "
                 "znamionowej, z której liczbę par wyznacza się przy częstotliwości sieci; "
-                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów m = P_rM/p"
+                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów m"
             ),
             uzasadnienie_pl=(
-                "Przyjęto p = 1 — największą moc na parę biegunów, a więc najsłabszy zanik prądu "
+                "Przyjęto jedną parę biegunów — największą moc na parę biegunów, a więc "
+                "najsłabszy zanik prądu "
                 "maszyny (współczynnik q najbliższy 1) i dla maszyny SN o mocy co najmniej "
-                "1 MW najmniejszy stosunek R_M/X_M"
+                "1 MW najmniejszy stosunek rezystancji do reaktancji maszyny"
             ),
             wplyw_pl=(
                 "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony "
                 "zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
             ),
+            wzor_latex=_WZOR_MOCY_NA_PARE_BIEGUNOW,
         ),
         PARAMETR_KROTNOSC_I_LR: _propozycja_maszyny(
             PARAMETR_KROTNOSC_I_LR,
             5.0,
             odniesienie=(
                 "wartość typowa maszyn indukcyjnych (zakres spotykany 4–7); "
-                f"{_NORMA_MASZYN} pkt 6.7 wymaga I_LR/I_rM z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wymaga krotności prądu zablokowanego wirnika z danych "
+                "maszyny"
             ),
             uzasadnienie_pl=(
                 "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto "
-                "I_LR/I_rM = 5"
+                "krotność 5"
             ),
             wplyw_pl=(
-                "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna "
+                "impedancja maszyny Z_M jest odwrotnie proporcjonalna do krotności prądu "
+                "zablokowanego wirnika — maszyna "
                 "o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
             ),
         ),
@@ -1570,7 +1660,8 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.85,
             odniesienie=(
                 "wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną S_rM z mocy znamionowej, "
+                "sprawności i współczynnika mocy z danych maszyny"
             ),
             uzasadnienie_pl=(
                 "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto "
@@ -1580,13 +1671,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
                 "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
                 "zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
             ),
+            wzor_latex=_WZOR_MOCY_POZORNEJ_ASYNCHRONICZNEJ,
         ),
         PARAMETR_SPRAWNOSC: _propozycja_maszyny(
             PARAMETR_SPRAWNOSC,
             0.95,
             odniesienie=(
                 "wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną S_rM z mocy znamionowej, "
+                "sprawności i współczynnika mocy z danych maszyny"
             ),
             uzasadnienie_pl=(
                 "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95"
@@ -1595,6 +1688,7 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
                 "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
                 "zwarciowych, są odwrotnie proporcjonalne do sprawności"
             ),
+            wzor_latex=_WZOR_MOCY_POZORNEJ_ASYNCHRONICZNEJ,
         ),
     },
 }
@@ -1676,8 +1770,8 @@ def blad_wartosci_maszyny(rodzina: RodzinaMaszyny, parametr: object, wartosc: ob
 
 #: Pochodzenie mocy znamionowej P_rM wyznaczonej z mocy pozornej znamionowej tabliczki (pkt 6.7).
 POCHODZENIE_MOCY_Z_MOCY_POZORNEJ = (
-    "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, "
-    "IEC 60909-0:2016 pkt 6.7"
+    "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu, sprawności "
+    "i współczynnika mocy, IEC 60909-0:2016 pkt 6.7"
 )
 
 
@@ -1892,6 +1986,7 @@ def wpis_parametru_maszyny(
         "pochodzenie": rozstrzygniecie.pochodzenie,
         "opis_zrodla_pl": rozstrzygniecie.opis_zrodla_pl()
         + (f" ({rozstrzygniecie.powod_braku_pl})" if rozstrzygniecie.powod_braku_pl else ""),
+        **({"wzor_latex": wzor} if (wzor := rozstrzygniecie.wzor_latex()) is not None else {}),
         "wielkosci": list(wielkosci),
     }
 
@@ -1912,6 +2007,7 @@ def dana_przyjeta_parametru_maszyny(wpis: Mapping[str, Any]) -> DanaPrzyjeta:
         wartosc=Wielkosc(wartosc=float(wpis["wartosc"]), jednostka=str(wpis["jednostka"])),
         powod_pl=str(wpis["opis_zrodla_pl"]),
         jakosc=FieldQuality.ESTIMATED,
+        wzor_latex=wpis.get("wzor_latex"),
     )
 
 

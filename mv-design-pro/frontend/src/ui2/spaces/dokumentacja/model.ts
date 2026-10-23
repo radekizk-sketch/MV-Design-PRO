@@ -19,6 +19,7 @@
 import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 import type { SpaceId } from '../../shell/spaces';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
+import { najnowszyPrzebieg } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 /** Czego wymaga dokument, by dało się go wytworzyć (uczciwy warunek). */
 export type WymogDokumentu = 'przebieg' | 'projekt';
@@ -248,11 +249,7 @@ export function maZakonczonyPrzebieg(przebiegi: readonly PrzebiegLekki[]): boole
 export function ostatniZakonczonyPrzebieg<T extends PrzebiegLekki>(
   przebiegi: readonly T[],
 ): T | null {
-  const zakonczone = przebiegi.filter((r) => r.status === STATUS_ZAKONCZONY);
-  if (zakonczone.length === 0) return null;
-  return [...zakonczone].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(String(a.finished_at ?? a.started_at ?? '')),
-  )[0];
+  return najnowszyPrzebieg(przebiegi.filter((r) => r.status === STATUS_ZAKONCZONY));
 }
 
 /** Czy warunek dokumentu jest spełniony (ok = można wytworzyć). */

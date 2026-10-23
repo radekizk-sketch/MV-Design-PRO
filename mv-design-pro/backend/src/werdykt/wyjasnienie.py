@@ -520,10 +520,13 @@ def powod_modelu_niezwalidowanego() -> str:
 
 
 def opis_danej(dana: DanaPrzyjeta) -> str:
-    """Dana przyjęta: nazwa, wartość z jednostką (albo jej brak) i jakość danej."""
+    """Dana przyjęta: nazwa, wartość (skalar z jednostką albo czytelna postać wartości
+    nieskalarnej; „bez wartości” wyłącznie, gdy wartości naprawdę nie ma) i jakość danej."""
     tekst: str = dana.nazwa_pl
     if dana.wartosc is not None:
         tekst += f" = {format_wielkosc(dana.wartosc)}"
+    elif dana.wartosc_opis_pl is not None:
+        tekst += f": {dana.wartosc_opis_pl}"
     else:
         tekst += " (bez wartości liczbowej)"
     if dana.jakosc is not None:

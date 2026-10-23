@@ -12,6 +12,7 @@
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../../ui/study-cases/types';
 import { POZIOM_PL, PROFILE_PL, SEKCJA_PL, ZAKRES_PL } from './strings';
+import { przebiegiOdNajnowszego } from '../../../../ui/study-cases/porzadekPrzebiegow';
 
 export type ProfilRaportu = keyof typeof PROFILE_PL;
 export type PoziomSzczegolowosci = keyof typeof POZIOM_PL;
@@ -46,15 +47,7 @@ const STATUS_ZAKONCZONY = 'DONE';
  * identyfikator), zeby lista nie skakala miedzy renderami.
  */
 export function przebiegiDoRaportu(runs: readonly ExecutionRun[]): readonly ExecutionRun[] {
-  return runs
-    .filter((r) => r.status === STATUS_ZAKONCZONY)
-    .slice()
-    .sort((a, b) => {
-      const da = String(a.finished_at ?? a.started_at ?? '');
-      const db = String(b.finished_at ?? b.started_at ?? '');
-      if (da !== db) return db.localeCompare(da);
-      return a.id.localeCompare(b.id);
-    });
+  return przebiegiOdNajnowszego(runs.filter((r) => r.status === STATUS_ZAKONCZONY));
 }
 
 /** Etykieta przebiegu w liscie wyboru: rodzaj analizy + data zakonczenia. */

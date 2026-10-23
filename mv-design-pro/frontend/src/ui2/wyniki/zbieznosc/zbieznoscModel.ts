@@ -42,6 +42,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { WierszZalozenia } from '../wzorzec';
 import { fmtLiczba, fmtTolerancja, ZBIEZNOSC_STRINGS as T } from './strings';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
+import { aktywnyLubNajnowszy } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 // ---------------------------------------------------------------------------
 // Wybór przebiegu rozpływu (rejestr przebiegów — `ui/study-cases/types.ts:234-243`)
@@ -58,14 +59,7 @@ export function wybierzPrzebiegRozplywu(
   const zakonczone = przebiegi.filter(
     (r) => r.status === 'DONE' && r.analysis_type === 'LOAD_FLOW',
   );
-  if (zakonczone.length === 0) return null;
-  const aktywny = activeRunId ? zakonczone.find((r) => r.id === activeRunId) : undefined;
-  if (aktywny) return aktywny;
-  return [...zakonczone].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(
-      String(a.finished_at ?? a.started_at ?? ''),
-    ),
-  )[0];
+  return aktywnyLubNajnowszy(zakonczone, activeRunId);
 }
 
 // ---------------------------------------------------------------------------

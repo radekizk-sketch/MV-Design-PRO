@@ -27,7 +27,13 @@ from typing import Any
 from application.contracts.resultset_dynamic_v2 import TrybScenariusza
 from application.dynamika.opis_scenariusza import ETYKIETY_WARTOSCI
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
-from enm.dynamika_z_katalogu import stan_dynamiki_generatorow, stan_dynamiki_odbiorow
+from enm.dynamika_z_katalogu import (
+    StanDynamikiGeneratora,
+    StanDynamikiOdbioru,
+    nazwa_profilu_dynamiki,
+    stan_dynamiki_generatorow,
+    stan_dynamiki_odbiorow,
+)
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.solvers.dynamika.zdarzenia import PRZYCZYNA_HARMONOGRAM
 from solver_input.provenance import classify_dynamic_capability
@@ -40,6 +46,7 @@ from werdykt import (
     StatusDanych,
     ZakresWaznosci,
 )
+from werdykt.wyjasnienie import format_liczba
 
 #: Zdolność dowodowa biegu w rejestrze proweniencji (ta sama, którą czyta wykonawca biegu).
 ZDOLNOSC_DYNAMIKI_RMS = "dynamika_rms.przebieg_czasowy"
@@ -474,6 +481,25 @@ _ZRODLA_PRZYJETE: dict[str, str] = {
 }
 
 
+def opis_wartosci_dynamiki_pl(stan: StanDynamikiGeneratora | StanDynamikiOdbioru) -> str | None:
+    """Czytelna postać wartości przyjętej bloku dynamiki (``DanaPrzyjeta.wartosc_opis_pl``).
+
+    Wytwórca: profil katalogowy, z którego pochodzi blok parametrów. Odbiór: liczby bloku,
+    które czytają równania odbioru (napięcie przejścia, stała pomiaru częstotliwości).
+    ``None`` wyłącznie, gdy blok nie niesie ani wiązania z profilem, ani tych liczb.
+    """
+    if isinstance(stan, StanDynamikiGeneratora):
+        return f"profil {nazwa_profilu_dynamiki(stan.wiazanie)}" if stan.wiazanie else None
+    czesci = []
+    if stan.u_min_pu is not None:
+        czesci.append(f"napięcie przejścia {format_liczba(stan.u_min_pu)} p.u.")
+    if stan.t_pomiaru_czestotliwosci_s is not None:
+        czesci.append(
+            f"stała pomiaru częstotliwości {format_liczba(stan.t_pomiaru_czestotliwosci_s)} s"
+        )
+    return ", ".join(czesci) or None
+
+
 def dane_przyjete_biegu(migawka: Mapping[str, Any]) -> tuple[DanaPrzyjeta, ...]:
     """Bloki parametrów dynamicznych wytwórców i ODBIORÓW migawki BIEGU, przyjęte bez
     walidacji (kolejność: wytwórcy, potem odbiory, każda rodzina po `ref_id`). Źródło i
@@ -481,10 +507,13 @@ def dane_przyjete_biegu(migawka: Mapping[str, Any]) -> tuple[DanaPrzyjeta, ...]:
     typowego katalogu (napięcie przejścia, stała pomiaru częstotliwości — karta modeli
     odbiorów) jest daną przyjętą tak samo jak profil typowy wytwórcy."""
     wynik: list[DanaPrzyjeta] = []
-    for rodzaj, stany in (
+    stany_rodzin: tuple[
+        tuple[str, tuple[StanDynamikiGeneratora, ...] | tuple[StanDynamikiOdbioru, ...]], ...
+    ] = (
         ("źródła", stan_dynamiki_generatorow(migawka)),
         ("odbioru", stan_dynamiki_odbiorow(migawka)),
-    ):
+    )
+    for rodzaj, stany in stany_rodzin:
         for stan in stany:
             powod = _ZRODLA_PRZYJETE.get(stan.zrodlo_proweniencji or "")
             if powod is None:
@@ -495,6 +524,7 @@ def dane_przyjete_biegu(migawka: Mapping[str, Any]) -> tuple[DanaPrzyjeta, ...]:
                     wartosc=None,
                     powod_pl=f"{powod} ({stan.odniesienie_proweniencji})",
                     jakosc=FieldQuality.ESTIMATED,
+                    wartosc_opis_pl=opis_wartosci_dynamiki_pl(stan),
                 )
             )
     return tuple(wynik)

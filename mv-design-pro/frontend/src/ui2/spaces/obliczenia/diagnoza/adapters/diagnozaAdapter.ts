@@ -5,12 +5,10 @@
  * - kontrola przed obliczeniem + braki modelu: końcówki diagnostyki przypadku,
  * - diagnoza zbieżności: końcówka diagnozy biegu.
  *
- * KTÓRY BIEG DIAGNOZUJEMY. Najnowszy bieg aktywnego przypadku, czyli
- * `useExecutionRunsStore.runs[0]` — repozytorium sortuje `created_at DESC,
- * id DESC` (`infrastructure/persistence/repositories/canonical_run_repository.py:264-270`),
- * więc „pierwszy z listy" jest deterministycznie najnowszy (rozstrzygnięcie po
- * `id` chroni przed równym znacznikiem czasu). Wybór biegu to czysta SELEKCJA
- * w prezentacji — żadnej oceny wyniku, żadnej fizyki.
+ * KTÓRY BIEG DIAGNOZUJEMY. Najnowszy bieg aktywnego przypadku wg wspólnego porządku
+ * przebiegów (`ui/study-cases/porzadekPrzebiegow.ts`: `created_at DESC, id DESC` — ten sam
+ * klucz co repozytorium), niezależnie od kolejności listy w store'ze. Wybór biegu to czysta
+ * SELEKCJA w prezentacji — żadnej oceny wyniku, żadnej fizyki.
  *
  * Store przebiegów czytamy TYLKO do odczytu; napełnia go hydratacja powłoki
  * (`ui2/shell/useHydratacjaPowloki.ts:125` → `setActiveStudyCaseId` → `loadRuns`),
@@ -20,6 +18,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  najnowszyPrzebieg,
+  type PrzebiegWCzasie,
+} from '../../../../../ui/study-cases/porzadekPrzebiegow';
 import { useExecutionRunsStore } from '../../../../../ui/study-cases/runStore';
 import { useBusEvent } from '../../../../events';
 import {
@@ -61,10 +63,10 @@ const STAN_POCZATKOWY: StanWewnetrzny = {
 
 /**
  * Identyfikator najnowszego biegu przypadku (albo `null`, gdy biegów nie ma).
- * Kolejność ze store'u jest autorytatywna — patrz nagłówek pliku.
+ * Porządek wspólny dla wszystkich ekranów — patrz nagłówek pliku.
  */
-export function najnowszyBieg(runy: readonly { id: string }[]): string | null {
-  return runy.length > 0 ? runy[0].id : null;
+export function najnowszyBieg(runy: readonly (PrzebiegWCzasie & { id: string })[]): string | null {
+  return najnowszyPrzebieg(runy)?.id ?? null;
 }
 
 /**

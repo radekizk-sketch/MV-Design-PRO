@@ -542,8 +542,9 @@
                 "wartosc": 2.5,
                 "jednostka": "MVA"
               },
-              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
-              "jakosc": "ESTIMATED"
+              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (moduł mocy czynnej podzielony na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "jakosc": "ESTIMATED",
+              "wzor_latex": "S_\\mathrm{rG} = \\frac{P}{\\cos\\varphi_\\mathrm{rG}}"
             },
             {
               "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
@@ -594,8 +595,9 @@
                 "wartosc": 2.5,
                 "jednostka": "MVA"
               },
-              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
-              "jakosc": "ESTIMATED"
+              "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (moduł mocy czynnej podzielony na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "jakosc": "ESTIMATED",
+              "wzor_latex": "S_\\mathrm{rG} = \\frac{P}{\\cos\\varphi_\\mathrm{rG}}"
             },
             {
               "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",

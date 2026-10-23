@@ -146,12 +146,22 @@ export interface Wielkosc {
   readonly jednostka: string;
 }
 
-/** Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej). */
+/**
+ * Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej).
+ *
+ * Wartość ma jedną postać albo żadnej: `wartosc` — skalar z jednostką; `wartosc_opis_pl` —
+ * czytelna postać wartości NIESKALARNEJ (położenia przewodów, nazwa typu, profil); obie
+ * nieobecne = wartości naprawdę nie ma. `wzor_latex` — zależność uzasadnienia (proza
+ * `powod_pl` bez wzoru), renderowana przez `MathRenderer`. Pola addytywne: backend pomija je,
+ * gdy puste.
+ */
 export interface DanaPrzyjeta {
   readonly nazwa_pl: string;
   readonly wartosc: Wielkosc | null;
   readonly powod_pl: string;
   readonly jakosc: FieldQuality | null;
+  readonly wartosc_opis_pl?: string;
+  readonly wzor_latex?: string;
 }
 
 /** Status danych wejściowych: `UNVALIDATED_INPUT` ⇔ lista danych przyjętych niepusta. */

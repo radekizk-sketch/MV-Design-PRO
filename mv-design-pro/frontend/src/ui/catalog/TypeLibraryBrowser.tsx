@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
+import { MathInline } from '../proof/MathRenderer';
 import {
   fetchPtpireeGeneratorCertificatesPage,
   fetchTypesByCategory,
@@ -647,6 +648,12 @@ function WartosciRoboczePozycji({
               <span className="ml-2 text-gray-500">({RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]})</span>
               <p className="text-xs text-gray-500">
                 {p.uzasadnienie_pl}. Źródło: {p.odniesienie}. Wpływ: {p.wplyw_pl}.
+                {p.wzor_latex !== undefined && (
+                  <>
+                    {' '}
+                    <MathInline latex={p.wzor_latex} />
+                  </>
+                )}
               </p>
             </li>
           ))}

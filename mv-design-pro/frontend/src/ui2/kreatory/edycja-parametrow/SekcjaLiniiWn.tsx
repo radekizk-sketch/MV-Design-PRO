@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { MathInline } from '../../../ui/proof/MathRenderer';
 
 import { fetchPodgladParametrowLiniiWn, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type {
@@ -277,6 +278,12 @@ export function SekcjaLiniiWn({
               <li key={s.parametr} data-testid={`mvd-kreator-edycja-linia-wn-skladowa-${s.parametr}`}>
                 {s.nazwa_pl}: {s.wartosc_robocza ? T.liniaWnSkladowaRobocza : T.liniaWnSkladowaProjektu}{' '}
                 — {s.opis_zrodla_pl}
+                {s.wzor_latex !== undefined && (
+                  <>
+                    {' '}
+                    <MathInline latex={s.wzor_latex} />
+                  </>
+                )}
               </li>
             ))}
           </ul>

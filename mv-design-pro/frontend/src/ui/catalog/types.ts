@@ -81,6 +81,8 @@ export interface PropozycjaDanejLiniiWn {
   odniesienie: string;
   uzasadnienie_pl: string;
   wplyw_pl: string;
+  /** Zależność wpływu w LaTeX (proza `wplyw_pl` bez wzoru); nieobecna, gdy propozycja jej nie ma. */
+  wzor_latex?: string;
 }
 
 /** Odpowiedź `GET /api/catalog/overhead-conductor-types`. */
@@ -110,6 +112,8 @@ export interface SkladowaDanychLiniiWn {
   pochodzenie: 'PROJEKT' | 'PROPOZYCJA';
   wartosc_robocza: boolean;
   opis_zrodla_pl: string;
+  /** Zależność wpływu wartości roboczej w LaTeX (`MathRenderer`); dana projektu — brak. */
+  wzor_latex?: string;
 }
 
 /**
@@ -376,6 +380,8 @@ export interface PropozycjaWartosciRoboczej {
   readonly odniesienie: string;
   readonly uzasadnienie_pl: string;
   readonly wplyw_pl: string;
+  /** Zależność, na której stoi propozycja, w LaTeX (proza bez wzoru); nieobecna, gdy jej brak. */
+  readonly wzor_latex?: string;
 }
 
 /** Rodzina maszyny wirującej rejestru (`RodzinaMaszyny`, `network_model/catalog/wartosci_robocze.py`). */

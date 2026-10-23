@@ -38,6 +38,7 @@ import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
 import { usePodsumowanieGotowosci } from '../spaces/gotowosc/adapters/gotowoscAdapter';
 import { formatCzas } from '../spaces/obliczenia/przebiegi/strings';
 import { znacznikSwiezosci, type ZnacznikSwiezosci } from './znacznikSwiezosci';
+import { najnowszyPrzebieg } from '../../ui/study-cases/porzadekPrzebiegow';
 
 export type BackendStatus = 'connected' | 'connecting' | 'error';
 
@@ -134,14 +135,7 @@ export function ostatniZakonczonyPrzebiegPrzypadku(
  * zawsze daje tę samą etykietę (Determinism Rule).
  */
 export function ostatniZakonczonyPrzebieg(runs: ExecutionRun[]): ExecutionRun | null {
-  const zakonczone = runs.filter((run) => run.status === 'DONE');
-  if (zakonczone.length === 0) return null;
-  return zakonczone.reduce((najlepszy, kandydat) => {
-    const a = kandydat.finished_at ?? kandydat.started_at ?? '';
-    const b = najlepszy.finished_at ?? najlepszy.started_at ?? '';
-    if (a !== b) return a > b ? kandydat : najlepszy;
-    return kandydat.id > najlepszy.id ? kandydat : najlepszy;
-  });
+  return najnowszyPrzebieg(runs.filter((run) => run.status === 'DONE'));
 }
 
 /** Etykieta paska stanu: „{analiza PL} · {czas}" albo `null` (brak przebiegu). */

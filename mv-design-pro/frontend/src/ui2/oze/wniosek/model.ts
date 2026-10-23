@@ -11,6 +11,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { jestPrzebiegiemZwarciowym } from '../../wyniki/jakosc';
 import type { ZadanieWniosku } from '../ncrfg/typy';
 import { WNIOSEK_STRINGS } from './strings';
+import { aktywnyLubNajnowszy } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 /** Zakończone przebiegi rozpływu mocy (LOAD_FLOW/DONE) — kolejność źródłowa. */
 export function przebiegiRozplywu(runs: readonly ExecutionRun[]): ExecutionRun[] {
@@ -24,15 +25,14 @@ export function przebiegiZwarciowe(runs: readonly ExecutionRun[]): ExecutionRun[
 
 /**
  * Domyślny wybór przebiegu: preferuje aktywny (gdy jest na liście), inaczej
- * OSTATNI z listy kandydatów. `null`, gdy brak kandydatów.
+ * NAJNOWSZY z kandydatów (`aktywnyLubNajnowszy` — porządek po czasie przebiegu, nie po
+ * kolejności listy). `null`, gdy brak kandydatów.
  */
 export function domyslnyPrzebieg(
   kandydaci: readonly ExecutionRun[],
   activeRunId: string | null,
 ): string | null {
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return (aktywny ?? kandydaci[kandydaci.length - 1]).id;
+  return aktywnyLubNajnowszy(kandydaci, activeRunId)?.id ?? null;
 }
 
 /** Stan formularza wniosku decydujący o dostępności generacji. */

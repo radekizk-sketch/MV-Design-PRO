@@ -47,6 +47,7 @@ import {
   rodzajKontroliPL,
   statusWalidacjiPL,
 } from './strings';
+import { aktywnyLubNajnowszy } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 // ---------------------------------------------------------------------------
 // Wybór przebiegu z rejestru (useExecutionRunsStore) — aktywny/ostatni DONE
@@ -59,8 +60,8 @@ export function jestPrzebiegiemZwarciowym(analysisType: string): boolean {
 
 /**
  * Wybiera przebieg danego rodzaju: preferuje aktywny (gdy pasuje i zakończony),
- * inaczej OSTATNI zakończony (DONE) danego rodzaju. Deterministyczne dla danego
- * wejścia (kolejność źródłowa listy `runs`).
+ * inaczej NAJNOWSZY zakończony (DONE) danego rodzaju (`aktywnyLubNajnowszy` — porządek po
+ * czasie przebiegu, niezależny od kolejności listy `runs`, która przychodzi od najnowszego).
  */
 function wybierzPrzebieg(
   runs: readonly ExecutionRun[],
@@ -68,9 +69,7 @@ function wybierzPrzebieg(
   pasuje: (analysisType: string) => boolean,
 ): ExecutionRun | null {
   const kandydaci = runs.filter((r) => pasuje(r.analysis_type) && r.status === 'DONE');
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return aktywny ?? kandydaci[kandydaci.length - 1];
+  return aktywnyLubNajnowszy(kandydaci, activeRunId);
 }
 
 /** Ostatni/aktywny zakończony przebieg zwarciowy (SC_* + DONE) — sekcja wiarygodności. */

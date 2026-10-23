@@ -41,6 +41,7 @@ import {
   fmtRezyduum,
   fmtStopnie,
 } from './strings';
+import { aktywnyLubNajnowszy } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 // ---------------------------------------------------------------------------
 // Wybór przebiegu z rejestru — przebieg rozpływu (LOAD_FLOW/DONE)
@@ -48,17 +49,15 @@ import {
 
 /**
  * Ostatni/aktywny zakończony przebieg rozpływu (LOAD_FLOW/DONE) — źródło Y-bus.
- * Preferuje aktywny (gdy pasuje i zakończony), inaczej OSTATNI zakończony.
- * Deterministyczne dla danego wejścia (kolejność źródłowa listy `runs`).
+ * Preferuje aktywny (gdy pasuje i zakończony), inaczej NAJNOWSZY zakończony
+ * (`aktywnyLubNajnowszy` — porządek po czasie przebiegu, nie po kolejności listy).
  */
 export function przebiegRozplywuEstymacji(
   runs: readonly ExecutionRun[],
   activeRunId: string | null,
 ): ExecutionRun | null {
   const kandydaci = runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE');
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return aktywny ?? kandydaci[kandydaci.length - 1];
+  return aktywnyLubNajnowszy(kandydaci, activeRunId);
 }
 
 // ---------------------------------------------------------------------------

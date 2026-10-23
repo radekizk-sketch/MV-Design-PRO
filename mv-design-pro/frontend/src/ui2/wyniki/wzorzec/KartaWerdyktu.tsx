@@ -32,7 +32,7 @@
 
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 
-import { MathInline } from '../../../ui/proof/MathRenderer';
+import { MathBlock, MathInline } from '../../../ui/proof/MathRenderer';
 import { paraDanychDowodu, type ParaDanychPrzyjetych } from './danePrzyjete';
 import {
   jestWynikiemWymagania,
@@ -317,6 +317,7 @@ const TEKSTY = {
   pozaDomena: 'bieg poza zadeklarowaną domeną walidacji',
   domenaNieokreslona: 'nie określono — dowód bez biegu albo bez zadeklarowanej domeny',
   bezWartosci: 'bez wartości liczbowej',
+  wzorUzasadnienia: 'zależność',
   jakoscDanej: 'jakość danej',
   opisZakresu: 'opis zakresu',
   rodzajAnalizy: 'rodzaj analizy',
@@ -476,6 +477,37 @@ function PodstawaSzczegoly({
   );
 }
 
+/**
+ * Wartość danej przyjętej w jednej postaci: skalar z jednostką, czytelny opis wartości
+ * nieskalarnej (położenia, typ, profil) albo „bez wartości liczbowej” — WYŁĄCZNIE, gdy backend
+ * nie podał żadnej (wartości naprawdę nie ma).
+ */
+function wartoscDanejPrzyjetej(dana: DanaPrzyjeta): string {
+  if (dana.wartosc !== null) return wielkosc(dana.wartosc);
+  return dana.wartosc_opis_pl ?? TEKSTY.bezWartosci;
+}
+
+/** Uzasadnienie danej przyjętej: proza i — gdy backend go niesie — wzór z pola `wzor_latex`. */
+function UzasadnienieDanej({
+  dana,
+  testId,
+}: {
+  readonly dana: DanaPrzyjeta;
+  readonly testId: string;
+}) {
+  return (
+    <>
+      {dana.powod_pl}
+      {dana.wzor_latex !== undefined && (
+        <span className="mvd-dane-przyjete-wzor" data-testid={`${testId}-wzor`}>
+          <span className="mvd-werdykt-para-nazwa">{TEKSTY.wzorUzasadnienia}:</span>
+          <MathBlock latex={dana.wzor_latex} />
+        </span>
+      )}
+    </>
+  );
+}
+
 function ListaDanych({
   dane,
   testId,
@@ -488,11 +520,9 @@ function ListaDanych({
       {dane.map((dana, indeks) => (
         <li key={`${indeks}-${dana.nazwa_pl}`}>
           {dana.nazwa_pl}:{' '}
-          {dana.wartosc === null ? (
-            TEKSTY.bezWartosci
-          ) : (
-            <span className="mvd-num">{wielkosc(dana.wartosc)}</span>
-          )}
+          <span className={dana.wartosc === null ? undefined : 'mvd-num'}>
+            {wartoscDanejPrzyjetej(dana)}
+          </span>
           {dana.jakosc !== null && (
             <>
               {' · '}
@@ -500,7 +530,7 @@ function ListaDanych({
             </>
           )}
           {' — '}
-          {dana.powod_pl}
+          <UzasadnienieDanej dana={dana} testId={`${testId}-${indeks}`} />
         </li>
       ))}
     </ul>
@@ -543,9 +573,7 @@ function WierszDanejPrzyjetej({
           {otwarty ? '▾' : '▸'}
         </span>
         <span className="mvd-dane-przyjete-nazwa">{dana.nazwa_pl}</span>
-        <span className="mvd-dane-przyjete-wartosc mvd-num">
-          {dana.wartosc === null ? TEKSTY.bezWartosci : wielkosc(dana.wartosc)}
-        </span>
+        <span className="mvd-dane-przyjete-wartosc mvd-num">{wartoscDanejPrzyjetej(dana)}</span>
         {dana.jakosc !== null && (
           <span className="mvd-dane-przyjete-jakosc">{NAZWA_JAKOSCI_PL[dana.jakosc]}</span>
         )}
@@ -556,7 +584,7 @@ function WierszDanejPrzyjetej({
           className="mvd-dane-przyjete-szczegoly"
           data-testid={`${testId}-szczegoly`}
         >
-          {dana.powod_pl}
+          <UzasadnienieDanej dana={dana} testId={testId} />
         </div>
       )}
     </li>

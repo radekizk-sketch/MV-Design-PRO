@@ -108,6 +108,7 @@ def dana_przyjeta(zapis: Mapping[str, Any], *, aparat_pl: str) -> DanaPrzyjeta:
         wartosc=Wielkosc(wartosc=float(wartosc), jednostka=str(zapis["jednostka"])),
         powod_pl=str(zapis["opis_zrodla_pl"]),
         jakosc=FieldQuality.ESTIMATED,
+        wzor_latex=zapis.get("wzor_latex"),
     )
 
 

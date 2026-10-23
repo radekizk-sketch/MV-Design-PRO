@@ -32,6 +32,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { MathInline } from '../../../../ui/proof/MathRenderer';
 
 import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -249,7 +250,17 @@ function ParametryAparatu({
                 {T.zmienWartosc}
               </button>
             )}
-            {w.wartosc_robocza && <p className="mvd-apar-czas-zalozenie">{w.opis_zrodla_pl}</p>}
+            {w.wartosc_robocza && (
+              <p className="mvd-apar-czas-zalozenie">
+                {w.opis_zrodla_pl}
+                {w.wzor_latex !== undefined && (
+                  <>
+                    {' '}
+                    <MathInline latex={w.wzor_latex} />
+                  </>
+                )}
+              </p>
+            )}
             {w.wartosc === null && w.powod_braku_pl !== null && (
               <p className="mvd-apar-czas-powod">{w.powod_braku_pl}</p>
             )}

@@ -28,7 +28,7 @@ import {
 
 const LINIA_STANU = new Map<number, string>([
   [1, "dane przyjęte bez walidacji · 1 wartość robocza"],
-  [3, "dane przyjęte bez walidacji · 3 wartości robocze"],
+  [4, "dane przyjęte bez walidacji · 4 wartości robocze"],
 ]);
 import { renderEkranZwarc } from "./renderEkranZwarc";
 import {
@@ -45,6 +45,16 @@ const LINIA_110: DanaPrzyjeta = {
   wartosc: null,
   powod_pl:
     "wartość robocza (założenie inżynierskie): standard ENEA Operator linii 110 kV (06.2026) §4.3",
+  jakosc: "ESTIMATED",
+  // Wartość nieskalarna ISTNIEJE — backend niesie jej czytelną postać i wzór wpływu.
+  wartosc_opis_pl: "(−3,5; 15), (3,5; 15), (−3; 19) m",
+  wzor_latex: "\\Delta X'_1 = \\frac{\\omega \\mu_0}{2\\pi} \\ln 1{,}25",
+};
+/** Wartości naprawdę nie ma — jedyny przypadek „bez wartości liczbowej”. */
+const BEZ_WARTOSCI: DanaPrzyjeta = {
+  nazwa_pl: "spełnienie warunku ważności certyfikatu",
+  wartosc: null,
+  powod_pl: "warunek z rekordu wykazu — spełnienie nie jest potwierdzone w modelu",
   jakosc: "ESTIMATED",
 };
 const TOLERANCJA_NN: DanaPrzyjeta = {
@@ -64,7 +74,8 @@ const MASZYNA_XD: DanaPrzyjeta = {
 
 /** Oczekiwany zapis wartości (format PL wzorca, jednostka po spacji; brak → opis). */
 const ZAPIS_WARTOSCI = new Map<DanaPrzyjeta, string>([
-  [LINIA_110, "bez wartości liczbowej"],
+  [LINIA_110, "(−3,5; 15), (3,5; 15), (−3; 19) m"],
+  [BEZ_WARTOSCI, "bez wartości liczbowej"],
   [TOLERANCJA_NN, "10 %"],
   [MASZYNA_XD, "0,15 p.u. (S_rG, U_rG)"],
 ]);
@@ -72,7 +83,10 @@ const ZAPIS_WARTOSCI = new Map<DanaPrzyjeta, string>([
 const LISTY = [
   { nazwa: "lista pusta", dane: [] as DanaPrzyjeta[] },
   { nazwa: "jeden wpis", dane: [LINIA_110] },
-  { nazwa: "trzy źródła naraz", dane: [TOLERANCJA_NN, LINIA_110, MASZYNA_XD] },
+  {
+    nazwa: "cztery źródła naraz (skalar, wektor z wzorem, brak wartości)",
+    dane: [TOLERANCJA_NN, LINIA_110, MASZYNA_XD, BEZ_WARTOSCI],
+  },
 ];
 const ODPOWIEDZI = [
   {
@@ -219,6 +233,7 @@ describe("Dane przyjęte przy wkładach i rozpływie punktu — iloczyn lista ×
       const tekst = pozycje[i].textContent ?? "";
       expect(tekst).toContain(dana.nazwa_pl);
       expect(tekst).toContain(ZAPIS_WARTOSCI.get(dana)!);
+      if (dana !== BEZ_WARTOSCI) expect(tekst).not.toContain("bez wartości liczbowej");
       expect(tekst).toContain("oszacowane");
       expect(tekst).not.toContain(dana.powod_pl);
     });
@@ -234,6 +249,15 @@ describe("Dane przyjęte przy wkładach i rozpływie punktu — iloczyn lista ×
           `${odp.sekcja}-dane-przyjete-${i}-szczegoly`,
         ),
       ).toHaveTextContent(dana.powod_pl);
+      const wzor = within(pozycje[i]).queryByTestId(
+        `${odp.sekcja}-dane-przyjete-${i}-wzor`,
+      );
+      if (dana.wzor_latex !== undefined) {
+        expect(wzor).not.toBeNull();
+        expect(wzor?.querySelector(".katex") ?? null).not.toBeNull();
+      } else {
+        expect(wzor).toBeNull();
+      }
     }
     // Dyskretnie: zapis danych przyjętych nie jest ostrzeżeniem ani alertem.
     expect(within(blok).queryByRole("alert")).not.toBeInTheDocument();

@@ -3457,7 +3457,7 @@
    },
    "DanaPrzyjeta": {
     "additionalProperties": false,
-    "description": "Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej).",
+    "description": "Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej).\n\nWartość przyjęta ma JEDNĄ z dwóch postaci albo żadnej:\n\n* ``wartosc`` — skalar z jednostką (np. rezystywność gruntu 100 Ω·m);\n* ``wartosc_opis_pl`` — czytelna postać wartości NIESKALARNEJ (położenia przewodów\n  z jednostką, nazwa typu katalogowego, zestaw parametrów profilu) — wartość ISTNIEJE,\n  tylko nie jest liczbą;\n* obie ``None`` — wartości naprawdę nie ma (np. spełnienie warunku certyfikatu).\n\n``wzor_latex`` — zależność uzasadnienia (wyprowadzenie wartości albo jej wpływ na wynik)\nw LaTeX; proza ``powod_pl`` opisuje ją słownie, bez wzoru (kontrakt prezentacji\ninżynierskiej: matematyka wyłącznie z pola ``*_latex``). Oba pola są addytywne —\npomijane w zapisie, gdy ``None``.",
     "properties": {
      "jakosc": {
       "anyOf": [
@@ -3486,6 +3486,28 @@
         "type": "null"
        }
       ]
+     },
+     "wartosc_opis_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wartosc Opis Pl"
+     },
+     "wzor_latex": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wzor Latex"
      }
     },
     "required": [

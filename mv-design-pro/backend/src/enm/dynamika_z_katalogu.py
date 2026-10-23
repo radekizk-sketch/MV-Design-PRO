@@ -151,7 +151,7 @@ def pola_zasobnika_bez_karty(generator: Mapping[str, Any]) -> tuple[str, ...]:
     )
 
 
-def _nazwa_profilu(profile_id: str) -> str:
+def nazwa_profilu_dynamiki(profile_id: str) -> str:
     """Nazwa profilu katalogowego dla projektanta (nie identyfikator pozycji katalogu)."""
     return f"„{get_profile(profile_id).profile_name_pl}”"
 
@@ -272,9 +272,9 @@ def sprawdz_zgodnosc(profile_id: str, gen_type: str | None, nazwa_wytworcy: str)
     if profile_id not in zgodne:
         raise BladMaterializacjiDynamiki(
             KOD_PROFIL_NIEZGODNY,
-            f"Profil {_nazwa_profilu(profile_id)} opisuje inny rodzaj urządzenia niż wytwórca "
+            f"Profil {nazwa_profilu_dynamiki(profile_id)} opisuje inny rodzaj urządzenia niż wytwórca "
             f"„{nazwa_wytworcy}” ({nazwa_rodzaju_generatora(gen_type)}). Profile tego rodzaju: "
-            f"{lista_pl((_nazwa_profilu(pid) for pid in zgodne), 'i')}.",
+            f"{lista_pl((nazwa_profilu_dynamiki(pid) for pid in zgodne), 'i')}.",
         )
 
 
@@ -323,7 +323,7 @@ def materializuj_dynamike(profile_id: str, generator: Mapping[str, Any]) -> dict
                     nazwa_elementu=nazwa,
                     rodzaj_elementu_pl="Magazyn",
                     skutek_pl=(
-                        f"Profil {_nazwa_profilu(profile_id)} opisuje wyłącznie przekształtnik, "
+                        f"Profil {nazwa_profilu_dynamiki(profile_id)} opisuje wyłącznie przekształtnik, "
                         "a przekształtnik bez zasobnika byłby innym urządzeniem niż "
                         "zaprojektowane, więc modelu dynamicznego magazynu nie zbudowano."
                     ),

@@ -648,10 +648,11 @@ def _parametry_linii_raportu_linie(slady: list[dict[str, Any]]) -> list[str]:
         linie.append(f"Kompletność dowodu: {kompletnosc}")
         for dana in linia["dane_przyjete"]:
             wartosc = dana.get("wartosc")
+            opis_wartosci = dana.get("wartosc_opis_pl")
             liczba = (
                 f" = {_fmt_liczba(wartosc['wartosc'])} {wartosc['jednostka']}"
                 if isinstance(wartosc, dict)
-                else ""
+                else f": {opis_wartosci}" if isinstance(opis_wartosci, str) else ""
             )
             linie.append(f"Dana przyjęta: {dana['nazwa_pl']}{liczba} — {dana['powod_pl']}")
         if not linia["zgodny_z_modelem"]:

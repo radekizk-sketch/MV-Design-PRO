@@ -142,7 +142,7 @@ class ParametryLinii110kVProof:
             wartosc = (
                 f" = {dana.wartosc.wartosc:g} {dana.wartosc.jednostka}"
                 if dana.wartosc is not None
-                else ""
+                else f": {dana.wartosc_opis_pl}" if dana.wartosc_opis_pl is not None else ""
             )
             jakosc = dana.jakosc.value if dana.jakosc is not None else "brak oceny jakości"
             ostrzezenia.append(

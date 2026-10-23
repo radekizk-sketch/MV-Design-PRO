@@ -33,6 +33,7 @@ import type {
   WynikModuluNcRfg,
   ZgodnoscPrzypadkuNcRfg,
 } from '../ncrfg/typy';
+import { aktywnyLubNajnowszy } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 // =============================================================================
 // Typy warstwy prezentacji
@@ -261,8 +262,5 @@ function wybierzPrzebieg(
   pasuje: (run: ExecutionRun) => boolean,
 ): string | null {
   const zakonczone = runs.filter((r) => r.status === 'DONE' && pasuje(r));
-  if (zakonczone.length === 0) return null;
-  const aktywny = zakonczone.find((r) => r.id === activeRunId);
-  if (aktywny) return aktywny.id;
-  return zakonczone[zakonczone.length - 1].id;
+  return aktywnyLubNajnowszy(zakonczone, activeRunId)?.id ?? null;
 }

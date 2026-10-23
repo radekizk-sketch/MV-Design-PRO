@@ -31,7 +31,7 @@ import re
 from bisect import bisect_right
 from typing import Annotated, Literal, Self, get_args
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, FiniteFloat, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, FiniteFloat, model_validator
 from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 
 # ---------------------------------------------------------------------------
@@ -345,13 +345,44 @@ class Wielkosc(_Zamrozony):
     jednostka: Jednostka
 
 
+def _pominiete_gdy_brak(wartosc: object) -> bool:
+    """Pole addytywne pomijane w zapisie, gdy ``None`` — ładunki bez tego pola bit w bit
+    takie jak przed jego wprowadzeniem (determinizm odcisków istniejących rekordów)."""
+    return wartosc is None
+
+
 class DanaPrzyjeta(_Zamrozony):
-    """Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej)."""
+    """Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej).
+
+    Wartość przyjęta ma JEDNĄ z dwóch postaci albo żadnej:
+
+    * ``wartosc`` — skalar z jednostką (np. rezystywność gruntu 100 Ω·m);
+    * ``wartosc_opis_pl`` — czytelna postać wartości NIESKALARNEJ (położenia przewodów
+      z jednostką, nazwa typu katalogowego, zestaw parametrów profilu) — wartość ISTNIEJE,
+      tylko nie jest liczbą;
+    * obie ``None`` — wartości naprawdę nie ma (np. spełnienie warunku certyfikatu).
+
+    ``wzor_latex`` — zależność uzasadnienia (wyprowadzenie wartości albo jej wpływ na wynik)
+    w LaTeX; proza ``powod_pl`` opisuje ją słownie, bez wzoru (kontrakt prezentacji
+    inżynierskiej: matematyka wyłącznie z pola ``*_latex``). Oba pola są addytywne —
+    pomijane w zapisie, gdy ``None``.
+    """
 
     nazwa_pl: Tekst
     wartosc: Wielkosc | None
     powod_pl: Tekst
     jakosc: FieldQuality | None
+    wartosc_opis_pl: Tekst | None = Field(default=None, exclude_if=_pominiete_gdy_brak)
+    wzor_latex: Tekst | None = Field(default=None, exclude_if=_pominiete_gdy_brak)
+
+    @model_validator(mode="after")
+    def _jedna_postac_wartosci(self) -> Self:
+        if self.wartosc is not None and self.wartosc_opis_pl is not None:
+            raise ValueError(
+                f"Dana przyjęta „{self.nazwa_pl}” ma wartość skalarną i opis wartości "
+                "nieskalarnej naraz — wartość ma jedną postać."
+            )
+        return self
 
 
 class StatusDanych(_Zamrozony):

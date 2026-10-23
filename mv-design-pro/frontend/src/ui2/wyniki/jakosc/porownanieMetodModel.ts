@@ -33,6 +33,7 @@ import { METODY_SOLVERA_PL } from '../zbieznosc';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 import { fmtData, fmtKat, fmtNapiecie } from '../porownanie';
 import { JAKOSC_STRINGS as T, fmtDeltaKat, fmtDeltaNapiecie } from './strings';
+import { przebiegiOdNajnowszego } from '../../../ui/study-cases/porzadekPrzebiegow';
 
 /** Bieg rozpływu ZIDENTYFIKOWANY po metodzie (ślad przeczytany, metoda znana). */
 export interface WynikBieguMetody {
@@ -44,14 +45,15 @@ export interface WynikBieguMetody {
  * Kandydaci na bieg NR/FD: zakończone przebiegi rozpływu (LOAD_FLOW/DONE) tego
  * przypadku, od NAJNOWSZEGO — wołający (komponent) pobiera ślad kolejnych
  * kandydatów, aż znajdzie najnowszy bieg każdej metody (przerywa wcześniej,
- * gdy oba już znalezione). Kolejność = ta sama konwencja co
- * `jakoscModel.ts::wybierzPrzebieg` (`runs` jest chronologicznie rosnący —
- * najnowszy jest OSTATNI).
+ * gdy oba już znalezione). Porządek z `przebiegiOdNajnowszego` (ten sam co
+ * `jakoscModel.ts::wybierzPrzebieg`) — po czasie przebiegu, nie po kolejności listy.
  */
 export function kandydaciRozplywuOdNajnowszego(
   runs: readonly ExecutionRun[],
 ): readonly ExecutionRun[] {
-  return runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE').slice().reverse();
+  return przebiegiOdNajnowszego(
+    runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE'),
+  );
 }
 
 const etykietaMetody = (token: string | undefined): string =>
