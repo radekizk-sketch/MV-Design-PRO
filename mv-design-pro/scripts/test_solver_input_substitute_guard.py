@@ -2234,7 +2234,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # karty LINIA-110 `dda21faa1` dolozyl plik bez podniesienia pinu: pomiar 586 przy pinie
         # 585 na drzewie po pierwszym scaleniu), +2 PODSTAWA-Q opisane wyzej. POMIAR guardem na
         # drzewie scalonym (588); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia zwarc, naprawa CI (2026-10-23): 580 -> 581 (+1 `network_model/core/
+        # modul_zespolony.py` — jedno zrodlo modulu liczby zespolonej niezalezne od libm; zero
+        # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie partii (`2e5b06ad9`).
+        # Partia 2 integracji po scaleniu naprawy CI partii zwarc (2026-10-23): 588 -> 589 =
+        # +8 kart partii 2 opisane wyzej (588 wzgledem 580) +1 `core/modul_zespolony.py`. POMIAR
+        # guardem na drzewie scalonym (589); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 589 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2420,7 +2426,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
         # Karta LINIA-110: 186 -> 188 (+2, patrz pin plikow wyzej). POMIAR.
-        "  network_model: pliki_skanowane=188, dlug=10 plikow/suma 67, "
+        # Partia zwarc, naprawa CI (2026-10-23): network_model 186 -> 187 (+1
+        # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia 2 po scaleniu naprawy CI partii zwarc: 186 + 2 (LINIA-110) + 1
+        # (`core/modul_zespolony.py`) = 189. POMIAR guardem.
+        "  network_model: pliki_skanowane=189, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
