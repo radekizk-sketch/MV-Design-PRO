@@ -65,3 +65,19 @@ UX wypisane we wpisie 15.
 - `karty/` — karty zleceń, inwentarze, notatki koordynacji i wznowienia z katalogu roboczego.
 - `zrzuty/zrzuty_dp/`, `zrzuty/zrzuty_partia2/` — zrzuty obu motywów do oceny B-02
   (werdykt wizualny należy do właściciela).
+
+## Aktualizacja: commit WIP karty DANE-PRZYJETE-EKRANY
+
+Wykonawca zacommitował pracę jako `5703c2d29` („WIP:”, wypchnięty na `-dane-przyjete-ekrany`;
+kopia patcha w `wip_dane_przyjete/` jest odtąd zbędna). Oba defekty z recenzji usunięte
+(pole czytelnej wartości nieskalarnej w parze, wzory do pola LaTeX + MathRenderer; fixtury
+i snapshot OpenAPI przegenerowane; 38 nowych testów, 6 iniekcji czerwonych). Do dokończenia:
+1. Naprawa selektora „najnowszy przebieg” (`frontend/src/ui/study-cases/porzadekPrzebiegow.ts`,
+   11 selektorów; backend zwraca listę od najnowszego, ekrany brały ostatni element) —
+   NIEPRZETESTOWANA: vitest po tej zmianie nie przebiegł; starsze testy selektorów mogą
+   zakładać kolejność rosnącą.
+2. Bieg backendu na plikach dotkniętych zmianą: przerwany przy ~34 % z 9 czerwonymi
+   (spodziewane piny tekstów/odcisków — przejrzeć z uzasadnieniem, nie maskować).
+3. Zrzuty po naprawie selektora; obecne w `zrzuty/zrzuty_dp2/` (walidacja energetyczna pokazuje
+   jeszcze stary bieg).
+4. Niezależna weryfikacja sesji głównej, potem scalenie po partii 2.
