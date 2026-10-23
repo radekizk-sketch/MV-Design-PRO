@@ -84,3 +84,21 @@ def test_cli_catalog_works_offline():
     assert result.returncode == 0, result.stderr
     assert "ENEA-SN-KAB" in result.stdout
     assert "ENEA-IRIESD-TJ" in result.stdout
+
+
+
+def test_cli_question_with_evidence_works_offline(tmp_path):
+    """Pytania powinny działać bez dostępu do Internetu dla zweryfikowanych kart."""
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPT), "--data-dir", str(tmp_path),
+            "ask", "Czy nowa stacja słupowa z podejściem kablowym jest dopuszczalna?",
+            "--date", "2026-10-23",
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    response = json.loads(result.stdout)
+    assert response["verdict"] == "NIEDOPUSZCZONE"
+    assert response["sources"][0]["page_pdf"] == 3
+    assert response["sources"][0]["url"].endswith("#page=3")
