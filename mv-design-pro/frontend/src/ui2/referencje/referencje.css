@@ -95,3 +95,21 @@
   font-size: 11px;
   color: var(--mvd-muted);
 }
+
+.mvd-enea-search-label {
+  display: block;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  margin: 8px 0 4px;
+}
+.mvd-enea-search {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
