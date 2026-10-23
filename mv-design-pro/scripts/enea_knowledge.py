@@ -280,6 +280,10 @@ def main() -> int:
     p_search = sub.add_parser("search", help="Wyszukiwanie pełnotekstowe wraz ze stroną źródłową")
     p_search.add_argument("query")
     p_search.add_argument("--limit", type=int, default=10)
+    p_ask = sub.add_parser("ask", help="Pytanie do źródeł ENEA z podstawą i stroną")
+    p_ask.add_argument("question")
+    p_ask.add_argument("--date", dest="as_of", default=None, help="Stan na RRRR-MM-DD")
+    p_ask.add_argument("--limit", type=int, default=5)
     sub.add_parser("status", help="Kontrola integralności pobranych plików")
     args = parser.parse_args()
     catalog = load_catalog()
@@ -304,6 +308,19 @@ def main() -> int:
                     print(f'BŁĄD {row["id"]}: {exc}', file=sys.stderr)
         conn.close()
         return 1 if failures else 0
+    if args.cmd == "ask":
+        import importlib.util
+        question_module = ROOT / "backend/src/reference_engine/enea_questions.py"
+        spec = importlib.util.spec_from_file_location("enea_questions_local", question_module)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("Nie można uruchomić silnika pytań.")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        result = module.answer_question(
+            args.question, data_dir=directory, as_of=args.as_of, limit=args.limit,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.cmd == "search":
         conn = connect_db(directory)
         matches = search(conn, args.query, args.limit)
