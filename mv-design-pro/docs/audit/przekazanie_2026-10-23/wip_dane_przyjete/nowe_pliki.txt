@@ -1,0 +1,3 @@
+mv-design-pro/backend/tests/uczciwosc/test_dane_przyjete_postac_wartosci_i_wzor.py
+mv-design-pro/frontend/src/ui/study-cases/__tests__/porzadekPrzebiegow.test.ts
+mv-design-pro/frontend/src/ui/study-cases/porzadekPrzebiegow.ts
