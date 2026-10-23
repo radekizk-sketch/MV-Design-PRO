@@ -53,3 +53,7 @@ Pełnotekstowy lokalny indeks SQLite nie jest obecnie dostępny przez API serwer
 2. Metadane są dostępne na istniejącej trasie API i w istniejącym wyborze pakietów referencyjnych.
 3. Pobieranie i indeks nie przenoszą treści do repozytorium; plik ma sumę SHA-256, a wynik wyszukiwania numer strony PDF.
 4. Wszystkie testy offline przechodzą. Dla pełnego odbioru E2E należy dodatkowo uruchomić `sync` w środowisku z siecią, porównać liczbę udanych pobrań i zaindeksowanych stron, wykonać test UI w przeglądarce i sprawdzić prawa do lokalnego przechowywania kopii.
+
+## Ustalenie krytyczne: rewizja Z1
+
+W istniejącym `docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md` opisano Z1 w wersji **09.2021-2 (od 02.04.2024)**. Oficjalny indeks operatora odsyła jednak obecnie do **Z1 wersji 06.2024 obowiązującej od 01.01.2025** (plik ENEA media/683, str. 1/37). Zgodność pojedynczych wymagań (np. pola TR i 2–4 pola liniowe w §4.3.1, s. 12, parametry 24 kV / 630 A / 16 kA w §4.3.2) została zaobserwowana, ale nie jest pełnym audytem porównawczym. Przed uznaniem pakietu za aktualną podstawę bezwarunkowego zatwierdzania projektu należy zweryfikować **wszystkie zaimplementowane reguły** wobec pełnej wersji Z1 i innych zmienionych standardów. Nie przypisuj aktualności reguły na podstawie samego statusu pakietu.
