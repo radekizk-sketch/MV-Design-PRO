@@ -113,4 +113,41 @@ test.describe('QET SCADA Frame — dwa zatwierdzone stany, B-02 wstrzymane', () 
     await expect(page.locator('[data-library-id]')).toContainText('DO ZŁOŻENIA Z ELEMENTÓW ENM');
   });
 
+  test('7 QET: rzeczywisty SVG mieści się wewnątrz ramki bez wystawania i jest wyśrodkowany',async({page})=>{
+    await page.setViewportSize({width:1400,height:900});
+    await page.goto(HARNESS);
+    for(const id of ['breaker','mcb','fuse','fuseSwitch','disconnector','rccb','rcbo']){
+      const card=page.locator(`[data-qet-review-id="${id}"]`);
+      const symbol=card.locator('[data-qet-centered="true"]');
+      await expect(symbol).toBeVisible();
+      const box=await symbol.boundingBox();
+      expect(box).not.toBeNull();
+      const frame=card.locator('rect[data-cad-overlay="mechanical-position"]');
+      if(await frame.count()){
+        const rect=await frame.boundingBox();
+        expect(rect).not.toBeNull();
+        if(box&&rect){
+          const eps=2;
+          expect(box.x).toBeGreaterThanOrEqual(rect.x-eps);
+          expect(box.y).toBeGreaterThanOrEqual(rect.y-eps);
+          expect(box.x+box.width).toBeLessThanOrEqual(rect.x+rect.width+eps);
+          expect(box.y+box.height).toBeLessThanOrEqual(rect.y+rect.height+eps);
+          expect(Math.abs(box.x+box.width/2-(rect.x+rect.width/2))).toBeLessThan(12);
+          expect(Math.abs(box.y+box.height/2-(rect.y+rect.height/2))).toBeLessThan(12);
+        }
+      }else{
+        // Wkładka bezpiecznikowa nie dostaje ramki SCADA:
+        // jej prawdziwa geometria pozostaje w obrębie SVG.
+        const svg=await card.locator('svg').boundingBox();
+        expect(svg).not.toBeNull();
+        if(svg&&box){
+          expect(box.x).toBeGreaterThanOrEqual(svg.x);
+          expect(box.y).toBeGreaterThanOrEqual(svg.y);
+          expect(box.x+box.width).toBeLessThanOrEqual(svg.x+svg.width);
+          expect(box.y+box.height).toBeLessThanOrEqual(svg.y+svg.height);
+        }
+      }
+    }
+  });
+
 });
