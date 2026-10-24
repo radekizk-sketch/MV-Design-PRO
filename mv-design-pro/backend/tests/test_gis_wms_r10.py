@@ -146,3 +146,17 @@ def test_http_oversized_rejected():
 def test_http_invalid_xml_rejected():
     r = client.post("/api/gis-lab/r10/layer-preview", json=payload(xml="<broken>"))
     assert r.status_code == 422 and r.json()["detail"]["code"] == "WMS_XML_INVALID"
+
+
+def test_http_r10_page():
+    r = client.get("/layers")
+    assert r.status_code == 200
+    assert "Źródła mapowe" in r.text
+    assert "Wczytaj próbkę syntetyczną" in r.text
+    assert r.headers["cache-control"] == "no-store"
+
+
+def test_http_r09_page_still_available():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Źródła mapowe" in r.text
