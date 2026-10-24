@@ -35,7 +35,7 @@ describe('ENEA RGnN — odwzorowanie z rzeczywistych ENM ref',()=>{
       couplerRef:'SPRZEGLO',
       mainSwitch:{...good.mainSwitch!,typ:'APARAT_INNY_Z_PROJEKTU'}});
     expect(s.zgodny).toBe(false);
-    expect(s.bledy.join(' ')).toContain('sprzęgło'.toLowerCase());
+    expect(s.bledy.join(' ').toLowerCase()).toContain('sprzęgło');
     expect(s.bledy.some(x=>x.includes('funkcja'))).toBe(true);
   });
   it('odrzuca pomiar przed Q0 i brak PEN',()=>{
