@@ -22,7 +22,7 @@ import {
 } from './ui/sld/v3/cad/scada-frame/qetPilotSourceGeometry';
 
 type LocalState = {
-  readonly polozenie: PolozenieMechaniczne;
+  readonly polozenie: PolozenieMechaniczne | null;
   readonly jakosc: JakoscDanych;
   readonly eksploatacja: StanEksploatacyjny;
   readonly przepalony: boolean;
@@ -93,14 +93,12 @@ function itemInput(symbol: QetPilotSymbol, local: LocalState): ScadaFrameInput {
   };
 }
 
-function geometria(symbol: QetPilotSymbol, stan: 'open'|'closed'|'unknown'): readonly CadPrimitive[] {
+function geometria(symbol: QetPilotSymbol, stan: 'open'|'closed'|null): readonly CadPrimitive[] {
   if (symbol.rodzaj === 'BEZPIECZNIK') return symbol.open;
   if (stan === 'closed') return symbol.closed;
   if (stan === 'open') return symbol.open;
-  // Przemieszczenie noża NIE jest potwierdzone — usuń jego ruchomy tor
-  // z widoku NIEZNANY zamiast prezentować fikcyjny stan otwarty/zamknięty.
-  return symbol.open.filter(p=>!(p.k==='path' &&
-    /^M -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+$/.test(p.d)));
+  // BŁĄD WALIDACJI: nie podpowiadaj położenia; wariant nie istnieje.
+  return [];
 }
 
 function Glyph({symbol, local, theme}:{symbol:QetPilotSymbol;local:LocalState;theme:'light'|'dark'}) {
@@ -113,13 +111,13 @@ function Glyph({symbol, local, theme}:{symbol:QetPilotSymbol;local:LocalState;th
       <g transform="translate(6 6)">
         <QetScadaFrame input={input} x={-2} y={15}
           width={symbol.width+5} height={40}
-          theme={theme} showStateLabel showSource={false}>
+          showStateLabel={false}>
           <CadPrimitiveLayer primitives={geometria(symbol,r.stanGeometryczny)}
             ink={ink} paper={paper} strokePx={0.85} nonScalingStroke={false}/>
-          {symbol.ports.map((p,i)=>
+          {r.poprawnyDlaTopologii && symbol.ports.map((p,i)=>
             <circle key={i} cx={p.x} cy={p.y} r={1.3}
               fill={paper} stroke={theme==='dark'?'#4bd0ec':'#007fa8'}
-              strokeWidth={0.5}/>)}
+              strokeWidth={0.5}/>)} 
         </QetScadaFrame>
       </g>
     </svg>
@@ -142,8 +140,8 @@ function App(){
     <header>
       <div className="eyebrow">MV-DESIGN PRO / QElectroTech / QET-SCADA Frame 1.0</div>
       <h1>Dynamiczna biblioteka symboli nN</h1>
-      <p className="intro">Rzeczywiste geometrie QET. Ramki odzwierciedlają położenie aparatu, alarm jest osobnym oznaczeniem.
-        Przełączanie na ekranie to tylko lokalna demonstracja. Brak poleceń do SCADA, brak zmian ENM, brak wyników solvera.</p>
+      <p className="intro">Rzeczywiste geometrie QET, tylko dwa położenia: ZAMKNIĘTY (czerwona ramka) i OTWARTY (zielona).
+        Alarmy i blokady wyłącznie w inspektorze. Przełączanie jest lokalną demonstracją — bez sterowania SCADA, zmian ENM i wyników solvera.</p>
       <div className="toolbar">
         <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>Motyw: {theme==='dark'?'ciemny':'jasny'}</button>
         <button onClick={()=>{setValues(start);setActive('breaker');}}>Przywróć przykład</button>
@@ -153,7 +151,7 @@ function App(){
       <section>
         <div className="eyebrow">ATLAS DO ODBIORU / PR #499 / 7 SYMBOLI QET</div>
         <p className="notice"><b>Wersja do oceny właścicielskiej.</b> Źródła QET dla położenia OTWARTY są zaakceptowane wizualnie.
-          Warianty ZAMKNIĘTY i ramki SCADA wymagają osobnego odbioru; brak zatwierdzenia normowego IEC.
+          Warianty ZAMKNIĘTY nadal wymagają osobnej kontroli geometrii; brak zatwierdzenia normowego IEC.
           B-02 pozostaje odrzucone.</p>
         <div className="grid">
           {all.map(s=>{
@@ -171,11 +169,11 @@ function App(){
         <div className="legend">
           <span><i className="swatch" style={{borderColor:'#F05260'}}/>Zamknięty</span>
           <span><i className="swatch" style={{borderColor:'#2CCF93'}}/>Otwarty</span>
-          <span><i className="swatch" style={{borderColor:'#96AAB6'}}/>Nieznany</span>
-          <span><i className="swatch" style={{borderColor:'#FAB356'}}/>W przełączaniu</span>
+
         </div>
-        <p className="caption">Ramki nie kodują napięcia, przepływu prądu ani wyników rozpływu. Nieznany stan usuwa ruchomy kontakt z rysunku.
-          Położenie OTWARTY ≠ brak napięcia. Stan wyników: NIEOBLICZONE.</p>
+        <p className="caption">Ramki nie kodują napięcia, przepływu prądu ani wyników rozpływu.
+          Błąd walidacji nie otrzymuje trzeciej ramki ani fikcyjnego symbolu. Położenie OTWARTY ≠ brak napięcia.
+          Stan wyników: NIEOBLICZONE.</p>
       </section>
       <aside>
         <div className="eyebrow">INSPEKTOR APARATU</div><h2>{curr.namePl}</h2>
@@ -185,6 +183,14 @@ function App(){
         <div className="stat"><span>Jakość</span><b>{selected.jakosc}</b></div>
         <div className="stat"><span>Wyniki</span><b>NIEOBLICZONE</b></div>
         <div className="stat"><span>Blokada</span><b>{state.blokada?'TAK':'NIE'}</b></div>
+        <div className="stat"><span>Eksploatacja</span><b>{selected.eksploatacja}</b></div>
+        {!state.poprawnyDlaTopologii && curr.rodzaj==='LACZNIK' &&
+          <div className="notice" role="alert">
+            <b>Błąd walidacji aparatu.</b>
+            {state.komunikaty.filter(x=>!x.startsWith('Wyniki obliczeniowe')).map(x=>
+              <p key={x}>{x}</p>)}
+            <p>Obliczenia wymagające jednoznacznej topologii są zablokowane.</p>
+          </div>}
         <hr/>
         <label htmlFor="qet-quality">Jakość danych</label>
         <select id="qet-quality" className="choose" value={selected.jakosc}
@@ -199,10 +205,6 @@ function App(){
           onClick={()=>change({polozenie:'OTWARTY'})}>Otwórz w symulacji</button>
         <button className="action" disabled={curr.rodzaj!=='LACZNIK'}
           onClick={()=>change({polozenie:'ZAMKNIETY',eksploatacja:'NORMALNY'})}>Zamknij w symulacji</button>
-        <button className="action" disabled={curr.rodzaj!=='LACZNIK'}
-          onClick={()=>change({polozenie:'NIEZNANY'})}>Stan nieznany</button>
-        <button className="action" disabled={curr.rodzaj!=='LACZNIK'}
-          onClick={()=>change({polozenie:'W_PRZELACZANIU'})}>Przełączanie</button>
         <button className="action" onClick={()=>{
           if(curr.rodzaj==='BEZPIECZNIK') change({przepalony:!selected.przepalony});
           else change({polozenie:'OTWARTY',
