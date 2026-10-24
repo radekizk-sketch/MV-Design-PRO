@@ -120,7 +120,7 @@ export function SldSymbolLibraryAtlas({theme}:{
     if(status==='Braki i złożenia')
       return e.status==='WYMAGA_ZRODLA'||e.status==='ZLOZENIE_ENM';
     return true;
-  }),[level,position,query,status]);
+  }),[level,query,status]);
 
   return (
     <div className="qet-full-atlas" data-testid="sld-library-atlas">
