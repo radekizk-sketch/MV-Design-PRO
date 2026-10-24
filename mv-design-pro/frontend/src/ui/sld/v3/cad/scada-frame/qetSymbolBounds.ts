@@ -52,11 +52,11 @@ function newAccumulator(){
  * Warianty A/a obejmuje bezpieczne ograniczenie łuku wokół obu końców.
  */
 export function boundsOfPath(d:string):Bounds2D {
-  const tokens=d.match(/[MmLlAaZz]|[-+]?(?:\d*\.)?\d+(?:[eE][-+]?\d+)?/g)??[];
+  const tokens=d.match(/[A-Za-z]|[-+]?(?:\d*\.)?\d+(?:[eE][-+]?\d+)?/g)??[];
   if(!tokens.length)throw new Error('QET: pusta ścieżka SVG');
   const acc=newAccumulator();
   let i=0,cmd='',x=0,y=0,startX=0,startY=0;
-  const isCommand=(v:string)=>/^[MmLlAaZz]$/.test(v);
+  const isCommand=(v:string)=>/^[A-Za-z]$/.test(v);
   const num=()=>{const v=Number(tokens[i++]);if(!Number.isFinite(v))throw new Error('QET: nieważna ścieżka SVG');return v;};
   while(i<tokens.length){
     if(isCommand(tokens[i])){
