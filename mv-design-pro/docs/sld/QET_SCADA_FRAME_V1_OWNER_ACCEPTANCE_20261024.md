@@ -1,69 +1,74 @@
-# QET-SCADA Frame 1.0 — wzorzec komponentu, odbiór właścicielski
+# MV-DESIGN PRO — QET-SCADA Frame 2.0: ostateczna decyzja właścicielska
 
-**Data:** 24.10.2026 · **Koncepcja graficzna:** zatwierdzona · **Warianty ruchomych styków:** do zatwierdzenia · **B-02:** ODRZUCONE.
+**Data:** 24.10.2026 · **STATUS:** KONCEPCJA ZATWIERDZONA / KOD W PR #500 DO ODBIORU · **B-02: ODRZUCONE**.
 
-## Decyzja projektowa
+## 1. Obowiązujące prawo prezentacji
 
-Zachowujemy źródłowe geometrie **7 symboli QElectroTech** z PR #499 i dodajemy czytelną **ramkę stanu mechanicznego**:
+**DWA STANY GRAFICZNE, DWIE RAMKI, ZERO ZBĘDNYCH OZNACZEŃ.**
 
-| Położenie | Ramka / geometria | Pozostałe dane |
+| Jedyny poprawny stan łącznika | Nakładka | Geometria |
 |---|---|---|
-| ZAMKNIĘTY | czerwona `#F05260`, styki połączone | Nie oznacza ani zasilenia, ani prądu |
-| OTWARTY | zielona `#2CCF93`, widoczna przerwa | Obie strony aparatu mogą być pod napięciem |
-| NIEZNANY | szara `#96AAB6`, przerywana + `?` | Brak pewnego położenia; nie pokazywać ostatniego stanu jako aktualnego |
-| W PRZEŁĄCZANIU | bursztynowa `#FAB356` | Położenie docelowe ≠ osiągnięte |
-| WYZWOLONY | ramka faktycznego położenia + znak alarmu `!` | Wyzwolony zamknięty = sprzeczność, stan NIEZNANY |
-| ZABLOKOWANY | ramka faktycznego położenia + symbol `B` | Blokuje akcje symulacji; stan nie zmienia się |
-| BEZPIECZNIK | **bez czerwonej/zielonej ramki łącznika** | Alarm `WKŁADKA PRZEPALONA`, nie da się „otworzyć bezpiecznika” |
+| **ZAMKNIĘTY** | czerwony `#F05260` | połączony styk ruchomy |
+| **OTWARTY** | zielony `#2CCF93` | widoczna przerwa stykowa |
 
-Kolor nie stanowi jedynego nośnika. Druk mono i etykieta pod aparatem mają zachować informację.
+Nie ma trzeciej reprezentacji graficznej. Żadnych szarych i bursztynowych ramek, znaków zapytania, wykrzykników, blokad literą B ani migotania.
 
-## Implementacja na gałęzi
+**Walidacja modelu nie jest stanem graficznym.** Brak położenia, sprzeczne sygnały, niewiarygodne dane lub różne stany biegunów → **BRAK_RAMKI i brak rysunku łącznika**, błąd w inspektorze oraz odmowa obliczeń wymagających jednoznacznej topologii. Nie wolno po cichu wybrać OPEN ani CLOSED.
 
-- `frontend/src/ui/sld/v3/cad/scada-frame/scadaFrameState.ts` — czysta funkcja rozstrzygająca.
-- `frontend/src/ui/sld/v3/cad/scada-frame/QetScadaFrame.tsx` — nakładka SVG, **nie tworzy drugiego renderera CAD**.
-- `frontend/src/ui/sld/v3/cad/CadSymbol.tsx` — wyłącznie dodatkowy eksport `CadPrimitiveLayer`, który wykorzystuje dotychczasowy `rysujPrymityw`.
-- `frontend/src/ui/sld/v3/cad/scada-frame/qetPilotSourceGeometry.ts` — 7 oryginalnych geometrii wyprowadzonych z źródeł `.elmt`, udokumentowane SHA plików, autorskie propozycje zamknięcia **DRAFT**.
-- `frontend/qet-scada-frame-review.html` i `frontend/src/qet-scada-frame-review-main.tsx` — własny ekran React, **lokalna demonstracja** 7 symboli.
-- `frontend/src/ui/sld/v3/cad/scada-frame/__tests__/QetScadaFrame.test.tsx` — testy kontraktów.
-- `frontend/e2e/qet-scada-frame-review.spec.ts` — kliknięcia i cztery zrzuty (ciemny/jasny × 1400×800 / 1000×700) po uruchomieniu.
+Wyzwolenie i blokada są odrębnymi atrybutami aparatu, wyłącznie w inspektorze/zdarzeniach. Zwykła wkładka bezpiecznikowa nie jest aparatem sterowanym i nie dostaje ramki.
 
-Uruchomienie lokalnie: `cd mv-design-pro/frontend && npm ci && npm run dev`, następnie `http://127.0.0.1:5173/qet-scada-frame-review.html`.
+**Czerwony/zielony ≠ napięcie/prąd/moc.** Łącznik zamknięty nie musi przewodzić prądu, a otwarty może mieć napięcie na obu zaciskach.
 
-**Licencja źródeł:** QElectroTech team / CC BY 3.0, por. `docs/sld/vendor/qet/ELEMENTS.LICENSE`. Nie używać jako danych do trenowania ML. Nie deklarować zgodności IEC 60617 bez porównania licencjonowanego wzorca.
+## 2. Wynik zmian w PR #500
 
-## Granice demonstracji — bez fałszywego E2E
+- `frontend/src/ui/sld/v3/cad/scada-frame/scadaFrameState.ts` — typ zamknięty OTWARTY/ZAMKNIĘTY, brak danych `null` → błąd, jawne fazy biegunów, `zweryfikujPolozeniaDoObliczen` blokuje prezentację/symulację przy niekompletnej topologii.
+- `frontend/src/ui/sld/v3/cad/scada-frame/QetScadaFrame.tsx` — jedynie czerwona/zielona ramka SVG, bez ikon i trzeciego wariantu; nie rysuje mylącego znaku przy wadliwej informacji.
+- `frontend/src/ui/sld/v3/cad/scada-frame/qetScadaProjectionAdapter.ts` — faktyczny odczyt ENM z **atomowej** `LvDomainProjectionV1`, bez tworzenia nowych stanów, wynik wersjonowany; K-S2 nie uznaje starych przebiegów za aktualne.
+- `frontend/src/ui/sld/v3/cad/scada-frame/QetScadaCanvasGlyph.tsx` — używa `CadPrimitiveLayer` z istniejącego `CadSymbol` i zatwierdzonych 7 źródłowych plików QET dla odpowiednich rodzin; niemapowane rodziny korzystają z istniejącego rejestru (jawny `registry-fallback`).
+- `frontend/src/ui/sld/v3/lv-domain/LvDomainView.tsx` — istniejąca kanwa nN może włączyć ramki przez `qetScadaFrames`; **domyślnie WYŁĄCZONE** do końcowego odbioru B-02. Nie istnieje drugi renderer/edytor.
+- `frontend/src/lv-domain-harness-main.tsx` — parametr `?qetScada=1` w istniejącym harnessie, dane scenariuszy `SCENARIUSZE_NN` wyeksportowane przez backend bez ich ręcznego poprawiania.
+- `frontend/src/qet-scada-frame-review-main.tsx` — pozostaje ekranem atlasu, nie udaje prawdziwej symulacji.
 
-Stan ruchomego kontaktu dla trybu ZAMKNIĘTY jest **autorskim wariantem wymagającym zatwierdzenia**. Pierwotne źródło QET dostarcza tylko statyczny wariant OTWARTY. Nie przeskalowywać punktów przyłączeniowych ani nie dopowiadać funkcji elektrycznych na podstawie nazwy pliku.
-
-Wersja demonstracyjna **nie zmienia ENM, nie wywołuje solverów i nie steruje rzeczywistą SCADA**. Klikanie służy WYŁĄCZNIE ocenie estetyki/ergonomii. Nie podszywać się pod realne funkcjonowanie.
-
-Zasada integracji produkcyjnej:
+### Ekrany do kontroli w Vite
 
 ```text
-ENM/scenariusz (wersjonowany) -> stan aparatu (z jakością i pochodzeniem)
- -> funkcja ocenStanRamki -> osobne projekcje SLD: SN / nN
- -> CadPrimitiveLayer (rzeczywisty symbol QET)
- -> QetScadaFrame (nakładka)
- -> dane wyniku z tego SAMEGO scenariusza i wersji ENM
+/lv-domain-harness.html?scenariusz=02_two_tr_qbc_open&lod=2&theme=dark&qetScada=1
+/lv-domain-harness.html?scenariusz=03_two_tr_qbc_closed&lod=2&theme=dark&qetScada=1
+/lv-domain-harness.html?scenariusz=02_two_tr_qbc_open&lod=2&theme=light&qetScada=1
+/lv-domain-harness.html?scenariusz=03_two_tr_qbc_closed&lod=2&theme=light&qetScada=1
+/qet-scada-frame-review.html
 ```
 
-**K-S2:** wynik obliczeń jest aktualny tylko jeśli pasują identyfikator scenariusza, wersja ENM i skrót topologii. Same zgodne kolory nie są dowodem aktualności.
+To są **rzeczywiste backendowe fixtury projekcji ENM** dla sprzęgła QBC. Nie są efektem kliknięcia zmieniającego ENM na żywo. Nie oznaczać ich jako zakończonego E2E symulacji.
 
-Niezależne kanały: mechanika, stan eksploatacyjny, pochodzenie (telemetria/ENM/symulacja), jakość, zasilenie, P/Q/I/U/Ik, alarm, blokada.
+## 3. Stan zatwierdzenia źródła
 
-Wynik przebiegu symulacji nigdy nie jest prezentowany jako rzeczywista telemetria. Nie implementować rzeczywistych komend IEC 60870-5-104/61850 dla tej misji. Interfejs jest **czytnikiem** wyników i lokalnym inicjatorem odrębnego scenariusza.
+**ZATWIERDZONE WIZUALNIE:** 7 oryginalnych plików QElectroTech `.elmt` z PR #499, geometria wariantu OTWARTY oraz sposób ramki z e²TANGO.
 
-## Bramki odbioru
+**NIEZATWIERDZONE:** własne warianty **ZAMKNIĘTY** z `qetPilotSourceGeometry.ts` (oznaczone `closedVerificationStatus:DRAFT`), rozszerzenia innych klas aparatów, zgodność normatywna IEC 60617 i pełna integracja z solverem oraz obliczeniami zmian.
 
-1. Geometria OTWARTA 7/7 zachowana (weryfikacja przeciw źródłowym SVG), propozycje ZAMKNIĘTA ocenione przez właściciela.
-2. Ramka opiera się na mechanicznym stanie, nie napięciu.
-3. NIEZNANY/stary/nieprawidłowy = brak sugerowania położenia.
-4. WYZWOLONY + ZAMKNIĘTY = konflikt.
-5. Bezpiecznik bez fikcyjnych poleceń łączeniowych.
-6. Porty QET nie mogą zmieniać współrzędnych przy zmianie stanu.
-7. Zgodność ENM → SLD → solver → wyniki oraz przypadki wielobiegunowe — **nieukończone**, osobna bramka.
-8. Komponenty produkcyjne `LvDomainView` i `SldCanvasV3` niezmienione przed decyzją.
-9. Testy nie są zaliczone dopóki CI nie zwróci rzeczywistych PASS.
+Źródło QElectroTech: © QElectroTech team, CC BY 3.0 — atrybucja i oryginalna licencja `docs/sld/vendor/qet/ELEMENTS.LICENSE`. Odrębna licencjonowana baza IEC 60617 pozostaje wymogiem normatywnej akceptacji.
 
-**B-02 nadal odrzucone.** Nie scalać przed odbiorem właścicielskim.
+## 4. Granica obliczeń — ważna
+
+`zweryfikujPolozeniaDoObliczen` to **dodatkowa walidacja frontendu** dla kompletu wejściowych łączników. Nie zastępuje backendowej walidacji ENM, EAZ, wysp, zwarć i solvera ani nie wprowadza nowej komendy SCADA.
+
+Aby otworzyć B-02, należy wykazać na rzeczywistym przebiegu:
+
+```text
+kliknięcie aparatu → walidacja możliwości operacji → wersja ENM scenariusza
+→ zmiana topologii / wysp → LF / SC → atomowy wynik K-S2
+→ QET-SCADA Frame + odpowiednia projekcja SLD → White-Box
+```
+
+Dla brakującego/sprzecznego stanu: backend musi odmówić obliczeń wymagających jednoznacznej topologii. Brak tego dowodu = **NIE GOTOWE PRODUKCYJNIE**.
+
+## 5. Testy i granica odbioru
+
+- `__tests__/QetScadaFrame.test.tsx` — tylko 2 kolory, błąd bez ramki, blokada, wyzwolenie, rozbieżność biegunów i brak fałszywego wyniku K-S2.
+- `__tests__/qetScadaProjectionAdapter.test.ts` — rzeczywiste fixtury backendu, sprzęgło QBC OPEN/CLOSED z różnych scenariuszy.
+- `e2e/qet-scada-frame-review.spec.ts` — atlas, 2 motywy, 1400×800 i 1000×700.
+- `e2e/qet-scada-lv-domain-projection.spec.ts` — rzeczywista `LvDomainView` na fixturach nN, stany QBC i obydwa motywy.
+- **Nie deklarować PASS**, dopóki testy nie zakończą się potwierdzonym powodzeniem i nie ma rzeczywistych zrzutów.
+
+**Zatwierdzona jest konwencja dwóch kolorów i geometria źródłowa QET dla otwartego położenia. B-02 pozostaje ODRZUCONE. PR #499/#500 bez scalania.**
