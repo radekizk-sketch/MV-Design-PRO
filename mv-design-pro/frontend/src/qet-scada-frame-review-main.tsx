@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CadPrimitiveLayer } from './ui/sld/v3/cad/CadSymbol';
 import { fitQetSymbol } from './ui/sld/v3/cad/scada-frame/qetSymbolBounds';
+import { SldSymbolLibraryAtlas } from './ui/sld/v3/cad/scada-frame/SldSymbolLibraryAtlas';
 import type { CadPrimitive } from './ui/sld/v3/cad/cadSymbolRegistry';
 import { QetScadaFrame } from './ui/sld/v3/cad/scada-frame/QetScadaFrame';
 import {
@@ -52,6 +53,7 @@ small{font-size:11px;color:var(--muted)}
 .eyebrow{font-weight:800;letter-spacing:.13em;font-size:11px;color:var(--accent)}
 .intro{font-size:12px;line-height:1.6;color:var(--muted);max-width:1150px}
 main{padding:24px;max-width:1600px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+main.main-catalog{display:block}
 section,aside{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:17px}
 .notice{border-left:3px solid #f8ae42;padding:12px;background:var(--panel2);color:var(--muted);font-size:12px;line-height:1.55;margin:10px 0 16px}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(155px,1fr));gap:12px}
@@ -133,6 +135,7 @@ function Glyph({symbol, local, theme}:{symbol:QetPilotSymbol;local:LocalState;th
 
 function App(){
   const [theme,setTheme]=useState<'light'|'dark'>('dark');
+  const [tab,setTab]=useState<'qet'|'full'>('qet');
   const [active,setActive]=useState('breaker');
   const [values,setValues]=useState<Readonly<Record<string,LocalState>>>(start);
   const curr=QET_PILOT_SYMBOLS.find(s=>s.id===active)!;
@@ -150,16 +153,19 @@ function App(){
       <p className="intro">Rzeczywiste geometrie QET, tylko dwa położenia: ZAMKNIĘTY (czerwona ramka) i OTWARTY (zielona).
         Alarmy i blokady wyłącznie w inspektorze. Przełączanie jest lokalną demonstracją — bez sterowania SCADA, zmian ENM i wyników solvera.</p>
       <div className="toolbar">
+        <button aria-pressed={tab==='qet'} onClick={()=>setTab('qet')}>Źródłowe QET (7)</button>
+        <button aria-pressed={tab==='full'} onClick={()=>setTab('full')}>Katalog nN / SN</button>
         <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>Motyw: {theme==='dark'?'ciemny':'jasny'}</button>
         <button onClick={()=>{setValues(start);setActive('breaker');}}>Przywróć przykład</button>
       </div>
     </header>
-    <main>
+    <main className={tab==='full'?'main-catalog':''}>
       <section>
         <div className="eyebrow">ATLAS DO ODBIORU / PR #499 / 7 SYMBOLI QET</div>
         <p className="notice"><b>Wersja do oceny właścicielskiej.</b> Źródła QET dla położenia OTWARTY są zaakceptowane wizualnie.
           Warianty ZAMKNIĘTY nadal wymagają osobnej kontroli geometrii; brak zatwierdzenia normowego IEC.
           B-02 pozostaje odrzucone.</p>
+        {tab==='qet' ? (<>
         <div className="grid">
           {all.map(s=>{
             const local=values[s.id];
@@ -181,8 +187,9 @@ function App(){
         <p className="caption">Ramki nie kodują napięcia, przepływu prądu ani wyników rozpływu.
           Błąd walidacji nie otrzymuje trzeciej ramki ani fikcyjnego symbolu. Położenie OTWARTY ≠ brak napięcia.
           Stan wyników: NIEOBLICZONE.</p>
+        </>) : <SldSymbolLibraryAtlas theme={theme}/>}
       </section>
-      <aside>
+      {tab==='qet' && <aside>
         <div className="eyebrow">INSPEKTOR APARATU</div><h2>{curr.namePl}</h2>
         <div className="stat"><span>Identyfikator</span><b>{curr.id}</b></div>
         <div className="stat"><span>Położenie</span><b>{state.etykieta}</b></div>
@@ -223,7 +230,7 @@ function App(){
         <hr/>
         <p className="caption">Bez podłączenia ENM i solvera. Bramka K-S2 pozostaje obowiązująca.
           Nie są wykonywane żadne rzeczywiste operacje łączeniowe.</p>
-      </aside>
+      </aside>}
     </main>
   </div>;
 }
