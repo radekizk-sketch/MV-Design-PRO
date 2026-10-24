@@ -100,7 +100,7 @@ function geometria(symbol: QetPilotSymbol, stan: 'open'|'closed'|'unknown'): rea
   // Przemieszczenie noża NIE jest potwierdzone — usuń jego ruchomy tor
   // z widoku NIEZNANY zamiast prezentować fikcyjny stan otwarty/zamknięty.
   return symbol.open.filter(p=>!(p.k==='path' &&
-    /^M -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+/.test(p.d)));
+    /^M -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+ L -?[\d.]+ -?[\d.]+$/.test(p.d)));
 }
 
 function Glyph({symbol, local, theme}:{symbol:QetPilotSymbol;local:LocalState;theme:'light'|'dark'}) {
