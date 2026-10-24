@@ -24,9 +24,9 @@ const POZYCJE:readonly Pozycja[] = [
 ];
 const styl = `
 :root {font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg)}
-body.light{--bg:#f2f5f8;--panel:#fff;--fg:#182b3a;--muted:#546b7c;--line:#cbd6de;--accent:#007ba3;--selected:#e7f5f8}
-body.dark{--bg:#0b1421;--panel:#111f2b;--fg:#e3edf4;--muted:#9aaebd;--line:#2b4252;--accent:#61d7ef;--selected:#163c48}
+*{box-sizing:border-box}.light,.dark{min-height:100vh;background:var(--bg);color:var(--fg)}
+.light{--bg:#f2f5f8;--panel:#fff;--fg:#182b3a;--muted:#546b7c;--line:#cbd6de;--accent:#007ba3;--selected:#e7f5f8}
+.dark{--bg:#0b1421;--panel:#111f2b;--fg:#e3edf4;--muted:#9aaebd;--line:#2b4252;--accent:#61d7ef;--selected:#163c48}
 button,input{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:9px 11px}
 button{cursor:pointer}button:hover,button.current{border-color:var(--accent);background:var(--selected)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -60,7 +60,7 @@ dl{display:grid;grid-template-columns:95px auto;gap:9px;font-size:12px}dt{color:
 const G:CSSProperties={display:'block'};
 function mini(p:Pozycja,stan:CadSwitchState,dark:boolean,big=false,porty=false) {
  const ink=dark?'#e3edf4':'#182b3a',paper=dark?'#0b1421':'#f2f5f8';
- const scale=big?6.0:3.1, x=12,y=8;
+ const x=12,y=8;
  const w=p.kind==='existing'?ELECTRICAL_CAD_SYMBOL_REGISTRY[p.id].nominalWidth:p.def.width;
  const h=p.kind==='existing'?ELECTRICAL_CAD_SYMBOL_REGISTRY[p.id].nominalHeight:p.def.height;
  const ports=p.kind==='existing'?ELECTRICAL_CAD_SYMBOL_REGISTRY[p.id].terminals:p.def.ports;
