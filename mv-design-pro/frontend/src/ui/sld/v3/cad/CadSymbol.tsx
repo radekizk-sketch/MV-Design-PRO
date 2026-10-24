@@ -191,3 +191,35 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
     </g>
   );
 }
+
+/**
+ * DODATEK WSTECZNIE KOMPATYBILNY, TYLKO DO PRZEGLĄDU SYMBOLI nN.
+ * Ten sam zestaw prymitywów i ten sam renderer co kanoniczny CadSymbol.
+ * Nie rejestruje nowej geometrii w produkcji i nie zmienia zachowania CadSymbol.
+ */
+export function CadPrimitivesPreview(props: {
+  readonly primitives: readonly CadPrimitive[];
+  readonly x: number;
+  readonly y: number;
+  readonly scale?: number;
+  readonly ink: string;
+  readonly paper: string;
+  readonly state?: CadSwitchState;
+  readonly strokePx?: number;
+  readonly testId?: string;
+}): JSX.Element {
+  const ctx: KontekstRysunkuCad = {
+    ink: props.ink,
+    paper: props.paper,
+    strokePx: props.strokePx ?? CAD_SYMBOL_STROKE_PX,
+    nonScaling: true,
+    fontFamily: 'Inter, "Segoe UI", Arial, sans-serif',
+    state: props.state ?? 'open',
+  };
+  return (
+    <g data-testid={props.testId} data-cad-preview="draft"
+       transform={`translate(${props.x} ${props.y}) scale(${props.scale ?? 1})`}>
+      {props.primitives.map((p,i) => rysujPrymityw(p,i,ctx))}
+    </g>
+  );
+}
