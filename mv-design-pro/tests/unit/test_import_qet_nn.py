@@ -33,6 +33,15 @@ class QetImporterTests(unittest.TestCase):
                 self.assertGreater(len(result["geometry"]["primitives"]),1)
                 self.assertTrue(all(x["reviewRequired"] for x in result["ports"]))
                 self.assertTrue(all(x["phase"] is None for x in result["ports"]))
+    def test_auxiliary_rcbo_strokes_keep_original_weights(self):
+        path=("10_electric/11_singlepole/200_fuses_protective_gears/"
+              "50_residual_current_circuit_breaker/rcbo.elmt")
+        r=convert((VENDOR/path).read_bytes(),source_path=path,
+                  symbol_id="nn.qet.rcbo")
+        weights={p.get("w",1) for p in r["geometry"]["primitives"]}
+        self.assertIn(0.65,weights)
+        self.assertIn(1,weights)
+
     def test_reference_geometry_hotspot_is_preserved(self):
         # disjoncteur1.elmt: źródłowy przewód (0,-20) -> (0,-10);
         # hotspot (9,30), czyli dokładne punkty (9,10) -> (9,20).
