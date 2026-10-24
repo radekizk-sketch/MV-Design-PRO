@@ -77,6 +77,37 @@ export function wczytajEksport(
   if(!unknownPayload||typeof unknownPayload!=='object')
     throw new Error('Nieprawidłowy plik odbioru');
   const p=unknownPayload as Partial<EksportOdbioru>;
+  // Samodzielny HTML do odbioru może zostać zaimportowany do atlasu React.
+  // Zachowujemy dwa formaty zgodne z PR #500, bez domniemania akceptacji B-02.
+  const external=unknownPayload as {
+    schema?:unknown;
+    basePR?:unknown;
+    records?:readonly {
+      id?:unknown;
+      approval?:{status?:unknown;uwagi?:unknown;updatedAt?:unknown};
+    }[];
+  };
+  if(external.schema==='MVDesignProSymbolApprovalV1' &&
+    external.basePR===500 && Array.isArray(external.records) &&
+    external.records.length<=2000){
+    const ids=new Set(catalog.map(x=>x.id));
+    let result:RejestrOdbioru={};
+    const map:Record<string,DecyzjaSymbolu>={
+      zaakceptowany:'AKCEPTUJE',odrzucony:'ODRZUCAM',
+      do_poprawy:'DO_POPRAWY',nieoceniony:'NIEOCENIONY',
+    };
+    for(const entry of external.records){
+      if(typeof entry.id!=='string'||!ids.has(entry.id)||!entry.approval)continue;
+      const status=entry.approval.status;
+      const decision=typeof status==='string'?map[status]:undefined;
+      if(!decision||typeof entry.approval.uwagi!=='string')continue;
+      const timestamp=typeof entry.approval.updatedAt==='string' &&
+        Number.isFinite(Date.parse(entry.approval.updatedAt))
+        ? entry.approval.updatedAt : new Date(0).toISOString();
+      result=zmienDecyzje(result,entry.id,decision,entry.approval.uwagi,timestamp);
+    }
+    return result;
+  }
   if(p.schema!=='MvDesignProSldApprovalV1'||p.repoPr!==500||
     !Array.isArray(p.decisions)||p.decisions.length>2000)
     throw new Error('Niezgodny format rejestru odbioru');
