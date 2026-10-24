@@ -82,4 +82,35 @@ test.describe('QET SCADA Frame — dwa zatwierdzone stany, B-02 wstrzymane', () 
     await expect(fu.locator('[data-cad-overlay="alarm"]')).toHaveCount(0);
     await expect(page.locator('aside')).toContainText('WKŁADKA PRZEPALONA');
   });
+  test('pełny atlas nN/SN: jedyny dostępny podgląd to rzeczywisty CAD/QET',async({page})=>{
+    await page.goto(HARNESS);
+    await page.getByRole('button',{name:'Katalog nN / SN'}).click();
+    await expect(page.getByTestId('sld-library-atlas')).toBeVisible();
+    await expect(page.getByTestId('sld-library-coverage')).toContainText('nN:');
+    await expect(page.locator('[data-library-id]').first()).toBeVisible();
+    const sources=await page.locator('[data-library-id]').evaluateAll(
+      cards=>cards.map(el=>el.getAttribute('data-source-status')),
+    );
+    expect(sources).toContain('QET_ZRODLOWY');
+    expect(sources).toContain('CAD_ISTNIEJACY');
+    expect(sources).toContain('ZLOZENIE_ENM');
+    expect(sources).toContain('WYMAGA_ZRODLA');
+
+    await page.getByRole('button',{name:'Zamknięty',exact:true}).click();
+    await expect(page.locator('[data-library-id] [data-cad-overlay="mechanical-position"]').first())
+      .toHaveAttribute('stroke','#F05260');
+    await page.getByRole('button',{name:'Biblioteka SN'}).click();
+    await expect(page.getByTestId('sld-library-coverage')).toContainText('SN:');
+    await expect(page.locator('[data-library-id]')).not.toHaveCount(0);
+    await page.getByRole('button',{name:'Otwarty',exact:true}).click();
+    await expect(page.locator('[data-library-id] [data-cad-overlay="mechanical-position"]').first())
+      .toHaveAttribute('stroke','#2CCF93');
+
+    await page.getByRole('combobox',{name:'Status źródła symbolu'}).selectOption('Braki i złożenia');
+    await expect(page.locator('[data-cad-overlay="mechanical-position"]')).toHaveCount(0);
+    await page.getByRole('textbox',{name:'Szukaj symbolu'}).fill('Pole liniowe');
+    await expect(page.locator('[data-library-id]')).toHaveCount(1);
+    await expect(page.locator('[data-library-id]')).toContainText('DO ZŁOŻENIA Z ELEMENTÓW ENM');
+  });
+
 });
