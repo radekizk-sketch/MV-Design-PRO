@@ -11,9 +11,11 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
 from api.gis_workspace_r09 import router
+from api.gis_layers_r10 import router as layers_router
 
 app = FastAPI(title="MV-DESIGN PRO — laboratorium GIS R09")
 app.include_router(router)
+app.include_router(layers_router)
 
 
 @app.get("/", include_in_schema=False)
