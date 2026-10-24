@@ -1,6 +1,6 @@
 # MV-DESIGN-PRO — JEDEN PLAN WYKONAWCZY (rejestr nadrzędny)
 
-**Wersja:** 6.0 (konsolidacja 2026-10-23, misja właściciela „jeden obowiązujący plan wykonawczy")
+**Wersja:** 6.1 (decyzja właściciela 2026-10-24: rozpoczęcie drogi GIS do produkcji; baza 6.0 z 2026-10-23, misja właściciela „jeden obowiązujący plan wykonawczy")
 **Status:** LIVING — **JEDYNY NADRZĘDNY REJESTR POSTĘPU, PRIORYTETÓW I ODPOWIEDZIALNOŚCI** całego produktu.
 **Ostatnia aktualizacja:** 2026-10-23 (czubek gałęzi programu `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281`; `main` = `8f7ed3c27`, PR #489 OPEN)
 **Kanon (nadrzędny wobec tego planu):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md), konstytucja programu konwergencji (`docs/architecture/*`), [`docs/system/`](docs/system/), `CLAUDE.md` (hierarchia dokumentów). Ten plan nie zmienia kanonu — porządkuje wykonanie.
@@ -29,7 +29,7 @@
 3. **Zakres bez nowych programów.** Nie istnieje osobny „program SEL", „plan H5", „program SLD"
    ani „panel postępu". SEL Blueframe (`docs/research/sel-blueframe/`) to materiał referencyjny
    i kryteria kart UX-01…UX-07; H5/ENEA to kryteria odbioru karty UX-04 (H5-01…H5-05); GIS/MDI
-   to UX-09 = P3/STOP; prace 110 kV wyłącznie jako granica zasilania SN (bez pól WN, przekładników,
+   to UX-09 = P3/W TOKU na podstawie decyzji właściciela 2026-10-24; produkcyjny odbiór wymaga osobnych dowodów; prace 110 kV wyłącznie jako granica zasilania SN (bez pól WN, przekładników,
    napędów, uziemników i osobnego modułu 110 kV).
 4. **Status nie jest odbiorem.** Słownik: `DOMKNIĘTA` = dowód w repo (commit + regresja + CI
    albo wiersz dowodowy w §7 planu A/B / `CONVERGENCE_EVIDENCE`); `W TOKU`; `OTWARTA` (karta
@@ -40,7 +40,7 @@
 5. **Priorytety:** P0 — ścieżka krytyczna produktu i naprawy funkcjonalno-inżynierskie
    (integracja do `main`, prawdziwe SLD SN, uczciwość wyników, ścieżka projektanta end-to-end);
    P1 — sekwencja A/B i program W po zależnościach, karty rdzenia z audytów; P2 — jakość tekstu,
-   dokumenty wynikowe, commissioning; P3 — integracje zewnętrzne, GIS (STOP).
+   dokumenty wynikowe, commissioning; P3 — integracje zewnętrzne; GIS/UX-09 wznowione do prac wykonawczych, bez automatycznego GO do produkcji.
 6. **Identyfikatory są trwałe.** ID z dokumentów źródłowych (W1–W12, UX-00…UX-09, H5-01…H5-05,
    T+01…T+10, U0–U5, E1–E15, AB-*, AB-H*, S1–S8, F0–F4 programu 10x, karty nazwane WIELKIMI
    LITERAMI) nie są przenumerowywane. Kolizje nazw (W1–W5 „wygaszanie mostu wyników" w części B,
@@ -148,8 +148,8 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 
 | ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
 |---|---|---|---|---|---|---|---|
-| UX-09 | GIS, MDI, mapy, import geograficzny, DNP3/SCADA (SEL C01, C02, C05, D07) | P3 | STOP (decyzja właściciela 2026-10-23 — nie wdrażać) | — | osobne polecenie właściciela | PROGRAM §12.3 | brak |
-| W12 | CAD round-trip (DXF z tożsamością bloków), GIS (WGS84/EPSG), MCP jako lokalna płaszczyzna sterowania (W12-MCP, O-71); CGMES końcówka ✓ (KASACJA-SCL-I-CIM-KLIENT, partia 8) | P3 | OTWARTA (częściowo: CGMES ✓); część GIS = STOP jak UX-09 | — | W7, W9 | §7 2026-10-16 | po W9/W7; GIS nie przed decyzją właściciela |
+| UX-09 | GIS/MDI, MapLibre, geoportale, import DIGPRO, projekcja ENM/SLD (sterowanie SCADA poza zakresem projektowym) | P3 | W TOKU — decyzja właściciela 2026-10-24 znosi STOP dla prac nad wdrożeniem; produkcyjne GO NIEUDZIELONE bez E2E | zespół GIS; integrator Fable; B-01/B-02 wg kanonu | lock npm, rzeczywiste MapLibre WebGL, import DIGPRO, ENM/PortRef, SLD, LF/SC, ochrona danych | PR #497 R11 (DRAFT) → R10/R09; CI i E2E niepotwierdzone | spójna regresja CI, prawdziwy MapLibre, weryfikowany import, operacje domenowe ENM, parytet SLD i solverów; odbiór właściciela |
+| W12 | CAD round-trip (DXF z tożsamością bloków), GIS (WGS84/EPSG), MCP jako lokalna płaszczyzna sterowania (W12-MCP, O-71); CGMES końcówka ✓ (KASACJA-SCL-I-CIM-KLIENT, partia 8) | P3 | OTWARTA (częściowo: CGMES ✓); część GIS = W TOKU badawczo, GO produkcyjne wymaga bramki UX-09 | — | W7, W9 | §7 2026-10-16 | po W9/W7; GIS wznowione decyzją właściciela 2026-10-24; brak produkcyjnego GO |
 | G11 | Transformatory trójuzwojeniowe | P3 | OTWARTA (poza W1–W12, kanon: „przyszłość") | — | decyzja zakresu | MAPA §8 aneks | brak |
 
 ### C.5 Domknięte wycinki i programy (bez odtwarzania zadań)
@@ -202,7 +202,7 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 | Tor | Kolejność (ID z §C) |
 |---|---|
 | I — integracja (Fable) | INT-489 → JEDEN-PLAN → partie integracji kolejnych kart (fast-forward programu po CI 9/9 i niezależnej weryfikacji) |
-| U — UI/UX (Opus) | UX-00 → UX-04 (z GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 STOP |
+| U — UI/UX (Opus) | UX-00 → UX-04 (z GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 wznowione równolegle bez naruszania priorytetów P0 |
 | R — rdzeń dynamiki | AB-1b.2 (0/A/B/C/D → E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
 | H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
 | S — rdzeń zwarciowy (B-01 architekta) | BILANS-THEVENIN → Y0-WYSPY → CZESTOTLIWOSC → PROFIL-NORMY → ZEROWA-POJEMNOSCI (po GPZ-H5-SKLADOWA-ZEROWA) → KONSUMENCI-IB → SLOWNIK-GENERATOR-PL → SC-WYROCZNIA-SN-TR-NN |
