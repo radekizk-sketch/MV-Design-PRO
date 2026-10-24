@@ -32,7 +32,7 @@ def prim_svg(p: dict) -> str:
     raise ValueError(f"Nieobsługiwany prymityw SVG: {kind}")
 
 
-def cell(symbol: dict) -> str:
+def source_svg(symbol: dict) -> str:
     geo=symbol["geometry"]
     w,h=geo["width"],geo["height"]
     ports=symbol["ports"]
@@ -46,6 +46,11 @@ def cell(symbol: dict) -> str:
                    f'class="port"><title>{html.escape(p["name"])} · faza niezweryfikowana</title></circle>'
                    for p in ports)
          + '</svg>')
+    return svg
+
+def cell(symbol: dict) -> str:
+    svg=source_svg(symbol)
+    ports=symbol["ports"]
     source=symbol["source"]
     ref=html.escape(source["path"])
     return (f'<article class="card" data-search="{attr((symbol["namePl"]+" "+symbol["id"]).lower())}">'
@@ -121,10 +126,23 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--input",type=Path,required=True)
     ap.add_argument("--output",type=Path,required=True)
+    ap.add_argument("--svg-dir",type=Path)
     args=ap.parse_args()
     data=json.loads(args.input.read_text(encoding="utf-8"))
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(render(data),encoding="utf-8")
+    if args.svg_dir is not None:
+        args.svg_dir.mkdir(parents=True,exist_ok=True)
+        for symbol in data["symbols"]:
+            svg=source_svg(symbol)
+            style=('<style>svg{stroke:#183748;fill:none;stroke-width:1.25}'
+                   '.bounds{stroke:#96b0bc;stroke-width:.25;stroke-dasharray:2 2}'
+                   '.port{stroke:#007d9a;fill:#fff;stroke-width:.65}'
+                   '.fill-ink{fill:#183748}.fill-paper{fill:#fff}'
+                   '.label{stroke:none;fill:#183748}</style>')
+            svg=svg.replace('xmlns="http://www.w3.org/2000/svg">',
+                            'xmlns="http://www.w3.org/2000/svg">'+style,1)
+            (args.svg_dir/(symbol["id"]+".svg")).write_text(svg+"\n",encoding="utf-8")
     print(f"Atlas nN do oceny: {args.output}")
 
 
