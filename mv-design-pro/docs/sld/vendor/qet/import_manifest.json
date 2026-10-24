@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://github.com/qelectrotech/qelectrotech-elements",
+  "license": "CC-BY-3.0",
+  "note": "DRAFT nie uprawnia do statusu IEC 60617 verified. Każdy element zachowuje oryginalny plik i pochodzenie.",
+  "items": [
+    {
+      "id": "nn.qet.wylacznik1p",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/11_circuit_breakers/disjoncteur1.elmt",
+      "upstreamBlobSha": "b87b9d06018c4db93db69895136f9d8636a7b491"
+    },
+    {
+      "id": "nn.qet.bezpiecznik",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/10_fuses/fusible.elmt",
+      "upstreamBlobSha": "ed1f7e6014b94c9e894b3a3ac44a33ef3588c2ae"
+    },
+    {
+      "id": "nn.qet.odlacznik1p",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/20_disconnecting_switches/sectionneur1.elmt",
+      "upstreamBlobSha": "b170c7d3ba5ff2057cc10cd926127c2be0b0a446"
+    },
+    {
+      "id": "nn.qet.rcbo",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/50_residual_current_circuit_breaker/rcbo.elmt",
+      "upstreamBlobSha": "7cfc32e15537e440cb73223145ead8c188717f4e"
+    },
+    {
+      "id": "nn.qet.rccb",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/50_residual_current_circuit_breaker/rccb.elmt",
+      "upstreamBlobSha": "f6655135b7b7c0b900b06f4b6c202ed0d1e1bfe1"
+    },
+    {
+      "id": "nn.qet.fuse_switch",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/10_fuses/sec_fus1.elmt",
+      "upstreamBlobSha": "91ab0502185118adc0408486ab2e61da703d68fc"
+    },
+    {
+      "id": "nn.qet.mcb",
+      "sourcePath": "10_electric/11_singlepole/200_fuses_protective_gears/11_circuit_breakers/jistic_1p.elmt",
+      "upstreamBlobSha": "a11d48197946c56de7fb43f06ff87ae075a56117"
+    }
+  ]
+}

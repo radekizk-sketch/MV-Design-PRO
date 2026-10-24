@@ -1,0 +1,62 @@
+<definition version="0.100.0" type="element" link_type="master" width="30" height="60" hotspot_x="22" hotspot_y="30">
+    <uuid uuid="{456d106b-8f91-1f8f-3ced-d6afc2a440e9}"/>
+    <names>
+        <name lang="ar">قاطع تفاضلي</name>
+        <name lang="ca">Interruptor residual amb sobrecàrrega</name>
+        <name lang="cs">Jističochránič</name>
+        <name lang="da">Fejlstrømsafbryder med overbelastning</name>
+        <name lang="de">Kombischalter</name>
+        <name lang="el">Διαφορικός διακόπτης με θερμική προστασία</name>
+        <name lang="en">Residual Circuit Breaker with Overload</name>
+        <name lang="es">Dispositivo diferenciale residual</name>
+        <name lang="fi">Vikavirtakatkaisija ylikuormituksella</name>
+        <name lang="fr">Disjoncteur différentiel</name>
+        <name lang="hr">Zaštitna sklopka zaštitne struje s preopterećenjem</name>
+        <name lang="hu">Hibaáram-védőkapcsoló 1P+N</name>
+        <name lang="it">Disgiuntore differenziale</name>
+        <name lang="ja">過負荷保護付き漏電遮断器</name>
+        <name lang="ko">과부하 보호 기능이 있는 잔류 전류 차단기</name>
+        <name lang="mn">Хэт ачаалалтай үлдэгдэл гүйдлийн таслуур</name>
+        <name lang="nb">Jordfeilbryter med overlast</name>
+        <name lang="nl">Aardlekschakelaar</name>
+        <name lang="nl_BE">Aardlekschakelaar met overbelastingsbeveiliging</name>
+        <name lang="pl">Wyłącznik różnicowoprądowy z wbudowanym zabezpieczeniem nadprądowym</name>
+        <name lang="pt">Disjunctor diferencial</name>
+        <name lang="pt_BR">Disjuntor diferencial residual de proteção (DR/DRR)</name>
+        <name lang="ro">Întrerupător de curent rezidual cu suprasarcină</name>
+        <name lang="ru">Дифавтомат</name>
+        <name lang="sk">Prúdový chránič s nadprúdovou ochranou</name>
+        <name lang="sl">Odklopnik na diferenčni tok s preobremenitvijo</name>
+        <name lang="sr">Прекидач диференцијалне струје са преоптерећењем</name>
+        <name lang="sv">Jordfelsbrytare med överlastskydd</name>
+        <name lang="tr">Aşırı yük korumalı kaçak akım devre kesici</name>
+        <name lang="uk">Диференційний автоматичний вимикач із захистом від перевантаження</name>
+        <name lang="zh">带过流保护的剩余电流断路器</name>
+    </names>
+    <kindInformations>
+        <kindInformation name="type">protection</kindInformation>
+    </kindInformations>
+    <informations>Author: The QElectroTech team
+License: see http://qelectrotech.org/wiki/doc/elements_license</informations>
+    <description>
+        <text text="IΔ" x="-14" y="9" rotation="0" font="Liberation Sans,6,-1,5,50,0,0,0,0,0,Regular" color="#000000"/>
+        <line x1="2" y1="-12" x2="-2" y2="-8" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="true"/>
+        <line x1="-2" y1="-12" x2="2" y2="-8" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="true"/>
+        <dynamic_text x="1" y="-12" z="4" text_width="-1" Halignment="AlignLeft" Valignment="AlignTop" frame="false" rotation="0" keep_visual_rotation="false" text_from="ElementInfo" uuid="{615e43b4-806f-4441-8d65-7fed7b8455d7}" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular">
+            <text></text>
+            <info_name>label</info_name>
+        </dynamic_text>
+        <polygon x1="-5" y1="-10" x2="0" y2="10" x3="0" y3="20" closed="false" antialias="true" style="line-style:normal;line-weight:normal;filling:none;color:black"/>
+        <line x1="0" y1="-20" x2="0" y2="-10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="-4" y1="-4" x2="-8" y2="-4" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <line x1="-8" y1="-4" x2="-8" y2="-8" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <line x1="-13" y1="-8" x2="-8" y2="-8" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <line x1="-13" y1="-8" x2="-13" y2="-4" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <line x1="-16" y1="-4" x2="-13" y2="-4" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <arc x="-13" y="-2.5" width="5" height="7" start="0" angle="180" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="true"/>
+        <line x1="-8" y1="1" x2="-2" y2="1" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <line x1="-16" y1="1" x2="-13" y2="1" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:thin;filling:none;color:black" antialias="false"/>
+        <terminal uuid="{ffbe1dd7-8057-4f24-9aa6-2eea384ae3f6}" name="" x="0" y="20" orientation="s" type="Generic"/>
+        <terminal uuid="{471c3669-fe17-4621-89e7-88ab45682bee}" name="" x="0" y="-20" orientation="n" type="Generic"/>
+    </description>
+</definition>
