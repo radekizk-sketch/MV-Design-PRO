@@ -1,0 +1,60 @@
+name: "nN CAD — QElectroTech importer and atlas evidence"
+on:
+  pull_request:
+    paths:
+      - "mv-design-pro/scripts/import_qet_nn.py"
+      - "mv-design-pro/scripts/build_qet_nn_atlas.py"
+      - "mv-design-pro/tests/unit/test_import_qet_nn.py"
+      - "mv-design-pro/docs/sld/vendor/qet/**"
+      - ".github/workflows/nn-qet-symbol-library.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-atlas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate importer against seven original QElectroTech files
+        run: python -m unittest discover -s mv-design-pro/tests/unit -p "test_import_qet_nn.py" -v
+      - name: Generate deterministic candidate JSON and offline atlas
+        run: |
+          mkdir -p nn-qet-evidence
+          python mv-design-pro/scripts/import_qet_nn.py \
+            --manifest mv-design-pro/docs/sld/vendor/qet/import_manifest.json \
+            --source-root mv-design-pro/docs/sld/vendor/qet \
+            --output nn-qet-evidence/qet-candidates.json
+          python mv-design-pro/scripts/build_qet_nn_atlas.py \
+            --input nn-qet-evidence/qet-candidates.json \
+            --output nn-qet-evidence/atlas-do-oceny.html
+          python -m json.tool nn-qet-evidence/qet-candidates.json >/dev/null
+          cp mv-design-pro/docs/sld/vendor/qet/ELEMENTS.LICENSE nn-qet-evidence/ELEMENTS.LICENSE
+      - name: Evidence gate — all sources marked DRAFT and no ENM bindings
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('nn-qet-evidence/qet-candidates.json')
+          a=json.loads(p.read_text(encoding='utf-8'))
+          assert a['contract']=='MvNnQetCandidateV1'
+          assert a['production'] is False and a['normativeVerified'] is False
+          assert len(a['symbols'])==7
+          for s in a['symbols']:
+              assert s['verificationStatus']=='DRAFT'
+              assert s['approval']=='OWNER_REQUIRED'
+              assert s['modelBinding'] is None
+              assert all(p['reviewRequired'] for p in s['ports'])
+          assert Path('nn-qet-evidence/atlas-do-oceny.html').stat().st_size>2000
+          print('VALID: 7 sources, 0 production bindings, 0 normative verification')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "nn-qet-atlas-do-oceny"
+          path: nn-qet-evidence/
+          retention-days: 30
