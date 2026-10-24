@@ -78,9 +78,6 @@ def primitives_for(el: ET.Element, hx: float, hy: float) -> list[dict]:
     if tag == "line":
         return [line(n("x1"), n("y1"), n("x2"), n("y2"))]
     if tag in ("polygon", "polyline"):
-        keys = sorted(((int(m.group(1)), m.group(2)) for key in a
-                      if (m := re.fullmatch(r"([xy])(\d+)", key))
-                      for _ in [0] if False), key=lambda k: k[0])  # overwritten below
         # Use explicit x1/y1, x2/y2 sequences: no positional assumptions.
         indices = sorted({int(m.group(1)) for k in a
                           if (m := re.fullmatch(r"x(\d+)", k))})
