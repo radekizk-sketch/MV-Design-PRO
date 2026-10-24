@@ -43,6 +43,14 @@ export interface ZatwierdzonePowiazaniePortu {
   readonly funkcja: FunkcjaPortu;
   readonly potentialRef: string;
 }
+export interface BiegunEnm {
+  readonly conductor: 'L1'|'L2'|'L3'|'N';
+  readonly wejscieTerminalRef: string;
+  readonly wyjscieTerminalRef: string;
+  readonly stan: 'ZAMKNIETY'|'OTWARTY'|'NIEZNANY'|'NIE_DOTYCZY';
+}
+/** Grafika jednokreskowa ma prawo mieć dwa porty, jednakże urządzenie 3P/4P
+ * musi mieć kompletny, niezależny kontrakt dla wszystkich biegunów ENM. */
 export interface DecyzjaWlaczeniaSymbolu {
   readonly sourceId: string;
   readonly decyzjaWlascicielaId: string;
@@ -52,6 +60,7 @@ export interface DecyzjaWlaczeniaSymbolu {
   readonly liczbaBiegunow: 1|2|3|4;
   readonly stanAparatuZEnm: 'ZAMKNIETY'|'OTWARTY'|'NIEZNANY'|'NIE_DOTYCZY';
   readonly porty: readonly ZatwierdzonePowiazaniePortu[];
+  readonly biegunyEnm: readonly BiegunEnm[];
 }
 export interface KwalifikowanySymbolNn {
   readonly id: string;
@@ -59,6 +68,7 @@ export interface KwalifikowanySymbolNn {
   readonly deviceKind: string;
   readonly poles: 1|2|3|4;
   readonly ports: readonly ZatwierdzonePowiazaniePortu[];
+  readonly polesEnm: readonly BiegunEnm[];
   readonly ownerDecision: string;
   readonly normativeEvidence: string;
   readonly state: DecyzjaWlaczeniaSymbolu['stanAparatuZEnm'];
@@ -106,11 +116,30 @@ export function kontrolaDopuszczeniaKandydata(
     uzyte.add(port.qetPort);
     enm.add(port.terminalEnm);
   }
-  // Złożone, wielobiegunowe urządzenia mają tyle portów i danych, ile wymaga
-  // konkretna topologia ENM. Nie interpolować przewodów z liczby „3P”.
-  if(decyzja.liczbaBiegunow>1 &&
-     !decyzja.porty.some(p=>p.conductor==='L1')){
-    throw new Error('B-02: brak jawnej informacji o biegunach.');
+  // Odrębny kontrakt topologii ENM, niezależny od dwóch portów grafiki SLD.
+  // BEZWZGLĘDNIE nie tworzyć 3P z jednego przewodu ani nie przełączać PEN/PE.
+  if(decyzja.biegunyEnm.length!==decyzja.liczbaBiegunow) {
+    throw new Error('B-02: niekompletna topologia biegunów 1P/2P/3P/4P.');
+  }
+  const bieguny=new Set<string>();
+  const terminaleBiegunow=new Set<string>();
+  for(const b of decyzja.biegunyEnm){
+    if(bieguny.has(b.conductor)||!b.wejscieTerminalRef.trim()||
+       !b.wyjscieTerminalRef.trim()||b.wejscieTerminalRef===b.wyjscieTerminalRef||
+       terminaleBiegunow.has(b.wejscieTerminalRef)||
+       terminaleBiegunow.has(b.wyjscieTerminalRef)){
+      throw new Error('B-02: zdublowany/niepoprawny biegun urządzenia.');
+    }
+    bieguny.add(b.conductor);
+    terminaleBiegunow.add(b.wejscieTerminalRef);
+    terminaleBiegunow.add(b.wyjscieTerminalRef);
+  }
+  if(decyzja.liczbaBiegunow>=3 &&
+     !(['L1','L2','L3'] as const).every(f=>bieguny.has(f))) {
+    throw new Error('B-02: urządzenie 3P/4P bez kompletu L1/L2/L3.');
+  }
+  if(decyzja.liczbaBiegunow===4&&!bieguny.has('N')) {
+    throw new Error('B-02: weryfikowana funkcja 4P bez N.');
   }
   return {
     id:kandydat.id,
@@ -118,6 +147,7 @@ export function kontrolaDopuszczeniaKandydata(
     deviceKind:decyzja.deviceKind,
     poles:decyzja.liczbaBiegunow,
     ports:decyzja.porty,
+    polesEnm:decyzja.biegunyEnm,
     ownerDecision:decyzja.decyzjaWlascicielaId,
     normativeEvidence:decyzja.dowodIec60617Id,
     state:decyzja.stanAparatuZEnm,
