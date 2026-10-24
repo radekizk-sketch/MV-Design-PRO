@@ -67,13 +67,23 @@ def primitives_for(el: ET.Element, hx: float, hy: float) -> list[dict]:
     if fill not in ("none", "black", "white"):
         raise ImportFailure(f"Nieobsługiwane wypełnienie: {fill}")
     painted = {"none": "none", "black": "ink", "white": "paper"}[fill]
+    weight_name = style.get("line-weight", "normal")
+    weights = {"normal": 1, "thin": 0.65, "thick": 1.6, "medium": 1}
+    if weight_name not in weights:
+        raise ImportFailure(f"Nieznana grubość linii: {weight_name}")
+    if style.get("color", "black") not in ("black", "#000000"):
+        raise ImportFailure("Kolor źródłowy wymaga osobnej oceny")
+    weight = weights[weight_name]
+
+    def weighted(p: dict) -> dict:
+        return p if weight == 1 else {**p, "w": weight}
 
     def n(key: str) -> float:
         return number(a.get(key), key)
 
     def line(x1: float, y1: float, x2: float, y2: float) -> dict:
-        return {"k": "line", "x1": rd(x1+hx), "y1": rd(y1+hy),
-                "x2": rd(x2+hx), "y2": rd(y2+hy)}
+        return weighted({"k": "line", "x1": rd(x1+hx), "y1": rd(y1+hy),
+                "x2": rd(x2+hx), "y2": rd(y2+hy)})
 
     if tag == "line":
         return [line(n("x1"), n("y1"), n("x2"), n("y2"))]
@@ -89,26 +99,26 @@ def primitives_for(el: ET.Element, hx: float, hy: float) -> list[dict]:
         is_closed = tag == "polygon" and a.get("closed", "true") == "true"
         path = "M " + " L ".join(f"{x} {y}" for x,y in coords)
         if is_closed: path += " Z"
-        return [{"k":"path","d":path,"fill":painted if is_closed else "none"}]
+        return [weighted({"k":"path","d":path,"fill":painted if is_closed else "none"})]
     if tag == "rect":
         x,y,w,h = n("x")+hx,n("y")+hy,n("width"),n("height")
         if w <= 0 or h <= 0: raise ImportFailure("Pusty prostokąt")
         # Rounded corners deliberately not silently discarded.
         if float(a.get("rx", "0")) or float(a.get("ry", "0")):
             raise ImportFailure("Prostokąt z zaokrągleniem wymaga rozszerzenia renderera")
-        return [{"k":"path","d":f"M {rd(x)} {rd(y)} h {rd(w)} v {rd(h)} h {rd(-w)} Z","fill":painted}]
+        return [weighted({"k":"path","d":f"M {rd(x)} {rd(y)} h {rd(w)} v {rd(h)} h {rd(-w)} Z","fill":painted})]
     if tag == "circle":
         cx = n("cx") if "cx" in a else n("x")
         cy = n("cy") if "cy" in a else n("y")
         r = n("r") if "r" in a else n("radius")
         if r <= 0: raise ImportFailure("Promień <= 0")
-        return [{"k":"circle","cx":rd(cx+hx),"cy":rd(cy+hy),"r":rd(r),"fill":painted}]
+        return [weighted({"k":"circle","cx":rd(cx+hx),"cy":rd(cy+hy),"r":rd(r),"fill":painted})]
     if tag == "ellipse":
         x,y,w,h = n("x")+hx,n("y")+hy,n("width"),n("height")
         if w <= 0 or h <= 0: raise ImportFailure("Pusta elipsa")
         cx,cy,rx,ry=x+w/2,y+h/2,w/2,h/2
         path=f"M {rd(cx-rx)} {rd(cy)} a {rd(rx)} {rd(ry)} 0 1 0 {rd(2*rx)} 0 a {rd(rx)} {rd(ry)} 0 1 0 {rd(-2*rx)} 0"
-        return [{"k":"path","d":path,"fill":painted}]
+        return [weighted({"k":"path","d":path,"fill":painted})]
     if tag == "arc":
         x,y,w,h=n("x")+hx,n("y")+hy,n("width"),n("height")
         start,sweep=n("start"),n("angle")
@@ -120,7 +130,7 @@ def primitives_for(el: ET.Element, hx: float, hy: float) -> list[dict]:
         x0,y0=cx+rx*math.cos(rads(start)),cy-ry*math.sin(rads(start))
         x1,y1=cx+rx*math.cos(rads(start+sweep)),cy-ry*math.sin(rads(start+sweep))
         d=f"M {rd(x0)} {rd(y0)} A {rd(rx)} {rd(ry)} 0 {int(abs(sweep)>180)} {int(sweep<0)} {rd(x1)} {rd(y1)}"
-        return [{"k":"arc","d":d}]
+        return [weighted({"k":"arc","d":d})]
     if tag == "text":
         # Distinguish literal IEC marks from dynamic annotations, which are not imported.
         value=text_label(a.get("text",""))
