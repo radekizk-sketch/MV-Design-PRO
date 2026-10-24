@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CadPrimitiveLayer } from './ui/sld/v3/cad/CadSymbol';
+import { fitQetSymbol } from './ui/sld/v3/cad/scada-frame/qetSymbolBounds';
 import type { CadPrimitive } from './ui/sld/v3/cad/cadSymbolRegistry';
 import { QetScadaFrame } from './ui/sld/v3/cad/scada-frame/QetScadaFrame';
 import {
@@ -106,20 +107,26 @@ function Glyph({symbol, local, theme}:{symbol:QetPilotSymbol;local:LocalState;th
   const r=ocenStanRamki(input);
   const ink=theme==='dark'?'#dfedf5':'#1b3545';
   const paper=theme==='dark'?'#0e2332':'#f5f9fa';
+  const frame={x:8,y:7,width:84,height:100} as const;
+  const fit=fitQetSymbol(symbol,frame,12);
   return (
-    <svg viewBox="-12 -10 70 98" role="img" aria-label={symbol.namePl+', '+r.etykieta}>
-      <g transform="translate(6 6)">
-        <QetScadaFrame input={input} x={-2} y={15}
-          width={symbol.width+5} height={40}
-          showStateLabel={false}>
+    <svg viewBox="0 0 100 114" role="img"
+      data-qet-bounds-version="union-ports-both-positions"
+      aria-label={symbol.namePl+', '+r.etykieta}>
+      <QetScadaFrame input={input}
+        x={frame.x} y={frame.y}
+        width={frame.width} height={frame.height}
+        showStateLabel={false}>
+        <g transform={`translate(${fit.offsetX} ${fit.offsetY}) scale(${fit.scale})`}
+          data-qet-centered="true">
           <CadPrimitiveLayer primitives={geometria(symbol,r.stanGeometryczny)}
             ink={ink} paper={paper} strokePx={0.85} nonScalingStroke={false}/>
           {r.poprawnyDlaTopologii && symbol.ports.map((p,i)=>
             <circle key={i} cx={p.x} cy={p.y} r={1.3}
               fill={paper} stroke={theme==='dark'?'#4bd0ec':'#007fa8'}
-              strokeWidth={0.5}/>)} 
-        </QetScadaFrame>
-      </g>
+              strokeWidth={0.5}/>)}
+        </g>
+      </QetScadaFrame>
     </svg>
   );
 }
