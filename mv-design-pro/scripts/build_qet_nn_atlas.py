@@ -17,14 +17,15 @@ def attr(value: object) -> str:
 
 def prim_svg(p: dict) -> str:
     kind=p["k"]
+    sw = f' stroke-width="{attr(1.25*float(p["w"]))}"' if "w" in p else ""
     if kind=="line":
         return (f'<line x1="{attr(p["x1"])}" y1="{attr(p["y1"])}" '
-                f'x2="{attr(p["x2"])}" y2="{attr(p["y2"])}"/>')
+                f'x2="{attr(p["x2"])}" y2="{attr(p["y2"])}"{sw}/>')
     if kind=="circle":
         return (f'<circle cx="{attr(p["cx"])}" cy="{attr(p["cy"])}" '
-                f'r="{attr(p["r"])}" class="fill-{attr(p.get("fill","none"))}"/>')
+                f'r="{attr(p["r"])}" class="fill-{attr(p.get("fill","none"))}"{sw}/>')
     if kind in ("path","arc"):
-        return f'<path d="{attr(p["d"])}" class="fill-{attr(p.get("fill","none"))}"/>'
+        return f'<path d="{attr(p["d"])}" class="fill-{attr(p.get("fill","none"))}"{sw}/>'
     if kind=="letter":
         return (f'<text x="{attr(p["x"])}" y="{attr(p["y"])}" '
                 f'font-size="{attr(p["size"])}" text-anchor="middle" '
