@@ -5,7 +5,7 @@
  * Wpis bez źródła ma status BLOKADA, a pole SN/RGnN jest złożeniem ENM.
  * Ramkę czerwony/zielony rysuj WYŁĄCZNIE dla urządzeń z mechanicznym stykiem.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CadSymbol, CadPrimitiveLayer } from '../CadSymbol';
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY } from '../cadSymbolRegistry';
 import { ocenStanRamki, type ScadaFrameInput, type PolozenieMechaniczne } from './scadaFrameState';
@@ -16,8 +16,32 @@ import {
   BAZA_SYMBOLI_SLD, pokrycieBiblioteki, type PoziomBiblioteki,
   type PozycjaBiblioteki,
 } from './sldSymbolLibraryCatalog';
+import {
+  KLUCZ_ODBIORU_SYMBOLI, zmienDecyzje, utworzEksport,
+  csvOdbioru, wczytajEksport, podsumowanieOdbioru,
+  type DecyzjaSymbolu, type RejestrOdbioru,
+} from './symbolApprovalLedger';
 
 const frame={x:8,y:7,width:84,height:100} as const;
+function zapiszPlik(nazwa:string,typ:string,dane:string):void{
+  const url=URL.createObjectURL(new Blob([dane],{type:typ}));
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=nazwa;
+  link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function wczytajRejestrLokalny():RejestrOdbioru{
+  try{
+    if(typeof window==='undefined')return {};
+    const raw=window.localStorage.getItem(KLUCZ_ODBIORU_SYMBOLI);
+    if(!raw)return {};
+    const obj=JSON.parse(raw) as unknown;
+    if(!obj||typeof obj!=='object'||Array.isArray(obj))return {};
+    return obj as RejestrOdbioru;
+  }catch{return {};}
+}
+
 const WERSJA={
   scenarioId:'ATLAS-DOWODOWY',enmVersion:'ATLAS',topologyHash:'BRAK-SOLVERA',
   resultSnapshotId:null,resultTopologyHash:null,
@@ -43,6 +67,17 @@ const STYLE=`
 .qet-full-source{margin-top:auto;border-top:1px solid var(--line);padding-top:9px}
 .qet-full-card[data-source-status=QET_ZRODLOWY]{border-top:2px solid #2ccf93}
 .qet-full-card[data-source-status=CAD_ISTNIEJACY]{border-top:2px solid #4bd0ec}
+.qet-full-card[data-decision=AKCEPTUJE]{border-left:3px solid #2ccf93}
+.qet-full-card[data-decision=ODRZUCAM]{border-left:3px solid #f05260}
+.qet-full-card[data-decision=DO_POPRAWY]{border-left:3px solid #e5af47}
+.qet-review-select{display:flex;gap:5px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.qet-review-select label{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:4px;padding:5px 7px;cursor:pointer;font-size:10px}
+.qet-review-select label:has(input:checked){border-color:var(--accent);background:rgba(0,190,219,.11)}
+.qet-review-select input{min-width:auto;flex:none;accent-color:var(--accent);margin:0}
+.qet-review-note{display:block;width:100%;resize:vertical;min-height:53px;padding:7px;
+  background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;font-size:11px}
+.qet-approval-summary{padding:10px;border:1px solid var(--line);border-radius:6px;
+ font-size:12px;color:var(--muted);display:flex;gap:13px;flex-wrap:wrap;align-items:center}
 `;
 
 function sourceInput(position:PozycjaBiblioteki,state:PolozenieMechaniczne):ScadaFrameInput{
@@ -110,9 +145,23 @@ export function SldSymbolLibraryAtlas({theme}:{
   const [position,setPosition]=useState<PolozenieMechaniczne>('OTWARTY');
   const [status,setStatus]=useState<'Wszystkie'|'Dostępna geometria'|'Braki i złożenia'>('Wszystkie');
   const [query,setQuery]=useState('');
+  const [decyzjaFiltr,setDecyzjaFiltr]=useState<'*'|DecyzjaSymbolu>('*');
+  const [rejestr,setRejestr]=useState<RejestrOdbioru>(wczytajRejestrLokalny);
+  const [bladImportu,setBladImportu]=useState<string|null>(null);
+  useEffect(()=>{
+    try{window.localStorage.setItem(KLUCZ_ODBIORU_SYMBOLI,JSON.stringify(rejestr));}
+    catch{/* Eksport JSON pozostaje dostępną ścieżką zapisu. */}
+  },[rejestr]);
+  const updateApproval=(id:string,decyzja:DecyzjaSymbolu,uwagi:string)=>{
+    setRejestr(old=>zmienDecyzje(old,id,decyzja,uwagi,new Date().toISOString()));
+  };
+  const eksport=()=>utworzEksport(BAZA_SYMBOLI_SLD,rejestr,new Date().toISOString());
+  const totals=podsumowanieOdbioru(BAZA_SYMBOLI_SLD,rejestr);
   const stats=pokrycieBiblioteki(level);
   const entries=useMemo(()=>BAZA_SYMBOLI_SLD.filter(e=>{
     if(e.poziom!==level)return false;
+    if(decyzjaFiltr!=='*' && (rejestr[e.id]?.decyzja??'NIEOCENIONY')!==decyzjaFiltr)
+      return false;
     if(query&&!([e.id,e.nazwa,e.rodzina,e.uwagi].join(' ').toLocaleLowerCase('pl')
       .includes(query.toLocaleLowerCase('pl'))))return false;
     if(status==='Dostępna geometria')
@@ -120,7 +169,7 @@ export function SldSymbolLibraryAtlas({theme}:{
     if(status==='Braki i złożenia')
       return e.status==='WYMAGA_ZRODLA'||e.status==='ZLOZENIE_ENM';
     return true;
-  }),[level,query,status]);
+  }),[level,query,status,decyzjaFiltr,rejestr]);
 
   return (
     <div className="qet-full-atlas" data-testid="sld-library-atlas">
@@ -145,6 +194,42 @@ export function SldSymbolLibraryAtlas({theme}:{
           <option>Dostępna geometria</option>
           <option>Braki i złożenia</option>
         </select>
+        <select value={decyzjaFiltr} aria-label="Filtr decyzji właścicielskiej"
+          onChange={e=>setDecyzjaFiltr(e.target.value as typeof decyzjaFiltr)}>
+          <option value="*">Wszystkie decyzje</option>
+          <option value="NIEOCENIONY">Nieocenione</option>
+          <option value="AKCEPTUJE">Zaakceptowane</option>
+          <option value="ODRZUCAM">Odrzucone</option>
+          <option value="DO_POPRAWY">Do poprawy</option>
+        </select>
+      </div>
+      <div className="qet-approval-summary" data-testid="sld-approval-summary">
+        <span>Zaakceptowano: <b>{totals.zaakceptowane}</b></span>
+        <span>Odrzucono: <b>{totals.odrzucone}</b></span>
+        <span>Do poprawy: <b>{totals.doPoprawy}</b></span>
+        <span>Nieocenione: <b>{totals.nieocenione}</b></span>
+        <button type="button" onClick={()=>zapiszPlik(
+          'MV_DESIGN_PRO_ODBIOR_SYMBOLI_73.json','application/json;charset=utf-8',
+          JSON.stringify(eksport(),null,2),
+        )}>Pobierz JSON</button>
+        <button type="button" onClick={()=>zapiszPlik(
+          'MV_DESIGN_PRO_ODBIOR_SYMBOLI_73.csv','text/csv;charset=utf-8',
+          csvOdbioru(eksport()),
+        )}>Pobierz CSV</button>
+        <label>Wczytaj rejestr JSON
+          <input aria-label="Importuj decyzje z pliku JSON" type="file"
+            accept="application/json,.json" onChange={async e=>{
+              const file=e.target.files?.[0];if(!file)return;
+              try{
+                setRejestr(wczytajEksport(JSON.parse(await file.text()),BAZA_SYMBOLI_SLD));
+                setBladImportu(null);
+              }catch(err){
+                setBladImportu(err instanceof Error?err.message:'Nieprawidłowy plik');
+              }
+              e.target.value='';
+            }}/>
+        </label>
+        {bladImportu && <span role="alert">{bladImportu}</span>}
       </div>
       <div className="qet-full-summary" data-testid="sld-library-coverage">
         <b>{level}: {stats.razem} pozycji katalogowych.</b>
@@ -156,9 +241,12 @@ export function SldSymbolLibraryAtlas({theme}:{
       <div className="qet-full-grid">
         {entries.map(entry=>{
           const geometry=entry.status==='QET_ZRODLOWY'||entry.status==='CAD_ISTNIEJACY';
+          const approval=rejestr[entry.id];
+          const current=approval?.decyzja??'NIEOCENIONY';
           return (
             <article key={entry.id} className="qet-full-card"
-              data-library-id={entry.id} data-source-status={entry.status}>
+              data-library-id={entry.id} data-source-status={entry.status}
+              data-decision={current}>
               <strong>{entry.id} · {entry.nazwa}</strong>
               <small>{entry.rodzina} · {entry.rodzaj==='ZLOZENIE'?'Złożenie ENM':'Symbol'}</small>
               {geometry?(
@@ -178,6 +266,28 @@ export function SldSymbolLibraryAtlas({theme}:{
               </small>
               {entry.czyLacznik&&geometry?
                 <small>Stan demonstracyjny: {position}. Nie jest telemetrią.</small>:null}
+              <div className="qet-review-select"
+                role="group" aria-label={`Decyzja dla ${entry.id}`}>
+                {([
+                  ['AKCEPTUJE','Akceptuję'],
+                  ['ODRZUCAM','Odrzucam'],
+                  ['DO_POPRAWY','Do poprawy'],
+                ] as const).map(([key,label])=>(
+                  <label key={key}>
+                    <input type="checkbox" checked={current===key}
+                      aria-label={`${label}: ${entry.id}`}
+                      onChange={e=>updateApproval(entry.id,
+                        e.target.checked?key:'NIEOCENIONY',
+                        approval?.uwagi??'')}/>
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <textarea className="qet-review-note"
+                aria-label={`Uwagi do ${entry.id}`}
+                placeholder="Uwagi do geometrii, normy, portów lub kompletności"
+                value={approval?.uwagi??''}
+                onChange={e=>updateApproval(entry.id,current,e.target.value)}/>
             </article>
           );
         })}
