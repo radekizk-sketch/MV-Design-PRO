@@ -1,96 +1,130 @@
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { QetScadaFrame } from '../QetScadaFrame';
-import { ocenStanRamki, type ScadaFrameInput } from '../scadaFrameState';
+import {
+  ocenStanRamki, zweryfikujPolozeniaDoObliczen,
+  type ScadaFrameInput,
+} from '../scadaFrameState';
 
 const VER = {
-  scenarioId: 'SC-01',
-  enmVersion: 'e-003',
-  topologyHash: 'sha-a',
-  resultSnapshotId: 'lf-004',
-  resultTopologyHash: 'sha-a',
-  resultEnmVersion: 'e-003',
-  resultScenarioId: 'SC-01',
+  scenarioId:'SC-01', enmVersion:'ENM-v3', topologyHash:'top-003',
+  resultSnapshotId:'LF-004', resultTopologyHash:'top-003',
+  resultEnmVersion:'ENM-v3', resultScenarioId:'SC-01',
 } as const;
+
 const QF: ScadaFrameInput = {
-  elementRef: 'QF1',
-  rodzaj: 'LACZNIK',
-  polozenie: 'ZAMKNIETY',
-  eksploatacja: 'NORMALNY',
-  jakosc: 'PRAWIDLOWE',
-  zrodlo: 'SYMULACJA',
-  zasilenie: 'BEZ_NAPIECIA',
-  wersjaStanu: VER,
-  wersjaWidoku: VER,
+  elementRef:'QF1', rodzaj:'LACZNIK',
+  polozenie:'ZAMKNIETY', eksploatacja:'NORMALNY',
+  jakosc:'PRAWIDLOWE', zrodlo:'SYMULACJA', zasilenie:'BEZ_NAPIECIA',
+  wersjaStanu:VER, wersjaWidoku:VER,
 };
-describe('QET-SCADA Frame — ortogonalne sygnały i blokady', () => {
-  it('ZAMKNIĘTY = czerwony mimo braku napięcia i przepływu', () => {
-    expect(ocenStanRamki(QF).ramka).toBe('ZAMKNIETY');
-    const { container } = render(
-      <svg><QetScadaFrame input={QF} x={0} y={10} width={28} height={38} testId="ramka">
-        <line x1="14" y1="0" x2="14" y2="60" />
-      </QetScadaFrame></svg>,
-    );
-    const group = container.querySelector('[data-testid="ramka"]')!;
-    const rect = group.querySelector('rect[data-cad-overlay="mechanical-position"]')!;
-    expect(rect.getAttribute('stroke')).toBe('#F05260');
-    expect(group.getAttribute('data-energization')).toBe('BEZ_NAPIECIA');
-    expect(group.getAttribute('data-results-current')).toBe('true');
-    expect(group.getAttribute('data-state-source')).toBe('SYMULACJA');
+
+function renderFrame(input: ScadaFrameInput) {
+  return render(
+    <svg><QetScadaFrame input={input} x={0} y={10} width={28} height={38} testId="ramka">
+      <line data-testid="qet-original-ink" x1={14} y1={0} x2={14} y2={60} />
+    </QetScadaFrame></svg>,
+  );
+}
+
+describe('QET-SCADA Frame 2.0 — dokładnie dwa stany graficzne', () => {
+  it('zamknięty = czerwony #F05260; zasilenie bez napięcia nie wpływa na położenie',()=>{
+    const result=ocenStanRamki(QF);
+    expect(result.ramka).toBe('ZAMKNIETY');
+    const {container}=renderFrame(QF);
+    const g=container.querySelector('[data-testid="ramka"]')!;
+    expect(g.querySelector('[data-cad-overlay="mechanical-position"]')?.getAttribute('stroke')).toBe('#F05260');
+    expect(g.querySelector('[data-testid="qet-original-ink"]')).not.toBeNull();
+    expect(g.getAttribute('data-energization')).toBe('BEZ_NAPIECIA');
+    expect(g.getAttribute('data-results-current')).toBe('true');
   });
-  it('OTWARTY = zielony; otwarty pod napięciem jest możliwy', () => {
-    const v = { ...QF, polozenie: 'OTWARTY' as const, zasilenie: 'POD_NAPIECIEM' as const };
-    expect(ocenStanRamki(v).ramka).toBe('OTWARTY');
-    const {container} = render(<svg><QetScadaFrame input={v} x={0} y={0} width={16} height={24}><line /></QetScadaFrame></svg>);
+  it('otwarty = zielony #2CCF93, także gdy obie strony mogą pozostawać pod napięciem',()=>{
+    const q={...QF,polozenie:'OTWARTY' as const,zasilenie:'POD_NAPIECIEM' as const};
+    const {container}=renderFrame(q);
+    expect(ocenStanRamki(q).stanGeometryczny).toBe('open');
     expect(container.querySelector('[data-cad-overlay="mechanical-position"]')?.getAttribute('stroke')).toBe('#2CCF93');
   });
-  it('przejście nie jest ani OTWARTE ani ZAMKNIĘTE', () => {
-    const v = ocenStanRamki({...QF, polozenie:'W_PRZELACZANIU'});
-    expect(v.ramka).toBe('PRZEJSCIOWY');
-    expect(v.moznaSymulowacZmiane).toBe(false);
-    expect(v.stanGeometryczny).toBe('unknown');
+  it('brak położenia → walidacja, bez żadnej ramki, glyphu ani znaku zapytania',()=>{
+    const q={...QF,polozenie:null};
+    const wynik=ocenStanRamki(q);
+    expect(wynik.poprawnyDlaTopologii).toBe(false);
+    expect(wynik.ramka).toBe('BRAK_RAMKI');
+    expect(wynik.stanGeometryczny).toBeNull();
+    const {container}=renderFrame(q);
+    expect(container.querySelector('[data-cad-overlay="mechanical-position"]')).toBeNull();
+    expect(container.querySelector('[data-testid="qet-original-ink"]')).toBeNull();
+    expect(container.querySelector('text')).toBeNull();
+    expect(zweryfikujPolozeniaDoObliczen([q]).moznaObliczac).toBe(false);
   });
-  it('NIEZNANY, NIEWIARYGODNY, BRAK i PRZESTARZAŁY nie udają ostatniej pozycji', () => {
-    for (const jakosc of ['NIEWIARYGODNE','BRAK','PRZESTARZALE'] as const) {
-      const v = ocenStanRamki({...QF, jakosc});
-      expect(v.ramka).toBe('NIEZNANY');
-      expect(v.stanGeometryczny).toBe('unknown');
+  it('niewiarygodne, przestarzałe i brak danych nie generują trzeciej ramki',()=>{
+    for(const jakosc of ['NIEWIARYGODNE','PRZESTARZALE','BRAK'] as const){
+      const q={...QF,jakosc};
+      const result=ocenStanRamki(q);
+      expect(result.ramka).toBe('BRAK_RAMKI');
+      expect(result.poprawnyDlaTopologii).toBe(false);
+      expect(zweryfikujPolozeniaDoObliczen([q]).moznaObliczac).toBe(false);
     }
   });
-  it('wyzwolony i potwierdzony OTWARTY = ramka zielona + alarm, a nie kolor alarmu', () => {
-    const v = ocenStanRamki({...QF, polozenie:'OTWARTY', eksploatacja:'WYZWOLONY'});
-    expect(v.ramka).toBe('OTWARTY');
-    expect(v.alarm).toBe(true);
-    const {container} = render(<svg><QetScadaFrame input={{...QF,polozenie:'OTWARTY',eksploatacja:'WYZWOLONY'}} x={0} y={0} width={16} height={24}><line /></QetScadaFrame></svg>);
-    expect(container.querySelector('[data-cad-overlay="alarm"]')).not.toBeNull();
+  it('wersja stanu inna niż ENM/scenariusz blokuje topologię, wynik stary tylko K-S2',()=>{
+    const niezgodny={...QF,wersjaStanu:{...VER,scenarioId:'SC-02'}};
+    expect(ocenStanRamki(niezgodny).ramka).toBe('BRAK_RAMKI');
+    const staryWynik={...QF,wersjaWidoku:{...VER,resultEnmVersion:'ENM-v2'}};
+    const res=ocenStanRamki(staryWynik);
+    expect(res.ramka).toBe('ZAMKNIETY');
+    expect(res.wynikiAktualne).toBe(false);
+    expect(res.poprawnyDlaTopologii).toBe(true);
   });
-  it('wyzwolony ZAMKNIĘTY = sprzeczność i NIEZNANY; nie pokazuje czerwonej ramki', () => {
-    const v = ocenStanRamki({...QF, eksploatacja:'WYZWOLONY'});
-    expect(v.niespojnosc).toBe(true);
-    expect(v.ramka).toBe('NIEZNANY');
-    expect(v.moznaSymulowacZmiane).toBe(false);
+  it('wyzwolony i potwierdzony otwarty: zielona ramka, bez wykrzyknika',()=>{
+    const q={...QF,polozenie:'OTWARTY' as const,eksploatacja:'WYZWOLONY' as const};
+    expect(ocenStanRamki(q).alarm).toBe(true);
+    const {container}=renderFrame(q);
+    expect(container.querySelector('[data-cad-overlay="mechanical-position"]')?.getAttribute('stroke')).toBe('#2CCF93');
+    expect(container.querySelector('[data-cad-overlay="alarm"]')).toBeNull();
+    expect(container.querySelector('text')).toBeNull();
   });
-  it('brak spójności ENM/scenariusza = NIEZNANY, bez fałszywej zielonej/czerwonej ramki', () => {
-    const v = ocenStanRamki({...QF,wersjaStanu:{...VER,enmVersion:'e-001'}});
-    expect(v.ramka).toBe('NIEZNANY');
+  it('wyzwolony zamknięty: sprzeczność i brak ramki, a nie fałszywa czerwień',()=>{
+    const q={...QF,eksploatacja:'WYZWOLONY' as const};
+    expect(ocenStanRamki(q).niespojnosc).toBe(true);
+    expect(ocenStanRamki(q).ramka).toBe('BRAK_RAMKI');
+    expect(zweryfikujPolozeniaDoObliczen([q]).moznaObliczac).toBe(false);
   });
-  it('wynik dla starego ENM lub innego scenariusza = NIEAKTUALNY, mimo identycznej topologii', () => {
-    const v = ocenStanRamki({...QF,wersjaWidoku:{...VER,resultEnmVersion:'e-002'}});
-    expect(v.ramka).toBe('ZAMKNIETY');
-    expect(v.wynikiAktualne).toBe(false);
-    const w = ocenStanRamki({...QF,wersjaWidoku:{...VER,resultScenarioId:'SC-02'}});
-    expect(w.wynikiAktualne).toBe(false);
+  it('blokada nie zmienia czerwieni, ale ogranicza symulację; bez litery B na SLD',()=>{
+    const q={...QF,eksploatacja:'ZABLOKOWANY' as const};
+    const res=ocenStanRamki(q);
+    expect(res.ramka).toBe('ZAMKNIETY');
+    expect(res.moznaSymulowacZmiane).toBe(false);
+    const {container}=renderFrame(q);
+    expect(container.querySelector('[data-cad-overlay="blocked"]')).toBeNull();
+    expect(container.querySelector('[data-cad-overlay="mechanical-position"]')?.getAttribute('stroke')).toBe('#F05260');
   });
-  it('bezpiecznik nie jest łącznikiem: brak kolorowej ramki; przepalona wkładka = alarm', () => {
-    const v = ocenStanRamki({...QF,elementRef:'FU1',rodzaj:'BEZPIECZNIK',wkladka:'PRZEPALONA'});
-    expect(v.ramka).toBe('BRAK_RAMKI');
-    expect(v.alarm).toBe(true);
-    expect(v.moznaSymulowacZmiane).toBe(false);
+  it('wkładka przepalona: brak ramki łącznika i brak fikcyjnego sterowania',()=>{
+    const q={...QF,elementRef:'FU1',rodzaj:'BEZPIECZNIK' as const,wkladka:'PRZEPALONA' as const};
+    const res=ocenStanRamki(q);
+    expect(res.ramka).toBe('BRAK_RAMKI');
+    expect(res.alarm).toBe(true);
+    expect(res.moznaSymulowacZmiane).toBe(false);
+    const {container}=renderFrame(q);
+    expect(container.querySelector('[data-testid="qet-original-ink"]')).not.toBeNull();
+    expect(container.querySelector('[data-cad-overlay]')).toBeNull();
   });
-  it('blokada nie zmienia koloru pozycji, ale blokuje proponowaną operację symulacji', () => {
-    const v = ocenStanRamki({...QF,eksploatacja:'ZABLOKOWANY'});
-    expect(v.ramka).toBe('ZAMKNIETY');
-    expect(v.blokada).toBe(true);
-    expect(v.moznaSymulowacZmiane).toBe(false);
+  it('rozbieżne bieguny L1-L2-L3 blokują jednoznaczną ramkę i analizę trójfazową',()=>{
+    const q={...QF,bieguny:[
+      {faza:'L1' as const,polozenie:'ZAMKNIETY' as const},
+      {faza:'L2' as const,polozenie:'OTWARTY' as const},
+      {faza:'L3' as const,polozenie:'ZAMKNIETY' as const},
+    ]};
+    expect(ocenStanRamki(q).ramka).toBe('BRAK_RAMKI');
+    expect(zweryfikujPolozeniaDoObliczen([q]).moznaObliczac).toBe(false);
+  });
+  it('pełna lista ENM: wszystkie poprawne stany uprawniają wyłącznie do dalszej walidacji solvera',()=>{
+    const q1={...QF,bieguny:[
+      {faza:'L1' as const,polozenie:'ZAMKNIETY' as const},
+      {faza:'L2' as const,polozenie:'ZAMKNIETY' as const},
+      {faza:'L3' as const,polozenie:'ZAMKNIETY' as const},
+    ]};
+    const q2={...QF,elementRef:'QS2',polozenie:'OTWARTY' as const};
+    expect(zweryfikujPolozeniaDoObliczen([q1,q2])).toEqual({
+      moznaObliczac:true,bledy:[],
+    });
   });
 });
