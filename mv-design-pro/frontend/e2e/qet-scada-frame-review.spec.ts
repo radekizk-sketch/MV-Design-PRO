@@ -150,4 +150,32 @@ test.describe('QET SCADA Frame — dwa zatwierdzone stany, B-02 wstrzymane', () 
     }
   });
 
+  test('odrębne decyzje dla nN/SN + trwałość + eksport JSON/CSV',async({page})=>{
+    await page.goto(HARNESS);
+    await page.getByRole('button',{name:'Katalog nN / SN'}).click();
+    const nn=page.locator('[data-library-id="nN-01"]');
+    await expect(nn).toBeVisible();
+    await nn.getByRole('checkbox',{name:'Akceptuję: nN-01'}).check();
+    await nn.getByRole('textbox',{name:'Uwagi do nN-01'}).fill('Pozycja i proporcje poprawne');
+    await expect(nn).toHaveAttribute('data-decision','AKCEPTUJE');
+    await expect(page.getByTestId('sld-approval-summary')).toContainText('Zaakceptowano: 1');
+
+    await page.getByRole('button',{name:'Biblioteka SN'}).click();
+    const sn=page.locator('[data-library-id="SN-01"]');
+    await sn.getByRole('checkbox',{name:'Odrzucam: SN-01'}).check();
+    await sn.getByRole('textbox',{name:'Uwagi do SN-01'}).fill('Wymagane inne oznaczenie');
+    await expect(sn).toHaveAttribute('data-decision','ODRZUCAM');
+    await expect(page.getByTestId('sld-approval-summary')).toContainText('Odrzucono: 1');
+
+    await page.reload();
+    await page.getByRole('button',{name:'Katalog nN / SN'}).click();
+    await expect(page.locator('[data-library-id="nN-01"]'))
+      .toHaveAttribute('data-decision','AKCEPTUJE');
+
+    const download=page.waitForEvent('download');
+    await page.getByRole('button',{name:'Pobierz JSON'}).click();
+    const file=await download;
+    expect(file.suggestedFilename()).toContain('73.json');
+  });
+
 });
