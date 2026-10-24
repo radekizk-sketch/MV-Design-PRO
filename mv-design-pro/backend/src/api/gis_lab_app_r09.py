@@ -1,13 +1,25 @@
-"""Samodzielna aplikacja badawcza GIS R09, NIE importowana przez produkcyjne api.main.
+"""Samodzielna aplikacja badawcza GIS R09 — nie jest importowana przez api.main.
 
-Uruchomienie wyłącznie lokalne:
-  cd backend
+Uruchomienie lokalne:
+  cd mv-design-pro/backend
   PYTHONPATH=src uvicorn api.gis_lab_app_r09:app --host 127.0.0.1 --port 18009
-Nie używać do danych operatora. Nie wystawiać do sieci.
+Wyłącznie dane syntetyczne. Bez ENM, WMS, danych ENEA i zdalnego sterowania.
 """
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+
 from api.gis_workspace_r09 import router
 
-app = FastAPI(title="MV-DESIGN PRO — laboratorium GIS R09",
-              description="Wyłącznie syntetyki, bez ENM i połączeń mapowych")
+app = FastAPI(title="MV-DESIGN PRO — laboratorium GIS R09")
 app.include_router(router)
+
+
+@app.get("/", include_in_schema=False)
+def frontend() -> FileResponse:
+    return FileResponse(
+        Path(__file__).resolve().parent / "static" / "gis_r09.html",
+        media_type="text/html",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
