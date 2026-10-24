@@ -30,6 +30,8 @@ import { KartaObwoduNn } from './KartaObwoduNn';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
+import { QetScadaCanvasGlyph } from '../cad/scada-frame/QetScadaCanvasGlyph';
+import { daneRamkiZProjekcji } from '../cad/scada-frame/qetScadaProjectionAdapter';
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY, gabarytCad, type CadOrientation, type CadSwitchState } from '../cad/cadSymbolRegistry';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import {
@@ -115,6 +117,9 @@ interface KontekstRysunku {
   /** Nazwy elementów po referencji (źródła DER, transformatory) — etykiety
    *  wysp mówią „z Magazyn D", nie „z QF-D1_zrodlo". */
   readonly nameByRef: ReadonlyMap<string, string>;
+  /** Zatwierdzona koncepcja QET-SCADA, wyłączona domyślnie do odbioru B-02. */
+  readonly qetScadaFrames: boolean;
+  readonly projection: LvDomainProjectionV1;
 }
 
 export interface LvDomainViewProps {
@@ -128,6 +133,9 @@ export interface LvDomainViewProps {
   readonly mono?: boolean;
   /** Element wybrany na start (podświetlenie toru zasilania). */
   readonly initialSelectedRef?: string | null;
+  /** Włącza pilotaż zatwierdzonej koncepcji w RZECZYWISTEJ projekcji backendu.
+   * Do końcowego odbioru B-02 domyślnie WYŁĄCZONE. */
+  readonly qetScadaFrames?: boolean;
 }
 
 function textHalo(ctx: KontekstRysunku): {
@@ -389,6 +397,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     theme = 'dark_scada',
     mono = false,
     initialSelectedRef = null,
+    qetScadaFrames = false,
   } = props;
   const view = projection.graph;
   const [activeOverlay, setActiveOverlay] = useState<LvDomainOverlayId | null>(initialOverlay);
@@ -515,6 +524,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     selectedRef,
     islandByRef,
     nameByRef,
+    qetScadaFrames,
+    projection,
   };
   // R2 §17: scena, która nie mieści się przy skali minimalnej poziomu, NIE
   // jest pomniejszana — kanwa przewija (pan/scroll); SVG ma rozmiar treści.
@@ -784,17 +795,34 @@ function ScaledGlyph({ node, ctx }: { readonly node: LvDomainSceneNode; readonly
       {functionCodes ? (
         <title>{`${node.label} · funkcje: ${znakiIecPelne(functionCodes).join(', ')} (ANSI ${kodyAnsiPelne(functionCodes).join(', ')}) · ${nazwyFunkcjiPl(functionCodes).join(', ')}`}</title>
       ) : null}
-      <CadSymbol
-        id={node.symbolId}
-        x={node.x - center.x * k}
-        y={node.y - center.y * k}
-        scale={k}
-        state={state}
-        orientation={orientacjaWezla(node)}
-        ink={ink}
-        paper={ctx.paleta.tlo}
-        wnetrze={functionCodes ? znakiIec(functionCodes) : undefined}
-      />
+      {ctx.qetScadaFrames && node.kind === 'apparatus' ? (
+        (() => {
+          const source = daneRamkiZProjekcji(ctx.projection, node.ref);
+          if (!source) return null; // brak danych: nie sugeruj stanu łącznika
+          return <QetScadaCanvasGlyph
+            symbolId={node.symbolId!}
+            cx={node.x}
+            cy={node.y}
+            k={k}
+            input={source}
+            orientation={orientacjaWezla(node)}
+            ink={ink}
+            paper={ctx.paleta.tlo}
+          />;
+        })()
+      ) : (
+        <CadSymbol
+          id={node.symbolId}
+          x={node.x - center.x * k}
+          y={node.y - center.y * k}
+          scale={k}
+          state={state}
+          orientation={orientacjaWezla(node)}
+          ink={ink}
+          paper={ctx.paleta.tlo}
+          wnetrze={functionCodes ? znakiIec(functionCodes) : undefined}
+        />
+      )}
     </>
   );
 }
