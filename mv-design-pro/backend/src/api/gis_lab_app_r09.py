@@ -25,3 +25,12 @@ def frontend() -> FileResponse:
         media_type="text/html",
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )
+
+
+@app.get("/layers", include_in_schema=False)
+def layers_frontend() -> FileResponse:
+    return FileResponse(
+        Path(__file__).resolve().parent / "static" / "gis_r10_layers.html",
+        media_type="text/html",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
