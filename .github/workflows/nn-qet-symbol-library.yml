@@ -32,7 +32,8 @@ jobs:
             --output nn-qet-evidence/qet-candidates.json
           python mv-design-pro/scripts/build_qet_nn_atlas.py \
             --input nn-qet-evidence/qet-candidates.json \
-            --output nn-qet-evidence/atlas-do-oceny.html
+            --output nn-qet-evidence/atlas-do-oceny.html \
+            --svg-dir nn-qet-evidence/svg
           python -m json.tool nn-qet-evidence/qet-candidates.json >/dev/null
           cp mv-design-pro/docs/sld/vendor/qet/ELEMENTS.LICENSE nn-qet-evidence/ELEMENTS.LICENSE
       - name: Evidence gate — all sources marked DRAFT and no ENM bindings
@@ -51,6 +52,7 @@ jobs:
               assert s['modelBinding'] is None
               assert all(p['reviewRequired'] for p in s['ports'])
           assert Path('nn-qet-evidence/atlas-do-oceny.html').stat().st_size>2000
+          assert len(list(Path('nn-qet-evidence/svg').glob('*.svg')))==7
           print('VALID: 7 sources, 0 production bindings, 0 normative verification')
           PY
       - uses: actions/upload-artifact@v4
