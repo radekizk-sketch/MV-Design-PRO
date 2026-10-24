@@ -29,3 +29,6 @@ Otwórz http://127.0.0.1:18009/layers. Nie wystawiać poza localhost.
 
 ## Następna karta techniczna
 **R11 — rzeczywista mapa MapLibre** po przygotowaniu zależności npm z lokalnym bundlowaniem i workerem; przełącznik offline/online, warstwy WMS wyłącznie po weryfikacji GetCapabilities z zaufanego kanału, ochrona obszaru BBOX, wizualizacja syntetycznej sieci R09, wskazywanie obiektu w mapie i drzewie. Dopiero potem import uprawnionych danych DIGPRO oraz bramki ENM/SLD i obliczeń. Brak automatycznej zgody na produkcję bez zmiany nadrzędnego planu.
+
+## Zidentyfikowany dług integracyjny
+Na gałęzi bazowej istnieje już `frontend/src/ui/gis/geoportalSourcesR07.ts` z rejestrem usług i adapterem raster WMS. Rejestr R10 (Python) jest izolowanym mechanizmem weryfikacji GetCapabilities, **nie drugim docelowym katalogiem**. Przed integracją produkcyjną należy scalić definicje źródeł do jednego wersjonowanego kontraktu (np. JSON z generowanymi typami TS/Python), zachowując R07 jako klienta i R10 jako walidator. Nie wolno utrzymywać dwóch rozbieżnych list usług.
