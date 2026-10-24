@@ -14,6 +14,7 @@
  *  - `?mono=1` — paleta monochromatyczna (druk A4/A3, §44);
  *  - `?overlay=loads|voltageDrop|shortCircuit|swz` — nakładka startowa;
  *  - `?wybor=<ref>` — element wybrany na start (podświetlenie toru zasilania).
+ *  - `?qetScada=1` — nakładka czerwony/zielony na natywnej projekcji ENM (odbiór B-02).
  *
  * Used by: e2e/lv-domain-screenshot.spec.ts.
  */
@@ -83,6 +84,7 @@ function HarnessRoot(): JSX.Element {
         lod={lod}
         theme={theme}
         mono={mono}
+        qetScadaFrames={params.get('qetScada') === '1'}
         width={window.innerWidth}
         height={window.innerHeight}
       />
