@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
+import pandas as pd
 
 MAX_BYTES = 150_000_000
 MAX_FEATURES = 50_000
@@ -36,6 +38,8 @@ def preview_gpkg(
         raise ImportGpkgRejected("INVALID_SOURCE_FILE")
     if not layer or not id_field or not re.fullmatch(r"[\w. -]{1,120}", layer):
         raise ImportGpkgRejected("INVALID_LAYER_OR_ID_FIELD")
+    if kind_field and kind_field.casefold() in {"pesel", "ppe", "email", "nazwisko", "odbiorca", "telefon"}:
+        raise ImportGpkgRejected("SENSITIVE_CATEGORY_FIELD_FORBIDDEN")
     layers = set(gpd.list_layers(source)["name"].tolist())
     if layer not in layers:
         raise ImportGpkgRejected("LAYER_UNKNOWN")
@@ -48,9 +52,9 @@ def preview_gpkg(
     ids: set[str] = set()
     accepted: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
-    for index, row in frame.iterrows():
+    for _, row in frame.iterrows():
         raw_id = row[id_field]
-        fid = str(raw_id).strip() if raw_id is not None else ""
+        fid = str(raw_id).strip() if raw_id is not None and not pd.isna(raw_id) else ""
         if not SAFE_ID.fullmatch(fid) or fid in ids:
             raise ImportGpkgRejected("INVALID_OR_DUPLICATED_ID")
         ids.add(fid)
@@ -71,7 +75,13 @@ def preview_gpkg(
             coords = [list(p) for p in geo["coordinates"]]
         else:
             coords = list(geo["coordinates"])
-        obj_type = str(row[kind_field]) if kind_field else ("linia" if geom.geom_type == "LineString" else "punkt")
+        coords_list = coords if geom.geom_type == "LineString" else [coords]
+        if any(not (math.isfinite(x) and math.isfinite(y) and -180 <= x <= 180 and -85 <= y <= 85)
+               for x, y in coords_list):
+            raise ImportGpkgRejected("WGS84_COORDINATE_INVALID")
+        obj_type = str(row[kind_field]).strip() if kind_field else ("linia" if geom.geom_type == "LineString" else "punkt")
+        if not re.fullmatch(r"[\w .-]{1,60}", obj_type):
+            raise ImportGpkgRejected("CATEGORY_UNSAFE_OR_UNMAPPED")
         accepted.append({"type": "Feature", "id": fid,
                          "geometry": {"type": geom.geom_type, "coordinates": coords},
                          "properties": {"id": fid, "name": fid, "kind": obj_type}})
