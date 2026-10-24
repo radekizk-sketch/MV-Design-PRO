@@ -191,3 +191,41 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
     </g>
   );
 }
+
+/**
+ * Warstwa źródłowych prymitywów QET — WSPÓLNY renderer z CadSymbol.
+ * Używana przez atlas i testy stanu, bez nowych prymitywów SVG.
+ * Funkcja nie modyfikuje istniejących 20 definicji CAD.
+ */
+export interface CadPrimitiveLayerProps {
+  readonly primitives: readonly CadPrimitive[];
+  readonly x?: number;
+  readonly y?: number;
+  readonly scale?: number;
+  readonly state?: CadSwitchState;
+  readonly ink: string;
+  readonly paper: string;
+  readonly strokePx?: number;
+  readonly nonScalingStroke?: boolean;
+  readonly testId?: string;
+}
+
+export function CadPrimitiveLayer(props: CadPrimitiveLayerProps): JSX.Element {
+  const ctx: KontekstRysunkuCad = {
+    ink: props.ink,
+    paper: props.paper,
+    strokePx: props.strokePx ?? CAD_SYMBOL_STROKE_PX,
+    nonScaling: props.nonScalingStroke ?? true,
+    fontFamily: 'Inter, "Segoe UI", Arial, sans-serif',
+    state: props.state ?? 'unknown',
+  };
+  return (
+    <g
+      data-testid={props.testId}
+      data-cad-source="qet-original"
+      transform={`translate(${props.x ?? 0} ${props.y ?? 0}) scale(${props.scale ?? 1})`}
+    >
+      {props.primitives.map((p, i) => rysujPrymityw(p, i, ctx))}
+    </g>
+  );
+}
