@@ -33,6 +33,33 @@ class QetImporterTests(unittest.TestCase):
                 self.assertGreater(len(result["geometry"]["primitives"]),1)
                 self.assertTrue(all(x["reviewRequired"] for x in result["ports"]))
                 self.assertTrue(all(x["phase"] is None for x in result["ports"]))
+    def test_reference_geometry_hotspot_is_preserved(self):
+        # disjoncteur1.elmt: źródłowy przewód (0,-20) -> (0,-10);
+        # hotspot (9,30), czyli dokładne punkty (9,10) -> (9,20).
+        path=("10_electric/11_singlepole/200_fuses_protective_gears/"
+              "11_circuit_breakers/disjoncteur1.elmt")
+        data=convert((VENDOR/path).read_bytes(),source_path=path,
+                     symbol_id="nn.qet.wylacznik1p")
+        g=data["geometry"]
+        self.assertEqual(g["hotspot"],{"x":9,"y":30})
+        self.assertIn({"k":"line","x1":9,"y1":10,"x2":9,"y2":20},
+                      g["primitives"])
+        self.assertEqual(sorted(p["dir"] for p in data["ports"]),["N","S"])
+        self.assertEqual(data["switchState"],"NOT_MODELLED")
+
+    def test_complex_reference_arc_and_ellipse_are_retained(self):
+        prefix="10_electric/11_singlepole/200_fuses_protective_gears/"
+        sources=[
+          (prefix+"50_residual_current_circuit_breaker/rcbo.elmt","arc"),
+          (prefix+"50_residual_current_circuit_breaker/rccb.elmt","path"),
+        ]
+        for path,kind in sources:
+            with self.subTest(path=path):
+                obj=convert((VENDOR/path).read_bytes(),source_path=path,
+                            symbol_id="nn.qet.fixture")
+                self.assertIn(kind,{p["k"] for p in obj["geometry"]["primitives"]})
+                self.assertIsNone(obj["modelBinding"])
+
     def test_independent_of_file_order_and_locale(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp)/"candidate.json"
