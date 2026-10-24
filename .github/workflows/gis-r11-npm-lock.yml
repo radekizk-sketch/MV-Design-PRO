@@ -1,0 +1,41 @@
+name: GIS R11 — synchronizacja blokady npm (wyłącznie gałąź badawcza)
+on:
+  push:
+    branches:
+      - feature/gis-r11-real-maplibre-20261024
+    paths:
+      - mv-design-pro/frontend/package.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.repository == 'radekizk-sketch/MV-Design-PRO' && github.ref == 'refs/heads/feature/gis-r11-real-maplibre-20261024'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: feature/gis-r11-real-maplibre-20261024
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Resolve npm lockfile without executing package scripts
+        working-directory: mv-design-pro/frontend
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Validate deterministic npm install
+        working-directory: mv-design-pro/frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Commit lockfile on experimental branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- mv-design-pro/frontend/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(gis): synchronizuj npm lock MapLibre R11"
+            git push origin HEAD:feature/gis-r11-real-maplibre-20261024
+          fi
