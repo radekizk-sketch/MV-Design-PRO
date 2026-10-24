@@ -9,6 +9,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { ZRODLA_PODKLADOW, przygotujRasterWms, type PlanRastra } from '../../../ui/gis/geoportalSourcesR07';
 import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, type ElementGIS } from '../../../ui/gis/gisLocalDataR11';
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
+import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import './mapaGisR11.css';
 
 setWorkerUrl(workerUrl);
@@ -42,6 +44,8 @@ function dopasujWidok(map: MapLibreMap, zbior: ZbiorGIS): void {
 export default function MapaGisR11() {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLibreMap | null>(null);
+  const snapshotEnm = useSnapshotStore((s) => s.snapshot);
+  const rewizjaEnm = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
   const [ready, setReady] = useState(false);
   const [objects, setObjects] = useState<ZbiorGIS>(EMPTY);
   const [fileStatus, setFileStatus] = useState('Brak danych projektu. Importuj GeoJSON lub użyj syntetycznej próbki.');
@@ -56,6 +60,7 @@ export default function MapaGisR11() {
   const [raster, setRaster] = useState<PlanRastra | null>(null);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
+  const matches = element ? dopasujIdDoEnm(snapshotEnm, element.id) : [];
 
   useEffect(() => {
     if (!container.current) return;
@@ -259,7 +264,7 @@ export default function MapaGisR11() {
         <div className="mvd-gis-r11-map" ref={container} aria-label="Mapa projektu sieci SN" />
         <div className="mvd-gis-r11-detail">
           {element ? <><strong>{element.properties.name}</strong><span>{element.id} · {element.properties.kind}</span></> : 'Wskaż element na mapie lub na liście.'}
-          <span>Topologia ENM: niepotwierdzona · Długość elektryczna: nieustalona</span>
+          <span>Powiązanie ENM: {matches.length ? `ID odnaleziony (${matches.map((m) => m.kolekcja).join(', ')}) — do weryfikacji` : 'brak potwierdzonego powiązania'} · Rewizja: {rewizjaEnm ?? 'nieustalona'} · Topologia: niepotwierdzona</span>
         </div>
         {error && <div role="alert" className="mvd-gis-r11-error">{error}</div>}
       </section>
