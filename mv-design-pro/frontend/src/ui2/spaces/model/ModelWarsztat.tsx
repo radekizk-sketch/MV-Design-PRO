@@ -8,7 +8,7 @@
  * z preselekcją szablonu wskazanego w przeglądarce (E3.2 — prop
  * `initialTemplateId`, kreator startuje z pominiętym krokiem wyboru).
  */
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 
 import { EnmInspectorPage } from '../../../ui/enm-inspector';
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
@@ -24,6 +24,10 @@ import { emituj } from '../../events';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
 import './modelWarsztat.css';
 
+/** Wyłącznie po jawnym uruchomieniu pilotażu R11; domyślnie wyłączone. */
+const GIS_R11_WLACZONY = import.meta.env.VITE_MV_GIS_R11 === '1';
+const MapaGisR11 = lazy(() => import('./MapaGisR11'));
+
 /**
  * KD-4 (rozstrzygnięcie karty dla luki L-8): inspektor modelu ENM to zdolność
  * DIAGNOSTYCZNA — wchodzi do powłoki jako zakładka trybu EKSPERCKIEGO, bez
@@ -32,6 +36,7 @@ import './modelWarsztat.css';
  */
 const ZAKLADKI = [
   { id: 'schemat', etykieta: T.zakladkaSchemat, tylkoEkspercki: false },
+  { id: 'gis', etykieta: 'Mapa GIS (pilotaż)', tylkoEkspercki: false },
   { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci, tylkoEkspercki: false },
   { id: 'szablony', etykieta: T.zakladkaSzablony, tylkoEkspercki: false },
   { id: 'katalog', etykieta: T.zakladkaKatalog, tylkoEkspercki: false },
@@ -67,7 +72,7 @@ export function ModelWarsztat() {
   const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
   const trybEkspercki = useShellStore((s) => s.advancementMode === 'expert');
   const zakladki = useMemo(
-    () => ZAKLADKI.filter((z) => !z.tylkoEkspercki || trybEkspercki),
+    () => ZAKLADKI.filter((z) => (z.id !== 'gis' || GIS_R11_WLACZONY) && (!z.tylkoEkspercki || trybEkspercki)),
     [trybEkspercki],
   );
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -108,6 +113,11 @@ export function ModelWarsztat() {
         {zakladka === 'diagnostyka' && !trybEkspercki && <SldCanvasV3Workspace />}
         {zakladka === 'diagnostyka' && trybEkspercki && <EnmInspectorPage />}
         {zakladka === 'schemat' && <SldCanvasV3Workspace />}
+        {zakladka === 'gis' && GIS_R11_WLACZONY && (
+          <Suspense fallback={<div role="status">Uruchamianie lokalnego silnika mapowego…</div>}>
+            <MapaGisR11 />
+          </Suspense>
+        )}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
