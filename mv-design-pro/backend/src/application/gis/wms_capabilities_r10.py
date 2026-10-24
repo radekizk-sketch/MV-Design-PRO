@@ -5,7 +5,6 @@ Wygenerowanie URL GetMap NIE dowodzi, że warstwa istnieje lub działa online.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 from typing import Any
 from urllib.parse import urlencode, urlsplit
