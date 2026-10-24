@@ -24,6 +24,8 @@ export interface KontraktWersjiSld {
   readonly topologyHash: string;
   readonly resultSnapshotId?: string | null;
   readonly resultTopologyHash?: string | null;
+  readonly resultEnmVersion?: string | null;
+  readonly resultScenarioId?: string | null;
 }
 
 export interface ScadaFrameInput {
@@ -62,7 +64,9 @@ export function ocenStanRamki(input: ScadaFrameInput): ScadaFrameWynik {
     s.enmVersion === v.enmVersion &&
     s.topologyHash === v.topologyHash;
   const wynikiAktualne =
-    Boolean(v.resultSnapshotId && v.resultTopologyHash === v.topologyHash);
+    Boolean(v.resultSnapshotId && v.resultTopologyHash === v.topologyHash &&
+      v.resultEnmVersion === v.enmVersion &&
+      v.resultScenarioId === v.scenarioId);
 
   if (!zgodnoscStanu) uwagi.push('Stan z innej wersji ENM lub scenariusza.');
   if (!wynikiAktualne) uwagi.push('Wyniki obliczeniowe nieaktualne lub niedostępne.');
