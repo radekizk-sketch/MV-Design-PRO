@@ -16,6 +16,7 @@ import {
 import { QetScadaFrame } from './QetScadaFrame';
 import { ocenStanRamki, type ScadaFrameInput } from './scadaFrameState';
 import { QET_PILOT_SYMBOLS } from './qetPilotSourceGeometry';
+import { projectedQetFrame } from './qetSymbolBounds';
 
 const QET_ID_BY_CAD: Partial<Record<CadSymbolId,string>> = {
   'cad.wylacznik':'breaker',
@@ -56,12 +57,21 @@ export function QetScadaCanvasGlyph(props:QetScadaCanvasGlyphProps): JSX.Element
   const qetScale = canUseQet ? spanCad * props.k / spanQet : props.k;
   const midX = a&&b ? (a.x+b.x)/2 : 0;
   const midY = a&&b ? (a.y+b.y)/2 : 0;
-  const bodyW=canUseQet && qet ? qet.width*qetScale : def.nominalWidth*props.k;
-  const bodyH=canUseQet && qet ? qet.height*qetScale*.64 : def.nominalHeight*props.k*.70;
-  const frameW=(poziomy?bodyH:bodyW)+props.k*3;
-  const frameH=(poziomy?bodyW:bodyH)+props.k*3;
-  const frameX=props.cx-frameW/2;
-  const frameY=props.cy-frameH/2;
+  // Ramka obejmuje rzeczywistą sumę obwiedni OTWARTY/ZAMKNIĘTY, oznaczeń
+  // i zacisków, a nie deklarowane tylko nominalne height/width QET.
+  // Obrót w poziomie nie zmienia dopasowania ramki i nie przesuwa jej po toggle.
+  const pad=Math.max(3.8*props.k, 1.4);
+  const qetFrame=canUseQet && qet
+    ? projectedQetFrame(qet, {
+        cx:props.cx,cy:props.cy,scale:qetScale,horizontal:poziomy,
+      },pad)
+    : null;
+  const fallbackW=(poziomy?def.nominalHeight:def.nominalWidth)*props.k;
+  const fallbackH=(poziomy?def.nominalWidth:def.nominalHeight)*props.k;
+  const frameW=qetFrame?.width ?? fallbackW+2*pad;
+  const frameH=qetFrame?.height ?? fallbackH+2*pad;
+  const frameX=qetFrame?.x ?? props.cx-frameW/2;
+  const frameY=qetFrame?.y ?? props.cy-frameH/2;
 
   const geometry=canUseQet && qet ? (
     <g
