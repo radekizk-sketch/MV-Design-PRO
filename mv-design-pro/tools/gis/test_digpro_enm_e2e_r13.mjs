@@ -141,3 +141,12 @@ test('brak podpisu wyniku jest jawną odmową',async()=>{
     publish:true,confirm:'ZATWIERDZAM_ZAPIS_ENM',pollCount:1});
   assert.equal(r.failure_code,'RESULT_SET_INVALID');
 });
+test('natywne DIGPRO SHP ma własny manifest, nie jest GPKG',()=>{
+  const z=fixture();
+  z.plan.source.format='SHP';
+  z.manifest.schema='MV-DIGPRO-SHP-PREVIEW-R13';
+  assert.equal(zweryfikujPakiet(z.plan,z.geojson,z.manifest).status,'PLAN_VALIDATED_NOT_APPLIED');
+  z.plan.source.format='GPKG';
+  assert.throws(()=>zweryfikujPakiet(z.plan,z.geojson,z.manifest),
+    e=>e.code==='SOURCE_FORMAT');
+});
