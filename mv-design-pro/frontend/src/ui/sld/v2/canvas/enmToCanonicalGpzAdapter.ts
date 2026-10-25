@@ -617,16 +617,22 @@ function buildCouplers(gpz: Substation, bays: readonly Bay[]): CanonicalGpzCoupl
     if (!couplerRef) continue;
     const couplerBay = couplerBaysByRef.get(couplerRef);
     if (!couplerBay) continue;
-    // Źródłowy aparat sprzęgła musi pochodzić z ENM, nie z nazwy pola.
+    // Sprzęgło: tożsamość i położenie wyłącznie Z TEGO SAMEGO aparatu CB.
+    // Nie wolno wybrać „pierwszego pasującego cb” po nazwie innego aparatu.
     const breakers = (couplerBay.primary_devices ?? []).filter((d) => d.kind === 'CB');
-    const breakerDeviceRef = breakers.length === 1 ? breakers[0].device_ref : undefined;
+    const breaker = breakers.length === 1 ? breakers[0] : undefined;
+    const breakerDeviceRef = breaker?.device_ref;
+    const actualState = breaker
+      ? breaker.switch_state?.actual_state
+        ?? couplerBay.runtime_state?.primary_device_states?.[breaker.device_ref]?.actual_state
+      : undefined;
     couplers.push({
       breakerDeviceRef,
       couplerId: couplerBay.ref_id,
       leftSectionId: left.section_id,
       rightSectionId: right.section_id,
       designation: couplerBay.name || couplerBay.ref_id,
-      closedState: extractApparatusState(couplerBay.runtime_state ?? null, 'cb') ?? 'unknown',
+      closedState: mapDeviceStateToSwitch(actualState) ?? 'unknown',
     });
   }
   return couplers;
