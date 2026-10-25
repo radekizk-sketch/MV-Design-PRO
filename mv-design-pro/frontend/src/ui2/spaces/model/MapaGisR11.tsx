@@ -10,6 +10,7 @@ import { ZRODLA_PODKLADOW, przygotujRasterWms, type PlanRastra } from '../../../
 import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, type ElementGIS } from '../../../ui/gis/gisLocalDataR11';
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
 import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
+import { odczytajDowodR14, type WynikDowoduR14 } from '../../../ui/gis/gisEvidenceR14';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import { emituj, subskrybuj } from '../../events';
@@ -64,9 +65,19 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [allowNetwork, setAllowNetwork] = useState(false);
   const [raster, setRaster] = useState<PlanRastra | null>(null);
+  const [dowod, setDowod] = useState<WynikDowoduR14 | null>(null);
+  const [wskazania, setWskazania] = useState<Record<string, string>>({});
+  const wskazaniaRef = useRef<Record<string, string>>({});
+  const dowodRef = useRef<WynikDowoduR14 | null>(null);
+  useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod; }, [wskazania, dowod]);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
-  const matches = element ? dopasujIdDoEnm(snapshotEnm, element.id) : [];
+  const dowodAktualny = Boolean(dowod && snapshotEnm &&
+    dowod.hash === snapshotEnm.header.hash_sha256 && dowod.revision === rewizjaEnm);
+  const wskazaneRef = dowodAktualny && selected ? wskazania[selected] : undefined;
+  const matches = element ? dopasujIdDoEnm(snapshotEnm, wskazaneRef || element.id) : [];
+  const kandydaci = dowodAktualny && selected ?
+    dowod?.bindings.find((b) => b.sourceId === selected)?.sourceRefs ?? [] : [];
 
   async function pokazBiezacySld(): Promise<void> {
     if (!aktywnyPrzypadekId) {
@@ -86,8 +97,14 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
     setSelected(id);
     // Zgodne ref_id może zasilić wspólną selekcję widoków, ale NIE potwierdza
     // żadnego terminala, topologii ani parametrów elektrycznych.
-    if (dopasujIdDoEnm(snapshotRef.current, id).length === 1) {
-      emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'gis-mapa' });
+    const snap = snapshotRef.current;
+    const proof = dowodRef.current;
+    const fresh = Boolean(snap && proof && proof.hash === snap.header.hash_sha256 &&
+      proof.revision === snap.header.revision);
+    const mapped = fresh ? wskazaniaRef.current[id] : undefined;
+    const targetRef = mapped || id;
+    if (dopasujIdDoEnm(snap, targetRef).length === 1) {
+      emituj({ typ: 'selekcja', obiektId: targetRef, zrodlo: 'gis-mapa' });
     }
   }
 
@@ -204,10 +221,34 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
       const normalized = wczytajGeoJSON(parsed);
       setObjects(normalized);
       setSelected(null);
+      setDowod(null);
+      setWskazania({});
       setFileStatus('Lokalnie: ' + file.name + ', obiektów: ' + normalized.features.length + '. Brak połączeń ENM.');
       setError(null);
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : 'Niepoprawny GeoJSON');
+    }
+  }
+
+  async function wczytajDowod(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 1_000_000) {
+      setError('Raport R14 przekracza dopuszczalny rozmiar 1 MB.');
+      return;
+    }
+    try {
+      const raw: unknown = JSON.parse(await file.text());
+      const wynik = odczytajDowodR14(raw, {
+        caseId: aktywnyPrzypadekId, snapshot: snapshotEnm,
+        revision: rewizjaEnm, geometry: objects,
+      });
+      setDowod(wynik);
+      setWskazania({});
+      setError(null);
+    } catch (exc) {
+      setDowod(null);
+      setWskazania({});
+      setError(exc instanceof Error ? exc.message : 'Odrzucony raport importu.');
     }
   }
 
@@ -264,6 +305,30 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
               onClick={() => wybierzNaMapie(f.id)}>{f.properties.name}</button>
           ))}
         </div>
+        <h3>Powiązania DIGPRO–ENM (R14)</h3>
+        <label>Raport wykonania R14 (lokalny JSON)
+          <input aria-label="Raport DIGPRO do ENM" type="file" accept=".json"
+            onChange={(e) => { void wczytajDowod(e.target.files?.[0]); }} />
+        </label>
+        <p className="mvd-gis-r11-info">
+          {dowodAktualny ? 'Raport zgodny z bieżącą rewizją ENM. To nie jest uwierzytelnienie źródła ani potwierdzenie portów.'
+            : 'Brak zgodnego raportu. Powiązania nie są używane do selekcji SLD.'}
+        </p>
+        {selected && kandydaci.length > 0 && (
+          <label>Wskaż identyfikator obiektu ENM (nie port elektryczny)
+            <select aria-label="Powiązany identyfikator ENM"
+              value={wskazania[selected] ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setWskazania((prior) => ({ ...prior, [selected]: value }));
+                if (value && dopasujIdDoEnm(snapshotEnm, value).length === 1)
+                  emituj({ typ: 'selekcja', obiektId: value, zrodlo: 'gis-mapa' });
+              }}>
+              <option value="">— brak wskazania —</option>
+              {kandydaci.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+        )}
         <h3>Warstwa z geoportalu WMS</h3>
         <label>Usługa
           <select value={sourceId} onChange={(e) => {

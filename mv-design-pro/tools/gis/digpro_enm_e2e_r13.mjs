@@ -102,10 +102,20 @@ export function zweryfikujPakiet(plan,geojson,manifest) {
     authorization_status:'ENGINEER_DECLARED_NOT_EXTERNALLY_VERIFIED',enm_write:false};
 }
 function refsInEnm(enm) {
-  const refs=new Set();
-  for(const value of Object.values(enm)) {
-    if(!Array.isArray(value))continue;
-    for(const item of value)if(obj(item)&&typeof item.ref_id==='string')refs.add(item.ref_id);
+  const refs=new Set(),stack=[[enm,0]];
+  let checked=0;
+  while(stack.length) {
+    const [value,depth]=stack.pop();
+    demand(++checked<=250000&&depth<=40,'ENM_GRAPH_TOO_COMPLEX');
+    if(Array.isArray(value)){
+      for(const item of value)if(item&&typeof item==='object')stack.push([item,depth+1]);
+    }else if(obj(value)){
+      for(const [key,item] of Object.entries(value)){
+        if(['ref_id','field_ref','terminal_ref','segment_ref'].includes(key)&&typeof item==='string')
+          refs.add(item);
+        else if(item&&typeof item==='object')stack.push([item,depth+1]);
+      }
+    }
   }
   return refs;
 }
@@ -131,7 +141,8 @@ export function klientApi(baseUrl,fetcher=fetch) {
   demand(u.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(u.hostname),'BACKEND_MUST_BE_LOCAL');
   demand(!u.username&&!u.password&&!u.search&&!u.hash,'BACKEND_URL_INVALID');
   return async(method,route,payload) => {
-    const r=await fetcher(u.origin+route,{method,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},
+    const r=await fetcher(u.origin+route,{method,headers:{'Content-Type':'application/json','Cache-Control':'no-store',
+      ...(route.startsWith('/api/gis-lab/r14/')?{'X-GIS-R14-Lab-Token':process.env.MV_GIS_R14_LAB_TOKEN||''}:{})},
       body:payload===undefined?undefined:JSON.stringify(payload),redirect:'error'});
     const raw=await r.text();
     let result;
@@ -145,7 +156,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 /** Publikacja nie jest transakcją na całym planie; w razie błędu raportuj rewizje.
  * Nie wykonuj resetów/rollbacku, które mogłyby skasować cudzą pracę.
  */
-export async function wykonajE2E(plan,api,{publish=false,confirm='',intervalMs=200,pollCount=240}={}) {
+export async function wykonajE2E(plan,api,{publish=false,confirm='',atomic=false,intervalMs=200,pollCount=240}={}) {
   demand(publish===true&&confirm==='ZATWIERDZAM_ZAPIS_ENM','PUBLISH_NOT_CONFIRMED');
   const path='/api/cases/'+encodeURIComponent(plan.case_id);
   const current=await api('GET',path+'/enm');
@@ -156,7 +167,36 @@ export async function wykonajE2E(plan,api,{publish=false,confirm='',intervalMs=2
     sld:{engine:'SldCanvasV3',consumer:'useSnapshotStore.snapshot',verification:'NOT_RENDERED'}};
   let previous={revision:current.header.revision,hash:current.header.hash_sha256};
   try{
-    for(const step of plan.operations){
+    if(atomic){
+      const answer=await api('POST','/api/gis-lab/r14/cases/'+encodeURIComponent(plan.case_id)+'/atomic-import',{
+        schema_name:'MV-DIGPRO-R14-ATOMIC',base_enm_hash:previous.hash,
+        source_sha256:plan.source.sha256,engineer_approved:plan.approval.authorized,
+        staged_geojson_verified:true,confirmed_ports:plan.approval.connections_reviewed,
+        operations:plan.operations.map(step=>({
+          step_id:step.step_id,source_id:step.source_id,name:step.operation.name,
+          idempotency_key:step.operation.idempotency_key,payload:step.operation.payload,
+        })),
+      });
+      const readback=await api('GET',path+'/enm');
+      demand(answer?.schema==='MV-GIS-ATOMIC-RESULT-R14'&&
+        answer.committed_steps===plan.operations.length&&
+        answer.hash_sha256===readback?.header?.hash_sha256&&
+        answer.revision===readback?.header?.revision,'ATOMIC_READBACK_MISMATCH');
+      previous=weryfikujSnapshot(readback,{
+        snapshot:{header:{hash_sha256:answer.hash_sha256}},
+        changes:{created_element_ids:answer.created_refs,updated_element_ids:answer.updated_refs},
+      },previous,[]);
+      demand(Array.isArray(answer.step_evidence)&&answer.step_evidence.length===plan.operations.length,
+        'ATOMIC_EVIDENCE_INCOMPLETE');
+      report.revisions=answer.step_evidence.map((step,i)=>({
+        step_id:step.step_id,source_id:plan.operations[i].source_id,
+        revision:previous.revision,hash:previous.hash,
+        created_refs:step.created_refs,updated_refs:step.updated_refs,
+        binding_status:'SOURCE_REFERENCE_UNVERIFIED_TERMINALS',
+      }));
+      report.changes_applied=plan.operations.length;
+      report.atomic_single_commit=true;
+    }else for(const step of plan.operations){
       const answer=await api('POST',path+'/enm/domain-ops',{
         project_id:plan.project_id,snapshot_base_hash:previous.hash,
         operation:{name:step.operation.name,idempotency_key:step.operation.idempotency_key,
@@ -198,7 +238,7 @@ export async function wykonajE2E(plan,api,{publish=false,confirm='',intervalMs=2
     report.status='COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED';
     return report;
   }catch(err){
-    report.status='FAILED_POSSIBLE_PARTIAL_ENM_CHANGE';
+    report.status=atomic?'FAILED_ATOMIC_COMMIT_STATE_UNCERTAIN':'FAILED_POSSIBLE_PARTIAL_ENM_CHANGE';
     report.failure_code=err instanceof OdmowaR13?err.code:'UNEXPECTED_FAILURE';
     return report;
   }
@@ -221,8 +261,9 @@ export async function main(argv){
   let report=validated;
   if(args.apply==='true'){
     demand(args.confirm==='ZATWIERDZAM_ZAPIS_ENM','PUBLISH_NOT_CONFIRMED');
+    demand(args.atomic!=='false','LEGACY_NONATOMIC_PUBLISH_FORBIDDEN');
     report=await wykonajE2E(plan,klientApi(args.backend||'http://127.0.0.1:8000'),{
-      publish:true,confirm:args.confirm});
+      publish:true,confirm:args.confirm,atomic:true});
   }
   await writeFile(args.report,JSON.stringify(report,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify({status:report.status,source_sha256:plan.source.sha256,

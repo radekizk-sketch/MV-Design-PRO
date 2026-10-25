@@ -85,6 +85,11 @@ function fakeApi({badRunHash=false,opFailure=false,missingResult=false}={}){
   const api=async(method,route,body)=>{
     calls.push({method,route,body});
     if(route.endsWith('/enm')&&method==='GET')return writes?latest:base;
+    if(route.endsWith('/atomic-import')){
+      writes++;return{schema:'MV-GIS-ATOMIC-RESULT-R14',
+        revision:5,hash_sha256:C,committed_steps:1,created_refs:['SYN-SRC-1'],
+        updated_refs:[],step_evidence:[{step_id:'SYN-OP-1',created_refs:['SYN-SRC-1'],updated_refs:[]}]};
+    }
     if(route.endsWith('/domain-ops')){
       if(opFailure)return{error_code:'CATALOG_INVALID'};
       writes++;return{snapshot:latest,changes:{created_element_ids:['SYN-SRC-1']}};
@@ -185,4 +190,36 @@ test('brak wykazanego utworzenia lub aktualizacji ENM jest odmową',()=>{
   assert.throws(()=>weryfikujSnapshot(
     enm,{snapshot:enm,changes:{}},{revision:4,hash:B},[]),
     e=>e.code==='ENM_CHANGE_UNPROVEN');
+});
+
+
+test('R14: jedyny zapis całego pakietu przez atomic-import; dwa biegi tej samej rewizji',async()=>{
+  const x=fixture(),fake=fakeApi();
+  const r=await wykonajE2E(x.plan,fake.api,{
+    publish:true,atomic:true,confirm:'ZATWIERDZAM_ZAPIS_ENM',intervalMs:0,pollCount:1});
+  assert.equal(r.status,'COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED');
+  assert.equal(r.atomic_single_commit,true);
+  assert.equal(r.changes_applied,1);
+  assert.equal(r.final_model.hash,C);
+  assert.equal(r.runs.length,2);
+  assert.equal(fake.calls.filter(c=>c.method==='POST'&&c.route.endsWith('/atomic-import')).length,1);
+  assert.equal(fake.calls.filter(c=>c.method==='POST'&&c.route.endsWith('/domain-ops')).length,0);
+});
+test('R14: błąd atomowego endpointu kończy przebieg bez uruchomienia solverów',async()=>{
+  const x=fixture(),fake=fakeApi();
+  const api=async(method,route,body)=>{
+    if(route.endsWith('/atomic-import'))throw new OdmowaR13('HTTP_422');
+    return fake.api(method,route,body);
+  };
+  const r=await wykonajE2E(x.plan,api,{publish:true,atomic:true,
+    confirm:'ZATWIERDZAM_ZAPIS_ENM',intervalMs:0,pollCount:1});
+  assert.equal(r.status,'FAILED_ATOMIC_COMMIT_STATE_UNCERTAIN');
+  assert.equal(r.failure_code,'HTTP_422');
+  assert.equal(fake.calls.filter(c=>c.route.includes('/execution/')).length,0);
+});
+test('R14: zagnieżdżone pole SN jest identyfikatorem ENM, nie fikcyjnym węzłem',()=>{
+  const model={header:{revision:5,hash_sha256:C},
+    substations:[{ref_id:'station/01',meta:{field_specs:[{field_ref:'field/SN/01'}]}}]};
+  const result={snapshot:model,changes:{created_element_ids:['field/SN/01']}};
+  assert.equal(weryfikujSnapshot(model,result,{revision:4,hash:B},[]).hash,C);
 });

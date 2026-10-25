@@ -1,0 +1,45 @@
+name: GIS R14 — atomowy import ENM
+on:
+  push:
+    branches:
+      - feature/gis-r14-atomic-preflight-20261025
+    paths:
+      - 'mv-design-pro/backend/src/application/gis/**'
+      - 'mv-design-pro/backend/src/api/gis_atomic_r14.py'
+      - 'mv-design-pro/backend/tests/application/test_gis_atomic_r14.py'
+      - 'mv-design-pro/tools/gis/**'
+      - '.github/workflows/gis-r14-atomic.yml'
+  pull_request:
+    paths:
+      - 'mv-design-pro/backend/src/application/gis/**'
+      - 'mv-design-pro/backend/src/api/gis_atomic_r14.py'
+      - 'mv-design-pro/backend/tests/application/test_gis_atomic_r14.py'
+      - 'mv-design-pro/tools/gis/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gis-r14-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Zainstaluj niezależny pytest
+        run: python -m pip install "pytest>=8,<10"
+      - name: R14 — testy przygotowania bez efektów ubocznych i jednego zapisu
+        env:
+          PYTHONPATH: mv-design-pro/backend/src
+        run: python -m pytest -q mv-design-pro/backend/tests/application/test_gis_atomic_r14.py
+      - name: R14 — sprawdź składnię wykonawcy ENM/LF/SC
+        run: node --check mv-design-pro/tools/gis/digpro_enm_e2e_r13.mjs
+      - name: R13/R14 — kontrakty symulowanego API, atomowość i PortRef
+        working-directory: mv-design-pro/tools/gis
+        run: node --test test_digpro_enm_e2e_r13.mjs
