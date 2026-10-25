@@ -30,3 +30,16 @@
 Brak weryfikowanego rzeczywistego profilu eksportu ENEA DIGPRO i mapowania PortRef, firmowej kontroli uprawnień, transakcji wieloprocesowej ENM, pełnego e2e z prawdziwym serwerem solverów i wynikami liczbowymi; brak wzrokowego odbioru SldCanvasV3 (B-02 nadal odrzucone). Przypadki walidacyjne IEC 60909 i źródła danych należy wskazać przed ogłoszeniem GO.
 
 **Werdykt:** wzmacniamy spójność i dowodowość wykonania, ale nie przedstawiamy przygotowanych testów ani oczekujących workflowów jako potwierdzonego wdrożenia produkcyjnego.
+## Próba rzeczywistej integracji HTTP do ENM
+
+W gałęzi dodano backend/tests/api/test_gis_atomic_r15_real_http.py. Test tworzy rzeczywisty projekt i przypadek w testowym UoW, montuje produkcyjny router odczytu ENM i laboratoryjny adapter R14, a operacje wykonuje rzeczywistym dyspozytorem. Cztery przebiegi: prawidłowe add_grid_source_sn i dokładnie jedna rewizja; błąd drugiego kroku bez zapisu pierwszego; stary hash i brak zapisu; odmowa powtórzonego planu o tej samej bazie. Nie jest to test solwera na pełnej sieci ani danych ENEA.
+
+Nowa kontrola selekcji mapy przy zmianie przypadku wymaga równocześnie zgodności case_id oraz hash/revision, aby podobne migawki dwóch przypadków nie użyły starego lokalnego powiązania. Kod testowy HTTP oraz testy TypeScript zostały zapisane, lecz nie oznaczono ich jako zaliczonych przed wynikami CI.
+
+## Rozdział kryteriów odbioru
+
+- SYNTHETIC_UNIT_PASS: 17/17 lokalnie, rdzeń R14 + cztery próby R15, bez produkcyjnego backendu.
+- FULL_BACKEND_E2E: NIEPOTWIERDZONE (test HTTP zapisany, wykonanie GitHub Actions oczekuje).
+- NUMERIC_LF_SC_VALIDATION: NIEPOTWIERDZONE.
+- SLD_VISUAL_ACCEPTANCE: ODRZUCONE B-02.
+- PRODUCTION_GO: NIEUDZIELONE.
