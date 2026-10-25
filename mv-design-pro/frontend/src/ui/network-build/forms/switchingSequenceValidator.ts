@@ -53,8 +53,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, circuitBreaker: 'closed' },
+        isAllowed: false,
+        reason: 'Topology-wide source synchronization verification required',
+        warningPL: 'Odmowa: załączenie wyłącznika wymaga oceny całej topologii, źródeł i synchronizmu dla aktualnego scenariusza.',
       };
 
     case 'open_cb':
@@ -81,8 +82,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, disconnector: 'closed' },
+        isAllowed: false,
+        reason: 'Load-free disconnector operation not confirmed',
+        warningPL: 'Odmowa: położenie wyłącznika w jednym polu nie potwierdza braku obciążenia odłącznika. Wymagana walidacja całej sieci.',
       };
 
     case 'open_ds':
@@ -94,8 +96,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, disconnector: 'open' },
+        isAllowed: false,
+        reason: 'Load-free disconnector operation not confirmed',
+        warningPL: 'Odmowa: brak potwierdzenia bezprądowego stanu odłącznika z pełnej topologii sieci.',
       };
 
     case 'close_es':
@@ -151,7 +154,7 @@ export function describeState(state: ApparatusState): string {
 }
 
 export function describeNextRecommendation(state: ApparatusState): string {
-  if (isSafeToConnect(state)) return 'Stan: pole pod napięciem (podłączone).';
+  if (isSafeToConnect(state)) return 'Stan położeń umożliwiający połączenie. Brak potwierdzenia, czy pole jest pod napięciem i czy źródła pracują synchronicznie.';
   if (isSafeForMaintenance(state)) return 'Położenia łączników odpowiadają uziemieniu. Nie potwierdzono warunków bezpiecznej konserwacji ani braku napięcia.';
   if (state.earthSwitch === 'open' && state.disconnector === 'open' && state.circuitBreaker === 'open') {
     return 'Stan: separacja łącznikowa w modelu lokalnym. Brak dowodu beznapięciowości; zamknięcie uziemnika wymaga oceny całej sieci.';
