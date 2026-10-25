@@ -6,6 +6,7 @@ Służy do dowodu pojedynczego zapisu całej grupy pod blokadą jednego procesu.
 from __future__ import annotations
 
 import os
+from hmac import compare_digest
 from typing import Any
 
 from api.klucz_twin_dep import KluczTwin
@@ -127,6 +128,10 @@ def import_gis_atomowo(
     """
     if not _allowed_environment(request):
         raise HTTPException(status_code=404, detail={"code": "GIS_R14_DISABLED"})
+    expected_token = os.getenv("MV_GIS_R14_LAB_TOKEN", "")
+    supplied_token = request.headers.get("X-GIS-R14-Lab-Token", "")
+    if len(expected_token) < 32 or not compare_digest(expected_token, supplied_token):
+        raise HTTPException(status_code=403, detail={"code": "GIS_R14_LAB_TOKEN_REQUIRED"})
     if not (body.engineer_approved and body.staged_geojson_verified and body.confirmed_ports):
         raise HTTPException(status_code=422, detail={"code": "GIS_APPROVAL_MISSING"})
     operations = [item.model_dump(mode="python") for item in body.operations]
