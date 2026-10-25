@@ -1424,27 +1424,46 @@ export function composeGpz(
     const gapStart = first.x + first.width;
     const gapEnd = second.x;
     const midX = snapToGrid((gapStart + gapEnd) / 2);
-    const cbDef = SYMBOL_DEFS.breaker;
+    // Łącznik sprzęgła jest w TORZE POZIOMYM, a nie pionowym symbolem
+    // położonym na ciągłym przewodzie. W/E to rzeczywiste porty aparatu.
+    const cbDef = SYMBOL_DEFS.lineBreaker;
     const cbX = snapToGrid(midX - cbDef.width / 2);
     const cbY = snapToGrid(snBusY - cbDef.height / 2);
+    const cbPorts = portsInWorld('lineBreaker', cbX, cbY);
+    const portA = cbPorts.a;
+    const portB = cbPorts.b;
+    if (!portA || !portB) {
+      throw new Error('GPZ: brak zacisków W/E łącznika sprzęgła');
+    }
     const couplerMeta: GpzElementMeta = {
       parityKeys: ['gpz.coupler', 'gpz.apparatus.cb'],
       testId: `gpz-canonical-coupler-${coupler.couplerId}`,
       sectionId: coupler.leftSectionId,
     };
     tag(couplerMeta.parityKeys);
+    if (!coupler.breakerDeviceRef) {
+      missingData.push('gpz.coupler.breaker_device_ref_missing');
+    }
     symbols.push({
-      symbolId: 'breaker',
+      symbolId: 'lineBreaker',
       x: cbX,
       y: cbY,
       state: coupler.closedState,
-      ports: portsInWorld('breaker', cbX, cbY),
+      deviceRef: coupler.breakerDeviceRef,
+      ports: cbPorts,
       meta: couplerMeta,
     });
+    // DWA ODDZIELNE ODCINKI. Niedozwolony jest jeden segment od szyny A
+    // do B: omijałby graficznie wyłącznik także w stanie OTWARTYM.
     segments.push({
-      ownerRef: `${coupler.couplerId}#tie`,
-      points: [{ x: gapStart, y: snBusY }, { x: gapEnd, y: snBusY }],
+      ownerRef: `${coupler.couplerId}#from-section-a`,
+      points: [{ x: gapStart, y: snBusY }, { x: portA.x, y: portA.y }],
       meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.leftSectionId },
+    });
+    segments.push({
+      ownerRef: `${coupler.couplerId}#to-section-b`,
+      points: [{ x: portB.x, y: portB.y }, { x: gapEnd, y: snBusY }],
+      meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.rightSectionId },
     });
     fieldDesignations.push({
       ownerRef: `${coupler.couplerId}#designation`,
