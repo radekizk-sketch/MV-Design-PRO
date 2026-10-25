@@ -141,7 +141,8 @@ export function klientApi(baseUrl,fetcher=fetch) {
   demand(u.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(u.hostname),'BACKEND_MUST_BE_LOCAL');
   demand(!u.username&&!u.password&&!u.search&&!u.hash,'BACKEND_URL_INVALID');
   return async(method,route,payload) => {
-    const r=await fetcher(u.origin+route,{method,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},
+    const r=await fetcher(u.origin+route,{method,headers:{'Content-Type':'application/json','Cache-Control':'no-store',
+      ...(route.startsWith('/api/gis-lab/r14/')?{'X-GIS-R14-Lab-Token':process.env.MV_GIS_R14_LAB_TOKEN||''}:{})},
       body:payload===undefined?undefined:JSON.stringify(payload),redirect:'error'});
     const raw=await r.text();
     let result;
