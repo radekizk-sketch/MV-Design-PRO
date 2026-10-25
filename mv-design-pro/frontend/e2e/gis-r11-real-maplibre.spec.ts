@@ -9,7 +9,7 @@ test.describe('GIS R11 — rzeczywisty MapLibre w głównej aplikacji', () => {
 
   test('przegląd danych syntetycznych działa na prawdziwym silniku WebGL', async ({ page }) => {
     await page.goto('/');
-    const model = page.getByRole('button', { name: 'Model sieci', exact: true }).first();
+    const model = page.getByRole('navigation').getByRole('button', { name: /^Model sieci\b/ }).first();
     await expect(model).toBeVisible();
     await model.click();
     const tab = page.getByRole('tab', { name: 'Mapa GIS (pilotaż)' });
@@ -28,11 +28,12 @@ test.describe('GIS R11 — rzeczywisty MapLibre w głównej aplikacji', () => {
     await page.getByRole('button', { name: 'Kabel SN 15 kV' }).click();
     await expect(page.getByText('brak potwierdzonego powiązania', { exact: false })).toBeVisible();
     await expect(page.getByText('Topologia: niepotwierdzona', { exact: false })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('gis-r11-real-webgl.png'), fullPage: true });
   });
 
   test('WMS nie może uruchomić ruchu sieciowego bez dokumentu i zgody', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Model sieci', exact: true }).first().click();
+    await page.getByRole('navigation').getByRole('button', { name: /^Model sieci\b/ }).first().click();
     await page.getByRole('tab', { name: 'Mapa GIS (pilotaż)' }).click();
     const button = page.getByRole('button', { name: 'Włącz warstwę WMS' });
     await expect(button).toBeDisabled();
