@@ -77,7 +77,7 @@ test('przeczytana ENM musi mieć nową rewizję, hash i identyfikatory',()=>{
   assert.throws(()=>weryfikujSnapshot(enm,{snapshot:enm,changes:{created_element_ids:['SYN-SRC-1']}},{revision:4,hash:B},['SYN-OTHER']),
     e=>e.code==='ENM_EXPECTED_REF_MISSING');
 });
-function fakeApi({badRunHash=false,opFailure=false,missingResult=false}={}){
+function fakeApi({badRunHash=false,opFailure=false,missingResult=false,lfReady=true,scReady=true,readinessRevision=5}={}){
   const calls=[];
   const base={header:{revision:4,hash_sha256:B},sources:[]};
   const latest={header:{revision:5,hash_sha256:C},sources:[{ref_id:'SYN-SRC-1'}]};
@@ -85,6 +85,9 @@ function fakeApi({badRunHash=false,opFailure=false,missingResult=false}={}){
   const api=async(method,route,body)=>{
     calls.push({method,route,body});
     if(route.endsWith('/enm')&&method==='GET')return writes?latest:base;
+    if(route.endsWith('/enm/readiness'))return{
+      enm_revision:readinessRevision,
+      analysis_readiness:{load_flow:lfReady,short_circuit_3f:scReady}};
     if(route.endsWith('/atomic-import')){
       writes++;return{schema:'MV-GIS-ATOMIC-RESULT-R14',
         revision:5,hash_sha256:C,committed_steps:1,created_refs:['SYN-SRC-1'],
@@ -116,7 +119,7 @@ test('pełny łańcuch kanonicznych API ENM → LF → SC i uczciwy status SLD',
   assert.equal(r.sld.verification,'NOT_RENDERED');
   assert.equal(fake.calls.filter(x=>x.route.endsWith('/execute')).length,2);
   assert.equal(fake.calls.find(x=>x.route.endsWith('/domain-ops')).body.snapshot_base_hash,B);
-  assert.equal(fake.calls.length,13);
+  assert.equal(fake.calls.length,14);
 });
 test('bez jawnego zatwierdzenia API nie zostaje wywołane',async()=>{
   const x=fixture(),fake=fakeApi();
@@ -142,7 +145,7 @@ test('wyniki o innej rewizji ENM nie przechodzą',async()=>{
   const x=fixture(),fake=fakeApi({badRunHash:true});
   const r=await wykonajE2E(x.plan,fake.api,{
     publish:true,confirm:'ZATWIERDZAM_ZAPIS_ENM',pollCount:1});
-  assert.equal(r.status,'FAILED_POSSIBLE_PARTIAL_ENM_CHANGE');
+  assert.equal(r.status,'ENM_COMMITTED_ANALYSES_INCOMPLETE');
   assert.equal(r.failure_code,'RUN_SNAPSHOT_NOT_SAME_ENM');
 });
 test('brak podpisu wyniku jest jawną odmową',async()=>{
@@ -222,4 +225,39 @@ test('R14: zagnieżdżone pole SN jest identyfikatorem ENM, nie fikcyjnym węzł
     substations:[{ref_id:'station/01',meta:{field_specs:[{field_ref:'field/SN/01'}]}}]};
   const result={snapshot:model,changes:{created_element_ids:['field/SN/01']}};
   assert.equal(weryfikujSnapshot(model,result,{revision:4,hash:B},[]).hash,C);
+});
+
+
+test('R15: ENM zapisany, lecz LF niegotowy blokuje obydwa biegi',async()=>{
+  const x=fixture(),fake=fakeApi({lfReady:false});
+  const r=await wykonajE2E(x.plan,fake.api,{publish:true,atomic:true,
+    confirm:'ZATWIERDZAM_ZAPIS_ENM',intervalMs:0,pollCount:1});
+  assert.equal(r.status,'ENM_COMMITTED_ANALYSES_INCOMPLETE');
+  assert.equal(r.failure_code,'LOAD_FLOW_NOT_READY');
+  assert.equal(r.final_model.revision,5);
+  assert.equal(fake.calls.filter(c=>c.route.endsWith('/atomic-import')).length,1);
+  assert.equal(fake.calls.filter(c=>c.route.includes('/execution/')).length,0);
+});
+test('R15: brak gotowości SC blokuje biegi LF i SC',async()=>{
+  const x=fixture(),fake=fakeApi({scReady:false});
+  const r=await wykonajE2E(x.plan,fake.api,{publish:true,atomic:true,
+    confirm:'ZATWIERDZAM_ZAPIS_ENM'});
+  assert.equal(r.status,'ENM_COMMITTED_ANALYSES_INCOMPLETE');
+  assert.equal(r.failure_code,'SHORT_CIRCUIT_NOT_READY');
+  assert.equal(fake.calls.filter(c=>c.route.includes('/execution/')).length,0);
+});
+test('R15: readiness z poprzedniej rewizji nie uruchamia solverów',async()=>{
+  const x=fixture(),fake=fakeApi({readinessRevision:4});
+  const r=await wykonajE2E(x.plan,fake.api,{publish:true,atomic:true,
+    confirm:'ZATWIERDZAM_ZAPIS_ENM'});
+  assert.equal(r.failure_code,'READINESS_REVISION_MISMATCH');
+  assert.equal(r.status,'ENM_COMMITTED_ANALYSES_INCOMPLETE');
+  assert.equal(fake.calls.filter(c=>c.route.includes('/execution/')).length,0);
+});
+test('R15: gdy obydwa biegi gotowe, raport zawiera dowód bramki gotowości',async()=>{
+  const x=fixture(),fake=fakeApi();
+  const r=await wykonajE2E(x.plan,fake.api,{publish:true,atomic:true,
+    confirm:'ZATWIERDZAM_ZAPIS_ENM',intervalMs:0,pollCount:1});
+  assert.equal(r.status,'COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED');
+  assert.deepEqual(r.readiness_verified,{model_revision:5,load_flow:true,short_circuit_3f:true});
 });

@@ -11,6 +11,7 @@ import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, typ
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
 import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
 import { odczytajDowodR14, type WynikDowoduR14 } from '../../../ui/gis/gisEvidenceR14';
+import { zweryfikujWynikiBackendR15 } from '../../../ui/gis/gisBackendEvidenceR15';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import { emituj, subskrybuj } from '../../events';
@@ -46,6 +47,7 @@ function dopasujWidok(map: MapLibreMap, zbior: ZbiorGIS): void {
 
 export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const container = useRef<HTMLDivElement | null>(null);
+  const geometryEpoch = useRef(0);
   const map = useRef<MapLibreMap | null>(null);
   const snapshotEnm = useSnapshotStore((s) => s.snapshot);
   const refreshEnm = useSnapshotStore((s) => s.refreshFromBackend);
@@ -66,13 +68,18 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const [allowNetwork, setAllowNetwork] = useState(false);
   const [raster, setRaster] = useState<PlanRastra | null>(null);
   const [dowod, setDowod] = useState<WynikDowoduR14 | null>(null);
+  const [backendProof, setBackendProof] = useState(false);
+  const [backendProofCase, setBackendProofCase] = useState<string | null>(null);
   const [wskazania, setWskazania] = useState<Record<string, string>>({});
   const wskazaniaRef = useRef<Record<string, string>>({});
   const dowodRef = useRef<WynikDowoduR14 | null>(null);
-  useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod; }, [wskazania, dowod]);
+  const dowodCaseRef = useRef<string | null>(null);
+  useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod;
+    dowodCaseRef.current = backendProof ? backendProofCase : null;
+  }, [wskazania, dowod, backendProof, backendProofCase]);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
-  const dowodAktualny = Boolean(dowod && snapshotEnm &&
+  const dowodAktualny = Boolean(backendProof && backendProofCase === aktywnyPrzypadekId && dowod && snapshotEnm &&
     dowod.hash === snapshotEnm.header.hash_sha256 && dowod.revision === rewizjaEnm);
   const wskazaneRef = dowodAktualny && selected ? wskazania[selected] : undefined;
   const matches = element ? dopasujIdDoEnm(snapshotEnm, wskazaneRef || element.id) : [];
@@ -99,7 +106,9 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
     // żadnego terminala, topologii ani parametrów elektrycznych.
     const snap = snapshotRef.current;
     const proof = dowodRef.current;
-    const fresh = Boolean(snap && proof && proof.hash === snap.header.hash_sha256 &&
+    const fresh = Boolean(snap && proof &&
+      dowodCaseRef.current === useAppStateStore.getState().activeCaseId &&
+      proof.hash === snap.header.hash_sha256 &&
       proof.revision === snap.header.revision);
     const mapped = fresh ? wskazaniaRef.current[id] : undefined;
     const targetRef = mapped || id;
@@ -216,12 +225,17 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   async function importujGeoJSON(file: File | undefined) {
     if (!file) return;
     if (file.size > 5_000_000) { setError('Plik przekracza 5 MB.'); return; }
+    const revision = ++geometryEpoch.current;
     try {
       const parsed: unknown = JSON.parse(await file.text());
       const normalized = wczytajGeoJSON(parsed);
+      if (revision !== geometryEpoch.current) throw new Error('Dane mapy zostały zmienione.');
       setObjects(normalized);
       setSelected(null);
+      setBackendProof(false);
       setDowod(null);
+      setBackendProof(false);
+      setBackendProofCase(null);
       setWskazania({});
       setFileStatus('Lokalnie: ' + file.name + ', obiektów: ' + normalized.features.length + '. Brak połączeń ENM.');
       setError(null);
@@ -232,6 +246,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
 
   async function wczytajDowod(file: File | undefined) {
     if (!file) return;
+    const revision = geometryEpoch.current;
     if (file.size > 1_000_000) {
       setError('Raport R14 przekracza dopuszczalny rozmiar 1 MB.');
       return;
@@ -242,6 +257,15 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         caseId: aktywnyPrzypadekId, snapshot: snapshotEnm,
         revision: rewizjaEnm, geometry: objects,
       });
+      if (!aktywnyPrzypadekId) throw new Error('Brak wybranego przypadku ENM.');
+      const verified = await zweryfikujWynikiBackendR15(raw, aktywnyPrzypadekId);
+      if (revision !== geometryEpoch.current ||
+          verified.modelHash !== useSnapshotStore.getState().snapshot?.header.hash_sha256 ||
+          verified.caseId !== useAppStateStore.getState().activeCaseId) {
+        throw new Error('Przypadek lub migawka ENM zmieniły się podczas sprawdzania.');
+      }
+      setBackendProof(true);
+      setBackendProofCase(verified.caseId);
       setDowod(wynik);
       setWskazania({});
       setError(null);
@@ -291,7 +315,8 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         <button type="button" onClick={() => { void pokazBiezacySld(); }} disabled={!onShowSld || !aktywnyPrzypadekId} data-testid="gis-otworz-sld">Odśwież ENM i pokaż schemat SLD</button>
         <p className="mvd-gis-r11-notice">Projektowa projekcja przestrzenna — bez zatwierdzania ENM.</p>
         <button type="button" onClick={() => {
-          setObjects(przykładowaSiecSN()); setSelected(null);
+          geometryEpoch.current += 1;
+      setObjects(przykładowaSiecSN()); setSelected(null); setDowod(null); setBackendProof(false);
           setFileStatus('PRÓBKA SYNTETYCZNA — brak rzeczywistych urządzeń.');
         }}>Załaduj sieć demonstracyjną</button>
         <label>GeoJSON WGS 84 — lokalny plik
@@ -311,7 +336,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
             onChange={(e) => { void wczytajDowod(e.target.files?.[0]); }} />
         </label>
         <p className="mvd-gis-r11-info">
-          {dowodAktualny ? 'Raport zgodny z bieżącą rewizją ENM. To nie jest uwierzytelnienie źródła ani potwierdzenie portów.'
+          {dowodAktualny ? 'Raport zgodny z ENM, a LF/SC i podpisy wyników potwierdzone przez backend. Pochodzenie DIGPRO i porty nadal wymagają odbioru.'
             : 'Brak zgodnego raportu. Powiązania nie są używane do selekcji SLD.'}
         </p>
         {selected && kandydaci.length > 0 && (

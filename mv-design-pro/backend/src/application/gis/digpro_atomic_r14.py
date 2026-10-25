@@ -32,25 +32,50 @@ def _require(ok: bool, code: str, step: int | None = None) -> None:
         raise AtomicImportRejected(code, step)
 
 
-def refs_in_model(model: Any) -> set[str]:
-    """Uwzględnia wewnętrzne meta.field_specs[].field_ref i terminale stacji."""
-    refs: set[str] = set()
-    stack = [(model, 0)]
-    seen = 0
-    while stack:
-        node, depth = stack.pop()
-        seen += 1
-        _require(seen <= 250_000 and depth <= 40, "MODEL_TOO_COMPLEX")
-        if isinstance(node, dict):
-            for key, value in node.items():
-                if key in {"ref_id", "field_ref", "terminal_ref", "segment_ref"} and isinstance(value, str):
-                    refs.add(value)
-                elif isinstance(value, (dict, list)):
-                    stack.append((value, depth + 1))
-        elif isinstance(node, list):
-            stack.extend((value, depth + 1) for value in node if isinstance(value, (dict, list)))
-    return refs
+# Kolekcje z JEDYNEGO modelu EnergyNetworkModel (backend/src/enm/models.py).
+# Nie indeksować dowolnego `meta.ref_id`: byłoby to fałszywe powiązanie.
+_KOLEKCJE_ENM = frozenset({
+    "buses", "branches", "transformers", "sources", "loads", "generators",
+    "shunt_capacitors", "substations", "bays", "junctions", "corridors",
+    "measurements", "protection_assignments", "branch_points", "line_runs",
+    "connection_nodes",
+})
 
+
+def refs_in_model(model: Any) -> set[str]:
+    """ID elementów kanonicznych + field_ref w metadanych pola SN stacji.
+
+    To nie jest indeks wszystkich napisów w modelu. Istnienie `meta.ref_id`
+    nie jest dowodem utworzenia ENM ani portu elektrycznego.
+    """
+    _require(isinstance(model, dict), "MODEL_INVALID")
+    refs: set[str] = set()
+    total = 0
+    for kolekcja in _KOLEKCJE_ENM:
+        elements = model.get(kolekcja, ())
+        _require(isinstance(elements, (tuple, list)), "MODEL_COLLECTION_INVALID")
+        total += len(elements)
+        _require(total <= 250_000, "MODEL_TOO_COMPLEX")
+        for element in elements:
+            _require(isinstance(element, dict), "MODEL_ELEMENT_INVALID")
+            ref_id = element.get("ref_id")
+            if isinstance(ref_id, str) and ref_id:
+                refs.add(ref_id)
+            if kolekcja != "substations":
+                continue
+            meta = element.get("meta")
+            if not isinstance(meta, dict):
+                continue
+            fields = meta.get("field_specs", ())
+            _require(isinstance(fields, (list, tuple)) and len(fields) <= 10_000,
+                     "STATION_FIELD_SPECS_INVALID")
+            for field in fields:
+                if not isinstance(field, dict):
+                    continue
+                field_ref = field.get("field_ref")
+                if isinstance(field_ref, str) and field_ref:
+                    refs.add(field_ref)
+    return refs
 
 def prepare_atomic_import(
     original: dict[str, Any],

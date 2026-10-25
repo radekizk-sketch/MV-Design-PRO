@@ -165,3 +165,43 @@ def test_invalid_intermediate_hash():
         snapshot["buses"].append({"ref_id": "bus/1"})
         return {"snapshot": snapshot, "changes": {"created_element_ids": ["bus/1"]}}
     refusal("INTERMEDIATE_HEADER_FORGED", lambda: prepare(steps(1), handler_forged))
+
+
+def test_metadata_ref_id_is_not_accepted_as_real_element():
+    from application.gis.digpro_atomic_r14 import refs_in_model
+
+    fake = model()
+    fake["buses"] = [{"ref_id": "bus/real", "meta": {"ref_id": "bus/forged"}}]
+    assert "bus/real" in refs_in_model(fake)
+    assert "bus/forged" not in refs_in_model(fake)
+
+
+def test_operation_cannot_claim_ref_only_in_arbitrary_metadata():
+    def forged(snapshot, _name, _payload):
+        snapshot["buses"].append({"ref_id": "bus/real", "meta": {"ref_id": "bus/fake"}})
+        return {"snapshot": snapshot, "changes": {"created_element_ids": ["bus/fake"]}}
+
+    refusal("DOMAIN_REF_NOT_PERSISTED", lambda: prepare(steps(1), forged))
+
+
+def test_top_level_connection_node_is_canonical_element():
+    from application.gis.digpro_atomic_r14 import refs_in_model
+
+    typed = model()
+    typed["connection_nodes"] = [{"ref_id": "connection/SN/01"}]
+    assert "connection/SN/01" in refs_in_model(typed)
+
+
+def test_nested_station_field_is_valid_but_generic_terminal_is_not():
+    from application.gis.digpro_atomic_r14 import refs_in_model
+
+    typed = model()
+    typed["substations"] = [{
+        "ref_id": "station/SN01",
+        "meta": {"field_specs": [{"field_ref": "field/SN/01"}],
+                 "debug": {"terminal_ref": "unverified/terminal"}}
+    }]
+    refs = refs_in_model(typed)
+    assert "station/SN01" in refs
+    assert "field/SN/01" in refs
+    assert "unverified/terminal" not in refs
