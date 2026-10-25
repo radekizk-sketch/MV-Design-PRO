@@ -102,10 +102,20 @@ export function zweryfikujPakiet(plan,geojson,manifest) {
     authorization_status:'ENGINEER_DECLARED_NOT_EXTERNALLY_VERIFIED',enm_write:false};
 }
 function refsInEnm(enm) {
-  const refs=new Set();
-  for(const value of Object.values(enm)) {
-    if(!Array.isArray(value))continue;
-    for(const item of value)if(obj(item)&&typeof item.ref_id==='string')refs.add(item.ref_id);
+  const refs=new Set(),stack=[[enm,0]];
+  let checked=0;
+  while(stack.length) {
+    const [value,depth]=stack.pop();
+    demand(++checked<=250000&&depth<=40,'ENM_GRAPH_TOO_COMPLEX');
+    if(Array.isArray(value)){
+      for(const item of value)if(item&&typeof item==='object')stack.push([item,depth+1]);
+    }else if(obj(value)){
+      for(const [key,item] of Object.entries(value)){
+        if(['ref_id','field_ref','terminal_ref','segment_ref'].includes(key)&&typeof item==='string')
+          refs.add(item);
+        else if(item&&typeof item==='object')stack.push([item,depth+1]);
+      }
+    }
   }
   return refs;
 }
