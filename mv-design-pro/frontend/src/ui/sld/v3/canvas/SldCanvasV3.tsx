@@ -458,6 +458,36 @@ function parityKeysOf(meta: PreviewElementMeta | undefined): string | undefined 
   return meta.parityKey;
 }
 
+/** Dwie ramki QET-SCADA dotyczą wyłącznie łączników GPZ, nie energizacji. */
+const GPZ_SWITCH_SYMBOL_IDS: ReadonlySet<string> = new Set([
+  'breaker', 'lineBreaker', 'disconnector', 'loadBreakSwitch', 'earthSwitch', 'fuseSwitch',
+]);
+
+export function isGpzSwitchApparatus(symbol: PreviewSymbol): boolean {
+  return GPZ_SWITCH_SYMBOL_IDS.has(symbol.symbolId)
+    && (symbol.meta?.parityKeys ?? []).some((key) =>
+      key === 'gpz.coupler' || key.startsWith('gpz.apparatus.cb')
+      || key.startsWith('gpz.apparatus.ds') || key.startsWith('gpz.apparatus.es'),
+    );
+}
+
+export function gpzSwitchFrameOf(symbol: PreviewSymbol): {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly stroke: string;
+} | null {
+  if (!isGpzSwitchApparatus(symbol)) return null;
+  if (symbol.state !== 'open' && symbol.state !== 'closed') return null;
+  const def = SYMBOL_DEFS[symbol.symbolId];
+  return {
+    x: symbol.x - 4, y: symbol.y - 4,
+    width: def.width + 8, height: def.height + 8,
+    stroke: symbol.state === 'closed' ? '#F05260' : '#2CCF93',
+  };
+}
+
 function SceneSymbolNode(props: {
   readonly symbol: PreviewSymbol;
   readonly index: number;
@@ -489,25 +519,9 @@ function SceneSymbolNode(props: {
   // kolor BAZOWY z tabeli §3 (`baseSymbolStrokeColor` — napięcie/NOP), NIE
   // uniformalny `V3_STROKE_BASE` jak przed S3 — precedencja: stan źródła >
   // energizacja > NOP/napięcie (patrz nagłówek `theme/colorTokens.ts`).
-  // GPZ / QET-SCADA: ramka oznacza WYŁĄCZNIE położenie styku.
-  // Przy stanie brakującym/awaryjnym nie kreujemy trzeciej pozycji graficznej.
-  const gpzSwitchSymbolIds = new Set([
-    'breaker', 'lineBreaker', 'disconnector', 'loadBreakSwitch', 'earthSwitch', 'fuseSwitch',
-  ]);
-  const isGpzSwitch = gpzSwitchSymbolIds.has(symbol.symbolId)
-    && (symbol.meta?.parityKeys ?? []).some((key) =>
-      key === 'gpz.coupler' || key.startsWith('gpz.apparatus.cb')
-      || key.startsWith('gpz.apparatus.ds') || key.startsWith('gpz.apparatus.es'),
-    );
+  const isGpzSwitch = isGpzSwitchApparatus(symbol);
   const validGpzSwitchState = symbol.state === 'closed' || symbol.state === 'open';
-  const gpzFrame = isGpzSwitch && validGpzSwitchState
-    ? {
-      x: symbol.x - 4, y: symbol.y - 4,
-      width: SYMBOL_DEFS[symbol.symbolId].width + 8,
-      height: SYMBOL_DEFS[symbol.symbolId].height + 8,
-      stroke: symbol.state === 'closed' ? '#F05260' : '#2CCF93',
-    }
-    : null;
+  const gpzFrame = gpzSwitchFrameOf(symbol);
   const sourceState = symbol.meta?.operationalState;
   const stroke = sourceState
     ? sourceStateOverlayColor(sourceState, palette)
