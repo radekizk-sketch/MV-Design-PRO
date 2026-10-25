@@ -11,6 +11,7 @@ import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, typ
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
 import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { emituj, subskrybuj } from '../../events';
 import './mapaGisR11.css';
 
 setWorkerUrl(workerUrl);
@@ -62,6 +63,24 @@ export default function MapaGisR11() {
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
   const matches = element ? dopasujIdDoEnm(snapshotEnm, element.id) : [];
 
+  function wybierzNaMapie(id: string) {
+    setSelected(id);
+    // Zgodne ref_id może zasilić wspólną selekcję widoków, ale NIE potwierdza
+    // żadnego terminala, topologii ani parametrów elektrycznych.
+    if (dopasujIdDoEnm(snapshotEnm, id).length === 1) {
+      emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'gis-mapa' });
+    }
+  }
+
+  useEffect(() => subskrybuj('selekcja', (zdarzenie) => {
+    if (zdarzenie.zrodlo === 'gis-mapa') return;
+    if (zdarzenie.obiektId === null) {
+      setSelected(null);
+    } else if (objects.features.some((f) => f.id === zdarzenie.obiektId)) {
+      setSelected(zdarzenie.obiektId);
+    }
+  }), [objects]);
+
   useEffect(() => {
     if (!container.current) return;
     let active = true;
@@ -102,7 +121,7 @@ export default function MapaGisR11() {
         });
         const choose = (event: { features?: Array<{ properties?: { id?: string } }> }) => {
           const id = event.features?.[0]?.properties?.id;
-          if (typeof id === 'string') setSelected(id);
+          if (typeof id === 'string') wybierzNaMapie(id);
         };
         instance.on('click', GIS_LINE, choose);
         instance.on('click', GIS_POINT, choose);
@@ -222,7 +241,7 @@ export default function MapaGisR11() {
         <div className="mvd-gis-r11-items">
           {objects.features.map((f) => (
             <button type="button" key={f.id} className={selected === f.id ? 'selected' : ''}
-              onClick={() => setSelected(f.id)}>{f.properties.name}</button>
+              onClick={() => wybierzNaMapie(f.id)}>{f.properties.name}</button>
           ))}
         </div>
         <h3>Warstwa z geoportalu WMS</h3>
