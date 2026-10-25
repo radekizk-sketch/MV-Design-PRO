@@ -72,7 +72,10 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const [wskazania, setWskazania] = useState<Record<string, string>>({});
   const wskazaniaRef = useRef<Record<string, string>>({});
   const dowodRef = useRef<WynikDowoduR14 | null>(null);
-  useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod; }, [wskazania, dowod]);
+  const dowodCaseRef = useRef<string | null>(null);
+  useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod;
+    dowodCaseRef.current = backendProof ? backendProofCase : null;
+  }, [wskazania, dowod, backendProof, backendProofCase]);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
   const dowodAktualny = Boolean(backendProof && backendProofCase === aktywnyPrzypadekId && dowod && snapshotEnm &&
@@ -102,7 +105,9 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
     // żadnego terminala, topologii ani parametrów elektrycznych.
     const snap = snapshotRef.current;
     const proof = dowodRef.current;
-    const fresh = Boolean(snap && proof && proof.hash === snap.header.hash_sha256 &&
+    const fresh = Boolean(snap && proof &&
+      dowodCaseRef.current === useAppStateStore.getState().activeCaseId &&
+      proof.hash === snap.header.hash_sha256 &&
       proof.revision === snap.header.revision);
     const mapped = fresh ? wskazaniaRef.current[id] : undefined;
     const targetRef = mapped || id;
