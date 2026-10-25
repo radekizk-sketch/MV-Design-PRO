@@ -68,13 +68,14 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const [raster, setRaster] = useState<PlanRastra | null>(null);
   const [dowod, setDowod] = useState<WynikDowoduR14 | null>(null);
   const [backendProof, setBackendProof] = useState(false);
+  const [backendProofCase, setBackendProofCase] = useState<string | null>(null);
   const [wskazania, setWskazania] = useState<Record<string, string>>({});
   const wskazaniaRef = useRef<Record<string, string>>({});
   const dowodRef = useRef<WynikDowoduR14 | null>(null);
   useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod; }, [wskazania, dowod]);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
-  const dowodAktualny = Boolean(backendProof && dowod && snapshotEnm &&
+  const dowodAktualny = Boolean(backendProof && backendProofCase === aktywnyPrzypadekId && dowod && snapshotEnm &&
     dowod.hash === snapshotEnm.header.hash_sha256 && dowod.revision === rewizjaEnm);
   const wskazaneRef = dowodAktualny && selected ? wskazania[selected] : undefined;
   const matches = element ? dopasujIdDoEnm(snapshotEnm, wskazaneRef || element.id) : [];
@@ -226,6 +227,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
       setBackendProof(false);
       setDowod(null);
       setBackendProof(false);
+      setBackendProofCase(null);
       setWskazania({});
       setFileStatus('Lokalnie: ' + file.name + ', obiektów: ' + normalized.features.length + '. Brak połączeń ENM.');
       setError(null);
@@ -253,6 +255,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         throw new Error('Przypadek lub migawka ENM zmieniły się podczas sprawdzania.');
       }
       setBackendProof(true);
+      setBackendProofCase(verified.caseId);
       setDowod(wynik);
       setWskazania({});
       setError(null);
