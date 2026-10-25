@@ -11,6 +11,7 @@ import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, typ
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
 import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
 import { odczytajDowodR14, type WynikDowoduR14 } from '../../../ui/gis/gisEvidenceR14';
+import { zweryfikujWynikiBackendR15 } from '../../../ui/gis/gisBackendEvidenceR15';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import { emituj, subskrybuj } from '../../events';
@@ -66,13 +67,14 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const [allowNetwork, setAllowNetwork] = useState(false);
   const [raster, setRaster] = useState<PlanRastra | null>(null);
   const [dowod, setDowod] = useState<WynikDowoduR14 | null>(null);
+  const [backendProof, setBackendProof] = useState(false);
   const [wskazania, setWskazania] = useState<Record<string, string>>({});
   const wskazaniaRef = useRef<Record<string, string>>({});
   const dowodRef = useRef<WynikDowoduR14 | null>(null);
   useEffect(() => { wskazaniaRef.current = wskazania; dowodRef.current = dowod; }, [wskazania, dowod]);
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
-  const dowodAktualny = Boolean(dowod && snapshotEnm &&
+  const dowodAktualny = Boolean(backendProof && dowod && snapshotEnm &&
     dowod.hash === snapshotEnm.header.hash_sha256 && dowod.revision === rewizjaEnm);
   const wskazaneRef = dowodAktualny && selected ? wskazania[selected] : undefined;
   const matches = element ? dopasujIdDoEnm(snapshotEnm, wskazaneRef || element.id) : [];
@@ -221,7 +223,9 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
       const normalized = wczytajGeoJSON(parsed);
       setObjects(normalized);
       setSelected(null);
+      setBackendProof(false);
       setDowod(null);
+      setBackendProof(false);
       setWskazania({});
       setFileStatus('Lokalnie: ' + file.name + ', obiektów: ' + normalized.features.length + '. Brak połączeń ENM.');
       setError(null);
@@ -242,6 +246,13 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         caseId: aktywnyPrzypadekId, snapshot: snapshotEnm,
         revision: rewizjaEnm, geometry: objects,
       });
+      if (!aktywnyPrzypadekId) throw new Error('Brak wybranego przypadku ENM.');
+      const verified = await zweryfikujWynikiBackendR15(raw, aktywnyPrzypadekId);
+      if (verified.modelHash !== useSnapshotStore.getState().snapshot?.header.hash_sha256 ||
+          verified.caseId !== useAppStateStore.getState().activeCaseId) {
+        throw new Error('Przypadek lub migawka ENM zmieniły się podczas sprawdzania.');
+      }
+      setBackendProof(true);
       setDowod(wynik);
       setWskazania({});
       setError(null);
@@ -291,7 +302,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         <button type="button" onClick={() => { void pokazBiezacySld(); }} disabled={!onShowSld || !aktywnyPrzypadekId} data-testid="gis-otworz-sld">Odśwież ENM i pokaż schemat SLD</button>
         <p className="mvd-gis-r11-notice">Projektowa projekcja przestrzenna — bez zatwierdzania ENM.</p>
         <button type="button" onClick={() => {
-          setObjects(przykładowaSiecSN()); setSelected(null);
+          setObjects(przykładowaSiecSN()); setSelected(null); setDowod(null); setBackendProof(false);
           setFileStatus('PRÓBKA SYNTETYCZNA — brak rzeczywistych urządzeń.');
         }}>Załaduj sieć demonstracyjną</button>
         <label>GeoJSON WGS 84 — lokalny plik
@@ -311,7 +322,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
             onChange={(e) => { void wczytajDowod(e.target.files?.[0]); }} />
         </label>
         <p className="mvd-gis-r11-info">
-          {dowodAktualny ? 'Raport zgodny z bieżącą rewizją ENM. To nie jest uwierzytelnienie źródła ani potwierdzenie portów.'
+          {dowodAktualny ? 'Raport zgodny z ENM, a LF/SC i podpisy wyników potwierdzone przez backend. Pochodzenie DIGPRO i porty nadal wymagają odbioru.'
             : 'Brak zgodnego raportu. Powiązania nie są używane do selekcji SLD.'}
         </p>
         {selected && kandydaci.length > 0 && (
