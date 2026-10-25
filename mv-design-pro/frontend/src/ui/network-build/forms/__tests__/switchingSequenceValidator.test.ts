@@ -80,10 +80,20 @@ describe('attemptOperation — DS', () => {
 describe('attemptOperation — ES', () => {
   it('close_es wymaga CB i DS open', () => {
     const r1 = attemptOperation(ALL_OPEN, { type: 'close_es' });
-    expect(r1.isAllowed).toBe(true);
+    // Lokalna geometria CB/DS nie potwierdza braku napięcia.
+    expect(r1.isAllowed).toBe(false);
+    expect(r1.warningPL).toContain('całej topologii');
 
     const r2 = attemptOperation(CONNECTED, { type: 'close_es' });
     expect(r2.isAllowed).toBe(false);
+  });
+
+
+  it('odmowa przy możliwym napięciu zwrotnym nawet gdy CB i DS są otwarte', () => {
+    const result = attemptOperation(ALL_OPEN, { type: 'close_es' });
+    expect(result.isAllowed).toBe(false);
+    expect(result.newState).toBeUndefined();
+    expect(result.warningPL).toContain('napięcia zwrotnego');
   });
 
   it('open_es zawsze allowed', () => {
