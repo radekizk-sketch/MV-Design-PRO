@@ -115,7 +115,7 @@ export function ModelWarsztat() {
         {zakladka === 'schemat' && <SldCanvasV3Workspace />}
         {zakladka === 'gis' && GIS_R11_WLACZONY && (
           <Suspense fallback={<div role="status">Uruchamianie lokalnego silnika mapowego…</div>}>
-            <MapaGisR11 />
+            <MapaGisR11 onShowSld={() => setZakladka('schemat')} />
           </Suspense>
         )}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
