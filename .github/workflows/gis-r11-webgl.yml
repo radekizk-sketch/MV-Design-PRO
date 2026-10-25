@@ -1,0 +1,64 @@
+name: GIS R11 realny silnik MapLibre WebGL
+
+on:
+  push:
+    branches:
+      - feature/gis-r11-real-maplibre-20261024
+    paths:
+      - 'mv-design-pro/frontend/**'
+      - '.github/workflows/gis-r11-webgl.yml'
+  pull_request:
+    branches:
+      - research/gis-r10-map-sources-20261024
+    paths:
+      - 'mv-design-pro/frontend/**'
+      - '.github/workflows/gis-r11-webgl.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gis-webgl-real-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mv-design-pro/frontend/package-lock.json
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: '1.8.3'
+      - name: Install frontend
+        working-directory: mv-design-pro/frontend
+        run: npm ci
+      - name: Install backend and Chromium
+        working-directory: mv-design-pro/frontend
+        run: npm run test:e2e:setup:real
+      - name: Verify genuine WebGL and GIS pilot
+        working-directory: mv-design-pro/frontend
+        env:
+          VITE_MV_GIS_R11: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: node ./scripts/playwright-run-real.mjs e2e/gis-r11-real-maplibre.spec.ts
+      - name: Upload evidence of real WebGL (also on success)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gis-r11-real-webgl-diagnostics
+          path: |
+            mv-design-pro/frontend/test-results/
+            mv-design-pro/frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

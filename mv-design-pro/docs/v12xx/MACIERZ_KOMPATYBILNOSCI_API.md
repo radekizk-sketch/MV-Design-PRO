@@ -33,6 +33,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 
 | Endpoint | Wersja | Status | Data wejscia | Data wylaczenia | Zakres kompatybilnosci | Testy | Wlasciciel |
 |---|---|---|---|---|---|---|---|
+| `GET /api/gis-lab/r06/status` | gis-lab.r06 | adapter | 2026-10-24 | 2026-12-31 | Endpoint diagnostyczny syntetycznego laboratorium GIS, domyślnie wyłączony, bez danych ENEA i operacji ENM; tylko świadomie włączony na środowisku nieprodukcyjnym. | tests/api/test_gis_lab_r06.py + tests/ci/test_api_lifecycle_guard_zakres.py | Architekt GIS |
+| `POST /api/gis-lab/r06/reconcile` | gis-lab.r06 | adapter | 2026-10-24 | 2026-12-31 | Izolowane porównanie syntetycznych rewizji GIS; bez tworzenia/zmiany topologii, żadnej publikacji ENM; wyłączone domyślnie. | tests/api/test_gis_lab_r06.py + tests/ci/test_api_lifecycle_guard_zakres.py | Architekt GIS |
 | `DELETE /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Usuwanie scenariusza zakloceniowego w przejsciowym API execution. | execution fault scenario tests | Architekt API |
 | `DELETE /api/projects/{project_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Usuwanie projektu; wymaga audytu destrukcyjnego w M2. | project deletion tests | Architekt API |
 | `DELETE /api/study-cases/{case_id}` | v12xx | aktywny | 2026-04-24 | - | Usuwanie kanonicznego przypadku z blokada destrukcyjna. | study case API tests | Architekt domeny |
