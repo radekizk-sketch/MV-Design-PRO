@@ -173,6 +173,13 @@ def _pole_z_uziemnikiem(stan_cb: str | None, stan_es: str | None) -> dict[str, A
         ("otwarty", "otwarty", False, False),
         ("zamkniety", "zamkniety", True, True),
         ("otwarty", None, None, None),
+        # Nieznane i awaryjne położenie nie są stanem otwartym.
+        ("otwarty", "nieznany", None, False),
+        ("otwarty", "awaria", None, False),
+        ("nieznany", "otwarty", False, None),
+        ("awaria", "otwarty", False, None),
+        ("zamkniety", "awaria", None, True),
+        ("awaria", "zamkniety", True, None),
     ],
 )
 def test_blokada_wylacznie_z_regul_modelu(
