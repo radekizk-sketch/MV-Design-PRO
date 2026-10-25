@@ -27,9 +27,9 @@ const uuid=v=>typeof v==='string'&&/^[a-f0-9-]{36}$/i.test(v);
 /** Jedynym nośnikiem topologii jest zatwierdzona operacja ENM, nie WMS i nie GIS. */
 export function zweryfikujPakiet(plan,geojson,manifest) {
   demand(obj(plan)&&plan.schema==='MV-DIGPRO-ENM-R13','PLAN_SCHEMA');
-  demand(obj(manifest)&&manifest.schema==='MV-GIS-GPKG-PREVIEW-R12','MANIFEST_SCHEMA');
+  demand(obj(manifest)&&['MV-GIS-GPKG-PREVIEW-R12','MV-DIGPRO-SHP-PREVIEW-R13'].includes(manifest.schema),'MANIFEST_SCHEMA');
   demand(obj(plan.source)&&plan.source.system==='DIGPRO','SOURCE_SYSTEM');
-  demand(plan.source.format==='GPKG','SOURCE_FORMAT');
+  demand(plan.source.format===(manifest.schema==='MV-DIGPRO-SHP-PREVIEW-R13'?'SHP':'GPKG'),'SOURCE_FORMAT');
   demand(hex(plan.source.sha256)&&plan.source.sha256===manifest.source_sha256,'SOURCE_DIGEST');
   demand(plan.source.layer===manifest.source_layer,'SOURCE_LAYER');
   demand([2180,2176,2177,2178,2179].includes(manifest.source_epsg),'SOURCE_CRS');
