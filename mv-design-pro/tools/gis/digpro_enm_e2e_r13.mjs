@@ -209,7 +209,16 @@ export async function wykonajE2E(plan,api,{publish=false,confirm='',atomic=false
         updated_refs:previous.updated_refs,binding_status:'SOURCE_REFERENCE_UNVERIFIED_TERMINALS'});
       report.changes_applied++;
     }
-    report.final_model={...previous};
+    report.final_model={revision:previous.revision,hash:previous.hash};
+    const readiness=await api('GET',path+'/enm/readiness');
+    demand(readiness?.enm_revision===previous.revision,'READINESS_REVISION_MISMATCH');
+    demand(readiness?.analysis_readiness?.load_flow===true,
+      'LOAD_FLOW_NOT_READY');
+    demand(readiness?.analysis_readiness?.short_circuit_3f===true,
+      'SHORT_CIRCUIT_NOT_READY');
+    report.readiness_verified={
+      model_revision:previous.revision,load_flow:true,short_circuit_3f:true,
+    };
     for(const analysis_type of ['LOAD_FLOW','SC_3F']){
       const created=await api('POST','/api/execution/study-cases/'+plan.case_id+'/runs',
         {analysis_type,solver_input:{}});
@@ -238,7 +247,9 @@ export async function wykonajE2E(plan,api,{publish=false,confirm='',atomic=false
     report.status='COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED';
     return report;
   }catch(err){
-    report.status=atomic?'FAILED_ATOMIC_COMMIT_STATE_UNCERTAIN':'FAILED_POSSIBLE_PARTIAL_ENM_CHANGE';
+    report.status=report.final_model
+      ? 'ENM_COMMITTED_ANALYSES_INCOMPLETE'
+      : atomic?'FAILED_ATOMIC_COMMIT_STATE_UNCERTAIN':'FAILED_POSSIBLE_PARTIAL_ENM_CHANGE';
     report.failure_code=err instanceof OdmowaR13?err.code:'UNEXPECTED_FAILURE';
     return report;
   }
