@@ -23,7 +23,7 @@ function fixture(){
       operation:{name:'add_grid_source_sn',idempotency_key:'SYN-R13-KEY-01',
         payload:{source_id:'SYN-SRC-1',voltage_kv:15,catalog_ref:'SYN-CATALOG'}},
       confirmed_terminals:true,confirmed_electrical_length:true,confirmed_catalog:true,
-      expected_refs:['SYN-SRC-1']}]
+      expected_refs:[]}]
   };
   return {geojson,manifest,plan};
 }
@@ -70,11 +70,11 @@ test('odmowa zdalnego serwera',()=>{
 });
 test('przeczytana ENM musi mieć nową rewizję, hash i identyfikatory',()=>{
   const enm={header:{revision:5,hash_sha256:C},sources:[{ref_id:'SYN-SRC-1'}]};
-  assert.deepEqual(weryfikujSnapshot(enm,{snapshot:enm},{revision:4,hash:B},['SYN-SRC-1']),
-    {revision:5,hash:C});
-  assert.throws(()=>weryfikujSnapshot(enm,{snapshot:enm},{revision:5,hash:B},[]),
+  assert.equal(weryfikujSnapshot(enm,{snapshot:enm,changes:{created_element_ids:['SYN-SRC-1']}},{revision:4,hash:B},[]).hash,
+    C);
+  assert.throws(()=>weryfikujSnapshot(enm,{snapshot:enm,changes:{created_element_ids:['SYN-SRC-1']}},{revision:5,hash:B},[]),
     e=>e.code==='ENM_REVISION_NOT_ADVANCED');
-  assert.throws(()=>weryfikujSnapshot(enm,{snapshot:enm},{revision:4,hash:B},['SYN-OTHER']),
+  assert.throws(()=>weryfikujSnapshot(enm,{snapshot:enm,changes:{created_element_ids:['SYN-SRC-1']}},{revision:4,hash:B},['SYN-OTHER']),
     e=>e.code==='ENM_EXPECTED_REF_MISSING');
 });
 function fakeApi({badRunHash=false,opFailure=false,missingResult=false}={}){
@@ -87,7 +87,7 @@ function fakeApi({badRunHash=false,opFailure=false,missingResult=false}={}){
     if(route.endsWith('/enm')&&method==='GET')return writes?latest:base;
     if(route.endsWith('/domain-ops')){
       if(opFailure)return{error_code:'CATALOG_INVALID'};
-      writes++;return{snapshot:latest};
+      writes++;return{snapshot:latest,changes:{created_element_ids:['SYN-SRC-1']}};
     }
     if(route.includes('/study-cases/')&&method==='POST')return{id:ID,model_revision:5};
     if(route.endsWith('/execute'))return{status:'QUEUED'};
@@ -106,6 +106,7 @@ test('pełny łańcuch kanonicznych API ENM → LF → SC i uczciwy status SLD',
     publish:true,confirm:'ZATWIERDZAM_ZAPIS_ENM',intervalMs:0,pollCount:1});
   assert.equal(r.status,'COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED');
   assert.equal(r.changes_applied,1);assert.equal(r.final_model.hash,C);
+  assert.deepEqual(r.revisions[0].created_refs,['SYN-SRC-1']);
   assert.deepEqual(r.runs.map(v=>v.analysis_type),['LOAD_FLOW','SC_3F']);
   assert.equal(r.sld.verification,'NOT_RENDERED');
   assert.equal(fake.calls.filter(x=>x.route.endsWith('/execute')).length,2);
@@ -177,4 +178,11 @@ test('niezgodne rozszerzenie nie pozwala na obejście odcisku',async()=>{
     ()=>fingerprintSource('GPKG','/tmp/SYN.shp'),
     e=>e.code==='SOURCE_EXTENSION',
   );
+});
+
+test('brak wykazanego utworzenia lub aktualizacji ENM jest odmową',()=>{
+  const enm={header:{revision:5,hash_sha256:C},sources:[{ref_id:'SYN-SRC-1'}]};
+  assert.throws(()=>weryfikujSnapshot(
+    enm,{snapshot:enm,changes:{}},{revision:4,hash:B},[]),
+    e=>e.code==='ENM_CHANGE_UNPROVEN');
 });
