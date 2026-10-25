@@ -7,6 +7,12 @@ on:
     paths:
       - 'mv-design-pro/frontend/**'
       - '.github/workflows/gis-r11-webgl.yml'
+  pull_request:
+    branches:
+      - research/gis-r10-map-sources-20261024
+    paths:
+      - 'mv-design-pro/frontend/**'
+      - '.github/workflows/gis-r11-webgl.yml'
   workflow_dispatch:
 
 permissions:
