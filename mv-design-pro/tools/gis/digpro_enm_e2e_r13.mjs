@@ -4,8 +4,9 @@
  * Ani topologia, ani kabel, ani długość nie powstają z przecięcia geometrii.
  */
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { extname } from 'node:path';
 
 export class OdmowaR13 extends Error {
   constructor(code, message=code) { super(message); this.name='OdmowaR13'; this.code=code; }
@@ -23,6 +24,29 @@ const demand=(ok,code)=>{if(!ok)throw new OdmowaR13(code);};
 const ref=v=>typeof v==='string'&&/^[\w:./-]{1,160}$/.test(v);
 const hex=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const uuid=v=>typeof v==='string'&&/^[a-f0-9-]{36}$/i.test(v);
+
+/** Kontrola bajtów źródła, nie tylko deklaracji w manifeście.
+ * SHP = cztery powiązane pliki; algorytm zgodny z digpro_shp_preview_r13.py.
+ */
+export async function fingerprintSource(format,sourceFile) {
+  const ext=extname(sourceFile).toLowerCase();
+  demand(format==='GPKG'||format==='SHP','SOURCE_FORMAT');
+  demand(ext===(format==='GPKG'?'.gpkg':'.shp'),'SOURCE_EXTENSION');
+  const paths=format==='GPKG'?[sourceFile]:
+    ['.dbf','.prj','.shp','.shx'].map(s=>sourceFile.slice(0,-4)+s);
+  const digest=createHash('sha256');
+  let bytes=0;
+  for(const p of paths){
+    const info=await stat(p);
+    demand(info.isFile(),'SOURCE_NOT_FILE');
+    bytes+=info.size;
+    demand(bytes<=150_000_000,'SOURCE_TOO_LARGE');
+    if(format==='SHP')digest.update(extname(p).toLowerCase()).update(Buffer.from([0]));
+    digest.update(await readFile(p));
+  }
+  return digest.digest('hex');
+}
+
 
 /** Jedynym nośnikiem topologii jest zatwierdzona operacja ENM, nie WMS i nie GIS. */
 export function zweryfikujPakiet(plan,geojson,manifest) {
@@ -175,7 +199,7 @@ export function czytajArgumenty(argv){
     demand(argv[i]?.startsWith('--')&&i+1<argv.length,'ARGUMENTS_INVALID');
     args[argv[i].slice(2)]=argv[i+1];
   }
-  for(const k of ['plan','geojson','manifest','report'])demand(typeof args[k]==='string','FILE_ARGUMENT_MISSING');
+  for(const k of ['source','plan','geojson','manifest','report'])demand(typeof args[k]==='string','FILE_ARGUMENT_MISSING');
   return args;
 }
 export async function main(argv){
@@ -183,6 +207,7 @@ export async function main(argv){
   const [plan,geojson,manifest]=await Promise.all(['plan','geojson','manifest'].map(async k=>
     JSON.parse(await readFile(args[k],'utf8'))));
   const validated=zweryfikujPakiet(plan,geojson,manifest);
+  demand(await fingerprintSource(plan.source.format,args.source)===manifest.source_sha256,'SOURCE_BYTES_MISMATCH');
   let report=validated;
   if(args.apply==='true'){
     demand(args.confirm==='ZATWIERDZAM_ZAPIS_ENM','PUBLISH_NOT_CONFIRMED');
