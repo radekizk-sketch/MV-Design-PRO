@@ -42,7 +42,7 @@ function dopasujWidok(map: MapLibreMap, zbior: ZbiorGIS): void {
   map.fitBounds(bounds, { padding: 42, maxZoom: 16, duration: 0 });
 }
 
-export default function MapaGisR11() {
+export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLibreMap | null>(null);
   const snapshotEnm = useSnapshotStore((s) => s.snapshot);
@@ -230,6 +230,7 @@ export default function MapaGisR11() {
     <div className="mvd-gis-r11" data-testid="mvd-gis-r11">
       <aside className="mvd-gis-r11-panel">
         <h2>Mapa sieci SN</h2>
+        <button type="button" onClick={onShowSld} disabled={!onShowSld} data-testid="gis-otworz-sld">Otwórz schemat tej sieci (SLD)</button>
         <p className="mvd-gis-r11-notice">Projektowa projekcja przestrzenna — bez zatwierdzania ENM.</p>
         <button type="button" onClick={() => {
           setObjects(przykładowaSiecSN()); setSelected(null);
