@@ -3,7 +3,7 @@
  * Funkcja występuje tylko po jawnym włączeniu VITE_MV_GIS_R11.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Map as MapLibreMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike } from 'maplibre-gl';
+import { Map as MapLibreMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type FilterSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { ZRODLA_PODKLADOW, przygotujRasterWms, type PlanRastra } from '../../../ui/gis/geoportalSourcesR07';
@@ -132,7 +132,7 @@ export default function MapaGisR11() {
 
   useEffect(() => {
     if (!ready || !map.current) return;
-    const filter: [string, [string, string], string] = ['==', ['get', 'id'], selected ?? '___brak___'];
+    const filter: FilterSpecification = ['==', ['get', 'id'], selected ?? '___brak___'];
     if (map.current.getLayer(GIS_SELECTED_LINE)) map.current.setFilter(GIS_SELECTED_LINE, filter);
     if (map.current.getLayer(GIS_SELECTED_POINT)) map.current.setFilter(GIS_SELECTED_POINT, filter);
   }, [selected, ready]);
