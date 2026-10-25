@@ -9,7 +9,7 @@ import os
 from hmac import compare_digest
 from typing import Any
 
-from api.klucz_twin_dep import KluczTwin
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from api.domain_ops_policy import (
     extract_catalog_binding, validate_and_materialize_catalog_binding,
 )
@@ -122,7 +122,7 @@ def _allowed_environment(request: Request) -> bool:
 
 @router.post("/cases/{case_id}/atomic-import")
 def import_gis_atomowo(
-    case_id: str, klucz: KluczTwin, body: GisAtomicRequest, request: Request,
+    case_id: str, body: GisAtomicRequest, request: Request,
 ) -> dict[str, Any]:
     """JEDEN zapis ENM dla 1–128 operacji; zakaz uruchomienia produkcyjnego.
 
@@ -136,6 +136,8 @@ def import_gis_atomowo(
         raise HTTPException(status_code=403, detail={"code": "GIS_R14_LAB_TOKEN_REQUIRED"})
     if not (body.engineer_approved and body.staged_geojson_verified and body.confirmed_ports):
         raise HTTPException(status_code=422, detail={"code": "GIS_APPROVAL_MISSING"})
+    # Dopiero PO odmowie dostępu odczytuj projekt oraz jakiekolwiek ENM.
+    klucz = klucz_twin_z_sciezki(case_id, request)
     operations = [item.model_dump(mode="python") for item in body.operations]
     if len({s["source_id"] for s in operations}) > 50000:
         raise HTTPException(status_code=422, detail={"code": "GIS_SOURCE_SCOPE_INVALID"})
