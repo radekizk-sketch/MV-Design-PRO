@@ -108,12 +108,14 @@ def _canonical_checked(snapshot: dict[str, Any], name: str, payload: dict[str, A
 
 def _allowed_environment(request: Request) -> bool:
     host = request.client.host if request.client else ""
-    environment = (
-        os.getenv("MV_DESIGN_ENV", "") or os.getenv("ENVIRONMENT", "") or os.getenv("APP_ENV", "")
-    ).lower()
+    environments = [
+        os.getenv(name, "").casefold()
+        for name in ("MV_DESIGN_ENV", "ENVIRONMENT", "APP_ENV")
+    ]
     return (
         os.getenv("MV_GIS_R14_ATOMIC_ENABLED") == "1"
-        and environment in {"development", "test", "testing"}
+        and any(value in {"development", "test", "testing"} for value in environments)
+        and not any(value in {"production", "prod"} for value in environments)
         and host in {"127.0.0.1", "::1", "localhost"}
     )
 
