@@ -72,7 +72,7 @@ export default function MapaGisR11() {
         style: MAPA_PUSTA,
         center: [16.9, 52.4],
         zoom: 12,
-        attributionControl: false,
+        attributionControl: true,
         renderWorldCopies: false,
       });
       map.current = instance;
