@@ -53,18 +53,21 @@ export function odczytajDowodR14(
     final.revision === snap.header.revision &&
     final.hash === snap.header.hash_sha256, 'EVIDENCE_STALE_OR_UNVERIFIED_ENM');
   if (!object(final)) throw new OdmowaDowoduR14('EVIDENCE_STALE_OR_UNVERIFIED_ENM');
-  refuse(Array.isArray(raw.runs) && raw.runs.length === 2 &&
-    ['LOAD_FLOW', 'SC_3F'].every((analysis) => raw.runs.some(
+  const runs = raw.runs;
+  refuse(Array.isArray(runs) && runs.length === 2 &&
+    ['LOAD_FLOW', 'SC_3F'].every((analysis) => runs.some(
       (r: unknown) => object(r) && r.analysis_type === analysis &&
         r.status === 'FINISHED' && r.model_hash === final.hash &&
         r.model_revision === final.revision
     )), 'EVIDENCE_RUNS_NOT_SAME_REVISION');
-  refuse(Array.isArray(raw.revisions) && raw.revisions.length > 0 &&
-    raw.revisions.length <= 128, 'EVIDENCE_STEP_COUNT');
+  const revisions = raw.revisions;
+  refuse(Array.isArray(revisions) && revisions.length > 0 &&
+    revisions.length <= 128, 'EVIDENCE_STEP_COUNT');
+  if (!Array.isArray(revisions)) throw new OdmowaDowoduR14('EVIDENCE_STEP_COUNT');
   const ids = new Set(options.geometry.features.map((f) => f.id));
   const seenStep = new Set<string>();
   const bySource = new Map<string, { refs: Set<string>; steps: string[] }>();
-  for (const step of raw.revisions) {
+  for (const step of revisions) {
     refuse(object(step) && typeof step.step_id === 'string' &&
       step.step_id.length > 0 && !seenStep.has(step.step_id) &&
       typeof step.source_id === 'string' && ids.has(step.source_id) &&
