@@ -489,6 +489,25 @@ function SceneSymbolNode(props: {
   // kolor BAZOWY z tabeli §3 (`baseSymbolStrokeColor` — napięcie/NOP), NIE
   // uniformalny `V3_STROKE_BASE` jak przed S3 — precedencja: stan źródła >
   // energizacja > NOP/napięcie (patrz nagłówek `theme/colorTokens.ts`).
+  // GPZ / QET-SCADA: ramka oznacza WYŁĄCZNIE położenie styku.
+  // Przy stanie brakującym/awaryjnym nie kreujemy trzeciej pozycji graficznej.
+  const gpzSwitchSymbolIds = new Set([
+    'breaker', 'lineBreaker', 'disconnector', 'loadBreakSwitch', 'earthSwitch', 'fuseSwitch',
+  ]);
+  const isGpzSwitch = gpzSwitchSymbolIds.has(symbol.symbolId)
+    && (symbol.meta?.parityKeys ?? []).some((key) =>
+      key === 'gpz.coupler' || key.startsWith('gpz.apparatus.cb')
+      || key.startsWith('gpz.apparatus.ds') || key.startsWith('gpz.apparatus.es'),
+    );
+  const validGpzSwitchState = symbol.state === 'closed' || symbol.state === 'open';
+  const gpzFrame = isGpzSwitch && validGpzSwitchState
+    ? {
+      x: symbol.x - 4, y: symbol.y - 4,
+      width: SYMBOL_DEFS[symbol.symbolId].width + 8,
+      height: SYMBOL_DEFS[symbol.symbolId].height + 8,
+      stroke: symbol.state === 'closed' ? '#F05260' : '#2CCF93',
+    }
+    : null;
   const sourceState = symbol.meta?.operationalState;
   const stroke = sourceState
     ? sourceStateOverlayColor(sourceState, palette)
@@ -503,6 +522,8 @@ function SceneSymbolNode(props: {
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
       data-owner-ref={symbol.meta?.ownerRef}
       data-device-ref={symbol.meta?.deviceRef}
+      data-position-validation={isGpzSwitch && !validGpzSwitchState ? 'nieustalone' : undefined}
+      data-switch-position={isGpzSwitch && validGpzSwitchState ? symbol.state : undefined}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
       // TR2W-BEZ-POLA (§0.C.5): kanał audytu stanu niekompletnego — sonda
@@ -515,7 +536,21 @@ function SceneSymbolNode(props: {
        *  obiektów kanwy. Dawny transparentny `<rect>` w tej grupie był drugim,
        *  niezależnym źródłem prawdy o celu kliku (i miał gabaryt ŚWIATA, więc
        *  przy oddaleniu kurczył się do kilku pikseli ekranu). */}
-      <Glyph
+      {gpzFrame && (
+        <rect
+          x={gpzFrame.x}
+          y={gpzFrame.y}
+          width={gpzFrame.width}
+          height={gpzFrame.height}
+          stroke={gpzFrame.stroke}
+          strokeWidth={2}
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+          data-testid="qet-scada-frame-gpz"
+        />
+      )}
+      {(!isGpzSwitch || validGpzSwitchState) && <Glyph
         x={symbol.x}
         y={symbol.y}
         state={symbol.state}
@@ -533,7 +568,7 @@ function SceneSymbolNode(props: {
         stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
         stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
         stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
-      />
+      />}
     </g>
   );
 }
