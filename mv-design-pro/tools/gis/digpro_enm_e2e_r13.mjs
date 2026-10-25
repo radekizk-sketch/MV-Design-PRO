@@ -29,7 +29,7 @@ export function zweryfikujPakiet(plan,geojson,manifest) {
   demand(obj(plan)&&plan.schema==='MV-DIGPRO-ENM-R13','PLAN_SCHEMA');
   demand(obj(manifest)&&manifest.schema==='MV-GIS-GPKG-PREVIEW-R12','MANIFEST_SCHEMA');
   demand(obj(plan.source)&&plan.source.system==='DIGPRO','SOURCE_SYSTEM');
-  demand(['GPKG','SHP'].includes(plan.source.format),'SOURCE_FORMAT');
+  demand(plan.source.format==='GPKG','SOURCE_FORMAT');
   demand(hex(plan.source.sha256)&&plan.source.sha256===manifest.source_sha256,'SOURCE_DIGEST');
   demand(plan.source.layer===manifest.source_layer,'SOURCE_LAYER');
   demand([2180,2176,2177,2178,2179].includes(manifest.source_epsg),'SOURCE_CRS');
