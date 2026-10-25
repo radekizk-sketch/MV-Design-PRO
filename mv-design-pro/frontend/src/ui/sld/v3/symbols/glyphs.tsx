@@ -434,6 +434,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
 export function CableHeadGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('cableHead', props)}>
+      <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <path d="M2,14 L14,14 L8,2 Z" fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
