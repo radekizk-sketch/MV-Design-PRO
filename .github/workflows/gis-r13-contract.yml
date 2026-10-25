@@ -1,0 +1,37 @@
+name: GIS R13 — DIGPRO → ENM → LF/SC contract
+
+on:
+  push:
+    branches:
+      - feature/gis-r13-digpro-enm-e2e-20261025
+    paths:
+      - 'mv-design-pro/tools/gis/**'
+      - '.github/workflows/gis-r13-contract.yml'
+  pull_request:
+    paths:
+      - 'mv-design-pro/tools/gis/**'
+      - '.github/workflows/gis-r13-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  digpro-enm-calculations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Pobierz repozytorium
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sprawdź składnię mostu i testów
+        working-directory: mv-design-pro/tools/gis
+        run: |
+          node --check digpro_enm_e2e_r13.mjs
+          node --check test_digpro_enm_e2e_r13.mjs
+      - name: Uruchom testy kontraktów bez fikcyjnego backendu produkcyjnego
+        working-directory: mv-design-pro/tools/gis
+        run: node --test test_digpro_enm_e2e_r13.mjs
