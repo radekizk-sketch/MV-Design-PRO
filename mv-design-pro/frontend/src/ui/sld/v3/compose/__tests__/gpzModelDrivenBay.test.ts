@@ -47,6 +47,28 @@ describe('GPZ — aparat pierwotny wyłącznie z ENM', () => {
     expect(composition.missingData).not.toContain('gpz.bay.primary_devices_missing');
   });
 
+
+  it('sam bezpiecznik FUSE nie staje się fikcyjnym rozłącznikiem', () => {
+    const withFuse = {
+      ...gpz,
+      sections: [{
+        ...gpz.sections[0],
+        bays: [{
+          ...bay,
+          primaryDevices: [
+            { kind: 'DS' as const, placement: 'UPSTREAM' as const, deviceRef: 'pole-a-01/ds1', switchState: 'open' as const },
+            { kind: 'FUSE' as const, placement: 'MIDSTREAM' as const, deviceRef: 'pole-a-01/f1' },
+            { kind: 'CABLE_HEAD' as const, placement: 'DOWNSTREAM' as const, deviceRef: 'pole-a-01/k1' },
+          ],
+        }],
+      }],
+    };
+    const composition = composeGpz(withFuse, { x: 0, y: 0 });
+    const devices = composition.symbols.filter((s) => s.meta.bayRef === bay.bayRef);
+    expect(devices.map((s) => s.symbolId)).toEqual(['disconnector', 'fuse', 'cableHead']);
+    expect(devices.some((s) => s.symbolId === 'fuseSwitch')).toBe(false);
+  });
+
   it('brak rejestru aparatów jest jawną luką, nie zgodą na manipulację', () => {
     const incomplete = {
       ...gpz,
