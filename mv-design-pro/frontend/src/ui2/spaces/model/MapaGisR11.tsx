@@ -11,6 +11,7 @@ import { wczytajGeoJSON, przykładowaSiecSN, wszystkiePunkty, type ZbiorGIS, typ
 import { odczytajWarstwyWms, type NazwaWarstwyR11 } from '../../../ui/gis/gisWmsR11';
 import { dopasujIdDoEnm } from '../../../ui/gis/gisEnmReadOnlyR11';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { useAppStateStore } from '../../../ui/app-state';
 import { emituj, subskrybuj } from '../../events';
 import './mapaGisR11.css';
 
@@ -42,10 +43,12 @@ function dopasujWidok(map: MapLibreMap, zbior: ZbiorGIS): void {
   map.fitBounds(bounds, { padding: 42, maxZoom: 16, duration: 0 });
 }
 
-export default function MapaGisR11() {
+export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLibreMap | null>(null);
   const snapshotEnm = useSnapshotStore((s) => s.snapshot);
+  const refreshEnm = useSnapshotStore((s) => s.refreshFromBackend);
+  const aktywnyPrzypadekId = useAppStateStore((s) => s.activeCaseId);
   const snapshotRef = useRef(snapshotEnm);
   useEffect(() => { snapshotRef.current = snapshotEnm; }, [snapshotEnm]);
   const rewizjaEnm = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
@@ -64,6 +67,20 @@ export default function MapaGisR11() {
 
   const element: ElementGIS | undefined = objects.features.find((f) => f.id === selected);
   const matches = element ? dopasujIdDoEnm(snapshotEnm, element.id) : [];
+
+  async function pokazBiezacySld(): Promise<void> {
+    if (!aktywnyPrzypadekId) {
+      setError('Wybierz przypadek obliczeniowy przed otwarciem schematu.');
+      return;
+    }
+    const response = await refreshEnm(aktywnyPrzypadekId);
+    if (!response?.snapshot || response.error) {
+      setError('Nie udało się odczytać aktualnego ENM. Schemat pozostaje nieotwarty.');
+      return;
+    }
+    setError(null);
+    onShowSld?.();
+  }
 
   function wybierzNaMapie(id: string) {
     setSelected(id);
@@ -230,6 +247,7 @@ export default function MapaGisR11() {
     <div className="mvd-gis-r11" data-testid="mvd-gis-r11">
       <aside className="mvd-gis-r11-panel">
         <h2>Mapa sieci SN</h2>
+        <button type="button" onClick={() => { void pokazBiezacySld(); }} disabled={!onShowSld || !aktywnyPrzypadekId} data-testid="gis-otworz-sld">Odśwież ENM i pokaż schemat SLD</button>
         <p className="mvd-gis-r11-notice">Projektowa projekcja przestrzenna — bez zatwierdzania ENM.</p>
         <button type="button" onClick={() => {
           setObjects(przykładowaSiecSN()); setSelected(null);

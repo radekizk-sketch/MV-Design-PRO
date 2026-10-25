@@ -176,6 +176,20 @@ describe('snapshotStore operationHistory', () => {
     });
   });
 
+  it('odczytuje ENM po zewnętrznym imporcie DIGPRO bez CAS starej rewizji', async () => {
+    useSnapshotStore.getState().setSnapshot(createSuccessResponse('Szyna przed importem', 'old-hash'));
+    mockedExecuteDomainOp.mockResolvedValue(
+      createSuccessResponse('Szyna po imporcie', 'new-hash'),
+    );
+
+    const result = await useSnapshotStore.getState().refreshFromBackend('case-1');
+
+    expect(mockedExecuteDomainOp).toHaveBeenCalledWith('case-1', 'refresh_snapshot', {}, '');
+    expect(result?.snapshot?.header?.hash_sha256).toBe('new-hash');
+    expect(useSnapshotStore.getState().snapshot?.header.hash_sha256).toBe('new-hash');
+    expect(useSnapshotStore.getState().snapshot?.buses?.[0]?.name).toBe('Szyna po imporcie');
+  });
+
   it('ignores stale refresh responses after switching case context', async () => {
     const oldRefresh = deferred<any>();
     const newRefresh = deferred<any>();

@@ -360,7 +360,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         caseId,
         opName,
         payload,
-        get().snapshot?.header.hash_sha256 ?? '',
+        '', // Odczyt refresh_snapshot NIE może podlegać CAS starego snapshotu po imporcie z zewnątrz.
       );
 
       if (get().caseId !== caseId) {
