@@ -31,3 +31,12 @@ Rdzeń R14: 13/13 PASS lokalnie (Python) — odmowa drugiego kroku nie powoduje 
 - WMS/GIS nie stanowią dowodu długości elektrycznej, uziemienia ani poprawnej topologii.
 
 **Decyzja wdrożeniowa: NO-GO.** Przed produkcją: auth/ABAC, bazowa transakcja wieloinstancyjna, prawdziwy DIGPRO, E2E GN01 + walidacja liczbowa IEC 60909 i LF, parytet GIS–SLD–wyniki–raport, odbiór wizualny B-02.
+## R14 — dowód importu wewnątrz mapy GIS
+
+Interfejs MapLibre został uzupełniony o lokalne wczytanie raportu JSON R14 (`gisEvidenceR14.ts` oraz `MapaGisR11.tsx`). Weryfikuje zgodność `case_id`, rewizji i hasha ENM, identyfikatorów źródłowych w bieżącym GeoJSON, rzeczywistych `ref_id`/`field_ref` w ENM i obu biegów LF/SC. Odrzuca raport częściowy, inny przypadek i raport z przestarzałego modelu.
+
+Projektant widzi kandydatów powiązania `source_id DIGPRO → ref_id ENM` i świadomie wskazuje obiekt do zaznaczenia na istniejącym SldCanvasV3. Wyboru nie zapisuje do topologii i nie utożsamia ze zweryfikowaniem portu. Plik dowodowy nadal pozostaje pochodzącym od użytkownika, **nieuwierzytelnionym** dokumentem. Nowa bateria testów TypeScript znajduje się w `frontend/src/ui/gis/__tests__/gisEvidenceR14.test.ts` — jej wynik CI jest niepotwierdzony.
+
+## Ostatnia lokalna weryfikacja
+
+25.10.2026: ponowione 13/13 testów rdzenia Python, `13 passed in 0.03s`. Pełna wersja w repo ma także testy API, integracji i interfejsu, które wymagają osobnej regresji. GitHub Actions jest w kolejce — nie ma zielonego dowodu całego systemu.
