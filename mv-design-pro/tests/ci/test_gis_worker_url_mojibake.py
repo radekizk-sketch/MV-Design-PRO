@@ -17,11 +17,11 @@ def test_worker_vite_is_not_mojibake() -> None:
 
 
 def test_real_damaged_polish_word_is_still_detected() -> None:
-    assert GUARD.znajdz_trafienia(["Brak napi?cia w polu SN"])
+    assert GUARD.znajdz_trafienia(["Brak napi\u003fcia w polu SN"])
 
 
 def test_other_query_syntax_is_not_exempted() -> None:
-    assert GUARD.znajdz_trafienia(["Widoczne po?aczenie przewodu"])
+    assert GUARD.znajdz_trafienia(["Widoczne po\u003faczenie przewodu"])
 
 
 def test_existing_query_parameter_still_accepted() -> None:
