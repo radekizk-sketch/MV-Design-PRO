@@ -47,6 +47,7 @@ function dopasujWidok(map: MapLibreMap, zbior: ZbiorGIS): void {
 
 export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   const container = useRef<HTMLDivElement | null>(null);
+  const geometryEpoch = useRef(0);
   const map = useRef<MapLibreMap | null>(null);
   const snapshotEnm = useSnapshotStore((s) => s.snapshot);
   const refreshEnm = useSnapshotStore((s) => s.refreshFromBackend);
@@ -224,9 +225,11 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
   async function importujGeoJSON(file: File | undefined) {
     if (!file) return;
     if (file.size > 5_000_000) { setError('Plik przekracza 5 MB.'); return; }
+    const revision = ++geometryEpoch.current;
     try {
       const parsed: unknown = JSON.parse(await file.text());
       const normalized = wczytajGeoJSON(parsed);
+      if (revision !== geometryEpoch.current) throw new Error('Dane mapy zostały zmienione.');
       setObjects(normalized);
       setSelected(null);
       setBackendProof(false);
@@ -243,6 +246,7 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
 
   async function wczytajDowod(file: File | undefined) {
     if (!file) return;
+    const revision = geometryEpoch.current;
     if (file.size > 1_000_000) {
       setError('Raport R14 przekracza dopuszczalny rozmiar 1 MB.');
       return;
@@ -255,7 +259,8 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
       });
       if (!aktywnyPrzypadekId) throw new Error('Brak wybranego przypadku ENM.');
       const verified = await zweryfikujWynikiBackendR15(raw, aktywnyPrzypadekId);
-      if (verified.modelHash !== useSnapshotStore.getState().snapshot?.header.hash_sha256 ||
+      if (revision !== geometryEpoch.current ||
+          verified.modelHash !== useSnapshotStore.getState().snapshot?.header.hash_sha256 ||
           verified.caseId !== useAppStateStore.getState().activeCaseId) {
         throw new Error('Przypadek lub migawka ENM zmieniły się podczas sprawdzania.');
       }
@@ -310,7 +315,8 @@ export default function MapaGisR11({ onShowSld }: { onShowSld?: () => void }) {
         <button type="button" onClick={() => { void pokazBiezacySld(); }} disabled={!onShowSld || !aktywnyPrzypadekId} data-testid="gis-otworz-sld">Odśwież ENM i pokaż schemat SLD</button>
         <p className="mvd-gis-r11-notice">Projektowa projekcja przestrzenna — bez zatwierdzania ENM.</p>
         <button type="button" onClick={() => {
-          setObjects(przykładowaSiecSN()); setSelected(null); setDowod(null); setBackendProof(false);
+          geometryEpoch.current += 1;
+      setObjects(przykładowaSiecSN()); setSelected(null); setDowod(null); setBackendProof(false);
           setFileStatus('PRÓBKA SYNTETYCZNA — brak rzeczywistych urządzeń.');
         }}>Załaduj sieć demonstracyjną</button>
         <label>GeoJSON WGS 84 — lokalny plik
