@@ -110,7 +110,7 @@ ZNAK_ZASTEPCZY_W_SLOWIE = re.compile(rf"[{_LITERA}]\?[{_LITERA}]")
 
 #: Parametr zapytania w adresie ("/api/quality/flicker?run_id=") \u2014 to NIE jest
 #: uszkodzenie tekstu, tylko dokumentacja koncowki. Wycinany przed sprawdzeniem.
-_PARAMETR_ZAPYTANIA = re.compile(r"[\w./{}-]+\?[\w]+=")
+_PARAMETR_ZAPYTANIA = re.compile(r"[\w./{}-]+\?(?:[\w]+=|worker&url\b)")
 
 #: Kwantyfikator wyrazenia regularnego po sekwencji ucieczki (`\\s?`, `\\d?`,
 #: `\\w?`) \u2014 to skladnia, nie uszkodzone slowo. Wzorzec `[litera]?[litera]`
