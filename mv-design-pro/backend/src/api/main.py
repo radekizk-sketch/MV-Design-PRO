@@ -218,6 +218,22 @@ if os.getenv("MV_ENABLE_SYNTHETIC_GIS_LAB_R06") == "1":
     app.include_router(gis_lab_router)
 
 
+# R14: pojedynczy zapis wielu operacji DIGPRO, wyłącznie kontrolowane laboratorium.
+# Brak autoryzacji korporacyjnej / izolacji między procesami — NIE DLA PRODUKCJI.
+if os.getenv("MV_GIS_R14_ATOMIC_ENABLED") == "1":
+    if not any(
+        os.getenv(name, "").casefold() in {"development", "test", "testing"}
+        for name in ("MV_DESIGN_ENV", "ENVIRONMENT", "APP_ENV")
+    ) or any(
+        os.getenv(name, "").casefold() in {"production", "prod"}
+        for name in ("MV_DESIGN_ENV", "ENVIRONMENT", "APP_ENV")
+    ):
+        raise RuntimeError("GIS_R14_ATOMIC_FORBIDDEN_OUTSIDE_TEST")
+    from api.gis_atomic_r14 import router as gis_atomic_r14_router
+
+    app.include_router(gis_atomic_r14_router)
+
+
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint."""
