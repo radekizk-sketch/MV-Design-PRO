@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { zweryfikujPakiet, weryfikujSnapshot, wykonajE2E, klientApi, OdmowaR13, stagedDigest }
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { zweryfikujPakiet, weryfikujSnapshot, wykonajE2E, klientApi, OdmowaR13, stagedDigest, fingerprintSource }
   from './digpro_enm_e2e_r13.mjs';
 const A='a'.repeat(64), B='b'.repeat(64), C='c'.repeat(64);
 const ID='12345678-1234-1234-1234-123456789abc';
@@ -149,4 +153,28 @@ test('natywne DIGPRO SHP ma własny manifest, nie jest GPKG',()=>{
   z.plan.source.format='GPKG';
   assert.throws(()=>zweryfikujPakiet(z.plan,z.geojson,z.manifest),
     e=>e.code==='SOURCE_FORMAT');
+});
+
+test('fizyczne bajty pliku GPKG muszą odpowiadać manifestowi', async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'digpro-gpkg-'));
+  const path=join(dir,'SYN.gpkg');
+  await writeFile(path,'SYNTHETIC');
+  const expected=createHash('sha256').update('SYNTHETIC').digest('hex');
+  assert.equal(await fingerprintSource('GPKG',path),expected);
+});
+test('dla SHP odcisk obejmuje DBF, PRJ, SHP i SHX',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'digpro-shp-'));
+  const path=join(dir,'SYN.shp');
+  const digest=createHash('sha256');
+  for(const ext of ['.dbf','.prj','.shp','.shx']){
+    await writeFile(path.slice(0,-4)+ext,ext);
+    digest.update(ext).update(Buffer.from([0])).update(ext);
+  }
+  assert.equal(await fingerprintSource('SHP',path),digest.digest('hex'));
+});
+test('niezgodne rozszerzenie nie pozwala na obejście odcisku',async()=>{
+  await assert.rejects(
+    ()=>fingerprintSource('GPKG','/tmp/SYN.shp'),
+    e=>e.code==='SOURCE_EXTENSION',
+  );
 });
