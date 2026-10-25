@@ -27,11 +27,12 @@ const EARTHED: ApparatusState = {
 };
 
 describe('attemptOperation — close_cb', () => {
-  it('allowed gdy DS closed + ES open', () => {
+  it('odmowa zamknięcia CB bez oceny źródeł i synchronizmu', () => {
     const ds_closed: ApparatusState = { ...ALL_OPEN, disconnector: 'closed' };
     const r = attemptOperation(ds_closed, { type: 'close_cb' });
-    expect(r.isAllowed).toBe(true);
-    expect(r.newState?.circuitBreaker).toBe('closed');
+    expect(r.isAllowed).toBe(false);
+    expect(r.newState).toBeUndefined();
+    expect(r.warningPL).toContain('synchronizmu');
   });
 
   it('blokowane gdy DS open', () => {
@@ -71,9 +72,19 @@ describe('attemptOperation — DS', () => {
     expect(r.isAllowed).toBe(false);
   });
 
-  it('close_ds allowed gdy ES open + CB open', () => {
+  it('open_ds odrzucone mimo CB open — brak potwierdzenia stanu bezprądowego', () => {
+    const state: ApparatusState = { ...ALL_OPEN, disconnector: 'closed' };
+    const r = attemptOperation(state, { type: 'open_ds' });
+    expect(r.isAllowed).toBe(false);
+    expect(r.warningPL).toContain('bezprądowego');
+    expect(r.newState).toBeUndefined();
+  });
+
+  it('close_ds odrzucone także przy CB open — możliwy prąd zwrotny', () => {
     const r = attemptOperation(ALL_OPEN, { type: 'close_ds' });
-    expect(r.isAllowed).toBe(true);
+    expect(r.isAllowed).toBe(false);
+    expect(r.newState).toBeUndefined();
+    expect(r.warningPL).toContain('całej sieci');
   });
 });
 
