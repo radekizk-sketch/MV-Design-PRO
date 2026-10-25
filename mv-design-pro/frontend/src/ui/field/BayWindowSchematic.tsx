@@ -1,169 +1,175 @@
+/**
+ * Schemat pola SN GPZ: projekcja ENM bez sztucznych ikon.
+ *
+ * CT — DWUPORTOWY ELEMENT TORU PIERWOTNEGO.
+ * VT — ELEMENT ODGAŁĘZIENIA POMIAROWEGO; nigdy szeregowo z CT.
+ * ES — UZIEMNIK, nie zamiennik odłącznika; bez portu połączenia z ENM
+ *      przedstawiany jako nieprzyłączony, nigdy jako gotowy tor ochronny.
+ *
+ * Nie wydaje poleceń operacji; backend posiada właściwe reguły blokad.
+ */
+import { useMemo } from 'react';
 import type { FieldReadModelItem } from './useFieldReadModel';
-import type { BayPrimaryDevice } from '../../types/enm';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { deviceKindLabel } from './fieldLabels';
+import { CadSymbol } from '../sld/v3/cad/CadSymbol';
+import { ELECTRICAL_CAD_SYMBOL_REGISTRY } from '../sld/v3/cad/cadSymbolRegistry';
+import {
+  zlozPoleSn, jestLacznikiemSn, type ElementPolaSn,
+} from './bayPrimaryComposition';
 
 interface BayWindowSchematicProps {
   item: FieldReadModelItem;
 }
+const PAPER='#102533',INK='#e2eef7',BUS='#4acbe2';
+const FRAME:Readonly<Record<'ZAMKNIETY'|'OTWARTY',string>>={
+  ZAMKNIETY:'#F05260',OTWARTY:'#2CCF93',
+};
 
-/** Nazwa aparatu — JEDNA tablica nazw rodzajów aparatów pola (`fieldLabels.deviceKindLabel`). */
-function deviceLabel(device: BayPrimaryDevice): string {
-  return deviceKindLabel(device.kind);
-}
-
-function deviceY(device: BayPrimaryDevice, index: number): number {
-  if (device.placement === 'UPSTREAM') {
-    return 58 + index * 10;
-  }
-  if (device.placement === 'DOWNSTREAM') {
-    return 142 + index * 10;
-  }
-  if (device.placement === 'GROUND_BRANCH') {
-    return 116 + index * 8;
-  }
-  if (device.placement === 'OFF_PATH') {
-    return 104 + index * 8;
-  }
-  return 94 + index * 10;
-}
-
-function DeviceSymbol({ device, index }: { device: BayPrimaryDevice; index: number }) {
-  const y = deviceY(device, index);
-  const actualState = device.switch_state?.actual_state;
-  const color = actualState === 'otwarty' || actualState === 'otwarty_naped_rozbrojony' || actualState === 'awaria'
-    ? '#ef4444'
-    : '#22c55e';
-  const commonProps = {
-    role: 'button',
-    tabIndex: 0,
-    'aria-label': deviceLabel(device),
-    'data-testid': `bay-device-${device.kind.toLowerCase()}`,
-    'data-device-ref': device.device_ref,
+function geometraCad(device:ElementPolaSn){
+  if(!device.cadId)return null;
+  const def=ELECTRICAL_CAD_SYMBOL_REGISTRY[device.cadId];
+  const k=Math.min(device.width/def.nominalWidth,device.height/def.nominalHeight);
+  const x=device.x+(device.width-def.nominalWidth*k)/2;
+  const y=device.y+(device.height-def.nominalHeight*k)/2;
+  const port=(name:'a'|'b')=>{
+    const t=def.terminals.find(p=>p.name===name);
+    return t?{x:x+t.x*k,y:y+t.y*k}:null;
   };
-
-  if (device.kind === 'CB') {
-    return (
-      <g {...commonProps}>
-        <rect x={86} y={y - 8} width={16} height={16} fill={color} stroke="#d8e7f7" strokeWidth={1.5} />
-        <rect x={74} y={y - 14} width={40} height={28} fill="transparent" />
-      </g>
-    );
-  }
-
-  if (device.kind === 'LOAD_SWITCH') {
-    return (
-      <g {...commonProps}>
-        <rect
-          x={83}
-          y={y - 11}
-          width={22}
-          height={22}
-          fill={color}
-          stroke="#d8e7f7"
-          strokeWidth={1}
-          transform={`rotate(45 94 ${y})`}
-        />
-        <rect x={74} y={y - 18} width={40} height={36} fill="transparent" />
-      </g>
-    );
-  }
-
-  if (device.kind === 'DS') {
-    return (
-      <g {...commonProps}>
-        <circle cx={94} cy={y} r={8} fill={color} stroke="#d8e7f7" strokeWidth={1.5} />
-        <rect x={74} y={y - 16} width={40} height={32} fill="transparent" />
-      </g>
-    );
-  }
-
-  if (device.kind === 'ES') {
-    return (
-      <g {...commonProps}>
-        <path d={`M94 ${y} H126 V${y + 20}`} stroke="#d8e7f7" strokeWidth={2} fill="none" />
-        <path d={`M118 ${y + 20} h16 M121 ${y + 24} h10 M124 ${y + 28} h4`} stroke="#d8e7f7" strokeWidth={1.5} />
-        <rect x={110} y={y - 16} width={38} height={52} fill="transparent" />
-      </g>
-    );
-  }
-
-  if (device.kind === 'CT' || device.kind === 'VT') {
-    const stroke = device.kind === 'CT' ? '#f59e0b' : '#38bdf8';
-    return (
-      <g {...commonProps}>
-        <circle cx={94} cy={y} r={9} fill="none" stroke={stroke} strokeWidth={2.5} />
-        {device.kind === 'VT' && <circle cx={105} cy={y} r={9} fill="none" stroke={stroke} strokeWidth={2} />}
-        <rect x={72} y={y - 16} width={52} height={32} fill="transparent" />
-      </g>
-    );
-  }
-
-  if (device.kind === 'FUSE') {
-    return (
-      <g {...commonProps}>
-        <rect x={87} y={y - 13} width={6} height={26} fill="#e5e7eb" stroke="#d8e7f7" strokeWidth={1} />
-        <rect x={96} y={y - 13} width={6} height={26} fill="#e5e7eb" stroke="#d8e7f7" strokeWidth={1} />
-        <rect x={78} y={y - 18} width={34} height={36} fill="transparent" />
-      </g>
-    );
-  }
-
+  return {x,y,k,a:port('a'),b:port('b')};
+}
+function AparatCad({element}: {element:ElementPolaSn}):JSX.Element{
+  const g=geometraCad(element);
+  const lacznik=jestLacznikiemSn(element.kind);
+  const rysuj=!!g && (!lacznik||element.polozenie!==null);
   return (
-    <g {...commonProps}>
-      <circle cx={94} cy={y} r={6} fill={color} />
-      <rect x={78} y={y - 14} width={32} height={28} fill="transparent" />
+    <g data-device-ref={element.ref} data-device-kind={element.kind}
+       data-testid={`bay-device-${element.kind.toLowerCase()}`}
+       data-tor={element.tor}
+       data-position={element.polozenie??'BRAK_DANYCH'}>
+      {lacznik&&element.polozenie&&(
+        <rect x={element.x-7} y={element.y-6} rx={5}
+          width={element.width+14} height={element.height+12}
+          stroke={FRAME[element.polozenie]} strokeWidth={1.7}
+          fill={FRAME[element.polozenie]} fillOpacity={0.07}
+          data-cad-overlay="mechanical-position"/>
+      )}
+      {rysuj&&g&&element.cadId&&(
+        <CadSymbol id={element.cadId}
+          x={g.x} y={g.y} scale={g.k}
+          state={element.polozenie==='OTWARTY'?'open':'closed'}
+          ink={INK} paper={PAPER}
+          strokePx={0.85} nonScalingStroke={false}
+          testId={`bay-cad-${element.ref}`}/>
+      )}
+      {!rysuj&&(
+        <text x={element.x-20} y={element.y+20}
+          fontSize={10} fill="#f6bd75">Brak danych CAD/stanu</text>
+      )}
+      <text x={element.x+element.width+20}
+        y={element.y+element.height/2+3}
+        fontSize={10} fill="#bfd6e4">
+        {element.designation}
+      </text>
     </g>
   );
 }
-
-export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
-  const baseModel = item.canonical_model.base_model;
-  const devices = baseModel.primary_devices;
-  const role = baseModel.bay_role;
-  const hasDevices = devices.length > 0;
-
+function Wires({items,busY,x,direction,height}:{
+  items:readonly ElementPolaSn[];
+  busY:number;x:number;height:number;
+  direction:'OD_SZYN'|'DO_SZYN';
+}):JSX.Element {
+  const ports=items.map(d=>({
+    d,g:geometraCad(d),
+    valid:!!d.cadId&&(!jestLacznikiemSn(d.kind)||d.polozenie!==null),
+  }));
+  const lines:JSX.Element[]=[];
+  const join=(key:string,a:number,b:number)=>{
+    if(Math.abs(a-b)>0.01)lines.push(
+      <line key={key} x1={x} x2={x} y1={a} y2={b}
+        stroke={INK} strokeWidth={1.75} data-primary-wire="true"/>
+    );
+  };
+  const first=ports[0];
+  if(first?.valid){
+    const t=direction==='OD_SZYN'?first.g?.a:first.g?.b;
+    if(t)join('bus',busY,t.y);
+  }
+  for(let i=0;i<ports.length-1;i++){
+    const a=ports[i],b=ports[i+1];
+    if(!a.valid||!b.valid)continue;
+    const from=direction==='OD_SZYN'?a.g?.b:a.g?.a;
+    const to=direction==='OD_SZYN'?b.g?.a:b.g?.b;
+    if(from&&to)join(`seg-${i}`,from.y,to.y);
+  }
+  const last=ports[ports.length-1];
+  if(last?.valid){
+    const t=direction==='OD_SZYN'?last.g?.b:last.g?.a;
+    if(t)join('end',t.y,direction==='OD_SZYN'?height-24:24);
+  }
+  return <g data-testid="bay-primary-wires">{lines}</g>;
+}
+export function BayWindowSchematic({item}:BayWindowSchematicProps):JSX.Element{
+  const source=item.canonical_model.base_model;
+  const plan=useMemo(()=>zlozPoleSn(source),[source]);
   return (
-    <section
-      aria-label="Schemat kanoniczny pola SN"
-      className="mx-4 mb-4 rounded-lg border border-slate-200 bg-white p-3 text-slate-900"
-    >
+    <section aria-label="Schemat kanoniczny pola SN"
+      className="mx-4 mb-4 rounded-lg border border-slate-200 bg-white p-3 text-slate-900">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
-            Schemat Kanoniczny
+            Schemat kanoniczny · ENM
           </h4>
           <p className="mt-1 text-xs text-slate-600">{item.bay_name}</p>
         </div>
         <span className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600">
-          {fieldRoleLabelPl(role)}
+          {fieldRoleLabelPl(source.bay_role)}
         </span>
       </div>
-
-      <svg
-        data-testid="bay-svg-renderer"
-        viewBox="0 0 188 220"
-        className="h-64 w-full rounded border border-slate-200 bg-scada-bg"
-        role="img"
-        aria-label={`Schemat pola ${item.bay_name}`}
-      >
-        <rect x={50} y={16} width={88} height={188} fill="#1f2933" stroke="#334155" strokeWidth={1} />
-        <line x1={24} y1={34} x2={164} y2={34} stroke="#22c55e" strokeWidth={5} />
-        <line x1={94} y1={34} x2={94} y2={190} stroke="#d8e7f7" strokeWidth={2.5} />
-        <text x={58} y={26} fill="#f8fafc" fontSize={11} fontWeight={700}>
-          {item.bay_name}
-        </text>
-        {hasDevices
-          ? devices.map((device, index) => (
-            <DeviceSymbol key={device.device_ref} device={device} index={index} />
-          ))
-          : (
-            <text x={94} y={112} fill="#f59e0b" fontSize={10} textAnchor="middle">
-              Brak aparatów w kanonie pola
+      <div className="overflow-x-auto">
+        <svg data-testid="bay-svg-renderer"
+          viewBox={`0 0 ${plan.width} ${plan.height}`}
+          style={{width:'100%',minWidth:340,maxHeight:900}}
+          role="img" aria-label={`Schemat pola ${item.bay_name}`}>
+          <rect x={1} y={1} width={plan.width-2} height={plan.height-2}
+            rx={6} fill={PAPER} stroke="#385468"/>
+          <line x1={45} x2={225} y1={plan.busY} y2={plan.busY}
+            stroke={BUS} strokeWidth={3} data-testid="bay-busbar"/>
+          <Wires items={plan.primary} busY={plan.busY} x={plan.fieldX}
+            height={plan.height} direction={plan.direction}/>
+          {plan.primary.map(d=><AparatCad key={d.ref} element={d}/>)}
+          {plan.lateral.length>0&&(
+            <g data-testid="bay-side-devices">
+              <text x={256} y={38} fontSize={10} fill="#9cc5d7">
+                Odgałęzienia
+              </text>
+              {plan.lateral.map(d=><AparatCad key={d.ref} element={d}/>)}
+            </g>
+          )}
+          {plan.primary.length===0&&(
+            <text x={plan.fieldX} y={plan.height/2}
+              fill="#f6bd75" textAnchor="middle" fontSize={12}>
+              Nie zdefiniowano toru
             </text>
           )}
-        <path d="M84 190 h20 l-10 14 z" fill="none" stroke="#d8e7f7" strokeWidth={1.5} />
-      </svg>
+        </svg>
+      </div>
+      {plan.issues.length>0&&(
+        <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950"
+          data-testid="bay-readiness-gaps" role="status">
+          <strong>Niekompletne dane aparatury i połączeń — odbiór wstrzymany</strong>
+          <ul className="mt-1 list-inside list-disc">
+            {plan.issues.map((p,i)=>(
+              <li key={`${p.kod}-${p.ref}-${i}`}>{p.ref}: {p.opis}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="mt-2 text-[11px] text-slate-500">
+        Podgląd z istniejącego ENM. Brak portu odgałęzienia nie uprawnia
+        do narysowania fikcyjnego połączenia. Kolor ramki oznacza wyłącznie
+        położenie mechaniczne aparatu. Brak poleceń do rzeczywistego GPZ.
+      </p>
     </section>
   );
 }
