@@ -135,7 +135,9 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
     case 'TRANSFORMER_DEVICE':
       return 'transformer2W';
     case 'FUSE':
-      return 'fuseSwitch';
+      // Samodzielna wkładka topikowa nie jest rozłącznikiem bezpiecznikowym:
+      // nie wolno dopowiadać aparatu łączeniowego nieobecnego w ENM.
+      return 'fuse';
     case 'SURGE_ARRESTER':
       // F9.6 (§12.5, V12K-028): SA WYŁĄCZNIE ze ścieżki danych — mapowanie
       // istnieje tylko tutaj, NIGDY w `apparatusSymbolsForRole` (konwencja).

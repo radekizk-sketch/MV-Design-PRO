@@ -672,6 +672,47 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
     expect(props.couplers[0].rightSectionId).toBe('s2');
   });
 
+  it('sprzęgło: pozycja wyłącznie z jednoznacznego CB w ENM, nie z cudzego sygnału', () => {
+    const cb = primaryDevice({
+      device_ref: 'spr/cb-1',
+      kind: 'CB',
+      placement: 'MIDSTREAM',
+      switch_state: { actual_state: 'otwarty' } as BayPrimaryDevice['switch_state'],
+    });
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'A', bus_ref: 'bus-15', right_coupler_ref: 'spr' },
+          { section_id: 's2', order: 2, name: 'B', bus_ref: 'bus-15', left_coupler_ref: 'spr' },
+        ],
+      })],
+      buses: [bus('bus-15', 15)],
+      bays: [bay('spr', 'COUPLER', 'g', 'bus-15', {
+        primary_devices: [cb],
+        runtime_state: {
+          primary_device_states: {
+            'obcy-cb': { actual_state: 'zamkniety' },
+            'spr/cb-1': { actual_state: 'zamkniety' },
+          },
+        } as never,
+      })],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.couplers[0].breakerDeviceRef).toBe('spr/cb-1');
+    expect(props.couplers[0].closedState).toBe('open');
+
+    const noPrimaryDevice = {
+      ...enm,
+      bays: [bay('spr', 'COUPLER', 'g', 'bus-15', {
+        runtime_state: { primary_device_states: { 'obcy-cb': { actual_state: 'zamkniety' } } } as never,
+      })],
+    };
+    const invalid = buildCanonicalGpzProps(noPrimaryDevice, 'g', { x: 0, y: 0 });
+    expect(invalid.couplers[0].breakerDeviceRef).toBeUndefined();
+    expect(invalid.couplers[0].closedState).toBe('unknown');
+  });
+
   it('1 sekcja → couplers=[]', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),

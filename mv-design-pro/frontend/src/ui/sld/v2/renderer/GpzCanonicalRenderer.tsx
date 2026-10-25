@@ -214,6 +214,8 @@ export interface BayMeasurements {
 }
 
 export interface CanonicalGpzCoupler {
+  /** Unikatowy ref rzeczywistego wyłącznika z Bay.primary_devices, jeżeli istnieje. */
+  readonly breakerDeviceRef?: string;
   readonly couplerId: string;
   readonly leftSectionId: string;
   readonly rightSectionId: string;

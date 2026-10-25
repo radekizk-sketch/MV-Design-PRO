@@ -3501,6 +3501,20 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // SEKCJA przez composeGpz; fixtura ma 1 sekcję (ryzyko nie manifestuje
     // się) — WIĄŻĄCA notatka dla >1 sekcji, patrz raport F6a.
     portCaptions.push(...gpzComposition.labels.fieldCaptions);
+    // Wersja produkcyjna nie może przemilczeć niekompletnych aparatów GPZ.
+    // Braki są danymi diagnostycznymi sceny, a nie trzecim stanem ramki.
+    if (gpzComposition.missingData.includes('gpz.bay.primary_devices_missing')) {
+      stopNotes.push(
+        'GPZ SN: co najmniej jedno pole nie ma zatwierdzonej listy aparatów pierwotnych ENM. ' +
+        'Konwencja rysunkowa nie uprawnia do operacji łączeniowych ani obliczeń zależnych od położenia aparatów.',
+      );
+    }
+    if (gpzComposition.missingData.includes('gpz.coupler.breaker_device_ref_missing')) {
+      stopNotes.push(
+        'GPZ SN: brak jednoznacznego identyfikatora wyłącznika sprzęgła w ENM. ' +
+        'Tor narysowano z rozłączonymi odcinkami do portów aparatu, lecz sterowanie pozostaje nieweryfikowalne.',
+      );
+    }
     if (gpzComposition.sections.length > 1) {
       stopNotes.push(
         'f6-1 NIEROZWIĄZANE: GPZ ma >1 sekcję — kolorowanie wierszy fieldCaptions jest PER SEKCJA (composeGpz, F5b zamrożony); F6a nie dowodzi rozłączności między sekcjami globalnie.',

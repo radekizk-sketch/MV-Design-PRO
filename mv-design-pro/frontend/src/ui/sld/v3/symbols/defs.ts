@@ -151,6 +151,7 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'lv', x: 16, y: 40, dir: 'S' },
   ], 'Transformator dwuuzwojeniowy'),
   cableHead: def('cableHead', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'line', x: 8, y: 16, dir: 'S' },
   ], 'Głowica kablowa'),
   jointSleeve: def('jointSleeve', 16, 16, [

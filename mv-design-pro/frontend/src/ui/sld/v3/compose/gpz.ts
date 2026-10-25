@@ -359,6 +359,22 @@ function measurementFieldSpec(): readonly FieldApparatusSpec[] {
 }
 
 function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatusSpec[] {
+  // Przy obecności aparatów ENM rysunek korzysta WYŁĄCZNIE z ich kolejności,
+  // funkcji i liczby. Nie dokładamy DS/CB/CT/VT/ES z szablonu roli pola.
+  const explicit = bay.primaryDevices
+    ?.map((device) => symbolIdForPrimaryDeviceKind(device.kind))
+    .filter((symbolId): symbolId is SymbolId => symbolId != null) ?? [];
+  if (explicit.length > 0) {
+    return explicit.map((symbolId) => ({
+      symbolId,
+      parityKeys: symbolId === 'breaker' ? ['gpz.apparatus.cb']
+        : symbolId === 'disconnector' ? ['gpz.apparatus.ds']
+        : symbolId === 'earthSwitch' ? ['gpz.apparatus.es.side']
+        : symbolId === 'currentTransformer' ? ['gpz.apparatus.ct']
+        : symbolId === 'cableHead' ? ['gpz.apparatus.cable_head']
+        : [],
+    }));
+  }
   const base = ((): readonly FieldApparatusSpec[] => {
     switch (bay.fieldRole) {
       case 'LINE_IN':
@@ -422,6 +438,10 @@ interface FieldStack {
   /** F10.1 (spec §18.1/§18.2): odcinki odgałęzień bocznych ES/VT/SA — poziomy
    *  jog od węzła toru głównego do portu N aparatu bocznego. */
   readonly branchSegments: readonly { readonly points: readonly RouteVertex[] }[];
+  /** Ciągłość geometryczna: jawne przewody między portami kolejnych aparatów. */
+  readonly mainSegments: readonly { readonly points: readonly RouteVertex[] }[];
+  /** Brak obu portów nie może skutkować fikcyjnym mostkowaniem. */
+  readonly missingMainConnections: number;
 }
 
 function portsInWorld(symbolId: SymbolId, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -569,6 +589,22 @@ function buildFieldStack(
     y += def.height + (stackIndex < stackSpecs.length - 1 ? APPARATUS_STACK_VERTICAL_GAP : 0);
   });
 
+  // Każdy prześwit między kolejnymi aparatami toru głównego jest fizycznym
+  // przewodem od portu S do portu N. Samo sąsiedztwo na SVG nie łączy zacisków.
+  const mainSegments: { readonly points: readonly RouteVertex[] }[] = [];
+  let missingMainConnections = 0;
+  for (let i = 0; i < mainInstances.length - 1; i++) {
+    const upstream = mainInstances[i];
+    const downstream = mainInstances[i + 1];
+    const from = Object.values(upstream.ports).find((port) => port.dir === 'S');
+    const to = Object.values(downstream.ports).find((port) => port.dir === 'N');
+    if (!from || !to) {
+      missingMainConnections++;
+      continue;
+    }
+    mainSegments.push({ points: [{ x: from.x, y: from.y }, { x: to.x, y: to.y }] });
+  }
+
   // Odgałęzienia boczne (§18.1) — identyczna arytmetyka co
   // `compose/station.ts::buildBayStack` i `bayApparatusPlanFootprint`.
   const branchSegments: { readonly points: readonly RouteVertex[] }[] = [];
@@ -622,7 +658,7 @@ function buildFieldStack(
     // ES/VT) — fallback na topPort, zachowując poprzednie zabezpieczenie.
     bottomPort = topPort;
   }
-  return { instances, topPort, bottomPort, branchSegments };
+  return { instances, topPort, bottomPort, branchSegments, mainSegments, missingMainConnections };
 }
 
 // ---------------------------------------------------------------------------
@@ -902,6 +938,19 @@ export function composeGpz(
   const sectionMetas: GpzSectionMeta[] = [];
   const transformerMetas: GpzTransformerMeta[] = [];
 
+  const addMainConnections = (
+    stack: FieldStack,
+    ownerRef: string,
+    meta: GpzElementMeta,
+  ): void => {
+    stack.mainSegments.forEach((connection, i) => {
+      segments.push({ ownerRef: `${ownerRef}#connection-${i}`, points: connection.points, meta });
+    });
+    if (stack.missingMainConnections > 0) {
+      missingData.push('gpz.bay.apparatus_ports_missing');
+    }
+  };
+
   const tag = (keys: readonly string[]): void => keys.forEach((k) => parityKeys.add(k));
 
   const hvSections = props.hvSections ?? [];
@@ -936,6 +985,7 @@ export function composeGpz(
           { sectionId: hvSection.sectionId, bayRef: bay.bayRef },
         );
         symbols.push(...stack.instances);
+        addMainConnections(stack, bay.bayRef, { parityKeys: ['gpz.bay.power_path'], sectionId: hvSection.sectionId, bayRef: bay.bayRef, voltageClass: 'hv' });
         stack.instances.forEach((instance) => tag(instance.meta.parityKeys));
         // F10.1 (spec §18.1): odcinki odgałęzień bocznych ES/VT/SA.
         stack.branchSegments.forEach((branch, bi) => {
@@ -1100,6 +1150,11 @@ export function composeGpz(
       // `field.bay.primaryDevices` nieobecne LUB nie odpowiadają DOKŁADNIE
       // temu szablonowi (patrz docstring `primaryDeviceItemsForTemplate`).
       const deviceItems = primaryDeviceItemsForTemplate(field.bay, spec);
+      if (!field.bay.primaryDevices?.length) {
+        // Konwencja dla starszych modeli pozostaje tylko poglądem;
+        // nie ma referencji aparatów, zatem brak podstaw do sterowania.
+        missingData.push('gpz.bay.primary_devices_missing');
+      }
       const stack = buildFieldStack(
         spec,
         field.centerX,
@@ -1115,6 +1170,7 @@ export function composeGpz(
         deviceItems,
       );
       symbols.push(...stack.instances);
+      addMainConnections(stack, field.bay.bayRef, { parityKeys: ['gpz.bay.power_path'], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef });
       stack.instances.forEach((instance) => tag([...instance.meta.parityKeys, 'gpz.bay']));
       // F10.1 (spec §18.1): odcinki odgałęzień bocznych ES/VT/SA.
       stack.branchSegments.forEach((branch, bi) => {
@@ -1424,27 +1480,46 @@ export function composeGpz(
     const gapStart = first.x + first.width;
     const gapEnd = second.x;
     const midX = snapToGrid((gapStart + gapEnd) / 2);
-    const cbDef = SYMBOL_DEFS.breaker;
+    // Łącznik sprzęgła jest w TORZE POZIOMYM, a nie pionowym symbolem
+    // położonym na ciągłym przewodzie. W/E to rzeczywiste porty aparatu.
+    const cbDef = SYMBOL_DEFS.lineBreaker;
     const cbX = snapToGrid(midX - cbDef.width / 2);
     const cbY = snapToGrid(snBusY - cbDef.height / 2);
+    const cbPorts = portsInWorld('lineBreaker', cbX, cbY);
+    const portA = cbPorts.a;
+    const portB = cbPorts.b;
+    if (!portA || !portB) {
+      throw new Error('GPZ: brak zacisków W/E łącznika sprzęgła');
+    }
     const couplerMeta: GpzElementMeta = {
       parityKeys: ['gpz.coupler', 'gpz.apparatus.cb'],
       testId: `gpz-canonical-coupler-${coupler.couplerId}`,
       sectionId: coupler.leftSectionId,
     };
     tag(couplerMeta.parityKeys);
+    if (!coupler.breakerDeviceRef) {
+      missingData.push('gpz.coupler.breaker_device_ref_missing');
+    }
     symbols.push({
-      symbolId: 'breaker',
+      symbolId: 'lineBreaker',
       x: cbX,
       y: cbY,
       state: coupler.closedState,
-      ports: portsInWorld('breaker', cbX, cbY),
+      deviceRef: coupler.breakerDeviceRef,
+      ports: cbPorts,
       meta: couplerMeta,
     });
+    // DWA ODDZIELNE ODCINKI. Niedozwolony jest jeden segment od szyny A
+    // do B: omijałby graficznie wyłącznik także w stanie OTWARTYM.
     segments.push({
-      ownerRef: `${coupler.couplerId}#tie`,
-      points: [{ x: gapStart, y: snBusY }, { x: gapEnd, y: snBusY }],
+      ownerRef: `${coupler.couplerId}#from-section-a`,
+      points: [{ x: gapStart, y: snBusY }, { x: portA.x, y: portA.y }],
       meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.leftSectionId },
+    });
+    segments.push({
+      ownerRef: `${coupler.couplerId}#to-section-b`,
+      points: [{ x: portB.x, y: portB.y }, { x: gapEnd, y: snBusY }],
+      meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.rightSectionId },
     });
     fieldDesignations.push({
       ownerRef: `${coupler.couplerId}#designation`,
@@ -1529,6 +1604,7 @@ export function composeGpz(
       { transformerRef: transformer.transformerRef, voltageClass: 'hv' },
     );
     symbols.push(...hvStack.instances);
+    addMainConnections(hvStack, `${transformer.transformerRef}#hv-tr`, { parityKeys: ['gpz.transformer.hv_connector'], transformerRef: transformer.transformerRef, voltageClass: 'hv' });
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
     // F10.1: odgałęzienia boczne (dziś brak w hvFieldSpec — defensywnie).
     hvStack.branchSegments.forEach((branch, bi) => {
@@ -1582,6 +1658,7 @@ export function composeGpz(
       { transformerRef: transformer.transformerRef },
     );
     symbols.push(...trFieldStack.instances);
+    addMainConnections(trFieldStack, `${transformer.transformerRef}#sn-tr`, { parityKeys: ['gpz.bay.power_path'], transformerRef: transformer.transformerRef, sectionId: target?.section.sectionId });
     trFieldStack.instances.forEach((instance) => tag(instance.meta.parityKeys));
     // F10.1 (spec §18.1): ES pola TR jako odgałęzienie boczne.
     trFieldStack.branchSegments.forEach((branch, bi) => {

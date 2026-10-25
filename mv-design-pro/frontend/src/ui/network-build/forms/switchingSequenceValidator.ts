@@ -53,8 +53,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, circuitBreaker: 'closed' },
+        isAllowed: false,
+        reason: 'Topology-wide source synchronization verification required',
+        warningPL: 'Odmowa: załączenie wyłącznika wymaga oceny całej topologii, źródeł i synchronizmu dla aktualnego scenariusza.',
       };
 
     case 'open_cb':
@@ -81,8 +82,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, disconnector: 'closed' },
+        isAllowed: false,
+        reason: 'Load-free disconnector operation not confirmed',
+        warningPL: 'Odmowa: położenie wyłącznika w jednym polu nie potwierdza braku obciążenia odłącznika. Wymagana walidacja całej sieci.',
       };
 
     case 'open_ds':
@@ -94,8 +96,9 @@ export function attemptOperation(
         };
       }
       return {
-        isAllowed: true,
-        newState: { ...state, disconnector: 'open' },
+        isAllowed: false,
+        reason: 'Load-free disconnector operation not confirmed',
+        warningPL: 'Odmowa: brak potwierdzenia bezprądowego stanu odłącznika z pełnej topologii sieci.',
       };
 
     case 'close_es':
@@ -107,9 +110,13 @@ export function attemptOperation(
           warningPL: 'NIEBEZPIECZNE: uziemnik można zamknąć tylko gdy wyłącznik I odłącznik są otwarte.',
         };
       }
+      // Lokalne trzy stany łączników NIE rozstrzygają napięcia zwrotnego
+      // (sąsiednie pola, sprzęgło, PV/BESS, wyspy). Bez serwerowej oceny
+      // pełnej rewizji ENM nie ma podstaw do symulacyjnej zgody.
       return {
-        isAllowed: true,
-        newState: { ...state, earthSwitch: 'closed' },
+        isAllowed: false,
+        reason: 'Topology-wide earthing validation required',
+        warningPL: 'Odmowa: przed zamknięciem uziemnika wymagana jest ocena całej topologii i źródeł napięcia zwrotnego dla aktualnego modelu.',
       };
 
     case 'open_es':
@@ -147,10 +154,10 @@ export function describeState(state: ApparatusState): string {
 }
 
 export function describeNextRecommendation(state: ApparatusState): string {
-  if (isSafeToConnect(state)) return 'Stan: pole pod napięciem (podłączone).';
-  if (isSafeForMaintenance(state)) return 'Stan: bezpieczna konserwacja (uziemione).';
+  if (isSafeToConnect(state)) return 'Stan położeń umożliwiający połączenie. Brak potwierdzenia, czy pole jest pod napięciem i czy źródła pracują synchronicznie.';
+  if (isSafeForMaintenance(state)) return 'Położenia łączników odpowiadają uziemieniu. Nie potwierdzono warunków bezpiecznej konserwacji ani braku napięcia.';
   if (state.earthSwitch === 'open' && state.disconnector === 'open' && state.circuitBreaker === 'open') {
-    return 'Stan: separacja widzialna. Bezpieczne — zamknij ES dla pełnej ochrony lub kontynuuj sekwencją podłączenia.';
+    return 'Stan: separacja łącznikowa w modelu lokalnym. Brak dowodu beznapięciowości; zamknięcie uziemnika wymaga oceny całej sieci.';
   }
   return 'Stan przejściowy — kontynuuj sekwencję operacji.';
 }
