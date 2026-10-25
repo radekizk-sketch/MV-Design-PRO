@@ -122,6 +122,13 @@ export function zlozPoleSn(model:BayBaseModel):ProjekcjaPolaSn {
   }
   if(!prim.length)issues.push({kod:'BRAK_TORU',ref:model.bay_ref,
     opis:'Brak zadeklarowanych urządzeń toru pierwotnego.',blokujeOdbior:true});
+  // BayBaseModel.primary_devices dostarcza sekwencję i funkcje, ale nie
+  // dostarcza kompletu rzeczywistych węzłów zaciskowych. Przewody widoku są
+  // szkicem kompozycyjnym, nie DOWODEM ciągłości ENM ani gotowości LF/SC.
+  if(prim.length>0)issues.push({kod:'PORTY_PIERWOTNE_NIEPOTWIERDZONE',
+    ref:model.bay_ref,
+    opis:'Odczyt pola nie zawiera pełnego grafu portów pierwotnych. Sekwencja aparatów wymaga weryfikacji z kanoniczną topologią ENM.',
+    blokujeOdbior:true});
 
   // Kolejność w input jest JEDYNĄ kolejnością aparatu; nie zamieniamy jej
   // heurystyką wizualną, bo groziłoby to podmianą CT/wyłącznik/odłącznik.
