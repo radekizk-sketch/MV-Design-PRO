@@ -617,7 +617,11 @@ function buildCouplers(gpz: Substation, bays: readonly Bay[]): CanonicalGpzCoupl
     if (!couplerRef) continue;
     const couplerBay = couplerBaysByRef.get(couplerRef);
     if (!couplerBay) continue;
+    // Źródłowy aparat sprzęgła musi pochodzić z ENM, nie z nazwy pola.
+    const breakers = (couplerBay.primary_devices ?? []).filter((d) => d.kind === 'CB');
+    const breakerDeviceRef = breakers.length === 1 ? breakers[0].device_ref : undefined;
     couplers.push({
+      breakerDeviceRef,
       couplerId: couplerBay.ref_id,
       leftSectionId: left.section_id,
       rightSectionId: right.section_id,
