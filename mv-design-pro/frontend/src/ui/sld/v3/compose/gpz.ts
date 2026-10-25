@@ -359,6 +359,22 @@ function measurementFieldSpec(): readonly FieldApparatusSpec[] {
 }
 
 function fieldApparatusSpecForBay(bay: CanonicalGpzBay): readonly FieldApparatusSpec[] {
+  // Przy obecności aparatów ENM rysunek korzysta WYŁĄCZNIE z ich kolejności,
+  // funkcji i liczby. Nie dokładamy DS/CB/CT/VT/ES z szablonu roli pola.
+  const explicit = bay.primaryDevices
+    ?.map((device) => symbolIdForPrimaryDeviceKind(device.kind))
+    .filter((symbolId): symbolId is SymbolId => symbolId != null) ?? [];
+  if (explicit.length > 0) {
+    return explicit.map((symbolId) => ({
+      symbolId,
+      parityKeys: symbolId === 'breaker' ? ['gpz.apparatus.cb']
+        : symbolId === 'disconnector' ? ['gpz.apparatus.ds']
+        : symbolId === 'earthSwitch' ? ['gpz.apparatus.es.side']
+        : symbolId === 'currentTransformer' ? ['gpz.apparatus.ct']
+        : symbolId === 'cableHead' ? ['gpz.apparatus.cable_head']
+        : [],
+    }));
+  }
   const base = ((): readonly FieldApparatusSpec[] => {
     switch (bay.fieldRole) {
       case 'LINE_IN':
@@ -1100,6 +1116,11 @@ export function composeGpz(
       // `field.bay.primaryDevices` nieobecne LUB nie odpowiadają DOKŁADNIE
       // temu szablonowi (patrz docstring `primaryDeviceItemsForTemplate`).
       const deviceItems = primaryDeviceItemsForTemplate(field.bay, spec);
+      if (!field.bay.primaryDevices?.length) {
+        // Konwencja dla starszych modeli pozostaje tylko poglądem;
+        // nie ma referencji aparatów, zatem brak podstaw do sterowania.
+        missingData.push('gpz.bay.primary_devices_missing');
+      }
       const stack = buildFieldStack(
         spec,
         field.centerX,
