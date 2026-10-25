@@ -89,7 +89,7 @@ export function zweryfikujPakiet(plan,geojson,manifest) {
       step.confirmed_catalog===true,'DOMAIN_EVIDENCE_MISSING');
     demand(typeof step.operation.idempotency_key==='string'&&/^[\w-]{8,120}$/.test(step.operation.idempotency_key),
       'IDEMPOTENCY_KEY_MISSING');
-    demand(Array.isArray(step.expected_refs)&&step.expected_refs.length>0&&step.expected_refs.every(ref),
+    demand(Array.isArray(step.expected_refs)&&step.expected_refs.every(ref),
       'EXPECTED_REFS_MISSING');
     demand(!Object.keys(step.operation.payload).some(k=>/^(ppe|pesel|name_customer|phone|email)$/i.test(k)),
       'SENSITIVE_PAYLOAD');
@@ -115,8 +115,16 @@ export function weryfikujSnapshot(enm,result,previous,expectedRefs) {
   demand(hex(enm.header.hash_sha256)&&enm.header.hash_sha256!==previous.hash,'ENM_HASH_NOT_ADVANCED');
   demand(result?.snapshot?.header?.hash_sha256===enm.header.hash_sha256,'ENM_RESULT_DIFFERS_FROM_READBACK');
   const refs=refsInEnm(enm);
-  for(const expected of expectedRefs)demand(refs.has(expected),'ENM_EXPECTED_REF_MISSING');
-  return {revision:enm.header.revision,hash:enm.header.hash_sha256};
+  const changes=result?.changes||{};
+  const created=changes.created_element_ids||[];
+  const updated=changes.updated_element_ids||[];
+  demand(Array.isArray(created)&&Array.isArray(updated)&&
+    [...created,...updated].every(ref)&&
+    [...created,...updated,...expectedRefs].length>0,'ENM_CHANGE_UNPROVEN');
+  for(const expected of [...created,...updated,...expectedRefs])
+    demand(refs.has(expected),'ENM_EXPECTED_REF_MISSING');
+  return {revision:enm.header.revision,hash:enm.header.hash_sha256,
+    created_refs:[...created],updated_refs:[...updated]};
 }
 export function klientApi(baseUrl,fetcher=fetch) {
   const u=new URL(baseUrl);
@@ -156,7 +164,9 @@ export async function wykonajE2E(plan,api,{publish=false,confirm='',intervalMs=2
       demand(!answer?.error_code&&!answer?.error&&obj(answer?.snapshot),'DOMAIN_OPERATION_REJECTED');
       const readback=await api('GET',path+'/enm');
       previous=weryfikujSnapshot(readback,answer,previous,step.expected_refs);
-      report.revisions.push({step_id:step.step_id,revision:previous.revision,hash:previous.hash});
+      report.revisions.push({step_id:step.step_id,source_id:step.source_id,
+        revision:previous.revision,hash:previous.hash,created_refs:previous.created_refs,
+        updated_refs:previous.updated_refs,binding_status:'SOURCE_REFERENCE_UNVERIFIED_TERMINALS'});
       report.changes_applied++;
     }
     report.final_model={...previous};
