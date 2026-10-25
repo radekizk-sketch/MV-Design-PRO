@@ -279,7 +279,8 @@ export async function main(argv){
   await writeFile(args.report,JSON.stringify(report,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify({status:report.status,source_sha256:plan.source.sha256,
     revision:report.final_model?.revision??null,run_count:report.runs?.length??0}));
-  if(report.status.startsWith('FAILED'))process.exitCode=2;
+  if(!['PLAN_VALIDATED_NOT_APPLIED','COMPUTATION_COMPLETE_SLD_REVIEW_REQUIRED'].includes(report.status))
+    process.exitCode=2;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   main(process.argv.slice(2)).catch(err=>{
