@@ -46,6 +46,8 @@ export default function MapaGisR11() {
   const container = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLibreMap | null>(null);
   const snapshotEnm = useSnapshotStore((s) => s.snapshot);
+  const snapshotRef = useRef(snapshotEnm);
+  useEffect(() => { snapshotRef.current = snapshotEnm; }, [snapshotEnm]);
   const rewizjaEnm = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
   const [ready, setReady] = useState(false);
   const [objects, setObjects] = useState<ZbiorGIS>(EMPTY);
@@ -67,7 +69,7 @@ export default function MapaGisR11() {
     setSelected(id);
     // Zgodne ref_id może zasilić wspólną selekcję widoków, ale NIE potwierdza
     // żadnego terminala, topologii ani parametrów elektrycznych.
-    if (dopasujIdDoEnm(snapshotEnm, id).length === 1) {
+    if (dopasujIdDoEnm(snapshotRef.current, id).length === 1) {
       emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'gis-mapa' });
     }
   }
