@@ -53,6 +53,14 @@ def is_closed(actual_state: str | None) -> bool:
     return actual_state is not None and actual_state.startswith("zamkniety")
 
 
+def is_open(actual_state: str | None) -> bool:
+    """Wyłącznie jednoznaczne położenie OTWARTE (także napęd rozbrojony).
+
+    Stan nieznany, awaria i brak rekordu nie stanowią potwierdzenia
+    położenia OTWARTEGO i nie mogą zwalniać blokady łączeniowej.
+    """
+    return actual_state in ("otwarty", "otwarty_naped_rozbrojony")
+
 def device_state(bay: Bay, device: BayPrimaryDevice) -> str | None:
     """Znany `actual_state` aparatu albo None (patrz `device_state_record`)."""
     state = device_state_record(bay, device)
@@ -74,7 +82,7 @@ def blokady_zamkniecia(
     bo aparat przeciwny (dla uziemnika: łącznik toru; dla łącznika: uziemnik) jest zamknięty;
     ``False`` — wszystkie aparaty przeciwne mają znany stan otwarty (albo ich nie ma);
     ``None`` — żaden znany przeciwny nie jest zamknięty, ale co najmniej jednego stan jest
-    nieznany (reguła nie rozstrzyga — zero domysłu). Ten sam zbiór rodzajów i to samo
+    nieznany lub awaryjny (reguła nie rozstrzyga — zero domysłu). Ten sam zbiór rodzajów i to samo
     pojęcie „zamknięty" co `earthing_interlock_violation` (W034).
     """
     stany_uziemnikow = [stan for _, kind, stan in aparaty if kind == EARTHING_SWITCH_KIND]
@@ -83,7 +91,9 @@ def blokady_zamkniecia(
     def blokada(przeciwne: list[str | None]) -> bool | None:
         if any(is_closed(stan) for stan in przeciwne):
             return True
-        if any(stan is None for stan in przeciwne):
+        if any(not is_open(stan) for stan in przeciwne):
+            # Brak danych, stan awaryjny lub położenie nieznane NIE oznaczają
+            # otwartego aparatu. Nie wolno z takich danych wydać zgody.
             return None
         return False
 
