@@ -48,6 +48,27 @@ describe('GPZ — aparat pierwotny wyłącznie z ENM', () => {
   });
 
 
+  it('każda przerwa pomiędzy aparatami ma jawny przewód port S → N', () => {
+    const composition = composeGpz(gpz, { x: 0, y: 0 });
+    const main = composition.symbols.filter((s) =>
+      s.meta.bayRef === bay.bayRef && s.symbolId !== 'earthSwitch',
+    );
+    expect(main).toHaveLength(3);
+    const links = composition.segments
+      .filter((s) => s.ownerRef.startsWith(`${bay.bayRef}#connection-`))
+      .sort((x, y) => x.ownerRef.localeCompare(y.ownerRef));
+    expect(links).toHaveLength(2);
+    for (let i = 0; i < links.length; i++) {
+      const from = Object.values(main[i].ports).find((p) => p.dir === 'S');
+      const to = Object.values(main[i + 1].ports).find((p) => p.dir === 'N');
+      expect(from).toBeDefined();
+      expect(to).toBeDefined();
+      expect(links[i].points[0]).toMatchObject({ x: from?.x, y: from?.y });
+      expect(links[i].points[1]).toMatchObject({ x: to?.x, y: to?.y });
+    }
+    expect(composition.missingData).not.toContain('gpz.bay.apparatus_ports_missing');
+  });
+
   it('sam bezpiecznik FUSE nie staje się fikcyjnym rozłącznikiem', () => {
     const withFuse = {
       ...gpz,
