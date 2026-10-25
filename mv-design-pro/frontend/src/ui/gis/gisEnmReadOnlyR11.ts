@@ -26,5 +26,20 @@ export function dopasujIdDoEnm(snapshot: unknown, id: string): KandydatPowiazani
       });
     }
   }
+  // Porty pól SN są osadzone w stacji; nie są samodzielnymi tablicami ENM.
+  const stations = snapshot.substations;
+  if (Array.isArray(stations)) {
+    for (const station of stations) {
+      if (!record(station) || !record(station.meta)) continue;
+      const fields = station.meta.field_specs;
+      if (Array.isArray(fields) && fields.some((x: unknown) => record(x) && x.field_ref === id)) {
+        matches.push({
+          ref_id: id,
+          kolekcja: 'substations.meta.field_specs',
+          stan: 'ZGODNY_IDENTYFIKATOR_NIEZWERYFIKOWANA_TOPOLOGIA',
+        });
+      }
+    }
+  }
   return matches;
 }
