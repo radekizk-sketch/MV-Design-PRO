@@ -129,8 +129,12 @@ def test_gpz_110_15_nie_ma_e023() -> None:
     assert _e023_migawki(_gpz()) == []
 
 
-def test_przypisanie_katalogu_sn_nn_transformatorowi_gpz_blokuje() -> None:
-    """Dokładnie ścieżka krytycznego toku e2e sprzed partii 11."""
+def test_przypisanie_katalogu_sn_nn_transformatorowi_gpz_odmawia_operacja() -> None:
+    """Dokładnie ścieżka krytycznego toku e2e sprzed partii 11. Korekta 2026-10-28: przypisanie
+    typu 15/0,4 kV transformatorowi GPZ 110/15 kV nie dochodzi już do modelu (wcześniej
+    przechodziło, a dopiero E023 blokował gotowość) — operacja odmawia tą samą równością napięć
+    co tory tworzenia transformatora (`tests/enm/test_przypisanie_typu_transformatora_napiecia`).
+    E023 zostaje strażnikiem modelu dla dróg, które napięcia uzwojeń ustawiają wprost."""
     migawka = _gpz()
     trafo = migawka["transformers"][0]
     wynik = execute_domain_operation(
@@ -145,9 +149,8 @@ def test_przypisanie_katalogu_sn_nn_transformatorowi_gpz_blokuje() -> None:
             },
         },
     )
-    assert not wynik.get("error"), wynik
-    bledy = _e023_migawki(wynik["snapshot"])
-    assert {b.element_refs[1] for b in bledy} == {trafo["hv_bus_ref"], trafo["lv_bus_ref"]}
+    assert wynik.get("error_code") == "catalog.transformer_voltage_mismatch", wynik
+    assert _e023_migawki(migawka) == []
 
 
 @pytest.mark.parametrize(

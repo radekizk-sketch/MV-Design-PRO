@@ -1650,3 +1650,76 @@ def test_dobor_przekladnikow_pola_nn_na_wartosci_roboczej_tolerancji_niesie_dana
     else:
         assert "dane_przyjete" not in dane
         assert "status_danych" not in dane
+
+
+#: Iloczyn cech próby zapisu DER: wariant przyłączenia {nN za transformatorem stacji,
+#: transformator dedykowany} × werdykt kontroli mocy O-53 {przyjęty, odmowa}.
+_PROBY_ZAPISU_DER = {
+    "nn_przyjety": (
+        0.63,
+        {"power_mw": 0.5, "connection_variant": "nn_side", "catalog_ref": "conv-pv-nn-0p5mw-0p4kv"},
+        None,
+    ),
+    "nn_odmowa_mocy": (
+        0.063,
+        {"power_mw": 0.5, "connection_variant": "nn_side", "catalog_ref": "conv-pv-nn-0p5mw-0p4kv"},
+        "converter.transformer_capacity_exceeded",
+    ),
+    "dedykowany_przyjety": (
+        0.063,
+        {
+            "power_mw": 1.0,
+            "connection_variant": "block_transformer",
+            "catalog_ref": "pv_inv_system_1000",
+            "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            "sn_connection_bus_ref": "station/1/sn_bus",
+        },
+        None,
+    ),
+    "dedykowany_odmowa_mocy": (
+        0.063,
+        {
+            "power_mw": 1.0,
+            "connection_variant": "block_transformer",
+            "catalog_ref": "pv_inv_system_1000",
+            "block_transformer_catalog_ref": "btr_pv_15_069_800",
+            "sn_connection_bus_ref": "station/1/sn_bus",
+        },
+        "converter.transformer_capacity_exceeded",
+    ),
+}
+
+
+@pytest.mark.parametrize("przypadek", list(_PROBY_ZAPISU_DER))
+def test_proba_zapisu_der_ma_werdykt_zapisu_i_nie_zmienia_modelu(app_client, przypadek) -> None:
+    """Próba (`dry_run`) i zapis to JEDNA droga: ten sam kod odmowy albo to samo przyjęcie,
+    a próba nie zmienia modelu i nie niesie migawki (kreator DER pyta tak o werdykt mocy
+    transformatora zamiast liczyć własny próg P/cosφ we froncie)."""
+    moc_tr_mva, pola, kod_odmowy = _PROBY_ZAPISU_DER[przypadek]
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id, transformer_sn_mva=moc_tr_mva)
+    adres = f"/api/projects/{project_id}/cases/{case_id}/generators"
+    zadanie = {"station_ref": "station/1", "der_kind": "PV", "source_name": "PV próba", **pola}
+    przed = app_client.get(f"/api/cases/{case_id}/enm").json()
+
+    proba = app_client.post(adres, json={**zadanie, "dry_run": True})
+
+    assert app_client.get(f"/api/cases/{case_id}/enm").json() == przed
+    if kod_odmowy is None:
+        assert proba.status_code == 200, proba.text
+        cialo = proba.json()
+        assert cialo["dry_run"] is True
+        assert "snapshot" not in cialo
+        assert cialo["preview"]["created_refs"]
+    else:
+        assert proba.status_code == 422
+        assert proba.json()["detail"]["code"] == kod_odmowy
+
+    zapis = app_client.post(adres, json=zadanie)
+    if kod_odmowy is None:
+        assert zapis.status_code == 201, zapis.text
+        assert zapis.json()["snapshot"]["generators"]
+    else:
+        assert zapis.status_code == 422
+        assert zapis.json()["detail"]["code"] == kod_odmowy
+        assert zapis.json()["detail"]["message_pl"] == proba.json()["detail"]["message_pl"]

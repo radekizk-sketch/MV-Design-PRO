@@ -2022,7 +2022,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Scalenie galezi UI/UX z programem (2026-10-28, baza scalenia `8f20bdd3c`): POMIAR guardem
     # na drzewie scalonym = 4387 = 4314 (UI/UX) + 4357 (program) − 4284 (baza) — zmiany obu
     # stron rozlaczne, zero nazw wspolnych ani skasowanych przez obie. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4387." in wyjscie, wyjscie
+    # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 4387 -> 4381 — POMIAR
+    # `contract_fields()` na `f44e042f6` (4387) i na drzewie karty (4381). Roznica zbiorow -6, +0:
+    # `sn_tolerance_kv`, `nn_tolerance_kv` (pola tolerancji `BlockTransformerSelectionInput` —
+    # rownosc napiec z jednego predykatu `to_samo_napiecie_znamionowe`) oraz `problem_id`,
+    # `problems`, `show_on_sld`, `target_ref` (skasowany pakiet `application/validation_problem`
+    # bez konsumenta produkcyjnego). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4381." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2324,7 +2330,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
         # Scalenie galezi UI/UX z programem (2026-10-28): 588 (UI/UX) + 590 (program) − 580
         # (baza `8f20bdd3c`) = 598. POMIAR guardem na drzewie scalonym.
-        "Przeskanowano 598 plikow w zakresie: network_model, solver_input, enm, "
+        # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 598 -> 596 (-2
+        # `application/validation_problem/{__init__,service}.py` — pakiet bez konsumenta
+        # produkcyjnego skasowany); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "Przeskanowano 596 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2721,7 +2730,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`topologia_zasilenia.py`) = 255; dlug 27/81 programu (UI/UX bez zmian dlugu). POMIAR.
         # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
-        "  application: pliki_skanowane=257, dlug=27 plikow/suma 81, "
+        # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
+        # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

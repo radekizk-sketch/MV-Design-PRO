@@ -31,6 +31,7 @@ from enm.wyposazenie_pola import (
     RODZAJE_KATALOGOWE_APARATU,
     stan_danych_wyposazenia,
 )
+from network_model.pochodne.pasma_napieciowe import izolacja_pokrywa_siec
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, _pusty, galaz, wykonaj
 
@@ -53,9 +54,17 @@ def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
     return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
 
 
+#: Napięcie szyn SN sieci testowej [kV] (GPZ 15 kV) — pozycje „poprawne” mają poziom izolacji
+#: pokrywający tę sieć (U_m ≥ U_s = 17,5 kV, `izolacja_pokrywa_siec`), bo operacja odmawia
+#: aparatu niższego poziomu napięcia (`bay_equipment.voltage_insufficient`).
+NAPIECIE_SIECI_KV = 15.0
+
+
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
     return _pierwsza(
-        katalog_biezacy().mv_apparatus_types, lambda t: t.device_kind == rodzaj_katalogowy
+        katalog_biezacy().mv_apparatus_types,
+        lambda t: t.device_kind == rodzaj_katalogowy
+        and izolacja_pokrywa_siec(t.u_n_kv, NAPIECIE_SIECI_KV) is True,
     )
 
 
@@ -64,7 +73,10 @@ def _ref_przestrzeni(przestrzen: str) -> str:
     return {
         "CT": lambda: _pierwsza(katalog.ct_types),
         "VT": lambda: _pierwsza(katalog.vt_types),
-        "OGRANICZNIK_SN": lambda: _pierwsza(katalog.surge_arrester_types),
+        "OGRANICZNIK_SN": lambda: _pierwsza(
+            katalog.surge_arrester_types,
+            lambda t: izolacja_pokrywa_siec(t.u_m_kv, NAPIECIE_SIECI_KV) is True,
+        ),
     }[przestrzen]()
 
 

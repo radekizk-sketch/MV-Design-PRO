@@ -286,6 +286,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.materialization_incomplete': 'wspolne',
   'catalog.nameplate_mismatch': 'wspolne',
   'catalog.gate_result_mismatch': 'wspolne',
+  'catalog.transformer_voltage_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —

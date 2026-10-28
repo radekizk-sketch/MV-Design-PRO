@@ -3956,6 +3956,11 @@
       "title": "Der Kind",
       "type": "string"
      },
+     "dry_run": {
+      "default": false,
+      "title": "Dry Run",
+      "type": "boolean"
+     },
      "modul_istniejacy": {
       "anyOf": [
        {
@@ -28478,7 +28483,7 @@
   },
   "/api/projects/{project_id}/cases/{case_id}/generators": {
    "post": {
-    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
+    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nPRÓBA (`dry_run: true`): ta sama droga i te same odmowy 422 co zapis; przyjęta próba\nzwraca HTTP 200 z `dry_run: true` i `preview.created_refs`, bez migawki — model zostaje\nbez zmian (warstwa zapisuje wyłącznie migawkę).\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
     "operationId": "create_der_generator_api_projects__project_id__cases__case_id__generators_post",
     "parameters": [
      {

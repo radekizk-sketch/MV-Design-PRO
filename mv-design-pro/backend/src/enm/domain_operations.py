@@ -53,6 +53,7 @@ from network_model.pochodne.pasma_napieciowe import (
     OPIS_PASMA_NN,
     pasmo_napieciowe,
     powyzej_pasma_nn,
+    to_samo_napiecie_znamionowe,
     w_pasmie_nn,
 )
 from pydantic import ValidationError
@@ -3402,12 +3403,60 @@ def _validate_transformer_voltage_compatibility(
             "station.insert.transformer_voltage_missing",
         )
 
-    if abs(catalog_hv - expected_hv) > 0.01 or abs(catalog_lv - expected_lv) > 0.001:
+    # Równość danych (jedna w produkcie, `to_samo_napiecie_znamionowe`): dawne tolerancje
+    # bezwzględne 0,01 / 0,001 kV były osobną wersją tej samej równości.
+    if not (
+        to_samo_napiecie_znamionowe(catalog_hv, expected_hv)
+        and to_samo_napiecie_znamionowe(catalog_lv, expected_lv)
+    ):
         return _error_response(
             "Brak transformatora katalogowego zgodnego z napięciem SN i napięciem strony nN źródła.",
             "station.insert.transformer_voltage_mismatch",
         )
 
+    return None
+
+
+#: Odmowa przypisania typu transformatora o napięciach innych niż szyny, do których jest
+#: przyłączony (kod addytywny; tory tworzenia mają własne kody: stacja
+#: `station.insert.transformer_voltage_mismatch`, GPZ `source.*_voltage_mismatch`).
+KOD_NAPIECIA_TYPU_TRANSFORMATORA = "catalog.transformer_voltage_mismatch"
+
+
+def odmowa_napiec_typu_transformatora(
+    enm: dict[str, Any], transformator: dict[str, Any], tabliczka: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Typ przypisywany ISTNIEJĄCEMU transformatorowi: napięcia znamionowe uzwojeń typu muszą być
+    TYMI SAMYMI napięciami co szyny, do których transformator jest przyłączony.
+
+    Ta sama równość danych (`to_samo_napiecie_znamionowe`) co wszystkie tory tworzenia
+    transformatora (stacja SN/nN, GPZ 110/SN, transformator dedykowany DER). Bez tej kontroli
+    przypisanie typu 20/0,4 kV transformatorowi stacji 15 kV przechodziło bez słowa: walidator
+    E023 porównuje pasmem (20 i 15 kV to to samo pasmo SN), a przekładnia z napięć, których sieć
+    nie ma, wchodziła wprost do rozpływu i zwarć (IEC 60909-0 §6.3.3: K_T z napięcia uzwojenia).
+    Strona bez szyny albo bez napięcia (szyna, typ) — kontrola pominięta: brak danej zgłaszają
+    walidator modelu (E023, szyna nieistniejąca) i materializacja typu.
+    """
+    from enm.domain_operations_v2 import _bus_voltage_kv
+
+    for strona, pole_typu, pole_szyny in (
+        ("górnego", "voltage_hv_kv", "hv_bus_ref"),
+        ("dolnego", "voltage_lv_kv", "lv_bus_ref"),
+    ):
+        napiecie_typu = _as_positive_float(tabliczka.get(pole_typu))
+        szyna_ref = transformator.get(pole_szyny)
+        napiecie_szyny = _bus_voltage_kv(enm, szyna_ref) if isinstance(szyna_ref, str) else None
+        if napiecie_typu is None or napiecie_szyny is None:
+            continue
+        if to_samo_napiecie_znamionowe(napiecie_typu, napiecie_szyny):
+            continue
+        return _error_response(
+            f"{opis_nazwy(transformator.get('name'), 'Transformator')}: napięcie strony "
+            f"{strona} napięcia typu ({napiecie_typu:g} kV) różni się od napięcia "
+            f"{opis_elementu(enm, szyna_ref, 'szyny')} ({napiecie_szyny:g} kV) — wybierz typ o "
+            "napięciach znamionowych równych napięciom szyn transformatora.",
+            KOD_NAPIECIA_TYPU_TRANSFORMATORA,
+        )
     return None
 
 
@@ -4500,7 +4549,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         # (network_model/catalog/types.py) — zawsze obecne po udanej
         # materializacji, więc szyna 110 kV dostaje realną daną katalogową.
         hv_bus_voltage_kv = float(transformer_materialized_params["voltage_hv_kv"])
-        if isinstance(rownowaznik_hv_kv, int | float) and not math.isclose(
+        if isinstance(rownowaznik_hv_kv, int | float) and not to_samo_napiecie_znamionowe(
             float(rownowaznik_hv_kv), hv_bus_voltage_kv
         ):
             return _error_response(
@@ -4513,10 +4562,17 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             )
         # Strona dolna: transformator 110/SN stoi na szynach SN GPZ o napięciu `voltage_kv` —
         # napięcie dolne typu katalogowego musi być TYM SAMYM napięciem znamionowym (wartości
-        # znormalizowane IEC 60038; porównanie jak dla strony górnej wyżej). Bez tej reguły typ
-        # 110/20 kV stawał na szynach 15 kV bez odmowy (przekładnia 110/20 na sieci 15 kV).
+        # znormalizowane IEC 60038; porównanie jak dla strony górnej wyżej). Porównywana
+        # wielkość: napięcie znamionowe uzwojenia wobec napięcia znamionowego szyny (nie poziom
+        # izolacji) — przekładnia typu wchodzi wprost do rozpływu i zwarć (IEC 60909-0 §6.3.3:
+        # K_T z napięcia uzwojenia), a produkt opisuje odchyłkę przekładni przełącznikiem
+        # zaczepów, nie napięciem uzwojenia; ta sama równość co dla transformatora stacji
+        # (`_validate_transformer_voltage_compatibility`). Bez tej reguły typ 110/20 kV stawał
+        # na szynach 15 kV bez odmowy (przekładnia 110/20 na sieci 15 kV).
         lv_typu_kv = _as_positive_float(transformer_materialized_params.get("voltage_lv_kv"))
-        if lv_typu_kv is not None and not math.isclose(lv_typu_kv, float(voltage_kv)):
+        if lv_typu_kv is not None and not to_samo_napiecie_znamionowe(
+            lv_typu_kv, float(voltage_kv)
+        ):
             return _error_response(
                 f"Napięcie dolne transformatora 110/SN z katalogu ({lv_typu_kv:g} kV) różni się "
                 f"od napięcia szyn SN GPZ ({float(voltage_kv):g} kV) — wybierz typ o napięciu "
@@ -6417,7 +6473,6 @@ def _materialize_nn_source(
     from domain.generator_validation import KLUCZ_META_KONTROLI_MOCY
     from enm.domain_operations_v2 import (
         _bus_voltage_kv,
-        _same_nominal_voltage,
         kontrola_mocy_generatora_w_modelu,
         transformatory_sciezki_zasilania,
         zapis_wejsc_kontroli_mocy,
@@ -6455,7 +6510,7 @@ def _materialize_nn_source(
             "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
             "converter.bus_voltage_missing",
         )
-    if not _same_nominal_voltage(un_kv, bus_voltage_kv):
+    if not to_samo_napiecie_znamionowe(un_kv, bus_voltage_kv):
         return _error_response(
             (
                 "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
@@ -9771,6 +9826,10 @@ def _brama_katalogowa_przypisania(
         default_namespace=catalog_namespace,
         default_version=catalog_version,
     )
+    if collection == "transformers" and isinstance(wynik, tuple):
+        odmowa_napiec = odmowa_napiec_typu_transformatora(enm, target_element, wynik[1])
+        if odmowa_napiec is not None:
+            return odmowa_napiec
     if collection != "generators" or not isinstance(wynik, tuple):
         return wynik
     # JEDNA TABLICZKA ŹRÓDŁA PRZEKSZTAŁTNIKOWEGO (karta AB-H0 Pakiet D). Przypisanie

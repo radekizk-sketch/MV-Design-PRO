@@ -192,14 +192,31 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     expect(violationCodes(enm)).toContain('TRANSFORMER_NOT_CROSSING_DOMAIN');
   });
 
-  it('inwariant 3 (BUS_VOLTAGE_INCONSISTENT): napięcie znamionowe uzwojenia LV T1 (0,23 kV) odbiega >10% od szyny (0,4 kV)', () => {
+  // Inwariant 3b jest lustrem E023 walidatora backendu: pasmo uzwojenia ≠ pasmo szyny.
+  // Iloczyn: strona {HV na szynie SN, LV na szynie nN} × napięcie uzwojenia {to samo, inne
+  // w obrębie pasma (tabliczka 15,75 / 0,42 / 0,23 kV), z innego pasma}. Dawny próg ±10 %
+  // meldował 0,23 kV na 0,4 kV, którego backend nie blokuje — dwie prawdy o jednym modelu.
+  it.each([
+    ['uhv_kv', 15, false],
+    ['uhv_kv', 15.75, false],
+    ['uhv_kv', 12, false],
+    ['uhv_kv', 0.4, true],
+    ['uhv_kv', 110, true],
+    ['ulv_kv', 0.4, false],
+    ['ulv_kv', 0.42, false],
+    ['ulv_kv', 0.23, false],
+    ['ulv_kv', 1.0, false],
+    ['ulv_kv', 1.001, true],
+    ['ulv_kv', 15, true],
+  ] as const)('inwariant 3 (BUS_VOLTAGE_INCONSISTENT): %s = %s kV — naruszenie: %s', (pole, napiecie, naruszenie) => {
     const enm = mutate((m) => {
       const transformers = m.transformers as unknown as Record<string, unknown>[];
       const t1 = transformers.find((t) => t.ref_id === STACJA_B_REFS.transformerRef);
       if (!t1) throw new Error('T1 nie istnieje w fixturze');
-      (t1 as { ulv_kv: number }).ulv_kv = 0.23;
+      t1[pole] = napiecie;
     });
-    expect(violationCodes(enm)).toContain('BUS_VOLTAGE_INCONSISTENT');
+    const kody = validateElectricalGraph(buildTerminalGraph(enm)).violations.map((v) => v.code);
+    expect(kody.includes('BUS_VOLTAGE_INCONSISTENT')).toBe(naruszenie);
   });
 
   it('inwariant 4 (DEVICE_TERMINAL_UNRESOLVED): dopisana gałąź wskazuje na nieistniejącą szynę', () => {
@@ -334,7 +351,7 @@ describe('treść naruszeń inwariantów — nazwy z modelu, nigdy identyfikator
   const MUTACJE: ReadonlyArray<readonly [InvariantCode, (m: EnergyNetworkModel) => void]> = [
     ['EDGE_VOLTAGE_MISMATCH', przepnij(STACJA_B_REFS.cableQf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
     ['TRANSFORMER_NOT_CROSSING_DOMAIN', trafo('lv_bus_ref', STACJA_B_REFS.snBusRef)],
-    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 0.23)],
+    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 15)],
     ['DEVICE_TERMINAL_UNRESOLVED', (m) => {
       (m.branches as unknown as Record<string, unknown>[]).push({
         id: 'galaz-osierocona', ref_id: 'galaz-osierocona', name: 'Gałąź osierocona', tags: [], meta: {}, type: 'cable',

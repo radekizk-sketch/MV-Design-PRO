@@ -39,6 +39,7 @@ import type {
   EnergyNetworkModel,
   Generator as EnmGenerator,
 } from '../../../types/enm';
+import { toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import type { BlockTransformerItem } from './audit2-api';
 import {
@@ -212,7 +213,8 @@ export function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnifi
  * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu audytu 2
  * (`useAudit2CatalogSnapshot`) — bez niego (lista pusta, jeszcze nie
  * pobrana) inferencja uczciwie zwraca `null` zamiast zgadywać z pustego
- * katalogu.
+ * katalogu. JEDNA implementacja — czyta ją także widok źródła (`DerSurfaces.tsx`),
+ * który miał własną kopię tej funkcji.
  */
 export function inferBlockTransformerCatalogRef(
   snapshot: EnergyNetworkModel | null,
@@ -228,8 +230,10 @@ export function inferBlockTransformerCatalogRef(
   const vectorGroup = transformer.vector_group ?? null;
   const match = blockTransformers.find((candidate) =>
     candidate.sn_kva === snKva
-    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
-    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
+    // Tożsamość rekordu modelu z pozycją katalogu (materializacja kopiuje napięcia 1:1):
+    // równość danych, jedna dla produktu (`toSamoNapiecieZnamionowe`).
+    && toSamoNapiecieZnamionowe(candidate.hv_kv, transformer.uhv_kv)
+    && toSamoNapiecieZnamionowe(candidate.lv_kv, transformer.ulv_kv)
     && (!vectorGroup || candidate.vector_group === vectorGroup),
   );
   return match?.id ?? null;

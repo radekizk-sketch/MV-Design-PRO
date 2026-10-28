@@ -57,6 +57,7 @@ import {
   type SnConnectionPointKind,
 } from '../../network-build/station-der';
 import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
+import { inferBlockTransformerCatalogRef } from '../../network-build/station-der/zModelu';
 import {
   identyfikacjaMocy,
   stanKonfiguracji,
@@ -431,32 +432,6 @@ function buildDerFromSurfaceContext(
     created_at: '',
     updated_at: '',
   };
-}
-
-/**
- * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu audytu 2
- * (`useAudit2CatalogSnapshot`) zamiast statyku modułowego usuniętego z
- * `catalogs.ts` — pominięcie (lista jeszcze nie pobrana) zwraca uczciwie `null`.
- */
-function inferBlockTransformerCatalogRef(
-  snapshot: EnergyNetworkModel | null,
-  transformerRef: string | null | undefined,
-  blockTransformers: readonly BlockTransformerItem[],
-): string | null {
-  if (!snapshot || !transformerRef) return null;
-  const transformer = (snapshot.transformers ?? []).find(
-    (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
-  );
-  if (!transformer) return null;
-  const snKva = Math.round(transformer.sn_mva * 1000);
-  const vectorGroup = transformer.vector_group ?? null;
-  const match = blockTransformers.find((candidate) =>
-    candidate.sn_kva === snKva
-    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
-    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
-    && (!vectorGroup || candidate.vector_group === vectorGroup),
-  );
-  return match?.id ?? null;
 }
 
 /**

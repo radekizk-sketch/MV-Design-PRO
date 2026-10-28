@@ -399,6 +399,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.materialization_incomplete': KATALOG,
   'catalog.nameplate_mismatch': KATALOG,
   'catalog.gate_result_mismatch': KATALOG,
+  'catalog.transformer_voltage_mismatch': KATALOG,
 };
 
 // ---------------------------------------------------------------------------

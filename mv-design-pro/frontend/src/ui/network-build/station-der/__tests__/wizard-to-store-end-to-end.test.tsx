@@ -10,6 +10,7 @@
  */
 
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
+import { odpowiedzProbyZapisuDer } from './atrapaProbyZapisuDer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -134,12 +135,30 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
   WIND: [],
 };
 
+/** Zapisy właściwe DER (bez prób `dry_run`) wysłane do `POST …/generators`. */
+function zapisyDer(): Array<{ readonly url: string; readonly body: Record<string, unknown> }> {
+  return (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+    .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
+    .map(([url, init]) => ({
+      url: String(url),
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+    }))
+    .filter((zapis) => zapis.body.dry_run !== true);
+}
+
 /** Mockuje granicę `fetch` (wzorzec atrapy katalogu z `inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`). */
 function mockDerWizardFetch(
   converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
 ): void {
-  global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+  global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    // Próba zapisu (`dry_run`) — werdykt atrapy backendu (kontrola mocy O-53).
+    const proba = odpowiedzProbyZapisuDer(url, init, {
+      urzadzenia: Object.values(converters).flatMap((lista) => lista ?? []),
+      transformatoryDedykowane: BLOCK_TRANSFORMER_FIXTURES,
+      migawka: () => useSnapshotStore.getState().snapshot as Record<string, unknown> | null,
+    });
+    if (proba) return proba;
     // Karta AB-1a Pakiet D2: `/modul` ze wspólnej atrapy — parametry zapytania z migawki
     // OpenAPI (`p_max_kw`, `napiecie_kv`), progi z katalogu policzonego backendem.
     const klasyfikacja = odpowiedzKlasyfikacji(url);
@@ -269,6 +288,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_sma_2500' },
     });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 4: profil (LVRT/HVRT read-only, tożsamościowo związane z operatorem
@@ -287,14 +309,21 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     const ders = selectAllDers(useStationDerStore.getState());
 
     const der = ders[0];
-    // Karta K-Q — ZMIANA OCZEKIWANIA JEST NAPRAWA, NIE REGRESJA.
-    // Poprzednio test oczekiwal 2500 kVA pod falownikiem 2500 kW. Automatyczny
-    // dobor liczy wymagana moc pozorna przy cos phi 0,90 (2500 / 0,90 = 2778 kVA)
-    // i wybiera najmniejszy typoszereg, ktory ja przenosi. Do tej karty katalog
-    // KONCZYL SIE na 2500 kVA, wiec zaden kandydat nie spelnial warunku, dobor
-    // zwracal null i kreator przyjmowal recznie wskazany, ZA MALY transformator.
-    // Typoszereg oparty na realnym katalogu ma 4 MVA — i to jest teraz wynik.
-    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_der_15_069_3150');
+    // Korekta 2026-10-28 — ZMIANA OCZEKIWANIA JEST NAPRAWA, NIE REGRESJA. Dobór liczył
+    // dotąd próg P/0,9 we froncie (2500 kW / 0,90 = 2778 kVA → 3150 kVA), sprzeczny z JEDYNĄ
+    // regułą backendu (kontrola mocy O-53: S_n,TR ≥ max(S_n,jedn · n; P/cos φ) · k_j / k_obc),
+    // która falownik o S_n = 2,5 MVA pod transformatorem 2500 kVA PRZYJMUJE. Teraz dobór pyta
+    // backend próbą zapisu (`dry_run`) każdego kandydata i bierze najmniejszego przyjętego.
+    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
+    const probyDoboru = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
+      .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>)
+      .filter((cialo) => cialo.dry_run === true);
+    expect(new Set(probyDoboru.map((cialo) => cialo.block_transformer_catalog_ref))).toEqual(
+      new Set(['btr_pv_15_069_2500', 'btr_der_15_069_3150']),
+    );
+    const [zapis] = zapisyDer();
+    expect(zapis?.body.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
     expect(der.profiles.pf_curve_ref).toBe('pf_droop_5');
     // BESS modes nie powinny byc dla PV.
     expect(der.profiles.bess_operation_mode_refs).toEqual([]);
@@ -336,6 +365,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-bess-mode-fcr_n'));
     fireEvent.click(screen.getByTestId('add-der-bess-mode-voltage_support'));
 
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
@@ -389,6 +421,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_huawei_185' },
     });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
@@ -396,11 +431,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     await waitFor(() => {
-      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-        ([url]) => String(url).includes('/generators'),
-      );
-      expect(generatorCall?.[0]).toContain('/cases/case-snapshot-001/generators');
-      expect(JSON.parse(String(generatorCall?.[1]?.body))).toMatchObject({
+      const [zapis] = zapisyDer();
+      expect(zapis?.url).toContain('/cases/case-snapshot-001/generators');
+      expect(zapis?.body).toMatchObject({
         catalog_ref: 'pv_inv_huawei_185',
         power_mw: 0.185,
       });
@@ -449,11 +482,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     await u.click(screen.getByTestId('add-der-create'));
 
     await waitFor(() => {
-      const wywolanie = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(([url]) =>
-        String(url).includes('/generators'),
-      );
+      const [wywolanie] = zapisyDer();
       expect(wywolanie).toBeDefined();
-      const cialo = JSON.parse(String(wywolanie?.[1]?.body));
+      const cialo = wywolanie?.body;
       expect(cialo).toMatchObject({
         modul_istniejacy: true,
         data_umowy_przylaczeniowej: '2019-04-27',
@@ -496,6 +527,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_catalog_50' },
     });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     // V12K-245: operator NIE jest preselekcjonowany — test przechodzi ta sama sciezke,
     // co projektant, czyli WYBIERA profil (wczesniej „Dalej" dzialalo, bo krok byl
@@ -506,10 +540,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     await waitFor(() => {
-      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-        ([url]) => String(url).includes('/generators'),
-      );
-      expect(JSON.parse(String(generatorCall?.[1]?.body))).toMatchObject({
+      const [zapis] = zapisyDer();
+      expect(zapis?.body).toMatchObject({
         catalog_ref: 'pv_inv_catalog_50',
         power_mw: 0.05,
       });
@@ -554,6 +586,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       target: { value: 'pv_inv_catalog_50' },
     });
     fireEvent.change(screen.getByTestId('add-der-unit-count'), { target: { value: '8' } });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
@@ -561,10 +596,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     await waitFor(() => {
-      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-        ([url]) => String(url).includes('/generators'),
-      );
-      const body = JSON.parse(String(generatorCall?.[1]?.body));
+      const [zapis] = zapisyDer();
+      const body = zapis?.body ?? {};
       expect(body.quantity).toBe(8);
       // 8 × 50 kW = 400 kW = 0,4 MW — moc CALEJ pozycji, nie jednostki.
       expect(body.power_mw).toBeCloseTo(0.4, 6);
@@ -633,6 +666,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-create'));
 
     await waitFor(() => {
+      // Ani zapis, ani próba: konfiguracja bez mocy nie jest zadaniem (`zbudujZadanieDer`).
       const zadania = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
         ([url, init]) => String(url).includes('/generators') && init?.method === 'POST',
       );

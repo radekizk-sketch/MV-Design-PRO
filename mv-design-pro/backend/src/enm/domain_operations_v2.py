@@ -63,7 +63,17 @@ from network_model.pochodne import (
     mvar_na_kvar,
     mw_na_kw,
 )
-from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import (
+    OPIS_PASMA_NN,
+    izolacja_pokrywa_siec,
+    napiecie_baterii_pasuje_do_sieci,
+    napiecie_najwyzsze_sieci_kv,
+    napiecie_sieci_w_strefie_a_maszyny,
+    napiecie_wymagane_izolacji_kv,
+    pasmo_napieciowe,
+    to_samo_napiecie_znamionowe,
+    w_pasmie_nn,
+)
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
@@ -448,10 +458,6 @@ def _nazwa_z_klasa_szyny(enm: dict[str, Any], bus_ref: object, *czlony: str) -> 
     napiecie = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
     klasa = pasmo_napieciowe(napiecie) or ""
     return " ".join(c for c in (klasa if c == "{klasa}" else c for c in czlony) if c)
-
-
-def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float = 1e-6) -> bool:
-    return abs(left_kv - right_kv) <= tolerance_kv
 
 
 def _ta_sama_niepusta_pozycja_katalogowa(
@@ -3227,7 +3233,7 @@ def _add_nn_cable_segment_internal(
                 "Wskazana szyna docelowa odcinka nie istnieje w modelu sieci.",
                 "nn.cable_to_bus_not_found",
             )
-        if not w_pasmie_nn(to_voltage) or not _same_nominal_voltage(from_voltage, to_voltage):
+        if not w_pasmie_nn(to_voltage) or not to_samo_napiecie_znamionowe(from_voltage, to_voltage):
             return _error_response(
                 f"{opis_elementu(enm, to_bus_ref, 'Szyna docelowa')} ma inne napięcie "
                 f"({to_voltage} kV) niż szyna źródłowa ({from_voltage} kV).",
@@ -3500,7 +3506,7 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             f"Aparat nN musi łączyć dwie szyny w paśmie nN ({OPIS_PASMA_NN}).",
             "nn.switch_not_nn_band",
         )
-    if not _same_nominal_voltage(from_voltage, to_voltage):
+    if not to_samo_napiecie_znamionowe(from_voltage, to_voltage):
         return _error_response(
             f"{opis_elementu(enm, from_bus_ref, 'Szyna')} i "
             f"{opis_elementu(enm, to_bus_ref, 'szyna')} mają różne napięcia nN "
@@ -4194,7 +4200,7 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # Scalenie dwóch odcinków o RÓŻNYCH parametrach na kilometr fabrykowałoby
     # fizykę jednego wspólnego kabla tam, gdzie fizycznie są dwa różne tory.
     # `_ta_sama_niepusta_pozycja_katalogowa` wyżej łapie różny catalog_ref;
-    # ta tolerancja (analogiczna do `_same_nominal_voltage`) łapie przypadek
+    # ta tolerancja reprezentacji binarnej łapie przypadek
     # tego samego catalog_ref z manualnie nadpisanymi parametrami elektrycznymi.
     rozne_parametry = [
         pole for pole in ("r_ohm_per_km", "x_ohm_per_km") if abs(pola_a[pole] - pola_b[pole]) > 1e-9
@@ -5017,7 +5023,7 @@ def kontrola_tabliczki_przypisanej(
                 "wybierz transformator blokowy albo falownik z katalogu, który je określa.",
                 "der.inverter_voltage_missing",
             )
-        if not _same_nominal_voltage(converter_voltage_kv, napiecie_wyjscia_kv):
+        if not to_samo_napiecie_znamionowe(converter_voltage_kv, napiecie_wyjscia_kv):
             return _error_response(
                 "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru "
                 f"DER. Falownik: {converter_voltage_kv:g} kV, wyjście: "
@@ -5031,7 +5037,7 @@ def kontrola_tabliczki_przypisanej(
                 "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
                 "converter.bus_voltage_missing",
             )
-        if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+        if not to_samo_napiecie_znamionowe(converter_voltage_kv, bus_voltage_kv):
             return _error_response(
                 (
                     "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
@@ -6001,7 +6007,7 @@ def _add_converter_source_der_sn(
         )
 
     # Spójność napięć toru (kanon: napięcia TR blokowego spójne z falownikiem i szyną SN).
-    if not _same_nominal_voltage(converter_un_kv, inverter_output_kv):
+    if not to_samo_napiecie_znamionowe(converter_un_kv, inverter_output_kv):
         return _error_response(
             "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru DER. "
             f"Falownik: {converter_un_kv:g} kV, wyjście: {inverter_output_kv:g} kV.",
@@ -6411,6 +6417,9 @@ def _add_converter_source_der_sn(
 
 def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW."""
+    # Próba (`dry_run`): ta sama walidacja co zapis, odpowiedź bez migawki (`_jako_proba`) —
+    # kreator DER pyta backend o odmowę (np. moc transformatora O-53) PRZED zapisem.
+    dry_run = bool(payload.get("dry_run", False))
     technology = _normalize_source_technology(payload)
     if technology is None:
         return _error_response(
@@ -6491,13 +6500,16 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if method_error is not None:
             return _error_response(method_error.message_pl, method_error.code)
     if isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn":
-        return _add_converter_source_der_sn(
-            enm,
-            payload,
-            technology=technology,
-            catalog_ref=catalog_ref,
-            der_topology=der_topology,
-            pola_nc_rfg=pola_nc_rfg,
+        return _jako_proba(
+            _add_converter_source_der_sn(
+                enm,
+                payload,
+                technology=technology,
+                catalog_ref=catalog_ref,
+                der_topology=der_topology,
+                pola_nc_rfg=pola_nc_rfg,
+            ),
+            dry_run,
         )
 
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -6660,7 +6672,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
             "converter.bus_voltage_missing",
         )
-    if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+    if not to_samo_napiecie_znamionowe(converter_voltage_kv, bus_voltage_kv):
         return _error_response(
             (
                 "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
@@ -6817,12 +6829,15 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         }
     )
 
-    return _response(
-        new_enm,
-        created=created_ids,
-        selection_id=field_ref or generator_ref,
-        selection_type="bay" if field_ref else "generator",
-        events=events,
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=created_ids,
+            selection_id=field_ref or generator_ref,
+            selection_type="bay" if field_ref else "generator",
+            events=events,
+        ),
+        dry_run,
     )
 
 
@@ -7139,19 +7154,54 @@ def odmowa_tabliczki_baterii(
 ) -> dict[str, Any] | None:
     """JEDNA reguła tabliczki baterii kondensatorów — przy tworzeniu
     (`add_shunt_compensator_sn`) i przy zmianie pozycji katalogu
-    (`assign_catalog_to_element`): dodatnia moc i napięcie, napięcie zgodne z szyną."""
+    (`assign_catalog_to_element`): dodatnia moc i napięcie, napięcie zgodne z szyną.
+
+    Porównywana wielkość: napięcie znamionowe baterii wobec napięcia znamionowego szyny U_n
+    (nie poziom izolacji). Predykat `napiecie_baterii_pasuje_do_sieci` (U_n ≤ U_N ≤ U_s,
+    IEC 60871-1 i IEC 60038, podstawa w jego docstringu) czyta także walidator modelu (W040),
+    więc operacja i walidator nie mogą się rozjechać. Bateria z dławikiem ochronnym (napięcie
+    znamionowe nieco powyżej U_n, np. 17 kV na sieci 15 kV) mieści się w przedziale — dawna
+    tolerancja ±0,5 kV jej odmawiała.
+    """
     if rated_mvar <= 0.0 or rated_kv <= 0.0:
         return _error_response(
             "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
             "shunt.catalog_invalid",
         )
-    if not _same_nominal_voltage(rated_kv, bus_voltage_kv, tolerance_kv=0.5):
-        return _error_response(
-            f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
-            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
-            "shunt.voltage_mismatch",
-        )
-    return None
+    if napiecie_baterii_pasuje_do_sieci(rated_kv, bus_voltage_kv) is not False:
+        return None
+    u_s = napiecie_najwyzsze_sieci_kv(bus_voltage_kv)
+    gorna = u_s if u_s is not None else bus_voltage_kv
+    return _error_response(
+        f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
+        f"({bus_voltage_kv:g} kV): napięcie znamionowe baterii musi leżeć od napięcia "
+        f"szyny {bus_voltage_kv:g} kV (praca ciągła najwyżej przy napięciu znamionowym "
+        f"baterii, IEC 60871-1) do napięcia najwyższego sieci {gorna:g} kV (IEC 60038). "
+        "Dobierz typ dla właściwego napięcia.",
+        "shunt.voltage_mismatch",
+    )
+
+
+def odmowa_napiecia_generatora(rated_kv: float, bus_voltage_kv: float) -> dict[str, Any] | None:
+    """JEDNA reguła napięcia znamionowego generatora synchronicznego wobec szyny.
+
+    Porównywana wielkość: napięcie znamionowe maszyny U_rG wobec napięcia znamionowego szyny
+    U_n (nie poziom izolacji). Generator przyłączony bezpośrednio do szyny pracuje ciągle przy
+    napięciu szyny, więc U_n musi leżeć w strefie A maszyny (predykat
+    `napiecie_sieci_w_strefie_a_maszyny`, IEC 60034-1 p. 7.3). Typowe maszyny 6,3 / 10,5 /
+    15,75 / 21 / 31,5 kV na sieciach 6 / 10 / 15 / 20 / 30 kV leżą w strefie
+    (U_n/U_rG = 0,952); dawna tolerancja bezwzględna 1,0 kV przyjmowała maszynę 7 kV na sieci
+    6 kV (0,857) i odmawiała maszyny 31,5 kV na sieci 30 kV.
+    """
+    if napiecie_sieci_w_strefie_a_maszyny(rated_kv, bus_voltage_kv) is not False:
+        return None
+    return _error_response(
+        f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
+        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f}·U_rG, "
+        "a praca ciągła wymaga strefy A maszyny 0,95–1,05·U_rG (IEC 60034-1). Dobierz typ dla "
+        "właściwego napięcia.",
+        "generator.voltage_mismatch",
+    )
 
 
 def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -7525,14 +7575,10 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             return blad_tabliczki
 
     rated_kv = _as_float(tabliczka.get("rated_kv"))
-    if rated_kv is not None and not _same_nominal_voltage(
-        rated_kv, bus_voltage_kv, tolerance_kv=1.0
-    ):
-        return _error_response(
-            f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
-            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
-            "generator.voltage_mismatch",
-        )
+    if rated_kv is not None:
+        odmowa_napiecia = odmowa_napiecia_generatora(rated_kv, bus_voltage_kv)
+        if odmowa_napiecia is not None:
+            return odmowa_napiecia
 
     control_mode_raw = payload.get("control_mode")
     control_mode = (
@@ -7625,28 +7671,47 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     )
 
 
+def odmowa_poziomu_izolacji(
+    *,
+    u_m_kv: float | None,
+    bus_voltage_kv: float | None,
+    opis_pl: str,
+    error_code: str,
+) -> dict[str, Any] | None:
+    """JEDNA reguła poziomu izolacji urządzenia wobec sieci — U_m ≥ U_s.
+
+    Napięcie najwyższe urządzenia U_m (dla aparatury rozdzielczej: napięcie znamionowe U_r,
+    PN-EN 62271-1 p. 5.2) musi pokrywać napięcie najwyższe SIECI U_s, a nie jej napięcie
+    znamionowe U_n (IEC 60071-1:2006 p. 3.9–3.10; para U_n → U_s z IEC 60038 tab. 3–5:
+    sieć 15 kV ma U_s = 17,5 kV, więc urządzenie o U_m = 15 kV jej nie pokrywa). Predykat
+    i tabela: `pasma_napieciowe.izolacja_pokrywa_siec` — ten sam dla ogranicznika przepięć,
+    aparatów pola, rodziny rozdzielnicy, podglądu doboru aparatu DER i dowodu doboru
+    aparatury. Brak U_m albo brak U_s (napięcie szyny nieznane, w paśmie nN) — reguła nie ma
+    podstawy i nie odmawia (brak napięcia szyny wykrywa walidator modelu).
+    """
+    if izolacja_pokrywa_siec(u_m_kv, bus_voltage_kv) is not False:
+        return None
+    u_s = napiecie_wymagane_izolacji_kv(bus_voltage_kv)
+    return _error_response(
+        f"{opis_pl}: napięcie najwyższe urządzenia U_m = {float(u_m_kv or 0.0):g} kV jest niższe "
+        f"od napięcia najwyższego sieci U_s = {float(u_s or 0.0):g} kV (szyna "
+        f"{float(bus_voltage_kv or 0.0):g} kV, IEC 60038) — wymagane U_m ≥ U_s "
+        "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
+        error_code,
+    )
+
+
 def odmowa_napiecia_ogranicznika(
     u_m_kv: float, bus_voltage_kv: float | None
 ) -> dict[str, Any] | None:
-    """JEDNA reguła napięcia ogranicznika przepięć wobec szyny SN.
-
-    Napięcie najwyższe urządzenia U_m typu musi pokrywać napięcie znamionowe szyny
-    (U_m ≥ U_n; IEC 60071-1, definicja napięcia najwyższego urządzenia U_m: górna granica
-    napięcia sieci, dla której urządzenie jest przeznaczone). Typ o U_m < U_n jest
-    przeznaczony dla niższego poziomu napięcia — odmowa jak dla baterii i generatora
-    o napięciu niezgodnym z szyną. Szyna bez napięcia znamionowego: reguła nie ma
-    podstawy (brak danych modelu wykrywa walidator modelu), więc nie odmawia.
-    """
-    if bus_voltage_kv is None or bus_voltage_kv <= 0.0:
-        return None
-    if u_m_kv < bus_voltage_kv:
-        return _error_response(
-            f"Napięcie najwyższe urządzenia ogranicznika U_m = {u_m_kv:g} kV jest niższe od "
-            f"napięcia znamionowego szyny SN ({bus_voltage_kv:g} kV) — wymagane U_m ≥ U_n "
-            "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
-            "spd.voltage_mismatch",
-        )
-    return None
+    """Reguła napięcia ogranicznika przepięć wobec szyny SN — `odmowa_poziomu_izolacji`
+    z kodem ``spd.voltage_mismatch`` (U_m typu ≥ U_s sieci)."""
+    return odmowa_poziomu_izolacji(
+        u_m_kv=u_m_kv,
+        bus_voltage_kv=bus_voltage_kv,
+        opis_pl="Ogranicznik przepięć",
+        error_code="spd.voltage_mismatch",
+    )
 
 
 def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:

@@ -69,6 +69,11 @@ from network_model.core.uziemienie import (
 )
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mva_na_kva
+from network_model.pochodne.pasma_napieciowe import (
+    izolacja_pokrywa_siec,
+    napiecie_najwyzsze_sieci_kv,
+    to_samo_napiecie_znamionowe,
+)
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -992,7 +997,10 @@ class AutoPopulateRequest(BaseModel):
     """K30-23 user demand: 'dane mają się maksymalnie podczytywać'."""
 
     voltage_kv: float | None = None
-    """Element voltage rating (15 / 20 / 0.4 kV typical)."""
+    """Napięcie znamionowe SIECI [kV] (15 / 20 / 0,4 kV typowo). Filtr napięciowy podpowiedzi
+    to reguła operacji modelu dla rodzaju: aparaty, ograniczniki i kable — poziom izolacji
+    U_m ≥ U_s sieci (`pasma_napieciowe.izolacja_pokrywa_siec`); transformatory
+    i przekształtniki — równość napięcia znamionowego uzwojenia/wyjścia z napięciem sieci."""
     expected_power_mva: float | None = None
     """Expected power rating (0.063 - 2.5 MVA dla TR, etc.)."""
     expected_current_a: float | None = None
@@ -1115,14 +1123,15 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
         v_lv = _liczba_z_katalogu(entry, "voltage_lv_kv")
         if rated_mva is None or v_hv is None or v_lv is None:
             continue
-        manufacturer = params.get("manufacturer", "")
+        manufacturer = params.get("manufacturer") or ""
         is_ptpire = bool(params.get("ptpire_certified", False))
 
-        # Voltage filter (within ±5%)
+        # Napięcie: jedno z uzwojeń ma napięcie znamionowe RÓWNE napięciu sieci — ta sama
+        # równość wartości znormalizowanych co operacje modelu (stacja, GPZ), nie pasmo ±5 %.
         if req.voltage_kv is not None:
             if not (
-                abs(v_hv - req.voltage_kv) / req.voltage_kv < 0.05
-                or abs(v_lv - req.voltage_kv) / max(v_lv, 0.001) < 0.05
+                to_samo_napiecie_znamionowe(v_hv, req.voltage_kv)
+                or to_samo_napiecie_znamionowe(v_lv, req.voltage_kv)
             ):
                 continue
 
@@ -1176,11 +1185,14 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
         rated_i = _liczba_z_katalogu(entry, "rated_current_a")
         if v_kv is None or cross is None or rated_i is None:
             continue
-        manufacturer = params.get("manufacturer", "")
+        manufacturer = params.get("manufacturer") or ""
         is_ptpire = bool(params.get("ptpire_certified", False))
 
+        # Napięcie: kabel o napięciu znamionowym U ma U_m z pary IEC 60038 (IEC 60502-2:
+        # 12/20 kV → U_m 24 kV); pokrywa sieć, gdy U_m ≥ U_s — ten sam predykat co poziom
+        # izolacji aparatów (dawny filtr ±20 % ukrywał każdy kabel 20 kV dla sieci 15 kV).
         if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.2:
+            if izolacja_pokrywa_siec(napiecie_najwyzsze_sieci_kv(v_kv), req.voltage_kv) is not True:
                 continue
         if req.cross_section_mm2 is not None:
             if abs(cross - req.cross_section_mm2) / max(req.cross_section_mm2, 0.001) > 0.3:
@@ -1232,11 +1244,14 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         rated_i = _liczba_z_katalogu(entry, "in_a")
         if v_kv is None or rated_i is None:
             continue
-        manufacturer = params.get("manufacturer", "")
+        manufacturer = params.get("manufacturer") or ""
         is_ptpire = bool(params.get("ptpire_certified", False))
 
+        # Napięcie: U_r aparatu (= U_m, PN-EN 62271-1 p. 5.2) ≥ U_s sieci — ten sam predykat
+        # co odmowa poziomu izolacji aparatów pola (dawny filtr ±30 % podpowiadał aparat 12 kV
+        # na sieć 15 kV, który operacja odrzuca, i ukrywał aparat 24 kV).
         if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) > req.voltage_kv * 0.3:
+            if izolacja_pokrywa_siec(v_kv, req.voltage_kv) is not True:
                 continue
         if req.expected_current_a is not None:
             if rated_i < req.expected_current_a * 0.9:
@@ -1254,7 +1269,7 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
                 dopasowanie=dopasowanie,
                 certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
-                rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
+                rationale_pl=(f"{v_kv:g} kV / {int(rated_i)} A ({manufacturer})"),
             )
         )
 
@@ -1330,8 +1345,11 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
     for item in catalog.list_surge_arrester_types():
         v_kv = item.u_m_kv
         manufacturer = item.manufacturer or ""
+        # Napięcie: U_m typu ≥ U_s sieci — ten sam predykat co odmowa `spd.voltage_mismatch`
+        # operacji `add_surge_arrester_sn` (podpowiedź nie może proponować typu, który
+        # operacja odrzuci).
         if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
+            if izolacja_pokrywa_siec(v_kv, req.voltage_kv) is not True:
                 continue
 
         dopasowanie: Dopasowanie = "CZESCIOWE"
@@ -1391,8 +1409,10 @@ def _auto_populate_inverters(
         kind = item.kind.value.upper()
         if target_kind is not None and kind != target_kind:
             continue
+        # Napięcie: napięcie znamionowe przekształtnika RÓWNE napięciu szyny — ta sama reguła
+        # co odmowa `converter.voltage_mismatch` operacji (nie pasmo ±30 %).
         if req.voltage_kv is not None:
-            if abs(item.un_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
+            if not to_samo_napiecie_znamionowe(item.un_kv, req.voltage_kv):
                 continue
         if req.expected_power_mva is not None:
             if (

@@ -26,11 +26,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from domain.generator_validation import BEZ_REDUKCJI
-from enm.der_sn_validation import (
-    NN_VOLTAGE_TOLERANCE_KV,
-    SN_VOLTAGE_TOLERANCE_KV,
-    rated_current_a,
-)
+from enm.der_sn_validation import rated_current_a
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
@@ -199,7 +195,7 @@ def dobierz_transformator_blokowy(
     przeciazalnosc_pu: float = BEZ_REDUKCJI,
     rezerwa_pu: float = 0.0,
 ) -> BlockTransformerSelectionResult:
-    """Dobór TR blokowego z katalogu przy tolerancjach napięć D1 — jedna funkcja dla
+    """Dobór TR blokowego z katalogu (równość napięć znamionowych D1) — jedna funkcja dla
     kaskady i dla odstępstw dokumentu DER-SN. `OdmowaDanychError` — wejście poza dziedziną."""
     return propose_block_transformer(
         BlockTransformerSelectionInput(
@@ -210,8 +206,6 @@ def dobierz_transformator_blokowy(
             simultaneity_factor=wspolczynnik_jednoczesnosci,
             reserve_pu=rezerwa_pu,
             loadability_pu=przeciazalnosc_pu,
-            sn_tolerance_kv=SN_VOLTAGE_TOLERANCE_KV,
-            nn_tolerance_kv=NN_VOLTAGE_TOLERANCE_KV,
         )
     )
 

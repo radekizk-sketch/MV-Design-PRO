@@ -449,6 +449,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "data_umowy_przylaczeniowej",
             "deklaracje_modulu",
             "der_topology",
+            "dry_run",
             "existing_field_ref",
             "frequency_droop_percent",
             "has_hvrt_curve",
@@ -3632,6 +3633,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.transformer_voltage_mismatch": ReadinessCodeSpec(
+        code="catalog.transformer_voltage_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Napięcia znamionowe uzwojeń typu transformatora różnią się od napięć szyn, "
+            "do których transformator jest przyłączony — wybierz typ o napięciach szyn "
+            "(operacja odrzucona, model bez zmian)"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
     ),
     # OZE — PV/BESS transformer rule
     "oze.pv_no_transformer": ReadinessCodeSpec(

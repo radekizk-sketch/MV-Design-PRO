@@ -168,11 +168,20 @@ describe('dobór rodziny do napięcia szyny — iloczyn cech (lustro reguły kat
     ['sieciowa: szyna pod klasą, ale spoza listy sieci', [15, 20], [17.5, 24], 12, false],
     ['sieciowa: szyna równa najwyższej klasie Um', [15, 20], [17.5, 24], 24, false],
     ['sieciowa: szyna ponad wszystkim', [15, 20], [17.5, 24], 30, false],
-    // rodzina KLASOWA — wystarczy klasa Um >= napięcie szyny
+    // rodzina KLASOWA — wystarczy klasa U_m >= U_s sieci szyny (IEC 60038 tab. 3), te same
+    // wiersze co `test_switchgear_napiecia_rodzin.py` backendu (korekta 2026-10-28: dawny
+    // wiersz „szyna 24 kV równa klasie 24 kV → przechodzi” przypinał porównanie U_m z Uₙ)
     ['klasowa: szyna pod klasą', [], [12, 24], 6, true],
     ['klasowa: szyna między klasami', [], [12, 24], 17.5, true],
-    ['klasowa: szyna równa klasie', [], [12, 24], 24, true],
+    ['klasowa: szyna równa klasie dolnej', [], [12, 24], 12, true],
+    ['klasowa: U_s równe klasie górnej (sieć 20 kV)', [], [12, 24], 20, true],
+    ['klasowa: Uₙ równe klasie górnej, U_s ponad nią', [], [12, 24], 24, false],
     ['klasowa: szyna ponad najwyższą klasą', [], [12, 24], 25, false],
+    ['klasowa jedna: szyna poniżej', [], [24], 15, true],
+    ['klasowa jedna: U_s równe U_m', [], [24], 20, true],
+    ['klasowa jedna: Uₙ równe U_m', [], [24], 24, false],
+    ['klasowa jedna: klasa 17,5 kV na sieci 15 kV', [], [17.5], 15, true],
+    ['klasowa jedna: klasa 15 kV na sieci 15 kV (U_s = 17,5 kV)', [], [15], 15, false],
     // rodzina BEZ DANYCH — brak deklaracji to nie jest zgoda
     ['bez danych: szyna typowa', [], [], 15, false],
     // szyna bez napięcia — nie ma czego porównać

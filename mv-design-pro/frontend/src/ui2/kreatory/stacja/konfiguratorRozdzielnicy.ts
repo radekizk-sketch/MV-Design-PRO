@@ -41,6 +41,7 @@ import {
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { SnFieldRole } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { PoleSnWpis } from './stacjaModel';
+import { izolacjaPokrywaSiec, toSamoNapiecieZnamionowe } from '../../model/pasmaNapieciowe';
 import { STACJA_STRINGS as T } from './strings';
 
 /** Tor konfiguracji rodziny — kontrakt `SwitchgearFamily.tor_konfiguracji`. */
@@ -96,8 +97,10 @@ export interface PozycjaOfertyRodzin {
  * Reguła (karta K-J):
  *  1. karta wymienia napięcia SIECI ⇒ napięcie szyny musi być na tej liście
  *     (producent nazwał sieci, dla których robi wyrób);
- *  2. karta napięć sieci nie podaje ⇒ wystarczy klasa urządzenia Um ≥ napięcie
- *     szyny (PN-EN 62271-1: Um to górna granica napięcia sieci);
+ *  2. karta napięć sieci nie podaje ⇒ wystarczy klasa urządzenia U_m ≥ U_s, napięcia
+ *     najwyższego SIECI szyny (IEC 60071-1 p. 3.9–3.10, IEC 60038 tab. 3; PN-EN 62271-1
+ *     p. 5.2) — predykat `izolacjaPokrywaSiec`, lustro `izolacja_pokrywa_siec` backendu
+ *     (dawne „U_m ≥ napięcie szyny” przyjmowało klasę 24 kV na szynie 24 kV o U_s = 36 kV);
  *  3. karta nie podaje żadnej z dwóch wielkości ⇒ rodzina nie ma czym
  *     potwierdzić zgodności, więc odpowiedź brzmi „nie".
  *
@@ -110,9 +113,9 @@ export function rodzinaObslugujeNapiecie(
 ): boolean {
   if (!(snVoltageKv > 0)) return true;
   if (rodzina.network_voltages_kv.length > 0) {
-    return rodzina.network_voltages_kv.some((napiecie) => Math.abs(napiecie - snVoltageKv) <= 1e-9);
+    return rodzina.network_voltages_kv.some((napiecie) => toSamoNapiecieZnamionowe(napiecie, snVoltageKv));
   }
-  return rodzina.um_classes_kv.some((klasaUm) => klasaUm + 1e-9 >= snVoltageKv);
+  return rodzina.um_classes_kv.some((klasaUm) => izolacjaPokrywaSiec(klasaUm, snVoltageKv) === true);
 }
 
 /**

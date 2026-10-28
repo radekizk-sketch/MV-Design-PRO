@@ -16,7 +16,8 @@ ZRODLA DANYCH:
 - Aparatura generyczna: PN-EN 62271-100:2021 / PN-EN 62271-102:2018
 
 KONWENCJE:
-- un_kv [kV] — znamionowe napiecie pracy (12.0 dla SN 15 kV, 17.5 dla SN 20 kV, 24.0 dla SN 20 kV)
+- un_kv [kV] — napiecie znamionowe aparatu U_r (= U_m, PN-EN 62271-1 p. 5.2): 12.0 dla sieci 10 kV,
+  17.5 dla sieci 15 kV, 24.0 dla sieci 20 kV (para U_n -> U_s z IEC 60038, `pasma_napieciowe`)
 - in_a [A] — prad znamionowy ciaglej pracy
 - ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery, bezpieczniki)
 - icw_ka [kA] — prad wytrzymywany krotkotrwale 1s

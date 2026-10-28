@@ -24,7 +24,8 @@ export interface StationConfigBasicCardProps {
   /** Przyczyna rodzaju w słowach projektanta (liczba pól liniowych, sprzęgło). */
   readonly topologicalReasonPl?: string | null;
   readonly constructionType?: StationConstructionType | null;
-  readonly snVoltageKv: number;
+  /** Napięcie szyny SN stacji z modelu; `null` — model go nie podaje (bez domysłu). */
+  readonly snVoltageKv: number | null;
   readonly nnVoltageLevels: readonly number[];
   readonly owner?: string;
   readonly location?: string;
@@ -108,7 +109,7 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
         </label>
         <div>
           <span className="text-scada-muted">Napięcie SN: </span>
-          <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv} kV</span>
+          <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv !== null ? `${snVoltageKv} kV` : 'brak danych'}</span>
         </div>
         {/* Pakiet H: typ uziemienia neutralnego SN (z katalogu). */}
         <label className="flex flex-col">

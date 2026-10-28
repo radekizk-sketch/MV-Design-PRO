@@ -15,16 +15,17 @@
  *  - Po Create: attachDer w useStationDerStore + zamknięcie modal'a.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../app-state';
 import { fetchDerConverterTypes } from '../../catalog/api';
-import type { ConverterType } from '../../catalog/types';
+import type { ConverterType, TransformerType } from '../../catalog/types';
 import { notify } from '../../notifications/store';
 import {
   DerPersistenceApiError,
   postDerGeneratorConfig,
   type DerConnectionVariant,
+  type DerGeneratorConfigRequest,
 } from '../../sld/v2/canvas/derPersistenceApi';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../types/enm';
@@ -37,7 +38,13 @@ import {
   useBessBatteryTypes,
   useNcRfgModuleClassification,
   useNcRfgOperatorCatalog,
+  useStationTransformerTypes,
 } from './derRemoteCatalogs';
+import {
+  KOD_ODMOWY_MOCY_TRANSFORMATORA,
+  useDoborTransformatoraDedykowanego,
+  useProbaZapisuDer,
+} from './probaZapisuDer';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
   getBlockTransformer,
@@ -63,7 +70,11 @@ import {
 } from '../../../ui2/oze/ncrfg/daneModulu';
 import { SekcjaDanychModulu } from '../../../ui2/oze/ncrfg/SekcjaDanychModulu';
 import { getTooltip } from '../../shared/engineerTooltips';
-import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import {
+  powyzejPasmaNn,
+  toSamoNapiecieZnamionowe,
+  wPasmieNn,
+} from '../../../ui2/model/pasmaNapieciowe';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 
 export interface AddDerWizardProps {
@@ -136,14 +147,6 @@ type StationTransformerInfo = {
   readonly snMva: number;
   readonly hvKv: number | null;
   readonly lvKv: number | null;
-};
-
-type StationTransformerCatalogItem = {
-  readonly id: string;
-  readonly label_pl: string;
-  readonly sn_mva: number;
-  readonly hv_kv: number;
-  readonly lv_kv: number;
 };
 
 const STEP_LABELS: Record<StepId, string> = {
@@ -230,20 +233,6 @@ const EMPTY_SELECTIONS: WizardSelections = {
 // preselekcji zamienia „domyslnie ENEA" na „wybierz operatora" — bez zadnej straty
 // funkcji, za to bez fabrykacji danej projektowej.
 
-const STATION_TRANSFORMER_CATALOG: readonly StationTransformerCatalogItem[] = [
-  { id: 'tr-sn-nn-15-04-63kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 63 kVA Dyn11', sn_mva: 0.063, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-100kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 100 kVA Dyn11', sn_mva: 0.1, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-160kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 160 kVA Dyn11', sn_mva: 0.16, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-250kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 250 kVA Dyn11', sn_mva: 0.25, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-400kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 400 kVA Dyn11', sn_mva: 0.4, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-630kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 630 kVA Dyn11', sn_mva: 0.63, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-1000kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1000 kVA Dyn11', sn_mva: 1, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-1250kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1250 kVA Dyn11', sn_mva: 1.25, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-1600kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 1600 kVA Dyn11', sn_mva: 1.6, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-2000kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 2000 kVA Dyn11', sn_mva: 2, hv_kv: 15, lv_kv: 0.4 },
-  { id: 'tr-sn-nn-15-04-2500kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 2500 kVA Dyn11', sn_mva: 2.5, hv_kv: 15, lv_kv: 0.4 },
-];
-
 function stationToken(stationName: string): string {
   const numeric = stationName.match(/(\d+)(?!.*\d)/)?.[1];
   if (numeric) return `S${numeric.padStart(2, '0')}`;
@@ -270,19 +259,17 @@ function applyPointDefaults(
   connectionSide: ConnectionSide,
   derKind: DerKindUnified,
   stationName: string,
-  blockTransformers: readonly BlockTransformerItem[],
 ): WizardSelections {
-  const next: WizardSelections = {
+  // Transformator dedykowany NIE jest tu preselekcjonowany: przed wyborem punktu SN
+  // i urządzenia nie znamy napięć, a dawny wybór „pierwszej pozycji katalogu" podstawiał
+  // transformator, którego napięć nikt nie sprawdził. Dobiera go próba backendu
+  // (`useDoborTransformatoraDedykowanego`) albo projektant.
+  return {
     ...selections,
     connectionSide,
     derName: selections.derName.trim() || defaultDerName(derKind, stationName),
     pccLabel: selections.pccLabel.trim() || defaultPccLabel(derKind, stationName),
   };
-  if (connectionSide === 'dedicated_transformer' && !selections.blockTransformerCatalogRef) {
-    next.blockTransformerCatalogRef =
-      selectBlockTransformersForDer(blockTransformers, { derKind })[0]?.id ?? null;
-  }
-  return next;
 }
 
 /** Kandydat punktu przyłączenia SN — element ISTNIEJĄCY w migawce (karta FAB-K). */
@@ -553,23 +540,10 @@ function opisWykazuPtpiree(stan: StanRejestruPtpiree<PtpireeManifest>): string {
   return `(${wersje}, publikacja ${stan.dane.publication_date}: ${stan.dane.record_count} pozycji)`;
 }
 
-function requiredTransformerKvaForDerPowerKw(powerKw: number): number {
-  return powerKw / 0.9;
-}
-
 function getDeviceNominalVoltageKv(device: unknown): number | null {
   if (!device || typeof device !== 'object') return null;
   const value = (device as { nominal_voltage_kv?: unknown }).nominal_voltage_kv;
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function fitsStationTransformerCapacity(
-  device: DerDeviceCatalogItem,
-  connectionSide: ConnectionSide | null,
-  transformerCapacityKw: number | null,
-): boolean {
-  if (connectionSide !== 'nN' || transformerCapacityKw === null) return true;
-  return requiredTransformerKvaForDerPowerKw(device.nominal_power_kw) <= transformerCapacityKw + 1e-6;
 }
 
 function fitsSelectedLvVoltage(
@@ -580,45 +554,102 @@ function fitsSelectedLvVoltage(
   if (connectionSide !== 'nN' || stationNnBusVoltageKv === null) return true;
   const deviceKv = getDeviceNominalVoltageKv(device);
   if (deviceKv === null) return true;
-  return Math.abs(deviceKv - stationNnBusVoltageKv) <= 0.01;
+  // Równość DANYCH (napięcie znamionowe przekształtnika = napięcie szyny nN), nie ocena:
+  // ta sama równość co reguła backendu `converter.voltage_mismatch`.
+  return toSamoNapiecieZnamionowe(deviceKv, stationNnBusVoltageKv);
 }
 
+/**
+ * Warianty „większego transformatora stacji" — pozycje katalogu backendu o TYCH SAMYCH
+ * napięciach znamionowych co transformator stacji (równość danych) i mocy większej od jego
+ * mocy, rosnąco. Bez napięć transformatora w modelu nie ma wariantów (dawne podstawienie
+ * 15/0,4 kV fabrykowało dopasowanie). Wystarczalność mocy ocenia WYŁĄCZNIE backend (próba
+ * zapisu po zmianie transformatora) — lista nie przesiewa wariantów progiem mocy.
+ */
 function selectTransformerUpgradeOptions(
-  requiredTransformerKva: number | null,
   currentTransformer: StationTransformerInfo | null,
-): StationTransformerCatalogItem[] {
-  if (!currentTransformer || requiredTransformerKva === null) return [];
-  const currentMva = currentTransformer.snMva;
-  const hvKv = currentTransformer.hvKv ?? 15;
-  const lvKv = currentTransformer.lvKv ?? 0.4;
-  return STATION_TRANSFORMER_CATALOG.filter((item) =>
-    item.sn_mva > currentMva + 1e-9
-    && item.sn_mva * 1000 >= requiredTransformerKva - 1e-6
-    && Math.abs(item.hv_kv - hvKv) <= 0.5
-    && Math.abs(item.lv_kv - lvKv) <= 0.05);
+  catalog: readonly TransformerType[],
+): TransformerType[] {
+  if (!currentTransformer || currentTransformer.hvKv === null || currentTransformer.lvKv === null) {
+    return [];
+  }
+  const { hvKv, lvKv, snMva } = currentTransformer;
+  return catalog
+    .filter((item) =>
+      toSamoNapiecieZnamionowe(item.voltage_hv_kv, hvKv)
+      && toSamoNapiecieZnamionowe(item.voltage_lv_kv, lvKv)
+      && item.rated_power_mva > snMva)
+    .sort((a, b) => a.rated_power_mva - b.rated_power_mva || a.id.localeCompare(b.id));
 }
 
-function selectAutoBlockTransformerForDevice(
+/**
+ * Kandydaci na transformator dedykowany: katalog transformatorów dedykowanych dla rodzaju DER,
+ * strona górna RÓWNA napięciu punktu przyłączenia SN (ta sama równość co backend
+ * `_resolve_sn_connection_bus`), strona dolna RÓWNA napięciu przekształtnika; rosnąco mocą.
+ * Nieznane napięcie nie zawęża listy (krok „Punkt" przed wyborem urządzenia).
+ */
+function blockTransformerCandidates(
   derKind: DerKindUnified,
-  device: DerDeviceCatalogItem | null,
-  stationTransformer: StationTransformerInfo | null,
+  snPointVoltageKv: number | null,
+  deviceKv: number | null,
   blockTransformers: readonly BlockTransformerItem[],
-) {
-  const deviceKv = getDeviceNominalVoltageKv(device);
-  if (!device || deviceKv === null) return null;
-  const hvKv = stationTransformer?.hvKv ?? 15;
-  // DER musi zachować możliwość pracy z mocą bierną zgodnie z profilem NC RfG.
-  // Dla automatycznego doboru przyjmujemy minimalny cosφ=0,90, więc PV 1000 kW
-  // wymaga co najmniej 1111 kVA i dobiera 1250 kVA z typoszeregu, nie 2500 kVA.
-  const requiredTransformerKva = requiredTransformerKvaForDerPowerKw(device.nominal_power_kw);
-  const candidates = selectBlockTransformersForDer(blockTransformers, {
-    derKind,
-    hvKv,
-    lvKv: deviceKv,
-  })
-    .filter((transformer) => transformer.sn_kva >= requiredTransformerKva - 1e-6)
-    .sort((a, b) => a.sn_kva - b.sn_kva);
-  return candidates[0] ?? null;
+): BlockTransformerItem[] {
+  return [
+    ...selectBlockTransformersForDer(blockTransformers, {
+      derKind,
+      hvKv: snPointVoltageKv ?? undefined,
+      lvKv: deviceKv ?? undefined,
+    }),
+  ].sort((a, b) => a.sn_kva - b.sn_kva || a.id.localeCompare(b.id));
+}
+
+/**
+ * JEDNO zadanie zapisu DER dla próby (`dry_run`) i dla zapisu — predykaty parami: werdykt
+ * próby i zapisu pochodzą z tej samej konfiguracji. `null` — konfiguracja niekompletna.
+ */
+function zbudujZadanieDer(args: {
+  readonly stationId: string | null;
+  readonly derKind: DerKindUnified;
+  readonly selections: WizardSelections;
+  readonly device: DerDeviceCatalogItem | null;
+  readonly blockTransformerCatalogRef: string | null;
+  readonly ncRfgModule: DerGeneratorConfigRequest['nc_rfg_module'];
+  readonly daneModulu: FormularzDanychModulu;
+}): DerGeneratorConfigRequest | null {
+  const { stationId, derKind, selections, device } = args;
+  if (!stationId || !selections.connectionSide || !selections.deviceCatalogRef || !device) {
+    return null;
+  }
+  if (!(device.nominal_power_kw > 0)) return null;
+  const dedykowany = selections.connectionSide === 'dedicated_transformer';
+  if (dedykowany && !selections.snConnectionBusRef) return null;
+  const liczbaJednostek = Math.max(1, Math.round(selections.unitCount || 1));
+  return {
+    station_ref: stationId,
+    der_kind: derKind,
+    // Model trzyma moc CAŁEJ pozycji (backend mnoży moc katalogową przez liczbę sztuk,
+    // gdy nie dostanie mocy jawnej) — wysyłamy iloczyn, żeby obie strony mówiły to samo.
+    power_mw: (device.nominal_power_kw * liczbaJednostek) / 1000,
+    connection_variant: toBackendConnectionVariant(selections.connectionSide),
+    catalog_ref: selections.deviceCatalogRef,
+    block_transformer_catalog_ref: dedykowany ? args.blockTransformerCatalogRef : null,
+    // Karta FAB-K (§0 R3): punkt przyłączenia SN — element ISTNIEJĄCY w modelu (szyna
+    // stacji / `BranchPointSN` / `Junction`), WYMAGANY przez backend dla `block_transformer`
+    // bez zapisanego `blocking_transformer_ref` (`_resolve_sn_connection_bus`). Pomijany dla
+    // `nn_side` — backend go tam nie czyta.
+    sn_connection_bus_ref: dedykowany ? selections.snConnectionBusRef ?? undefined : undefined,
+    // Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS` — WYŁĄCZNIE dla BESS
+    // (backend odrzuca go na innej technologii: `converter.battery_catalog_not_applicable`).
+    battery_catalog_ref: derKind === 'BESS' ? selections.batteryCatalogRef ?? undefined : undefined,
+    source_name: selections.derName,
+    quantity: liczbaJednostek,
+    // Karta FAB-J (decyzja #5): moduł wyliczony PRZEZ BACKEND dla (moc, napięcie
+    // przyłączenia). Brak napięcia = pole pominięte: backend weryfikuje `nc_rfg_module`
+    // tylko zadeklarowany (`_weryfikuj_modul_ncrfg`), a zgadywanie modułu byłoby fabrykacją.
+    nc_rfg_module: args.ncRfgModule ?? undefined,
+    // Dane modułu NC RfG (art. 4, data umowy, nastawy, deklaracje) — wyłącznie podane.
+    ...polaNcRfgDoPayloadu(args.daneModulu),
+  };
 }
 
 export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
@@ -788,16 +819,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const primaryStationTransformer = stationTransformers[0] ?? null;
 
+  // Zgodność listy urządzeń z wariantem nN to RÓWNOŚĆ napięcia znamionowego z szyną nN
+  // (dana). Moc transformatora stacji wobec mocy źródła ocenia wyłącznie backend — próbą
+  // zapisu wybranej konfiguracji (`useProbaZapisuDer`), bez progu P/cosφ we froncie.
   const compatibleDeviceCatalog = useMemo(
     () => deviceCatalog.filter((device) =>
-      fitsSelectedLvVoltage(device, selections.connectionSide, stationNnBus?.voltageKv ?? null)
-      && fitsStationTransformerCapacity(device, selections.connectionSide, stationTransformerCapacityKw)),
-    [
-      deviceCatalog,
-      selections.connectionSide,
-      stationNnBus,
-      stationTransformerCapacityKw,
-    ],
+      fitsSelectedLvVoltage(device, selections.connectionSide, stationNnBus?.voltageKv ?? null)),
+    [deviceCatalog, selections.connectionSide, stationNnBus],
   );
 
   const incompatibleDeviceCount = deviceCatalog.length - compatibleDeviceCatalog.length;
@@ -856,27 +884,17 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         selections.connectionSide,
         stationNnBus?.voltageKv ?? null,
       );
-      const transformerOk = fitsStationTransformerCapacity(
-        device,
-        selections.connectionSide,
-        stationTransformerCapacityKw,
-      );
       const ptpireeDocument = resolvePtpireeDocument(device);
       const ptpireeSuffix = ptpireeDocument !== '-' ? ` · PTPiREE ${ptpireeDocument}` : '';
-      if (voltageOk && transformerOk) {
+      if (voltageOk) {
         return { id: device.id, label: `${device.label_pl}${ptpireeSuffix}` };
       }
-      const reason = !voltageOk
-        ? 'wymaga innego poziomu napięcia'
-        : 'wymaga większego transformatora stacji';
-      return { id: device.id, label: `${device.label_pl}${ptpireeSuffix} — ${reason}` };
+      return {
+        id: device.id,
+        label: `${device.label_pl}${ptpireeSuffix} — wymaga innego poziomu napięcia`,
+      };
     }),
-    [
-      filteredDeviceCatalog,
-      selections.connectionSide,
-      stationNnBus,
-      stationTransformerCapacityKw,
-    ],
+    [filteredDeviceCatalog, selections.connectionSide, stationNnBus],
   );
 
   const selectedDevice = useMemo(
@@ -901,12 +919,60 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     [availableBessModes],
   );
 
-  const autoBlockTransformer = useMemo(
-    () => selectAutoBlockTransformerForDevice(
-      derKind, selectedDevice, primaryStationTransformer, blockTransformers,
-    ),
-    [blockTransformers, derKind, primaryStationTransformer, selectedDevice],
+  // Wersja modelu w kluczu prób backendu: każda nowa migawka (np. po zmianie transformatora
+  // stacji) to nowa próba — werdykt nigdy nie dotyczy modelu sprzed zmiany.
+  const licznikMigawekRef = useRef(0);
+  const wersjaModelu = useMemo(() => {
+    licznikMigawekRef.current += 1;
+    const header = (snapshot as { header?: { hash_sha256?: unknown } } | null)?.header;
+    const hash = typeof header?.hash_sha256 === 'string' ? header.hash_sha256 : '';
+    return `${hash}#${licznikMigawekRef.current}`;
+  }, [snapshot]);
+  const kontekstProby = useMemo(
+    () => ({ projectId, caseId: effectiveCaseId, wersjaModelu }),
+    [effectiveCaseId, projectId, wersjaModelu],
   );
+
+  const selectedDeviceKv = getDeviceNominalVoltageKv(selectedDevice);
+  const snPointVoltageKv = selectedSnConnectionPoint?.voltageKv ?? null;
+  // Kandydaci z RÓWNOŚCI napięć (punkt SN ↔ strona górna, przekształtnik ↔ strona dolna).
+  const kandydaciTransformatoraDedykowanego = useMemo(
+    () => blockTransformerCandidates(derKind, snPointVoltageKv, selectedDeviceKv, blockTransformers),
+    [blockTransformers, derKind, selectedDeviceKv, snPointVoltageKv],
+  );
+  // Ci sami kandydaci bez znanego punktu SN — przełączenie z wariantu nN na dedykowany.
+  const kandydaciDlaNapieciaUrzadzenia = useMemo(
+    () => blockTransformerCandidates(derKind, null, selectedDeviceKv, blockTransformers),
+    [blockTransformers, derKind, selectedDeviceKv],
+  );
+
+  // Dobór transformatora dedykowanego = najmniejszy kandydat, którego konfigurację backend
+  // przyjmuje (kontrola mocy O-53 w `add_converter_source`) — dawny dobór liczył próg
+  // P/0,9 we froncie (założone cos φ = 0,9), sprzeczny z regułą backendu.
+  const zadanieDoboruTransformatora = useMemo(
+    () => selections.connectionSide === 'dedicated_transformer'
+      && selectedDeviceKv !== null
+      && snPointVoltageKv !== null
+      && (derKind !== 'BESS' || selections.batteryCatalogRef !== null)
+      ? zbudujZadanieDer({
+        stationId,
+        derKind,
+        selections,
+        device: selectedDevice,
+        blockTransformerCatalogRef: null,
+        ncRfgModule: null,
+        daneModulu: PUSTE_DANE_MODULU,
+      })
+      : null,
+    [derKind, selectedDevice, selectedDeviceKv, selections, snPointVoltageKv, stationId],
+  );
+  const doborTransformatoraQuery = useDoborTransformatoraDedykowanego(
+    kontekstProby,
+    zadanieDoboruTransformatora,
+    kandydaciTransformatoraDedykowanego,
+  );
+  const autoBlockTransformer = doborTransformatoraQuery.data?.wybrany ?? null;
+  const odmowaDoboruTransformatora = doborTransformatoraQuery.data?.odmowa ?? null;
 
   const effectiveBlockTransformerCatalogRef = useMemo(() => {
     if (selections.connectionSide !== 'dedicated_transformer') {
@@ -915,13 +981,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     return (
       autoBlockTransformer?.id
       ?? selections.blockTransformerCatalogRef
-      ?? selectBlockTransformersForDer(blockTransformers, { derKind })[0]?.id
+      ?? kandydaciTransformatoraDedykowanego[0]?.id
       ?? null
     );
   }, [
     autoBlockTransformer,
-    blockTransformers,
-    derKind,
+    kandydaciTransformatoraDedykowanego,
     selections.blockTransformerCatalogRef,
     selections.connectionSide,
   ]);
@@ -962,12 +1027,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const expectedNcRfgModule = ncRfgModuleQuery.data?.modul ?? null;
   const opisKlasyfikacji = opisKlasyfikacjiNcRfg(ncRfgModuleQuery);
 
+  const stationTransformerTypesQuery = useStationTransformerTypes();
   const transformerUpgradeOptions = useMemo(
     () => selectTransformerUpgradeOptions(
-      selectedDevice ? requiredTransformerKvaForDerPowerKw(selectedDevice.nominal_power_kw) : null,
       primaryStationTransformer,
+      stationTransformerTypesQuery.data ?? [],
     ),
-    [primaryStationTransformer, selectedDevice],
+    [primaryStationTransformer, stationTransformerTypesQuery.data],
   );
 
   const voltageMismatchWarning = useMemo(() => {
@@ -976,7 +1042,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
     if (!('nominal_voltage_kv' in selectedDevice)) return null;
     const deviceKv = selectedDevice.nominal_voltage_kv as number;
-    if (Math.abs(deviceKv - stationNnBus.voltageKv) > 0.01) {
+    if (!toSamoNapiecieZnamionowe(deviceKv, stationNnBus.voltageKv)) {
       return (
         `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
         + `szyna nN ${stationNnBus.voltageKv.toFixed(2)} kV. `
@@ -986,22 +1052,48 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     return null;
   }, [selections.connectionSide, stationNnBus, selectedDevice]);
 
-  const transformerPowerWarning = useMemo(() => {
-    if (selections.connectionSide !== 'nN' || !selectedDevice || stationTransformerCapacityKw === null) {
-      return null;
-    }
-    const requiredTransformerKva = requiredTransformerKvaForDerPowerKw(selectedDevice.nominal_power_kw);
-    if (requiredTransformerKva <= stationTransformerCapacityKw + 1e-6) {
-      return null;
-    }
-    return (
-      `Moc katalogowa ${selectedDevice.label_pl} wynosi ${formatKw(selectedDevice.nominal_power_kw)}, `
-      + `wymaga co najmniej ${formatKva(requiredTransformerKva)}, `
-      + `a transformator stacji ma ${formatKva(stationTransformerCapacityKw)}. `
-      + 'Dobierz większy transformator z katalogu, wybierz mniejszy wariant '
-      + 'albo przejdź na przyłączenie po stronie SN.'
-    );
-  }, [selectedDevice, selections.connectionSide, stationTransformerCapacityKw]);
+  // Werdykt backendu dla WYBRANEJ konfiguracji — próba zapisu tej samej końcówki co
+  // „Utwórz" (to samo zadanie `zbudujZadanieDer`). Znana niezgodność napięcia nie jest
+  // próbowana (komunikat wyżej mówi więcej niż odmowa backendu o tym samym).
+  const zadanieProby = useMemo(
+    () => voltageMismatchWarning === null
+      && (derKind !== 'BESS' || selections.batteryCatalogRef !== null)
+      && (selections.connectionSide !== 'dedicated_transformer'
+        || effectiveBlockTransformerCatalogRef !== null)
+      ? zbudujZadanieDer({
+        stationId,
+        derKind,
+        selections,
+        device: selectedDevice,
+        blockTransformerCatalogRef: effectiveBlockTransformerCatalogRef,
+        ncRfgModule: expectedNcRfgModule,
+        daneModulu: wynikDanychModulu.stan === 'ok' ? daneModulu : PUSTE_DANE_MODULU,
+      })
+      : null,
+    [
+      daneModulu,
+      derKind,
+      effectiveBlockTransformerCatalogRef,
+      expectedNcRfgModule,
+      selectedDevice,
+      selections,
+      stationId,
+      voltageMismatchWarning,
+      wynikDanychModulu.stan,
+    ],
+  );
+  const probaQuery = useProbaZapisuDer(kontekstProby, zadanieProby);
+  const odmowaProby = probaQuery.data?.stan === 'odmowa' ? probaQuery.data : null;
+  const transformerPowerWarning =
+    odmowaProby?.kod === KOD_ODMOWY_MOCY_TRANSFORMATORA ? odmowaProby.komunikat : null;
+  const innaOdmowaProby =
+    odmowaProby && odmowaProby.kod !== KOD_ODMOWY_MOCY_TRANSFORMATORA ? odmowaProby.komunikat : null;
+  // Werdykt backendu PRZED przejściem dalej: próba konfiguracji i dobór transformatora
+  // dedykowanego w toku blokują krok (bez tego „Dalej” w oknie odpowiedzi przepuszczał
+  // konfigurację, której odmowa przychodziła chwilę później).
+  const werdyktBackenduWToku =
+    (zadanieProby !== null && probaQuery.isFetching)
+    || (zadanieDoboruTransformatora !== null && doborTransformatoraQuery.isFetching);
 
   const canGoNext = useMemo(() => {
     switch (step) {
@@ -1025,6 +1117,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           && selections.deviceCatalogRef !== null
           && voltageMismatchWarning === null
           && transformerPowerWarning === null
+          && innaOdmowaProby === null
+          && !werdyktBackenduWToku
           && (
             selections.connectionSide !== 'dedicated_transformer'
             || effectiveBlockTransformerCatalogRef !== null
@@ -1063,11 +1157,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     derKind,
     deviceCatalogStatus,
     effectiveBlockTransformerCatalogRef,
+    innaOdmowaProby,
     selections,
     stationNnBus,
     step,
     transformerPowerWarning,
     voltageMismatchWarning,
+    werdyktBackenduWToku,
     wynikDanychModulu.stan,
   ]);
 
@@ -1089,7 +1185,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const selectConnectionSide = useCallback(
     (connectionSide: ConnectionSide) => {
       setSelections((current) =>
-        applyPointDefaults(current, connectionSide, derKind, stationName, blockTransformers));
+        applyPointDefaults(current, connectionSide, derKind, stationName));
     },
     [blockTransformers, derKind, stationName],
   );
@@ -1099,10 +1195,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       setSelectedTransformerUpgradeRef('');
       return;
     }
+    // Bez preselekcji: wariant wybiera projektant, a wystarczalność mocy po zmianie ocenia
+    // ponowna próba backendu (komunikat odmowy wyżej podaje moc wymaganą).
     setSelectedTransformerUpgradeRef((current) =>
-      transformerUpgradeOptions.some((option) => option.id === current)
-        ? current
-        : transformerUpgradeOptions[0].id);
+      transformerUpgradeOptions.some((option) => option.id === current) ? current : '');
   }, [transformerPowerWarning, transformerUpgradeOptions]);
 
   useEffect(() => {
@@ -1129,16 +1225,20 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   // WYŁĄCZNIE jako odczyt rzeczywistej szyny stacji (`stationNnBus`) — nie ma
   // już domyślnego auto-wyboru z listy katalogowej, bo nie ma już wyboru.
   const handleSwitchToDedicatedTransformer = useCallback(() => {
-    if (!autoBlockTransformer) {
-      notify('Brak dopasowanego transformatora blokowego w katalogu dla wybranego urządzenia.', 'error');
+    if (kandydaciDlaNapieciaUrzadzenia.length === 0) {
+      notify('Brak transformatora dedykowanego w katalogu dla napięcia wybranego urządzenia.', 'error');
       return;
     }
     setSelections((current) => ({
-      ...applyPointDefaults(current, 'dedicated_transformer', derKind, stationName, blockTransformers),
-      blockTransformerCatalogRef: autoBlockTransformer.id,
+      ...applyPointDefaults(current, 'dedicated_transformer', derKind, stationName),
+      blockTransformerCatalogRef: null,
     }));
-    notify('Przełączono wariant przyłączenia na transformator dedykowany.', 'success');
-  }, [autoBlockTransformer, blockTransformers, derKind, notify, stationName]);
+    notify(
+      'Przełączono wariant przyłączenia na transformator dedykowany — wskaż punkt przyłączenia SN, '
+      + 'a moc transformatora dobierze próba backendu.',
+      'success',
+    );
+  }, [derKind, kandydaciDlaNapieciaUrzadzenia, notify, stationName]);
 
   const handleChooseOtherDevice = useCallback(() => {
     setSelections((current) => ({ ...current, deviceCatalogRef: null }));
@@ -1183,7 +1283,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             catalog_item_version: '2024.1',
           },
         },
-        { komunikatSukcesuPl: `Zmieniono transformator stacji na ${selectedUpgrade.label_pl}.` },
+        { komunikatSukcesuPl: `Zmieniono transformator stacji na ${selectedUpgrade.name}.` },
       );
       if (response?.error) {
         notify(response.error, 'error');
@@ -1237,8 +1337,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       pccLabel: selections.pccLabel,
     });
     const busPrzylaczeniaRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
-    if (voltageMismatchWarning || transformerPowerWarning) {
-      notify(voltageMismatchWarning ?? transformerPowerWarning ?? 'Konfiguracja DER wymaga korekty.', 'error');
+    if (voltageMismatchWarning || transformerPowerWarning || innaOdmowaProby) {
+      notify(
+        voltageMismatchWarning ?? transformerPowerWarning ?? innaOdmowaProby ?? 'Konfiguracja DER wymaga korekty.',
+        'error',
+      );
       return;
     }
     if (selections.connectionSide === 'dedicated_transformer' && !effectiveBlockTransformerCatalogRef) {
@@ -1272,61 +1375,31 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       return;
     }
     const liczbaJednostek = Math.max(1, Math.round(selections.unitCount || 1));
-    // Model trzyma moc CAŁEJ pozycji (backend mnoży moc katalogową przez liczbę sztuk,
-    // gdy nie dostanie mocy jawnej) — wysyłamy iloczyn, żeby obie strony mówiły to samo.
     const mocGrupyKw = nominalPowerKw * liczbaJednostek;
     // Typ urządzenia to dana projektowa wybrana JAWNIE w kroku „Urządzenie"
     // (`validateWizardSelections` wyżej odrzuca brak). Dawna mapa zapasowych
     // identyfikatorów per (technologia, strona przyłączenia) podstawiała typ,
     // którego nikt nie wybrał — ta sama klasa co `_DEFAULT_CATALOG_BY_VARIANT`
     // na backendzie (usunięta 2026-09-05); backend odrzuca pusty `catalog_ref` 422.
-    const backendCatalogRef = selections.deviceCatalogRef;
-    if (!backendCatalogRef) {
+    // Zadanie zapisu = zadanie próby (`zbudujZadanieDer`) — werdykt pokazany w kroku
+    // „Urządzenie" dotyczy DOKŁADNIE tej konfiguracji, którą zapisujemy.
+    const zadanie = zbudujZadanieDer({
+      stationId,
+      derKind,
+      selections,
+      device: device ?? null,
+      blockTransformerCatalogRef: effectiveBlockTransformerCatalogRef,
+      ncRfgModule: expectedNcRfgModule,
+      daneModulu,
+    });
+    if (!zadanie) {
       notify('Wybierz urządzenie z katalogu — bez pozycji katalogowej zapis DER jest niemożliwy.', 'error');
       return;
     }
 
     setIsCreating(true);
     try {
-      const response = await postDerGeneratorConfig(projectId, effectiveCaseId, {
-        station_ref: stationId,
-        der_kind: derKind,
-        power_mw: mocGrupyKw / 1000,
-        connection_variant: toBackendConnectionVariant(selections.connectionSide),
-        catalog_ref: backendCatalogRef,
-        block_transformer_catalog_ref:
-          selections.connectionSide === 'dedicated_transformer'
-            ? effectiveBlockTransformerCatalogRef
-            : null,
-        // Karta FAB-K (§0 R3): punkt przyłączenia SN — element ISTNIEJĄCY w
-        // modelu (szyna stacji / `BranchPointSN` / `Junction`), WYMAGANY przez
-        // backend gdy `block_transformer` nie ma jeszcze zapisanego
-        // `blocking_transformer_ref` (patrz strażnik wyżej i
-        // `_resolve_sn_connection_bus`). Pomijamy dla `nn_side` — backend go
-        // tam nie czyta.
-        sn_connection_bus_ref:
-          selections.connectionSide === 'dedicated_transformer'
-            ? selections.snConnectionBusRef ?? undefined
-            : undefined,
-        // Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS`
-        // (`_materializuj_bateria_bess`) — wysyłany WYŁĄCZNIE dla BESS, bo
-        // backend odrzuca `battery_catalog_ref` na innej technologii
-        // (`converter.battery_catalog_not_applicable`).
-        battery_catalog_ref: derKind === 'BESS' ? selections.batteryCatalogRef ?? undefined : undefined,
-        source_name: selections.derName,
-        quantity: liczbaJednostek,
-        // Karta FAB-J (decyzja #5): moduł wyliczony PRZEZ BACKEND dla (moc,
-        // napięcie przyłączenia) — `expectedNcRfgModule`. Gdy napięcia nie da
-        // się wyznaczyć po stronie kreatora (np. wariant bez rozpoznanego
-        // transformatora dedykowanego), pole zostaje pominięte: backend
-        // weryfikuje `nc_rfg_module` tylko wtedy, gdy klient go zadeklarował
-        // (`_weryfikuj_modul_ncrfg`), więc brak deklaracji nigdy nie blokuje
-        // zapisu — a zgadywanie modułu byłoby tą samą fabrykacją, którą ta
-        // karta usuwa wszędzie indziej.
-        nc_rfg_module: expectedNcRfgModule ?? undefined,
-        // Dane modułu NC RfG (art. 4, data umowy, nastawy, deklaracje) — wyłącznie podane.
-        ...polaNcRfgDoPayloadu(daneModulu),
-      });
+      const response = await postDerGeneratorConfig(projectId, effectiveCaseId, zadanie);
 
       if (response.snapshot) {
         setSnapshot(response);
@@ -1421,6 +1494,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     stationId,
     stationName,
     stationNnBus,
+    innaOdmowaProby,
     transformerPowerWarning,
     voltageMismatchWarning,
   ]);
@@ -1602,7 +1676,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   {/* Pakiet H: transformator dedykowany ZAWSZE widoczny dla SN
                       (karta FAB-K, §0 R3) — nie warunkowany wyborem punktu. */}
                   {(() => {
-                    const candidates = selectBlockTransformersForDer(blockTransformers, { derKind });
+                    // Kandydaci z równości napięcia: strona górna = napięcie wskazanego punktu SN.
+                    const candidates = blockTransformerCandidates(
+                      derKind,
+                      snPointVoltageKv,
+                      null,
+                      blockTransformers,
+                    );
                     return (
                       <Select
                         label="Transformator dedykowany z katalogu"
@@ -1639,7 +1719,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               </div>
               {selections.connectionSide === 'dedicated_transformer'
                 && selectedDevice
-                && getDeviceNominalVoltageKv(selectedDevice) !== null
+                && selectedDeviceKv !== null
                 && autoBlockTransformer && (
                 <div
                   data-testid="add-der-auto-block-transformer"
@@ -1651,8 +1731,34 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     {autoBlockTransformer.label_pl}
                   </span>
                   {' '}
-                  dla urządzenia {getDeviceNominalVoltageKv(selectedDevice)?.toFixed(2)} kV
-                  i mocy {formatKw(selectedDevice.nominal_power_kw)}.
+                  dla urządzenia {selectedDeviceKv.toFixed(2)} kV
+                  i mocy {formatKw(selectedDevice.nominal_power_kw)} — najmniejszy z katalogu,
+                  przy którym backend przyjmuje konfigurację (kontrola mocy transformatora).
+                </div>
+              )}
+              {selections.connectionSide === 'dedicated_transformer'
+                && selectedDevice
+                && odmowaDoboruTransformatora && (
+                <div
+                  data-testid="add-der-auto-block-transformer-odmowa"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
+                >
+                  Żaden transformator dedykowany z katalogu o napięciach tego toru nie spełnia
+                  kontroli backendu. Odmowa dla największego: {odmowaDoboruTransformatora.komunikat}
+                </div>
+              )}
+              {selections.connectionSide === 'dedicated_transformer'
+                && selectedDevice
+                && selectedDeviceKv !== null
+                && snPointVoltageKv !== null
+                && kandydaciTransformatoraDedykowanego.length === 0 && (
+                <div
+                  data-testid="add-der-auto-block-transformer-brak"
+                  className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
+                >
+                  Katalog transformatorów dedykowanych nie ma pozycji {formatKv(snPointVoltageKv)}
+                  {' / '}
+                  {formatKv(selectedDeviceKv)} dla tego rodzaju źródła.
                 </div>
               )}
               <p className="text-scada-muted">
@@ -1738,9 +1844,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     Niezgodność napięciowa blokuje zapis wariantu nN.
                   </div>
                   <div>{voltageMismatchWarning}</div>
-                  {autoBlockTransformer ? (
+                  {kandydaciDlaNapieciaUrzadzenia.length > 0 ? (
                     <div className="text-red-100/80">
-                      Sugestia katalogowa: {autoBlockTransformer.label_pl}.
+                      Katalog ma {kandydaciDlaNapieciaUrzadzenia.length} transformator(y)
+                      dedykowane dla napięcia urządzenia; moc dobierze próba backendu po
+                      wskazaniu punktu przyłączenia SN.
                     </div>
                   ) : (
                     <div className="text-red-100/80">
@@ -1752,7 +1860,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       type="button"
                       data-testid="add-der-switch-dedicated-transformer"
                       onClick={handleSwitchToDedicatedTransformer}
-                      disabled={!autoBlockTransformer}
+                      disabled={kandydaciDlaNapieciaUrzadzenia.length === 0}
                       className="rounded border border-red-300 px-3 py-1 text-[11px] font-semibold text-red-50 transition hover:bg-red-900/40 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Przełącz na TR dedykowany
@@ -1776,6 +1884,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   {transformerPowerWarning}
                 </div>
               )}
+              {innaOdmowaProby && (
+                <div
+                  data-testid="add-der-proba-odmowa"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
+                >
+                  Backend odmówi zapisu tej konfiguracji: {innaOdmowaProby}
+                </div>
+              )}
               {transformerPowerWarning && transformerUpgradeOptions.length > 0 && (
                 <div
                   data-testid="add-der-transformer-upgrade-panel"
@@ -1786,18 +1902,22 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       Dobierz większy transformator stacji z katalogu
                     </div>
                     <div className="text-scada-muted">
-                      Aktualizowany jest istniejący transformator SN/nN stacji,
-                      bez tworzenia źródła poza dopuszczalną mocą układu.
+                      Aktualizowany jest istniejący transformator SN/nN stacji (pozycje katalogu
+                      o tych samych napięciach i większej mocy). Po zmianie backend ponownie
+                      sprawdza moc transformatora wobec mocy źródła.
                     </div>
                   </div>
                   <Select
                     label="Nowy transformator SN/nN"
                     value={selectedTransformerUpgradeRef}
                     onChange={setSelectedTransformerUpgradeRef}
-                    options={transformerUpgradeOptions.map((option) => ({
-                      id: option.id,
-                      label: `${option.label_pl} · ${formatKva(option.sn_mva * 1000)}`,
-                    }))}
+                    options={[
+                      { id: '', label: '— wybierz transformator —' },
+                      ...transformerUpgradeOptions.map((option) => ({
+                        id: option.id,
+                        label: `${option.name} · ${formatKva(option.rated_power_mva * 1000)}`,
+                      })),
+                    ]}
                     testId="add-der-transformer-upgrade"
                   />
                   <button
@@ -1816,7 +1936,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   data-testid="add-der-transformer-upgrade-empty"
                   className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
-                  Dla napięć tej stacji katalog nie wskazał większego transformatora.
+                  Katalog nie ma większego transformatora o napięciach transformatora tej stacji.
                   Wybierz mniejszy wariant źródła albo przyłączenie po stronie SN.
                 </div>
               )}
@@ -1825,14 +1945,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   data-testid="add-der-compatible-device-summary"
                   className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
                 >
-                  Wariant nN: pokazuję urządzenia zgodne z szyną nN i transformatorem stacji
+                  Wariant nN: urządzenia o napięciu szyny nN stacji; moc transformatora stacji
                   {' '}
-                  {formatKva(stationTransformerCapacityKw)}.
+                  {formatKva(stationTransformerCapacityKw)} wobec mocy źródła sprawdza backend
+                  po wyborze urządzenia (próba zapisu, bez zmiany modelu).
                   {incompatibleDeviceCount > 0 && (
                     <>
                       {' '}
-                      {incompatibleDeviceCount} większych wariantów wymaga transformatora dedykowanego
-                      albo przyłączenia po stronie SN.
+                      {incompatibleDeviceCount} urządzeń o innym napięciu wymaga transformatora
+                      dedykowanego.
                     </>
                   )}
                 </div>
@@ -1895,17 +2016,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     selections.connectionSide,
                     stationNnBus?.voltageKv ?? null,
                   );
-                  const transformerOk = fitsStationTransformerCapacity(
-                    device,
-                    selections.connectionSide,
-                    stationTransformerCapacityKw,
-                  );
-                  const eligibilityText = voltageOk && transformerOk
-                    ? 'zgodne z wariantem'
-                    : !voltageOk
-                      ? 'wymaga innego napięcia/TR'
-                      : 'wymaga większego TR stacji';
-                  const eligibilityClass = voltageOk && transformerOk
+                  // Moc transformatora ocenia backend wyłącznie dla WYBRANEGO urządzenia
+                  // (próba zapisu) — karta listy nie zgaduje werdyktu progiem.
+                  const odmowaBackendu = isSelected && odmowaProby !== null;
+                  const eligibilityText = !voltageOk
+                    ? 'wymaga innego napięcia/TR'
+                    : odmowaBackendu
+                      ? 'odmowa backendu'
+                      : 'napięcie zgodne';
+                  const eligibilityClass = voltageOk && !odmowaBackendu
                     ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
                     : 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz';
                   return (

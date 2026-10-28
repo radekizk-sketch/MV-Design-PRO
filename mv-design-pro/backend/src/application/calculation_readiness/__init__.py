@@ -1,4 +1,4 @@
-"""CalculationReadinessService — gotowość obliczeń per typ + ValidationProblemService.
+"""CalculationReadinessService — gotowość obliczeń per typ.
 
 Brief 2 §16. Dla każdego obiektu i całego projektu ocenia gotowość dla 9 typów
 obliczeń + 2 raportów (OSD i techniczny).

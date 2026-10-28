@@ -47,7 +47,10 @@ from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.tor_pola import pola_do_domkniecia
-from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+from network_model.pochodne.pasma_napieciowe import (
+    pasmo_napieciowe,
+    to_samo_napiecie_znamionowe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -771,7 +774,7 @@ def _szyna_nn_stacji(
             napiecie = float(surowe_napiecie)
         except (TypeError, ValueError):
             continue
-        if abs(napiecie - nn_voltage_kv) < 1e-9:
+        if to_samo_napiecie_znamionowe(napiecie, nn_voltage_kv):
             return str(bus.get("ref_id"))
     return None
 

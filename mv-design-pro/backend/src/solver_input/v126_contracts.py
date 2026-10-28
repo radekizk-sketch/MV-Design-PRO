@@ -9,7 +9,7 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -203,21 +203,6 @@ class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
-_STANDARD_UM_KV: tuple[float, ...] = (12.0, 17.5, 24.0, 36.0)
-
-
-def _nearest_standard_um_kv(nominal_kv: float) -> float:
-    """Najbliższe znormalizowane napięcie najwyższe urządzenia U_m ≥ napięcie znamionowe szyny.
-
-    IEC 60071-1 typoszereg SN. Nie fabrykuje danych ogranicznika — jedynie
-    przypisuje poziom izolacji do poziomu napięcia szyny (mapowanie normowe).
-    """
-    for u_m in _STANDARD_UM_KV:
-        if nominal_kv <= u_m:
-            return u_m
-    return _STANDARD_UM_KV[-1]
-
-
 def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
     """Mapowanie typu uziemienia punktu neutralnego SN na kategorię TOV solvera.
 
@@ -244,7 +229,8 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
     - parametry ogranicznika (MCOV/U_res/TOV/energia) z rekordu katalogu
       ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
-    - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
+    - U_m z karty katalogowej ogranicznika albo — bez karty — napięcie najwyższe sieci U_s
+      szyny (IEC 60038, `pasma_napieciowe.napiecie_najwyzsze_sieci_kv`);
     - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego
       źródła GPZ (W5-A) albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
       (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
@@ -362,9 +348,15 @@ def _wejscia_izolacji(
         if dedup_key in seen:
             return
         params = catalog.get(catalog_ref) if catalog_ref else None
-        if params is None and not powyzej_pasma_nn(bus.voltage_kv):
-            # Ogranicznik nN (albo szyna bez napięcia) bez karty katalogowej — poza zakresem koordynacji
-            # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
+        # Bez karty ogranicznika poziom izolacji chronionych aparatów to napięcie najwyższe
+        # SIECI U_s szyny z tabeli IEC 60038 (`napiecie_najwyzsze_sieci_kv` — ta sama tabela,
+        # co odmowa poziomu izolacji operacji; dawny typoszereg 12/17,5/24/36 kV dawał sieci
+        # 6 kV U_m = 12 kV zamiast 7,2 kV, a sieci 110 kV — 36 kV).
+        u_s_kv = napiecie_najwyzsze_sieci_kv(bus.voltage_kv)
+        if params is None and u_s_kv is None:
+            # Ogranicznik nN (albo szyna bez napięcia lub poza tablicami IEC 60038) bez karty
+            # katalogowej — poza zakresem koordynacji izolacji IEC 60071. Pomiń, aby nie
+            # fabrykować U_m.
             return
         seen.add(dedup_key)
         neutral = _resolve_network_neutral(bus_ref)
@@ -385,11 +377,11 @@ def _wejscia_izolacji(
                     predicted_energy_kj_per_kv=float(params["energy_absorption_kj_per_kv"]),
                 )
             )
-        else:
+        elif u_s_kv is not None:
             rows.append(
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
-                    u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
+                    u_m_kv=u_s_kv,
                     network_neutral=neutral,
                 )
             )

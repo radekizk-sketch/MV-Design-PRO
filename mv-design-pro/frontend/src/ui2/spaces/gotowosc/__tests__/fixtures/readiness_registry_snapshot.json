@@ -273,6 +273,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.transformer_voltage_mismatch",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.type_incomplete",
       "fix_navigation": {
         "modal": "CatalogPicker",
@@ -1415,7 +1424,7 @@
       }
     }
   ],
-  "count": 166,
+  "count": 167,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

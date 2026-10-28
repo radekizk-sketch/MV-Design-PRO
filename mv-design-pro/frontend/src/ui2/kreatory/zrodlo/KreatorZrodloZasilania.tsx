@@ -90,7 +90,7 @@ import {
 } from './zrodloModel';
 import { ZRODLO_STRINGS as T } from './strings';
 import { WykresSztywnosci } from './WykresSztywnosci';
-import { wPasmieWn } from '../../model/pasmaNapieciowe';
+import { toSamoNapiecieZnamionowe, wPasmieWn } from '../../model/pasmaNapieciowe';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'identyfikacja', tytul: T.krokIdentyfikacja },
@@ -294,12 +294,11 @@ export function KreatorZrodloZasilania() {
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
   // Typ 110/SN stoi na szynach SN GPZ: napięcie dolne typu = napięcie szyn SN (ta sama wartość
-  // znormalizowana, porównanie jak `math.isclose` reguły `source.lv_voltage_mismatch` operacji
+  // znormalizowana, ta sama równość `to_samo_napiecie_znamionowe` co reguła `source.lv_voltage_mismatch` operacji
   // `add_grid_source_sn`). Dawny filtr ±6 kV pokazywał i dobierał 110/20 kV na sieci 15 kV.
   const filtrowaneTransformatory = useMemo(
     () => transformatory.filter((t) =>
-      (!napiecieSn
-        || Math.abs(t.voltage_lv_kv - napiecieSn) <= 1e-9 * Math.max(Math.abs(t.voltage_lv_kv), Math.abs(napiecieSn)))
+      (!napiecieSn || toSamoNapiecieZnamionowe(t.voltage_lv_kv, napiecieSn))
       && wPasmieWn(t.voltage_hv_kv)),
     [transformatory, napiecieSn],
   );

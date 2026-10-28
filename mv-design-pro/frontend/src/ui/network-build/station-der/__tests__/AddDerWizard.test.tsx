@@ -16,6 +16,7 @@
  */
 
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
+import { odpowiedzProbyZapisuDer } from './atrapaProbyZapisuDer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
@@ -82,9 +83,9 @@ const PF_CURVE_FIXTURES = [
 ];
 
 // Karta FAB-J: transformatory dedykowane DER — kształt 1:1 z backendu
-// (`audit2_catalogs.py::BlockTransformerItem.to_dict`). Typoszereg 15/0,69 kV
-// odtwarza scenariusz z komentarza źródła (`selectAutoBlockTransformerForDevice`):
-// PV 1000 kW wymaga ≥1111 kVA i dobiera 1250 kVA z typoszeregu, nie 2500 kVA.
+// (`audit2_catalogs.py::BlockTransformerItem.to_dict`). Typoszereg 15/0,69 kV: dobór pyta
+// backend próbą zapisu każdego kandydata (kontrola mocy O-53), więc PV o S_n = 1 MVA dostaje
+// 1000 kVA (dawny próg P/0,9 we froncie żądał 1111 kVA i dobierał 1250 kVA).
 function blockTransformerFixture(
   id: string, snKva: number, hvKv: number, lvKv: number,
 ): Record<string, unknown> {
@@ -104,6 +105,26 @@ const BLOCK_TRANSFORMER_FIXTURES = [
   blockTransformerFixture('btr_pv_15_069_1000', 1000, 15, 0.69),
   blockTransformerFixture('btr_pv_15_069_1250', 1250, 15, 0.69),
   blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
+];
+
+// Katalog transformatorów SN/nN backendu (`GET /api/catalog/transformer-types`) — warianty
+// „większego transformatora stacji" to pozycje o TYCH SAMYCH napięciach co transformator
+// stacji i większej mocy. Pozycja 20/0,4 kV pilnuje filtra równości napięć.
+function transformerTypeFixture(snKva: number, hvKv: number): Record<string, unknown> {
+  const id = `tr-sn-nn-${hvKv}-04-${snKva}kva-dyn11`;
+  return {
+    id, name: `TR ${hvKv}/0,4 kV ${snKva} kVA Dyn11`, rated_power_mva: snKva / 1000,
+    voltage_hv_kv: hvKv, voltage_lv_kv: 0.4, uk_percent: 4.5, pk_kw: snKva * 0.012,
+    i0_percent: 1, p0_kw: snKva * 0.002, vector_group: 'Dyn11', tap_min: -2, tap_max: 2,
+    tap_step_percent: 2.5,
+  };
+}
+const TRANSFORMER_TYPE_FIXTURES = [
+  transformerTypeFixture(63, 15),
+  transformerTypeFixture(160, 15),
+  transformerTypeFixture(250, 15),
+  transformerTypeFixture(630, 15),
+  transformerTypeFixture(250, 20),
 ];
 
 // Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
@@ -210,16 +231,30 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
  * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; bez `kind`
  * (poziomy napięcia nN) — unią WSZYSTKICH technologii. `/api/ncrfg-tests/*`,
  * `/api/catalog/bess-battery-types` odpowiadają realnym kształtem backendu;
- * wszystko inne (audit2 snapshot, `POST …/generators`, `assign_catalog_to_element`)
- * dostaje neutralny kształt audit2 — zachowanie tożsame z dawnym stubem.
+ * próba zapisu (`POST …/generators` z `dry_run`) — werdykt atrapy backendu
+ * (`atrapaProbyZapisuDer.ts`, kontrola mocy O-53); `/api/catalog/transformer-types` — katalog
+ * transformatorów SN/nN; wszystko inne (audit2 snapshot, zapis właściwy,
+ * `assign_catalog_to_element`) dostaje neutralny kształt audit2.
  */
 function mockDerWizardFetch(
   converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
 ) {
   // Typ zwracany wnioskowany z `vi.fn(...)`: jawna adnotacja `ReturnType<typeof vi.fn>`
   // rozwiazuje sie do `Mock<any[], unknown>` i nie przyjmuje mocka o konkretnej sygnaturze.
-  const mock = vi.fn(async (input: RequestInfo | URL) => {
+  const mock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    const proba = odpowiedzProbyZapisuDer(url, init, {
+      urzadzenia: Object.values(converters).flatMap((lista) => lista ?? []),
+      transformatoryDedykowane: BLOCK_TRANSFORMER_FIXTURES,
+      migawka: () => useSnapshotStore.getState().snapshot as Record<string, unknown> | null,
+    });
+    if (proba) return proba;
+    if (url.includes('/api/catalog/transformer-types')) {
+      return new Response(JSON.stringify(TRANSFORMER_TYPE_FIXTURES), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     if (url.includes('/api/catalog/ptpiree/manifest')) {
       return new Response(JSON.stringify(PTPIREE_MANIFEST_FIXTURE), {
         status: 200,
@@ -430,6 +465,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     // zero natychmiastowego fallbacku), więc czekamy na jego wczytanie przed wyborem.
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 4: profile — operator jest jedynym wyborem; LVRT/HVRT to teraz
@@ -528,7 +566,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     // Sama bateria nie wystarcza, bo tryb BESS zasila pozniejsze analizy NC RfG/PTPiREE.
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByTestId('add-der-bess-mode-fcr_n'));
-    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
+    // Po wyborze trybu — werdykt próby zapisu backendu (`dry_run`) odblokowuje krok.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
   });
 
   it('blokuje DER po nN, gdy moc katalogowa przekracza moc transformatora stacji', async () => {
@@ -584,10 +624,17 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       target: { value: 'pv_inv_huawei_185' },
     });
 
-    expect(screen.getByTestId('add-der-transformer-power-warning')).toHaveTextContent(
-      'transformator stacji ma 63 kVA',
-    );
+    // Werdykt i zdanie odmowy są backendu (próba zapisu `dry_run`), nie progiem frontu.
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-transformer-power-warning')).toHaveTextContent(
+        'Moc transformatora 63 kVA jest mniejsza od mocy źródeł 185 kVA',
+      ));
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
+    const proby = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
+      .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>);
+    expect(proby.length).toBeGreaterThan(0);
+    expect(proby.every((cialo) => cialo.dry_run === true)).toBe(true);
   });
 
   it('po nN liczy tylko transformator SN/nN stacji, a nie transformator blokowy DER na tej samej szynie', async () => {
@@ -664,7 +711,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     const summary = screen.getByTestId('add-der-compatible-device-summary');
-    expect(summary).toHaveTextContent('transformatorem stacji 250 kVA');
+    expect(summary).toHaveTextContent('moc transformatora stacji 250 kVA');
     expect(summary).not.toHaveTextContent('1.50 MVA');
     expect(summary).not.toHaveTextContent('1.5 MVA');
 
@@ -672,8 +719,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_huawei_185' },
     });
+    // Próba zapisu w toku blokuje krok; po werdykcie (185 kVA ≤ 250 kVA transformatora
+    // stacji — transformator blokowy innego DER nie zasila szyny nN stacji) krok odblokowany.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByTestId('add-der-transformer-power-warning')).toBeNull();
-    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('krok profilu NIE preselekcjonuje operatora — Dalej zablokowane do wyboru', async () => {
@@ -689,6 +739,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // INTENCJA ZACHOWANA, KANON ZMIENIONY (V12K-245): krok profilu jest DECYZJA, nie
@@ -712,6 +765,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
+    // Werdykt próby zapisu backendu (`dry_run`) rozstrzyga, czy krok przechodzi dalej.
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
@@ -792,14 +848,12 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('add-der-switch-dedicated-transformer'));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('add-der-auto-block-transformer')).toHaveTextContent(
-        '1250 kVA',
-      ));
     // Karta FAB-K (§0 R3): SAM transformator dedykowany nie wystarcza już —
     // Dalej wymaga TEŻ punktu przyłączenia SN (element istniejący w modelu),
     // wracamy na krok „Punkt" po przełączeniu wariantu i wybieramy szynę SN
-    // stacji z migawki testowej.
+    // stacji z migawki testowej. Bez punktu SN nie ma doboru (strona górna kandydata
+    // musi być RÓWNA napięciu punktu) — automat nie zgaduje napięcia.
+    expect(screen.queryByTestId('add-der-auto-block-transformer')).toBeNull();
     fireEvent.click(screen.getByTestId('add-der-prev'));
     fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
       target: { value: 'station-063/sn' },
@@ -809,14 +863,21 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     // Krok „Punkt" → „Urządzenie" (wybór urządzenia i transformatora blokowego
     // przetrwały nawigację wstecz/wprzód — to ten sam stan `selections`).
     fireEvent.click(screen.getByTestId('add-der-next'));
-    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
+    // Dobór: najmniejszy kandydat 15/0,69 kV, którego konfigurację backend przyjmuje —
+    // 800 kVA odmowa (S_n falownika 1 MVA), 1000 kVA przyjęty.
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-auto-block-transformer')).toHaveTextContent(
+        '1000 kVA',
+      ));
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     expect(screen.getByTestId('add-der-step-content-review')).toHaveTextContent('Transformator blokowy');
-    expect(screen.getByTestId('add-der-step-content-review')).toHaveTextContent('1250 kVA');
+    expect(screen.getByTestId('add-der-step-content-review')).toHaveTextContent('1000 kVA');
   });
 
   it('po przekroczeniu mocy pozwala zmienić transformator stacji na większy wariant katalogowy', async () => {
@@ -885,10 +946,20 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
         target: { value: 'pv_inv_huawei_185' },
       });
 
-      expect(screen.getByTestId('add-der-transformer-upgrade-panel')).toBeInTheDocument();
       await waitFor(() =>
-        expect((screen.getByTestId('add-der-transformer-upgrade') as HTMLSelectElement).value)
-          .toBe('tr-sn-nn-15-04-250kva-dyn11'));
+        expect(screen.getByTestId('add-der-transformer-upgrade-panel')).toBeInTheDocument());
+      // Warianty: pozycje 15/0,4 kV większe od 63 kVA, rosnąco; 20/0,4 kV odfiltrowana
+      // równością napięć. Bez preselekcji — wystarczalność mocy ocenia backend po zmianie.
+      const wybor = screen.getByTestId('add-der-transformer-upgrade') as HTMLSelectElement;
+      expect(Array.from(wybor.options).map((o) => o.value)).toEqual([
+        '',
+        'tr-sn-nn-15-04-160kva-dyn11',
+        'tr-sn-nn-15-04-250kva-dyn11',
+        'tr-sn-nn-15-04-630kva-dyn11',
+      ]);
+      expect(wybor.value).toBe('');
+      expect((screen.getByTestId('add-der-upgrade-transformer') as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.change(wybor, { target: { value: 'tr-sn-nn-15-04-250kva-dyn11' } });
 
       await act(async () => {
         fireEvent.click(screen.getByTestId('add-der-upgrade-transformer'));

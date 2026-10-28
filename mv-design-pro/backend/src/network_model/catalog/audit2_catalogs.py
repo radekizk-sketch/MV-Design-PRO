@@ -42,7 +42,11 @@ from typing import Literal
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.pochodne import mva_na_kva
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn, w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import (
+    napiecie_najwyzsze_sieci_kv,
+    powyzej_pasma_nn,
+    w_pasmie_nn,
+)
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
@@ -397,15 +401,24 @@ def klasa_transformatora_przelacznika(
     Obie strony czytaja jedna tabele przypadkow (`klasy_transformatora_przelacznika.json`,
     test parytetu po obu stronach): oferta i dowod nie moga sie rozjechac.
 
+    Klasa strony transformatora = napiecie najwyzsze sieci U_s, do ktorej nalezy jej napiecie
+    znamionowe (`napiecie_najwyzsze_sieci_kv`, JEDNA tabela IEC 60038 produktu). Napiecie
+    znamionowe uzwojenia lezy zwykle miedzy Un a U_s sieci (115/16,5 kV i 115/21 kV dla sieci
+    110/15 kV i 110/20 kV), wiec dawne pasma reczne (100–130 kV i ±1 kV wokol 15/20 kV)
+    odmawialy klasy realnym transformatorom 115/16,5 kV i 110/21 kV.
+
     Transformator spoza czterech klas daje `None` — jawny brak klasy, a nie domysl
     („blokowy") wybierajacy dowolny przelacznik.
     """
     if uhv_kv is None or ulv_kv is None:
         return None
-    if 100 <= uhv_kv < 130 and abs(ulv_kv - 15) < 1:
-        return "transformer_110_15"
-    if 100 <= uhv_kv < 130 and abs(ulv_kv - 20) < 1:
-        return "transformer_110_20"
+    klasa_gorna = napiecie_najwyzsze_sieci_kv(uhv_kv)
+    klasa_dolna = napiecie_najwyzsze_sieci_kv(ulv_kv)
+    if klasa_gorna is not None and klasa_gorna == napiecie_najwyzsze_sieci_kv(110.0):
+        if klasa_dolna is not None and klasa_dolna == napiecie_najwyzsze_sieci_kv(15.0):
+            return "transformer_110_15"
+        if klasa_dolna is not None and klasa_dolna == napiecie_najwyzsze_sieci_kv(20.0):
+            return "transformer_110_20"
     if powyzej_pasma_nn(uhv_kv) and w_pasmie_nn(ulv_kv):
         return "transformer_15_04"
     return None
@@ -1296,22 +1309,6 @@ def select_bess_modes_for_pcs(
 # modulu D") z norma, ktorej nie ma. Sprawdzenie ZDOLNOSCI przeksztaltnika
 # (praca w czterech cwiartkach, tworzenie napiecia) zostalo — ono wynika z samej
 # definicji uslugi i jest weryfikowalne.
-
-
-def select_block_transformers_for_der(
-    *, der_kind: Literal["PV", "BESS", "FW"], hv_kv: float | None = None, lv_kv: float | None = None
-) -> tuple[BlockTransformerItem, ...]:
-    """Naprawa B.5: filtruje block-trafo dla kombinacji DER + napiec."""
-    result: list[BlockTransformerItem] = []
-    for btr in BLOCK_TRANSFORMER_CATALOG:
-        if der_kind not in btr.applicable_der_kinds:
-            continue
-        if hv_kv is not None and abs(btr.hv_kv - hv_kv) > 0.5:
-            continue
-        if lv_kv is not None and abs(btr.lv_kv - lv_kv) > 0.05:
-            continue
-        result.append(btr)
-    return tuple(result)
 
 
 def is_vt_voltage_factor_valid_for_grounding(

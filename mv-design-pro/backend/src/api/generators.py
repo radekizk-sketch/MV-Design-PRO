@@ -49,7 +49,7 @@ from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology import transformatory_zasilajace_gpz
 from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
@@ -59,7 +59,7 @@ from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
-from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import to_samo_napiecie_znamionowe, w_pasmie_nn
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
 from werdykt import DanaPrzyjeta, opis_podstawy
@@ -130,6 +130,11 @@ class DerGeneratorCreateRequest(BaseModel):
     data_umowy_przylaczeniowej: DataUmowy | None = None
     nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
     deklaracje_modulu: DeklaracjeModulu | None = None
+    # Próba zapisu: ta sama operacja `add_converter_source` i te same odmowy (422) co zapis,
+    # ale model zostaje bez zmian, a odpowiedź nie niesie migawki. Kreator DER pyta tak backend
+    # o werdykt (moc transformatora O-53, zgodność napięć) PRZED zapisem — bez kopii reguły
+    # we froncie.
+    dry_run: bool = False
 
     @field_validator("station_ref", "catalog_ref")
     @classmethod
@@ -364,7 +369,7 @@ def _resolve_sn_connection_bus(
                 "message_pl": "Wskazany punkt przyłączenia SN nie istnieje w modelu sieci.",
             },
         )
-    if abs(bus_voltage - hv_kv) > 0.05:
+    if not to_samo_napiecie_znamionowe(bus_voltage, hv_kv):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
@@ -636,6 +641,8 @@ def _build_domain_payload(
         "power_setpoint_mw": req.power_mw,
         "quantity": req.quantity,
     }
+    if req.dry_run:
+        payload["dry_run"] = True
     # Nazwa źródła wyłącznie od projektanta; bez niej nazwę nadaje operacja domenowa
     # (opis rodzaju, np. „Blok PV") — nigdy rodzaj DER z identyfikatorem stacji (karta #144).
     if jest_nazwa(req.source_name):
@@ -693,8 +700,13 @@ def create_der_generator(
     klucz: KluczTwin,
     req: DerGeneratorCreateRequest,
     request: Request,
+    odpowiedz_http: Response,
 ) -> dict[str, Any]:
     """Zapisz konfigurację DER jako generator w kanonicznym ENM.
+
+    PRÓBA (`dry_run: true`): ta sama droga i te same odmowy 422 co zapis; przyjęta próba
+    zwraca HTTP 200 z `dry_run: true` i `preview.created_refs`, bez migawki — model zostaje
+    bez zmian (warstwa zapisuje wyłącznie migawkę).
 
     WSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY
     cykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona
@@ -711,7 +723,10 @@ def create_der_generator(
     _validate_project_case_context(request, project_id, case_id)
 
     with blokada_twin(klucz):
-        return _utworz_wytworce_pod_blokada(klucz, req)
+        wynik = _utworz_wytworce_pod_blokada(klucz, req)
+    if req.dry_run:
+        odpowiedz_http.status_code = status.HTTP_200_OK
+    return wynik
 
 
 def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:

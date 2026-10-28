@@ -32,6 +32,10 @@ from network_model.catalog.wartosci_robocze import (
     dane_przyjete_maszyn,
 )
 from network_model.pochodne import calka_joule_ka2s
+from network_model.pochodne.pasma_napieciowe import (
+    izolacja_pokrywa_siec,
+    napiecie_wymagane_izolacji_kv,
+)
 from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
 from werdykt import DanaPrzyjeta
 
@@ -78,27 +82,46 @@ class EquipmentProofGenerator:
 
     @classmethod
     def _check_u(cls, device: DeviceRating, required: dict[str, Any]) -> EquipmentProofCheckResult:
+        """Kryterium poziomu izolacji: U_m aparatu ≥ napięcie najwyższe SIECI U_s.
+
+        Wartość wymagana to U_s dla napięcia znamionowego punktu U_n z tabeli IEC 60038
+        (`pasma_napieciowe.napiecie_najwyzsze_sieci_kv`), nie samo U_n: napięcie znamionowe
+        aparatu jest górną granicą napięcia sieci, dla której go zaprojektowano (PN-EN 62271-1
+        p. 5.2; IEC 60071-1:2006 p. 3.9–3.10) — aparat 15 kV nie pokrywa sieci 15 kV
+        (U_s = 17,5 kV). W paśmie nN wartością wymaganą jest U_n (IEC 60947-1). Ten sam predykat
+        co odmowa poziomu izolacji operacji modelu.
+        """
         device_val = device.u_m_kv
-        required_val = _as_float(required.get("u_kv"))
-        if device_val is None or required_val is None:
+        u_n = _as_float(required.get("u_kv"))
+        u_s = napiecie_wymagane_izolacji_kv(u_n)
+        if device_val is None or u_s is None:
             return EquipmentProofCheckResult(
                 name="U",
                 status=STATUS_FAIL,
-                required_value=required_val,
+                required_value=u_s,
                 device_value=device_val,
                 required_source_key="u_kv",
                 device_source_key="device.u_m_kv",
-                message_pl="Brak podstawy: nie podano U_m aparatu albo U wymaganego.",
+                message_pl=(
+                    "Brak podstawy: nie podano U_m aparatu."
+                    if device_val is None and u_s is not None
+                    else "Brak podstawy: bieg nie niesie napięcia znamionowego punktu U_n "
+                    "z napięciem najwyższym sieci U_s w tablicach IEC 60038."
+                ),
             )
-        status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
+        status = STATUS_PASS if izolacja_pokrywa_siec(device_val, u_n) else STATUS_FAIL
         return EquipmentProofCheckResult(
             name="U",
             status=status,
-            required_value=required_val,
+            required_value=u_s,
             device_value=device_val,
             required_source_key="u_kv",
             device_source_key="device.u_m_kv",
-            message_pl=_compare_message("U_m", "kV", device_val, required_val),
+            message_pl=(
+                _compare_message("U_m", "kV", device_val, u_s)
+                + f" Wartość wymagana to napięcie najwyższe sieci U_s dla U_n = {u_n:g} kV "
+                "(IEC 60038; w paśmie nN — samo U_n, IEC 60947-1)."
+            ),
         )
 
     @classmethod
@@ -456,7 +479,7 @@ class EquipmentProofGenerator:
             "PN-EN 60909",
             (
                 _symbol("D_{req}", "—", "Zestaw danych wymaganych", "required"),
-                _symbol("U_{req}", "kV", "Napięcie w punkcie BoundaryNode", "u_kv"),
+                _symbol("U_{req}", "kV", "Napięcie znamionowe sieci w punkcie zabudowy", "u_kv"),
                 _symbol("I_k''", "kA", "Prąd zwarciowy początkowy", "ikss_ka"),
                 _symbol("i_p", "kA", "Prąd udarowy", "ip_ka"),
                 _symbol("I_{dyn}", "kA", "Prąd dynamiczny", "idyn_ka"),
@@ -495,19 +518,18 @@ class EquipmentProofGenerator:
     def _step_check_u(cls, check: EquipmentProofCheckResult) -> ProofStep:
         equation = _equation(
             "EQ_P12_003",
-            r"U_m \ge U_{req}",
-            "Sprawdzenie napięcia znamionowego",
-            "PN-EN 60909",
+            r"U_m \ge U_s(U_n)",
+            "Sprawdzenie poziomu izolacji: napięcie najwyższe urządzenia wobec napięcia "
+            "najwyższego sieci",
+            "IEC 60071-1:2006 p. 3.9–3.10; IEC 60038 tab. 3–5; PN-EN 62271-1 p. 5.2",
             (
-                _symbol("U_m", "kV", "Napięcie znamionowe urządzenia", "device.u_m_kv"),
-                _symbol("U_{req}", "kV", "Napięcie wymagane", "u_kv"),
+                _symbol("U_m", "kV", "Napięcie najwyższe urządzenia", "device.u_m_kv"),
+                _symbol("U_s", "kV", "Napięcie najwyższe sieci (IEC 60038)", "u_s_kv"),
             ),
         )
         input_values = (
             _value_or_missing("U_m", check.device_value, "kV", "device.u_m_kv"),
-            _value_or_missing(
-                "U_{req}", check.required_value, "kV", check.required_source_key or "u_kv"
-            ),
+            _value_or_missing("U_s", check.required_value, "kV", "u_s_kv"),
         )
         substitution = _substitution_from_values(input_values)
         return _check_step(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -63,20 +65,62 @@ def test_auto_populate_cable_cross_section() -> None:
     assert any("yhakxs" in r or "150" in r for r in refs)
 
 
+def _napiecie_z_uzasadnienia(rationale: str) -> float:
+    return float(re.search(r"([0-9]+(?:\.[0-9]+)?) kV", rationale).group(1))
+
+
 def test_auto_populate_switch_kind_filter() -> None:
-    """Switch filter by kind (circuit_breaker) z voltage + current."""
+    """Switch filter by kind (circuit_breaker) z voltage + current.
+
+    ``voltage_kv`` to napięcie znamionowe SIECI: podpowiedź = aparat o U_r ≥ U_s sieci (ten sam
+    predykat co odmowa poziomu izolacji aparatów pola; sieć 10 kV ma U_s = 12 kV)."""
     client = _make_client()
     response = client.post(
         "/api/catalog/auto-populate/circuit_breaker",
-        json={"voltage_kv": 12.0, "expected_current_a": 630.0},
+        json={"voltage_kv": 10.0, "expected_current_a": 630.0},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["element_type"] == "switch"
     assert len(data["suggestions"]) > 0
-    # All suggestions should be 12 kV CB z In ≥ 630 A (extracted from rationale)
-    for s in data["suggestions"]:
-        assert "12 kV" in s["rationale_pl"], f"Bad voltage: {s['rationale_pl']}"
+    napiecia = [_napiecie_z_uzasadnienia(s["rationale_pl"]) for s in data["suggestions"]]
+    assert min(napiecia) == 12.0, napiecia
+    assert all(u_r >= 12.0 for u_r in napiecia), napiecia
+
+
+@pytest.mark.parametrize(
+    ("element", "napiecie_sieci_kv", "u_s_kv"),
+    [
+        ("circuit_breaker", 15.0, 17.5),
+        ("circuit_breaker", 20.0, 24.0),
+        ("surge_arrester", 15.0, 17.5),
+        ("surge_arrester", 20.0, 24.0),
+        ("surge_arrester", 30.0, 36.0),
+    ],
+)
+def test_podpowiedz_aparatu_tylko_z_poziomem_izolacji_sieci(
+    element: str, napiecie_sieci_kv: float, u_s_kv: float
+) -> None:
+    """Podpowiedź nie proponuje typu, którego operacja odmówi (U_m < U_s), i nie ukrywa typu
+    wyższej klasy: dawny filtr ±30 % podpowiadał aparat 12 kV na sieć 15 kV i ukrywał 24 kV."""
+    client = _make_client()
+    response = client.post(
+        f"/api/catalog/auto-populate/{element}", json={"voltage_kv": napiecie_sieci_kv}
+    )
+    assert response.status_code == 200
+    suggestions = response.json()["suggestions"]
+    assert suggestions
+    napiecia = [_napiecie_z_uzasadnienia(s["rationale_pl"]) for s in suggestions]
+    assert min(napiecia) == u_s_kv, napiecia
+
+
+def test_podpowiedz_kabla_20kv_dla_sieci_15kv() -> None:
+    """Kabel 12/20 kV (U_m 24 kV) pokrywa sieć 15 kV — dawny filtr ±20 % ukrywał każdy kabel
+    katalogu (wszystkie 20 kV) dla sieci 15 kV."""
+    client = _make_client()
+    response = client.post("/api/catalog/auto-populate/cable", json={"voltage_kv": 15.0})
+    assert response.status_code == 200
+    assert response.json()["suggestions"]
 
 
 def test_auto_populate_protection_returns_relays() -> None:

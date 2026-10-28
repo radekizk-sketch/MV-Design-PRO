@@ -25,8 +25,10 @@ from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
+    napiecie_baterii_pasuje_do_sieci,
     pasmo_napieciowe,
     powyzej_pasma_nn,
+    to_samo_napiecie_znamionowe,
     w_pasmie_nn,
 )
 from pydantic import BaseModel
@@ -1993,7 +1995,7 @@ class ENMValidator:
         E040: bus_ref nie istnieje.
         E041: rated_mvar <= 0 (brak / niepoprawna moc bierna — nie zgadujemy).
         E042: rated_kv <= 0 (brak / niepoprawne napięcie znamionowe).
-        W040: rated_kv niespójne z napięciem szyny (>5% różnicy).
+        W040: rated_kv poza przedziałem U_n ≤ U_N ≤ U_s szyny (`napiecie_baterii_pasuje_do_sieci`).
         """
         bus_by_ref = {b.ref_id: b for b in enm.buses}
         for cap in enm.shunt_capacitors:
@@ -2068,12 +2070,12 @@ class ENMValidator:
                 continue
 
             bus = bus_by_ref.get(cap.bus_ref)
+            # JEDEN predykat z operacją zapisu baterii (`odmowa_tabliczki_baterii`):
+            # U_n ≤ U_N ≤ U_s (IEC 60871-1, IEC 60038) — dawny próg ±5 % ostrzegał przed baterią,
+            # którą operacja przyjmowała (17 kV na 15 kV), i milczał przy 14,5 kV, której odmawia.
             if (
                 bus is not None
-                and bus.voltage_kv
-                and bus.voltage_kv > 0
-                and cap.rated_kv > 0
-                and abs(cap.rated_kv - bus.voltage_kv) / bus.voltage_kv > 0.05
+                and napiecie_baterii_pasuje_do_sieci(cap.rated_kv, bus.voltage_kv) is False
             ):
                 issues.append(
                     ValidationIssue(
@@ -3054,7 +3056,7 @@ class ENMValidator:
                 continue
             if not (w_pasmie_nn(from_bus.voltage_kv) and w_pasmie_nn(to_bus.voltage_kv)):
                 continue
-            if abs(from_bus.voltage_kv - to_bus.voltage_kv) <= 1e-9:
+            if to_samo_napiecie_znamionowe(from_bus.voltage_kv, to_bus.voltage_kv):
                 continue
             issues.append(
                 ValidationIssue(
