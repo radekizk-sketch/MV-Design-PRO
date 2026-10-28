@@ -64,7 +64,43 @@ function extractApiError(detail: unknown, status: number, statusText: string, en
     message: message
       ? `API ${status} ${statusText}: ${endpoint} - ${message}`
       : `API ${status} ${statusText}: ${endpoint}`,
+    /** Sam komunikat backendu (bez prefiksu technicznego) — dla komunikatów projektanta. */
+    komunikat: message || null,
   };
+}
+
+/**
+ * JEDYNE miejsce budowy adresu endpointa operacji domenowych (strażnik
+ * `scripts/domain_ops_unified_guard.py`). Zapis (`executeDomainOp`) i próba
+ * (`executeDomainOpPreview`) idą tym samym adresem; testy porównują adres przez tę funkcję.
+ */
+export function domainOpsEndpoint(caseId: string): string {
+  return `${API_BASE}/${encodeURIComponent(caseId)}/enm/domain-ops`;
+}
+
+/** Koperta próby operacji (`dry_run`) — backend nie zwraca snapshotu i nie zmienia modelu. */
+export interface DomainOpPreviewResponse {
+  dry_run?: boolean;
+  preview?: Record<string, unknown>;
+  error?: string;
+  error_code?: string;
+}
+
+function envelope(
+  caseId: string,
+  canonicalName: string,
+  payload: Record<string, unknown>,
+  snapshotBaseHash: string,
+): string {
+  return JSON.stringify({
+    project_id: caseId,
+    snapshot_base_hash: snapshotBaseHash,
+    operation: {
+      name: canonicalName,
+      idempotency_key: buildIdempotencyKey(canonicalName, payload),
+      payload,
+    },
+  });
 }
 
 function resolveCanonicalName(name: string): string {
@@ -232,19 +268,11 @@ export async function executeDomainOp(
   snapshotBaseHash = '',
 ): Promise<DomainOpResponseV1> {
   const canonicalName = resolveCanonicalName(opName);
-  const endpoint = `${API_BASE}/${caseId}/enm/domain-ops`;
+  const endpoint = domainOpsEndpoint(caseId);
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      project_id: caseId,
-      snapshot_base_hash: snapshotBaseHash,
-      operation: {
-        name: canonicalName,
-        idempotency_key: buildIdempotencyKey(canonicalName, payload),
-        payload,
-      },
-    }),
+    body: envelope(caseId, canonicalName, payload, snapshotBaseHash),
   });
 
   if (!res.ok) {
@@ -265,4 +293,41 @@ export async function executeDomainOp(
     error_code?: string;
   };
   return normalizeResponse(response);
+}
+
+/**
+ * Próba operacji domenowej (`dry_run: true`) — TA SAMA operacja, ten sam adres i ta sama
+ * koperta co zapis; backend liczy skutki i werdykt walidatora, nie zmieniając modelu.
+ * Odpowiedź nie niesie snapshotu, więc nie przechodzi przez `normalizeResponse` ani przez
+ * store migawki. Odrzucenie HTTP rzuca `DomainApiError` z SAMYM komunikatem backendu
+ * (pokazywanym projektantowi bez tłumaczenia), bez prefiksu technicznego.
+ */
+export async function executeDomainOpPreview(
+  caseId: string,
+  opName: string,
+  payload: Record<string, unknown>,
+  opcje: { signal?: AbortSignal } = {},
+): Promise<DomainOpPreviewResponse> {
+  const canonicalName = resolveCanonicalName(opName);
+  const endpoint = domainOpsEndpoint(caseId);
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: opcje.signal,
+    body: envelope(caseId, canonicalName, { ...payload, dry_run: true }, ''),
+  });
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const extracted = extractApiError(detail, res.status, res.statusText, endpoint);
+    throw new DomainApiError(
+      res.status,
+      res.statusText,
+      detail,
+      endpoint,
+      extracted.komunikat ?? `Błąd HTTP ${res.status}: ${res.statusText}`,
+      extracted.code,
+    );
+  }
+  return (await res.json()) as DomainOpPreviewResponse;
 }

@@ -37,8 +37,15 @@ describe('czujnikLadunkow — kształt wywołania', () => {
 describe('czujnikLadunkow — makiety', () => {
   it.each(['fn', 'spyOn'] as const)('vi.%s: klucz obcy meldowany raz, klucz kontraktu nie', (rodzaj) => {
     const cel = { wyslij: (..._argumenty: unknown[]) => undefined };
-    const makieta = rodzaj === 'fn' ? vi.fn() : vi.spyOn(cel, 'wyslij');
-    const wyslij = rodzaj === 'fn' ? makieta : cel.wyslij;
+    // `vi.spyOn` zwraca `MockInstance` (niewywoływalny w typach) — wywołujemy podmienioną
+    // metodę obiektu, a `vi.fn()` wprost; obie drogi rejestrują wywołanie w czujniku.
+    let wyslij: (...argumenty: unknown[]) => unknown;
+    if (rodzaj === 'fn') {
+      wyslij = vi.fn();
+    } else {
+      vi.spyOn(cel, 'wyslij');
+      wyslij = cel.wyslij;
+    }
     wyslij('case-1', 'delete_element', { element_ref: 'x' });
     expect(naruszeniaMakiet()).toEqual([]);
     wyslij('case-1', 'delete_element', { element_ref: 'x', action_id: 'menu' });

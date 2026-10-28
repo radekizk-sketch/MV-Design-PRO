@@ -7116,6 +7116,24 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _jako_proba(odpowiedz: dict[str, Any], dry_run: bool) -> dict[str, Any]:
+    """Odpowiedź PRÓBY operacji (`dry_run: true` w ładunku) — ta sama operacja co zapis.
+
+    Handler przechodzi CAŁĄ walidację (te same reguły i te same odmowy co zapis — m.in.
+    zgodność napięcia tabliczki z szyną), a próba różni się wyłącznie tym, że odpowiedź
+    nie niesie migawki: warstwa API utrwala model tylko z migawki, więc model zostaje bez
+    zmian. Odmowa (``error``) wraca bez zmian — kreator pokazuje ją projektantowi PRZED
+    zapisem, bez własnej kopii reguły we froncie (zero fizyki i progów w UI).
+    """
+    if not dry_run or odpowiedz.get("error"):
+        return odpowiedz
+    zmiany = odpowiedz.get("changes") or {}
+    odpowiedz.pop("snapshot", None)
+    odpowiedz["dry_run"] = True
+    odpowiedz["preview"] = {"created_refs": list(zmiany.get("created_element_ids") or ())}
+    return odpowiedz
+
+
 def odmowa_tabliczki_baterii(
     rated_mvar: float, rated_kv: float, bus_voltage_kv: float
 ) -> dict[str, Any] | None:
@@ -7146,6 +7164,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     (`_build_shunt_specs_from_snapshot`). Katalog-first: rated_mvar/rated_kv
     pochodzą z pozycji katalogowej (nie z payloadu UI) — zero fizyki w UI.
     """
+    dry_run = bool(payload.get("dry_run", False))
     bus_ref = payload.get("bus_ref") or payload.get("bus_nn_ref")
     if not isinstance(bus_ref, str) or not bus_ref.strip():
         return _error_response(
@@ -7221,14 +7240,17 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         }
     )
 
-    return _response(
-        new_enm,
-        created=[shunt_ref],
-        selection_id=shunt_ref,
-        selection_type="shunt_capacitor",
-        events=[
-            {"event_seq": 1, "event_type": "SHUNT_COMPENSATOR_CREATED", "element_id": shunt_ref}
-        ],
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[shunt_ref],
+            selection_id=shunt_ref,
+            selection_type="shunt_capacitor",
+            events=[
+                {"event_seq": 1, "event_type": "SHUNT_COMPENSATOR_CREATED", "element_id": shunt_ref}
+            ],
+        ),
+        dry_run,
     )
 
 
@@ -7455,6 +7477,7 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     odmowa_typu = _odmowa_typu_ladunku(payload, "add_generator_sn", {"p_mw": "liczba_lub_tekst"})
     if odmowa_typu is not None:
         return odmowa_typu
+    dry_run = bool(payload.get("dry_run", False))
     bus_ref_raw = payload.get("bus_ref")
     bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
     if not bus_ref:
@@ -7590,13 +7613,40 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("generators", []).append(nowy_generator)
 
-    return _response(
-        new_enm,
-        created=[gen_ref],
-        selection_id=gen_ref,
-        selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "GENERATOR_SN_CREATED", "element_id": gen_ref}],
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[gen_ref],
+            selection_id=gen_ref,
+            selection_type="generator",
+            events=[{"event_seq": 1, "event_type": "GENERATOR_SN_CREATED", "element_id": gen_ref}],
+        ),
+        dry_run,
     )
+
+
+def odmowa_napiecia_ogranicznika(
+    u_m_kv: float, bus_voltage_kv: float | None
+) -> dict[str, Any] | None:
+    """JEDNA reguła napięcia ogranicznika przepięć wobec szyny SN.
+
+    Napięcie najwyższe urządzenia U_m typu musi pokrywać napięcie znamionowe szyny
+    (U_m ≥ U_n; IEC 60071-1, definicja napięcia najwyższego urządzenia U_m: górna granica
+    napięcia sieci, dla której urządzenie jest przeznaczone). Typ o U_m < U_n jest
+    przeznaczony dla niższego poziomu napięcia — odmowa jak dla baterii i generatora
+    o napięciu niezgodnym z szyną. Szyna bez napięcia znamionowego: reguła nie ma
+    podstawy (brak danych modelu wykrywa walidator modelu), więc nie odmawia.
+    """
+    if bus_voltage_kv is None or bus_voltage_kv <= 0.0:
+        return None
+    if u_m_kv < bus_voltage_kv:
+        return _error_response(
+            f"Napięcie najwyższe urządzenia ogranicznika U_m = {u_m_kv:g} kV jest niższe od "
+            f"napięcia znamionowego szyny SN ({bus_voltage_kv:g} kV) — wymagane U_m ≥ U_n "
+            "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
+            "spd.voltage_mismatch",
+        )
+    return None
 
 
 def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -7611,6 +7661,7 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     parametry ogranicznika z ``mv_surge_arrester_catalog`` po ``catalog_ref``
     (walidacja istnienia typu; zero fizyki/fabrykacji w tej operacji).
     """
+    dry_run = bool(payload.get("dry_run", False))
     field_ref_raw = payload.get("field_ref") or payload.get("bay_ref")
     field_ref = (
         field_ref_raw.strip() if isinstance(field_ref_raw, str) and field_ref_raw.strip() else None
@@ -7651,6 +7702,11 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             f"{nazwa_kategorii_katalogu('OGRANICZNIK_SN')}.",
             "spd.catalog_not_found",
         )
+    odmowa_napiecia = odmowa_napiecia_ogranicznika(
+        float(catalog_type.u_m_kv), _bus_voltage_kv(enm, bus_ref)
+    )
+    if odmowa_napiecia is not None:
+        return odmowa_napiecia
 
     pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
     if field_ref is not None:
@@ -7705,12 +7761,17 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         ],
     )
 
-    return _response(
-        new_enm,
-        created=[device_ref],
-        selection_id=target_field_ref,
-        selection_type="bay",
-        events=[{"event_seq": 1, "event_type": "SURGE_ARRESTER_CREATED", "element_id": device_ref}],
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[device_ref],
+            selection_id=target_field_ref,
+            selection_type="bay",
+            events=[
+                {"event_seq": 1, "event_type": "SURGE_ARRESTER_CREATED", "element_id": device_ref}
+            ],
+        ),
+        dry_run,
     )
 
 

@@ -117,11 +117,17 @@ def _migawka_ze_stacja(maszyna: str) -> tuple[dict[str, Any], str]:
             "name": "Stacja SN",
             "station_type": "mv_lv",
             "bus_refs": [szyna],
-            "meta": {
-                "field_specs": [
-                    {"field_ref": POLE, "name": "P-01", "bay_role": "IN", "bus_ref": szyna}
-                ]
-            },
+        }
+    )
+    # Jedyny nośnik pól stacji to kolekcja `bays` modelu.
+    migawka.setdefault("bays", []).append(
+        {
+            "ref_id": POLE,
+            "name": "P-01",
+            "bay_role": "IN",
+            "substation_ref": STACJA,
+            "bus_ref": szyna,
+            "equipment_refs": ["aparat/pole"],
         }
     )
     EnergyNetworkModel.model_validate(migawka)

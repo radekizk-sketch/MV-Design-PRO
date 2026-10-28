@@ -4,7 +4,6 @@ import type { SurgeArresterCatalogType } from '../../../../ui/catalog/types';
 import {
   DANE_DOMYSLNE,
   maMiejsce,
-  napiecieNiezgodne,
   parametryZKatalogu,
   walidujFormularz,
   zbudujPayload,
@@ -56,11 +55,5 @@ describe('ogranicznikModel', () => {
     expect(maMiejsce({ field_ref: 'POLE-IN' })).toBe(true);
     expect(maMiejsce({ bus_ref: 'BUS_SN' })).toBe(true);
     expect(maMiejsce({})).toBe(false);
-  });
-
-  it('ostrzega, gdy U_m ogranicznika < napięcie szyny', () => {
-    const p = parametryZKatalogu(TYP.id, [TYP]);
-    expect(napiecieNiezgodne(p, { bus_voltage_kv: 20 })).toBe(false); // 24 >= 20 ok
-    expect(napiecieNiezgodne(p, { bus_voltage_kv: 30 })).toBe(true); // 24 < 30 ostrzeżenie
   });
 });

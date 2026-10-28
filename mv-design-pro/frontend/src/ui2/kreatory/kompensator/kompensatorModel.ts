@@ -74,17 +74,6 @@ export function maSzyne(kontekst: KontekstKompensatora): boolean {
   return Boolean(kontekst.bus_ref?.trim());
 }
 
-/** Ostrzeżenie o niezgodności napięcia typu i szyny (backend blokuje twardo). */
-export function napiecieNiezgodne(
-  params: ParametryBaterii | null,
-  kontekst: KontekstKompensatora,
-): boolean {
-  if (!params || typeof kontekst.bus_voltage_kv !== 'number' || kontekst.bus_voltage_kv <= 0) {
-    return false;
-  }
-  return Math.abs(params.rated_kv - kontekst.bus_voltage_kv) > 0.5;
-}
-
 export function zbudujPayload(
   data: KompensatorFormData,
   kontekst: KontekstKompensatora,

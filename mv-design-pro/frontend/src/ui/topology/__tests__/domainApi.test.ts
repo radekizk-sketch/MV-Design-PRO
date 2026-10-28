@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { executeDomainOp } from '../domainApi';
+import { domainOpsEndpoint, executeDomainOp, executeDomainOpPreview } from '../domainApi';
 import { CANONICAL_OPERATION_NAMES } from '../../../types/domainOps';
 
 describe('executeDomainOp', () => {
@@ -132,7 +132,7 @@ describe('executeDomainOp', () => {
     } as Response);
 
     await expect(executeDomainOp('case-1', 'refresh_snapshot', {})).rejects.toThrow(
-      'API 422 Unprocessable Entity: /api/cases/case-1/enm/domain-ops',
+      `API 422 Unprocessable Entity: ${domainOpsEndpoint('case-1')}`,
     );
   });
 
@@ -168,5 +168,95 @@ describe('executeDomainOp', () => {
       );
       expect(fetchMock).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * Próba operacji (`dry_run`) idzie kanonicznym klientem: TEN SAM adres i TA SAMA koperta co
+ * zapis (nazwa kanoniczna, klucz idempotencji z ładunku), z flagą `dry_run` w ładunku.
+ * Iloczyn cech: wywołanie {zapis, próba} × ten sam ładunek → ten sam adres, różny klucz
+ * idempotencji (próba nie może dzielić klucza z zapisem); odpowiedź {przyjęta, odrzucona HTTP,
+ * błąd operacji} → koperta próby / komunikat backendu bez prefiksu technicznego.
+ */
+describe('executeDomainOpPreview', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const ladunek = { bus_ref: 'bus-1', bay_template_ref: 'tmpl-1' };
+
+  it('ten sam adres i ta sama koperta co zapis, ładunek z dry_run, klucz różny od zapisu', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
+    await executeDomainOp('case-1', 'add_sn_bay', ladunek);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ dry_run: true, preview: { werdykt: 'VALID' } }),
+    } as Response);
+    const proba = await executeDomainOpPreview('case-1', 'add_sn_bay', ladunek);
+
+    const [urlZapisu, initZapisu] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [urlProby, initProby] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(urlProby).toBe(urlZapisu);
+    expect(urlProby).toBe(domainOpsEndpoint('case-1'));
+    const zapis = JSON.parse(String(initZapisu.body));
+    const cialo = JSON.parse(String(initProby.body));
+    expect(cialo.project_id).toBe('case-1');
+    expect(cialo.operation.name).toBe('add_sn_bay');
+    expect(cialo.operation.payload).toEqual({ ...ladunek, dry_run: true });
+    expect(cialo.operation.idempotency_key).toMatch(/^op:add_sn_bay:/);
+    expect(cialo.operation.idempotency_key).not.toBe(zapis.operation.idempotency_key);
+    expect(proba).toEqual({ dry_run: true, preview: { werdykt: 'VALID' } });
+  });
+
+  it('odrzucenie HTTP → komunikat backendu bez prefiksu technicznego', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      statusText: 'Unprocessable Entity',
+      json: async () => ({ detail: { message_pl: 'Pole spoza rodziny rozdzielnicy.' } }),
+    } as Response);
+    await expect(executeDomainOpPreview('case-1', 'add_sn_bay', ladunek)).rejects.toThrow(
+      /^Pole spoza rodziny rozdzielnicy\.$/,
+    );
+  });
+
+  it('odrzucenie HTTP bez treści → kod i status HTTP', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => {
+        throw new Error('brak JSON');
+      },
+    } as unknown as Response);
+    await expect(executeDomainOpPreview('case-1', 'add_sn_bay', ladunek)).rejects.toThrow(
+      /^Błąd HTTP 500: Internal Server Error$/,
+    );
+  });
+
+  it('błąd operacji w odpowiedzi 200 jest zwracany w kopercie (rozstrzyga wołający)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ dry_run: true, error: 'Rodzina nie obsługuje napięcia.', error_code: 'x' }),
+    } as Response);
+    await expect(executeDomainOpPreview('case-1', 'add_sn_bay', ladunek)).resolves.toEqual({
+      dry_run: true,
+      error: 'Rodzina nie obsługuje napięcia.',
+      error_code: 'x',
+    });
+  });
+
+  it('nazwa spoza białej listy jest odrzucana ZANIM poleci żądanie', async () => {
+    await expect(executeDomainOpPreview('case-1', 'operacja_widmo', {})).rejects.toThrow(
+      'Niekanoniczna nazwa operacji: operacja_widmo',
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

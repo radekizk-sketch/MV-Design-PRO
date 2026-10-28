@@ -32,6 +32,7 @@ jest wyłącznie sam WYMÓG jawności — nie liczby.
 
 from __future__ import annotations
 
+import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -141,6 +142,61 @@ class TestParaSpozaMapyOdrzuconaTymSamymKodem:
         assert wynik.get("error_code") == "source.hv_voltage_mismatch", wynik
         assert wynik.get("snapshot") is None
         assert "115" in str(wynik.get("error")) and "110" in str(wynik.get("error"))
+
+
+class TestNapiecieDolneTypuZgodneZSzynamiSn:
+    """Iloczyn cech: napięcie szyn SN GPZ {15, 20} kV × napięcie dolne typu {15, 20} kV ×
+    droga wskazania typu {`transformer_catalog_ref`, `transformer_catalog_binding`}.
+
+    Klasa defektu (scalenie UI/UX z programem, 2026-10-28): kreator GPZ filtrował typy
+    110/SN tolerancją ±6 kV (na sieci 15 kV pokazywał i dobierał 110/20 kV), a operacja
+    przyjmowała każdy typ — transformator 110/20 kV stawał na szynach 15 kV bez odmowy.
+    Regułę ma WYŁĄCZNIE operacja: napięcie dolne typu = napięcie szyn SN (jak strona górna).
+    """
+
+    @staticmethod
+    def _wynik(sn_kv: float, typ: str, droga: str) -> dict:
+        wskazanie: dict[str, object] = (
+            {"transformer_catalog_ref": typ}
+            if droga == "ref"
+            else {
+                "transformer_catalog_binding": {
+                    "catalog_namespace": "TRAFO_SN_NN",
+                    "catalog_item_id": typ,
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                }
+            }
+        )
+        return execute_domain_operation(
+            _empty_enm(sn_nominal_kv=sn_kv),
+            "add_grid_source_sn",
+            _base_payload(
+                voltage_kv=sn_kv,
+                manual_equivalent=_rownowaznik_110(110.0, sn_voltage_kv=sn_kv),
+                **wskazanie,
+            ),
+        )
+
+    @pytest.mark.parametrize("droga", ["ref", "binding"])
+    @pytest.mark.parametrize(
+        ("sn_kv", "lv_typu_kv"), [(15.0, 15.0), (15.0, 20.0), (20.0, 15.0), (20.0, 20.0)]
+    )
+    def test_napiecie_dolne_typu_rowne_napieciu_szyn(
+        self, sn_kv: float, lv_typu_kv: float, droga: str
+    ) -> None:
+        typ = f"tr-wn-sn-110-{lv_typu_kv:g}-25mva-yd11"
+        wynik = self._wynik(sn_kv, typ, droga)
+        if sn_kv == lv_typu_kv:
+            assert wynik.get("error") is None, wynik
+            tr = wynik["snapshot"]["transformers"][0]
+            assert tr["ulv_kv"] == sn_kv
+            assert tr["catalog_ref"] == typ
+            return
+        assert wynik.get("error_code") == "source.lv_voltage_mismatch", wynik
+        assert wynik.get("snapshot") is None
+        tresc = str(wynik["error"])
+        assert f"{lv_typu_kv:g} kV" in tresc and f"{sn_kv:g} kV" in tresc, tresc
 
 
 class TestTypJawnyDajeTabliczkeZKatalogu:

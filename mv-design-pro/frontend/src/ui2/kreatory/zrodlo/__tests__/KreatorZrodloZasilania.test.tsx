@@ -65,9 +65,17 @@ const DOMYSLNY_KATALOG_ZRODEL = [
     rx_ratio: 0.12,
   },
 ];
-const { fetchSourceSystemTypesMock } = vi.hoisted(() => ({
-  fetchSourceSystemTypesMock: vi.fn(),
-}));
+// Katalog transformatorów 110/SN: domyślnie jeden typ 110/15 kV; testy reguły napięcia dolnego
+// podają własną listę jednorazowo (`mockResolvedValueOnce` — montaż pobiera katalog raz).
+const { fetchSourceSystemTypesMock, fetchTransformerTypesMock, TR_110_15, TR_110_20 } = vi.hoisted(() => {
+  const tr15 = { id: 'TR-110-15-25', name: 'TR 110/15 25 MVA', rated_power_mva: 25, voltage_hv_kv: 110, voltage_lv_kv: 15, uk_percent: 12.5, pk_kw: 120, i0_percent: 0.2, p0_kw: 25, vector_group: 'YNd11', tap_min: -9, tap_max: 9 };
+  return {
+    fetchSourceSystemTypesMock: vi.fn(),
+    fetchTransformerTypesMock: vi.fn(() => Promise.resolve([tr15])),
+    TR_110_15: tr15,
+    TR_110_20: { ...tr15, id: 'TR-110-20-25', name: 'TR 110/20 25 MVA', voltage_lv_kv: 20 },
+  };
+});
 
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
@@ -84,10 +92,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { template_ref: 'ABB__SAFERING__LINE_OUT', manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'catalog_solution', source_refs: [], version: '1', hash: 'x', notes_pl: null },
     ]),
-  fetchTransformerTypes: () =>
-    Promise.resolve([
-      { id: 'TR-110-15-25', name: 'TR 110/15 25 MVA', rated_power_mva: 25, voltage_hv_kv: 110, voltage_lv_kv: 15, uk_percent: 12.5, pk_kw: 120, i0_percent: 0.2, p0_kw: 25, vector_group: 'YNd11', tap_min: -9, tap_max: 9 },
-    ]),
+  fetchTransformerTypes: () => fetchTransformerTypesMock(),
   fetchTapChangers: () =>
     Promise.resolve([
       { id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2024.1', label_pl: 'OLTC 110/SN 19 zaczepow', type: 'oltc', neutral_position: 0, tap_count: 19, step_percent: 1.25, range_percent: 11.25, regulated_side: 'hv', switching_time_s: 5, operations_before_maintenance_thousand: 100, supports_avr: true, applicable_to: [] },
@@ -253,10 +258,16 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
    * świadomie nierozstrzygnięty) × „aktywny zakres obliczeń poprawny" →
    * zapis MUSI być zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
    */
-  it('iloczyn cech: katalog systemów zasilających jeszcze się ładuje × zakres obliczeń poprawny → zapis zablokowany z komunikatem', () => {
+  it('iloczyn cech: katalog systemów zasilających jeszcze się ładuje × zakres obliczeń poprawny → zapis zablokowany z komunikatem', async () => {
     fetchSourceSystemTypesMock.mockReturnValueOnce(new Promise(() => {}));
     render(<KreatorZrodloZasilania />);
 
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'ladowanie');
+    // Pozostałe katalogi (aparaty, rodziny, transformatory, przełączniki zaczepów) rozstrzygają
+    // się w mikrotaskach — domykamy je w act i sprawdzamy, że blokada TRWA, dopóki katalog
+    // systemów zasilających nie odpowie (bez tego aktualizacje stanu wyciekały poza test).
+    await act(async () => {});
     expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
     expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'ladowanie');
     expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
@@ -401,6 +412,53 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
       // Karta GPZ-MODEL: YNd11 (SN w trójkąt) — punkt neutralny SN w modelu jest izolowany,
       // więc domyślny opis „rezystor 12 Ω” nie trafia do zapisu.
       grounding: { type: 'isolated' },
+    });
+  });
+
+  /* Napięcie dolne typu 110/SN = napięcie szyn SN (reguła `source.lv_voltage_mismatch` operacji).
+     Iloczyn cech: napięcie SN {15, 20} kV × kolejność katalogu (typ NIEZGODNY pierwszy) ×
+     chwila zmiany napięcia {przed doborem, po auto-doborze}. Dawny filtr ±6 kV pokazywał
+     na sieci 15 kV także 110/20 kV i auto-dobierał pierwszy z listy. */
+  it.each([
+    ['15', 'TR-110-15-25', 'TR-110-20-25'],
+    ['20', 'TR-110-20-25', 'TR-110-15-25'],
+  ])('napięcie SN %s kV: lista i auto-dobór wyłącznie typów o tym napięciu dolnym (klik natywny)', async (sn, zgodny, niezgodny) => {
+    fetchTransformerTypesMock.mockResolvedValueOnce(sn === '15' ? [TR_110_20, TR_110_15] : [TR_110_15, TR_110_20]);
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-napiecie'), sn);
+    await przejdzNaRownowaznik110kV(user);
+    const lista = screen.getByTestId('mvd-kreator-zrodlo-transformator-katalog') as HTMLSelectElement;
+    await waitFor(() => expect(lista.value).toBe(zgodny));
+    expect(lista.querySelector(`option[value="${niezgodny}"]`)).toBeNull();
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    expect(executeDomainOperationMock.mock.calls[0][2]).toMatchObject({
+      voltage_kv: Number(sn),
+      transformer_catalog_ref: zgodny,
+    });
+  });
+
+  it('zmiana napięcia SN po auto-doborze przenosi dobór na typ zgodny (bez cichego 110/15 na 20 kV)', async () => {
+    fetchTransformerTypesMock.mockResolvedValueOnce([TR_110_15, TR_110_20]);
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await przejdzNaRownowaznik110kV(user);
+    const lista = () => screen.getByTestId('mvd-kreator-zrodlo-transformator-katalog') as HTMLSelectElement;
+    await waitFor(() => expect(lista().value).toBe('TR-110-15-25'));
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-identyfikacja"]') as HTMLElement,
+    );
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-napiecie'), '20');
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
+    );
+    await waitFor(() => expect(lista().value).toBe('TR-110-20-25'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    expect(executeDomainOperationMock.mock.calls[0][2]).toMatchObject({
+      voltage_kv: 20,
+      transformer_catalog_ref: 'TR-110-20-25',
     });
   });
 

@@ -913,13 +913,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/kreatory/kompensator/kompensatorModel.ts:napiecieNiezgodne",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D67 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D67"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/kreatory/pomiar/KreatorPomiaru.tsx:KreatorPomiaru.przekladniaOk",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",
@@ -1645,6 +1638,13 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E75 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "E75"
+  },
+  {
+   "sprawdzenie": "6c_mapa_statusu",
+   "tozsamosc": "frontend/src/ui/workspace/surfaces/StationConfiguratorSurface.tsx:StationConfiguratorSurface",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Scalenie gałęzi UI/UX z programem (2026-10-28): `graph.status` projekcji domeny nN (`LvDomainProjectionV1`, wartości `OK` | `brak danych`) to DOSTĘPNOŚĆ danych modelu — czy stacja ma domenę nN w modelu — a nie ocena kryterium. Trójdzielna mapa przekłada ją na stan ładowania karty nN (`gotowe` / `brak_domeny`); tekst dla człowieka pochodzi wyłącznie z `graph.reason_pl` backendu albo z komunikatu błędu pobrania, żaden werdykt ani ton oceny nie powstaje.",
+   "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

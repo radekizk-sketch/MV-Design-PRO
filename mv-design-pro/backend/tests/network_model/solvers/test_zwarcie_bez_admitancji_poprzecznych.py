@@ -101,7 +101,7 @@ def _siec(susceptancja: str, topologia: str) -> tuple[dict[str, Any], dict[str, 
     enm, gpz = dodaj_zrodlo_slack(
         enm, voltage_kv=UN_KV, sk3_mva=SK_MVA, rx_ratio=RX_Q, line_fields_count=1
     )
-    pole = _gpz_line_fields(enm)[0]["field_ref"]
+    pole = _gpz_line_fields(enm)[0]["ref_id"]
     enm, szyna_b = kontynuuj_z_pola(
         enm,
         field_ref=pole,

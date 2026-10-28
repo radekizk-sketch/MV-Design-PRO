@@ -30,6 +30,7 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { EkranDynamiki } from '../EkranDynamiki';
 import { DYNAMIKA_STRINGS as T } from '../strings';
+import { domainOpsEndpoint } from '../../../../ui/topology/domainApi';
 
 // Kontrakt przebiegu (rewizja modelu, na której policzono bieg) — ta sama atrapa haka co na
 // ekranach rozpływu, zbieżności i zwarć; domyślnie kontrakt bez rewizji (brak znacznika).
@@ -100,7 +101,7 @@ function ustawFetch(): void {
         atrapa.gotowosc = atrapa.gotowoscPoPv;
         return odpowiedz({ snapshot: migawka, error: null, readiness: null, fix_actions: [] });
       }
-      if (adres.endsWith(`/api/cases/${CASE}/enm/domain-ops`)) {
+      if (adres.endsWith(domainOpsEndpoint(CASE))) {
         // Kanoniczny kanał operacji domenowych (magazyn migawki) — wiązanie odbioru.
         if (atrapa.odmowaWiazaniaOdbioru) {
           return odpowiedz({
@@ -321,7 +322,7 @@ describe('EkranDynamiki — model dynamiczny odbioru (karta modeli odbiorów)', 
     await waitFor(() =>
       expect(screen.getByTestId(`mvd-dynamika-odbior-${ODBIOR}`)).toHaveAttribute('data-stan', 'z_katalogu'),
     );
-    const operacja = atrapa.zadania.find((z) => z.url.endsWith(`/api/cases/${CASE}/enm/domain-ops`));
+    const operacja = atrapa.zadania.find((z) => z.url.endsWith(domainOpsEndpoint(CASE)));
     expect((operacja?.cialo as { operation: { name: string; payload: unknown } }).operation).toMatchObject({
       name: 'set_load_dynamic_binding',
       payload: { load_ref: ODBIOR, dynamic_model_ref: PROFIL_ODBIORU },

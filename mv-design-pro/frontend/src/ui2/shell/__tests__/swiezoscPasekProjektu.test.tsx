@@ -40,6 +40,7 @@ import { useSelectionStore } from '../../../ui/selection/store';
 import { getProject } from '../../../ui/projects/api';
 import { getStudyCase } from '../../../ui/study-cases/api';
 import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
+import { domainOpsEndpoint } from '../../../ui/topology/domainApi';
 
 vi.mock('../../../ui/projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../ui/projects/api')>();
@@ -233,7 +234,7 @@ function stubFetch(werdykt: WerdyktSerwera, rewizjaModelu: number) {
       if (url === `/api/execution/study-cases/${CASE_ID}/runs`) {
         return jsonResponse({ runs: [runRecord(RUN_ID)] });
       }
-      if (url === `/api/cases/${CASE_ID}/enm/domain-ops`) {
+      if (url === domainOpsEndpoint(CASE_ID)) {
         return jsonResponse(domainOpResponse(rewizjaModelu));
       }
       return { ok: false, status: 404, json: async () => ({}) };

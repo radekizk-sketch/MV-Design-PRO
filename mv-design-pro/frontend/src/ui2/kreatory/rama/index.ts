@@ -53,6 +53,16 @@ export {
 } from './selekcjaPoOperacji';
 export type { SelekcjaFallback } from './selekcjaPoOperacji';
 
+export { useProbaOperacji, ZWLOKA_PROBY_MS } from './probaOperacji';
+export type { StanProbyOperacji } from './probaOperacji';
+export {
+  KontrolaPrzedZapisem,
+  PROBA_STRINGS,
+  komunikatProby,
+  wierszProby,
+} from './kontrolaPrzedZapisem';
+export type { KontrolaPrzedZapisemProps } from './kontrolaPrzedZapisem';
+
 export { bladPola } from './model';
 export type {
   OpcjaWyboru,

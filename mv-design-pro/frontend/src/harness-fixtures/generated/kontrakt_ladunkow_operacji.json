@@ -188,6 +188,7 @@
         "catalog_item_version",
         "catalog_ref",
         "control_mode",
+        "dry_run",
         "manual_params",
         "name",
         "p_mw",
@@ -735,6 +736,7 @@
         "catalog_item_id",
         "catalog_item_version",
         "catalog_ref",
+        "dry_run",
         "name",
         "status"
       ],
@@ -804,6 +806,7 @@
         "catalog_item_id",
         "catalog_item_version",
         "catalog_ref",
+        "dry_run",
         "field_ref",
         "station_ref"
       ],

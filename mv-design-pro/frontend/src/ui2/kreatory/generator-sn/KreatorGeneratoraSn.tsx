@@ -16,6 +16,7 @@ import type { SynchronousGeneratorCatalogType } from '../../../ui/catalog/types'
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
+  KontrolaPrzedZapisem,
   KreatorGotowosc,
   KreatorInfo,
   KreatorNastepnyKrok,
@@ -28,13 +29,14 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useProbaOperacji,
   useSelekcjaPoOperacji,
+  wierszProby,
   type WierszGotowosci,
 } from '../rama';
 import {
   DANE_DOMYSLNE,
   maSzyne,
-  napiecieNiezgodne,
   walidujFormularz,
   zbudujPayload,
   type BladPola,
@@ -102,7 +104,13 @@ export function KreatorGeneratoraSn() {
   }, []);
 
   const wybranyTyp = useMemo(() => typy.find((t) => t.id === dane.catalog_ref) ?? null, [typy, dane.catalog_ref]);
-  const napiecieTabliczki = dane.tryb_tabliczki === 'katalog' ? wybranyTyp?.rated_kv ?? null : dane.rated_kv;
+  // Zgodność tabliczki z szyną (i każdą inną regułę operacji) ocenia WYŁĄCZNIE operacja —
+  // próbą `dry_run` z tym samym ładunkiem, który wyśle zapis; UI nie liczy progów.
+  const ladunekProby = useMemo(
+    () => (szynaWskazana && walidujFormularz(dane).length === 0 ? zbudujPayload(dane, kontekst) : null),
+    [dane, kontekst, szynaWskazana],
+  );
+  const proba = useProbaOperacji(activeCaseId, 'add_generator_sn', ladunekProby);
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
 
   const onZapisz = useCallback(async () => {
@@ -146,7 +154,12 @@ export function KreatorGeneratoraSn() {
     {
       etykieta: T.wierszSzyna,
       stan: szynaWskazana ? 'kompletne' : 'brak',
-      wartosc: kontekst.bus_name ?? (szynaWskazana ? 'Wskazana' : 'Brak'),
+      wartosc: [
+        kontekst.bus_name ?? (szynaWskazana ? 'Wskazana' : 'Brak'),
+        kontekst.bus_voltage_kv ? fmt(kontekst.bus_voltage_kv, 'kV') : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     },
     {
       etykieta: T.wierszTabliczka,
@@ -161,6 +174,7 @@ export function KreatorGeneratoraSn() {
       stan: 'kompletne',
       wartosc: T.trybPracyOpcje.find((o) => o.id === dane.tryb_pracy)?.etykieta ?? '—',
     },
+    wierszProby(proba),
   ];
 
   const aside = (
@@ -281,11 +295,7 @@ export function KreatorGeneratoraSn() {
             </KreatorSiatka>
           </>
         )}
-        {napiecieNiezgodne(napiecieTabliczki, kontekst) ? (
-          <p className="mvd-pole-blad" role="alert" data-testid="mvd-kreator-generator-sn-napiecie">
-            {T.ostrzezenieNapiecie}
-          </p>
-        ) : null}
+        <KontrolaPrzedZapisem proba={proba} testid="mvd-kreator-generator-sn-proba" />
       </KreatorSekcja>
 
       <KreatorSekcja tytul={T.sekcjaPracaTytul} testid="mvd-kreator-generator-sn-praca">

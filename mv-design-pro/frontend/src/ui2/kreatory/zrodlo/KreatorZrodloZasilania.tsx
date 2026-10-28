@@ -293,9 +293,13 @@ export function KreatorZrodloZasilania() {
   );
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
+  // Typ 110/SN stoi na szynach SN GPZ: napięcie dolne typu = napięcie szyn SN (ta sama wartość
+  // znormalizowana, porównanie jak `math.isclose` reguły `source.lv_voltage_mismatch` operacji
+  // `add_grid_source_sn`). Dawny filtr ±6 kV pokazywał i dobierał 110/20 kV na sieci 15 kV.
   const filtrowaneTransformatory = useMemo(
     () => transformatory.filter((t) =>
-      (!napiecieSn || Math.abs(t.voltage_lv_kv - napiecieSn) <= 6)
+      (!napiecieSn
+        || Math.abs(t.voltage_lv_kv - napiecieSn) <= 1e-9 * Math.max(Math.abs(t.voltage_lv_kv), Math.abs(napiecieSn)))
       && wPasmieWn(t.voltage_hv_kv)),
     [transformatory, napiecieSn],
   );
@@ -379,16 +383,16 @@ export function KreatorZrodloZasilania() {
   // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY (zero fabrykacji
   // mocy/napiecia po stronie backendu) — reuzycie wzorca auto-doboru aparatu
   // pola powyzej, zeby projektant nie utknal na pustym, obowiazkowym polu.
+  // Zmiana napięcia SN po auto-doborze: typ spoza listy zgodnych (inne napięcie dolne) nie
+  // zostaje po cichu w ładunku — dobór przechodzi na pierwszy zgodny albo pole wraca do pustego.
   useEffect(() => {
-    if (dane.transformer_catalog_ref || filtrowaneTransformatory.length === 0) return;
-    setDane((p) => (p.transformer_catalog_ref ? p : {
-      ...p,
-      transformer_catalog_ref: filtrowaneTransformatory[0].id,
-      transformer_sn_mva: filtrowaneTransformatory[0].rated_power_mva,
-      transformer_uk_percent: filtrowaneTransformatory[0].uk_percent,
-      transformer_vector_group: filtrowaneTransformatory[0].vector_group,
-    }));
-  }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
+    if (transformatory.length === 0) return;
+    const zgodny = filtrowaneTransformatory.some((t) => t.id === dane.transformer_catalog_ref);
+    if (dane.transformer_catalog_ref && zgodny) return;
+    const pierwszy = filtrowaneTransformatory[0] ?? null;
+    if (!pierwszy && !dane.transformer_catalog_ref) return;
+    wybierzTransformator(pierwszy?.id ?? null);
+  }, [transformatory.length, filtrowaneTransformatory, dane.transformer_catalog_ref, wybierzTransformator]);
 
   // Karta GPZ-MODEL: przy równoważniku 110 kV punkt neutralny SN wynika z grupy
   // połączeń transformatora 110/SN — kreator opisuje go zgodnie z modelem, zamiast

@@ -8,11 +8,14 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ladunekProbyZWywolania, wynikiProby } from '../../rama/__tests__/wynikiProby';
+
 import { KreatorOgranicznikaSn } from '../KreatorOgranicznikaSn';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const navigateToSldMock = vi.fn();
+const fetchMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = { field_ref: 'POLE-IN', field_name: 'Pole liniowe' };
@@ -79,8 +82,16 @@ async function pickType() {
   );
 }
 
+const ODMOWA = {
+  komunikat: 'U_m ogranicznika 24 kV nie pokrywa napięcia sieci 30 kV.',
+  kod: 'spd.voltage_mismatch',
+};
+
 describe('KreatorOgranicznikaSn — realna ścieżka', () => {
   beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(wynikiProby(ODMOWA)[0].odpowiedz);
+    vi.stubGlobal('fetch', fetchMock);
     appState.activeCaseId = 'case-1';
     context = { field_ref: 'POLE-IN', field_name: 'Pole liniowe' };
     snapshotState.error = null;
@@ -91,7 +102,10 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     fetchSurgeArresterTypesMock.mockClear();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('stawia ogranicznik w polu SN z katalogu (operacja domenowa)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
@@ -172,5 +186,40 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
         expect.objectContaining({ field_ref: 'POLE-SEL' }),
       );
     });
+  });
+
+  /**
+   * Kontrola przed zapisem: zgodność napięcia (i każdą regułę operacji) ocenia WYŁĄCZNIE
+   * operacja `add_surge_arrester_sn` próbą `dry_run`; kreator nie ma progu. Iloczyn: odpowiedź próby
+   * {przyjęta, odmowa 200, odmowa 422, nieustalona 500} × komunikat kontroli × wiersz gotowości ×
+   * ładunek próby = ładunek zapisu.
+   */
+  it.each(wynikiProby(ODMOWA))('próba $nazwa → werdykt operacji w kreatorze', async (wynik) => {
+    fetchMock.mockImplementation(wynik.odpowiedz);
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorOgranicznikaSn />);
+    await pickType();
+
+    const proba = await screen.findByTestId('mvd-kreator-ogranicznik-proba');
+    await waitFor(() => expect(proba).toHaveAttribute('data-stan', wynik.stan));
+    if (wynik.tresc) expect(proba.textContent).toContain(wynik.tresc);
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-gotowosc-Kontrola modelu').textContent).toContain(wynik.wiersz);
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-ogranicznik-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, operacja, ladunekZapisu] = executeDomainOperationMock.mock.calls[0];
+    expect(operacja).toBe('add_surge_arrester_sn');
+    expect(ladunekZapisu).toMatchObject({ field_ref: 'POLE-IN' });
+    const ostatniaProba = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1];
+    expect(ladunekProbyZWywolania(ostatniaProba)).toEqual({ ...ladunekZapisu, dry_run: true });
+  });
+
+  it('bez wybranego typu → brak próby, wiersz „Nie sprawdzono”', async () => {
+    render(<KreatorOgranicznikaSn />);
+    await screen.findAllByRole('option');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('mvd-kreator-ogranicznik-proba')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-gotowosc-Kontrola modelu').textContent).toContain('Nie sprawdzono');
   });
 });

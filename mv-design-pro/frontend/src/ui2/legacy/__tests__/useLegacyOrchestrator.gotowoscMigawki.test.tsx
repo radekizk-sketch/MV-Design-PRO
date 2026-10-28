@@ -44,6 +44,7 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { useSelectionStore } from '../../../ui/selection/store';
 import { getProject } from '../../../ui/projects/api';
 import { getStudyCase } from '../../../ui/study-cases/api';
+import { domainOpsEndpoint } from '../../../ui/topology/domainApi';
 
 vi.mock('../../../ui/projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../ui/projects/api')>();
@@ -173,7 +174,7 @@ function stubFetch(readiness: Gotowosc) {
       if (url === `/api/analysis-runs/${RUN_ID}`) {
         return jsonResponse({ status: 'DONE', result_status: 'DONE', results_valid: true });
       }
-      if (url === `/api/cases/${CASE_ID}/enm/domain-ops`) {
+      if (url === domainOpsEndpoint(CASE_ID)) {
         domainOpCalls += 1;
         return jsonResponse(domainOpResponse(readiness));
       }

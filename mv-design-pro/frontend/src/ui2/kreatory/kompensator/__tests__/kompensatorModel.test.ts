@@ -8,7 +8,6 @@ import {
   fmtMvar,
   fmtSiemens,
   maSzyne,
-  napiecieNiezgodne,
   parametryZKatalogu,
   walidujFormularz,
   zbudujPayload,
@@ -74,17 +73,6 @@ describe('kompensatorModel — payload', () => {
   it('pomija pustą nazwę', () => {
     const payload = zbudujPayload(dane({ nazwa: '   ' }), { bus_ref: 'bus-sn-1' });
     expect(payload).not.toHaveProperty('name');
-  });
-});
-
-describe('kompensatorModel — niezgodność napięcia', () => {
-  it('wykrywa niezgodność napięcia typu i szyny', () => {
-    const p20 = parametryZKatalogu('KOMP_SN_1V8_20KV', typy);
-    expect(napiecieNiezgodne(p20, { bus_ref: 'b', bus_voltage_kv: 15 })).toBe(true);
-    const p15 = parametryZKatalogu('KOMP_SN_1V2_15KV', typy);
-    expect(napiecieNiezgodne(p15, { bus_ref: 'b', bus_voltage_kv: 15 })).toBe(false);
-    // Bez napięcia szyny — brak ostrzeżenia (backend i tak waliduje twardo).
-    expect(napiecieNiezgodne(p15, { bus_ref: 'b' })).toBe(false);
   });
 });
 

@@ -549,8 +549,9 @@ export function KreatorEdycjiParametrow() {
       if (zmianaPrzewodu && formularzLinii) {
         response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
           element_ref: elementRef,
+          // Pochodzenie (`source_mode: KATALOG`) ustala operacja po udanej materializacji —
+          // ładunek go nie niesie (klucz spoza kontraktu operacji byłby widmem).
           catalog_binding: buildCatalogBinding(NAMESPACE_PRZEWOD_LINII_WN, formularzLinii.przewodId),
-          source_mode: 'KATALOG',
         });
         if (!response) {
           setBladGlobalny(useSnapshotStore.getState().error ?? T.bladDodania);

@@ -8,11 +8,14 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ladunekProbyZWywolania, wynikiProby } from '../../rama/__tests__/wynikiProby';
+
 import { KreatorKompensatoraSn } from '../KreatorKompensatoraSn';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const navigateToSldMock = vi.fn();
+const fetchMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = {
@@ -81,8 +84,16 @@ async function pickType() {
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-kompensator-katalog'), 'KOMP_SN_1V2_15KV');
 }
 
+const ODMOWA = {
+  komunikat: 'Napięcie znamionowe baterii 20 kV nie odpowiada napięciu szyny 15 kV.',
+  kod: 'shunt.voltage_mismatch',
+};
+
 describe('KreatorKompensatoraSn — realna ścieżka', () => {
   beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(wynikiProby(ODMOWA)[0].odpowiedz);
+    vi.stubGlobal('fetch', fetchMock);
     appState.activeCaseId = 'case-1';
     context = { bus_ref: 'bus-sn-1', bus_name: 'Szyna SN GPZ', bus_voltage_kv: 15 };
     snapshotState.error = null;
@@ -93,7 +104,10 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     fetchShuntCapacitorTypesMock.mockClear();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('tworzy baterię na szynie SN z katalogu (operacja domenowa)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
@@ -182,5 +196,40 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
         expect.objectContaining({ bus_ref: 'bus-sel-9' }),
       );
     });
+  });
+
+  /**
+   * Kontrola przed zapisem: zgodność napięcia (i każdą regułę operacji) ocenia WYŁĄCZNIE
+   * operacja `add_shunt_compensator_sn` próbą `dry_run`; kreator nie ma progu. Iloczyn: odpowiedź próby
+   * {przyjęta, odmowa 200, odmowa 422, nieustalona 500} × komunikat kontroli × wiersz gotowości ×
+   * ładunek próby = ładunek zapisu.
+   */
+  it.each(wynikiProby(ODMOWA))('próba $nazwa → werdykt operacji w kreatorze', async (wynik) => {
+    fetchMock.mockImplementation(wynik.odpowiedz);
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorKompensatoraSn />);
+    await pickType();
+
+    const proba = await screen.findByTestId('mvd-kreator-kompensator-proba');
+    await waitFor(() => expect(proba).toHaveAttribute('data-stan', wynik.stan));
+    if (wynik.tresc) expect(proba.textContent).toContain(wynik.tresc);
+    expect(screen.getByTestId('mvd-kreator-kompensator-gotowosc-Kontrola modelu').textContent).toContain(wynik.wiersz);
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-kompensator-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, operacja, ladunekZapisu] = executeDomainOperationMock.mock.calls[0];
+    expect(operacja).toBe('add_shunt_compensator_sn');
+    expect(ladunekZapisu).toMatchObject({ bus_ref: 'bus-sn-1' });
+    const ostatniaProba = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1];
+    expect(ladunekProbyZWywolania(ostatniaProba)).toEqual({ ...ladunekZapisu, dry_run: true });
+  });
+
+  it('bez wybranego typu → brak próby, wiersz „Nie sprawdzono”', async () => {
+    render(<KreatorKompensatoraSn />);
+    await screen.findAllByRole('option');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('mvd-kreator-kompensator-proba')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-kompensator-gotowosc-Kontrola modelu').textContent).toContain('Nie sprawdzono');
   });
 });

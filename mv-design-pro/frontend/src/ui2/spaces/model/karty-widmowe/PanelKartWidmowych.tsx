@@ -117,7 +117,8 @@ export function PanelKartWidmowych() {
   const [statyczne, setStatyczne] = useState<readonly KartaWidmowa[]>([]);
   const [nazwyTypow, setNazwyTypow] = useState<ReadonlyMap<string, string>>(new Map());
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
-  const [komunikat, setKomunikat] = useState<{ readonly stan: 'ok' | 'blad'; readonly tekst: string } | null>(null);
+  // Wynik OPERACJI zapisu karty (wykonana / odmowa z treścią backendu), nie ocena kryterium.
+  const [komunikat, setKomunikat] = useState<{ readonly stan: 'wykonana' | 'odmowa'; readonly tekst: string } | null>(null);
   const [zapisuje, setZapisuje] = useState(false);
 
   useEffect(() => {
@@ -152,12 +153,12 @@ export function PanelKartWidmowych() {
       const odpowiedz = await wywolanie(activeCaseId);
       if (!odpowiedz || odpowiedz.error) {
         setKomunikat({
-          stan: 'blad',
+          stan: 'odmowa',
           tekst: odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Operacja nie powiodła się.',
         });
         return;
       }
-      setKomunikat({ stan: 'ok', tekst: sukces });
+      setKomunikat({ stan: 'wykonana', tekst: sukces });
     } finally {
       setZapisuje(false);
     }
@@ -169,12 +170,12 @@ export function PanelKartWidmowych() {
     try {
       tekst = await czytajTekst(plik);
     } catch {
-      setKomunikat({ stan: 'blad', tekst: `Nie udało się odczytać pliku „${plik.name}”.` });
+      setKomunikat({ stan: 'odmowa', tekst: `Nie udało się odczytać pliku „${plik.name}”.` });
       return;
     }
     const odczyt = odczytajKarteZPliku(tekst);
     if (!odczyt.ok) {
-      setKomunikat({ stan: 'blad', tekst: odczyt.powodPl });
+      setKomunikat({ stan: 'odmowa', tekst: odczyt.powodPl });
       return;
     }
     const karta = odczyt.karta;
@@ -211,7 +212,7 @@ export function PanelKartWidmowych() {
           <p
             data-testid="karty-widmowe-komunikat"
             data-stan={komunikat.stan}
-            className={komunikat.stan === 'ok' ? 'mt-1 text-scada-text' : 'mt-1 text-sygnal-uwaga-tusz'}
+            className={komunikat.stan === 'wykonana' ? 'mt-1 text-scada-text' : 'mt-1 text-sygnal-uwaga-tusz'}
           >
             {komunikat.tekst}
           </p>

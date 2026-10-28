@@ -134,9 +134,3 @@ export function zbudujPayload(
   }
   return payload;
 }
-
-/** Ostrzeżenie (nie blokada — backend rozstrzyga): napięcie tabliczki odbiega od szyny. */
-export function napiecieNiezgodne(ratedKv: number | null, kontekst: KontekstGeneratora): boolean {
-  if (!dodatnia(ratedKv) || !kontekst.bus_voltage_kv) return false;
-  return Math.abs(ratedKv - kontekst.bus_voltage_kv) > 1.0;
-}

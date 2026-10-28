@@ -92,7 +92,6 @@ def _migawka(wariant: str) -> dict[str, Any]:
                     "catalog_item_id": KABEL_SN,
                     "catalog_item_version": "2024.1",
                 },
-                "source_mode": "KATALOG",
             },
         )
     )

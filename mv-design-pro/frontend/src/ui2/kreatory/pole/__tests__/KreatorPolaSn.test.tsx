@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPolaSn } from '../KreatorPolaSn';
+import { domainOpsEndpoint } from '../../../../ui/topology/domainApi';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -448,7 +449,7 @@ describe('KreatorPolaSn — kontrola katalogowa przed zapisem', () => {
     expect(kontrola.textContent).toMatch(tekst);
     // Próba TEJ SAMEJ operacji co zapis, z flagą dry_run — nie osobna operacja.
     const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as unknown as [string, RequestInit];
-    expect(url).toBe('/api/cases/case-1/enm/domain-ops');
+    expect(url).toBe(domainOpsEndpoint('case-1'));
     const cialo = JSON.parse(String(init.body)) as { operation: { name: string; payload: Record<string, unknown> } };
     expect(cialo.operation.name).toBe('add_sn_bay');
     expect(cialo.operation.payload).toMatchObject({ dry_run: true, bay_template_ref: 'tmpl-tr-1', bus_ref: 'bus-1' });

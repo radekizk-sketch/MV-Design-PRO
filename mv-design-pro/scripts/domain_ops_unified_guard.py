@@ -34,11 +34,17 @@ EXCLUDED_RELATIVE_FILES = {
     "frontend/src/ui/topology/domainApi.ts",
 }
 
-# Wzorce wykrywające bezpośrednie wywołania endpointa:
-# /api/cases/{id}/enm/domain-ops lub variant /api/v1/domain-operations
-ENDPOINT_PATTERN = re.compile(
-    r"""['"](?:/api/cases/[^'"]+/enm/domain-ops|/api/v1/domain-operations|/api/v1/domain-ops)['"]""",
-)
+# Wzorzec wykrywający adres endpointa W KAŻDEJ POSTACI zapisu: literal pojedynczy
+# (`'/api/cases/x/enm/domain-ops'`), szablon z interpolacją
+# (`${API_BASE}/${id}/enm/domain-ops`), sklejanie (`'/api/cases/' + id + '/enm/domain-ops'`)
+# i warianty `/api/v1/domain-operations|domain-ops`. Korekta 2026-10-28 (scalenie gałęzi
+# UI/UX z gałęzią programu): dawny wzorzec łapał WYŁĄCZNIE pojedynczy literal w cudzysłowie,
+# więc drugi klient HTTP (`ui2/kreatory/stacja/stacjaPodglad.ts`, adres z interpolacji, własna
+# koperta i własny klucz idempotencji) żył obok kanonicznego niewidoczny dla strażnika, a test
+# z literalem był czerwony — forma zapisu decydowała o werdykcie, nie rola kodu.
+# Linie komentarza (`//`, `*`, `/*`) nie są kodem i nie są oceniane.
+ENDPOINT_PATTERN = re.compile(r"/enm/domain-ops\b|/api/v1/domain-operations|/api/v1/domain-ops")
+COMMENT_LINE = re.compile(r"^\s*(?://|/\*|\*)")
 
 IGNORE_PATTERN = re.compile(r"//\s*domain-ops-ignore")
 
@@ -54,8 +60,8 @@ def is_excluded(file_path: Path) -> bool:
     return rel in EXCLUDED_RELATIVE_FILES
 
 
-def scan_file(file_path: Path) -> list[Violation]:
-    rel_path = str(file_path.relative_to(REPO_ROOT)).replace("\\", "/")
+def scan_file(file_path: Path, root: Path = REPO_ROOT) -> list[Violation]:
+    rel_path = str(file_path.relative_to(root)).replace("\\", "/")
     violations: list[Violation] = []
     try:
         content = file_path.read_text(encoding="utf-8")
@@ -63,7 +69,7 @@ def scan_file(file_path: Path) -> list[Violation]:
         return violations
 
     for i, line in enumerate(content.splitlines(), start=1):
-        if IGNORE_PATTERN.search(line):
+        if IGNORE_PATTERN.search(line) or COMMENT_LINE.match(line):
             continue
         if ENDPOINT_PATTERN.search(line):
             violations.append(
@@ -77,32 +83,29 @@ def scan_file(file_path: Path) -> list[Violation]:
 
 
 def check_excluded_relative_files_freshness(root: Path) -> list[str]:
-    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
-    pozycja f, 2026-08-12) — MINIMALNA (tylko istnienie), swiadomie NIE pelna.
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES — PELNA (korekta 2026-10-28).
 
-    Jedyny dzisiejszy wpis (`domainApi.ts`) jest wykluczony nie dlatego, ze
-    "regex go dzis lapie jako falszywy alarm" (jak analogiczne wpisy w
-    `no_codenames_guard`/`sld_layer_id_scope_guard`) — jest wykluczony PO
-    ROLI: to KANONICZNY klient, ktory ma prawo odwolywac sie do endpointu
-    wprost, niezaleznie od tego, czy dzisiejsza forma zapisu URL-a
-    (`${API_BASE}/${caseId}/enm/domain-ops`, zlozona z interpolacji) akurat
-    trafia w prosty `ENDPOINT_PATTERN` (regex na pojedynczy literal). ZMIERZONE
-    2026-08-12: dzis NIE trafia (`API_BASE` to osobny literal `'/api/cases'`,
-    reszta jest interpolowana) — `scan_file()` na tym pliku juz dzis zwraca [].
-    Pelna zapadka "musi nadal produkowac trafienie" usunelaby ten wpis jako
-    rzekoma sierote, ale to falszywy alarm: gdyby URL zostal kiedys przepisany
-    na POJEDYNCZY literal (`fetch('/api/cases/' + id + '/enm/domain-ops')`),
-    BEZ tego wpisu guard oznaczylby WLASNY kanoniczny klient jako naruszenie
-    reguly, ktora ma go wprost dopuszczac. Minimalna zapadka (istnienie pliku)
-    jest wiec WLASCIWA semantyka dla TEGO wpisu — uzasadnienie per KLASA
-    §0.2.f ("jesli nie [tanio], uzasadnienie per guard w meldunku").
+    Jedyny wpis (`domainApi.ts`) jest wykluczony PO ROLI: to kanoniczny klient, jedyne
+    miejsce budowy adresu endpointa (`domainOpsEndpoint`). Do 2026-10-28 zapadka byla
+    minimalna (samo istnienie pliku), bo wzorzec lapal wylacznie pojedynczy literal, a adres
+    w kliencie jest szablonem z interpolacja — `scan_file()` zwracal [] i pelna zapadka
+    uznalaby wpis za sierote. Od poszerzenia wzorca na kazda postac zapisu adresu kanoniczny
+    klient MUSI dawac trafienie: wpis bez trafienia znaczy, ze adres przeniesiono gdzie
+    indziej (a wtedy wykluczenie chroni plik, ktory juz nie jest klientem) — czerwien.
     """
     violations: list[str] = []
     for rel_path in sorted(EXCLUDED_RELATIVE_FILES):
-        if not (root / rel_path).is_file():
+        sciezka = root / rel_path
+        if not sciezka.is_file():
             violations.append(
                 f"[domain-ops-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
                 f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
+        elif not scan_file(sciezka, root):
+            violations.append(
+                f"[domain-ops-wykluczenie-osierocone] {rel_path!r} nie buduje juz adresu "
+                f"endpointa domain-ops — wykluczenie chroni plik, ktory nie jest klientem; "
+                f"usun wpis albo przywroc budowe adresu w kanonicznym kliencie"
             )
     return violations
 

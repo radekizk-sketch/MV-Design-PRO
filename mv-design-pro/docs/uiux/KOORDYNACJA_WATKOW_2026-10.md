@@ -564,6 +564,7 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
   - `ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx:214`;
 - `ruff ../scripts` — `scripts/pobierz_zrodla_techniczne.py:7` (I001) i `:69` (UP017);
 - `inwentarz_katalogow_guard` — tabela w `SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` jest nieaktualna; regenerujesz ją przez `backend/scripts/inwentarz_katalogow.py`.
+- *Stan 2026-10-28 (scalenie SYNC-MAIN-UIUX, status w `PLANS.md` część A §C.1, wiersz UX-05/STRAZNIKI-GALEZI-UIUX):* naprawione u źródła. Próg 1,0 kV generatora usunięty razem z całą klasą progów napięcia tabliczki we froncie (generator, bateria, ogranicznik, tor DER-SN, filtr ±6 kV transformatorów 110/SN GPZ): regułę ma wyłącznie operacja (`generator.voltage_mismatch`, `shunt.voltage_mismatch`, nowe `spd.voltage_mismatch` i `source.lv_voltage_mismatch`), a kreatory pokazują werdykt próby `dry_run` tej samej operacji. `PanelKartWidmowych` niesie stan wyniku operacji (`wykonana`/`odmowa`), `StationConfiguratorSurface` — dostępność projekcji nN (wpis ENUM_WEWNETRZNY z uzasadnieniem).
 
 **3. Tabela „Wkłady do zwarcia” pomija źródło sieciowe — dowód z żywej aplikacji.** Na sieci z linią 110 kV i generatorem synchronicznym tabela pokazuje tylko generator ze 100 % udziału. Przyczyna: wiersze pochodzą z `compute_machine_contributions`, które liczy tylko maszyny wirujące.
 - To pozycja z Twojego wpisu 12: `wklady_zrodel` jako jedyny dostawca wierszy, szczegół maszyny (μ, q, I_b) z `/api/proof/sc3f/contributions`.

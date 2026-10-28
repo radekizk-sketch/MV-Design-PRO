@@ -45,8 +45,6 @@ export const OGRANICZNIK_STRINGS = {
   brakMiejscaOpis:
     'Zaznacz na schemacie pole SN (lub szynę SN), w którym chcesz postawić ogranicznik '
     + 'przepięć, a następnie uruchom ten krok. Ogranicznik dołączamy do istniejącego pola.',
-  ostrzezenieNapiecie:
-    'U_m ogranicznika jest niższe od napięcia szyny — dobierz typ o U_m ≥ napięcie sieci.',
 
   podsumowanieTytul: 'Podsumowanie ogranicznika',
 

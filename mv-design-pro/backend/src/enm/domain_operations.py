@@ -4511,6 +4511,19 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "transformatora.",
                 "source.hv_voltage_mismatch",
             )
+        # Strona dolna: transformator 110/SN stoi na szynach SN GPZ o napięciu `voltage_kv` —
+        # napięcie dolne typu katalogowego musi być TYM SAMYM napięciem znamionowym (wartości
+        # znormalizowane IEC 60038; porównanie jak dla strony górnej wyżej). Bez tej reguły typ
+        # 110/20 kV stawał na szynach 15 kV bez odmowy (przekładnia 110/20 na sieci 15 kV).
+        lv_typu_kv = _as_positive_float(transformer_materialized_params.get("voltage_lv_kv"))
+        if lv_typu_kv is not None and not math.isclose(lv_typu_kv, float(voltage_kv)):
+            return _error_response(
+                f"Napięcie dolne transformatora 110/SN z katalogu ({lv_typu_kv:g} kV) różni się "
+                f"od napięcia szyn SN GPZ ({float(voltage_kv):g} kV) — wybierz typ o napięciu "
+                f"dolnym {float(voltage_kv):g} kV albo popraw "
+                f"{pole('voltage_kv', 'add_grid_source_sn')}.",
+                "source.lv_voltage_mismatch",
+            )
 
         hv_bus_ref = _make_id("gpz", seed, "hv_section/001/bus_wn")
         result = create_node(

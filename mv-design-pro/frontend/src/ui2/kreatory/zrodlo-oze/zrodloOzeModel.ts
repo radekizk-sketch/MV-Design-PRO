@@ -718,62 +718,6 @@ export function sugerujDerSn(
   };
 }
 
-/** Walidacja toru DER-SN — braki blokujące (każde pole realnie konsumowane przez backend). */
-export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
-  const errors: BladPolaOze[] = [];
-  if (!data.block_transformer_catalog_ref?.trim()) {
-    errors.push({
-      field: 'block_transformer_catalog_ref',
-      message: 'Wybierz transformator blokowy SN/nN z katalogu.',
-    });
-  }
-  if (!data.mv_field_apparatus_catalog_ref?.trim()) {
-    errors.push({
-      field: 'mv_field_apparatus_catalog_ref',
-      message: 'Dobierz aparat główny dedykowanego pola źródłowego SN.',
-    });
-  }
-  if (!data.mv_cable_catalog_ref?.trim()) {
-    errors.push({
-      field: 'mv_cable_catalog_ref',
-      message: 'Wybierz kabel SN odcinka przyłączeniowego z katalogu.',
-    });
-  }
-  if (data.inverter_output_voltage_kv === null || data.inverter_output_voltage_kv <= 0) {
-    errors.push({
-      field: 'inverter_output_voltage_kv',
-      message: 'Podaj napięcie wyjściowe falownika / strony nN producenta.',
-    });
-  }
-  const lv = data.block_transformer_secondary_voltage_kv;
-  const inv = data.inverter_output_voltage_kv;
-  if (lv !== null && inv !== null && Math.abs(lv - inv) > 1e-6) {
-    errors.push({
-      field: 'block_transformer_secondary_voltage_kv',
-      message: 'Strona nN transformatora blokowego musi być zgodna z wyjściem falownika.',
-    });
-  }
-  if (data.mv_cable_length_km !== null && data.mv_cable_length_km <= 0) {
-    errors.push({
-      field: 'mv_cable_length_km',
-      message: 'Długość kabla przyłączeniowego musi być większa od zera.',
-    });
-  }
-  // D1 wymaganie 9: wczesne ostrzeżenie spójności sposobu przyłączenia (decyzja w backendzie —
-  // zero dublowania logiki liczbowej; to kontrola STRUKTURALNA enum↔pola, nie napięć/mocy).
-  if (
-    data.connection_method === 'der_przez_rozdzielnie_producenta' &&
-    !data.has_manufacturer_lv_switchgear
-  ) {
-    errors.push({
-      field: 'connection_method',
-      message:
-        'Sposób przyłączenia „DER przez rozdzielnię producenta” wymaga rozdzielni nN producenta.',
-    });
-  }
-  return errors;
-}
-
 /**
  * Zbuduj `der_topology` (connection_level='sn') z formularza — 1:1 na kontrakt backendu.
  * `mvBusRef` = szyna SN stacji, do której przypina się dedykowane pole źródłowe SN.

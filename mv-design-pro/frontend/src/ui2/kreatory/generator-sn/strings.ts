@@ -28,8 +28,6 @@ export const GENERATOR_SN_STRINGS = {
   tabliczkaQmin: 'Q min z tabliczki',
   tabliczkaQmax: 'Q max z tabliczki',
   tabliczkaQPomoc: 'Granice zdolności biernej maszyny (konwencja generatorowa). Puste = brak danej.',
-  ostrzezenieNapiecie:
-    'Napięcie znamionowe tabliczki odbiega od napięcia szyny o więcej niż 1 kV — zapis zostanie odrzucony.',
 
   sekcjaPracaTytul: 'Nastawy studium',
   pMw: 'Moc czynna P',

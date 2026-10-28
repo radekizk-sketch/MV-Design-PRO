@@ -21,7 +21,6 @@ import {
   technologiaLabel,
   refUtworzonegoWytworcy,
   trybQWymagaWartosci,
-  walidujDerSn,
   walidujFormularz,
   wariantLabel,
   zbudujDerTopology,
@@ -501,23 +500,6 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     expect(cfg?.cable_head).toBe(true);
   });
 
-  it('walidujDerSn wymaga katalogów toru i spójności napięć', () => {
-    expect(walidujDerSn(DER_SN)).toEqual([]);
-    const braki = walidujDerSn({
-      ...DANE_DER_SN_DOMYSLNE,
-      inverter_output_voltage_kv: 0.4,
-    });
-    const fields = braki.map((b) => b.field);
-    expect(fields).toContain('block_transformer_catalog_ref');
-    expect(fields).toContain('mv_field_apparatus_catalog_ref');
-    expect(fields).toContain('mv_cable_catalog_ref');
-  });
-
-  it('walidujDerSn wykrywa niezgodność napięcia strony nN TR blokowego', () => {
-    const braki = walidujDerSn({ ...DER_SN, block_transformer_secondary_voltage_kv: 0.69 });
-    expect(braki.map((b) => b.field)).toContain('block_transformer_secondary_voltage_kv');
-  });
-
   it('sugerujDerSn wyprowadza napięcia z katalogu falownika i szyny SN', () => {
     const seeded = sugerujDerSn(
       { ...DANE_DER_SN_DOMYSLNE, inverter_output_voltage_kv: null },
@@ -561,14 +543,6 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     );
   });
 
-  it('walidujDerSn ostrzega o niespójnym sposobie przyłączenia (rozdzielnia bez rozdzielni nN)', () => {
-    const braki = walidujDerSn({
-      ...DER_SN,
-      connection_method: 'der_przez_rozdzielnie_producenta',
-      has_manufacturer_lv_switchgear: false,
-    });
-    expect(braki.map((b) => b.field)).toContain('connection_method');
-  });
 });
 
 // K9-A: buildery sekwencji zapisu (wiązania + limity) i ref utworzonego wytwórcy.

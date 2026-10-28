@@ -97,7 +97,7 @@ describe('Katalog kart modelu i przypisanie do generatora', () => {
       generator_ref: 'gen/pv',
       karty_widmowe_ref: ['karta-proj', 'karta-stat'],
     });
-    expect(await screen.findByTestId('karty-widmowe-komunikat')).toHaveAttribute('data-stan', 'ok');
+    expect(await screen.findByTestId('karty-widmowe-komunikat')).toHaveAttribute('data-stan', 'wykonana');
   });
 
   it('odpięcie wszystkich kart wysyła jawne null', async () => {
@@ -144,7 +144,7 @@ describe('Wczytanie karty projektu z pliku', () => {
       new File([JSON.stringify(karta('k', 'x'))], 'k.json', { type: 'application/json' }),
     );
     const komunikat = await screen.findByTestId('karty-widmowe-komunikat');
-    expect(komunikat).toHaveAttribute('data-stan', 'blad');
+    expect(komunikat).toHaveAttribute('data-stan', 'odmowa');
     expect(komunikat).toHaveTextContent('nie ma w katalogu');
   });
 

@@ -139,7 +139,6 @@ def _przypisz(migawka: dict, przewod: str = AFL6_240) -> dict:
                 "catalog_item_id": przewod,
                 "catalog_item_version": "2024.1",
             },
-            "source_mode": "KATALOG",
         },
     )
     return wynik
@@ -373,7 +372,6 @@ def test_kabel_przelicza_susceptancje_po_zmianie_czestotliwosci() -> None:
                 "catalog_item_id": kabel.id,
                 "catalog_item_version": "2024.1",
             },
-            "source_mode": "KATALOG",
         },
     )
     migawka = _ok(wynik)
