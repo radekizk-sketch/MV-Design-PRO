@@ -29,7 +29,7 @@
 3. **Zakres bez nowych programów.** Nie istnieje osobny „program SEL", „plan H5", „program SLD"
    ani „panel postępu". SEL Blueframe (`docs/research/sel-blueframe/`) to materiał referencyjny
    i kryteria kart UX-01…UX-07; H5/ENEA to kryteria odbioru karty UX-04 (H5-01…H5-05); GIS/MDI
-   to UX-09 = P3/STOP; prace 110 kV wyłącznie jako granica zasilania SN (bez pól WN, przekładników,
+   to UX-09 = P3, ostatnia pozycja kolejki (decyzja właściciela 2026-10-28); prace 110 kV wyłącznie jako granica zasilania SN (bez pól WN, przekładników,
    napędów, uziemników i osobnego modułu 110 kV).
 4. **Status nie jest odbiorem.** Słownik: `DOMKNIĘTA` = dowód w repo (commit + regresja + CI
    albo wiersz dowodowy w §7 planu A/B / `CONVERGENCE_EVIDENCE`); `W TOKU`; `OTWARTA` (karta
@@ -40,20 +40,21 @@
 5. **Priorytety:** P0 — ścieżka krytyczna produktu i naprawy funkcjonalno-inżynierskie
    (integracja do `main`, prawdziwe SLD SN, uczciwość wyników, ścieżka projektanta end-to-end);
    P1 — sekwencja A/B i program W po zależnościach, karty rdzenia z audytów; P2 — jakość tekstu,
-   dokumenty wynikowe, commissioning; P3 — integracje zewnętrzne, GIS (STOP).
+   dokumenty wynikowe, commissioning; P3 — integracje zewnętrzne, na samym końcu GIS (UX-09).
 6. **Identyfikatory są trwałe.** ID z dokumentów źródłowych (W1–W12, UX-00…UX-09, H5-01…H5-05,
    T+01…T+10, U0–U5, E1–E15, AB-*, AB-H*, S1–S8, F0–F4 programu 10x, karty nazwane WIELKIMI
    LITERAMI) nie są przenumerowywane. Kolizje nazw (W1–W5 „wygaszanie mostu wyników" w części B,
    F1–F5 trzech różnych programów, F1–F11 SLD V3) rozstrzyga §D.
 
-## B. Stan bazowy (pomiar 2026-10-23, nie deklaracja)
+## B. Stan bazowy (pomiar 2026-10-23, uzupełnienie 2026-10-28; nie deklaracja)
 
 | Pozycja | Stan | Dowód |
 |---|---|---|
-| Gałąź programu | `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281` (partia integracji 2 linii programu `0e7a5e7d6` + PR #490 pakiet SEL + PR #491 UX-04 H5/ENEA) | `git log`, PR #490/#491 MERGED |
+| Gałąź programu | `claude/mv-design-pro-twin-audit-u4lhy0` zrestartowana od `main` po scaleniu PR #489 (2026-10-23); dalej tylko commity dokumentacji planu | `git log` |
 | `main` | `e973ad2cd` — merge commit PR #489 (298 commitów, 2 213 plików; rodzice `8f7ed3c27` i `b2cf550d9`) | GitHub PR #489 |
 | CI na `0e7a5e7d6` | 9/9 workflowów zielonych | GitHub Actions |
-| Weryfikacja lokalna przed scaleniem #489 | **NIEDOKOŃCZONA** — pełny backend przerwany dwukrotnie restartem kontenera (ostatnio 38 %); `guardy_z_ci.py` + samotesty 3 908 zielone; `npm test`, type-check, lint, e2e 4 shardy — do wykonania | logi sesji integratora |
+| Weryfikacja lokalna przed scaleniem #489 | **WYKONANA** na `b2cf550d9` (2026-10-23): backend 38 798 passed, `guardy_z_ci` rc 0, vitest 885 plików + budżety 8 plików, type-check i lint rc 0, e2e 4 shardy (shard 3: `socket hang up` w `kreator-stacji-zrzuty`, powtórka zielona, przyczyna nieustalona) | komentarz pod PR #489 |
+| PR otwarte po 2026-10-23 (#493–#505) | poza rejestrem do 2026-10-28; GPZ SN (#499, #500, #502, #504) przypisane do UX-04/*, GIS (#494–#497, #501, #503, #505) do UX-09, wiedza ENEA (#493) do blokera rysunków UX-04 | `docs/prompts/PROMPT_KONTYNUACJI_2026-10-28.md` |
 | Pełna regresja (ostatnia zmierzona) | backend 39 083 passed (KATALOG-APARATURA-WN, 2026-10-23, gałąź UI/UX); vitest 893 pliki / 16 269 (tamże); bramka scalenia partii 2: pytest 38 798, vitest 4 604, guardy RC=0 | plan A/B §7 wiersze 2026-10-23 |
 | PR nie do scalenia | #475 (laboratorium dynamiki, RESEARCH ONLY), #488 (audyt rdzenia — źródło kart, „NIE SCALAĆ JAKO ZWALIDOWANEJ NORMY") | plan A/B §14.4 |
 | Program UI/UX | stan bazowy **niezweryfikowany po PR #489** — audyt UX-00 pierwszy (PROGRAM §12.6); ostatni audyt bramek U2–U5: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (U2 8/11, U3 7/9, U4 3/7, U5 4/9 — sierpień, nieaktualny) | PROGRAM §8, §12.6 |
@@ -75,9 +76,12 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 | INT-489 | Integracja gałęzi programu → `main` (PR #489, merge commit, bez squasha) | P0 | DOMKNIĘTA | Fable (integrator) | CI 9/9 na czubku; pełna weryfikacja lokalna (backend, `guardy_z_ci.py`, `npm test` dwa kroki, type-check, lint, e2e 4 shardy); porównanie czerwieni z bazą | PR #489 MERGED jako `e973ad2cd`; na czubku `b2cf550d9`: 44 check runy CI success; lokalnie backend 38 798 passed, `guardy_z_ci` rc 0, vitest 885 plików/14 399 passed + budżety 8 plików/193 passed, type-check i lint rc 0, e2e shardy 1/2/4 zielone, shard 3: 2 przypadki `kreator-stacji-zrzuty` (`socket hang up` w przygotowaniu sieci + zależna para dark/light), po jednym powtórzeniu 3 passed — przyczyna zerwania połączenia nieustalona; komentarz z kodami wyjścia pod PR | brak; kolejne partie integracji liczone od `main` |
 | JEDEN-PLAN | Konsolidacja planów (ta karta) | P0 | DO WERYFIKACJI | Fable | — | commit `bafd30392` na `…-karta-jeden-plan` (6 plików dokumentacji, 0 plików aplikacji); 12 guardów dokumentów RC=0, self-testy guardów 40 passed; CI na gałęzi karty: 7 workflowów (e2e filtrowane ścieżką — zmiana bez `frontend/**`/`backend/**`) | wdrożona na `main` w `e973ad2cd` (CI 7/7 na `b2cf550d9`); odbiór planu przez właściciela; dalsze zmiany statusów wyłącznie w tym pliku |
 | UX-00 | Audyt stanu bazowego UI/UX po PR #489 (rzeczywisty HEAD, nie raport sierpniowy) | P0 | DO WERYFIKACJI | Opus (zarządca UI/UX) | INT-489 (HEAD), T+01…T+10 z `docs/research/sel-blueframe/KONTRAKT_DLA_OPUSA.md` §3 | — | tabela `UX-ID \| jest → wykonano \| commit \| jednostkowe \| E2E real \| zrzuty \| ocena właściciela` (PROGRAM §12.6) |
-| UX-04 | SLD SN wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617 (H5-01…H5-05; 110 kV tylko granica zasilania; jedna kanwa `SldCanvasV3`) | P0 | OTWARTA (H5 3/10, B-02 ODRZUCONE, audyt 2026-10-20 NO-GO) | Opus; werdykt — właściciel (B-02) | rysunki ENEA (BRAK ŹRÓDŁA → wpis BRAK DOWODU), ENM/PortRef, W7 (SLD jako projekcja ENM) dla trwałej geometrii | PROGRAM §12.5a macierz H5: wszystkie OCZEKUJE/ODRZUCONE | macierz rysunek → aparat/port ENM → symbol → zrzut → werdykt; pary ENEA ↔ SLD; zrzuty obu motywów do oceny właściciela |
+| UX-04 | SLD SN wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617 (H5-01…H5-05; 110 kV tylko granica zasilania; jedna kanwa `SldCanvasV3`). **Przebudowa rozdzielni SN 15 kV GPZ wg przekazania właściciela 2026-10-28** (`docs/uiux/PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md`): R5 odrzucone, kompozycja pól od podstaw w kolejności standard ENEA (Z.2, Z.7, Z.10–Z.12, Z.17) → typ pola → sekwencja aparatów i porty → geometria QET → połączenia → automatyczny układ → SCADA (tylko ramki `#F05260` zamknięty / `#2CCF93` otwarty, obejmujące cały symbol) → walidacja; wzorzec czytelności e²TANGO-miniSCADA; interaktywny SVG/React, bez obrazów; bez scalania bez zgody właściciela | P0 | OTWARTA (H5 3/10, B-02 ODRZUCONE, audyt 2026-10-20 NO-GO) | Opus; werdykt — właściciel (B-02) | rysunki ENEA (BRAK ŹRÓDŁA → wpis BRAK DOWODU), ENM/PortRef, W7 (SLD jako projekcja ENM) dla trwałej geometrii | PROGRAM §12.5a macierz H5: wszystkie OCZEKUJE/ODRZUCONE | macierz rysunek → aparat/port ENM → symbol → zrzut → werdykt; pary ENEA ↔ SLD; zrzuty obu motywów do oceny właściciela |
 | UX-04/GPZ-H5-APARATURA | Cała aparatura pól SN GPZ w ENM/katalogu (U_m 7,2 kV, rola `surge_ground`, sprzęgło z `catalog_ref`, pickery z filtrem napięciowym, „brak danych/nie dotyczy" w karcie technicznej) | P0 | OTWARTA (materiał na gałęzi `…-aparatura-wn-wklad-sn`, nie do scalenia wprost) | wątek UI/UX (gałąź `…-karta-uiux-przemyslowy`); B-01 — Fable | KATALOG-APARATURA-WN ✓ (2026-10-23) | — | karta z inwentarzem klasy, testy iloczynu cech, wpis statusu tutaj i H5-02 |
 | UX-04/GPZ-H5-SKLADOWA-ZEROWA | Składowa zerowa po stronie `enm/mapping.py`: Z_U z `GroundingConfig`, `Transformer.hv_neutral`, kasacja stałej `1e6`, trzy nazwane przyczyny braku wyniku | P0 | OTWARTA | wątek UI/UX; B-01 — Fable | — (rdzeń B-01 nietknięty; strona rdzenia = Y0-WYSPY) | — | karta + testy; warunek dla ZEROWA-POJEMNOSCI |
+| UX-04/POLE-LINIOWE-WZORZEC | Jedno kompletne pole liniowe SN jako wzorzec kanoniczny: łączniki, CT w torze pierwotnym, uziemniki wg funkcji i konstrukcji aparatury, zakończenia kablowe, porty ENM, geometria QET, połączenia, automatyczny układ, ramki SCADA, walidacja | P0 — **pierwsza karta UX-04** | OTWARTA | wątek UI/UX (Opus); werdykt — właściciel (B-02) | UX-00, GPZ-H5-APARATURA | materiał GPT do weryfikacji: PR #499 (import QET, atlas SVG), PR #500 (73 symbole, ramka SCADA), PR #502 (pola ENM, CT/VT/ES, `CadSymbol`) | przegląd #499/#500/#502 względem przekazania §1–§4: zatwierdzone elementy wciągnąć kartą na gałąź UI/UX, błędne usunąć z zapisem w raporcie rozbieżności; wzorzec pola → zrzuty obu motywów i testy do oceny właściciela |
+| UX-04/POLA-TR-POMIAR-SPRZEGLO | Pola transformatorowe T1/T2 nad szynami SN z prawidłową kolejnością aparatów; pola pomiaru napięcia wg Z.17 po jednym na sekcję (VT na odgałęzieniu pomiarowym, nie gniazdo VT ani wskaźnik napięcia); sprzęgło dwucelkowe (łącznik szyn + wznios, jeden ciągły tor A/B); 110 kV wyłącznie jako granica modelu; złożenie całej rozdzielni | P0 | OTWARTA | wątek UI/UX (Opus); werdykt — właściciel (B-02) | POLE-LINIOWE-WZORZEC (ta sama ścieżka ENEA → … → walidacja) | materiał: PR #502, aparatura z GPZ-H5-APARATURA | po odbiorze wzorca pola liniowego; komplet rozdzielni → raport rozbieżności z ENEA i odbiór właściciela |
+| UX-04/LOGIKA-LACZENIOWA | Walidacja każdej operacji łączeniowej na całej topologii wynikowej niezależnie od sekwencji: blokada niedozwolonych operacji odłącznikami, załączenia na uziemiony tor i nieuprawnionej pracy równoległej TR; zasilanie zwrotne, wyspy, blokady, nieaktualne wyniki; kliknięcie = wybór, przełączenie osobno; jeden ENM, `SldCanvasV3`, renderer CAD/QET, LF/SC, kontrakt K-S2 | P0 | OTWARTA | wątek UI/UX (Opus); rdzeń B-01 — architekt | ENM/PortRef, W7 | materiał GPT: PR #504 (stany łączników z rekordu ENM, tor prądu, audyt bramek nieodebranych) | testy operacji łączeniowych jako iloczyn cech (operacja × stan uziemnika × zasilanie zwrotne × równoległość TR × sekcja); przeniesienie zgodnych części #504 na gałąź UI/UX |
 | UX-01 | Inteligentny „+" w legalnych punktach elektrycznych (T+01, T+04, T+05; H5-04) | P0 | OTWARTA (mechanizmy istnieją: `SldCommandService`, `sldActionExecutor`, operacje domenowe — do oceny) | Opus | UX-00; PortRef; W7 | PROGRAM §12.3 | ocena istniejących mechanizmów → karta naprawcza; dowód na tym samym SLD |
 | UX-02 | Automatyczna topologia i rozmieszczenie: stacja na odcinku, pierścień, DER, portal nN, odmowa backendu (T+02/03/06/07/08/09) | P0 | OTWARTA | Opus | UX-01 | PROGRAM §12.3 | j.w. |
 | UX-03 | Inspektor, drzewo, walidacja, źródło danych i status każdej wartości (SEL A07, B01, B03, B05, B06, C03) | P0 | OTWARTA | Opus | UX-00 | PROGRAM §12.3 | j.w. |
@@ -144,13 +148,13 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 | 10x-F2…F4 | Program 10x: współbieżność, god-file containment, dalsze bramki | P2 | DO WERYFIKACJI | Fable → explorer | 10x-F0…F1 | `PLAN_PRZEBUDOWY_10X_2026-07.md` | pomiar; W-WSPOLBIEZNOSC częściowo w CI-WSPOLBIEZNOSC (V12K-325) |
 | OD-xx dane właściciela | Pakiety P-A…P-N (`DANE_WLASCICIELA_O59_2026-09.md`) — m.in. OD-15 (FRT), OD-16 (koszty), OD-17 (magazyn), OD-18 (nastawy), P-N (tekst IEC 60909-0:2026) | P2 (bramka danych) | ZABLOKOWANA (dane właściciela) | właściciel | — | plan A/B §12 (OD-21) | karty zależne biegną na wartościach roboczych `ESTIMATED` (ZASADA NR 4) tam, gdzie to parametr urządzenia; podstawa limitu pozostaje BRAK_PODSTAWY |
 
-### C.4 P3 — integracje zewnętrzne (GIS: STOP)
+### C.4 P3 — integracje zewnętrzne (GIS = UX-09 ostatni)
 
 | ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
 |---|---|---|---|---|---|---|---|
-| UX-09 | GIS, MDI, mapy, import geograficzny, DNP3/SCADA (SEL C01, C02, C05, D07) | P3 | STOP (decyzja właściciela 2026-10-23 — nie wdrażać) | — | osobne polecenie właściciela | PROGRAM §12.3 | brak |
-| W12 | CAD round-trip (DXF z tożsamością bloków), GIS (WGS84/EPSG), MCP jako lokalna płaszczyzna sterowania (W12-MCP, O-71); CGMES końcówka ✓ (KASACJA-SCL-I-CIM-KLIENT, partia 8) | P3 | OTWARTA (częściowo: CGMES ✓); część GIS = STOP jak UX-09 | — | W7, W9 | §7 2026-10-16 | po W9/W7; GIS nie przed decyzją właściciela |
+| W12 | CAD round-trip (DXF z tożsamością bloków), GIS (WGS84/EPSG), MCP jako lokalna płaszczyzna sterowania (W12-MCP, O-71); CGMES końcówka ✓ (KASACJA-SCL-I-CIM-KLIENT, partia 8) | P3 | OTWARTA (częściowo: CGMES ✓); część GIS przeniesiona do UX-09 (na koniec kolejki) | — | W7, W9 | §7 2026-10-16 | po W9/W7; GIS wyłącznie w UX-09 |
 | G11 | Transformatory trójuzwojeniowe | P3 | OTWARTA (poza W1–W12, kanon: „przyszłość") | — | decyzja zakresu | MAPA §8 aneks | brak |
+| UX-09 | GIS, MDI, mapy, import geograficzny, DNP3/SCADA (SEL C01, C02, C05, D07), część GIS z W12 | P3 — **ostatnia pozycja całej kolejki** | OTWARTA (decyzja właściciela 2026-10-28: GIS włączony do planu z najniższym priorytetem, na sam koniec; zastępuje STOP z 2026-10-23, §D.18) | Opus (po zamknięciu wszystkich pozostałych wierszy §C) | wszystkie pozostałe wiersze §C.1–C.4 | materiał GPT, niescalony: PR #494–#497, #501, #503, #505 (rundy R05–R15: MapLibre, DIGPRO/dpPower, GPKG, atomowe ENM → LF/SC → SLD) | do tego czasu PR GIS zamrożone: bez scalania i bez kolejnych rund; przy starcie karty przegląd materiału R05–R15 względem `main` |
 
 ### C.5 Domknięte wycinki i programy (bez odtwarzania zadań)
 
@@ -194,6 +198,8 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 | D15 | Gałąź wątku UI/UX (`…-karta-uiux-przemyslowy`) prowadzi trzecią przestrzeń identyfikatorów (UI-01…UI-19, W5-UI-xx, karty K1…K9, GPZ-MODEL, GPZ-H5-*) w dokumentach `KONTRAKT_UIUX_PRZEMYSLOWY_2026-10.md`, `PLAN_UIUX_PRZEMYSLOWY_2026-10.md`, `KOORDYNACJA_WATKOW_2026-10.md` (nieobecnych na HEAD programu); PROGRAM §12 ma UX-xx/H5-xx; brak mapowania między nimi | Jedyna kolejka UI/UX = UX-00…UX-09 (§C). Karty K1…K9 i UI-xx tej gałęzi to karty wykonawcze wewnątrz UX-01…UX-06 (K1 POWLOKA/K2 → UX-06, K3 GEOMETRIA-STACJI/K4/K5 KREATOR-STACJI/K6a TOPOLOGIA-API → UX-02/UX-04, K6 INSPEKTOR/K7 DRZEWO-GOTOWOSC → UX-03, K8 WYNIKI → UX-05, K9 WERYFIKACJA → UX-06); GPZ-H5-APARATURA i GPZ-H5-SKLADOWA-ZEROWA wpisane w §C.1 pod UX-04. Przy scaleniu tej gałęzi jej dokumenty dostają nagłówek „karty wykonawcze UX-xx, bez własnego statusu" |
 | D16 | Hashe commitów cytowane w części B §3.-1 (91 tokenów, m.in. `a75b7e9`, `fd630d8`, `077ef75`) nie są obiektami tego repozytorium (`git cat-file -t` 2026-10-23); dowód tych wpisów nie jest odtwarzalny | Wpisy części B pozostają historią z etykietą „dowód nieodtwarzalny w repo"; żaden z nich nie zasila statusu DOMKNIĘTA w §C bez ponownego pomiaru (UX-00) |
 | D17 | `INWENTARZ_FUNKCJI_2026-07.md` §6: tabela 37 ✅ / 10 ◐ / 0 ❌ (48 wierszy) vs bilanse tekstowe 27/18/0 i 27/17/1 oraz deklaracja „45 wierszy" | Prawdą jest tabela; bilanse tekstowe są historyczne. 10 pozycji ◐ to zakres UX-05/UX-06/UX-08 (nie nowe epiki) |
+| D18 | GIS: STOP z 2026-10-23 (UX-09, „nie wdrażać") vs siedem rund GIS R05–R15 wykonanych potem w PR #494–#505 vs polecenie właściciela 2026-10-28 „GIS włącz do planu, z najniższym priorytetem, na sam koniec" | Późniejsza decyzja właściciela wygrywa: UX-09 = P3, ostatnia pozycja całej kolejki §C; PR GIS zamrożone do startu karty, bez scalania i bez dalszych rund; część GIS z W12 przeniesiona do UX-09 |
+| D19 | GPZ SN: rundy do R5 i PR GPT #499/#500/#502/#504 vs przekazanie właściciela 2026-10-28 | R5 odrzucone jako rozwiązanie docelowe; przekazanie (`docs/uiux/PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md`) jest treścią karty UX-04; pozostała praca GPT służy przede wszystkim tej przebudowie jako materiał wejściowy (wciągany kartami, błędne elementy usuwane z raportem rozbieżności); scalenie wyłącznie za zgodą właściciela, B-02 ODRZUCONE |
 
 ### D.2 Tory równoległe i ścieżka krytyczna
 
@@ -202,7 +208,7 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 | Tor | Kolejność (ID z §C) |
 |---|---|
 | I — integracja (Fable) | INT-489 → JEDEN-PLAN → partie integracji kolejnych kart (fast-forward programu po CI 9/9 i niezależnej weryfikacji) |
-| U — UI/UX (Opus) | UX-00 → UX-04 (z GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 STOP |
+| U — UI/UX (Opus) | UX-00 → UX-04 (POLE-LINIOWE-WZORZEC → POLA-TR-POMIAR-SPRZEGLO, LOGIKA-LACZENIOWA, GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 (GIS) ostatnia pozycja całej kolejki |
 | R — rdzeń dynamiki | AB-1b.2 (0/A/B/C/D → E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
 | H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
 | S — rdzeń zwarciowy (B-01 architekta) | BILANS-THEVENIN → Y0-WYSPY → CZESTOTLIWOSC → PROFIL-NORMY → ZEROWA-POJEMNOSCI (po GPZ-H5-SKLADOWA-ZEROWA) → KONSUMENCI-IB → SLOWNIK-GENERATOR-PL → SC-WYROCZNIA-SN-TR-NN |
@@ -212,15 +218,15 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 
 Ścieżka krytyczna produktu: INT-489 → UX-00 → UX-04 → UX-01/02 → UX-05 → UX-06 (odbiór właściciela) równolegle z R (AB-1b.2 → AB-1c) i M (W5-B → W7, dostawca dla UX-04/UX-01).
 
-## E. Liczniki (stan 2026-10-23)
+## E. Liczniki (stan 2026-10-28, przeliczone z tabel §C)
 
 | Miara | Wartość |
 |---|---|
-| Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 64 |
-| w tym P0 / P1 / P2 / P3 | 19 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
-| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 2, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 55 |
+| Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 67 |
+| w tym P0 / P1 / P2 / P3 | 22 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
+| Nieukończone (OTWARTA/OTWARTE 50, W TOKU 1, DO WERYFIKACJI 6, CZĘŚCIOWE 1, NIEODEBRANE 1) | 59 |
 | DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 6 |
-| ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 1 |
+| ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 0 |
 | Pozycje domknięte §C.5 (programy i karty, bez odtwarzania) | 16 wierszy zbiorczych |
 | Dokumenty scalone w jeden rejestr | 12: PLANS 5.1, PROGRAM_UIUX §8/§12, PROMPT_ZARZADCA, MAPA §8, PLAN_AB §2/§5/§7/§11/§14, PLAN_SLD_REWORK §0, STAN_REPO §7 B–D, sel-blueframe (README, GALERIA, REJESTR_32, KONTRAKT), audyty SLD 2026-10-20 ×2, PROMPT_KONTYNUACJI_2026-10-23 |
 | Duplikaty scalone | SLD: 4 źródła statusu (PLANS §3.-2b/§3.3/§3.4, PLAN_SLD_REWORK §0, PROMPT „program SLD", audyty 2026-10-20) → UX-04 + §C.5; UI/UX: 3 (PLANS §3.-1, PROGRAM §8, PROGRAM §12.3) + 1 przestrzeń kart gałęzi UI/UX (UI-xx/K-xx) → UX-xx; fizyka: 3 (STAN_REPO §7 B/C, plan A/B §14.4, MAPA §8) → §C.2; B-02: 9 rozproszonych werdyktów → wiersz B-02 |
