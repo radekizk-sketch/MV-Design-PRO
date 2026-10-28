@@ -1320,6 +1320,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "transformer.winding_voltage_off_nominal",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "trunk.catalog_missing",
       "fix_navigation": {
         "modal": "select_catalog",
@@ -1424,7 +1433,7 @@
       }
     }
   ],
-  "count": 167,
+  "count": 168,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1564,6 +1573,7 @@
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
     "W001": "branch.zero_sequence_missing",
     "W010": "inverter.k_sc_missing",
+    "W023": "transformer.winding_voltage_off_nominal",
     "W041": "transformer.bay_missing",
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",

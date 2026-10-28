@@ -172,6 +172,50 @@ class ReadinessResult(BaseModel):
     blockers: list[ValidationIssue] = []
 
 
+#: Kod ostrzeżenia: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie.
+KOD_PRZEKLADNI_NIEZNAMIONOWEJ = "W023"
+
+
+def _w023_przekladnia_nieznamionowa(
+    enm: EnergyNetworkModel,
+    trafo: Transformer,
+    strona: str,
+    napiecie_uzwojenia_kv: float,
+    szyna_ref: str,
+    napiecie_szyny_kv: float,
+) -> ValidationIssue:
+    """W023 — wyjaśnienie wg kontraktu werdyktu: co oceniono, obie wartości z jednostką,
+    odchylenie, podstawa, skutek dla obliczeń i akcja naprawcza (przypisanie typu o napięciu
+    szyny). Poziom IMPORTANT: model liczy się poprawnie z przekładnią rzeczywistą."""
+    odchylenie_pct = (napiecie_uzwojenia_kv / napiecie_szyny_kv - 1.0) * 100.0
+    return ValidationIssue(
+        code=KOD_PRZEKLADNI_NIEZNAMIONOWEJ,
+        severity=SEVERITY_IMPORTANT,
+        message_pl=(
+            f"{opis_obiektu(trafo, 'Transformator')}: napięcie znamionowe uzwojenia strony "
+            f"{strona} napięcia {napiecie_uzwojenia_kv:g} kV różni się od napięcia "
+            f"znamionowego szyny {opis_elementu(enm, szyna_ref, 'szyna')} "
+            f"{napiecie_szyny_kv:g} kV (to samo pasmo {pasmo_napieciowe(napiecie_szyny_kv)}, "
+            f"odchylenie {odchylenie_pct:+.2f} %). Przekładnia transformatora jest "
+            "nieznamionowa: rozpływ mocy i zwarcia liczą się z przekładnią rzeczywistą "
+            "z napięć uzwojeń, a współczynnik korekcyjny impedancji transformatora "
+            "z napięcia uzwojenia (IEC 60909-0 §6.3.3), nie ze stosunku napięć sieci."
+        ),
+        element_refs=[trafo.ref_id, szyna_ref],
+        wizard_step_hint="K5",
+        suggested_fix=(
+            "Przypisz transformatorowi typ o napięciach znamionowych równych napięciom jego "
+            "szyn albo zostaw przekładnię nieznamionową, jeśli tabliczka urządzenia ją ma."
+        ),
+        fix_action=FixAction(
+            action_type="SELECT_CATALOG",
+            element_ref=trafo.ref_id,
+            modal_type="TransformerModal",
+            payload_hint={"required": "catalog_ref"},
+        ),
+    )
+
+
 def _sekcje_gpz_wg_szyny(enm: EnergyNetworkModel) -> dict[str, tuple[Substation, GPZSection]]:
     """Szyna sekcji SN GPZ → (stacja GPZ, sekcja) — z jawnego rejestru `gpz_sections`."""
     wynik: dict[str, tuple[Substation, GPZSection]] = {}
@@ -532,14 +576,20 @@ class ENMValidator:
                     )
                 )
 
-        # E023: napięcie znamionowe strony transformatora w innym paśmie napięć niż szyna, do
-        # której ta strona jest przyłączona (partia integracji 11). Do tej pory model przyjmował
-        # np. transformator 15/0,4 kV wpięty między szyny 110 kV i 15 kV (pozycja katalogu
-        # SN/nN przypisana transformatorowi GPZ) — przekładnia, impedancja i współczynnik
-        # korekcyjny K_T (IEC 60909-0 eq. 12a, c strony dolnej) liczyły się z napięć, których
-        # sieć nie ma, a wynik wychodził bez ostrzeżenia. Porównanie PASMEM (nN/SN/WN, jedno
-        # źródło `pasma_napieciowe`), nie wartością: napięcie znamionowe uzwojenia różni się od
-        # napięcia sieci w obrębie pasma (np. 15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV).
+        # E023 / W023: napięcie znamionowe strony transformatora wobec napięcia szyny, do której
+        # ta strona jest przyłączona. JEDEN podział (predykaty parami, wzajemnie rozłączne):
+        #   * to samo napięcie (`to_samo_napiecie_znamionowe`, ta sama równość co wszystkie tory
+        #     tworzenia i przypisania typu transformatora) — nic;
+        #   * inne napięcie w TYM SAMYM paśmie (nN/SN/WN, `pasma_napieciowe`) — W023,
+        #     OSTRZEŻENIE: przekładnia nieznamionowa jest fizycznie liczalna (IEC 60909-0 §6.3.3:
+        #     przekładnia rzeczywista t_r = U_rTHV/U_rTLV i K_T z napięcia uzwojenia), ale
+        #     rozpływ i zwarcia liczą się z przekładnią inną niż stosunek napięć sieci, więc
+        #     projektant ma ją widzieć w gotowości. Drogi, które ją tworzą: import (tabliczka
+        #     arkusza 15,75/0,42 kV na szynach 15/0,4 kV) i jawne nadpisanie
+        #     `update_element_parameters`; tory tworzenia i przypisanie typu jej odmawiają;
+        #   * napięcie z INNEGO pasma — E023, BLOKER (partia integracji 11): np. transformator
+        #     15/0,4 kV wpięty między szyny 110 kV i 15 kV — przekładnia, impedancja i K_T
+        #     (IEC 60909-0 eq. 12a, c strony dolnej) liczyłyby się z napięć, których sieć nie ma.
         napiecia_szyn = {b.ref_id: b.voltage_kv for b in enm.buses}
         for trafo in enm.transformers:
             for strona, napiecie_znamionowe, szyna_ref in (
@@ -549,9 +599,16 @@ class ENMValidator:
                 napiecie_szyny = napiecia_szyn.get(szyna_ref)
                 if napiecie_szyny is None or napiecie_szyny <= 0 or napiecie_znamionowe <= 0:
                     continue  # brak szyny i napięcia zerowe zgłaszają inne kontrole
+                if to_samo_napiecie_znamionowe(napiecie_znamionowe, napiecie_szyny):
+                    continue
                 pasmo_uzwojenia = pasmo_napieciowe(napiecie_znamionowe)
                 pasmo_szyny = pasmo_napieciowe(napiecie_szyny)
                 if pasmo_uzwojenia == pasmo_szyny:
+                    issues.append(
+                        _w023_przekladnia_nieznamionowa(
+                            enm, trafo, strona, napiecie_znamionowe, szyna_ref, napiecie_szyny
+                        )
+                    )
                     continue
                 issues.append(
                     ValidationIssue(

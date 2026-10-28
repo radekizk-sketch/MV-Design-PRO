@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **167** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -133,6 +133,7 @@ Wszystkie **167** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.catalog_missing` | CATALOGS | 3 | BLOCKER | Transformator nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `select_catalog` |
 | `transformer.loading_factor_missing` | CATALOGS | 3 | WARNING | Brak współczynnika obciążenia transformatora — bez niego nie da się policzyć strat w punkcie pracy | panel: `inspector`, tab: `parametry`, focus: `beta` |
 | `transformer.loss_data_missing` | CATALOGS | 3 | WARNING | Brak strat jałowych lub obciążeniowych transformatora w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `transformatory`, focus: `p0_kw` |
+| `transformer.winding_voltage_off_nominal` | CATALOGS | 3 | WARNING | Napięcie znamionowe uzwojenia transformatora różni się od napięcia szyny w tym samym paśmie — rozpływ i zwarcia liczą się z przekładnią nieznamionową z napięć uzwojeń (IEC 60909-0 §6.3.3); przypisz typ o napięciach szyn albo zostaw przekładnię, jeśli tabliczka urządzenia ją ma | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `trunk.catalog_missing` | CATALOGS | 3 | BLOCKER | Odcinek SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `select_catalog` |
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
@@ -231,20 +232,20 @@ Wszystkie **167** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 106 |
-| WARNING | 55 |
+| WARNING | 56 |
 | INFO | 6 |
-| **Razem** | **167** |
+| **Razem** | **168** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
-| CATALOGS | 52 |
+| CATALOGS | 53 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **167** |
+| **Razem** | **168** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

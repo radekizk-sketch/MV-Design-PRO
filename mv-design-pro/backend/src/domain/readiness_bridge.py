@@ -100,6 +100,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
     # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
     "W001": "branch.zero_sequence_missing",
+    # „Napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie" == ten sam
+    # warunek (jeden podział E023/W023 w `enm/validator.py`, równość danych
+    # `to_samo_napiecie_znamionowe`).
+    "W023": "transformer.winding_voltage_off_nominal",
     # W5-A (jedna reprezentacja uziemienia): transformator SN/nN bez ukladu sieci nN
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).

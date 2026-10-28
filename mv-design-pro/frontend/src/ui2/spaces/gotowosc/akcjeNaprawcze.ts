@@ -162,6 +162,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'transformer.loss_data_missing': KATALOG,
   'transformer.no_load_params_missing': KATALOG,
   'transformer.vector_group_missing': KATALOG,
+  'transformer.winding_voltage_off_nominal': KATALOG,
   'transformer.vector_group_invalid': EDYCJA,
   'transformer.neutral_grounding_not_accessible': EDYCJA,
   'transformer.lv_earthing_system_missing': EDYCJA,

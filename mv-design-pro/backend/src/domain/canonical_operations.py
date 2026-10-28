@@ -2838,6 +2838,25 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "vector_group"},
     ),
+    # Walidator W023: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym
+    # paśmie — przekładnia nieznamionowa (liczalna, IEC 60909-0 §6.3.3), więc OSTRZEŻENIE.
+    "transformer.winding_voltage_off_nominal": ReadinessCodeSpec(
+        code="transformer.winding_voltage_off_nominal",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Napięcie znamionowe uzwojenia transformatora różni się od napięcia szyny "
+            "w tym samym paśmie — rozpływ i zwarcia liczą się z przekładnią nieznamionową "
+            "z napięć uzwojeń (IEC 60909-0 §6.3.3); przypisz typ o napięciach szyn albo "
+            "zostaw przekładnię, jeśli tabliczka urządzenia ją ma"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
     # W5-A: konfiguracja uziemienia na uzwojeniu bez wyprowadzonego punktu
     # neutralnego (litera grupy bez N/n) — walidator E-W5-03.
     "transformer.neutral_grounding_not_accessible": ReadinessCodeSpec(

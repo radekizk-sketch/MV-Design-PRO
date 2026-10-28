@@ -2028,7 +2028,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # rownosc napiec z jednego predykatu `to_samo_napiecie_znamionowe`) oraz `problem_id`,
     # `problems`, `show_on_sld`, `target_ref` (skasowany pakiet `application/validation_problem`
     # bez konsumenta produkcyjnego). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4381." in wyjscie, wyjscie
+    # Kasacja koncowki podpowiedzi katalogu bez konsumenta (2026-10-28): 4381 -> 4374 — POMIAR
+    # `contract_fields()` na `65bf34150` (4381) i na drzewie karty (4374). Roznica zbiorow -7,
+    # +0: `expected_power_mva`, `expected_current_a`, `prefer_manufacturer` (pola
+    # zadania podpowiedzi katalogu), `dopasowanie`, `certyfikat_ptpiree` (sugestia), `suggestions`,
+    # `total_candidates` (odpowiedz). Plik `api/catalog.py` zostaje — liczba plikow bez zmian.
+    # PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4374." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

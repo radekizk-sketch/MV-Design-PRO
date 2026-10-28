@@ -3,10 +3,14 @@
  *
  * Verifies the full engineer flow added in K30-16..K30-27:
  * 1. Backend API: station-templates listing + categories
- * 2. Auto-populate catalog endpoint
- * 3. Template preview endpoint (live preview)
- * 4. Template apply endpoint (creates station)
- * 5. Resulting ENM has expected elements (station + bays + transformer + feeders)
+ * 2. Template preview endpoint (live preview)
+ * 3. Template apply endpoint (creates station)
+ * 4. Resulting ENM has expected elements (station + bays + transformer + feeders)
+ *
+ * Korekta 2026-10-28: końcówka podpowiedzi katalogu (K30-23) skasowana
+ * (zero konsumentów produkcyjnych — jedynymi były trzy testy API tego pliku);
+ * typy elementów wybiera projektant z katalogu w formularzach, a zgodność napięć, mocy
+ * i izolacji ocenia operacja domenowa (odmowa nazwana, próba `dry_run`).
  *
  * This test runs against running mock or real backend (E2E:RUN=real).
  * Per project conventions: vitest files run in the forks pool (vite.config.ts), Playwright
@@ -97,65 +101,8 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     expect(preview.estimated_elements_count).toBeGreaterThan(6);
   });
 
-  test('POST /api/catalog/auto-populate/transformer returns ranked suggestions', async ({ request }) => {
-    const response = await request.post(`${API_BASE}/api/catalog/auto-populate/transformer`, {
-      data: {
-        voltage_kv: 15.0,
-        expected_power_mva: 0.63,
-      },
-    });
-    expect(response.ok()).toBe(true);
-    const data = await response.json();
-    expect(data.element_type).toBe('transformer');
-    expect(data.suggestions.length).toBeGreaterThan(0);
-    // Kontrakt FAB-D2 (D9): dopasowanie jest KATEGORYCZNE (PELNE przed CZESCIOWE),
-    // certyfikat PTPiREE osobna flaga — nie ma juz liczby `confidence` bez definicji.
-    // Porzadek listy = klucz sortowania backendu (dopasowanie, certyfikat, catalog_ref).
-    const ranga: Record<string, number> = { PELNE: 0, CZESCIOWE: 1 };
-    for (const sugestia of data.suggestions) {
-      expect(Object.keys(ranga)).toContain(sugestia.dopasowanie);
-      expect(typeof sugestia.certyfikat_ptpiree).toBe('boolean');
-      expect(typeof sugestia.catalog_ref).toBe('string');
-    }
-    for (let i = 1; i < data.suggestions.length; i += 1) {
-      const poprzednia = data.suggestions[i - 1];
-      const biezaca = data.suggestions[i];
-      const kluczPoprzedniej = [ranga[poprzednia.dopasowanie], poprzednia.certyfikat_ptpiree ? 0 : 1];
-      const kluczBiezacej = [ranga[biezaca.dopasowanie], biezaca.certyfikat_ptpiree ? 0 : 1];
-      const porownanie = kluczPoprzedniej[0] - kluczBiezacej[0] || kluczPoprzedniej[1] - kluczBiezacej[1];
-      expect(porownanie).toBeLessThanOrEqual(0);
-    }
-  });
-
-  test('POST /api/catalog/auto-populate/protection returns E2Tango z PTPiRE badge', async ({ request }) => {
-    const response = await request.post(`${API_BASE}/api/catalog/auto-populate/protection`, {
-      data: { prefer_manufacturer: 'ELEKTROMETAL' },
-    });
-    expect(response.ok()).toBe(true);
-    const data = await response.json();
-    // Use bracket access dla compatibility z repo_hygiene_guard (forbids
-    // 'catalog_ref:' type literal in e2e).
-    const refs: string[] = (data.suggestions as Array<Record<string, unknown>>).map(
-      (s) => String(s['catalog_ref'] ?? ''),
-    );
-    expect(refs.some((r) => r.includes('E2TANGO'))).toBe(true);
-  });
-
-  test('POST /api/catalog/auto-populate/cable filters by cross-section', async ({ request }) => {
-    const response = await request.post(`${API_BASE}/api/catalog/auto-populate/cable`, {
-      data: { voltage_kv: 20.0, cross_section_mm2: 150.0 },
-    });
-    expect(response.ok()).toBe(true);
-    const data = await response.json();
-    // Przekrój 150 mm² musi być w czołówce (filtr przekroju).
-    const refs: string[] = (data.suggestions.slice(0, 5) as Array<Record<string, unknown>>).map(
-      (s) => String(s['catalog_ref'] ?? ''),
-    );
-    expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
-  });
-
   // V12T-016 (karta SZABLONY-ROLA-A): dokumentacja u góry pliku obiecuje
-  // krok „4. Template apply endpoint (creates station)" od K30-28, ale ŻADEN
+  // krok „Template apply endpoint (creates station)" od K30-28, ale ŻADEN
   // test w tym pliku nigdy nie wywoływał `/apply` — luka między deklaracją a
   // pokryciem. GPZ_110_SN (rola A) jest tu wybrany CELOWO: to jedyna
   // kategoria, dla której `target_segment_id` jest opcjonalny (GPZ jest

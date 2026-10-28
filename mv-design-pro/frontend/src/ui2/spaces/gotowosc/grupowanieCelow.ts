@@ -372,6 +372,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.no_load_params_missing': 'wspolne',
   'transformer.vector_group_invalid': 'wspolne',
   'transformer.vector_group_missing': 'wspolne',
+  'transformer.winding_voltage_off_nominal': 'wspolne',
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)

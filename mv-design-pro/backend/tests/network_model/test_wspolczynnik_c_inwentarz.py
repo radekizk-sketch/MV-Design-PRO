@@ -76,10 +76,6 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         3,
         "k_bth — współczynnik cieplny nastaw zabezpieczeń (Hoppel), nie c",
     ),
-    ("api/catalog.py", "if rated_i < req.expected_current_a * 0.9:"): (
-        2,
-        "tolerancja 10 % dopasowania prądu w wyszukiwarce katalogu",
-    ),
     ("application/analyses/migotanie.py", "PLANNING_LEVEL_PST_MV = 0.9"): (
         1,
         "poziom planistyczny P_st SN (IEC/TR 61000-3-7)",
