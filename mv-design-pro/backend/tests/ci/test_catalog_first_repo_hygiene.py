@@ -172,10 +172,15 @@ def test_legacy_catalog_first_routers_are_not_mounted_in_api_main() -> None:
 
 
 def test_no_default_catalog_guessing_helpers_in_active_modals_and_sld() -> None:
+    # Aktywne dialogi operacji to kreatory ui2; dawny cel `ui/topology/modals` zawierał
+    # modale bez montażu (skasowane 2026-10-22, karta PODSTAWA-Q) — skan martwego kodu
+    # nie dowodził niczego o ścieżce użytkownika.
     targets = [
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory",
         REPO_ROOT / "frontend" / "src" / "ui" / "sld",
     ]
+    brakujace = [str(root.relative_to(REPO_ROOT)) for root in targets if not root.is_dir()]
+    assert not brakujace, f"Brak katalogu skanowania (ciche zero plików): {brakujace}"
     forbidden_fragments = [
         "catalogDefaults",
         "inferCatalogNamespaceFromElement",
@@ -198,6 +203,18 @@ def test_dead_legacy_modules_are_deleted() -> None:
         REPO_ROOT / "backend" / "src" / "api" / "results_workspace.py",
         REPO_ROOT / "frontend" / "src" / "ui" / "results-workspace",
         REPO_ROOT / "scripts" / "results_workspace_determinism_guard.py",
+        # Karta PODSTAWA-Q (2026-10-22): panel i modale topologii bez montażu — w tym edytor
+        # `overrides` gałęzi/stacji/zabezpieczeń/pomiarów (`ExpertOverrides`), których backend
+        # nie czyta — oraz współdzielony edytor stacji bez konsumenta.
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "TopologyPanel.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "TopologyTreeView.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "index.ts",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "index.ts",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "ExpertOverrides.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui" / "network-build" / "forms" / "shared",
     ]
     existing = [str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()]
     assert not existing, f"Pozostały martwe moduły legacy: {existing}"
+    modale = REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals"
+    komponenty = sorted(plik.name for plik in modale.glob("*.tsx"))
+    assert not komponenty, f"Pozostały martwe modale topologii: {komponenty}"

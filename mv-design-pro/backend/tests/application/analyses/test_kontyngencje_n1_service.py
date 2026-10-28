@@ -935,8 +935,23 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `…_L`/`…_R` karty MENU-KANON), od MENU-KANON — tym samym zbiorem liści co GPZ-MODEL
     # (gn01 405, gn03 215: kontyngencja fikcyjna „TR1 110/15 kV" znika). Wynik
     # kontyngencji = wynik UI/UX (GPZ-MODEL).
-    "gn01_promieniowa": "1494a9655012b6a19b6f6f63037dbc4be987cd84403fd8eff834ad1aee6e2a98",
-    "gn03_pierscien": "6918a4db0ab6e763581070a2fb19a74cae42f8c2f52c07186bb4c162053b2476",
+    # 2026-10-22 (karta LINIA-110, pkt 2): gn01 881afd52… → f87c9268…, gn03 e77ef288… →
+    # 8c3b0f7e…. Pełne widoki z kodu bazy `04760140e` (odtwarzają dokładnie poprzednie piny)
+    # i po karcie porównane liść po liściu: w widoku różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: kable SN
+    # z katalogu niosą w `materialized_params` mapę `wartosci_robocze` (R′0, X′0, żyła
+    # powrotna — założenia inżynierskie katalogu): 4 gałęzie gn01, 3 gałęzie gn03. Enumeracja
+    # kontyngencji, dotkliwości i ranking identyczne.
+    # 2026-10-28 (scalenie gałęzi UI/UX `fa129e7d` z programem `7887272f`, baza `8f20bdd3c`):
+    # gn01 → 63af4b10…, gn03 → d05d5914…. Pełne widoki z kodu obu rodziców (odtwarzają
+    # dokładnie swoje piny: UI/UX 1494a965…/6918a4db…, program f87c9268…/8c3b0f7e…) i z drzewa
+    # scalonego porównane liść po liściu: zbiór kluczy identyczny z UI/UX, a względem UI/UX
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` w obu sieciach (model
+    # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
+    # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
+    # wynik UI/UX (GPZ-MODEL).
+    "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
+    "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
 }
 
 

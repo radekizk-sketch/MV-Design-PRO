@@ -7,7 +7,7 @@
  *   bezpiecznika). Rozstrzyga RODZAJ, nie wartość.
  * - „brak danych” — wielkość jest właściwa rodzajowi, a karta katalogowa jej nie podaje.
  *
- * Backend zapisuje oba jako `null`; zero nie jest żadnym z nich (bramka rekordu KAT-T-048
+ * Backend zapisuje oba jako `null`; zero nie jest żadnym z nich (bramka rekordu KAT-T-050
  * odrzuca 0 kA w każdej wielkości). Zbiory poniżej są ODBICIEM jednego źródła backendu
  * (`network_model/catalog/rodzaje_aparatury.py`) — test
  * `__tests__/pradZwarciowyKatalogu.test.ts` porównuje je z fikstura generowaną z tych

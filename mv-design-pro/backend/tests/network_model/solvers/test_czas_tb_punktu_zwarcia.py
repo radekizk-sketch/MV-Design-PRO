@@ -449,14 +449,32 @@ ODCISKI_BAZY: dict[tuple[str, float], str] = {
 }
 
 
+#: Karta PODSTAWA-Q (rozstrzygnięcie 3): wiersz maszyny asynchronicznej bez tabliczki liczby
+#: par biegunów, I_LR/I_rM, cos φ i η niesie addytywne pole ``parametry_robocze_maszyn``
+#: (wartości robocze rejestru = dawne ciche domyślki modelu maszyny), a bieg — założenie
+#: ``fault.parametry_maszyny_robocze``. Odcisk liczony bez tego pola pozostaje odciskiem bazy:
+#: liczby i ślad bit w bit, zmienia się wyłącznie jawność założenia.
+POLE_WARTOSCI_ROBOCZYCH_MASZYN = "parametry_robocze_maszyn"
+TOPOLOGIE_Z_WARTOSCIAMI_ROBOCZYMI_MASZYN = frozenset({"asynchroniczna", "dfig"})
+
+
 @pytest.mark.parametrize(("topologia", "tb_s"), sorted(ODCISKI_BAZY))
 def test_bieg_z_tb_projektanta_bit_w_bit_jak_przed_karta(topologia: str, tb_s: float) -> None:
     migawka, _ = _migawka(topologia)
     run = _bieg(migawka, tb_s)
-    wyniki = json.dumps(run.raw_result["results"], sort_keys=True, default=str)
+    wiersze = run.raw_result["results"]
+    bez_pola = [
+        {k: v for k, v in w.items() if k != POLE_WARTOSCI_ROBOCZYCH_MASZYN} for w in wiersze
+    ]
+    wyniki = json.dumps(bez_pola, sort_keys=True, default=str)
     assert hashlib.sha256(wyniki.encode()).hexdigest() == ODCISKI_BAZY[(topologia, tb_s)]
-    assert all("tb_zrodlo" not in w for w in run.raw_result["results"])
-    assert "zalozenia" not in run.raw_result
+    assert all("tb_zrodlo" not in w for w in wiersze)
+    z_wartosciami = topologia in TOPOLOGIE_Z_WARTOSCIAMI_ROBOCZYMI_MASZYN
+    assert any(w.get(POLE_WARTOSCI_ROBOCZYCH_MASZYN) for w in wiersze) is z_wartosciami
+    # t_b projektanta: żadne założenie biegu nie dotyczy t_b; jedyne dopuszczalne — wartości
+    # robocze parametrów maszyny (i tylko tam, gdzie maszyna ich nie ma na tabliczce).
+    kody = {z.get("code") for z in run.raw_result.get("zalozenia", ())}
+    assert kody == ({"fault.parametry_maszyny_robocze"} if z_wartosciami else set())
 
 
 def _opcje_scenariusza(tb_s: float | None) -> dict[str, Any]:

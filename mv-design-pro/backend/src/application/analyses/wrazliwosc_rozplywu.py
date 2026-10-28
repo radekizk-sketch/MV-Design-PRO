@@ -64,6 +64,7 @@ from application.proof_engine.proof_generator import (
 )
 from application.proof_engine.types import LoadElementKind, ProofDocument
 from enm.canonical_analysis import CanonicalRun
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
@@ -260,6 +261,7 @@ def build_wrazliwosc_view(run: CanonicalRun, *, nazwa_przypadku: str) -> dict[st
     return {
         "analysis_id": lf.analysis_id,
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=True),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "lf": lf.to_dict(),
         "ogolna": ogolna.to_dict(),
         "wezly": wezly,

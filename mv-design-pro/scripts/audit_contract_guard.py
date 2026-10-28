@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """
-Audit Contract Guard — kontrakty schematów JSON i eksport okien topologii.
+Automated Audit Contract Guard — Industrial Grade
 
-CHECKS:
-1. Każdy schemat JSON w backend/schemas/ (poza zamrożonymi) jest ścisły
-   (`additionalProperties: false`) i deklaruje pola wymagane.
-2. `frontend/src/ui/topology/modals/index.ts` istnieje i eksportuje okna.
+Cross-layer consistency checks:
+1. Every canonical operation in the frontend operation surface registry
+   (OPERATION_SURFACE_REGISTRY) has a backend spec in CANONICAL_OPERATIONS
+2. JSON schemas in backend/schemas/ are strict: explicit `additionalProperties`
+   (never `true`) and a `required` list at the top level (frozen schemas exempt)
 
-Korekta V12K-352 (2026-10-22): wcześniejszy opis deklarował trzy kontrole, których kod
-nie wykonywał — „operacja z OPERATION_TO_MODAL ma handler" (parytet rejestr ↔ handlery
-pilnuje `canonical_ops_guard.py`), „modal_type z READINESS_CODES ma okno" (0 wystąpień
-`modal_type` w rejestrze; cele akcji naprawczych pilnuje
-`fix_action_completeness_guard.py`) i „rejestr okien zgodny z mapą dialog_completeness"
-(plik `modalRegistry.ts` nie istnieje; klasyfikację KAŻDEJ operacji kanonicznej pilnuje
-`dialog_completeness_guard.py`). Martwe kontrole skasowane. Samotest:
+Historia (2026-10-22, karta PODSTAWA-Q, commit 3): strażnik czytał dawniej
+`frontend/src/ui/topology/modals/modalRegistry.ts` (plik nie istniał — kontrola
+cicho zwracała pusty zbiór) i wymagał istnienia `modals/index.ts` z eksportami
+modali, których nic nie montowało. Modale skasowano jako martwy kod; kontrola
+operacji czyta teraz żywy rejestr powierzchni operacji, a brak tego pliku jest
+naruszeniem, nie cichym pustym zbiorem. Miękkie porównanie `modal_type`
+gotowości z listą nazw modali (pętla bez skutku) usunięto razem z modalami; z opisu
+zdjęto też niezaimplementowaną obietnicę „brak osieroconych schematów JSON".
+Korekta V12K-352 (gałąź UI/UX, wniesiona scaleniem 2026-10-28): brak katalogu
+schematów jest naruszeniem (fail-closed), nie cichym „czysto". Samotest:
 `scripts/test_audit_contract_guard.py`.
+
+SCAN FILES:
+  backend/src/domain/canonical_operations.py
+  backend/schemas/*.json
+  frontend/src/ui/topology/modals/operationSurfaceRegistry.ts
 
 EXIT CODES:
   0 = clean
@@ -24,13 +33,25 @@ EXIT CODES:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+CANONICAL_OPS_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
 SCHEMAS_DIR = REPO_ROOT / "backend" / "schemas"
-MODAL_INDEX_FILE = REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "index.ts"
+OPERATION_SURFACE_REGISTRY_FILE = (
+    REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "operationSurfaceRegistry.ts"
+)
+
+
+def extract_backend_operations(filepath: Path) -> set[str]:
+    """Nazwy operacji kanonicznych backendu (klucze `CANONICAL_OPERATIONS`)."""
+    if not filepath.exists():
+        return set()
+    text = filepath.read_text(encoding="utf-8")
+    return set(re.findall(r'^    "(\w+)": OperationSpec\(', text, re.MULTILINE))
 
 
 # Frozen schemas that are exempt from strict mode enforcement
@@ -76,14 +97,22 @@ def check_json_schemas_strict(schemas_dir: Path) -> list[str]:
     return violations
 
 
-def check_modal_index_exports(filepath: Path) -> list[str]:
-    """Verify modal index.ts has proper re-exports."""
+def check_operation_surface_registry(
+    filepath: Path, backend_ops: set[str]
+) -> tuple[set[str], list[str]]:
+    """Operacje rejestru powierzchni frontu → każda ma spec w backendzie."""
     if not filepath.exists():
-        return ["frontend/src/ui/topology/modals/index.ts not found"]
+        return set(), [f"{filepath.relative_to(REPO_ROOT)} not found"]
     text = filepath.read_text(encoding="utf-8")
-    if "export" not in text:
-        return ["index.ts has no exports"]
-    return []
+    ops = set(re.findall(r"entry\(\s*'(\w+)',", text))
+    violations: list[str] = []
+    if not ops:
+        violations.append("Operation surface registry has no entries")
+    if not backend_ops:
+        violations.append("No CANONICAL_OPERATIONS found in canonical_operations.py")
+    for op in sorted(ops - backend_ops) if backend_ops else []:
+        violations.append(f"Operation surface '{op}' has no backend spec in CANONICAL_OPERATIONS")
+    return ops, violations
 
 
 def main() -> int:
@@ -93,8 +122,12 @@ def main() -> int:
     schema_violations = check_json_schemas_strict(SCHEMAS_DIR)
     violations.extend(schema_violations)
 
-    # 2. Modal index exports
-    violations.extend(check_modal_index_exports(MODAL_INDEX_FILE))
+    # 2. Frontend operation surfaces -> backend operation specs
+    backend_ops = extract_backend_operations(CANONICAL_OPS_FILE)
+    registry_ops, reg_violations = check_operation_surface_registry(
+        OPERATION_SURFACE_REGISTRY_FILE, backend_ops
+    )
+    violations.extend(reg_violations)
 
     # Report
     if violations:
@@ -108,7 +141,9 @@ def main() -> int:
 
     print(
         f"Audit Contract Guard: OK "
-        f"({len(list(SCHEMAS_DIR.glob('*.json'))) if SCHEMAS_DIR.exists() else 0} schemas)"
+        f"({len(list(SCHEMAS_DIR.glob('*.json'))) if SCHEMAS_DIR.exists() else 0} schemas, "
+        f"{len(registry_ops)} registry ops, "
+        f"{len(backend_ops)} backend ops)"
     )
     return 0
 

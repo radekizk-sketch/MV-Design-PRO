@@ -36,6 +36,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.odmowa_danych import (
     RODZAJ_ELEMENT,
     OdmowaDanychError,
@@ -48,6 +49,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopResult,
     LoopImpedanceComponent,
     NetworkType,
+    parametry_robocze_skladowych,
     prad_z_petli,
     wspolczynniki_c_petli,
     zsumuj_skladowe_petli,
@@ -255,7 +257,7 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
     # c z jedynego źródła (tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci) — jak TN.
     c = wspolczynniki_c_petli(data)
     ik_min, ik_max, krok_pradu = prad_z_petli(
-        u_v=data.u_nom_v, z_magnitude=abs(z_loop), fault_node_id=data.fault_node_id, c=c
+        u_v=data.u_nom_v, z_magnitude=modul_zespolony(z_loop), fault_node_id=data.fault_node_id, c=c
     )
     krok_pradu = {**krok_pradu, "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)"}
     trace.append(krok_pradu)
@@ -290,6 +292,7 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
         tolerancja_nn_robocza=c.tolerancja_nn_robocza,
+        parametry_robocze_maszyn=parametry_robocze_skladowych(data),
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.TT,
@@ -390,7 +393,7 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         components.append(data.upstream_impedance)
     z_loop, krok_sumy = zsumuj_skladowe_petli(components)
     trace.append({**krok_sumy, "step": "sum_components_drugie_zwarcie_it"})
-    z_magnitude = abs(z_loop)
+    z_magnitude = modul_zespolony(z_loop)
     u_ll = math.sqrt(3.0) * data.u_nom_v
     u_napedowe = u_ll / 2.0
     # c z jedynego źródła; pasmo z U_0 sieci, nie z napięcia napędowego U_LL/2.
@@ -425,6 +428,7 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
         tolerancja_nn_robocza=c.tolerancja_nn_robocza,
+        parametry_robocze_maszyn=parametry_robocze_skladowych(data),
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.IT,

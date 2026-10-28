@@ -507,6 +507,39 @@ function ListaDanych({
   );
 }
 
+/**
+ * Stan danych wejściowych i lista danych przyjętych (kontrakt werdyktu §3): nazwa wielkości,
+ * wartość z jednostką, jakość danej i powód (źródło wartości). Ten sam zapis w dowodzie karty
+ * werdyktu i w każdym wyniku, który niesie `status_danych` z listą `dane_przyjete` — np. wkłady
+ * i rozpływ punktu zwarcia. Zero logiki: stan i lista przychodzą z backendu; stanu, którego
+ * odpowiedź nie niesie (`null`), zapis nie dopowiada — pokazuje wtedy samą listę.
+ */
+export function StanDanychWyniku({
+  stan,
+  dane,
+  testId,
+}: {
+  readonly stan: StanDanych | null;
+  readonly dane: readonly DanaPrzyjeta[];
+  readonly testId: string;
+}) {
+  return (
+    <>
+      {stan !== null && (
+        <Para nazwa={TEKSTY.statusDanych}>
+          <span data-testid={`${testId}-stan-danych`}>{NAZWA_STANU_DANYCH_PL[stan]}</span>
+        </Para>
+      )}
+      {dane.length > 0 && (
+        <div className="mvd-werdykt-podsekcja">
+          <span className="mvd-werdykt-para-nazwa">{TEKSTY.danePrzyjete}:</span>
+          <ListaDanych dane={dane} testId={`${testId}-dane-przyjete`} />
+        </div>
+      )}
+    </>
+  );
+}
+
 function TrescStosowalnosci({
   stosowalnosc,
   testId,
@@ -747,15 +780,11 @@ function TrescDowodu({ dowod, testId }: { readonly dowod: StatusDowodu; readonly
       <Para nazwa={TEKSTY.statusModelu}>
         {nazwaStatusuModelu(dowod.status_modelu)}
       </Para>
-      <Para nazwa={TEKSTY.statusDanych}>
-        {NAZWA_STANU_DANYCH_PL[dowod.status_danych.stan]}
-      </Para>
-      {dowod.status_danych.dane_przyjete.length > 0 && (
-        <div className="mvd-werdykt-podsekcja">
-          <span className="mvd-werdykt-para-nazwa">{TEKSTY.danePrzyjete}:</span>
-          <ListaDanych dane={dowod.status_danych.dane_przyjete} testId={`${testId}-dane-przyjete`} />
-        </div>
-      )}
+      <StanDanychWyniku
+        stan={dowod.status_danych.stan}
+        dane={dowod.status_danych.dane_przyjete}
+        testId={testId}
+      />
       <Para nazwa={TEKSTY.domenaWalidacji}>
         {dowod.w_domenie_walidacji === null
           ? TEKSTY.domenaNieokreslona

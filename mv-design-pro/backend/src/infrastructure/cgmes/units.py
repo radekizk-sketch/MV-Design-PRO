@@ -32,6 +32,7 @@ _MVA_TO_VA: Final[float] = 1.0e6
 _MW_TO_W: Final[float] = 1.0e6
 _KM_TO_M: Final[float] = 1.0e3
 _KA_TO_A: Final[float] = 1.0e3
+_PROCENT_NA_ULAMEK: Final[float] = 1.0e2
 
 # ---------------------------------------------------------------------------
 # Deterministic float formatter
@@ -124,3 +125,14 @@ def total_siemens_to_per_km(total_s: float, length_km: float) -> float:
     if length_km == 0:
         raise ZeroDivisionError("Cannot recover per-km susceptance: length_km is zero")
     return float(total_s) / float(length_km)
+
+
+def ulamek_na_procent(ulamek: float) -> float:
+    """Ułamek -> procent (CIM ``PerCent``, np. ``AsynchronousMachine.efficiency``; karta
+    PODSTAWA-Q). Inwersja ``procent_na_ulamek``."""
+    return float(ulamek) * _PROCENT_NA_ULAMEK
+
+
+def procent_na_ulamek(procent: float) -> float:
+    """Procent CIM -> ułamek tabliczki ENM (inwersja ``ulamek_na_procent``)."""
+    return float(procent) / _PROCENT_NA_ULAMEK

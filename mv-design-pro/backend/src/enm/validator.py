@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from network_model.catalog.governance import (
@@ -92,6 +93,7 @@ from .tor_pola import (
 )
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .wartosci_projektanta import blad_wartosci_projektanta_elementu, rodzina_generatora
 from .zajetosc_pol import zajetosc_pol
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
@@ -324,6 +326,8 @@ class ENMValidator:
 
         self._check_blockers(enm, issues)
         self._check_catalog_first(enm, issues)
+        # Zasada nr 4 (V12K-351, karta PODSTAWA-Q): wartość projektanta spoza bramy rejestru
+        self._check_wartosci_projektanta(enm, issues)
         self._check_warnings(enm, issues)
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
@@ -1455,6 +1459,57 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_wartosci_projektanta(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E011: wartość projektanta (``overrides``) maszyny wirującej albo aparatu SN spoza
+        bramy rejestru wartości roboczych (parametr innej rodziny, liczba poza zakresem, tekst,
+        parametr powtórzony).
+
+        Operacje zapisu odmawiają takiej listy (``enm.wartosci_projektanta``); do modelu trafia
+        wyłącznie z pliku albo sprzed bramy. Obliczenie nie może jej przyjąć ani pominąć po
+        cichu (pominięcie zastąpiłoby wartość projektanta tabliczką albo propozycją bez słowa)
+        — blokada z akcją naprawczą: sekcja wartości projektanta w kreatorze edycji parametrów
+        (zapis listy z formularza usuwa wpisy spoza rodziny). Generator spoza maszyn wirujących
+        jest pominięty — żaden tor obliczeń jego listy nie czyta.
+        """
+        elementy: list[tuple[str, Any, str]] = [
+            ("generators", gen, "Źródło")
+            for gen in enm.generators
+            if rodzina_generatora(gen.gen_type) is not None
+        ]
+        elementy.extend(("branches", galaz, "Aparat łączeniowy SN") for galaz in enm.branches)
+        for kolekcja, element, rodzaj in elementy:
+            if not element.overrides:
+                continue
+            blad = blad_wartosci_projektanta_elementu(
+                kolekcja,
+                element.model_dump(mode="json"),
+                opis_pl=opis_obiektu(element, rodzaj),
+            )
+            if blad is None:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E011",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"{opis_obiektu(element, rodzaj)} ma wartość projektanta, której "
+                        f"obliczenie nie może przyjąć: {blad}"
+                    ),
+                    element_refs=[element.ref_id],
+                    wizard_step_hint="K4",
+                    suggested_fix=(
+                        "Popraw albo usuń wartość projektanta w parametrach elementu i zapisz."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=element.ref_id,
+                        payload_hint={"required": "overrides"},
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # INFO (I001-I002)

@@ -15,6 +15,7 @@ jest więc w całości wyjaśniona wzbogaceniem trzech projekcji kart referencyj
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import hashlib
 import json
@@ -94,7 +95,8 @@ POZYCJE_APARATURY_WN: dict[str, tuple[str, ...]] = {
 #: katalogu domyślnego po karcie: 0d50891f64dd97c345b62dbe0bbb7b1b4a6cfdd8477c77cc6154930a26f290fd.
 ODCISK_PO_APARATURZE_WN = "f9295f20b4955ebe0decac54818aaa7c5bed0d6d0e58ddd8a0362eaf2638859b"
 #: Decyzja architekta 2026-10-22 (karta KATALOG-APARATURA-WN, commit 3): zero nie jest zapisem
-#: „nie dotyczy” — wielkość niewłaściwa rodzajowi aparatu jest ``None`` (bramka KAT-T-048).
+#: „nie dotyczy” — wielkość niewłaściwa rodzajowi aparatu jest ``None`` (bramka KAT-T-050;
+#: na gałęzi UI/UX nosiła kod KAT-T-048, przenumerowana przy scaleniu z kartą LINIA-110).
 #: Dowód liść po liściu (zrzut kanoniczny `757814661` vs drzewo): różni się DOKŁADNIE 41
 #: liści, wszystkie wartość → null i wszystkie wypisane w `MIGRACJA_ZERA`: `ik_ka` 17 rekordów
 #: łączników (13 × 0.0 rozłączników/odłączników/uziemników, 4 × dodatnia kopia I_cw
@@ -141,6 +143,27 @@ MIGRACJA_ZERA: dict[tuple[str, str, str], float] = {
         + ("17kv-63a", "17kv-100a")
     },
 }
+#: Karta LINIA-110 (2026-10-22): nowa przestrzeń `overhead_conductor_types` (4 przewody linii
+#: 110 kV z tablicy PN-EN 50182). Dowód: zrzut BEZ tej przestrzeni daje DOKŁADNIE
+#: `ODCISK_PO_W5E_TTIT` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
+#: poniżej.
+ODCISK_PO_LINIA_110 = "4f66d5626e211540eb1f1afe34d6da1d90ec50800758e208893e7383f51e9f44"
+#: Karta LINIA-110, pkt 2 rozstrzygnięć (2026-10-22): 87 pozycji SN (25 linii, 62 kable) niesie
+#: mapę ``wartosci_robocze`` (R′0, X′0, a 10 kabli także R′ i Ith żyły powrotnej — założenia
+#: inżynierskie katalogu). Dowód liść po liściu (zrzut przed kartą vs po): 216 różnic, wszystkie
+#: to dodane pole ``wartosci_robocze`` (153 linie, 63 kable); 129 z nich było PUSTE, więc pole
+#: puste wypada z odcisku (``_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE``). Zrzut bez tych 87 map
+#: daje DOKŁADNIE ``ODCISK_PO_LINIA_110`` — żadna liczba katalogu się nie zmieniła.
+ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b80f855c0"
+#: Scalenie gałęzi UI/UX (karta KATALOG-APARATURA-WN) z programem (karta LINIA-110), 2026-10-28:
+#: obie karty zmieniły rozłączne przestrzenie katalogu. Dowód obiema drogami w teście niżej:
+#: wycięcie zmian LINIA-110 daje DOKŁADNIE ``ODCISK_PO_MIGRACJI_ZERA`` (łańcuch UI/UX), a
+#: cofnięcie zmian aparatury WN — DOKŁADNIE ``ODCISK_PO_Z0_ROBOCZE`` (łańcuch programu).
+#: Pełny odcisk katalogu domyślnego po scaleniu:
+#: d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061.
+ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
+    "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
+)
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -149,6 +172,34 @@ def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
         zrzut, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=_kanon
     )
     return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+
+def _wytnij_wartosci_robocze_sn(zrzut: dict[str, object]) -> int:
+    """Usuwa mapy ``wartosci_robocze`` pozycji SN (karta LINIA-110); zwraca ich liczbę."""
+    oznaczone = 0
+    for przestrzen in ("line_types", "cable_types"):
+        for postac in zrzut[przestrzen].values():  # type: ignore[attr-defined]
+            if "wartosci_robocze" in postac:
+                assert postac["wartosci_robocze"], "pusta mapa wartości roboczych w odcisku"
+                postac.pop("wartosci_robocze")
+                oznaczone += 1
+    return oznaczone
+
+
+def _cofnij_migracje_zera(zrzut: dict[str, object]) -> None:
+    """Przywraca liście sprzed migracji zera (karta KATALOG-APARATURA-WN, commit 3)."""
+    assert len(MIGRACJA_ZERA) == 41
+    for (przestrzen, identyfikator, pole), dawna in MIGRACJA_ZERA.items():
+        postac = zrzut[przestrzen][identyfikator]  # type: ignore[index]
+        assert postac[pole] is None, (przestrzen, identyfikator, pole)
+        postac[pole] = dawna
+
+
+def _wytnij_aparature_wn(zrzut: dict[str, object]) -> None:
+    """Usuwa typy minimalne łączników 110 kV (karta KATALOG-APARATURA-WN)."""
+    for przestrzen, identyfikatory in POZYCJE_APARATURY_WN.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
 
 
 def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
@@ -178,19 +229,34 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_MIGRACJI_ZERA
-    assert len(MIGRACJA_ZERA) == 41
-    for (przestrzen, identyfikator, pole), dawna in MIGRACJA_ZERA.items():
-        postac = zrzut[przestrzen][identyfikator]  # type: ignore[index]
-        assert postac[pole] is None, (przestrzen, identyfikator, pole)
-        postac[pole] = dawna
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_APARATURZE_WN
-    for przestrzen, identyfikatory in POZYCJE_APARATURY_WN.items():
-        for identyfikator in identyfikatory:
-            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
+
+    # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.
+    zrzut_bez_linii_110 = copy.deepcopy(zrzut)
+    assert _wytnij_wartosci_robocze_sn(zrzut_bez_linii_110) == 87
+    zrzut_bez_linii_110.pop("overhead_conductor_types")
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_MIGRACJI_ZERA
+    _cofnij_migracje_zera(zrzut_bez_linii_110)
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_APARATURZE_WN
+    _wytnij_aparature_wn(zrzut_bez_linii_110)
+    assert _odcisk_zrzutu(zrzut_bez_linii_110) == ODCISK_PO_W5E_TTIT
+
+    # Droga 2 — cofnięcie zmian karty KATALOG-APARATURA-WN odtwarza łańcuch programu.
+    _cofnij_migracje_zera(zrzut)
+    _wytnij_aparature_wn(zrzut)
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_Z0_ROBOCZE
+    assert _wytnij_wartosci_robocze_sn(zrzut) == 87
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_LINIA_110
+    bez_przewodow_wn = {
+        przestrzen: postac
+        for przestrzen, postac in zrzut.items()
+        if przestrzen != "overhead_conductor_types"
+    }
+    assert _odcisk_zrzutu(bez_przewodow_wn) == ODCISK_PO_W5E_TTIT
     bez_rcd = {
-        przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
+        przestrzen: postac
+        for przestrzen, postac in bez_przewodow_wn.items()
+        if przestrzen != "lv_rcd_types"
     }
     assert _odcisk_zrzutu(bez_rcd) == ODCISK_SPRZED_KARTY
 

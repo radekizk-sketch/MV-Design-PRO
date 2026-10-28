@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
 import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
+import { REJESTR_MASZYN } from './rejestrMaszynFixture';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -368,10 +369,248 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       await waitFor(() => expect(screen.getByTestId(`${A}-break_time_s`)).toHaveFocus());
     });
 
+    it('akcja naprawcza blokady E011 (field = overrides) → kursor w pierwszym polu aparatu', async () => {
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+      context = { element_ref: APARAT.ref_id, element_type: 'Switch', field: 'overrides' };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
+      await waitFor(() => expect(screen.getByTestId(`${A}-break_time_s`)).toHaveFocus());
+    });
+
+    it.each([
+      ['parametr spoza rodziny aparatu', { key: 'cos_phi', value: 0.9, reason: null }],
+      ['wartość nieliczbowa parametru aparatu', { key: 'i_dyn_ka', value: '50', reason: null }],
+    ])('model sprzed bramy (%s, E011) → zapis bez edycji usuwa wpis', async (_, wpis) => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      snapshotState.snapshot = { branches: [{ ...APARAT, overrides: [...APARAT.overrides, wpis] }] };
+      render(<KreatorEdycjiParametrow />);
+      const zapisz = screen.getByTestId('mvd-kreator-edycja-zapisz');
+      expect(zapisz).toBeEnabled();
+      await userEvent.click(zapisz);
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({ overrides: APARAT.overrides });
+    });
+
     it('gałąź bez wiązania APARAT_SN → brak sekcji (parametry aparatu nie dotyczą odcinka)', () => {
       snapshotState.snapshot = { branches: [{ ...APARAT, catalog_namespace: 'KABEL_SN' }] };
       render(<KreatorEdycjiParametrow />);
       expect(screen.queryByTestId(A)).toBeNull();
+    });
+  });
+
+  // Karta PODSTAWA-Q (zasada nr 4): wartości projektanta parametrów zwarciowych maszyny
+  // wirującej — nośnik `overrides` generatora, rodzina i parametry z rejestru backendu
+  // (`GET /api/catalog/maszyny-wirujace/wartosci-robocze`). Iloczyn cech: {synchroniczna,
+  // asynchroniczna klatkowa, dwustronnie zasilana, falownik} × {dana tabliczki, propozycja} ×
+  // {wartość nowa, niezmieniona, wyczyszczona, nieliczbowa} × {kontekst `overrides` z akcji
+  // naprawczej gotowości, bez kontekstu} × {rejestr dostępny, błąd, odpowiedź innego kształtu}.
+  describe('wartości projektanta maszyny wirującej', () => {
+    const M = 'mvd-kreator-edycja-maszyna';
+    let odpowiedzRejestru: () => Response;
+
+    function generator(genType: string, extra: Record<string, unknown> = {}) {
+      return { ref_id: 'gen-1', name: 'Agregat', gen_type: genType, ...extra };
+    }
+
+    beforeEach(() => {
+      context = { element_ref: 'gen-1' };
+      odpowiedzRejestru = () =>
+        new Response(JSON.stringify(REJESTR_MASZYN), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).includes('/api/catalog/maszyny-wirujace/wartosci-robocze')
+            ? odpowiedzRejestru()
+            : new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ),
+      );
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it.each([
+      ['synchronous', ['sn_mva', 'xd_subtransient_pu', 'cos_phi']],
+      ['fw_scig', ['pr_mw', 'pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
+      ['fw_dfig', ['pr_mw', 'pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
+    ])('%s → sekcja z polami rodziny w kolejności rejestru', async (genType, klucze) => {
+      snapshotState.snapshot = { generators: [generator(genType)] };
+      render(<KreatorEdycjiParametrow />);
+      const sekcja = await screen.findByTestId(M);
+      const pola = Array.from(sekcja.querySelectorAll<HTMLInputElement>(`[data-testid^="${M}-"]`))
+        .map((el) => el.dataset.testid?.slice(M.length + 1));
+      expect(pola).toEqual(klucze);
+    });
+
+    it('falownik (rodzaj spoza rejestru) → brak sekcji maszyny', async () => {
+      snapshotState.snapshot = { generators: [generator('pv_inverter')] };
+      render(<KreatorEdycjiParametrow />);
+      await waitFor(() => expect(fetch).toHaveBeenCalled());
+      expect(screen.queryByTestId(M)).toBeNull();
+      expect(screen.queryByTestId(`${M}-niedostepna`)).toBeNull();
+    });
+
+    it('podpowiedź: dana tabliczki albo propozycja z rodzajem źródła; formularz z overrides', async () => {
+      snapshotState.snapshot = {
+        generators: [
+          generator('fw_scig', {
+            materialized_params: { i_lr_ratio: 6 },
+            overrides: [{ key: 'pole_pairs', value: 2, reason: 'tabliczka silnika' }],
+            parameter_source: 'OVERRIDE',
+          }),
+        ],
+      };
+      render(<KreatorEdycjiParametrow />);
+      const sekcja = await screen.findByTestId(M);
+      expect(screen.getByTestId(`${M}-pole_pairs`)).toHaveValue('2');
+      expect(screen.getByTestId(`${M}-i_lr_ratio`)).toHaveValue('');
+      expect(sekcja).toHaveTextContent('Puste pole: dana tabliczki elementu 6.');
+      expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 0,85 (założenie inżynierskie).');
+      expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 1 (założenie inżynierskie).');
+      expect(sekcja).toHaveTextContent('Liczba par biegunów p');
+      // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
+      expect(sekcja).toHaveTextContent(
+        'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
+          + 'znamionowej P_rM',
+      );
+      expect(sekcja).toHaveTextContent('Moc znamionowa (mechaniczna) jednej maszyny P_rM [MW]');
+      // Bez zmiany wartości maszyny nic do zapisu.
+      expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+    });
+
+    it('P_rM bez tabliczki przy S_rM tabliczki → podpowiedź wyznaczenia (reguła normy, bez liczby)', async () => {
+      snapshotState.snapshot = { generators: [generator('fw_dfig', { materialized_params: { sn_mva: 2.4 } })] };
+      render(<KreatorEdycjiParametrow />);
+      const sekcja = await screen.findByTestId(M);
+      expect(sekcja).toHaveTextContent(
+        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
+          + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
+      );
+    });
+
+    it('nowa wartość → lista overrides w kolejności rejestru; niezmieniona zachowuje uzasadnienie', async () => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      snapshotState.snapshot = {
+        generators: [
+          generator('fw_scig', { overrides: [{ key: 'cos_phi', value: 0.9, reason: 'karta silnika' }] }),
+        ],
+      };
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(await screen.findByTestId(`${M}-pole_pairs`), '3');
+      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-powod'), 'tabliczka znamionowa');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+        element_ref: 'gen-1',
+        parameters: {
+          overrides: [
+            { key: 'pole_pairs', value: 3, reason: 'tabliczka znamionowa' },
+            { key: 'cos_phi', value: 0.9, reason: 'karta silnika' },
+          ],
+        },
+        // Uzasadnienie żyje wyłącznie w `overrides[].reason` (czyta je backend,
+        // `enm/wartosci_projektanta.py`); `reason` na poziomie ładunku było kontrolką-widmo —
+        // operacja go nie czyta (kontrakt `kontrakt_ladunkow_operacji.json`), więc nie jest wysyłane.
+      });
+    });
+
+    it('generator synchroniczny: x″d z przecinkiem → liczba w overrides', async () => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      snapshotState.snapshot = { generators: [generator('synchronous')] };
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(await screen.findByTestId(`${M}-xd_subtransient_pu`), '0,17');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({ overrides: [{ key: 'xd_subtransient_pu', value: 0.17, reason: null }] });
+    });
+
+    it('wyczyszczenie wszystkich pól → pusta lista (powrót do tabliczki i propozycji)', async () => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      snapshotState.snapshot = {
+        generators: [generator('fw_dfig', { overrides: [{ key: 'efficiency', value: 0.97, reason: null }] })],
+      };
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.clear(await screen.findByTestId(`${M}-efficiency`));
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({ overrides: [] });
+    });
+
+    it('tekst niebędący liczbą → błąd pola, zapis bez wywołania operacji', async () => {
+      snapshotState.snapshot = { generators: [generator('synchronous')] };
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(await screen.findByTestId(`${M}-cos_phi`), 'wysoki');
+      expect(screen.getByTestId(M)).toHaveTextContent('Wartość musi być liczbą');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    });
+
+    it('błędne pole maszyny przy innej zmianie do zapisu → komunikat zbiorczy, operacja nie wywołana', async () => {
+      snapshotState.snapshot = { generators: [generator('fw_scig')] };
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(await screen.findByTestId(`${M}-i_lr_ratio`), 'sześć');
+      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'name');
+      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'Silnik pompy');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      expect(await screen.findByText(/Wartość parametru maszyny nie jest liczbą/)).toBeTruthy();
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    });
+
+    it('akcja naprawcza gotowości (field = overrides) → kursor w pierwszym polu maszyny, nie w wierszu klucz → wartość', async () => {
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+      context = { element_ref: 'gen-1', element_type: 'Generator', field: 'overrides' };
+      snapshotState.snapshot = { generators: [generator('fw_scig')] };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
+      await waitFor(() => expect(screen.getByTestId(`${M}-pr_mw`)).toHaveFocus());
+    });
+
+    it.each([
+      ['parametr innej rodziny', { key: 'xd_subtransient_pu', value: 0.2, reason: null }],
+      ['klucz spoza rejestru', { key: 'p_mw', value: 1, reason: null }],
+      ['wartość nieliczbowa', { key: 'cos_phi', value: '0,9', reason: null }],
+    ])('model sprzed bramy (%s, E011) → zapis bez edycji usuwa wpis', async (_, wpis) => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      snapshotState.snapshot = {
+        generators: [
+          generator('fw_scig', {
+            overrides: [{ key: 'pole_pairs', value: 2, reason: 'tabliczka' }, wpis],
+            parameter_source: 'OVERRIDE',
+          }),
+        ],
+      };
+      context = { element_ref: 'gen-1', element_type: 'Generator', field: 'overrides' };
+      render(<KreatorEdycjiParametrow />);
+      await screen.findByTestId(M);
+      const zapisz = screen.getByTestId('mvd-kreator-edycja-zapisz');
+      await waitFor(() => expect(zapisz).toBeEnabled());
+      await userEvent.click(zapisz);
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({ overrides: [{ key: 'pole_pairs', value: 2, reason: 'tabliczka' }] });
+    });
+
+    it('kontekst bez pola → sekcja maszyny nie przejmuje fokusu', async () => {
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+      snapshotState.snapshot = { generators: [generator('fw_scig')] };
+      render(<KreatorEdycjiParametrow />);
+      expect(await screen.findByTestId(`${M}-pole_pairs`)).not.toHaveFocus();
+    });
+
+    it.each([
+      ['błąd serwera', () => new Response('błąd', { status: 500 })],
+      ['odpowiedź innego kształtu', () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } })],
+    ])('rejestr niedostępny (%s) → jawna informacja, bez pól maszyny', async (_, odpowiedz) => {
+      odpowiedzRejestru = odpowiedz;
+      snapshotState.snapshot = { generators: [generator('synchronous')] };
+      render(<KreatorEdycjiParametrow />);
+      expect(await screen.findByTestId(`${M}-niedostepna`)).toHaveTextContent('chwilowo niedostępny');
+      expect(screen.queryByTestId(M)).toBeNull();
     });
   });
 

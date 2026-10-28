@@ -80,6 +80,17 @@ class EquipmentProofInput:
     #: roboczą tolerancji napięcia (znacznik wiersza biegu, `wejscie_zwarciowe_z_biegu`) —
     #: wymagane wielkości zwarciowe stoją na danej przyjętej.
     tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
+    #: Karta LINIA-110: dane przyjęte gałęzi, których impedancja z wartości roboczej wchodzi do
+    #: prądu punktu zabudowy (linia 110 kV z geometrii roboczej, R′0/X′0 z założenia katalogu —
+    #: znacznik wiersza biegu) — wymagane wielkości stoją na danej przyjętej.
+    dane_galezi: tuple[DanaPrzyjeta, ...] = field(default=(), kw_only=True)
+    #: Karta PODSTAWA-Q: krzywe zaniku μ/q maszyn punktu wyznaczone na założeniu inżynierskim
+    #: (pole wiersza biegu ``zalozenia_zaniku``, `wejscie_zwarciowe_z_biegu`) — uwaga
+    #: kryterium wyłączania I_b ≤ I_cu nazywa założenie.
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = field(default=(), kw_only=True)
+    #: Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy
+    #: punktu (pole wiersza biegu ``parametry_robocze_maszyn``) — dane przyjęte dowodu.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(default=(), kw_only=True)
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -94,6 +105,15 @@ class EquipmentProofInput:
         # bajt w bajt taki sam jak przed kartą (determinizm istniejących pakietów).
         if self.tolerancja_nn_robocza:
             payload["tolerancja_nn_robocza"] = True
+        if self.dane_galezi:
+            payload["dane_przyjete_galezi"] = [d.model_dump(mode="json") for d in self.dane_galezi]
+        # Karta PODSTAWA-Q: addytywnie, wyłącznie gdy I_b stoi na założeniu krzywej zaniku.
+        if self.zalozenia_zaniku:
+            payload["zalozenia_zaniku"] = [dict(wpis) for wpis in self.zalozenia_zaniku]
+        if self.parametry_robocze_maszyn:
+            payload["parametry_robocze_maszyn"] = [
+                dict(wpis) for wpis in self.parametry_robocze_maszyn
+            ]
         return canonicalize_json(payload)
 
 

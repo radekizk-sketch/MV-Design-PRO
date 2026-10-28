@@ -165,7 +165,7 @@ def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
     Pozycje spoza pasma SN (łączniki topologii zasilania 110 kV, U_m 123 kV) nie są
     kandydatami aparatu pola SN: napięciowo „wystarczają”, ale aparat WN w polu SN nie
     jest propozycją doboru, tylko pomyłką klasy napięcia. ``ik_ka = None`` to brak danej
-    z karty i tak przechodzi do propozycji (nigdy 0.0 — bramka KAT-T-048).
+    z karty i tak przechodzi do propozycji (nigdy 0.0 — bramka KAT-T-050).
     """
     candidates: list[FieldApparatusCandidate] = []
     for record in get_all_switch_equipment_types():

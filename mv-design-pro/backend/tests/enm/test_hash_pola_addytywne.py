@@ -75,6 +75,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # `Source.lv_voltage_tolerance` (tolerancja sieci nN, wiersz nN tabeli 1 IEC 60909-0) —
     # to samo prawo; test odcisku: `tests/enm/test_tolerancja_nn_iloczyn_cech.py`
     # (odciski modelu bez deklaracji równe zmierzonym na stanie sprzed karty).
+    # Karta LINIA-110: `OverheadLine.geometria_slupa` i `OverheadLine.parametry_z_geometrii`
+    # (linia 110 kV z przewodem z katalogu) — to samo prawo; test odcisku:
+    # `tests/enm/test_linia_110kv_wpiecie.py::test_odcisk_modelu_bez_linii_110kv_bez_zmian`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
         "sources": (
             "sk3_min_mva",
@@ -89,7 +92,8 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
         # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
         # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).
-        "branches": ("screen_bonding", "normal_state"),
+        # + karta LINIA-110: geometria słupa i proweniencja parametrów z geometrii.
+        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
         # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
         # `tests/enm/test_hash_w5b_bays.py`).
         "bays": (

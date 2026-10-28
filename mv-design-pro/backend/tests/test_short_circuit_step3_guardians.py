@@ -95,7 +95,7 @@ def _build_sc_graph() -> NetworkGraph:
 
 def _z0_bus_for_graph(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
     n = y_bus.shape[0]
     # Stabilna, diagonalna macierz Z0 (dodatnia, odwracalna) dla testu 1F.
     return np.eye(n, dtype=complex) * complex(0.4, 0.8)

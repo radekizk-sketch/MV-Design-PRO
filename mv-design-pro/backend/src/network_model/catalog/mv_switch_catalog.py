@@ -20,7 +20,7 @@ KONWENCJE:
 - in_a [A] — prad znamionowy ciaglej pracy
 - ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery, bezpieczniki)
 - icw_ka [kA] — prad wytrzymywany krotkotrwale 1s
-- ik_ka / icw_ka: ``None`` albo wartosc dodatnia, NIGDY 0.0 (bramka KAT-T-048 w
+- ik_ka / icw_ka: ``None`` albo wartosc dodatnia, NIGDY 0.0 (bramka KAT-T-050 w
   `SwitchEquipmentType` odrzuca zero w kazdej z tych wielkosci). ``None`` w polu, ktorego
   rodzaj aparatu z definicji normy nie ma (ik_ka rozlacznika/odlacznika/uziemnika,
   icw_ka bezpiecznika), znaczy „nie dotyczy" — rozstrzyga rodzaj z jednego zrodla
@@ -934,7 +934,7 @@ def _lacznik_110kv(
             "manufacturer": None,
             "un_kv": 123.0,
             "in_a": in_a,
-            # Brak danej z karty — `None`, nigdy 0.0 (bramka KAT-T-048).
+            # Brak danej z karty — `None`, nigdy 0.0 (bramka KAT-T-050).
             "ik_ka": None,
             "icw_ka": None,
             "medium": None,
@@ -1085,7 +1085,7 @@ def _polish_switch(
     # nie maja tej zdolnosci z definicji normy, wiec pole zostaje None
     # (NIE_DOTYCZY), nie zero i nie kopia icw_ka.
     i_cu_ka = ik_ka if equipment_kind == "CIRCUIT_BREAKER" else None
-    # KAT-T-048: I_k (zdolnosc wylaczania zwarc) jest wielkoscia wlasciwa wylacznie
+    # KAT-T-050: I_k (zdolnosc wylaczania zwarc) jest wielkoscia wlasciwa wylacznie
     # rodzajom z `RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA`; rozlacznik i odlacznik
     # niosa ze zrodla tylko prad wytrzymywany krotkotrwale (``icw_ka``), a pole
     # ``ik_ka`` jest dla nich ``None`` — „nie dotyczy" rozstrzyga rodzaj, nie wartosc.

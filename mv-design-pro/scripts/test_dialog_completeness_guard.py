@@ -8,8 +8,9 @@ interfejsu z literałem operacji + uzasadnienie) albo ścieżka menu (pozycja
 klasyfikacji.
 
 ILOCZYN CECH: klasa {okno, bez okna, menu} × usterka {brak, plik dowodu bez literału, plik
-nie istnieje, import nierozwiązywalny, pozycja menu nieistniejąca, wykonawca bez pozycji,
-klasyfikacja nieaktualna, klasyfikacja przy oknie, wpis spoza rejestru, operacja bez wpisu}.
+nie istnieje, import nierozwiązywalny, moduł okna bez literału operacji (także literał tylko
+w pliku testu), pozycja menu nieistniejąca, wykonawca bez pozycji, klasyfikacja nieaktualna,
+klasyfikacja przy oknie, wpis spoza rejestru, operacja bez wpisu}.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ def _drzewo(
     menu: str = "{ id: 'przelacz-c', labelPl: 'Przełącz', section: 'Operacje' },\n",
     importy: str = "",
     z_kreatorem: bool = True,
+    kreator: str = "executeDomainOperation(id, 'add_a', {});\n",
 ) -> None:
     backend = tmp_path / "backend" / "src" / "domain"
     backend.mkdir(parents=True)
@@ -55,6 +57,7 @@ def _drzewo(
     if z_kreatorem:
         (src / "ui2" / "kreatory" / "a").mkdir(parents=True)
         (src / "ui2" / "kreatory" / "a" / "index.ts").write_text("export {};\n", encoding="utf-8")
+        (src / "ui2" / "kreatory" / "a" / "KreatorA.tsx").write_text(kreator, encoding="utf-8")
     wpisy = (
         wpisy
         if wpisy is not None
@@ -72,17 +75,11 @@ def _drzewo(
     (src / "ui" / "exec.ts").write_text(wykonawca, encoding="utf-8")
     menu_plik = src / "ui" / "SldCommandService.ts"
     menu_plik.write_text(menu, encoding="utf-8")
-    modals = src / "ui" / "topology" / "modals"
-    modals.mkdir(parents=True)
-    (modals / "OknoX.tsx").write_text("export {};\n", encoding="utf-8")
-    (modals / "index.ts").write_text("export { OknoX } from './OknoX';\n", encoding="utf-8")
 
     monkeypatch.setattr(guard, "CANONICAL_OPS_FILE", backend / "canonical_operations.py")
     monkeypatch.setattr(guard, "FRONTEND_SRC", src)
     monkeypatch.setattr(guard, "FORM_REGISTRY_FILE", workspace / "operationFormRegistry.tsx")
     monkeypatch.setattr(guard, "SLD_MENU_FILE", menu_plik)
-    monkeypatch.setattr(guard, "MODALS_DIR", modals)
-    monkeypatch.setattr(guard, "INDEX_FILE", modals / "index.ts")
     monkeypatch.setattr(
         guard,
         "KLASYFIKACJA_BEZ_FORMULARZA",
@@ -202,11 +199,23 @@ def test_wykonawca_bez_pozycji_albo_bez_operacji(tmp_path, monkeypatch, capsys) 
     assert "wykonawca ui/exec.ts jej nie woła" in _wyjscie(capsys)
 
 
-def test_okno_topologii_bez_eksportu(tmp_path, monkeypatch, capsys) -> None:
-    _drzewo(tmp_path, monkeypatch)
-    (guard.MODALS_DIR / "OknoY.tsx").write_text("export {};\n", encoding="utf-8")
+def test_modul_okna_bez_literalu_operacji(tmp_path, monkeypatch, capsys) -> None:
+    _drzewo(tmp_path, monkeypatch, kreator="export function KreatorA() { return null; }\n")
     assert guard.main() == 1
-    assert "okno 'OknoY' nie jest eksportowane z index.ts" in _wyjscie(capsys)
+    assert "okno operacji 'add_a' (KreatorA): moduł ui2/kreatory/a nie zawiera literału" in (
+        _wyjscie(capsys)
+    )
+
+
+def test_literal_operacji_tylko_w_pliku_testu_nie_jest_dowodem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    _drzewo(tmp_path, monkeypatch, kreator="export function KreatorA() { return null; }\n")
+    testy = guard.FRONTEND_SRC / "ui2" / "kreatory" / "a" / "__tests__"
+    testy.mkdir()
+    (testy / "KreatorA.test.tsx").write_text("expect(op).toBe('add_a');\n", encoding="utf-8")
+    assert guard.main() == 1
+    assert "nie zawiera literału operacji" in _wyjscie(capsys)
 
 
 def test_brak_zrodla_jest_czerwony(tmp_path, monkeypatch, capsys) -> None:

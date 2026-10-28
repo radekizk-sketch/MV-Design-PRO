@@ -1943,7 +1943,86 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 4337 (UI/UX) − 23 = 4314 — POMIAR
     # guardem na drzewie scalonym (MENU-KANON zdjal cien `switchgear_config` i modele
     # `insert_at`/magistrali; galaz UI/UX dolozyla w miedzyczasie pola GPZ-MODEL i programu).
-    assert "Pol kontraktow wejsciowych: 4314." in wyjscie, wyjscie
+    # Karta PROG-ZERA-WKLADOW (2026-10-21): 4284 -> 4286 — POMIAR `contract_fields()` na bazie
+    # karty `8f20bdd3c` (`git archive`: 4284, pin zgodny) i na drzewie karty (4286). Roznica
+    # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
+    # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
+    # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
+    # Karta WKLAD-ZRODLA (2026-10-22, zgoda B-01 architekta): 4286 -> 4292 — POMIAR
+    # `contract_fields()` na bazie karty `f121c5e79` (`git archive`: 4286, pin zgodny) i na
+    # drzewie karty (4292). Roznica zbiorow +6 (`wklady_zrodel`, `wklady_zrodel_slad` —
+    # addytywne pola wyniku SC z wkladem kazdego zrodla i jego sladem, `wklady_zrodel_json`,
+    # `wklady_zrodel_slad_json` — kolumny artefaktu rozplywu, `i_zaciski_a` — prad wkladu na
+    # zaciskach zrodla `WkladZrodla`, `y_pu` — admitancja bocznika zrodla `BocznikZrodla`),
+    # -0. Nowa nazwa `i_zaciski_a` odslonila zastany odczyt `detale.get("i_zaciski_a", 0.0)`
+    # w `machine_sc_iec60909.py` (wywod maszyny) — naprawiony u zrodla (prad na zaciskach
+    # podawany jawnie przez wolajacego). PASS niezmieniony (zero podstawien).
+    # Karta LINIA-110 (2026-10-22): 4286 -> 4339 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4339). Roznica zbiorow
+    # +53, -0: katalog przewodow linii 110 kV (`overhead_conductor_types`, `przeznaczenie`,
+    # `srednica_mm`, `r20_dc_ohm_per_km`, `alfa_1_per_k`, `gmr_mm`, `warstwy_al`,
+    # `srednica_drutu_al_mm`, `srednica_drutu_st_mm`, `srednica_rdzenia_mm`,
+    # `liczba_drutow_st`, `przekroj_stali_mm2`, `masa_kg_per_km`, `wytrzymalosc_kn`), geometria
+    # slupa w modelu (`geometria_slupa`, `fazy`, `odgromowe`, `x_m`, `y_m`, `liczba_w_wiazce`,
+    # `odstep_wiazki_m`, `przewod_odgromowy_ref`, `rezystywnosc_gruntu_ohm_m`), proweniencja
+    # i wynik solvera parametrow linii (`parametry_z_geometrii`, `r1_ohm_per_km`,
+    # `x1_ohm_per_km`, `b1_s_per_km`, `b0_s_per_km`, `r1_temperatura_ohm_per_km`,
+    # `r0_bez_odgromowych_ohm_per_km`, `x0_bez_odgromowych_ohm_per_km`,
+    # `x1_kontrolne_ohm_per_km`, `gmd_m`, `gmr_fazy_m`, `gmr_przewodu_m`,
+    # `promien_zastepczy_fazy_m`, `glebokosc_wnikania_m`, `liczba_odgromowych`,
+    # `temperatura_przewodu_c`, `wersja_metody`, `podstawienie_latex`, `wynik_latex`,
+    # `przewod_fazowy`, `przewod_odgromowy`, `geometria`, `rezystywnosc_gruntu`, `tabliczka`,
+    # `wartosci_robocze`, `nazwa_linii`, `zgodny_z_modelem`) oraz pasma wiarygodnosci
+    # (`ocena_wiarygodnosci`, `w_pasmie`, `wyjasnienie_pl`). PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji (2026-10-22, scalenie LINIA-110 na partie zwarc): 4292 -> 4350 —
+    # POMIAR `contract_fields()` na szczycie partii zwarc `6646e4d05` (4292) i na drzewie
+    # scalonym (4350). Roznica zbiorow +58, -0: 53 pola opisane wyzej (commit `04760140e`)
+    # oraz 5 pol drugiego commita karty `dda21faa1`, ktory pinu nie podniosl (samotest byl
+    # czerwony na szczycie karty: pomiar 4344 przy pinie 4339): `dane_galezi` (dane przyjete
+    # galezi w autorytecie biegu zwarciowego i w ocenach), `dane_przyjete_linii_wn` (wynik
+    # petli zwarcia IEC 60364), `skladowe_zerowe` (assembler — zrodlo skladowej zerowej
+    # galezi) oraz stale klasowe importera XLSX `_KOLUMNY_Z_GEOMETRII_WN`,
+    # `_POLA_KRZYZOWE_PRZEWODU_WN` (arkusz przewodow 110 kV). PASS niezmieniony (zero
+    # podstawien).
+    # Karta PODSTAWA-Q (2026-10-22): 4286 -> 4287 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4287). Roznica zbiorow
+    # +1 (`skrot_pl` — krotka postac podstawy reguly krzywej zaniku μ/q w
+    # `PodstawaRegulyKrzywej`, tekst do dowodu SC3F i rejestru rownan; pozostale pola rekordu
+    # — `rodzaj_zrodla`, `norma`, `opis_pl` — juz byly w zbiorze), -0. PASS niezmieniony
+    # (zero podstawien).
+    # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 4287 -> 4291 — POMIAR
+    # `contract_fields()` na drzewie pierwszego commitu karty `aa856bb8b` (4287, pin zgodny)
+    # i na drzewie drugiego commitu (4291). Roznica zbiorow +4 (`zalozenia_zaniku` — addytywne
+    # pole wyniku SC z krzywymi μ/q o podstawie zalozenia inzynierskiego, zgoda B-01;
+    # `parametry_robocze_maszyn` — wpisy wartosci roboczych maszyn wirujacych wiersza;
+    # `liczba_jednostek` — liczba jednostek grupy maszyn asynchronicznych, m = P_rM/p jednej
+    # maszyny wg IEC 60909-0 pkt 9.1.2; `calkowita` — znacznik parametru rejestru o wartosci
+    # calkowitej, brama liczby par biegunow p), -0.
+    # PASS niezmieniony (zero podstawien; podstawienie `wpis.get(..., 0.0)` w
+    # `machine_sc_iec60909.zdanie_zalozenia_krzywej_pl` wykryte guardem i naprawione u zrodla).
+    # Karta PODSTAWA-Q, trzeci commit (2026-10-22): 4291 -> 4292 — POMIAR `contract_fields()`
+    # na drzewie drugiego commitu karty `0a90bbc97` (`git archive`: 4291, pin zgodny) i na
+    # drzewie trzeciego commitu (4292). Roznica zbiorow +1 (`sr_mva_tabliczki` — moc pozorna
+    # znamionowa S_rM grupy maszyn asynchronicznych z tabliczki, do Z_M wprost wg IEC 60909-0
+    # pkt 6.7; brak tabliczki = S_rM z P_rM/(eta_r*cos phi_r)), -0. PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, scalenie PODSTAWA-Q (2026-10-22): 4350 -> 4356 — POMIAR
+    # `contract_fields()` na drzewie po scaleniu LINIA-110 (4350) i na drzewie po scaleniu
+    # PODSTAWA-Q (4356). Roznica zbiorow +6, -0 — dokladnie szesc pol opisanych wyzej dla trzech
+    # commitow karty PODSTAWA-Q (`skrot_pl`, `zalozenia_zaniku`, `parametry_robocze_maszyn`,
+    # `liczba_jednostek`, `calkowita`, `sr_mva_tabliczki`). PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, uzgodnienie wkladow (2026-10-22): 4356 -> 4357 — POMIAR
+    # `contract_fields()` z `short_circuit_binding.py` w wersji scalenia (4356) i po uzgodnieniu
+    # (4357). Roznica zbiorow +1 (`dane_przyjete_galezi` — `GrafIDoborC` niesie dane przyjete
+    # galezi punktu z tych samych zalozen wejscia co wiersz biegu, odpowiedz wkladow
+    # `sc3f/contributions` sklada z nich jedna liste danych przyjetych), -0; drugie nowe pole
+    # `tolerancja_nn_robocza` bylo juz w zbiorze (wezel grafu). PASS niezmieniony.
+    # Scalenie galezi UI/UX z programem (2026-10-28, baza scalenia `8f20bdd3c`): POMIAR guardem
+    # na drzewie scalonym = 4387 = 4314 (UI/UX) + 4357 (program) − 4284 (baza) — zmiany obu
+    # stron rozlaczne, zero nazw wspolnych ani skasowanych przez obie. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4387." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2218,7 +2297,34 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # zmian), zero wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie karty.
         # Scalenie karty KATALOG-APARATURA-WN z galezia UI/UX (2026-10-23): 587 + 1
         # (`catalog/rodzaje_aparatury.py`) = 588. POMIAR guardem na drzewie scalonym.
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta LINIA-110 (2026-10-22): 580 -> 585 (+2 network_model:
+        # `solvers/parametry_linii_napowietrznej.py`, `catalog/hv_overhead_conductor_catalog.py`;
+        # +1 enm: `enm/parametry_linii_wn.py`; +2 application netto: `parametry_linii_wn.py`,
+        # `proof_engine/packs/parametry_linii_110kv.py`, `proof_engine/registries/
+        # ohl_equations.py` dodane, `proof_engine/registries/ls_equations.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na bazie `f121c5e79` (`git archive`:
+        # 580, pin zgodny) i na drzewie karty (585).
+        # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 580 -> 582 (+2
+        # `enm/maszyny_robocze.py` — wpisy wartosci roboczych maszyn punktu zwarcia,
+        # `enm/wartosci_projektanta.py` — jedna brama wartosci projektanta; zero wpisow
+        # w zapadce i wykluczeniach). POMIAR guardem na `aa856bb8b` (580) i na drzewie karty (582).
+        # Partia 2 integracji (2026-10-22, scalenie LINIA-110 i PODSTAWA-Q na partie zwarc):
+        # 580 -> 588 = +5 LINIA-110 opisane wyzej, +1 `enm/dane_przyjete_galezi.py` (drugi commit
+        # karty LINIA-110 `dda21faa1` dolozyl plik bez podniesienia pinu: pomiar 586 przy pinie
+        # 585 na drzewie po pierwszym scaleniu), +2 PODSTAWA-Q opisane wyzej. POMIAR guardem na
+        # drzewie scalonym (588); dlug i wykluczenia BEZ ZMIAN.
+        # Partia zwarc, naprawa CI (2026-10-23): 580 -> 581 (+1 `network_model/core/
+        # modul_zespolony.py` — jedno zrodlo modulu liczby zespolonej niezalezne od libm; zero
+        # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie partii (`2e5b06ad9`).
+        # Partia 2 integracji po scaleniu naprawy CI partii zwarc (2026-10-23): 588 -> 589 =
+        # +8 kart partii 2 opisane wyzej (588 wzgledem 580) +1 `core/modul_zespolony.py`. POMIAR
+        # guardem na drzewie scalonym (589); dlug i wykluczenia BEZ ZMIAN.
+        # Karta DETERMINIZM-HISTORII-PROCESU (2026-10-23): +1 `network_model/watki_blas.py`
+        # (jedna polityka watkow BLAS procesu). Partia 2 po scaleniu programu `d543faf3c`:
+        # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
+        # Scalenie galezi UI/UX z programem (2026-10-28): 588 (UI/UX) + 590 (program) − 580
+        # (baza `8f20bdd3c`) = 598. POMIAR guardem na drzewie scalonym.
+        "Przeskanowano 598 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2415,7 +2521,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
         # Karta KATALOG-APARATURA-WN (2026-10-23): 186 -> 187 (+1
         # `catalog/rodzaje_aparatury.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  network_model: pliki_skanowane=187, dlug=10 plikow/suma 67, "
+        # Karta LINIA-110: 186 -> 188 (+2, patrz pin plikow wyzej). POMIAR.
+        # Partia zwarc, naprawa CI (2026-10-23): network_model 186 -> 187 (+1
+        # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia 2 po scaleniu naprawy CI partii zwarc: 186 + 2 (LINIA-110) + 1
+        # (`core/modul_zespolony.py`) = 189. POMIAR guardem.
+        # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
+        # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
+        # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
+        "  network_model: pliki_skanowane=191, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2492,7 +2606,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta MENU-KANON cz. 4 (2026-10-22): enm dlug 7/67 -> 7/65 (jw.). POMIAR guardem.
         # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): enm 71 plikow, dlug 7/67 -> 7/64
         # (jw.). POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=71, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta LINIA-110: enm 65 -> 66 (+1 `enm/parametry_linii_wn.py`). POMIAR.
+        # Karta PODSTAWA-Q (2026-10-22): enm 65 -> 67 (+2 `enm/maszyny_robocze.py`,
+        # `enm/wartosci_projektanta.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR jak wyzej.
+        # Partia 2 integracji: enm 65 -> 69 (+1 `enm/parametry_linii_wn.py`, +1
+        # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
+        # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
+        # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=75, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2598,7 +2719,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13: application 253 -> 254 (plik partii 12 bez przypiecia). POMIAR.
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): application 254 programu + 1 UI/UX
         # (`topologia_zasilenia.py`) = 255; dlug 27/81 programu (UI/UX bez zmian dlugu). POMIAR.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
+        # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
+        "  application: pliki_skanowane=257, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

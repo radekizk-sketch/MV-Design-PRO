@@ -52,6 +52,7 @@ from network_model.catalog.sekcje_modelu import (
     dowod_certyfikatu_ptpiree,
     dowody_kart,
     jakosc_profilu_dynamicznego,
+    jakosci_wartosci_roboczych,
     najslabsza_jakosc,
     oceny_sekcji,
     typ_katalogowy,
@@ -204,7 +205,7 @@ def dane_elementu(enm: EnergyNetworkModel | Mapping[str, Any], ref: str) -> Dane
         pola: dict[str, Any] = _POLA_TYPOWANE[kolekcja](element)
     else:
         pola = dict(surowe) if isinstance(surowe, Mapping) else {}
-    jakosci_zrodel: dict[str, FieldQuality | None] = {}
+    jakosci_zrodel: dict[str, FieldQuality | None] = jakosci_wartosci_roboczych(pola)
     if klasa == KLASA_ELEMENTU_PRZEKSZTALTNIKOWEGO:
         opis, jakosc = _model_dynamiczny(element, pola)
         pola[POLE_MODELU_DYNAMICZNEGO_ELEMENTU] = opis

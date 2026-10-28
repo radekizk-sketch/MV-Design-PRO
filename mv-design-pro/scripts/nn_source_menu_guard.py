@@ -70,9 +70,10 @@ REQUIRED_EXECUTOR_OPERATIONS = {
 # moga jej dostarczyc. Wystarczy JEDNA istniejaca — podmiana dostawcy nie lamie
 # guarda, ale usuniecie zdolnosci owszem.
 DOSTAWCY_ZRODEL_NN: list[tuple[str, list[str]]] = [
-    # W5-C: dawne pliki `ui/topology/modals/{PV,BESS}InverterModal.tsx` nie miały konsumenta
-    # produkcyjnego (deklarowały zdolność, której nie dostarczały) — skasowane; dostawcą
-    # obu zdolności jest kreator źródła OZE (`add_converter_source`, technologia PV/BESS).
+    # PV i BESS: kreator źródła OZE ui2 (technologie PV/BESS/FW, wariant „bezpośrednio do
+    # szyny nN", operacja `add_converter_source`). Do 2026-10-22 wpisami były modale
+    # `ui/topology/modals/{PV,BESS}InverterModal.tsx` — bez montażu, skasowane jako martwy
+    # kod (karta PODSTAWA-Q, commit 3); strażnik zaliczał zdolność na podstawie martwego pliku.
     (
         "falownik PV na nN",
         ["frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts"],

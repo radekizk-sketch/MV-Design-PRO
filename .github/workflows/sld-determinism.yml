@@ -160,7 +160,9 @@ jobs:
       - name: Prepare Chromium for W2c technical raster evidence
         if: always()
         working-directory: mv-design-pro/frontend
-        run: npx playwright install chromium
+        # Ten sam setup co e2e: Playwright Chromium, a na obrazie runnera bez jego wsparcia
+        # (ubuntu 26.04) Google Chrome z APT; skrypty wybierają binarkę `chromiumLaunchOptions`.
+        run: npm run test:e2e:setup
 
       - name: Render W2c technical comparison SVG to PNG
         if: always()

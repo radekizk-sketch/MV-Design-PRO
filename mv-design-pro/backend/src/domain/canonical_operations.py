@@ -3080,6 +3080,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
     ),
+    # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2; zasada nr 4): R′0/X′0 linii
+    # i kabli SN z katalogu są wyprowadzone bez danej producenta (R′0 = 3·R′1, X′0 = 3·X′1,
+    # R′0 = R′1 + R′ żyły powrotnej) — pozycja niesie mapę `wartosci_robocze`, bieg zwarcia
+    # doziemnego i rozpływu niesymetrycznego niesie założenie tego kodu
+    # (`enm.dane_przyjete_galezi.zalozenia_z0_galezi`), a werdykty — daną przyjętą ESTIMATED.
+    # Brak danej producenta NIE blokuje obliczeń.
+    "branch.z0_wartosc_robocza": ReadinessCodeSpec(
+        code="branch.z0_wartosc_robocza",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej "
+            "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
+            "i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+    ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt
     # pośredni na gałęzi wymagałby rozdzielenia jej na dwie impedancje w miejscu
@@ -3143,6 +3161,65 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "inna, i przelicz"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
+    ),
+    # Karta LINIA-110 (zasada nr 4): linia 110 kV z przewodem z katalogu PRZEWOD_LINII_WN ma
+    # R′, X′, B′ i Z′0 policzone z geometrii słupa; składowe niepodane w projekcie (położenie
+    # faz, przewód odgromowy, rezystywność gruntu) biorą wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze` (jakość ESTIMATED, kompletność NIEPELNY). Brak
+    # geometrii NIE blokuje obliczeń — bieg niesie założenie tego kodu
+    # (`enm.parametry_linii_wn.zalozenia_linii_wn`) z linią i drogą zmiany wartości.
+    "line.geometria_wartosc_robocza": ReadinessCodeSpec(
+        code="line.geometria_wartosc_robocza",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo "
+            "rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i "
+            "przelicz"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "geometria_slupa",
+        },
+    ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
+    # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy
+    # rejestru wartości roboczych (`enm.wartosci_projektanta`). Operacje zapisu jej nie
+    # przyjmują; model z pliku, który ją niesie, nie liczy się z cichym pominięciem — blokada
+    # z naprawą w sekcji wartości projektanta kreatora edycji parametrów.
+    "catalog.wartosc_projektanta_niedopuszczalna": ReadinessCodeSpec(
+        code="catalog.wartosc_projektanta_niedopuszczalna",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo "
+            "dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach "
+            "elementu i zapisz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
+    ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): parametry zwarciowe maszyny wirującej
+    # (S_rG, x″d i cos φ generatora synchronicznego; moc znamionowa P_rM, liczba par biegunów
+    # p, I_LR/I_rM, cos φ i η maszyny asynchronicznej) bez danej tabliczki ani wartości
+    # projektanta NIE blokują biegu —
+    # bieg liczy z propozycją rejestru `network_model.catalog.wartosci_robocze.PROPOZYCJE_MASZYNY`
+    # (założenie inżynierskie, jakość ESTIMATED) i niesie założenie tego kodu
+    # (`zalozenia_parametrow_maszyn`) na każdą maszynę z wartością roboczą; werdykty oparte na
+    # prądach jej wyspy dostają daną przyjętą (`dane_przyjete_maszyn`).
+    "fault.parametry_maszyny_robocze": ReadinessCodeSpec(
+        code="fault.parametry_maszyny_robocze",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Maszyna wirująca liczona z wartością roboczą parametru zwarciowego (propozycja "
+            "rejestru — założenie inżynierskie, nie dana producenta) — wpisz wartość z tabliczki "
+            "maszyny w parametrach generatora, jeśli jest inna, i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
     ),
     # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
     # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER

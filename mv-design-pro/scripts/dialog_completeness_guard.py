@@ -12,11 +12,11 @@ wołającego w interfejsie.
   backend/src/domain/canonical_operations.py      — klucze `CANONICAL_OPERATIONS` (AST)
   frontend/src/ui/workspace/operationFormRegistry.tsx — `OPERATION_FORM_REGISTRY`
   frontend/src/ui/sld/v2/command/SldCommandService.ts — pozycje `SLD_MENU_REGISTRY`
-  frontend/src/ui/topology/modals/index.ts         — eksporty okien warstwy topologii
 
 KLASYFIKACJA (dokładnie jedna na operację):
   1. OKNO — wpis rejestru formularzy wskazuje komponent; jego import rozwiązuje się do
-     istniejącego pliku albo katalogu modułu.
+     istniejącego pliku albo katalogu modułu, a źródła modułu (bez plików testów) zawierają
+     literał nazwy operacji — dostawca, który operacji nie wysyła, nie jest dostawcą.
   2. BEZ OKNA — wpis `null` + `BezOkna` niżej: pliki interfejsu, które wołają operację
      (literał nazwy operacji w pliku), i uzasadnienie, dlaczego nie ma okna.
   3. ŚCIEŻKA MENU — wpis `null` + `SciezkaMenu` niżej: pozycje `SLD_MENU_REGISTRY`
@@ -26,8 +26,14 @@ KLASYFIKACJA (dokładnie jedna na operację):
 NARUSZENIA (RC 1): operacja rejestru bez wpisu w rejestrze formularzy; wpis rejestru
 formularzy spoza rejestru kanonicznego; operacja `null` bez klasyfikacji; klasyfikacja
 operacji, która ma okno, albo operacji spoza rejestru (nieaktualna); import okna
-nierozwiązywalny; plik dowodu bez literału operacji; pozycja menu nieistniejąca; okno
-warstwy topologii nieeksportowane z `index.ts`; brak któregokolwiek źródła (fail-closed).
+nierozwiązywalny; moduł okna bez literału operacji; plik dowodu bez literału operacji;
+pozycja menu nieistniejąca; brak któregokolwiek źródła (fail-closed).
+
+Historia: do 2026-10-22 dostawcami były także modale `frontend/src/ui/topology/modals/*.tsx`,
+których żaden ekran nie montował (jedynym konsumentem był nierenderowany `TopologyPanel`).
+Program skasował je jako martwy kod (karta PODSTAWA-Q, commit 3) i wymagał, żeby moduł
+dostawcy zawierał literał operacji; scalenie z gałęzią UI/UX (2026-10-28) przeniosło ten
+wymóg do klasy OKNO, a sprawdzenie eksportów okien warstwy topologii zniknęło razem z nią.
 
 Samotest z iniekcją: `scripts/test_dialog_completeness_guard.py`.
 
@@ -47,8 +53,6 @@ CANONICAL_OPS_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_opera
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
 FORM_REGISTRY_FILE = FRONTEND_SRC / "ui" / "workspace" / "operationFormRegistry.tsx"
 SLD_MENU_FILE = FRONTEND_SRC / "ui" / "sld" / "v2" / "command" / "SldCommandService.ts"
-MODALS_DIR = FRONTEND_SRC / "ui" / "topology" / "modals"
-INDEX_FILE = MODALS_DIR / "index.ts"
 
 
 @dataclass(frozen=True)
@@ -205,17 +209,18 @@ def _zawiera_literal(tekst: str, nazwa: str) -> bool:
     return f"'{nazwa}'" in tekst or f'"{nazwa}"' in tekst
 
 
-def sprawdz_eksporty_okien() -> list[str]:
-    if not MODALS_DIR.is_dir():
-        return [f"brak katalogu okien warstwy topologii: {MODALS_DIR}"]
-    if not INDEX_FILE.is_file():
-        return [f"brak {INDEX_FILE.name} w katalogu okien warstwy topologii"]
-    tekst = INDEX_FILE.read_text(encoding="utf-8")
-    return [
-        f"okno '{f.stem}' nie jest eksportowane z index.ts"
-        for f in sorted(MODALS_DIR.glob("*.tsx"))
-        if f.stem not in tekst
-    ]
+def _plik_testu(plik: Path) -> bool:
+    return "__tests__" in plik.parts or ".test." in plik.name or ".spec." in plik.name
+
+
+def modul_wysyla_operacje(plik_modulu: Path, op: str) -> bool:
+    """Źródła katalogu modułu okna (rekurencyjnie, bez plików testów) zawierają literał `op`."""
+    for plik in sorted(plik_modulu.parent.rglob("*.ts*")):
+        if plik.suffix not in (".ts", ".tsx") or _plik_testu(plik):
+            continue
+        if _zawiera_literal(plik.read_text(encoding="utf-8"), op):
+            return True
+    return False
 
 
 def main() -> int:
@@ -252,9 +257,18 @@ def main() -> int:
                     f"operacja '{op}' ma okno {komponent} i jednocześnie klasyfikację bez okna"
                 )
             sciezka = importy.get(komponent)
-            if sciezka is None or _rozwiaz_import(FORM_REGISTRY_FILE, sciezka) is None:
+            plik_modulu = (
+                _rozwiaz_import(FORM_REGISTRY_FILE, sciezka) if sciezka is not None else None
+            )
+            if plik_modulu is None:
                 naruszenia.append(
                     f"okno operacji '{op}' ({komponent}) nie rozwiązuje się do pliku modułu"
+                )
+            elif not modul_wysyla_operacje(plik_modulu, op):
+                naruszenia.append(
+                    f"okno operacji '{op}' ({komponent}): moduł "
+                    f"{plik_modulu.parent.relative_to(FRONTEND_SRC)} nie zawiera literału "
+                    "operacji — dostawca, który jej nie wysyła, nie jest dostawcą"
                 )
             liczniki["okno"] += 1
             continue
@@ -295,7 +309,6 @@ def main() -> int:
                 )
         liczniki["menu"] += 1
 
-    naruszenia.extend(sprawdz_eksporty_okien())
     if naruszenia:
         return _raport(naruszenia)
     print(

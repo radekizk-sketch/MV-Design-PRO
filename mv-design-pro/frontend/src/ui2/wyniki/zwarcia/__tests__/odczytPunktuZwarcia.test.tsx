@@ -42,6 +42,8 @@ const SEKCJE: readonly Sekcja[] = [
         <RozplywZwarciowy
           punktNazwa="Szyna GPZ"
           flows={dane === 'sa' ? rozplywFixture() : null}
+          pominiete={null}
+          progA={null}
           odczyt={odczyt}
           szczegolyAudytowe={false}
           onOtworzDowod={vi.fn()}

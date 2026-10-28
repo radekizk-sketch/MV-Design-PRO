@@ -65,6 +65,7 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
@@ -428,6 +429,7 @@ def build_osd_response_view(
     return {
         "analysis": "osd_response",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "source_ref": source_ref,
             "source_name": source.get("name"),

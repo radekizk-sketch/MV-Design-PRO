@@ -92,7 +92,7 @@ def test_wartosc_producenta_ma_pierwszenstwo_przed_derywacja() -> None:
 def test_pozycja_bez_wytrzymalosci_krotkotrwalej_zostaje_bez_znamion() -> None:
     """Bezpiecznik topikowy nie ma Icw — i nie dostaje żadnej liczby zastępczej.
 
-    W katalogu `icw_ka = None` — „nie dotyczy” rozstrzyga rodzaj (bramka KAT-T-048 odrzuca
+    W katalogu `icw_ka = None` — „nie dotyczy” rozstrzyga rodzaj (bramka KAT-T-050 odrzuca
     zero w każdej wielkości). Liczba zastępcza w znamionach dałaby werdykt „nie wytrzymuje”
     tam, gdzie kryterium nie istnieje.
     """

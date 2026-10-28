@@ -174,7 +174,7 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-047` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-050` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
 
 Karta KATALOG-TURBINY-TOR-V112: `KAT-T-042` pola toru maszyny wylacznie dla
@@ -189,6 +189,23 @@ Karta W5-E-TTIT (scalona w partii integracji 9; numery nadane przy scaleniu, bo 
 wziela `042`…`044` rownolegle z karta toru V112): `KAT-T-045` rodzaj pradu roznicowego RCD ze
 slownika AC / A / F / B, `046` prad znamionowy, prad roznicowy znamionowy i czas wylaczenia RCD
 dodatnie, `047` RCD selektywny (typ S) z minimalnym czasem niezadzialania.
+
+Karta LINIA-110 (przestrzen `PRZEWOD_LINII_WN`, `OverheadConductorType`): `KAT-T-048`
+przeznaczenie przewodu ze slownika FAZOWY / ODGROMOWY, wymiary, rezystancja i wspolczynnik
+temperaturowy dodatnie, GMR z tablicy mniejszy od promienia; `049` budowa przewodu (rdzen +
+warstwy drutow Al) zgodna ze srednica zewnetrzna z tolerancja zaokraglen tablicy (1 %). Typ
+przewodu wiaze WYLACZNIE przewod (dane wyrobu PN-EN 50182); R', X', B' i Z'0 linii 110 kV
+materializuja sie z geometrii slupa przez solver `network_model/solvers/
+parametry_linii_napowietrznej.py` (standard ENEA Operator linii 110 kV §7.1 lit. j), a brak
+geometrii daje wartosc robocza rejestru `wartosci_robocze` (jakosc `ESTIMATED`).
+
+Karta KATALOG-APARATURA-WN (linia UI/UX; numer nadany przy scaleniu z programem, bo karta
+wziela `048` rownolegle z karta LINIA-110): `KAT-T-050` wielkosci zwarciowe lacznika
+(`SwitchEquipmentType`: I_k, I_cw, I_cu) i aparatu SN (`MVApparatusType`) dodatnie i skonczone
+albo `None` (brak danej) — zero, wartosc ujemna, NaN i nieskonczonosc odrzucane w kazdej
+wielkosci; wielkosc, ktorej rodzaj aparatu z definicji normy nie ma (zdolnosc wylaczania
+rozlacznika, odlacznika i uziemnika, I_cw bezpiecznika), jest zawsze `None` — o „nie dotyczy”
+rozstrzyga rodzaj (`network_model/catalog/rodzaje_aparatury.py`).
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
 `ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)
@@ -304,7 +321,8 @@ decyzje podejmuje czlowiek.
 | `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
 | `lv-rcd` | 56 | 0 | 5 | 48,6 | 56 | `manufacturer`, `poles` | brak |
-| `mv-apparatus` | 48 | 33 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
+| `mv-apparatus` | 50 | 33 | 8 | 40,2 | 50 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
+| `overhead-conductor` | 4 | 4 | 7 | 67,9 | 4 | `gmr_mm`, `manufacturer` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
@@ -314,12 +332,12 @@ decyzje podejmuje czlowiek.
 | `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
 | `spectral-card` | 0 | 0 | 0 | — | 0 | brak | brak |
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
-| `switch-equipment` | 48 | 33 | 4 | 85,4 | 48 | brak | brak |
+| `switch-equipment` | 50 | 33 | 7 | 68,6 | 50 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
 | `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 26. Pozycji łącznie: 8097, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8097.
+Rodzin objętych pomiarem: 27. Pozycji łącznie: 8105, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8105.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

@@ -46,7 +46,9 @@ from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
     NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
     opis_elementu,
+    opis_obiektu,
 )
+from .wartosci_projektanta import blad_wartosci_projektanta_elementu
 
 # ---------------------------------------------------------------------------
 # Operation Result
@@ -308,6 +310,20 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 # ---------------------------------------------------------------------------
 
 
+def _odmowa_wartosci_projektanta(
+    kolekcja: str, element: dict[str, Any], rodzaj: str
+) -> OpIssue | None:
+    """Wartości projektanta elementu (stan KOŃCOWY po operacji) przez tę samą bramę co
+    operacja domenowa i walidator E011 (``enm.wartosci_projektanta``) — ta droga zapisu nie
+    może przemycić do modelu wartości, której obliczenie nie przyjmie."""
+    blad = blad_wartosci_projektanta_elementu(
+        kolekcja, element, opis_pl=opis_obiektu(element, rodzaj)
+    )
+    if blad is None:
+        return None
+    return OpIssue("OP_OVERRIDE_INVALID", "BLOCKER", blad, element.get("ref_id"))
+
+
 def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     """Utwórz nową gałąź (linia/kabel/łącznik). MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
@@ -416,6 +432,13 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "n_parallel",
             # W5-A (F9): uklad uziemienia ekranu kabla — dana projektowa.
             "screen_bonding",
+            # Karta LINIA-110: geometria słupa (dana projektu) i proweniencja R′/X′/B′/Z′0
+            # policzonych z geometrii. Biała lista gubiła je, gdy operacja buduje odcinek
+            # z danych istniejącej linii (podział odcinka: `_copy_split_segment_fields` →
+            # `create_branch`) — połówki traciły geometrię projektu, a uzupełnienie katalogu
+            # przeliczało je z wartości roboczej (fałszywa dana przyjęta zamiast danej projektu).
+            "geometria_slupa",
+            "parametry_z_geometrii",
         ):
             if key in data:
                 branch_data[key] = data[key]
@@ -429,6 +452,9 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             if key in data:
                 branch_data[key] = data[key]
 
+    odmowa = _odmowa_wartosci_projektanta("branches", branch_data, "Aparat łączeniowy SN")
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "create_branch", [*issues, odmowa])
     enm.setdefault("branches", []).append(branch_data)
     return TopologyOpResult(True, enm, "create_branch", issues, ref_id)
 
@@ -448,9 +474,13 @@ def update_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_branch", issues)
 
-    for key, val in data.items():
-        if key not in ("ref_id", "type"):  # type is immutable
-            enm["branches"][idx][key] = val
+    zmiany = {key: val for key, val in data.items() if key not in ("ref_id", "type")}
+    odmowa = _odmowa_wartosci_projektanta(
+        "branches", {**enm["branches"][idx], **zmiany}, "Aparat łączeniowy SN"
+    )
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "update_branch", [odmowa])
+    enm["branches"][idx].update(zmiany)  # type is immutable
     return TopologyOpResult(True, enm, "update_branch", issues, ref_id)
 
 
@@ -726,6 +756,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         }
         if "limits" in data:
             gen_data["limits"] = data["limits"]
+        odmowa = _odmowa_wartosci_projektanta("generators", gen_data, "Źródło")
+        if odmowa is not None:
+            return TopologyOpResult(False, enm, "create_device", [*issues, odmowa])
         enm.setdefault("generators", []).append(gen_data)
         return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
@@ -841,9 +874,13 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_device", issues)
 
-    for key, val in data.items():
-        if key not in ("ref_id", "device_type"):
-            enm[coll][idx][key] = val
+    zmiany = {key: val for key, val in data.items() if key not in ("ref_id", "device_type")}
+    # Stan końcowy generatora (rodzaj i lista po zmianie): zmiana samego `gen_type` przy
+    # zapisanych wartościach projektanta sprawdza je względem rodziny NOWEGO rodzaju.
+    odmowa = _odmowa_wartosci_projektanta(coll, {**items[idx], **zmiany}, "Źródło")
+    if odmowa is not None:
+        return TopologyOpResult(False, enm, "update_device", [odmowa])
+    enm[coll][idx].update(zmiany)
     return TopologyOpResult(True, enm, "update_device", issues, ref_id)
 
 

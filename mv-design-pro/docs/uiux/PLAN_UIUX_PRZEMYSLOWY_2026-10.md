@@ -1,5 +1,7 @@
 # Plan programu UIUX-PRZEMYSLOWY (2026-10-16)
 
+> **Karty wykonawcze UX-xx, bez własnego statusu — status w `PLANS.md` część A §C** (rozstrzygnięcie D15 w `PLANS.md` część A §D, scalenie gałęzi UI/UX z gałęzią programu 2026-10-28). Identyfikatory tego dokumentu (UI-xx, W5-UI-xx, K1…K9, GPZ-MODEL, GPZ-H5-*) są kartami wykonawczymi wewnątrz UX-01…UX-06; jedyną kolejką i jedynym rejestrem postępu jest `PLANS.md` część A §C.
+
 Status: plan wykonawczy kontraktu `docs/uiux/KONTRAKT_UIUX_PRZEMYSLOWY_2026-10.md` (wiążący).
 Prowadzący: sesja główna programu. Materiał dowodowy pomiarów i wzorców:
 `docs/uiux/przemyslowy/` — `WZORCE_ZRODLA.md` (materiały producentów z cytowanymi źródłami,

@@ -482,7 +482,7 @@ const NAZWA_RODZAJU_APARATU_SN_PL: Readonly<Record<string, string>> = {
 /**
  * Wielkość zwarciowa aparatu: liczba z jednostką; bez liczby — „nie dotyczy (rodzaj)”, gdy
  * rodzaj aparatu tej wielkości z definicji normy nie ma (jedno źródło:
- * `wielkoscAparatuSnDotyczy`, odbicie predykatów bramki KAT-T-048), albo `null` = „brak
+ * `wielkoscAparatuSnDotyczy`, odbicie predykatów bramki KAT-T-050), albo `null` = „brak
  * danych”, gdy wielkość jest właściwa rodzajowi, a karta/model jej nie podaje.
  */
 function wielkoscZwarciowaAparatu(

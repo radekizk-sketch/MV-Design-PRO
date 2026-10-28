@@ -7,7 +7,7 @@
       "id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "name": "Zabezpieczenie odejścia S01",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -16,7 +16,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -289,7 +289,7 @@
       "id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "name": "Zabezpieczenie pola liniowego GPZ",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -298,7 +298,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -601,56 +601,56 @@
   ],
   "fault_markers": [
     {
-      "current_a": 8622.32960399,
+      "current_a": 8623.26909853,
       "fault_type": "3F",
       "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_max",
       "label_pl": "Ik'' max 3F (Stacja S03)",
       "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
     },
     {
-      "current_a": 8767.00521135,
+      "current_a": 8767.96928629,
       "fault_type": "3F",
       "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_max",
       "label_pl": "Ik'' max 3F (Stacja S02)",
       "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
     },
     {
-      "current_a": 8550.20741464,
+      "current_a": 8551.13358524,
       "fault_type": "3F",
       "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_max",
       "label_pl": "Ik'' max 3F (Stacja S04)",
       "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
     },
     {
-      "current_a": 9056.55910715,
+      "current_a": 9057.56344885,
       "fault_type": "3F",
       "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_max",
       "label_pl": "Ik'' max 3F (Stacja S01)",
       "location": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
     },
     {
-      "current_a": 7786.72305638,
+      "current_a": 7787.56838608,
       "fault_type": "3F",
       "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_min",
       "label_pl": "Ik'' min 3F (Stacja S03)",
       "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
     },
     {
-      "current_a": 7970.00473762,
+      "current_a": 7970.88116936,
       "fault_type": "3F",
       "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_min",
       "label_pl": "Ik'' min 3F (Stacja S02)",
       "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
     },
     {
-      "current_a": 7692.60533471,
+      "current_a": 7693.43330775,
       "fault_type": "3F",
       "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_min",
       "label_pl": "Ik'' min 3F (Stacja S04)",
       "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
     },
     {
-      "current_a": 8233.23555197,
+      "current_a": 8234.14858986,
       "fault_type": "3F",
       "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_min",
       "label_pl": "Ik'' min 3F (Stacja S01)",
@@ -662,7 +662,7 @@
   "overload_checks": [
     {
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
-      "i_operating_a": 45.8744679602,
+      "i_operating_a": 45.8744680169,
       "i_pickup_a": 240.0,
       "margin_percent": 423.17,
       "notes_pl": "Próg 240 A (I> (51)) wobec prądu roboczego wyłącznika 45,9 A — iloraz przeciążalności 5,23; wymagany co najmniej 1,2.",
@@ -671,7 +671,7 @@
     },
     {
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-      "i_operating_a": 34.4853585893,
+      "i_operating_a": 34.4853586301,
       "i_pickup_a": 180.0,
       "margin_percent": 421.96,
       "notes_pl": "Próg 180 A (I> (51)) wobec prądu roboczego wyłącznika 34,5 A — iloraz przeciążalności 5,22; wymagany co najmniej 1,2.",
@@ -693,12 +693,12 @@
   "sc_run_id_min": "run-sc-scena-koordynacja-min",
   "selectivity_checks": [
     {
-      "analysis_current_a": 8622.70444094,
+      "analysis_current_a": 8623.26909853,
       "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-      "i_upstream_a": 8623.06935757,
+      "i_upstream_a": 8623.26909853,
       "margin_s": 0.3,
       "nazwa_punktu_pl": "Stacja S03",
-      "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8622,7 A, nadrzędne 0,4 s przy 8623,1 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+      "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8623,3 A, nadrzędne 0,4 s przy 8623,3 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
       "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
       "required_margin_s": 0.2,
       "stan": "ODSTEP",
@@ -711,25 +711,25 @@
   "sensitivity_checks": [
     {
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
-      "i_fault_min_a": 7693.26576985,
+      "i_fault_min_a": 7693.43330775,
       "i_pickup_a": 240.0,
-      "margin_percent": 3105.53,
+      "margin_percent": 3105.6,
       "nazwa_punktu_pl": "Stacja S04",
-      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7693,3 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 240 A (I> (51)) — iloraz czułości 32,06; wymagany co najmniej 1,5.",
+      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7693,4 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 240 A (I> (51)) — iloraz czułości 32,06; wymagany co najmniej 1,5.",
       "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
-      "ratio": 32.055274,
+      "ratio": 32.055972,
       "required_ratio": 1.5,
       "stopien": "overcurrent_51"
     },
     {
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-      "i_fault_min_a": 7692.94020125,
+      "i_fault_min_a": 7693.43330775,
       "i_pickup_a": 180.0,
-      "margin_percent": 4173.86,
+      "margin_percent": 4174.13,
       "nazwa_punktu_pl": "Stacja S04",
-      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7692,9 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 180 A (I> (51)) — iloraz czułości 42,74; wymagany co najmniej 1,5.",
+      "notes_pl": "Najmniejszy prąd przekaźnika w strefie 7693,4 A (zwarcie w punkcie Stacja S04, bieg minimalny) wobec progu 180 A (I> (51)) — iloraz czułości 42,74; wymagany co najmniej 1,5.",
       "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
-      "ratio": 42.738557,
+      "ratio": 42.741296,
       "required_ratio": 1.5,
       "stopien": "overcurrent_51"
     }
@@ -757,7 +757,7 @@
     },
     "sensitivity": {
       "bez_wartosci": 0,
-      "najmniejszy_iloraz": 32.055274,
+      "najmniejszy_iloraz": 32.055972,
       "sprawdzenia": 2
     },
     "total_checks": 5,
@@ -1414,26 +1414,26 @@
         "prog_pierwotny_a": 240.0,
         "punkty": [
           {
-            "prad_przekaznika_a": 7787.39111899,
+            "prad_przekaznika_a": 7787.56838608,
             "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
           },
           {
-            "prad_przekaznika_a": 7970.68667091,
+            "prad_przekaznika_a": 7970.88116936,
             "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
           },
           {
-            "prad_przekaznika_a": 7693.26576985,
+            "prad_przekaznika_a": 7693.43330775,
             "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
           },
           {
-            "prad_przekaznika_a": 8233.93234711,
+            "prad_przekaznika_a": 8234.14858986,
             "punkt_ref": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
           }
         ],
         "stopien": "overcurrent_51"
       },
       "outputs": {
-        "iloraz": 32.055274041,
+        "iloraz": 32.0559721156,
         "wymagany_iloraz": 1.5
       },
       "step": "czulosc"
@@ -1444,22 +1444,22 @@
         "prog_pierwotny_a": 180.0,
         "punkty": [
           {
-            "prad_przekaznika_a": 7787.06156714,
+            "prad_przekaznika_a": 7787.56838608,
             "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
           },
           {
-            "prad_przekaznika_a": 7970.34936224,
+            "prad_przekaznika_a": 7970.88116936,
             "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
           },
           {
-            "prad_przekaznika_a": 7692.94020125,
+            "prad_przekaznika_a": 7693.43330775,
             "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
           }
         ],
         "stopien": "overcurrent_51"
       },
       "outputs": {
-        "iloraz": 42.7385566736,
+        "iloraz": 42.7412961542,
         "wymagany_iloraz": 1.5
       },
       "step": "czulosc"
@@ -1468,11 +1468,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie pola liniowego GPZ",
       "inputs": {
         "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-        "prad_roboczy_a": 45.8744679602,
+        "prad_roboczy_a": 45.8744680169,
         "prog_pierwotny_a": 240.0
       },
       "outputs": {
-        "iloraz": 5.23166830421,
+        "iloraz": 5.23166829775,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"
@@ -1481,11 +1481,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie odejścia S01",
       "inputs": {
         "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-        "prad_roboczy_a": 34.4853585893,
+        "prad_roboczy_a": 34.4853586301,
         "prog_pierwotny_a": 180.0
       },
       "outputs": {
-        "iloraz": 5.21960644642,
+        "iloraz": 5.21960644024,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"
@@ -1501,12 +1501,12 @@
         "pominiete": [],
         "punkty": [
           {
-            "analysis_current_a": 8622.70444094,
+            "analysis_current_a": 8623.26909853,
             "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-            "i_upstream_a": 8623.06935757,
+            "i_upstream_a": 8623.26909853,
             "margin_s": 0.3,
             "nazwa_punktu_pl": "Stacja S03",
-            "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8622,7 A, nadrzędne 0,4 s przy 8623,1 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S03: podrzędne 0,1 s przy 8623,3 A, nadrzędne 0,4 s przy 8623,3 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
             "punkt_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
             "required_margin_s": 0.2,
             "stan": "ODSTEP",
@@ -1516,12 +1516,12 @@
             "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
           },
           {
-            "analysis_current_a": 8767.38429846,
+            "analysis_current_a": 8767.96928629,
             "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-            "i_upstream_a": 8767.755338,
+            "i_upstream_a": 8767.96928629,
             "margin_s": 0.3,
             "nazwa_punktu_pl": "Stacja S02",
-            "notes_pl": "Przy zwarciu w punkcie Stacja S02: podrzędne 0,1 s przy 8767,4 A, nadrzędne 0,4 s przy 8767,8 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S02: podrzędne 0,1 s przy 8768 A, nadrzędne 0,4 s przy 8768 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
             "punkt_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
             "required_margin_s": 0.2,
             "stan": "ODSTEP",
@@ -1531,12 +1531,12 @@
             "upstream_device_id": "relay/169595e1280084f388a48e078e44527b/assignment"
           },
           {
-            "analysis_current_a": 8550.57961346,
+            "analysis_current_a": 8551.13358524,
             "downstream_device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-            "i_upstream_a": 8550.94147773,
+            "i_upstream_a": 8551.13358524,
             "margin_s": 0.3,
             "nazwa_punktu_pl": "Stacja S04",
-            "notes_pl": "Przy zwarciu w punkcie Stacja S04: podrzędne 0,1 s przy 8550,6 A, nadrzędne 0,4 s przy 8550,9 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
+            "notes_pl": "Przy zwarciu w punkcie Stacja S04: podrzędne 0,1 s przy 8551,1 A, nadrzędne 0,4 s przy 8551,1 A — odstęp czasowy 0,3 s; wymagany co najmniej 0,2 s.",
             "punkt_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
             "required_margin_s": 0.2,
             "stan": "ODSTEP",

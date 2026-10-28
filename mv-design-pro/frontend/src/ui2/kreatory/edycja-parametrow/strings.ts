@@ -101,6 +101,76 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   aparatBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
   wierszAparat: 'Wartości projektanta aparatu',
   bledneWartosciAparatu: 'Wartość parametru aparatu nie jest liczbą — popraw pole oznaczone niżej.',
+  // Karta PODSTAWA-Q: wartości projektanta parametrów zwarciowych maszyny wirującej —
+  // nośnik `overrides` generatora; nazwy, jednostki i propozycje z rejestru backendu.
+  maszynaTytul: 'Parametry zwarciowe maszyny wirującej nadane przez projektanta',
+  maszynaPomoc:
+    'Tabliczka maszyny nie zawsze podaje moc znamionową, reaktancję podprzejściową, współczynnik mocy, '
+    + 'liczbę par biegunów, krotność prądu zablokowanego wirnika i sprawność — obliczenie zwarciowe '
+    + '(IEC 60909-0) przyjmuje wtedy wartość roboczą rejestru (założenie inżynierskie; moc znamionowa '
+    + '— z punktu pracy elementu) i oznacza wyniki jako oparte na danej przyjętej. Wpisz wartość '
+    + 'z tabliczki albo karty producenta, aby obliczenie użyło jej zamiast tabliczki elementu '
+    + 'i propozycji. Puste pole: bez wartości projektanta.',
+  maszynaPlaceholder: 'puste — bez wartości projektanta',
+  maszynaZTabliczki: 'Puste pole: dana tabliczki elementu',
+  maszynaWyznaczenie: 'Puste pole: dana tabliczki elementu,',
+  maszynaPropozycja: 'Puste pole: wartość robocza',
+  maszynaRejestrNiedostepny:
+    'Opis parametrów maszyny jest chwilowo niedostępny — odśwież widok, aby nadać wartości.',
+  maszynaBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
+  wierszMaszyna: 'Wartości projektanta maszyny',
+  bledneWartosciMaszyny:
+    'Wartość parametru maszyny nie jest liczbą — popraw pole oznaczone niżej.',
   bledneDaneModulu:
     'Dane modułu NC RfG zawierają błędy pól — popraw je przed zapisem (pola oznaczone niżej).',
+  // Linia napowietrzna 110 kV: przewód z katalogu i geometria słupa (dana projektu).
+  liniaWnTytul: 'Linia napowietrzna 110 kV — przewód i geometria słupa',
+  liniaWnPomoc:
+    'Rezystancja, reaktancja i susceptancja linii 110 kV (składowa zgodna i zerowa) wynikają '
+    + 'z przewodu z katalogu (PN-EN 50182) i geometrii słupa — oblicza je backend z jawnym '
+    + 'śladem wzorów. Puste pole geometrii: obliczenie biegnie z wartością roboczą (jakość '
+    + 'ESTIMATED, kompletność dowodu niepełna) — podaj dane z projektu słupa, aby ją zastąpić. '
+    + 'Parametry zmierzone albo podane przez OSD wprowadza się trybem parametrów ręcznych.',
+  liniaWnPrzewod: 'Przewód fazowy (katalog przewodów linii 110 kV)',
+  liniaWnPrzewodPomoc:
+    'Wybór przewodu przypisuje typ z katalogu do linii; parametry linii przelicza backend.',
+  liniaWnPrzewodWybierz: '— wybierz przewód fazowy —',
+  liniaWnFazyPomoc:
+    'Położenia przewodów fazowych w przekroju linii: x — odległość od osi słupa, y — średnia '
+    + 'wysokość przewodu nad ziemią w przęśle (wysokość zawieszenia pomniejszona o 2/3 zwisu). '
+    + 'Podaj wszystkie trzy fazy albo żadnej.',
+  liniaWnFaza: 'Faza',
+  liniaWnPlaceholder: 'puste — wartość robocza',
+  liniaWnPustePole: 'Puste pole: wartość robocza —',
+  liniaWnWiazka: 'Liczba przewodów w wiązce fazy',
+  liniaWnWiazkaPlaceholder: 'puste — przewód pojedynczy (1)',
+  liniaWnOdstep: 'Odstęp przewodów w wiązce [m]',
+  liniaWnOdstepPlaceholder: 'wymagany przy wiązce',
+  liniaWnTrybOdgromowych: 'Przewody odgromowe',
+  liniaWnTrybyOdgromowych: {
+    robocze: 'Nie podano — wartość robocza',
+    brak: 'Linia bez przewodu odgromowego',
+    podane: 'Położenia z projektu słupa',
+  } as Readonly<Record<'robocze' | 'brak' | 'podane', string>>,
+  liniaWnOdgromowy: 'Przewód odgromowy',
+  liniaWnTypOdgromowego: 'Typ przewodu odgromowego (katalog)',
+  liniaWnOdgromowyRoboczy: '— nie podano: wartość robocza —',
+  liniaWnRezystywnosc: 'Rezystywność gruntu ρ [Ω·m]',
+  liniaWnPodglad: 'Podgląd parametrów linii',
+  liniaWnKompletnoscPelna:
+    'Kompletność dowodu: pełna — wszystkie dane linii pochodzą z projektu i katalogu.',
+  liniaWnKompletnoscNiepelna:
+    'Kompletność dowodu: niepełna — część danych linii to wartości robocze (jakość ESTIMATED).',
+  liniaWnSkladowaProjektu: 'dana projektu',
+  liniaWnSkladowaRobocza: 'wartość robocza',
+  liniaWnBladFaz:
+    'Podaj obie współrzędne (liczby) dla wszystkich trzech faz albo zostaw wszystkie puste.',
+  liniaWnBladWiazki: 'Liczba przewodów w wiązce musi być liczbą całkowitą nie mniejszą niż 1.',
+  liniaWnBladOdgromowych:
+    'Podaj obie współrzędne (liczby) co najmniej jednego przewodu odgromowego.',
+  liniaWnBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
+  bledneDaneLiniiWn: 'Dane linii 110 kV zawierają błąd pola — popraw pole oznaczone niżej.',
+  wierszLiniaWn: 'Dane linii 110 kV',
+  liniaWnBezZmian: 'Bez zmian',
+  liniaWnDoZapisu: 'Zmienione',
 } as const;

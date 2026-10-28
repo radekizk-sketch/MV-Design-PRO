@@ -59,6 +59,7 @@ from application.analyses.protection.catalog.zakresy import (
     wartosc_w_jednostce_zakresu as wartosc_w_jednostce_zakresu_katalogu,
 )
 from domain.readiness_bridge import opis_kanoniczny
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
 from enm.models import (
@@ -70,7 +71,10 @@ from enm.models import (
 from enm.nastawy_zabezpieczen import ETYKIETY_JEDNOSTEK_PROGU_PL
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.branch import TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -1676,11 +1680,17 @@ def ocena_punktu_rekord(
     powod_wiarygodnosci: str,
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
+    dane_galezi: tuple[DanaPrzyjeta, ...] = (),
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = (),
 ) -> OcenaKryterium:
     """Rekord K: prąd przekaźnika ≥ prąd rozruchowy stopnia (zadziałanie w strefie).
 
     ``tolerancja_nn_robocza`` — punkt zwarcia w sieci nN liczonej z wartością roboczą
     tolerancji napięcia (znacznik wiersza biegu): prąd przekaźnika stoi na danej przyjętej.
+    ``dane_galezi`` — dane przyjęte gałęzi z wartością roboczą impedancji wchodzącej do prądu
+    punktu (znacznik wiersza biegu, karta LINIA-110): ta sama konsekwencja.
+    ``parametry_robocze_maszyn`` — wartości robocze parametrów maszyn wirujących wyspy punktu
+    (karta PODSTAWA-Q, pole wiersza biegu): dana przyjęta, gdy wpływają na I″k punktu.
     """
     braki: list[str] = []
     if wiarygodnosc == NIEWIARYGODNY:
@@ -1723,7 +1733,9 @@ def ocena_punktu_rekord(
                 (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia {nazwa_punktu}"),)
                 if tolerancja_nn_robocza
                 else ()
-            ),
+            )
+            + dane_galezi
+            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss"),
         ),
         zakres_waznosci=_zakres_waznosci(wiarygodnosc, powod_wiarygodnosci),
         slad=[
@@ -2045,6 +2057,8 @@ def ocen_zabezpieczenia(
                     bilans=bilans,
                     odniesienie_biegu=odniesienie_biegu,
                     tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
+                    dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+                    parametry_robocze_maszyn=tuple(wiersz.get("parametry_robocze_maszyn") or ()),
                 )
             )
         if braki_punktow:
@@ -2080,6 +2094,8 @@ def _ocena_punktu(
     bilans: dict[str, Any],
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
+    dane_galezi: tuple[DanaPrzyjeta, ...] = (),
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = (),
 ) -> OcenaPunktu:
     slady, decydujacy = czas_urzadzenia(nastawy.stopnie, prad)
     # Stopień odniesienia rekordu i marginesu: decydujący (gdy ruszył) albo najczulszy
@@ -2123,6 +2139,8 @@ def _ocena_punktu(
             powod_wiarygodnosci=powod,
             odniesienie_biegu=odniesienie_biegu,
             tolerancja_nn_robocza=tolerancja_nn_robocza,
+            dane_galezi=dane_galezi,
+            parametry_robocze_maszyn=parametry_robocze_maszyn,
         ),
     )
 

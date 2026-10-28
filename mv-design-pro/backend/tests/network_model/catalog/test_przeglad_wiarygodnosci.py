@@ -61,7 +61,7 @@ ILOCZYN_CECH: dict[str, tuple[str, _Pozycja, _Pozycja, _Pozycja]] = {
         _Pozycja("lamie", i_th_ka=25.0, breaking_capacity_ka=20.0),
         _Pozycja("spelnia", i_th_ka=20.0, breaking_capacity_ka=25.0),
         # Odlacznik: zdolnosci wylaczania NIE MA („nie dotyczy” = None wg rodzaju,
-        # KAT-T-048) — regula nie ma sensu.
+        # KAT-T-050) — regula nie ma sensu.
         _Pozycja("odlacznik", i_th_ka=20.0, breaking_capacity_ka=None),
     ),
     "KAT-W-004": (

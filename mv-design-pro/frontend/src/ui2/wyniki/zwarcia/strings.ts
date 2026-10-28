@@ -144,6 +144,14 @@ export const ZWARCIA_STRINGS = {
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
+  // Karta PROG-ZERA-WKLADOW: wkład pominięty na podstawie tolerancji numerycznej —
+  // nazwa 1:1 z rdzenia (`NAZWA_WKLADU_POMINIETEGO`), próg wyłącznie z odpowiedzi.
+  rozplywPominieteTytul: 'Wkłady pominięte na podstawie tolerancji numerycznej',
+  rozplywPominieteOpis:
+    'Pary źródło × gałąź policzone przez solver, których moduł prądu jest poniżej progu tolerancji numerycznej. To nie jest zero i nie jest wkład z tabeli powyżej: wpisy nie wchodzą do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Moduł |I| obcięty do 3 cyfr znaczących w stronę zera. Kąt fazora nie jest określony: poniżej progu fazor jest resztą arytmetyki zmiennoprzecinkowej, a jego kąt zależy od maszyny, nie od sieci.',
+  katNieokreslony: 'nie określono',
+  rozplywKolTor: 'Tor obliczenia',
+  rozplywKolKat: 'Kąt fazora',
 
   // Sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW, TH-1)
   sladRozplywuTytul: 'Podział prądu zwarciowego — ślad obliczeń',
@@ -394,6 +402,30 @@ export function typMaszynyPL(token: string): string {
  * → „sieć nadrzędna" (źródło zastępcze Thevenina). Pozostałe źródła (falowniki /
  * maszyny) pokazywane po ich identyfikatorze — read-only, bez fizyki.
  */
+/**
+ * Opis progu wkładu pominiętego z WARTOŚCI ODPOWIEDZI (odbicie jedynej definicji
+ * rdzenia, `prog_wkladu_pominietego_a`) — ten sam zapis co tytuł kroku śladu
+ * (`|I| < 1e-6 A`); frontend nie ma własnej stałej progu.
+ */
+export function opisProguPominietego(progA: number): string {
+  return `|I| < ${progA.toExponential()} A`;
+}
+
+/** Nota pod tabelą rozpływu: ile wpisów pominięto i względem jakiego progu. */
+export function notaWkladowPominietych(liczba: number, progA: number): string {
+  return `Wkłady pominięte na podstawie tolerancji numerycznej (${opisProguPominietego(progA)}): ${liczba}. Nie są zerem i nie ma ich w tabeli — zestawienie z surowym modułem prądu w trybie eksperckim.`;
+}
+
+/** Tor rdzenia, którym policzono wkład pominięty — etykieta PL (kod nie trafia na ekran). */
+const TOR_POMINIETEGO_PL: Readonly<Record<'thevenin' | 'falownik', string>> = {
+  thevenin: 'sieć zastępcza (podział prądu Thevenina)',
+  falownik: 'superpozycja falownikowa',
+};
+
+export function torPominietegoPL(tor: 'thevenin' | 'falownik'): string {
+  return TOR_POMINIETEGO_PL[tor];
+}
+
 const ZRODLO_ROZPLYWU_PL: Record<string, string> = {
   THEVENIN_GRID: 'sieć nadrzędna',
 };

@@ -1,5 +1,7 @@
 # Kontrakt właściciela: przemysłowa jakość UI/UX MV-DESIGN-PRO (2026-10-16)
 
+> **Karty wykonawcze UX-xx, bez własnego statusu — status w `PLANS.md` część A §C** (rozstrzygnięcie D15 w `PLANS.md` część A §D, scalenie gałęzi UI/UX z gałęzią programu 2026-10-28). Identyfikatory tego dokumentu (UI-xx, W5-UI-xx, K1…K9, GPZ-MODEL, GPZ-H5-*) są kartami wykonawczymi wewnątrz UX-01…UX-06; jedyną kolejką i jedynym rejestrem postępu jest `PLANS.md` część A §C.
+
 Status: WIĄŻĄCY kontrakt poprawkowy właściciela z 2026-10-16, nadrzędny wobec
 `PROGRAM_UIUX_2026-07.md` w zakresie jakości przestrzeni roboczej, SLD, kreatorów, inspektora,
 wyników i standardu graficznego. Podlega kanonowi V12.xx i konstytucji programu (CLAUDE.md,

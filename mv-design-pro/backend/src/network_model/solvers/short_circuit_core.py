@@ -6,6 +6,7 @@ from enum import Enum
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.odmowa_danych import (
     RODZAJ_WEZEL,
@@ -84,8 +85,16 @@ class ShortCircuitPostProcessResult:
 
 
 def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray]:
+    """Macierz Z-bus sieci zwarciowej IEC 60909 składowej zgodnej (i przeciwnej: Z_2 = Z_1).
+
+    JEDYNE wejście sieci zgodnej dla każdej ścieżki zwarciowej (3F/2F/1F/2F+G, wkłady
+    falowników i rozpływ Thevenina po gałęziach, maszyny wirujące, pętla zwarcia IEC 60364,
+    ekwiwalent sieci nadrzędnej nN). Budowniczy w trybie `siec_zwarciowa=True`: admitancje
+    poprzeczne gałęzi pominięte (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1, karta BEZ-POJEMNOSCI),
+    zasilania i maszyny jako boczniki źródeł.
+    """
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=True)
+    y_bus = builder.build(siec_zwarciowa=True)
 
     try:
         z_bus = np.linalg.inv(y_bus)
@@ -202,7 +211,7 @@ def compute_ikss(
     z_equiv: complex,
 ) -> float:
     voltage_factor = voltage_factor_for_fault(short_circuit_type)
-    return (c_factor * un_v * voltage_factor) / abs(z_equiv)
+    return (c_factor * un_v * voltage_factor) / modul_zespolony(z_equiv)
 
 
 def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[float, float]:

@@ -31,6 +31,7 @@ interface TabDefinition {
 
 const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'LINE', label: 'Typy linii napowietrznych', icon: '≋' },
+  { id: 'HV_OVERHEAD_CONDUCTOR', label: 'Typy przewodów linii 110 kV', icon: '≈' },
   { id: 'CABLE', label: 'Typy kabli SN', icon: '⟂' },
   { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '⚡' },
   { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '⬍' },
@@ -223,6 +224,8 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
   switch (category) {
     case 'LINE':
       return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · In=${formatDetailValue(record.rated_current_a)} A`;
+    case 'HV_OVERHEAD_CONDUCTOR':
+      return `${formatDetailValue(record.oznaczenie)} · ${record.przeznaczenie === 'ODGROMOWY' ? 'przewód odgromowy' : 'przewód fazowy'} · R20=${formatDetailValue(record.r20_dc_ohm_per_km)} Ohm/km · d=${formatDetailValue(record.srednica_mm)} mm`;
     case 'CABLE':
       return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · C=${formatDetailValue(record.c_nf_per_km)} nF/km`;
     case 'TRANSFORMER':

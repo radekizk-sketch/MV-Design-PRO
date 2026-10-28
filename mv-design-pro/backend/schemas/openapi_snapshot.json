@@ -5666,6 +5666,79 @@
     "title": "GenerateAudit2ReportRequest",
     "type": "object"
    },
+   "GeometriaSlupaLinii": {
+    "description": "Geometria słupa linii napowietrznej — DANA PROJEKTU (karta LINIA-110).\n\nKażda składowa opcjonalna: ``None`` = projekt jej nie podaje, a obliczenie parametrów linii\nbiegnie z wartością roboczą rejestru ``network_model.catalog.wartosci_robocze`` (jakość\n``ESTIMATED``, kompletność dowodu ``NIEPELNY``). ``odgromowe == []`` to jawna deklaracja\nlinii BEZ przewodu odgromowego. ``liczba_w_wiazce`` — przewody w fazie (1 = przewód\npojedynczy, jak w standardzie ENEA linii 110 kV §4.1).",
+    "properties": {
+     "fazy": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PolozeniePrzewoduLinii"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fazy"
+     },
+     "liczba_w_wiazce": {
+      "default": 1,
+      "title": "Liczba W Wiazce",
+      "type": "integer"
+     },
+     "odgromowe": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PolozeniePrzewoduLinii"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odgromowe"
+     },
+     "odstep_wiazki_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odstep Wiazki M"
+     },
+     "przewod_odgromowy_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Przewod Odgromowy Ref"
+     },
+     "rezystywnosc_gruntu_ohm_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rezystywnosc Gruntu Ohm M"
+     }
+    },
+    "title": "GeometriaSlupaLinii",
+    "type": "object"
+   },
    "GridSourcePreviewMinResponse": {
     "description": "Blok scenariusza MIN podglądu (CV-4.3 K7): te same wielkości co dla MAX, policzone\nzamrożonym solverem podglądu z S''_kQmin (albo S''_kQmin = √3·U·I''_kQmin dla danych\nprądowych) i R/X = rx_ratio_min → rx_ratio.",
     "properties": {
@@ -10103,6 +10176,25 @@
      "powod_pominiecia"
     ],
     "title": "PokrycieRegulyOdpowiedz",
+    "type": "object"
+   },
+   "PolozeniePrzewoduLinii": {
+    "description": "Położenie przewodu w przekroju poprzecznym linii [m] (karta LINIA-110).\n\n``x_m`` — odległość pozioma od osi słupa; ``y_m`` — ŚREDNIA wysokość przewodu nad ziemią\nw przęśle (wysokość zawieszenia pomniejszona o 2/3 zwisu).",
+    "properties": {
+     "x_m": {
+      "title": "X M",
+      "type": "number"
+     },
+     "y_m": {
+      "title": "Y M",
+      "type": "number"
+     }
+    },
+    "required": [
+     "x_m",
+     "y_m"
+    ],
+    "title": "PolozeniePrzewoduLinii",
     "type": "object"
    },
    "PomiarWLS": {
@@ -16825,6 +16917,31 @@
     "title": "ZabezpieczeniePola",
     "type": "object"
    },
+   "ZadaniePodgladuLiniiWN": {
+    "description": "Geometria słupa z formularza + częstotliwość studium modelu (bez wartości domyślnej).",
+    "properties": {
+     "czestotliwosc_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "Czestotliwosc Hz",
+      "type": "number"
+     },
+     "geometria_slupa": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/GeometriaSlupaLinii"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "czestotliwosc_hz"
+    ],
+    "title": "ZadaniePodgladuLiniiWN",
+    "type": "object"
+   },
    "ZakresCzestotliwosci": {
     "additionalProperties": false,
     "description": "Zakres częstotliwości modelu [Hz] — domknięty z obu stron, z dokumentu.",
@@ -20642,6 +20759,60 @@
     ]
    }
   },
+  "/api/cases/{case_id}/enm/parametry-linii": {
+   "get": {
+    "description": "Ślad parametrów linii 110 kV modelu (karta LINIA-110): przewód z katalogu + geometria.\n\nRead-only; fizykę liczy solver ``parametry_linii_napowietrznej``. ``zgodny_z_modelem``\nporównuje odcisk wejścia ze zapisaną proweniencją linii.",
+    "operationId": "get_overhead_line_parameters_api_cases__case_id__enm_parametry_linii_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "branch_ref",
+      "required": true,
+      "schema": {
+       "title": "Branch Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Overhead Line Parameters Api Cases  Case Id  Enm Parametry Linii Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Overhead Line Parameters",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
   "/api/cases/{case_id}/enm/protection-view": {
    "get": {
     "description": "Return read-only protection view derived directly from ENM.",
@@ -22347,6 +22518,30 @@
     ]
    }
   },
+  "/api/catalog/maszyny-wirujace/wartosci-robocze": {
+   "get": {
+    "description": "Parametry zwarciowe maszyn wirujących i ich propozycje wartości roboczych (karta\nPODSTAWA-Q, zasada nr 4): rodzaj generatora → rodzina, parametry rodziny z nazwą, jednostką\ni zakresem bramy oraz propozycja, którą obliczenie przyjmie bez tabliczki i bez wartości\nprojektanta. Dostawca sekcji parametrów maszyny w kreatorze edycji parametrów.",
+    "operationId": "rejestr_wartosci_roboczych_maszyn_api_catalog_maszyny_wirujace_wartosci_robocze_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Rejestr Wartosci Roboczych Maszyn Api Catalog Maszyny Wirujace Wartosci Robocze Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Rejestr Wartosci Roboczych Maszyn",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/mv-apparatus-types": {
    "get": {
     "description": "Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.\n\n``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni\nparametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja\nkatalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.",
@@ -22441,6 +22636,85 @@
      }
     },
     "summary": "Get Mv Protection Device Curves",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/overhead-conductor-types": {
+   "get": {
+    "description": "Przewody linii napowietrznych 110 kV (karta LINIA-110, przestrzeń PRZEWOD_LINII_WN).\n\n``przewody`` — dane wyrobu PN-EN 50182 (bez impedancji linii: R′, X′, B′ i Z′0 liczy solver\nz geometrii słupa). ``wartosci_robocze`` — czym obliczenie uzupełni składową geometrii,\nktórej projekt nie podaje (zasada nr 4): rodzaj źródła, odniesienie, uzasadnienie, wpływ.",
+    "operationId": "list_overhead_conductor_types_api_catalog_overhead_conductor_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response List Overhead Conductor Types Api Catalog Overhead Conductor Types Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Overhead Conductor Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/overhead-conductor-types/{conductor_id}/parametry-linii": {
+   "post": {
+    "description": "Podgląd R′, X′, B′, Z′0 linii 110 kV z przewodu katalogu i geometrii — bez zapisu.\n\nŚlad White Box każdego kroku, dane przyjęte (``ESTIMATED``) dla składowych bez danych\nprojektu, kompletność dowodu i pasma wiarygodności. Odmowa danych (przewód spoza katalogu,\ngeometria sprzeczna) — 422 z kodem odmowy.",
+    "operationId": "preview_overhead_line_parameters_api_catalog_overhead_conductor_types__conductor_id__parametry_linii_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "conductor_id",
+      "required": true,
+      "schema": {
+       "title": "Conductor Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ZadaniePodgladuLiniiWN"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Preview Overhead Line Parameters Api Catalog Overhead Conductor Types  Conductor Id  Parametry Linii Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Preview Overhead Line Parameters",
     "tags": [
      "Type Catalog"
     ]

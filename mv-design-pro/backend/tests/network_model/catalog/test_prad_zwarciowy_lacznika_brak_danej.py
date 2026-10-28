@@ -1,4 +1,4 @@
-"""Wielkość zwarciowa aparatu: liczba dodatnia albo ``None`` — nigdy 0 kA (bramka KAT-T-048).
+"""Wielkość zwarciowa aparatu: liczba dodatnia albo ``None`` — nigdy 0 kA (bramka KAT-T-050).
 
 DEFEKT, KTÓRY TO ZAMYKA (decyzje architekta 2026-10-22). Katalog zapisywał zerem DWA różne
 braki liczby: brak danej karty (typ minimalny łącznika 110 kV, ``ik_ka = icw_ka = 0.0``)
@@ -20,7 +20,7 @@ ILOCZYN CECH (każda kombinacja jest osobnym przypadkiem):
   (``resolve_um_icu_from_catalog``), kandydaci doboru aparatu pola SN, serializacja API
   (``GET /api/catalog/switch-equipment-types`` i ``/mv-apparatus-types``)}.
 
-Osobno: bramka rekordu KAT-T-048 jako iloczyn rodzaj aparatu (6) × pole (I_k, I_cw, I_cu)
+Osobno: bramka rekordu KAT-T-050 jako iloczyn rodzaj aparatu (6) × pole (I_k, I_cw, I_cu)
 × wartość {None, 0, ujemna, NaN, ∞, dodatnia} oraz rodzaj aparatu SN (6) × pole projekcji
 (4) × wartość, z oczekiwaniem wpisanym tutaj NIEZALEŻNIE od zbiorów modułu (norma, nie
 kod, mówi, który rodzaj ma którą wielkość).
@@ -94,7 +94,7 @@ APARAT_SN = {
 
 
 # ---------------------------------------------------------------------------
-# Bramka rekordu KAT-T-048
+# Bramka rekordu KAT-T-050
 # ---------------------------------------------------------------------------
 
 
@@ -118,7 +118,7 @@ def test_bramka_pradu_zwarciowego_lacznika(rodzaj: str, pole: str, wartosc: floa
     if _oczekiwana_odmowa(rodzaj in WLASCIWE[pole], wartosc):
         with pytest.raises(OdmowaKatalogu) as odmowa:
             _zbuduj()
-        assert odmowa.value.kod == "KAT-T-048"
+        assert odmowa.value.kod == "KAT-T-050"
     else:
         assert getattr(_zbuduj(), pole) == wartosc
 
@@ -145,7 +145,7 @@ def test_bramka_wielkosci_zwarciowej_aparatu_sn(
     if _oczekiwana_odmowa(dotyczy, wartosc):
         with pytest.raises(OdmowaKatalogu) as odmowa:
             _zbuduj()
-        assert odmowa.value.kod == "KAT-T-048"
+        assert odmowa.value.kod == "KAT-T-050"
     else:
         assert getattr(_zbuduj(), pole) == wartosc
 
@@ -156,7 +156,7 @@ def test_rekord_z_api_z_zerem_zamiast_braku_danej_jest_odrzucony() -> None:
         id="t", name="t", equipment_kind="DISCONNECTOR", un_kv=123.0, ik_ka=None, icw_ka=None
     ).to_dict()
     assert SwitchEquipmentType.from_dict(rekord).icw_ka is None
-    with pytest.raises(OdmowaKatalogu, match="KAT-T-048"):
+    with pytest.raises(OdmowaKatalogu, match="KAT-T-050"):
         SwitchEquipmentType.from_dict({**rekord, "icw_ka": 0.0})
 
 

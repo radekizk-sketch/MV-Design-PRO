@@ -412,6 +412,7 @@ def _machine_result_for_proof():
             efficiency=0.95,
             i_lr_ratio=5.0,
             pole_pairs=2,
+            liczba_jednostek=1,
         )
     )
     return compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)

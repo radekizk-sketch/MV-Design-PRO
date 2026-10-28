@@ -77,9 +77,11 @@ import type {
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  WkladPominietyRozplywu,
   ZalozenieBieguSlad,
   ZrodloSiecioweSlad,
 } from '../../../ui/results-inspector/types';
+import { formatujWartosc } from '../dowod/dowodModel';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { typSelekcjiZalozenia, type CelZmianyZalozenia } from './zmianaTolerancjiNn';
 import type {
@@ -101,6 +103,7 @@ import {
   rodzajZwarciaPL,
   rxRatioZrodloPL,
   scenariuszZwarciaPL,
+  torPominietegoPL,
   trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
@@ -711,6 +714,48 @@ export function naWierszeRozplywu(
     // (Thevenin, source_id="THEVENIN_GRID") vs falownik/maszyna nazwana z modelu.
     zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id, nazwa) },
     [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
+  }));
+}
+
+/**
+ * Zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (karta
+ * PROG-ZERA-WKLADOW) — kolumny tabeli eksperckiej pod tabelą rozpływu.
+ */
+export const KLUCZ_POMINIETY = 'identyfikator';
+
+export const KOLUMNY_POMINIETYCH: DefinicjaKolumny[] = [
+  { klucz: 'galaz', etykieta: ZWARCIA_STRINGS.rozplywKolGalaz, wyrownanie: 'lewo' },
+  { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.rozplywKolZrodlo, wyrownanie: 'lewo' },
+  { klucz: 'tor', etykieta: ZWARCIA_STRINGS.rozplywKolTor, wyrownanie: 'lewo' },
+  {
+    klucz: 'prad',
+    etykieta: ZWARCIA_STRINGS.rozplywKolPrad,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    mono: true,
+  },
+  // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO) —
+  // kolumna tekstowa bez jednostki: komórka „nie określono", nigdy liczba stopni.
+  { klucz: 'kat', etykieta: ZWARCIA_STRINGS.rozplywKolKat, wyrownanie: 'lewo' },
+];
+
+/**
+ * Wiersze zestawienia wkładów pominiętych (kolejność backendu: branch_id, source_id).
+ * Moduł w zapisie z potęgą dziesięciu (`formatujWartosc` śladu WHITE BOX) — format
+ * stałoprzecinkowy kA pokazałby „0,000", czyli fałszywe zero. Kąt fazora wkładu
+ * pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO: rdzeń podaje `null`,
+ * przyczyna w notatce kroku śladu) → „nie określono", nigdy liczba ani 0°.
+ */
+export function naWierszePominietych(
+  pominiete: readonly WkladPominietyRozplywu[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
+  return pominiete.map((wpis) => ({
+    galaz: { wartosc: nazwa(wpis.branch_id, wpis.branch_name) },
+    zrodlo: { wartosc: zrodloRozplywuPL(wpis.source_id, nazwa) },
+    tor: { wartosc: torPominietegoPL(wpis.tor) },
+    prad: { wartosc: formatujWartosc(wpis.i_ka), sortKey: wpis.i_ka },
+    kat: { wartosc: ZWARCIA_STRINGS.katNieokreslony },
+    [KLUCZ_POMINIETY]: { wartosc: `${wpis.branch_id}::${wpis.source_id}` },
   }));
 }
 

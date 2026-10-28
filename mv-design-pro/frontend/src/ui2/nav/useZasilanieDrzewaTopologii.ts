@@ -3,8 +3,8 @@
  *
  * DEFEKT ZASTANY: `useTopologyStore.loadSummary` (GET
  * `/api/cases/{id}/enm/topology/summary`) NIE MIAŁ ŻADNEGO wołającego w kodzie
- * produkcyjnym — jedyny komponent, który go używał (`ui/topology/TopologyPanel`),
- * nie jest nigdzie montowany. Skutek: `summary` był zawsze `null`, więc drzewo
+ * produkcyjnym — jedyny komponent, który go używał (dawny `ui/topology/TopologyPanel`),
+ * nie był nigdzie montowany (skasowany jako martwy kod razem z modalami topologii). Skutek: `summary` był zawsze `null`, więc drzewo
  * topologii przestrzeni „Model" renderowało pusty stan niezależnie od tego, co
  * zbudował projektant — a liczniki blokad nie miały nawet gdzie się pojawić.
  *

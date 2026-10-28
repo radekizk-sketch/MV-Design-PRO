@@ -5,6 +5,7 @@
  */
 
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -15,7 +16,7 @@ const APP_URL = process.env.APP_URL ?? 'http://127.0.0.1:5173';
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(chromiumLaunchOptions({ headless: true }));
   const context = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
   });

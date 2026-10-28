@@ -53,6 +53,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "branch.z0_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "r0_ohm_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "branch.zero_sequence_missing",
       "fix_navigation": {
         "focus": "r0_ohm_per_km",
@@ -278,6 +287,15 @@
         "modal": "CatalogPicker",
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.wartosc_projektanta_niedopuszczalna",
+      "fix_navigation": {
+        "focus": "overrides",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -510,6 +528,15 @@
       }
     },
     {
+      "area": "SOURCES",
+      "code": "fault.parametry_maszyny_robocze",
+      "fix_navigation": {
+        "focus": "overrides",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "GENERATORS",
       "code": "generator.converter_card_missing",
       "fix_navigation": {
@@ -592,6 +619,15 @@
       "fix_navigation": {
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "line.geometria_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "geometria_slupa",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1379,7 +1415,7 @@
       }
     }
   ],
-  "count": 162,
+  "count": 166,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1508,6 +1544,7 @@
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
     "E001": "source.grid_supply_missing",
     "E009": "catalog.binding_missing",
+    "E011": "catalog.wartosc_projektanta_niedopuszczalna",
     "E021": "station.required_field_missing",
     "E022": "station.line_field_multiple_segments",
     "E063": "transformer.lv_earthing_system_missing",

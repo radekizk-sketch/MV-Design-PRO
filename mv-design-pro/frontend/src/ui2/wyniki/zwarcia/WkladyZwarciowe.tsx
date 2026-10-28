@@ -18,9 +18,11 @@
  */
 
 import { useState } from 'react';
+import type { DanePrzyjeteWyniku } from './api';
 import {
   SladSekcyjny,
   SladWywodu,
+  StanDanychWyniku,
   TabelaWynikow,
   useNazwaObiektu,
   type KrokWywodu,
@@ -63,6 +65,12 @@ export interface WkladyZwarcioweProps {
   wywodSekcje?: readonly SekcjaWywodu[];
   /** Checklista walidacji metody IEC (pkt 10) — sekcja na końcu wywodu sekcyjnego. */
   walidacjaIec?: readonly PozycjaWalidacji[];
+  /**
+   * Dane przyjęte wkładów punktu z odpowiedzi backendu (zasada nr 4, kontrakt werdyktu §3):
+   * wartości robocze, na których stoi I″k punktu i jego rozkład na źródła. `null`/brak =
+   * wynik na danych projektu — sekcja nie pokazuje nic.
+   */
+  danePrzyjete?: DanePrzyjeteWyniku | null;
   szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
@@ -115,6 +123,7 @@ export function WkladyZwarciowe({
   wywod = [],
   wywodSekcje = [],
   walidacjaIec = [],
+  danePrzyjete = null,
   szczegolyAudytowe,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
@@ -195,6 +204,15 @@ export function WkladyZwarciowe({
             />
           )}
           {wybrany && <SzczegolWkladuPanel wklad={wybrany} />}
+          {danePrzyjete && (
+            <div className="mvd-zwarcia-dane-przyjete" data-testid="mvd-zwarcia-wklady-dane">
+              <StanDanychWyniku
+                stan={danePrzyjete.stan}
+                dane={danePrzyjete.dane}
+                testId="mvd-zwarcia-wklady"
+              />
+            </div>
+          )}
           <WykresUdzialowChart slupki={naSlupkiUdzialow(wklady)} />
           {/* Scalenie F2+F3: wywod sekcyjny (z checklista walidacji IEC) ma
               pierwszenstwo; plaski SladWywodu = fallback starszych odpowiedzi. */}

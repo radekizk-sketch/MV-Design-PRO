@@ -155,7 +155,7 @@ def test_brak_type_ref_zwraca_pusty_wynik_bez_przeszukiwania() -> None:
 # ---------------------------------------------------------------------------
 # Predykaty parami (regula KLASA-NIE-INSTANCJA §4.3): decyzja "nie dotyczy"
 # I_cu pochodzi z JEDNEGO zrodla prawdy (equipment_kind) — tego samego, z ktorego
-# bramka rekordu KAT-T-048 odrzuca wielkosc niewlasciwa rodzajowi. Rekord
+# bramka rekordu KAT-T-050 odrzuca wielkosc niewlasciwa rodzajowi. Rekord
 # sprzeczny (LOAD_SWITCH z wypelnionym i_cu_ka) nie daje sie wiec w ogole zbudowac,
 # a most dla prawdziwego rozlacznika czyta „nie dotyczy” z rodzaju.
 # ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ def test_rekord_sprzeczny_z_rodzajem_nie_powstaje_a_most_czyta_rodzaj() -> None:
             u_m_kv=12.0,
             i_cu_ka=99.0,  # DANE SPRZECZNE: rozlacznik nie ma zdolnosci wylaczania.
         )
-    assert odmowa.value.kod == "KAT-T-048"
+    assert odmowa.value.kod == "KAT-T-050"
 
     rozlacznik = SwitchEquipmentType(
         id="sw-test-rozlacznik",

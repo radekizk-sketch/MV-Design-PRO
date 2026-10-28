@@ -20,6 +20,7 @@ import json
 import math
 
 import pytest
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.voltage_factor import (
     TOLERANCJE_NAPIECIA_NN,
     c_for_node,
@@ -140,8 +141,11 @@ class TestPetlaTT:
         )
         z_oczekiwane, _ = zsumuj_skladowe_petli(skladowe)
         assert wynik.z_loop_ohm == z_oczekiwane
-        assert wynik.ik_min_a == _c("MIN", tolerancja) * _U0 / abs(z_oczekiwane)
-        assert wynik.ik_max_a == _c("MAX", tolerancja) * _U0 / abs(z_oczekiwane)
+        # Wyrocznia bit w bit liczy |Z| tym samym źródłem co rdzeń (`modul_zespolony`):
+        # `abs()` liczby zespolonej woła `hypot` z libm, który na glibc amd64v3 (runner
+        # ubuntu-26.04) różni się o 1 ulp — równość dokładna rozjechałaby się z platformą.
+        assert wynik.ik_min_a == _c("MIN", tolerancja) * _U0 / modul_zespolony(z_oczekiwane)
+        assert wynik.ik_max_a == _c("MAX", tolerancja) * _U0 / modul_zespolony(z_oczekiwane)
         assert (wynik.c_min, wynik.c_max) == (_c("MIN", tolerancja), _c("MAX", tolerancja))
         assert wynik.c_zrodlo_min == zrodlo_c_z_tabeli(_U0_KV, "MIN", tolerancja_nn=tolerancja)
         assert wynik.to_dict()["c_zrodlo_max"] == zrodlo_c_z_tabeli(

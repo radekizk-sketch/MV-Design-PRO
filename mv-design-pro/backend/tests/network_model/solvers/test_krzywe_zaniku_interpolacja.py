@@ -1,10 +1,11 @@
 """Karta MU-INTERPOLACJA — współczynniki μ i q dla t_min pomiędzy węzłami krzywych normy.
 
 PO CO. t_b punktu zwarcia przychodzi z pól lokalnych (zwłoka zabezpieczenia + czas własny
-wyłącznika), więc w praktyce leży między węzłami krzywych μ i q IEC 60909-0:2016 rozdz. 9
-(t_min = 0,02 / 0,05 / 0,10 / ≥ 0,25 s). Dawny wybór węzła najbliższego (progi 0,035 / 0,075 /
-0,175 s) dawał dla t_b ∈ (0,175; 0,25) krzywą 0,25 s — μ i I_b mniejsze niż z interpolacji
-dopuszczonej przez normę, czyli wynik niezachowawczy dla doboru aparatury (I_b ≤ I_cu).
+wyłącznika), więc w praktyce leży między węzłami krzywych μ (IEC 60909-0:2016 pkt 9.1.1)
+i q (pkt 9.1.2) (t_min = 0,02 / 0,05 / 0,10 / ≥ 0,25 s). Dawny wybór węzła najbliższego (progi
+0,035 / 0,075 / 0,175 s) dawał dla t_b ∈ (0,175; 0,25) krzywą 0,25 s — μ i I_b mniejsze niż
+z interpolacji (dla μ dopuszczonej przez pkt 9.1.1; dla q — interpretacja inżynierska, karta
+PODSTAWA-Q, `test_krzywe_zaniku_podstawa.py`), czyli wynik niezachowawczy dla doboru aparatury.
 
 ILOCZYN CECH: {μ, q} × {t_min w węźle, między węzłami, poniżej 0,02 s, powyżej 0,25 s} ×
 {maszyna synchroniczna, asynchroniczna} — przez realny tor `compute_machine_contributions`
@@ -40,7 +41,7 @@ from tests.network_model.solvers.test_machine_sc_iec60909 import (
     _sync,
 )
 
-#: Krzywe normy (IEC 60909-0:2016 rozdz. 9) — wyrocznia przepisana z normy, nie z solvera.
+#: Krzywe normy (IEC 60909-0:2016 wzór (67) i (69)) — wyrocznia przepisana z normy, nie z solvera.
 MU_NORMY: dict[float, tuple[float, float, float]] = {
     0.02: (0.84, 0.26, 0.26),
     0.05: (0.71, 0.51, 0.30),
@@ -255,7 +256,8 @@ def test_deterministyczny_slad_i_serializacja() -> None:
     assert a.to_dict() == b.to_dict()
     slad = a.to_dict()["slad_mu"]
     assert slad["regula"] == REGULA_INTERPOLACJA
-    assert slad["norma"] == "IEC 60909-0:2016 rozdz. 9"
+    assert slad["norma"] == "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13"
+    assert a.to_dict()["slad_q"]["norma"] == "IEC 60909-0:2016 pkt 9.1.2, wzór (69), rys. 14"
     assert slad["wezel_dolny"]["t_min_s"] == 0.10 and slad["wezel_gorny"]["t_min_s"] == 0.25
     assert slad["wynik"] == a.mu
     assert a.to_dict()["slad_q"]["wynik"] == a.q
@@ -274,8 +276,9 @@ def test_wywod_interpolacji_niesie_oba_wezly_wage_i_wynik() -> None:
     assert rf"= {wklad.mu:.3f}" in latexy
     assert r"q_{0.10} = 0.57 + 0.12\,\ln m" in latexy
     assert r"q_{0.25} = 0.26 + 0.10\,\ln m" in latexy
-    assert "interpolacja liniowa wartości krzywych" in teksty
-    assert "IEC 60909-0:2016 rozdz. 9" in teksty
+    assert "interpolacja liniowa między krzywymi μ dopuszczona jawnie" in teksty
+    assert "pkt 9.1.2 nie przewiduje interpolacji między krzywymi q" in teksty
+    assert "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13" in teksty
 
 
 def test_wywod_poza_zakresem_nazywa_krzywa_brzegowa() -> None:

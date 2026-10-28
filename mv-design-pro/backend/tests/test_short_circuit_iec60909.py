@@ -155,7 +155,7 @@ def test_ikss_3ph_transformer_only_matches_formula():
     tk_s = 1.0
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     z_bus = np.linalg.inv(y_bus)
 
     node_index = builder.node_id_to_index["B"]
@@ -533,7 +533,7 @@ def test_zkk_from_inverse_ybus():
     graph = build_transformer_only_graph()
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     z_bus = np.linalg.inv(y_bus)
     node_index = builder.node_id_to_index["B"]
     z_base_ohm = builder.get_zbase_ohm("B")
@@ -552,7 +552,7 @@ def test_zkk_from_inverse_ybus():
 
 def build_z_bus(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     return np.linalg.inv(y_bus)
 
 
@@ -968,6 +968,19 @@ def test_branch_contributions_option_does_not_change_existing_fields():
     # branch_contributions. Poza tą parą payload musi być bajt-w-bajt identyczny.
     assert "branch_flow_trace" not in base
     assert with_bc.pop("branch_flow_trace"), "opcja włączona → niepusty ślad rozpływu"
+    # Karta PROG-ZERA-WKLADOW: zestawienie wkładów pominiętych (|I| < 1e-6 A) jest tą samą
+    # parą sprzężoną z opcją — bez opcji klucza nie ma (exclude-None).
+    assert "wklady_pominiete" not in base
+    with_bc.pop("wklady_pominiete", None)
+    # Karta WKLAD-ZRODLA: wkłady źródeł i ich ślad — ta sama para sprzężona z opcją (liczone
+    # z tej samej macierzy Z-bus co rozpływ Thevenina); bez opcji kluczy nie ma.
+    assert "wklady_zrodel" not in base and "wklady_zrodel_slad" not in base
+    # Graf testu nie ma zasilania systemowego, szyny sztywnej ani maszyny (macierz domyka
+    # bocznik magnesowania transformatora) — lista wkładów źródeł jest pusta, NIE nieobecna,
+    # a ślad niesie krok bilansu.
+    assert with_bc.pop("wklady_zrodel") == []
+    slad_zrodel = with_bc.pop("wklady_zrodel_slad")
+    assert [krok["key"] for krok in slad_zrodel] == ["wklady_zrodel_bilans"]
     assert with_bc == base
 
 
@@ -1076,7 +1089,7 @@ def build_slack_radial_graph() -> NetworkGraph:
 
 def build_z_bus_local(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
     return np.linalg.inv(y_bus)
 
 
@@ -1235,12 +1248,12 @@ def test_thevenin_addition_preserves_inverter_entries_byte_for_byte():
         for bc in (result.branch_contributions or [])
         if bc.source_id != THEVENIN_GRID_SOURCE_ID
     ]
-    expected = [
-        bc.to_dict()
-        for bc in ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+    wklady_falownikow, _pominiete = (
+        ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
             graph, "C", ShortCircuitType.THREE_PHASE
         )
-    ]
+    )
+    expected = [bc.to_dict() for bc in wklady_falownikow]
     assert inverter_entries == expected
     # Oba tory obecne: falownikowy ORAZ Thevenina.
     assert inverter_entries, "wkłady falownikowe obecne"

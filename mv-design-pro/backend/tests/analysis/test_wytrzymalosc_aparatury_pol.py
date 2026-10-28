@@ -232,7 +232,7 @@ def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny(
 
     Wielkość jest WŁAŚCIWA rodzajowi (wyłącznik ma prąd krótkotrwały wytrzymywany), więc brak
     liczby to „brak danych” — z kodem gotowości i nazwanym brakiem (realna pozycja katalogu
-    wyłącznika 110 kV bez znamion zwarciowych, KAT-T-048: brak danej to None, nigdy 0)."""
+    wyłącznika 110 kV bez znamion zwarciowych, KAT-T-050: brak danej to None, nigdy 0)."""
     widok = _widok(enm=_enm(aparaty={"pole/in": WYLACZNIK_BEZ_ZNAMION}))
     pole = widok["pola"][0]
 

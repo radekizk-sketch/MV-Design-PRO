@@ -11,19 +11,8 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.643603361698,
+        "i_ka": 0.64364107688,
         "direction": "to_from"
-      },
-      {
-        "branch_id": "line_b_c",
-        "branch_name": "Linia SN 1",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_sn_c",
-        "to_node_name": "Stacja C SN",
-        "i_ka": 3.72926849873e-19,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_hv_sn",
@@ -35,28 +24,6 @@
         "to_node_name": "Szyna SN",
         "i_ka": 8.31160967663,
         "direction": "from_to"
-      },
-      {
-        "branch_id": "tr_hv_sn",
-        "branch_name": "TR 110/15",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_hv",
-        "from_node_name": "GPZ 110 kV",
-        "to_node_id": "bus_sn_main",
-        "to_node_name": "Szyna SN",
-        "i_ka": 2.04408000899e-18,
-        "direction": "brak"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.44287867872e-16,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_sn_nn",
@@ -78,7 +45,7 @@
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.06173407,
+          "ik_thevenin_a": 8953.14360646,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -86,20 +53,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -114,24 +81,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 643.603361698,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 643.64107688,
           "direction": "to_from"
         },
         "notes": null
@@ -145,56 +112,25 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.928353888704,
+          "fraction": 0.928345399333,
           "i_contrib_a": 8311.60967663,
           "direction": "from_to"
-        },
-        "notes": null
-      },
-      {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 8953.06173407
-        },
-        "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
-        "result": {
-          "fraction": 1.61160362966e-17,
-          "i_contrib_a": 1.44287867872e-13,
-          "direction": "to_from"
         },
         "notes": null
       },
@@ -204,15 +140,231 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "Σ = 8311.61 ≈ 8953.06",
-        "substitution_latex": "\\sum = 8311.61 \\approx 8953.06",
+        "substitution": "Σ = 8311.61 ≈ 8953.14",
+        "substitution_latex": "\\sum = 8311.61 \\approx 8953.14",
         "result": {
           "sum_into_fault_a": 8311.60967663,
-          "fraction_sum": 0.928353888704
+          "fraction_sum": 0.928345399333
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 4 (sieć zastępcza: 1; falowniki: 3).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "liczba_pominietych_falownik": 3,
+          "suma_modulow_pominietych_falownik_a": 3.63e-15
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
+      }
+    ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "line_b_c",
+        "branch_name": "Linia SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_hv_sn",
+        "branch_name": "TR 110/15",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 3.63e-18,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 7.15e-17,
+        "kat_deg": null
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.64364107688,
+        "i_zaciski_ka": 0.64364107688,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0717542244052,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 8.31160967663,
+        "i_zaciski_ka": 1.13340131954,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.926592673042,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 8311.60967663,
+          "i_zaciski_a": 1133.40131954,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 643.64107688,
+          "i_zaciski_a": 643.64107688,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 8953.14360646,
+          "ik_inverters_a": 16.9356078962,
+          "ik_total_a": 8970.07921436,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 8953.14360646,
+            "im": -1.03739239421e-12
+          },
+          "suma_modulow_zrodel_a": 8955.25075351,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 3.22444782745e-13,
+            "im": 3.55037637656e-13
+          },
+          "suma_bilansu_a": {
+            "re": 8953.14360646,
+            "im": -6.82354756554e-13
+          },
+          "reszta_a": 6.82354756554e-13,
+          "tolerancja_a": 8.95314360646e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
       }
     ],
     "analysis_case_context": {
@@ -263,7 +415,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -274,7 +426,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157",
+        "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -298,7 +450,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.0819562826744,
+        "i_ka": 0.0819603927841,
         "direction": "to_from"
       },
       {
@@ -309,7 +461,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.000142410460775,
+        "i_ka": 0.00014241630032,
         "direction": "from_to"
       },
       {
@@ -320,7 +472,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.0819506886686,
+        "i_ka": 0.0819603927841,
         "direction": "to_from"
       },
       {
@@ -331,7 +483,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.00201469801611,
+        "i_ka": 0.00201466417562,
         "direction": "to_from"
       },
       {
@@ -342,7 +494,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00215657585185,
+        "i_ka": 0.00215655762982,
         "direction": "to_from"
       }
     ],
@@ -354,7 +506,7 @@
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "fault_index": 1,
-          "ik_thevenin_a": 13984.4652706,
+          "ik_thevenin_a": 13984.4749902,
           "n_nodes": 4
         },
         "substitution": "i_inj[1] = -1 (pu); V = Z_bus @ i_inj",
@@ -362,20 +514,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.00411363789333,
-              "im": -0.041079663781
+              "re": -0.00411363339526,
+              "im": -0.0410796353934
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.001661023816,
-              "im": -0.0355360255269
+              "re": -0.00166086690814,
+              "im": -0.0355355378636
             }
           ]
         },
@@ -390,24 +542,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.001661023816,
-            "im": -0.0355360255269
+            "re": -0.00166086690814,
+            "im": -0.0355355378636
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.00166102-j0.035536) * 1.06147-j1.17941| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.00166102 - j 0.035536\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.00166087-j0.0355355) * 1.06147-j1.17941| * 13984.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.00166087 - j 0.0355355\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 13984.5",
         "result": {
-          "fraction": 0.00586052316544,
-          "i_contrib_a": 81.9562826744,
+          "fraction": 0.00586081299737,
+          "i_contrib_a": 81.9603927841,
           "direction": "to_from"
         },
         "notes": null
@@ -421,24 +573,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00411363789333,
-            "im": -0.041079663781
+            "re": -0.00411363339526,
+            "im": -0.0410796353934
           },
           "v_to_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "|(-0.00411364-j0.0410797 - -0.00406752-j0.0383379) * 0.0854818-j2.13534| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00411364 - j 0.0410797\\right) - \\left(-0.00406752 - j 0.0383379\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00411363-j0.0410796 - -0.00406748-j0.0383375) * 0.0854818-j2.13534| * 13984.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411363 - j 0.0410796\\right) - \\left(-0.00406748 - j 0.0383375\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 13984.5",
         "result": {
-          "fraction": 0.00586012314973,
-          "i_contrib_a": 81.9506886686,
+          "fraction": 0.00586081299737,
+          "i_contrib_a": 81.9603927841,
           "direction": "to_from"
         },
         "notes": null
@@ -449,15 +601,215 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "Σ = 81.9507 ≈ 13984.5",
-        "substitution_latex": "\\sum = 81.9507 \\approx 13984.5",
+        "substitution": "Σ = 81.9604 ≈ 13984.5",
+        "substitution_latex": "\\sum = 81.9604 \\approx 13984.5",
         "result": {
-          "sum_into_fault_a": 81.9506886686,
-          "fraction_sum": 0.00586012314973
+          "sum_into_fault_a": 81.9603927841,
+          "fraction_sum": 0.00586081299737
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 2 (sieć zastępcza: 1; falowniki: 1).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 3.2e-14,
+          "liczba_pominietych_falownik": 1,
+          "suma_modulow_pominietych_falownik_a": 0.0
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
+      }
+    ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 3.2e-17,
+        "kat_deg": null
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.0819603927841,
+        "i_zaciski_ka": 0.601042880417,
+        "kat_deg": 1.32821897902,
+        "udzial": 0.00585990933583,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 13.9025367488,
+        "i_zaciski_ka": 13.9025367488,
+        "kat_deg": -0.00782962142253,
+        "udzial": 0.993987487357,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00411363339526,
+            "im": 0.0410796353934
+          },
+          "ik_thevenin_a": 13984.4749902,
+          "un_zwarcia_kv": 110.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411363+j0.0410796)| * 13984.5 A = 13902.5 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411363 + j 0.0410796\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 13902.5\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.99414076172,
+            "im": -0.000135851993281
+          },
+          "i_a": 13902.5367488,
+          "i_zaciski_a": 13902.5367488,
+          "kat_deg": -0.00782962142253,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": 0.00166086690814,
+            "im": 0.0355355378636
+          },
+          "ik_thevenin_a": 13984.4749902,
+          "un_zwarcia_kv": 110.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (0.00166087+j0.0355355)| * 13984.5 A = 81.9604 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 81.9604\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.00585923828036,
+            "im": 0.000135851993281
+          },
+          "i_a": 81.9603927841,
+          "i_zaciski_a": 601.042880417,
+          "kat_deg": 1.32821897902,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 13984.4749902,
+          "ik_inverters_a": 2.15655762983,
+          "ik_total_a": 13986.6315479,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 13984.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.5+j0 A wobec I_k''(Th) = 13984.5 A; reszta ≤ dopuszczalnej 1.39845e-05 A.",
+        "substitution_latex": "\\left(13984.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(13984.5 + j 0\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 1.39845e-05\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 13984.4749902,
+            "im": -8.79296635503e-14
+          },
+          "suma_modulow_zrodel_a": 13984.4971416,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 4.34742010365e-14,
+            "im": 4.28933257375e-14
+          },
+          "suma_bilansu_a": {
+            "re": 13984.4749902,
+            "im": -4.50363378128e-14
+          },
+          "reszta_a": 4.50363378128e-14,
+          "tolerancja_a": 1.39844749902e-05,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
       }
     ],
     "analysis_case_context": {
@@ -508,7 +860,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -519,7 +871,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157",
+        "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -543,7 +895,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 1.47061689265,
+        "i_ka": 1.47069046773,
         "direction": "to_from"
       },
       {
@@ -554,7 +906,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 18.9918112971,
+        "i_ka": 18.9916485476,
         "direction": "from_to"
       },
       {
@@ -565,7 +917,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 20.4575125157,
+        "i_ka": 20.4575242806,
         "direction": "from_to"
       }
     ],
@@ -577,7 +929,7 @@
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "fault_index": 2,
-          "ik_thevenin_a": 20457.5125157,
+          "ik_thevenin_a": 20457.5242806,
           "n_nodes": 4
         },
         "substitution": "i_inj[2] = -1 (pu); V = Z_bus @ i_inj",
@@ -585,20 +937,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -1.61582715345,
-              "im": -7.22989125618
+              "re": -1.61582694789,
+              "im": -7.22988693659
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -613,24 +965,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 20457.5",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 1470.61689265,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 1470.69046773,
           "direction": "to_from"
         },
         "notes": null
@@ -644,24 +996,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 20457.5",
         "result": {
-          "fraction": 0.928353888704,
-          "i_contrib_a": 18991.8112971,
+          "fraction": 0.928345399333,
+          "i_contrib_a": 18991.6485476,
           "direction": "from_to"
         },
         "notes": null
@@ -675,24 +1027,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": -1.61582715345,
-            "im": -7.22989125618
+            "re": -1.61582694789,
+            "im": -7.22988693659
           },
           "y_series_pu": {
             "re": 0.0330249074427,
             "im": -0.140202372994
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.0240621-j0.472287 - -1.61583-j7.22989) * 0.0330249-j0.140202| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-1.61583 - j 7.22989\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0240619-j0.472283 - -1.61583-j7.22989) * 0.0330249-j0.140202| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(-1.61583 - j 7.22989\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 20457.5",
         "result": {
           "fraction": 1.0,
-          "i_contrib_a": 20457.5125157,
+          "i_contrib_a": 20457.5242806,
           "direction": "from_to"
         },
         "notes": null
@@ -703,15 +1055,181 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
         "substitution": "Σ = 20457.5 ≈ 20457.5",
         "substitution_latex": "\\sum = 20457.5 \\approx 20457.5",
         "result": {
-          "sum_into_fault_a": 20457.5125157,
+          "sum_into_fault_a": 20457.5242806,
           "fraction_sum": 1.0
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      }
+    ],
+    "wklady_pominiete": null,
+    "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 1.47069046773,
+        "i_zaciski_ka": 0.0392184124728,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0697253918432,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 18.9916485476,
+        "i_zaciski_ka": 0.0690605401733,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.900393499371,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 20457.5242806,
+          "un_zwarcia_kv": 0.4,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 20457.5 A = 18991.6 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 18991.6\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 18991.6485476,
+          "i_zaciski_a": 69.0605401733,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 20457.5242806,
+          "un_zwarcia_kv": 0.4,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 20457.5 A = 1470.69 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 1470.69\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 1470.69046773,
+          "i_zaciski_a": 39.2184124728,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 20457.5242806,
+          "ik_inverters_a": 635.085296109,
+          "ik_total_a": 21092.6095767,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 20457.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 20457.5+j0 A wobec I_k''(Th) = 20457.5 A; reszta ≤ dopuszczalnej 2.04575e-05 A.",
+        "substitution_latex": "\\left(20457.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(20457.5 + j 0\\right)\\,\\mathrm{A} \\approx 20457.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 2.04575e-05\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 20457.5242806,
+            "im": -2.01794136956e-12
+          },
+          "suma_modulow_zrodel_a": 20462.3390154,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 7.36771603596e-13,
+            "im": 8.11244788661e-13
+          },
+          "suma_bilansu_a": {
+            "re": 20457.5242806,
+            "im": -1.2066965809e-12
+          },
+          "reszta_a": 7.375342422e-12,
+          "tolerancja_a": 2.04575242806e-05,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
       }
     ],
     "analysis_case_context": {
@@ -762,7 +1280,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -773,7 +1291,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157",
+        "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -797,19 +1315,8 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.643603361698,
+        "i_ka": 0.64364107688,
         "direction": "to_from"
-      },
-      {
-        "branch_id": "line_b_c",
-        "branch_name": "Linia SN 1",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_sn_c",
-        "to_node_name": "Stacja C SN",
-        "i_ka": 3.72926849873e-19,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_hv_sn",
@@ -821,28 +1328,6 @@
         "to_node_name": "Szyna SN",
         "i_ka": 8.31160967663,
         "direction": "from_to"
-      },
-      {
-        "branch_id": "tr_hv_sn",
-        "branch_name": "TR 110/15",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_hv",
-        "from_node_name": "GPZ 110 kV",
-        "to_node_id": "bus_sn_main",
-        "to_node_name": "Szyna SN",
-        "i_ka": 2.04408000899e-18,
-        "direction": "brak"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.44287867872e-16,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_sn_nn",
@@ -864,7 +1349,7 @@
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.06173407,
+          "ik_thevenin_a": 8953.14360646,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -872,20 +1357,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -900,24 +1385,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 643.603361698,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 643.64107688,
           "direction": "to_from"
         },
         "notes": null
@@ -931,56 +1416,25 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.928353888704,
+          "fraction": 0.928345399333,
           "i_contrib_a": 8311.60967663,
           "direction": "from_to"
-        },
-        "notes": null
-      },
-      {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 8953.06173407
-        },
-        "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
-        "result": {
-          "fraction": 1.61160362966e-17,
-          "i_contrib_a": 1.44287867872e-13,
-          "direction": "to_from"
         },
         "notes": null
       },
@@ -990,15 +1444,231 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "Σ = 643.603 ≈ 8953.06",
-        "substitution_latex": "\\sum = 643.603 \\approx 8953.06",
+        "substitution": "Σ = 643.641 ≈ 8953.14",
+        "substitution_latex": "\\sum = 643.641 \\approx 8953.14",
         "result": {
-          "sum_into_fault_a": 643.603361698,
-          "fraction_sum": 0.0718863982865
+          "sum_into_fault_a": 643.64107688,
+          "fraction_sum": 0.0718899534254
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 4 (sieć zastępcza: 1; falowniki: 3).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "liczba_pominietych_falownik": 3,
+          "suma_modulow_pominietych_falownik_a": 3.63e-15
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
+      }
+    ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "line_b_c",
+        "branch_name": "Linia SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_hv_sn",
+        "branch_name": "TR 110/15",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 3.63e-18,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 7.15e-17,
+        "kat_deg": null
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.64364107688,
+        "i_zaciski_ka": 0.64364107688,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0717542244052,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 8.31160967663,
+        "i_zaciski_ka": 1.13340131954,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.926592673042,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 8311.60967663,
+          "i_zaciski_a": 1133.40131954,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 643.64107688,
+          "i_zaciski_a": 643.64107688,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 8953.14360646,
+          "ik_inverters_a": 16.9356078962,
+          "ik_total_a": 8970.07921436,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 8953.14360646,
+            "im": -1.03739239421e-12
+          },
+          "suma_modulow_zrodel_a": 8955.25075351,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 3.22444782745e-13,
+            "im": 3.55037637656e-13
+          },
+          "suma_bilansu_a": {
+            "re": 8953.14360646,
+            "im": -6.82354756554e-13
+          },
+          "reszta_a": 6.82354756554e-13,
+          "tolerancja_a": 8.95314360646e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
       }
     ],
     "analysis_case_context": {
@@ -1049,7 +1719,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1060,7 +1730,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157",
+        "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -1084,7 +1754,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 3.94348894757,
+        "i_ka": 3.9434983582,
         "direction": "from_to"
       },
       {
@@ -1095,7 +1765,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.00746071011355,
+        "i_ka": 0.00746065778668,
         "direction": "to_from"
       },
       {
@@ -1106,7 +1776,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 3.94350994358,
+        "i_ka": 3.9434983582,
         "direction": "from_to"
       },
       {
@@ -1117,19 +1787,8 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.000714639531934,
+        "i_ka": 0.000714672774806,
         "direction": "to_from"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.11948406438e-16,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_sn_nn",
@@ -1139,7 +1798,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00803523513949,
+        "i_ka": 0.00803521153329,
         "direction": "to_from"
       }
     ],
@@ -1151,7 +1810,7 @@
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "fault_index": 3,
-          "ik_thevenin_a": 4603.47193319,
+          "ik_thevenin_a": 4603.52239368,
           "n_nodes": 4
         },
         "substitution": "i_inj[3] = -1 (pu); V = Z_bus @ i_inj",
@@ -1159,20 +1818,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             },
             {
-              "re": -0.001661023816,
-              "im": -0.0355360255269
+              "re": -0.00166086690814,
+              "im": -0.0355355378636
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             },
             {
-              "re": -0.335878003595,
-              "im": -0.856194810504
+              "re": -0.335872018367,
+              "im": -0.856186329184
             }
           ]
         },
@@ -1187,24 +1846,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "v_to_pu": {
-            "re": -0.335878003595,
-            "im": -0.856194810504
+            "re": -0.335872018367,
+            "im": -0.856186329184
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "|(0.00352986-j0.436354 - -0.335878-j0.856195) * 1.06147-j1.17941| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(0.00352986 - j 0.436354\\right) - \\left(-0.335878 - j 0.856195\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 4603.47",
+        "substitution": "|(0.00353145-j0.436348 - -0.335872-j0.856186) * 1.06147-j1.17941| * 4603.52",
+        "substitution_latex": "\\left| \\left(\\left(0.00353145 - j 0.436348\\right) - \\left(-0.335872 - j 0.856186\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 4603.52",
         "result": {
-          "fraction": 0.856633646257,
-          "i_contrib_a": 3943.48894757,
+          "fraction": 0.85662630068,
+          "i_contrib_a": 3943.4983582,
           "direction": "from_to"
         },
         "notes": null
@@ -1218,56 +1877,25 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.001661023816,
-            "im": -0.0355360255269
+            "re": -0.00166086690814,
+            "im": -0.0355355378636
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "|(-0.00166102-j0.035536 - 0.00352986-j0.436354) * 0.0854818-j2.13534| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(-0.00166102 - j 0.035536\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 4603.47",
+        "substitution": "|(-0.00166087-j0.0355355 - 0.00353145-j0.436348) * 0.0854818-j2.13534| * 4603.52",
+        "substitution_latex": "\\left| \\left(\\left(-0.00166087 - j 0.0355355\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 4603.52",
         "result": {
-          "fraction": 0.856638207164,
-          "i_contrib_a": 3943.50994358,
+          "fraction": 0.85662630068,
+          "i_contrib_a": 3943.4983582,
           "direction": "from_to"
-        },
-        "notes": null
-      },
-      {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
-          },
-          "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 4603.47193319
-        },
-        "substitution": "|(0.00352986-j0.436354 - 0.00352986-j0.436354) * 0.0330249-j0.140202| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(0.00352986 - j 0.436354\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 4603.47",
-        "result": {
-          "fraction": 2.43182554521e-17,
-          "i_contrib_a": 1.11948406438e-13,
-          "direction": "to_from"
         },
         "notes": null
       },
@@ -1277,15 +1905,215 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "Σ = 3943.49 ≈ 4603.47",
-        "substitution_latex": "\\sum = 3943.49 \\approx 4603.47",
+        "substitution": "Σ = 3943.5 ≈ 4603.52",
+        "substitution_latex": "\\sum = 3943.5 \\approx 4603.52",
         "result": {
-          "sum_into_fault_a": 3943.48894757,
-          "fraction_sum": 0.856633646257
+          "sum_into_fault_a": 3943.4983582,
+          "fraction_sum": 0.85662630068
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 2 (sieć zastępcza: 1; falowniki: 1).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 1.23e-13,
+          "liczba_pominietych_falownik": 1,
+          "suma_modulow_pominietych_falownik_a": 0.0
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
+      }
+    ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 1.23e-16,
+        "kat_deg": null
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.697528469612,
+        "i_zaciski_ka": 0.697528469612,
+        "kat_deg": -17.4153313206,
+        "udzial": 0.151256588191,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 3.9434983582,
+        "i_zaciski_ka": 0.537749776118,
+        "kat_deg": 3.03463917581,
+        "udzial": 0.85513370878,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00166086690814,
+            "im": 0.0355355378636
+          },
+          "ik_thevenin_a": 4603.52239368,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00166087+j0.0355355)| * 4603.52 A = 3943.5 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 3943.5\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.855425063581,
+            "im": 0.045349527181
+          },
+          "i_a": 3943.4983582,
+          "i_zaciski_a": 537.749776118,
+          "kat_deg": 3.03463917581,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": 0.335872018367,
+            "im": 0.856186329184
+          },
+          "ik_thevenin_a": 4603.52239368,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (0.335872+j0.856186)| * 4603.52 A = 697.528 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.335872 + j 0.856186\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 697.528\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.144574936419,
+            "im": -0.045349527181
+          },
+          "i_a": 697.528469612,
+          "i_zaciski_a": 697.528469612,
+          "kat_deg": -17.4153313206,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 4603.52239368,
+          "ik_inverters_a": 8.0352115333,
+          "ik_total_a": 4611.55760522,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 4603.52+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4603.52+j0 A wobec I_k''(Th) = 4603.52 A; reszta ≤ dopuszczalnej 4.60352e-06 A.",
+        "substitution_latex": "\\left(4603.52 + j 0\\right) + \\left(0 + j 0\\right) = \\left(4603.52 + j 0\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 4.60352e-06\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 4603.52239368,
+            "im": -3.12638803734e-13
+          },
+          "suma_modulow_zrodel_a": 4641.02682781,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 4.67668972495e-13,
+            "im": 2.26796469929e-13
+          },
+          "suma_bilansu_a": {
+            "re": 4603.52239368,
+            "im": -8.58423338055e-14
+          },
+          "reszta_a": 9.13536818539e-13,
+          "tolerancja_a": 4.60352239368e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
       }
     ],
     "analysis_case_context": {
@@ -1336,7 +2164,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1347,7 +2175,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157",
+        "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",

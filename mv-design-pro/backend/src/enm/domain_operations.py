@@ -31,10 +31,6 @@ from network_model.catalog.audit2_catalogs import (
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
-from network_model.catalog.wartosci_robocze import (
-    PARAMETRY_APARATU_SN,
-    blad_wartosci_projektanta,
-)
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
@@ -82,10 +78,21 @@ from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
     UKLADY_SIECI_NN,
     EnergyNetworkModel,
+    GeometriaSlupaLinii,
     migruj_zapis_zastany_slownika,
 )
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY
 from .odmowy_pakietow_danych import odmowa_braku_certyfikatu
+from .parametry_linii_wn import (
+    KOD_GEOMETRIA_BEZ_PRZEWODU_WN,
+    KOD_GEOMETRIA_NIEPOPRAWNA,
+    KOD_PARAMETRY_Z_GEOMETRII,
+    POLA_Z_GEOMETRII,
+    BladParametrowLiniiWN,
+    linia_z_geometrii,
+    tabliczka_przewodu_linii_wn,
+    zastosuj_parametry_z_geometrii,
+)
 from .pola import (
     BladPola,
     czy_pole_nn,
@@ -156,6 +163,7 @@ from .tor_pola import (
 from .uziemienie import blad_konfiguracji_uziemienia
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
+from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -1053,7 +1061,8 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
 #: aparaty pól po przypisaniu katalogów gałęziom.
 _NAMESPACE_DOZWOLONE_DLA_GALEZI: dict[str, frozenset[str]] = {
     "cable": frozenset({"KABEL_SN", "KABEL_NN"}),
-    "line_overhead": frozenset({"LINIA_SN"}),
+    # Karta LINIA-110: przewód linii 110 kV (dane wyrobu) — parametry linii z geometrii.
+    "line_overhead": frozenset({"LINIA_SN", "PRZEWOD_LINII_WN"}),
     "breaker": frozenset({"APARAT_SN", "APARAT_NN"}),
     "switch": frozenset({"APARAT_SN", "APARAT_NN"}),
     "bus_coupler": frozenset({"APARAT_SN", "APARAT_NN"}),
@@ -2999,6 +3008,15 @@ def _apply_materialized_branch_fields(
         if isinstance(value, str) and value.strip():
             target[key] = value.strip().upper()
 
+    # Karta LINIA-110: tabliczka przewodu linii 110 kV nie niesie impedancji linii — R′, X′,
+    # B′ i Z′0 liczy solver z geometrii słupa (dana projektu albo wartość robocza rejestru).
+    # KAŻDA ścieżka materializacji gałęzi przechodzi tędy, więc przewód 110 kV nie trafi do
+    # gałęzi bez przeliczenia; tabliczka innej kategorii zdejmuje nieaktualną proweniencję.
+    if tabliczka_przewodu_linii_wn(materialized_params):
+        zastosuj_parametry_z_geometrii(target, katalog_biezacy(), czestotliwosc_hz)
+    else:
+        target.pop("parametry_z_geometrii", None)
+
 
 #: Metadane odcinka opisujące jego wyprowadzenie z pola rozdzielnicy (`continue_trunk_segment_sn`).
 _KLUCZE_POCHODZENIA_Z_POLA: tuple[str, ...] = (
@@ -3050,6 +3068,10 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "n_parallel",
         # W5-A: układ uziemienia ekranu — obie połówki to ten sam kabel.
         "screen_bonding",
+        # Karta LINIA-110: obie połówki linii 110 kV wiszą na tych samych słupach — ta sama
+        # geometria i te same parametry jednostkowe z geometrii (z ich proweniencją).
+        "geometria_slupa",
+        "parametry_z_geometrii",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])
@@ -10211,46 +10233,6 @@ def _blad_stanu_lacznika_w_parametrach(
     return None
 
 
-def _nadpisania_aparatu_sn(
-    surowe: object,
-) -> tuple[list[dict[str, Any]], str | None]:
-    """Lista wartości projektanta aparatu SN w postaci znormalizowanej albo powód odmowy.
-
-    Wpis: ``{"key": parametr rejestru, "value": liczba, "reason": napis | None}``. Klucz
-    powtórzony jest odmową (dwie wartości jednego parametru to sprzeczność, nie wybór).
-    Kolejność wyniku — ``PARAMETRY_APARATU_SN`` (determinizm zapisu).
-    """
-    if not isinstance(surowe, list):
-        return [], (
-            f"Pole {pole('overrides', 'update_element_parameters')}: wartości projektanta "
-            "aparatu SN podaje się jako listę wpisów {key, value, reason}."
-        )
-    po_kluczu: dict[str, dict[str, Any]] = {}
-    for wpis in surowe:
-        if not isinstance(wpis, dict):
-            return [], "Wpis wartości projektanta aparatu SN musi mieć postać {key, value, reason}."
-        klucz = wpis.get("key")
-        wartosc = wpis.get("value")
-        blad = blad_wartosci_projektanta(klucz, wartosc)
-        if blad is not None:
-            return [], blad
-        if not isinstance(klucz, str) or not isinstance(wartosc, int | float):
-            raise AssertionError("brama rejestru przepuściła wpis spoza kontraktu")
-        if klucz in po_kluczu:
-            return [], (
-                f"Parametr „{klucz}” podano dwukrotnie — aparat ma jedną wartość parametru."
-            )
-        powod = wpis.get("reason")
-        if powod is not None and not isinstance(powod, str):
-            return [], f"Uzasadnienie wartości parametru „{klucz}” musi być tekstem."
-        po_kluczu[klucz] = {
-            "key": klucz,
-            "value": float(wartosc),
-            "reason": (powod.strip() or None) if isinstance(powod, str) else None,
-        }
-    return [po_kluczu[k] for k in PARAMETRY_APARATU_SN if k in po_kluczu], None
-
-
 #: Kolekcje z jawną listą dopuszczonych parametrów `update_element_parameters`.
 KOLEKCJE_Z_LISTA_PARAMETROW: frozenset[str] = frozenset(
     {"branches", "transformers", "branch_points", "generators", "substations", "shunt_capacitors"}
@@ -10412,6 +10394,8 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # W5-C: pozycja normalna łącznika — kontrola wartości niżej (wyłącznie
                 # „zamknięta" albo zdjęcie deklaracji; punkt podziału = `set_normal_open_point`).
                 "normal_state",
+                # Karta LINIA-110: geometria słupa linii (dana projektu).
+                "geometria_slupa",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -10633,6 +10617,45 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                     else "source.invalid_lv_voltage_tolerance"
                 ),
             )
+    # Karta LINIA-110: geometria słupa — kształt sprawdza model (`GeometriaSlupaLinii`), a
+    # R′/X′/B′/Z′0 linii z przewodem 110 kV wynikają z geometrii: ręczna zmiana tych pól na
+    # takiej linii jest odmową (drogą danych zmierzonych albo OSD jest `EKSPERCKI_RECZNY`).
+    if coll == "branches" and "geometria_slupa" in parameters:
+        if current_element.get("type") != "line_overhead":
+            return _error_response(
+                "Geometrię słupa ma wyłącznie linia napowietrzna.",
+                KOD_GEOMETRIA_BEZ_PRZEWODU_WN,
+            )
+        if parameters["geometria_slupa"] is not None:
+            try:
+                geometria = GeometriaSlupaLinii.model_validate(parameters["geometria_slupa"])
+            except ValidationError:
+                return _error_response(
+                    "Geometria słupa ma niepoprawny kształt — położenia przewodów podaje się "
+                    "jako pary (x, y) w metrach, a liczbę przewodów w wiązce jako liczbę "
+                    "całkowitą.",
+                    KOD_GEOMETRIA_NIEPOPRAWNA,
+                )
+            parameters = {
+                **parameters,
+                "geometria_slupa": geometria.model_dump(mode="json"),
+            }
+    if coll == "branches" and linia_z_geometrii(current_element):
+        zmienione_z_geometrii = sorted(
+            klucz
+            for klucz in POLA_Z_GEOMETRII
+            if klucz in parameters and parameters[klucz] != current_element.get(klucz)
+        )
+        if zmienione_z_geometrii and parameters.get("source_mode") not in (
+            "EKSPERCKI_RECZNY",
+            "MIGRACJA",
+        ):
+            return _error_response(
+                f"{opis_nazwy(current_element.get('name'), 'Linia')}: rezystancja, reaktancja "
+                "i susceptancja tej linii wynikają z geometrii słupa i przewodu z katalogu — "
+                "zmień geometrię słupa albo przejdź na parametry wprowadzone ręcznie.",
+                KOD_PARAMETRY_Z_GEOMETRII,
+            )
     if coll == "branches" and "screen_bonding" in parameters:
         proba = {"type": current_element.get("type")}
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
@@ -10645,7 +10668,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if coll == "branches" and "overrides" in parameters:
         przestrzen = parameters.get("catalog_namespace", current_element.get("catalog_namespace"))
         if przestrzen == "APARAT_SN":
-            nadpisania, blad_nadpisan = _nadpisania_aparatu_sn(parameters["overrides"])
+            nadpisania, blad_nadpisan = nadpisania_aparatu_sn(parameters["overrides"])
             if blad_nadpisan is not None:
                 return _error_response(blad_nadpisan, "params.override_invalid")
             katalog_aparatu = parameters.get("catalog_ref", current_element.get("catalog_ref"))
@@ -10663,6 +10686,37 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 parameters = {**parameters, "overrides": [], "parameter_source": "CATALOG"}
             else:
                 parameters = {**parameters, "overrides": [], "parameter_source": None}
+    # Karta PODSTAWA-Q (rozstrz. 3, zasada nr 4): wartości projektanta parametrów maszyny
+    # wirującej (x″d, cos φ, p, I_LR/I_rM, η) niesie `overrides` generatora — ta sama brama co
+    # dana tabliczki przed obliczeniem (`enm.wartosci_projektanta`). Rodzaju generatora ta
+    # operacja nie zmienia (`gen_type` spoza listy dopuszczonej — `params.key_not_allowed`), więc
+    # stan końcowy to rodzaj bieżący i lista po zmianie.
+    if coll == "generators" and "overrides" in parameters:
+        nadpisania_maszyny, blad_maszyny = nadpisania_generatora(
+            current_element.get("gen_type"),
+            parameters["overrides"],
+            opis_pl=opis_elementu(enm, element_ref, "Źródło"),
+        )
+        if blad_maszyny is not None:
+            return _error_response(blad_maszyny, "params.override_invalid")
+        zrodlo = current_element.get("parameter_source")
+        parameters = {
+            **parameters,
+            "overrides": nadpisania_maszyny,
+            "parameter_source": (
+                "OVERRIDE"
+                if nadpisania_maszyny
+                else (
+                    (
+                        "CATALOG"
+                        if parameters.get("catalog_ref", current_element.get("catalog_ref"))
+                        else None
+                    )
+                    if zrodlo == "OVERRIDE"
+                    else zrodlo
+                )
+            ),
+        }
 
     # Decyzja O-53 (jedna tabliczka, jedna kontrola): zmiana TYPU źródła przekształtnikowego
     # przez aktualizację parametrów idzie tą samą drogą co przypisanie typu — materializacja
@@ -10693,6 +10747,17 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         new_enm[coll][idx][key] = value
     if model_wyprowadzony is not None:
         new_enm[coll][idx]["model"] = model_wyprowadzony
+    # Karta LINIA-110: linia z przewodem 110 kV przelicza R′/X′/B′/Z′0 z geometrii na STANIE
+    # KOŃCOWYM (zmiana geometrii, rezystywności albo przewodu odgromowego); linia, która
+    # przestała nią być (ścieżka ręczna), traci nieaktualną proweniencję.
+    if coll == "branches" and not zmiana_typu_zrodla:
+        element_koncowy = new_enm[coll][idx]
+        if linia_z_geometrii(element_koncowy):
+            zastosuj_parametry_z_geometrii(
+                element_koncowy, katalog_biezacy(), czestotliwosc_studium_hz(enm)
+            )
+        else:
+            element_koncowy.pop("parametry_z_geometrii", None)
 
     if zmiana_typu_zrodla:
         return assign_catalog_to_element(
@@ -12474,6 +12539,10 @@ def execute_domain_operation(
         return _error_response(
             str(blad), "katalog_projektu.invalid", kod_reguly_katalogu=blad.kod_reguly
         )
+    except BladParametrowLiniiWN as blad:
+        # Karta LINIA-110: odmowa danych linii 110 kV (geometria sprzeczna, nieznany przewód
+        # odgromowy) z KAŻDEJ ścieżki materializacji gałęzi — jedna droga odpowiedzi.
+        return _error_response(str(blad), blad.kod)
     except NiezgodnoscKonfiguracjiError as blad:
         # Niezgodność katalogowa pola to BŁĄD DZIEDZINY, nie awaria operacji:
         # projektant wskazał wyrób, którego producent nie robi (np. pole GPZ na

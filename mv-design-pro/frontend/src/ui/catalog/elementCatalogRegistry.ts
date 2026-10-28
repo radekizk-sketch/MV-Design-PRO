@@ -26,6 +26,7 @@ export const ELEMENT_TYPE_TO_NAMESPACE: Readonly<Record<string, CatalogNamespace
 
 export const NAMESPACE_TO_PICKER_CATEGORY: Readonly<Record<CatalogNamespace, TypeCategory>> = {
   LINIA_SN: 'LINE',
+  PRZEWOD_LINII_WN: 'HV_OVERHEAD_CONDUCTOR',
   KABEL_SN: 'CABLE',
   ZRODLO_SN: 'SYSTEM_SOURCE',
   TRAFO_SN_NN: 'TRANSFORMER',
@@ -57,6 +58,7 @@ export const NAMESPACE_TO_TREE_NODE: Readonly<Partial<Record<CatalogNamespace, T
 
 export const NAMESPACE_LABEL_PL: Readonly<Record<CatalogNamespace, string>> = {
   LINIA_SN: 'Typy linii napowietrznych',
+  PRZEWOD_LINII_WN: 'Typy przewodów linii napowietrznych 110 kV',
   KABEL_SN: 'Typy kabli SN',
   ZRODLO_SN: 'Typy zasilania systemowego SN',
   TRAFO_SN_NN: 'Typy transformatorów SN/nN',

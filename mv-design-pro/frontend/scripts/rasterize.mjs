@@ -2,12 +2,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 
 const dir = process.env.CANON_OUT ?? '/tmp/canon';
 const W = 1640; // fallback if an SVG carries no explicit width/height
 const H = 956;
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(chromiumLaunchOptions());
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 for (const f of readdirSync(dir).filter((x) => x.endsWith('.svg')).sort()) {
   const svg = readFileSync(`${dir}/${f}`, 'utf8');

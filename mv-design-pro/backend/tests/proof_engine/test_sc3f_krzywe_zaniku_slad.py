@@ -72,13 +72,22 @@ def test_krok_mu_i_q_pomiedzy_wezlami_niesie_oba_wezly_wage_i_wynik(
         assert f"{slad.wezel_dolny.wartosc:.4f}" in tekst
         assert f"{slad.wezel_gorny.wartosc:.4f}" in tekst
         assert f"{slad.waga:.4f}" in tekst
-        assert tekst.endswith(r"\quad (\text{interpolacja liniowa między krzywymi normy})")
+        # Karta PODSTAWA-Q: podstawa interpolacji μ — zezwolenie pkt 9.1.1 (jedna tablica solvera).
+        assert tekst.endswith(
+            r"\quad (\text{interpolacja liniowa między krzywymi dopuszczona przez "
+            r"IEC 60909-0:2016 pkt 9.1.1})"
+        )
         assert f"= {wklad.mu:.4f}" in tekst
         assert krok.result.value == wklad.mu
     asynchroniczny = wynik.contributions[1]
     assert asynchroniczny.slad_q is not None
     assert rf"q_{{{t_1}}} = " in krok_q.substitution_latex
     assert f"{asynchroniczny.slad_q.waga:.4f}" in krok_q.substitution_latex
+    # Interpolacja q — interpretacja inżynierska, nie zapis normy (pkt 9.1.2 jej nie przewiduje).
+    assert krok_q.substitution_latex.endswith(
+        r"\quad (\text{interpolacja liniowa po czasie zwłoki: interpretacja inżynierska, "
+        r"IEC 60909-0:2016 pkt 9.1.2 jej nie przewiduje})"
+    )
     assert krok_q.result.value == asynchroniczny.q
 
 

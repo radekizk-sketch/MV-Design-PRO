@@ -20,9 +20,17 @@ import type {
   ShortCircuitResults,
   ShortCircuitRow,
   TraceStep,
+  WkladPominietyRozplywu,
+  WkladZrodlaRozplywu,
 } from '../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
+import type {
+  DanaPrzyjeta,
+  KrokWywodu,
+  PozycjaWalidacji,
+  SekcjaWywodu,
+  StanDanych,
+} from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
 
 /** Kształt 1:1 pozycji odpowiedzi backendu (`MachinePartialContribution.to_dict`). */
@@ -45,8 +53,45 @@ export interface WkladZrodlaOdpowiedz {
   readonly wywod?: readonly KrokWywodu[];
 }
 
+/**
+ * Dane przyjęte wyniku punktu zwarcia — pola addytywne odpowiedzi wkładów
+ * (`api/proof_pack.py::_dane_przyjete_wkladow`) i rozpływu punktu
+ * (`enm/canonical_analysis.py::_dane_przyjete_punktu_rozplywu`), obecne WYŁĄCZNIE, gdy prąd
+ * punktu stoi na wartości roboczej: tolerancji sieci nN, impedancji gałęzi (linia 110 kV bez
+ * geometrii słupa projektu) albo parametru maszyny wirującej. Elementy listy to rekord
+ * `DanaPrzyjeta` kontraktu werdyktu (`werdykt/kontrakt.py`, lustro `wzorzec/werdykt.ts`);
+ * `status_danych` = `UNVALIDATED_INPUT` ⇔ lista niepusta (kontrakt werdyktu §3).
+ */
+export interface DanePrzyjeteOdpowiedzi {
+  readonly status_danych?: StanDanych;
+  readonly dane_przyjete?: readonly DanaPrzyjeta[];
+}
+
+/**
+ * Dane przyjęte wyniku po projekcji — niepusta lista i stan danych z odpowiedzi (`null`, gdy
+ * odpowiedź go nie niesie; frontend stanu nie wylicza).
+ */
+export interface DanePrzyjeteWyniku {
+  readonly stan: StanDanych | null;
+  readonly dane: readonly DanaPrzyjeta[];
+}
+
+/**
+ * Projekcja danych przyjętych odpowiedzi: `null`, gdy lista jest pusta albo nieobecna (backend
+ * nie wysyła wtedy żadnego z pól — wynik na danych projektu, sekcja nie pokazuje nic). O tym, czy
+ * cokolwiek się pokazuje, rozstrzyga JEDNO źródło — lista wpisów; sam status bez wpisów niczego
+ * nie wyświetla. Stan danych wyłącznie z odpowiedzi (backend wysyła parę razem, kontrakt
+ * werdyktu §3); gdyby go zabrakło przy niepustej liście, wpisy nadal się pokazują, a stanu
+ * frontend nie dopowiada (zero logiki decyzyjnej, jak lustro `wzorzec/werdykt.ts`).
+ */
+export function naDanePrzyjete(odpowiedz: DanePrzyjeteOdpowiedzi): DanePrzyjeteWyniku | null {
+  const dane = odpowiedz.dane_przyjete ?? [];
+  if (dane.length === 0) return null;
+  return { stan: odpowiedz.status_danych ?? null, dane };
+}
+
 /** Kształt 1:1 odpowiedzi (`MachineShortCircuitResult.to_dict`, pola konsumowane). */
-export interface WkladyOdpowiedz {
+export interface WkladyOdpowiedz extends DanePrzyjeteOdpowiedzi {
   readonly contributions: readonly WkladZrodlaOdpowiedz[];
   /** Wywód prezentacyjny {tekst, latex} z backendu (zasada KaTeX; addytywny). */
   readonly wywod?: readonly KrokWywodu[];
@@ -62,6 +107,8 @@ export interface WkladyZWywodem {
   readonly wywod: readonly KrokWywodu[];
   readonly wywodSekcje: readonly SekcjaWywodu[];
   readonly walidacjaIec: readonly PozycjaWalidacji[];
+  /** Dane przyjęte wkładów punktu (`naDanePrzyjete`); `null` = wynik na danych projektu. */
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
 }
 
 /**
@@ -243,6 +290,7 @@ export function useWkladyZwarciowe(
             wywod: odpowiedz.wywod ?? [],
             wywodSekcje: odpowiedz.wywod_sekcje ?? [],
             walidacjaIec: odpowiedz.walidacja_iec ?? [],
+            danePrzyjete: naDanePrzyjete(odpowiedz),
           });
       })
       .catch(() => {
@@ -294,11 +342,32 @@ export function kluczWkladow(punkt: string, parametry: ParametryWkladowBiegu): s
  * falownikowa nie ma śladu, więc `branch_contributions` bywa niepusty przy
  * `branch_flow_trace: []`, gdy punkt nie ma wkładu sieci zastępczej).
  */
-export interface RozplywOdpowiedz {
+export interface RozplywOdpowiedz extends DanePrzyjeteOdpowiedzi {
   readonly run_id: string;
   readonly target_id: string;
   readonly branch_contributions: readonly ShortCircuitBranchFlow[] | null;
   readonly branch_flow_trace: readonly TraceStep[] | null;
+  /**
+   * Karta PROG-ZERA-WKLADOW: zestawienie wkładów pominiętych na podstawie tolerancji
+   * numerycznej — pary źródło×gałąź policzone przez rdzeń, ale poniżej progu (nie
+   * zero, nie na liście `branch_contributions`). `null`/brak = punkt bez takich
+   * wpisów albo bieg bez wkładów.
+   */
+  readonly wklady_pominiete?: readonly WkladPominietyRozplywu[] | null;
+  /**
+   * Próg wkładu pominiętego w A — ODBICIE jedynej definicji rdzenia
+   * (`PROG_WKLADU_POMIJALNEGO_A`); frontend nie ma własnej stałej progu.
+   * `null` = bieg bez wkładów gałęziowych.
+   */
+  readonly prog_wkladu_pominietego_a?: number | null;
+  /**
+   * Karta WKLAD-ZRODLA: wkład każdego źródła części Thevenina (zasilania systemowe, szyny
+   * sztywne, maszyny wirujące) do prądu zwarciowego punktu, posortowany po odnośniku
+   * źródła. `null`/brak = bieg bez wkładów albo zapis sprzed dodania kolumny.
+   */
+  readonly wklady_zrodel?: readonly WkladZrodlaRozplywu[] | null;
+  /** Ślad WHITE BOX wkładów źródeł: krok per źródło i jawny krok bilansu. */
+  readonly wklady_zrodel_slad?: readonly TraceStep[] | null;
 }
 
 /** Pobiera rozpływ gałęziowy JEDNEGO punktu zwarcia (ref węzła w zapytaniu). */
@@ -317,6 +386,9 @@ export async function fetchRozplywZwarciowy(
 interface WpisRozplywu {
   readonly flows: ShortCircuitBranchFlow[];
   readonly trace: TraceStep[] | null;
+  readonly pominiete: WkladPominietyRozplywu[];
+  readonly progA: number | null;
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
 }
 
 /**
@@ -333,6 +405,19 @@ export interface RozplywZeSladem {
    * (`flows`/`trace` `null` starszego wyniku) — uczciwy stan, nie cisza.
    */
   readonly odczyt: OdczytPunktuZwarcia;
+  /**
+   * Wkłady pominięte na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW) —
+   * ta sama odpowiedź co `flows`/`trace`. `null` = brak danych (wiersz inline, starszy
+   * wynik, pobieranie, błąd); `[]` = policzono, punkt bez wkładów pominiętych.
+   */
+  readonly pominiete: WkladPominietyRozplywu[] | null;
+  /** Próg z odpowiedzi (odbicie definicji rdzenia, A); `null` = brak danych. */
+  readonly progA: number | null;
+  /**
+   * Dane przyjęte I″k punktu z TEJ SAMEJ odpowiedzi (`naDanePrzyjete`); `null` = wynik na
+   * danych projektu albo brak odpowiedzi (wiersz inline, pobieranie, błąd).
+   */
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
 }
 
 /**
@@ -381,6 +466,9 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
             [klucz]: {
               flows: [...(odpowiedz.branch_contributions ?? [])],
               trace: odpowiedz.branch_flow_trace ? [...odpowiedz.branch_flow_trace] : null,
+              pominiete: [...(odpowiedz.wklady_pominiete ?? [])],
+              progA: odpowiedz.prog_wkladu_pominietego_a ?? null,
+              danePrzyjete: naDanePrzyjete(odpowiedz),
             },
           }));
       })
@@ -394,12 +482,21 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
     };
   }, [runId, punkt, klucz, inline, dostepny, cache]);
 
-  if (inline !== null) return { flows: inline, trace: null, odczyt: 'gotowe' };
-  if (!klucz || !dostepny) return { flows: null, trace: null, odczyt: 'gotowe' };
+  const bezZestawienia = { pominiete: null, progA: null, danePrzyjete: null } as const;
+  if (inline !== null) return { flows: inline, trace: null, ...bezZestawienia, odczyt: 'gotowe' };
+  if (!klucz || !dostepny) return { flows: null, trace: null, ...bezZestawienia, odczyt: 'gotowe' };
   const wpis = cache[klucz];
-  if (wpis === undefined) return { flows: null, trace: null, odczyt: 'wczytywanie' };
-  if (wpis === 'blad') return { flows: null, trace: null, odczyt: 'blad' };
-  return { flows: wpis.flows, trace: wpis.trace, odczyt: 'gotowe' };
+  if (wpis === undefined)
+    return { flows: null, trace: null, ...bezZestawienia, odczyt: 'wczytywanie' };
+  if (wpis === 'blad') return { flows: null, trace: null, ...bezZestawienia, odczyt: 'blad' };
+  return {
+    flows: wpis.flows,
+    trace: wpis.trace,
+    pominiete: wpis.pominiete,
+    progA: wpis.progA,
+    danePrzyjete: wpis.danePrzyjete,
+    odczyt: 'gotowe',
+  };
 }
 
 // ---------------------------------------------------------------------------

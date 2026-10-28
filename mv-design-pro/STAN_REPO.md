@@ -2,7 +2,9 @@
 
 > **TO JEST PIERWSZE CZYTANIE DLA KAŻDEGO AGENTA.** Ten plik mówi, gdzie jesteśmy, i odsyła do dokumentów, które
 > niosą pomiar. **Repo > specy > ten rejestr** (gdy rejestr jest nieaktualny, prawdą jest świeży skan repo).
-> Kanon i hierarchia dokumentów: `CLAUDE.md` („Document Hierarchy"). Misja właściciela (nadrzędna operacyjnie):
+> Kanon i hierarchia dokumentów: `CLAUDE.md` („Document Hierarchy"). **Jedyny nadrzędny rejestr postępu, priorytetów
+> i odpowiedzialności (konsolidacja 2026-10-23): `PLANS.md` część A §C** — §7 B–D tego pliku to pomiar i tory, nie
+> konkurencyjna kolejka. Misja właściciela (nadrzędna operacyjnie):
 > `docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (część I 2026-09-09, część II 2026-09-16). Program bieżący:
 > `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` (decyzje O-1…O-56, sekwencja §5, rejestr postępu §7, bramki §12).
 > **Wznowienie po przerwie: §7 (pakiet wznowienia A–L) — czytaj przed jakąkolwiek pracą.**
@@ -348,7 +350,7 @@ pełny vitest 886 plików — `--no-file-parallelism` (pula wątków) 1 754 s, p
 Generatory fikstur: `backend/scripts/eksport_fixtur_harnessu.py` (`--sprawdz` porównuje bajtowo — na maszynie
 innej niż ta, na której fikstury powstały, zgłasza szum ostatnich cyfr; rozstrzygnięciem repo jest komparator
 z tolerancją `tests/ci/test_fixtury_harnessu.py`, a zmiana fikstury wymaga klasyfikacji treść/szum liść po
-liściu), migawka OpenAPI z generatora testu, substrat SLD skryptami `frontend/scripts/generate-sld-substrate-*.py`.
+liściu; kotwica w szumie jest rozstrzygana GRUPOWO dla fikstur jednego biegu — grupy z deklaracji `RUN_ID_*`/`_UUID_*` generatora, grupa zostaje z dysku tylko gdy każdy plik mieści się w tolerancji i relacja równości skrótów nieprzenośnych jest ta sama co w świeżej odpowiedzi; spójność pinuje `test_fixtury_harnessu.py`), migawka OpenAPI z generatora testu, substrat SLD skryptami `frontend/scripts/generate-sld-substrate-*.py`.
 
 ### H. Wyniki ostatnich testów i ich ograniczenia
 
@@ -410,9 +412,13 @@ przepisane do wierszy rejestru planu A/B §7):
    jednym wątku i load average 9–12, 6 130,7 ms w łańcuchu p5 (ten sam `backend/src`; obciążenia
    wtedy nie mierzono). Naprawa w backendzie e2e — `9cc212b9` (`playwright.config.ts`: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1` dla backendu e2e); biegi testów integratora i wykonawców —
    `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` (reguła biegów weryfikacyjnych, `KARTY_OTWARTE_2026-09.md`);
-   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE (wykonany 2026-09-30: 1 wątek 42,1 s, domyślne 40,5 s na sieci złotej 52 stacji, 10 s symulacji — różnica w szumie; obraz i compose: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`). Wyniki od liczby wątków
-   i od jądra OpenBLAS nie zależą W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA,
-   PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry wartości zależą od kolejności sumowania. Korekta 2026-09-30:
+   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE (wykonany 2026-09-30: 1 wątek 42,1 s, domyślne 40,5 s na sieci złotej 52 stacji, 10 s symulacji — różnica w szumie; obraz i compose: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`). Od liczby wątków wynik
+   nie zależy BIT W BIT od karty DETERMINIZM-HISTORII-PROCESU (2026-10-23): `network_model/watki_blas.py`
+   liczy każdą bibliotekę BLAS procesu jednym wątkiem niezależnie od zmiennych otoczenia (wcześniej
+   Z_bus, krok Newtona i macierz wzmocnienia WLS miały inne ostatnie bity przy 1, 2 i 4 wątkach); zmienne
+   otoczenia oszczędzają już tylko pulę wątków. Od jądra OpenBLAS (procesor maszyny) wynik nie zależy
+   W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA, PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry
+   zależą od kolejności sumowania jądra. Korekta 2026-09-30:
    dawne zdanie „wyniki od liczby wątków nie zależą” było za mocne — test obu liczb wątków biegł na
    jednym jądrze, a runner CI (inne jądro) dał `u_f_est_hz` próbki 0 różne o 0,38–0,57 %.
 6. **Migawki WIP** (A.3) pochodzą z ~01:10 UTC 2026-09-30; wykonawcy pracowali dalej — przy wznowieniu

@@ -357,6 +357,7 @@ def graf_z_arkusza(siec: SiecZArkusza, nazwa: str) -> GrafDoKompilacji:
                 catalog_ref=g["catalog_ref"],
                 dlugosc_m=g["dlugosc_m"],
                 rodzaj=g["rodzaj"],
+                catalog_namespace=g.get("catalog_namespace"),
             )
             for g in siec.galezie
         ),

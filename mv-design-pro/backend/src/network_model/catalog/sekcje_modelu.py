@@ -50,6 +50,7 @@ from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import POLA_TORU_MASZYNY
+from network_model.catalog.wartosci_robocze import KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU
 from pydantic import BaseModel, ConfigDict
 from solver_input.provenance import resolve_card_field_quality_map
 from werdykt.kontrakt import PodstawaWymagania
@@ -266,6 +267,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "trade_name",
                 "number_of_cores",
                 "return_conductor_material",
+                KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
             ),
             fundamental=(
                 "r_ohm_per_km",
@@ -295,6 +297,7 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "base_type_id",
                 "trade_name",
                 "thermal_source_reference",
+                KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
             ),
             fundamental=(
                 "r_ohm_per_km",
@@ -377,6 +380,10 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         ),
         "KARTA_WIDMOWA": (
             "rekord danych sekcji harmonic/supraharmonic typu przekształtnika, nie urządzenie"
+        ),
+        "PRZEWOD_LINII_WN": (
+            "przewód linii 110 kV — dane wyrobu wejściowe obliczenia; model obwodu linii "
+            "(R′, X′, B′, Z′0) powstaje z geometrii słupa projektu, nie z typu przewodu"
         ),
     }
 )
@@ -668,6 +675,20 @@ class DaneUrzadzenia:
     )
 
 
+def jakosci_wartosci_roboczych(pola: Mapping[str, Any]) -> dict[str, FieldQuality | None]:
+    """Pola oznaczone w mapie ``wartosci_robocze`` (pole → założenie) mają jakość ``ESTIMATED``.
+
+    JEDNA reguła dla typu katalogowego (krotka par) i elementu (słownik w
+    ``materialized_params``): wartość wyprowadzona założeniem inżynierskim katalogu nie jest
+    daną karty producenta (zasada nr 4, kontrakt werdyktu §3) — także w widoku sekcji.
+    """
+    surowe = pola.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not surowe:
+        return {}
+    pary = surowe.items() if isinstance(surowe, Mapping) else surowe
+    return {str(nazwa): FieldQuality.ESTIMATED for nazwa, _ in pary}
+
+
 def jakosc_pol(klasa: str, pola: Mapping[str, Any]) -> dict[str, FieldQuality]:
     """Jakość pól urządzenia — JEDNA reguła (``resolve_card_field_quality_map``) dla typu
     i elementu; dla klas bez karty przekształtnika — pusta mapa (jakość niezadeklarowana).
@@ -865,9 +886,18 @@ def dane_typu(repozytorium: CatalogRepository, przestrzen: str, typ_id: str) -> 
         modele_widmowe=tuple(model for karta in karty for model in karta.modele),
         dowody=(*dowody_kart(karty), *((dowod_ptpiree,) if dowod_ptpiree else ())),
         jakosci_zrodel=MappingProxyType(
-            {"dynamic_profile_id": jakosc_profilu_dynamicznego(pola.get("dynamic_profile_id"))}
-            if "dynamic_profile_id" in pola
-            else {}
+            {
+                **jakosci_wartosci_roboczych(pola),
+                **(
+                    {
+                        "dynamic_profile_id": jakosc_profilu_dynamicznego(
+                            pola.get("dynamic_profile_id")
+                        )
+                    }
+                    if "dynamic_profile_id" in pola
+                    else {}
+                ),
+            }
         ),
     )
 

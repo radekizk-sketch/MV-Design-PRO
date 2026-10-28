@@ -133,6 +133,8 @@ export function EkranZwarc({
   // odpowiedzi contributions) — takze wylacznie od realnego dostawcy.
   const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane?.wywodSekcje ?? [];
   const walidacjaIecWkladow = wklady ? [] : wkladyPobrane?.walidacjaIec ?? [];
+  // Partia 2 (zasada nr 4): dane przyjęte wkładów — wyłącznie od realnego dostawcy, jak wywód.
+  const danePrzyjeteWkladow = wklady ? null : wkladyPobrane?.danePrzyjete ?? null;
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
@@ -211,7 +213,10 @@ export function EkranZwarc({
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
+        pominiete={rozplyw.pominiete}
+        progA={rozplyw.progA}
         odczyt={rozplyw.odczyt}
+        danePrzyjete={rozplyw.danePrzyjete}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
@@ -232,6 +237,7 @@ export function EkranZwarc({
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}
+        danePrzyjete={danePrzyjeteWkladow}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />

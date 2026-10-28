@@ -64,9 +64,13 @@ from application.ncrfg_compliance import (
     brak_pl,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.nazwy_elementow import opis_bez_nazwy
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -286,6 +290,18 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     row = _sc_row_for_bus(sc_run, bus_ref)
     assert row is not None  # gwarantowane przez bramkę braków
     nazwa_wezla = nazwa_nadana(row.get("target_name")) or opis_bez_nazwy("buses")
+    # Karta PODSTAWA-Q (rozstrz. 3): prądy sekcji (I″k, S″k, i_p, I_th) liczone z wartością
+    # roboczą parametru maszyny wirującej wyspy węzła — dana przyjęta maszyny (jedno tłumaczenie);
+    # karta LINIA-110: linie 110 kV z wartością roboczą geometrii w wyspie węzła.
+    dane_przyjete = (
+        (
+            (dana_przyjeta_tolerancji_nn(miejsce_pl=f"węzeł przyłączenia: {nazwa_wezla}"),)
+            if row.get("tolerancja_nn_robocza")
+            else ()
+        )
+        + dane_przyjete_galezi_wiersza(row)
+        + dane_przyjete_maszyn(row.get("parametry_robocze_maszyn"), wielkosc=("ikss", "ip", "ith"))
+    )
     return {
         "bus_ref": bus_ref,
         "nazwa_wezla": nazwa_wezla,
@@ -295,16 +311,11 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
         "ith_ka": row.get("ith_ka"),
         "rodzaj_zwarcia": row.get("fault_type"),
         # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: węzeł w sieci nN liczonej z wartością roboczą
-        # tolerancji napięcia — prądy stoją na danej przyjętej; addytywnie, WYŁĄCZNIE gdy są.
+        # tolerancji napięcia — prądy stoją na danej przyjętej; karta LINIA-110: tak samo
+        # linie 110 kV z wartością roboczą geometrii w wyspie węzła. Addytywnie, WYŁĄCZNIE gdy są.
         **(
-            {
-                "dane_przyjete": [
-                    dana_przyjeta_tolerancji_nn(
-                        miejsce_pl=f"węzeł przyłączenia: {nazwa_wezla}"
-                    ).model_dump(mode="json")
-                ]
-            }
-            if row.get("tolerancja_nn_robocza")
+            {"dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete]}
+            if dane_przyjete
             else {}
         ),
     }

@@ -27,8 +27,12 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.pochodne import calka_joule_ka2s
+from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
 from werdykt import DanaPrzyjeta
 
 STATUS_PASS = "PASS"
@@ -67,7 +71,7 @@ class EquipmentProofGenerator:
 
         return (
             cls._check_u(device, required),
-            cls._check_icu(device, required),
+            cls._check_icu(device, required, zalozenia_zaniku=proof_input.zalozenia_zaniku),
             cls._check_idyn(device, required),
             cls._check_ith(device, required),
         )
@@ -99,7 +103,11 @@ class EquipmentProofGenerator:
 
     @classmethod
     def _check_icu(
-        cls, device: DeviceRating, required: dict[str, Any]
+        cls,
+        device: DeviceRating,
+        required: dict[str, Any],
+        *,
+        zalozenia_zaniku: tuple[dict[str, Any], ...] = (),
     ) -> EquipmentProofCheckResult:
         """Zdolność wyłączania zwarć aparatu wobec prądu, który aparat MA wyłączyć.
 
@@ -120,12 +128,14 @@ class EquipmentProofGenerator:
         Brak I_b w wielkościach biegu to brak podstawy kryterium, nigdy cicha podmiana na
         I_k''. Karta TB-WARTOSC-ROBOCZA: I_b z udziałem maszyn wirujących policzony przy t_b
         będącym wartością roboczą — uwaga kryterium nazywa założenie i jego źródło (wynik
-        obliczeniowy na danej przyjętej, nie potwierdzony dowód przy rzeczywistym t_b).
+        obliczeniowy na danej przyjętej, nie potwierdzony dowód przy rzeczywistym t_b). Karta
+        PODSTAWA-Q: I_b, w którym μ albo q maszyny wyznaczono na założeniu inżynierskim (poza
+        zakresem albo pomiędzy krzywymi rys. 14 normy), niesie to założenie w uwadze kryterium.
         """
         wielkosc = _wielkosc_wylaczania(device, required)
         required_val = _as_float(required.get(wielkosc.klucz)) if wielkosc else None
         klucz = wielkosc.klucz if wielkosc else "ib_ka"
-        notes = _uwagi_wylaczania(wielkosc, required)
+        notes = _uwagi_wylaczania(wielkosc, required, zalozenia_zaniku=zalozenia_zaniku)
         if device.i_cu_not_applicable:
             # KARTA UM-ICU-KATALOG (2a): rozlacznik/odlacznik/uziemnik nie ma
             # zdolnosci wylaczania zwarc Z DEFINICJI normy — brak i_cu_ka nie
@@ -366,6 +376,20 @@ class EquipmentProofGenerator:
             warnings=tuple(
                 f"Wielkości wymagane liczone z daną przyjętą: {d.nazwa_pl} — {d.powod_pl}"
                 for d in result.dane_przyjete
+            )
+            + tuple(
+                uwaga
+                for uwaga in (
+                    _uwaga_zalozen_zaniku(
+                        _wielkosc_wylaczania(
+                            proof_input.device, proof_input.required_fault_results
+                        ),
+                        proof_input.zalozenia_zaniku,
+                    ),
+                )
+                # Aparat bez zdolności wyłączania z definicji (NIE_DOTYCZY) — I_b nie wchodzi
+                # do żadnego porównania, więc założenie krzywej nie dotyczy werdyktu.
+                if uwaga is not None and not proof_input.device.i_cu_not_applicable
             ),
             overall_status=result.overall_status,
             failed_checks=result.failed_checks,
@@ -660,9 +684,13 @@ def _wielkosc_wylaczania(
 
 
 def _uwagi_wylaczania(
-    wielkosc: WielkoscKryteriumWylaczania | None, required: dict[str, Any]
+    wielkosc: WielkoscKryteriumWylaczania | None,
+    required: dict[str, Any],
+    *,
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = (),
 ) -> tuple[str, ...]:
-    """Uwagi kryterium wyłączania: t_b i składowa nieokresowa i_DC(t_b) z biegu (informacja)."""
+    """Uwagi kryterium wyłączania: t_b i składowa nieokresowa i_DC(t_b) z biegu (informacja),
+    pochodzenie t_b i założenia inżynierskie krzywych zaniku μ/q (karta PODSTAWA-Q)."""
     if wielkosc is not WIELKOSC_IB:
         return ()
     tb_s = _as_float(required.get("tb_s"))
@@ -693,7 +721,25 @@ def _uwagi_wylaczania(
                 "wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem przy "
                 "rzeczywistym czasie wyłączenia."
             )
+    uwaga_zaniku = _uwaga_zalozen_zaniku(wielkosc, zalozenia_zaniku)
+    if uwaga_zaniku is not None:
+        uwagi.append(uwaga_zaniku)
     return tuple(uwagi)
+
+
+def _uwaga_zalozen_zaniku(
+    wielkosc: WielkoscKryteriumWylaczania | None, zalozenia_zaniku: tuple[dict[str, Any], ...]
+) -> str | None:
+    """Karta PODSTAWA-Q: zdanie o założeniach inżynierskich krzywych zaniku μ/q, na których
+    stoi I_b porównywany z I_cu — JEDNO źródło dla uwagi kryterium i ostrzeżenia dowodu.
+
+    ``None``, gdy kryterium nie porównuje I_b (aparat nN, bezpiecznik) albo gdy wszystkie μ, q
+    punktu wyznaczono z zapisu normy. Zdanie z `zdanie_zalozen_zaniku_ib_pl` — to samo
+    zdanie co w zakresie ważności oceny aparatury pól stacji.
+    """
+    if wielkosc is not WIELKOSC_IB:
+        return None
+    return zdanie_zalozen_zaniku_ib_pl(zalozenia_zaniku)
 
 
 def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool:
@@ -708,15 +754,35 @@ def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool
 
 
 def _dane_przyjete_wejscia(proof_input: EquipmentProofInput) -> tuple[DanaPrzyjeta, ...]:
-    """Dana przyjęta wymaganych wielkości: punkt zabudowy w sieci nN liczonej z wartością roboczą
-    tolerancji napięcia (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — stoi w wyniku i w ostrzeżeniu
-    dowodu, bo każde z czterech sprawdzeń porównuje wielkość z tego biegu."""
-    if not proof_input.tolerancja_nn_robocza:
-        return ()
+    """Dane przyjęte wymaganych wielkości — stoją w wyniku i w ostrzeżeniu dowodu.
+
+    Punkt zabudowy w sieci nN liczonej z wartością roboczą tolerancji napięcia (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA) i linie 110 kV z wartością roboczą geometrii w wyspie punktu
+    (karta LINIA-110) — każde z czterech sprawdzeń porównuje wielkość z tego biegu.
+    Wartości robocze parametrów maszyn wirujących wyspy punktu (karta PODSTAWA-Q,
+    rozstrzygnięcie 3) — gdy wpływają na wielkość porównywaną w którymkolwiek sprawdzeniu
+    zwarciowym: I_p (I_dyn), I_th (I_th) i wielkość kryterium wyłączania (I_cu; aparat bez
+    zdolności wyłączania z definicji tego porównania nie ma).
+    """
+    tolerancja = (
+        (
+            dana_przyjeta_tolerancji_nn(
+                miejsce_pl=f"punkt zabudowy aparatu „{proof_input.device.name_pl}”"
+            ),
+        )
+        if proof_input.tolerancja_nn_robocza
+        else ()
+    )
+    wielkosci = ["ip", "ith"]
+    wielkosc_wylaczania = _wielkosc_wylaczania(
+        proof_input.device, proof_input.required_fault_results
+    )
+    if wielkosc_wylaczania is not None and not proof_input.device.i_cu_not_applicable:
+        wielkosci.append(wielkosc_wylaczania.wielkosc_zwarciowa)
     return (
-        dana_przyjeta_tolerancji_nn(
-            miejsce_pl=f"punkt zabudowy aparatu „{proof_input.device.name_pl}”"
-        ),
+        tolerancja
+        + proof_input.dane_galezi
+        + dane_przyjete_maszyn(proof_input.parametry_robocze_maszyn, wielkosc=wielkosci)
     )
 
 

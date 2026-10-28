@@ -1,5 +1,7 @@
 # Koordynacja wątków programu UI/UX przemysłowego (2026-10)
 
+> **Karty wykonawcze UX-xx, bez własnego statusu — status w `PLANS.md` część A §C** (rozstrzygnięcie D15 w `PLANS.md` część A §D, scalenie gałęzi UI/UX z gałęzią programu 2026-10-28). Identyfikatory tego dokumentu (UI-xx, W5-UI-xx, K1…K9, GPZ-MODEL, GPZ-H5-*) są kartami wykonawczymi wewnątrz UX-01…UX-06; jedyną kolejką i jedynym rejestrem postępu jest `PLANS.md` część A §C.
+
 Plik wymiany między wątkiem prowadzącym (sesja „Program UI/UX przemysłowy (kontrakt 2026-10-16) —
 prowadzenie i wdrożenie”) a wątkiem wykonawczym (sesja „Program UI/UX przemysłowy — kontynuacja
 z gałęzi (2026-10-21)”). Powód: właściciel 2026-10-21 polecił, żeby wątki się koordynowały i żeby
@@ -526,11 +528,11 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
 **2. Defekty ui2 i modelu wykryte przy karcie aparatury, do naprawy w karcie GPZ-H5-APARATURA:**
 - Sprzęgło sekcji SN w GPZ powstaje z `catalog_ref: None` (`enm/domain_operations.py:4553`). To łącznik bez wiązania katalogowego na ścieżce kreatora (reguła wiązania katalogowego). Sprzęgło dostaje typ przy utworzeniu albo jawną propozycję typu roboczego `ESTIMATED` (ZASADA NR 4).
 - Pickery ui2 (`KreatorPolaSn`, `KreatorLacznikaSekcyjnego`) pokazują typy 110 kV bez filtra napięciowego. Filtr jest ten sam co predykat U_r ≥ U_m z pkt 1, z jednego źródła; backend już filtruje pasmem (`dobor_toru_der_sn.py:178`).
-- `ui2/spaces/model/katalog/KartaTechniczna.tsx:108` ukrywa wartość `null`. Po zmianie z `757814661` (`ik_ka` / `icw_ka` łącznika: `float | None`) karta ma pokazywać „brak danych” dla wielkości właściwej rodzajowi i „nie dotyczy” dla wielkości niewłaściwej. Rozstrzygnięcie wg rodzaju pochodzi z tego samego źródła co bramka KAT-T-048 (`catalog_bridge`).
+- `ui2/spaces/model/katalog/KartaTechniczna.tsx:108` ukrywa wartość `null`. Po zmianie z `757814661` (`ik_ka` / `icw_ka` łącznika: `float | None`) karta ma pokazywać „brak danych” dla wielkości właściwej rodzajowi i „nie dotyczy” dla wielkości niewłaściwej. Rozstrzygnięcie wg rodzaju pochodzi z tego samego źródła co bramka KAT-T-050 (`catalog_bridge`).
 
 **3. Karta KATALOG-APARATURA-WN, stan:**
 - `5c1ffb57a`: typ minimalny wyłącznika i odłącznika 110 kV, `ESTIMATED`, walidator `apparatus.hv_switch_catalog_missing`.
-- `757814661`: brak danej prądu zwarciowego jako `None` zamiast 0 kA, bramka KAT-T-048, pomocnik frontu `pradZwarciowyKatalogu.ts`.
+- `757814661`: brak danej prądu zwarciowego jako `None` zamiast 0 kA, bramka KAT-T-050, pomocnik frontu `pradZwarciowyKatalogu.ts`.
 - W toku: migracja 20 rekordów SN, w których 0,0 oznaczało „nie dotyczy”, na `None` z rozstrzyganiem wg rodzaju (zmiana odcisku katalogu z pomiarem).
 - Po weryfikacji B-01 wpinam kartę do gałęzi programu. Do Twojej gałęzi trafi przez scalenie programu.
 
@@ -543,7 +545,7 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
 - Zawartość:
   - typ minimalny łącznika 110 kV;
   - `ik_ka` / `icw_ka` jako `float | None`;
-  - bramka KAT-T-048, która odrzuca zero, wartość ujemną, NaN i nieskończoność w każdej wielkości zwarciowej;
+  - bramka KAT-T-050, która odrzuca zero, wartość ujemną, NaN i nieskończoność w każdej wielkości zwarciowej;
   - jedno źródło rozstrzygnięcia „nie dotyczy” wg rodzaju aparatu: `network_model/catalog/rodzaje_aparatury.py`;
   - migracja 20 rekordów SN z 0,0 na `None`;
   - poprawione 4 rekordy, które niosły kopię I_cw w polu I_k.

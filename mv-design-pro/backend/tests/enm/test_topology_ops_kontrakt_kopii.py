@@ -765,12 +765,19 @@ BLOKADA: list[tuple[str, Callable[[dict], Any]]] = [
 ]
 
 
+#: Metody kontenerów zmieniające obiekt w miejscu (dict/list).
+_METODY_MUTUJACE = frozenset(
+    {"update", "append", "extend", "insert", "pop", "remove", "clear", "setdefault"}
+)
+
+
 def _funkcje_mutujace_modulu() -> set[str]:
     """Nazwy funkcji `topology_ops`, które zapisują do modelu.
 
     Kryterium STRUKTURALNE, nie lista z głowy: funkcja mutuje, jeżeli w jej ciele
-    występuje przypisanie do subskrypcji parametru `enm` albo wywołanie
-    `enm.setdefault(...).append(...)`. Dzięki temu nowa operacja mutująca dopisana
+    występuje przypisanie do subskrypcji parametru `enm`, wywołanie
+    `enm.setdefault(...).append(...)` albo metoda mutująca na podobiekcie modelu
+    (`enm[...][...].update(...)`). Dzięki temu nowa operacja mutująca dopisana
     do modułu bez wpisu w tabelach wyżej wywala test kompletności.
     """
     zrodlo = Path(topology_ops.__file__).read_text(encoding="utf-8")
@@ -796,7 +803,18 @@ def _funkcje_mutujace_modulu() -> set[str]:
                 and isinstance(pod.func.value.func.value, ast.Name)
                 and pod.func.value.func.value.id == "enm"
             )
-            if zapis_do_subskrypcji or dopisanie:
+            # Metoda mutująca na podobiekcie modelu (`enm["branches"][idx].update(...)`) —
+            # karta PODSTAWA-Q zamieniła pętlę przypisań na `update` stanu końcowego po
+            # bramie wartości projektanta; kryterium bez tej postaci zgubiłoby dwie operacje.
+            metoda_na_podobiekcie = (
+                isinstance(pod, ast.Call)
+                and isinstance(pod.func, ast.Attribute)
+                and pod.func.attr in _METODY_MUTUJACE
+                and isinstance(pod.func.value, ast.Subscript)
+                and isinstance(_korzen_nazwy(pod.func.value), ast.Name)
+                and _korzen_nazwy(pod.func.value).id == "enm"  # type: ignore[union-attr]
+            )
+            if zapis_do_subskrypcji or dopisanie or metoda_na_podobiekcie:
                 mutujace.add(wezel.name)
                 break
     return mutujace

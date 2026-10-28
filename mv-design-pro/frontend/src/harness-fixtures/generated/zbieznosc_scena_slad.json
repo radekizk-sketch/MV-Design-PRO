@@ -79,26 +79,26 @@
   "iterations": [
     {
       "k": 1,
-      "norm_mismatch": 0.0542191907932,
-      "max_mismatch_pu": 0.0535218512679,
+      "norm_mismatch": 0.0542191907917,
+      "max_mismatch_pu": 0.0535218512663,
       "cause_if_failed": null
     },
     {
       "k": 2,
-      "norm_mismatch": 0.00162311479642,
-      "max_mismatch_pu": 0.00158439840674,
+      "norm_mismatch": 0.00162311479368,
+      "max_mismatch_pu": 0.00158439840398,
       "cause_if_failed": null
     },
     {
       "k": 3,
-      "norm_mismatch": 1.35045420759e-06,
-      "max_mismatch_pu": 1.26099178489e-06,
+      "norm_mismatch": 1.35045716351e-06,
+      "max_mismatch_pu": 1.26099514358e-06,
       "cause_if_failed": null
     },
     {
       "k": 4,
-      "norm_mismatch": 4.40618922045e-12,
-      "max_mismatch_pu": 3.02888995361e-12,
+      "norm_mismatch": 2.7896262452e-12,
+      "max_mismatch_pu": 2.08266887279e-12,
       "cause_if_failed": null
     }
   ],

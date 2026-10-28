@@ -767,7 +767,7 @@ def test_selekcja_najnowszego_biegu_zwarciowego_pomija_bieg_przez_zf(
     assert przez_zf.created_at >= metaliczny.created_at
     wybrany = _najnowszy_bieg(list_runs_for_case(przypadek), ZRODLO_SC)
     assert wybrany is not None and str(wybrany.id) == metaliczny_id
-    ikss_ka, _, zrodlo, robocza = _prady_zwarciowe_szyny(przypadek, "bus-1")
+    ikss_ka, _, zrodlo, robocza, _linie, _maszyny = _prady_zwarciowe_szyny(przypadek, "bus-1")
     assert zrodlo == metaliczny_id
     # Szyna SN: wiersz bez wartości roboczej tolerancji sieci nN.
     assert robocza is False

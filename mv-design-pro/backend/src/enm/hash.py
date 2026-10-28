@@ -86,10 +86,12 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
     # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
     "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+    # + karta LINIA-110: geometria słupa linii 110 kV i proweniencja parametrów z geometrii
+    # (`None` = linia bez obliczenia z geometrii — każda linia SN sprzed karty).
     # + W5-C: pozycja normalna łącznika (punkt normalnie otwarty). `None` =
     # niezadeklarowana — poza odciskiem (gałęzie sprzed karty haszują jak przed nią);
     # zadeklarowana jest treścią modelu i stanem łączeniowym (odcisk przełączeń).
-    "branches": ("screen_bonding", "normal_state"),
+    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
     # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
     # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
     # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc

@@ -134,6 +134,12 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'ring.endpoints_missing': formularz('connect_secondary_ring_sn'),
   'ring.nop_required': formularz('set_normal_open_point'),
   'branch.zero_sequence_missing': EDYCJA,
+  // R′0/X′0 odcinka z wartości roboczej katalogu (zasada nr 4): formularz parametrów odcinka,
+  // kursor w R′0 — projektant wpisuje wartość z karty producenta albo z pomiaru.
+  'branch.z0_wartosc_robocza': EDYCJA,
+  // Linia 110 kV z wartością roboczą geometrii słupa: formularz parametrów linii (sekcja linii
+  // 110 kV — przewód z katalogu i geometria słupa), kursor w pierwszym polu geometrii.
+  'line.geometria_wartosc_robocza': EDYCJA,
   // --- Stacje i pola --------------------------------------------------------------
   'station.type_invalid': EDYCJA,
   // W043: deklaracja rodzaju wobec topologii — edycja deklaracji z podpowiedzią ładunku
@@ -317,6 +323,12 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // `lv_voltage_tolerance`, formularz parametrów tego elementu); nadpisanie c jest parametrem
   // przypadku albo scenariusza zwarciowego, nie elementu modelu.
   'fault.c_tolerancja_nn_robocza': EDYCJA,
+  // Karta PODSTAWA-Q: maszyna wirująca liczona z wartością roboczą parametru zwarciowego —
+  // wartość projektanta wpisuje się w parametrach TEGO generatora (`overrides`).
+  'fault.parametry_maszyny_robocze': EDYCJA,
+  // Karta PODSTAWA-Q (E011): wartość projektanta spoza bramy rejestru — naprawa w sekcji
+  // wartości projektanta TEGO elementu (maszyna wirująca albo aparat SN, `overrides`).
+  'catalog.wartosc_projektanta_niedopuszczalna': EDYCJA,
   'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza zwarciowego, nie elementu modelu.

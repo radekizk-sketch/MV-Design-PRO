@@ -777,9 +777,40 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "która ją definiuje."
         ),
     ),
-    # Karta KATALOG-APARATURA-WN (poprawka architekta 2026-10-22) — `SwitchEquipmentType`.
+    # Karta LINIA-110 — przewód linii napowietrznej 110 kV (`OverheadConductorType`).
     RegulaKatalogu(
         kod="KAT-T-048",
+        nazwa="Przewód linii napowietrznej: przeznaczenie ze słownika, wymiary i rezystancja dodatnie",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Definicja wielkości wyrobu PN-EN 50182 (przekrój, średnica, rezystancja prądu "
+            "stałego, współczynnik temperaturowy są dodatnie); GMR przewodu jest mniejszy od "
+            "jego promienia (definicja średniej geometrycznej odległości)"
+        ),
+        uzasadnienie=(
+            "Przewód o zerowym przekroju, średnicy albo rezystancji nie istnieje, a GMR "
+            "większy od promienia dawałby ujemną indukcyjność wewnętrzną — obliczenie "
+            "parametrów linii z geometrii nie miałoby sensu fizycznego."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-049",
+        nazwa="Budowa przewodu zgodna ze średnicą zewnętrzną",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Przewód o budowie koncentrycznej (PN-EN 50182): średnica = rdzeń + 2·liczba "
+            "warstw·średnica drutu, z tolerancją zaokrągleń tablicy "
+            "`TOLERANCJA_SREDNICY_Z_BUDOWY`"
+        ),
+        uzasadnienie=(
+            "GMR przewodu wyznaczany z budowy (położenie drutów aluminiowych) jest wiarygodny "
+            "tylko wtedy, gdy budowa odtwarza wymiar z tablicy wyrobu; rekord sprzeczny opisuje "
+            "przewód, którego nie da się zbudować."
+        ),
+    ),
+    # Karta KATALOG-APARATURA-WN (poprawka architekta 2026-10-22) — `SwitchEquipmentType`.
+    RegulaKatalogu(
+        kod="KAT-T-050",
         nazwa="Prąd zwarciowy łącznika dodatni albo brak danej; „nie dotyczy” wg rodzaju",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa=(
@@ -1197,7 +1228,7 @@ def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
     ZAKRES REGULY, NIE PODRASOWANIE DANYCH. Rodzina aparatow SN niesie odlaczniki,
     rozlaczniki i uziemniki z `breaking_capacity_ka = None`: aparat z definicji nie
     przerywa pradu zwarciowego (odlacznik lamie tylko prad jalowy, uziemnik nie lamie
-    nic), wiec wielkosc „nie dotyczy” (KAT-T-048 — rozstrzyga rodzaj, nigdy zapis 0.0).
+    nic), wiec wielkosc „nie dotyczy” (KAT-T-050 — rozstrzyga rodzaj, nigdy zapis 0.0).
     Zestawienie pradu krotkotrwalego wytrzymywanego ze zdolnoscia wylaczania, ktorej
     aparat NIE MA, nie jest sygnalem „do przegladu" tylko szumem. Pozycje bez Icu ida
     wiec do `pominiete` z nazwanym powodem, a nie do odstepstw i nie do cichego zera.

@@ -26,7 +26,7 @@ Usage:
 import math
 import re
 import unicodedata
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
@@ -39,7 +39,10 @@ from network_model.catalog.rodzaje_aparatury import (
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
     wielkosc_zwarciowa_lacznika_dotyczy,
 )
-from network_model.catalog.wartosci_robocze import pochodzenie_danej_karty
+from network_model.catalog.wartosci_robocze import (
+    KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+    pochodzenie_danej_karty,
+)
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
@@ -113,6 +116,13 @@ class CatalogNamespace(Enum):
     #: (`network_model/catalog/karty_widmowe/`); karta projektu żyje w modelu
     #: (`EnergyNetworkModel.katalog_projektu.karty_widmowe`).
     KARTA_WIDMOWA = "KARTA_WIDMOWA"
+    #: Karta LINIA-110: przewód linii napowietrznej 110 kV (fazowy albo odgromowy) — dane
+    #: WYROBU wg PN-EN 50182 (przekrój, budowa, średnica, R20 DC, α). ODRĘBNA przestrzeń od
+    #: LINIA_SN, bo niesie inny kontrakt materializacji: typ linii SN wiąże gotowe R′/X′/B′,
+    #: a przewód 110 kV wiąże WYŁĄCZNIE przewód — R′, X′, B′ i Z′0 linii liczy solver
+    #: `network_model.solvers.parametry_linii_napowietrznej` z geometrii słupa (standard ENEA
+    #: Operator linii 110 kV §7.1 lit. j: parametry wyznaczane obliczeniowo dla projektu).
+    PRZEWOD_LINII_WN = "PRZEWOD_LINII_WN"
 
 
 #: Kategoria katalogu → nazwa grupy katalogu w treści dla projektanta (karta #142).
@@ -146,6 +156,7 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "CONVERTER": "Typy konwerterów",
     "GENERATOR_SN": "Typy generatorów synchronicznych SN",
     "KARTA_WIDMOWA": "Karty widmowe urządzeń",
+    "PRZEWOD_LINII_WN": "Typy przewodów linii napowietrznych 110 kV",
     "mv_branch_points": "Typy punktów rozgałęzienia SN",
 }
 
@@ -905,6 +916,14 @@ class MaterializationContract:
         }
 
 
+def wartosci_robocze_z_danych(data: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Mapa ``wartosci_robocze`` pozycji (pole → założenie) w postaci niezmiennej i posortowanej."""
+    surowe = data.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not isinstance(surowe, Mapping):
+        return ()
+    return tuple(sorted((str(pole), str(zalozenie)) for pole, zalozenie in surowe.items()))
+
+
 @dataclass(frozen=True)
 class LineType:
     """
@@ -966,6 +985,9 @@ class LineType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -1030,6 +1052,9 @@ class LineType:
             "thermal_source_reference": self.thermal_source_reference,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -1085,9 +1110,214 @@ class LineType:
             thermal_source_reference=data.get("thermal_source_reference"),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60287 / IEC 60949",
+                default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
+                default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
+            ),
+        )
+
+
+#: Przeznaczenie przewodu linii napowietrznej 110 kV.
+PrzeznaczeniePrzewodu = Literal["FAZOWY", "ODGROMOWY"]
+PRZEZNACZENIA_PRZEWODU: tuple[str, ...] = ("FAZOWY", "ODGROMOWY")
+
+#: Dopuszczalna względna różnica średnicy wynikającej z budowy (rdzeń + 2·warstwy·drut) i
+#: średnicy z tablicy wyrobu. Tablica PN-EN 50182 podaje średnicę zaokrągloną do 0,1 mm,
+#: a druty — do 0,01 mm; 1 % pokrywa oba zaokrąglenia z zapasem (pomiar katalogu karty
+#: LINIA-110: największa różnica 0,23 % dla 243-AL1/39-ST1A).
+TOLERANCJA_SREDNICY_Z_BUDOWY = 0.01
+
+
+@dataclass(frozen=True)
+class OverheadConductorType:
+    """Przewód linii napowietrznej 110 kV — dane WYROBU (karta LINIA-110).
+
+    Typ wiąże przewód, nie linię: R′, X′, B′ i Z′0 linii zależą od geometrii słupa i liczy je
+    solver ``network_model.solvers.parametry_linii_napowietrznej``. Tu żyją wyłącznie dane
+    z tablicy normy wyrobu (PN-EN 50182) i budowa potrzebna do wyznaczenia GMR.
+
+    Attributes:
+        oznaczenie: Oznaczenie wg PN-EN 50182 (np. ``243-AL1/39-ST1A``).
+        przeznaczenie: ``FAZOWY`` albo ``ODGROMOWY``.
+        cross_section_mm2: Przekrój części aluminiowej [mm²] (przekrój przewodzący).
+        przekroj_stali_mm2: Przekrój rdzenia stalowego [mm²].
+        srednica_mm: Średnica zewnętrzna przewodu [mm] (tablica wyrobu).
+        warstwy_al: Liczba drutów aluminiowych w kolejnych warstwach od rdzenia.
+        srednica_drutu_al_mm / srednica_drutu_st_mm: Średnice drutów [mm].
+        srednica_rdzenia_mm: Średnica rdzenia stalowego [mm].
+        r20_dc_ohm_per_km: Rezystancja prądu stałego w 20 °C [Ω/km] (tablica wyrobu).
+        alfa_1_per_k: Temperaturowy współczynnik rezystancji [1/K].
+        gmr_mm: GMR z tablicy wyrobu [mm] — ``None``, gdy tablica go nie podaje (solver
+            wyznacza go z budowy).
+        rated_current_a: Obciążalność prądowa długotrwała [A] (warunki z tablicy wyrobu);
+            ``None`` dla przewodu odgromowego (tablica jej nie podaje).
+        max_temperature_c: Temperatura dopuszczalna długotrwale przewodu [°C].
+    """
+
+    id: str
+    name: str
+    oznaczenie: str
+    przeznaczenie: str
+    conductor_material: str
+    cross_section_mm2: float
+    przekroj_stali_mm2: float
+    srednica_mm: float
+    warstwy_al: tuple[int, ...]
+    liczba_drutow_st: int
+    srednica_drutu_al_mm: float
+    srednica_drutu_st_mm: float
+    srednica_rdzenia_mm: float
+    r20_dc_ohm_per_km: float
+    alfa_1_per_k: float
+    masa_kg_per_km: float
+    wytrzymalosc_kn: float
+    voltage_rating_kv: float
+    max_temperature_c: float
+    rated_current_a: float | None = None
+    gmr_mm: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_reference: str | None = None
+    standard: str | None = None
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+    source_reference: str = "PN-EN 50182"
+    catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.przeznaczenie not in PRZEZNACZENIA_PRZEWODU:
+            odmowa_twarda(
+                "KAT-T-048",
+                f"{self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
+                f"{', '.join(PRZEZNACZENIA_PRZEWODU)}.",
+            )
+        dodatnie = {
+            "cross_section_mm2": self.cross_section_mm2,
+            "srednica_mm": self.srednica_mm,
+            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
+            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
+            "alfa_1_per_k": self.alfa_1_per_k,
+            "max_temperature_c": self.max_temperature_c,
+        }
+        for nazwa, wartosc in dodatnie.items():
+            if not (math.isfinite(wartosc) and wartosc > 0):
+                odmowa_twarda(
+                    "KAT-T-048",
+                    f"{self.id}: {nazwa} musi być dodatnie i skończone (jest {wartosc}).",
+                )
+        if self.gmr_mm is not None and not (0 < self.gmr_mm < self.srednica_mm / 2.0):
+            odmowa_twarda(
+                "KAT-T-048",
+                f"{self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
+            )
+        if not self.warstwy_al or any(w <= 0 for w in self.warstwy_al):
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
+            )
+        srednica_budowy = self.srednica_rdzenia_mm + 2.0 * len(self.warstwy_al) * (
+            self.srednica_drutu_al_mm
+        )
+        if abs(srednica_budowy / self.srednica_mm - 1.0) > TOLERANCJA_SREDNICY_Z_BUDOWY:
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
+                f"{self.srednica_rdzenia_mm} mm + {len(self.warstwy_al)} warstw drutów "
+                f"{self.srednica_drutu_al_mm} mm) nie zgadza się ze średnicą przewodu "
+                f"{self.srednica_mm} mm.",
+            )
+
+    @property
+    def liczba_drutow_al(self) -> int:
+        return sum(self.warstwy_al)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "oznaczenie": self.oznaczenie,
+            "przeznaczenie": self.przeznaczenie,
+            "conductor_material": self.conductor_material,
+            "cross_section_mm2": self.cross_section_mm2,
+            "przekroj_stali_mm2": self.przekroj_stali_mm2,
+            "srednica_mm": self.srednica_mm,
+            "warstwy_al": list(self.warstwy_al),
+            "liczba_drutow_al": self.liczba_drutow_al,
+            "liczba_drutow_st": self.liczba_drutow_st,
+            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
+            "srednica_drutu_st_mm": self.srednica_drutu_st_mm,
+            "srednica_rdzenia_mm": self.srednica_rdzenia_mm,
+            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
+            "alfa_1_per_k": self.alfa_1_per_k,
+            "gmr_mm": self.gmr_mm,
+            "masa_kg_per_km": self.masa_kg_per_km,
+            "wytrzymalosc_kn": self.wytrzymalosc_kn,
+            "voltage_rating_kv": self.voltage_rating_kv,
+            "max_temperature_c": self.max_temperature_c,
+            "rated_current_a": self.rated_current_a,
+            "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
+            "thermal_source_reference": self.thermal_source_reference,
+            "standard": self.standard,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "OverheadConductorType":
+        kontekst = "OverheadConductorType"
+        warstwy = data.get("warstwy_al")
+        if not isinstance(warstwy, list | tuple):
+            odmowa_twarda(
+                "KAT-T-049",
+                f"{data.get('id')}: brak budowy przewodu (lista `warstwy_al`).",
+            )
+
+        def opcjonalny(klucz: str) -> float | None:
+            wartosc = data.get(klucz)
+            return float(wartosc) if wartosc is not None else None
+
+        return cls(
+            id=wymagany_str(data, "id", context=kontekst),
+            name=wymagany_str(data, "name", context=kontekst),
+            oznaczenie=wymagany_str(data, "oznaczenie", context=kontekst),
+            przeznaczenie=wymagany_str(data, "przeznaczenie", context=kontekst),
+            conductor_material=wymagany_str(data, "conductor_material", context=kontekst),
+            cross_section_mm2=wymagany_float(data, "cross_section_mm2", context=kontekst),
+            przekroj_stali_mm2=wymagany_float(data, "przekroj_stali_mm2", context=kontekst),
+            srednica_mm=wymagany_float(data, "srednica_mm", context=kontekst),
+            warstwy_al=tuple(int(w) for w in warstwy),
+            liczba_drutow_st=wymagany_int(data, "liczba_drutow_st", context=kontekst),
+            srednica_drutu_al_mm=wymagany_float(data, "srednica_drutu_al_mm", context=kontekst),
+            srednica_drutu_st_mm=wymagany_float(data, "srednica_drutu_st_mm", context=kontekst),
+            srednica_rdzenia_mm=wymagany_float(data, "srednica_rdzenia_mm", context=kontekst),
+            r20_dc_ohm_per_km=wymagany_float(data, "r20_dc_ohm_per_km", context=kontekst),
+            alfa_1_per_k=wymagany_float(data, "alfa_1_per_k", context=kontekst),
+            masa_kg_per_km=wymagany_float(data, "masa_kg_per_km", context=kontekst),
+            wytrzymalosc_kn=wymagany_float(data, "wytrzymalosc_kn", context=kontekst),
+            voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context=kontekst),
+            max_temperature_c=wymagany_float(data, "max_temperature_c", context=kontekst),
+            rated_current_a=opcjonalny("rated_current_a"),
+            gmr_mm=opcjonalny("gmr_mm"),
+            jth_1s_a_per_mm2=opcjonalny("jth_1s_a_per_mm2"),
+            short_circuit_temperature_c=opcjonalny("short_circuit_temperature_c"),
+            thermal_source_reference=data.get("thermal_source_reference"),
+            standard=data.get("standard"),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="PN-EN 50182",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -1164,6 +1394,9 @@ class CableType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     def susceptancja_us_per_km(self, czestotliwosc_hz: float) -> float:
         """Susceptancja z pojemności jednostkowej kabla: B = 2π·f·C [µS/km].
@@ -1267,6 +1500,9 @@ class CableType:
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -1345,6 +1581,7 @@ class CableType:
             ),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60502-2 / IEC 60287 / IEC 60949",
@@ -1487,7 +1724,7 @@ def _sprawdz_wielkosci_zwarciowe(
     wartosci: tuple[tuple[str, float | None], ...],
     dotyczy: Callable[[str, str], bool],
 ) -> None:
-    """KAT-T-048: wielkość zwarciowa aparatu dodatnia albo ``None`` — nigdy zero.
+    """KAT-T-050: wielkość zwarciowa aparatu dodatnia albo ``None`` — nigdy zero.
 
     Zero NIE jest ani brakiem danej, ani „nie dotyczy”: 0 kA zdolności wyłączania
     wyłącznika albo prądu krótkotrwałego odłącznika opisuje aparat, który nie istnieje,
@@ -1502,14 +1739,14 @@ def _sprawdz_wielkosci_zwarciowe(
             continue
         if not dotyczy(rodzaj, pole):
             odmowa_twarda(
-                "KAT-T-048",
+                "KAT-T-050",
                 f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
                 "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
                 "None, rozstrzyga rodzaj.",
             )
         if not math.isfinite(wartosc) or wartosc <= 0:
             odmowa_twarda(
-                "KAT-T-048",
+                "KAT-T-050",
                 f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
                 "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
                 "jako 0.",
@@ -1533,10 +1770,10 @@ class SwitchEquipmentType:
         in_a: Rated current [A].
         ik_ka: Znamionowy prąd zwarciowy łączeniowy [kA] (wyłącznik, reklozer,
             bezpiecznik). ``None`` = brak danej z karty katalogowej — nigdy 0.0
-            (bramka KAT-T-048). Dla rodzaju bez zdolności wyłączania
+            (bramka KAT-T-050). Dla rodzaju bez zdolności wyłączania
             (``RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA``) pole nie dotyczy.
         icw_ka: Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s. ``None`` = brak danej
-            z karty — nigdy 0.0 (KAT-T-048); dla bezpiecznika nie dotyczy.
+            z karty — nigdy 0.0 (KAT-T-050); dla bezpiecznika nie dotyczy.
         medium: Quenching medium (e.g., "SF6", "VACUUM").
         u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
             UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
@@ -4442,7 +4679,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): pola wyprowadzone bez danej producenta
+            # (R′0, X′0, żyła powrotna) — gałąź niesie założenie, wyniki daną przyjętą.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
@@ -4482,7 +4723,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "thermal_source_reference",
             "source_reference",
             "trade_name",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): R′0/X′0 wyprowadzone bez danej producenta.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
@@ -4490,6 +4734,49 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("rated_current_a", "In [A]", "A"),
             ("cross_section_mm2", "Przekrój", "mm²"),
             ("jth_1s_a_per_mm2", "Jth(1 s)", "A·√s/mm²"),
+        ),
+    ),
+    CatalogNamespace.PRZEWOD_LINII_WN.value: MaterializationContract(
+        namespace=CatalogNamespace.PRZEWOD_LINII_WN.value,
+        # Karta LINIA-110: przewód linii 110 kV wiąże DANE WYROBU, nie impedancję linii.
+        # Brak kluczy `r_ohm_per_km`/`x_ohm_per_km`/`b_us_per_km` jest celowy — materializacja
+        # nie może wpisać do gałęzi rezystancji przewodu jako rezystancji linii; R′, X′, B′
+        # i Z′0 wpisuje operacja domenowa z wyniku solvera `parametry_linii_napowietrznej`
+        # (geometria słupa projektu albo wartość robocza rejestru).
+        solver_fields=(
+            "oznaczenie",
+            "przeznaczenie",
+            "conductor_material",
+            "cross_section_mm2",
+            "srednica_mm",
+            "warstwy_al",
+            "srednica_drutu_al_mm",
+            "srednica_rdzenia_mm",
+            "r20_dc_ohm_per_km",
+            "alfa_1_per_k",
+            "gmr_mm",
+            "voltage_rating_kv",
+            "rated_current_a",
+            "max_temperature_c",
+            "jth_1s_a_per_mm2",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
+            "source_reference",
+        ),
+        ui_fields=(
+            ("oznaczenie", "Oznaczenie PN-EN 50182", ""),
+            ("cross_section_mm2", "Przekrój Al", "mm²"),
+            ("srednica_mm", "Średnica", "mm"),
+            ("r20_dc_ohm_per_km", "R20 DC", "Ω/km"),
+            ("rated_current_a", "In [A]", "A"),
+            ("max_temperature_c", "θ dopuszczalna", "°C"),
+        ),
+        pola_opcjonalne=(
+            "gmr_mm",
+            "rated_current_a",
+            "jth_1s_a_per_mm2",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
         ),
     ),
     CatalogNamespace.TRAFO_SN_NN.value: MaterializationContract(

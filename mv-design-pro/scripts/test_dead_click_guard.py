@@ -114,3 +114,49 @@ def test_wykonawca_bez_jednego_klasyfikatora_jest_czerwony(tmp_path, monkeypatch
     )
     bledy = guard.check_sld_menu_path()
     assert any("switch (wykonawcaAkcjiMenu(" in blad for blad in bledy)
+
+
+# Rejestr powierzchni operacji (scalenie 2026-10-28). ILOCZYN CECH: dostawca {plik `.tsx`
+# o nazwie komponentu, drugi komponent eksportowany z pliku o innej nazwie, komponent tylko
+# w pliku testu, brak} × rejestr {ponad próg, poniżej progu}.
+def _rejestr_powierzchni(tmp_path: Path, monkeypatch, wpisy: list[str]) -> Path:
+    src = tmp_path / "src"
+    kreator = src / "ui2" / "kreatory" / "odbior"
+    kreator.mkdir(parents=True)
+    (kreator / "KreatorA.tsx").write_text("export function KreatorA() {}\n", encoding="utf-8")
+    (kreator / "KreatorOdbioruNn.tsx").write_text(
+        "export function KreatorOdbioruNn() {}\nexport function KreatorOdbioruSn() {}\n",
+        encoding="utf-8",
+    )
+    (kreator / "__tests__").mkdir()
+    (kreator / "__tests__" / "KreatorTest.test.tsx").write_text(
+        "export function KreatorTylkoWTescie() {}\n", encoding="utf-8"
+    )
+    rejestr = src / "operationSurfaceRegistry.ts"
+    rejestr.write_text(
+        "\n".join(f"entry('op_{i}', '{k}')," for i, k in enumerate(wpisy)), encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "FRONTEND_SRC", src)
+    monkeypatch.setattr(guard, "OPERATION_SURFACE_REGISTRY_FILE", rejestr)
+    monkeypatch.setattr(guard, "MIN_WPISOW_POWIERZCHNI", 2)
+    return rejestr
+
+
+def test_dostawca_z_pliku_i_z_eksportu_drugiego_komponentu_jest_zywy(tmp_path, monkeypatch):
+    _rejestr_powierzchni(tmp_path, monkeypatch, ["KreatorA", "KreatorOdbioruSn"])
+    assert guard.check_modal_registry() == []
+
+
+def test_dostawca_tylko_w_tescie_albo_brak_jest_martwy(tmp_path, monkeypatch):
+    _rejestr_powierzchni(
+        tmp_path, monkeypatch, ["KreatorA", "KreatorTylkoWTescie", "KreatorNieistniejacy"]
+    )
+    bledy = guard.check_modal_registry()
+    assert len(bledy) == 2
+    assert "'KreatorTylkoWTescie'" in bledy[0] and "dead provider" in bledy[0]
+    assert "'KreatorNieistniejacy'" in bledy[1]
+
+
+def test_rejestr_ponizej_progu_jest_czerwony(tmp_path, monkeypatch):
+    _rejestr_powierzchni(tmp_path, monkeypatch, ["KreatorA"])
+    assert any("expected at least 2" in b for b in guard.check_modal_registry())

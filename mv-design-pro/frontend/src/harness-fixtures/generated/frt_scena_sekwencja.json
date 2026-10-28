@@ -1,5 +1,5 @@
 {
-  "input_hash": "fb089737c3cc3611a9a1963da6f810799eacf021d0ce6d963a4938f8e8413c62",
+  "input_hash": "7f9c6b46f8301d0c9e5aff9db743f1c7c4d61ed6bb4cd783080aac1388306751",
   "kontekst_sily_sieci": {
     "bus_ref": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal",
     "is_weak": false,
@@ -13,14 +13,14 @@
     ],
     "nominal_kv": 15.0,
     "s_installed_mva": 1.1,
-    "s_sc_mva": 234.8495,
-    "scr": 213.4995,
+    "s_sc_mva": 234.8635,
+    "scr": 213.5123,
     "verdict": "mocna",
     "white_box": [
       {
         "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-        "result_pl": "SCR = 213.4995 (–)",
-        "substitution_pl": "SCR = 234.8495 MVA / 1.1 MVA",
+        "result_pl": "SCR = 213.5123 (–)",
+        "substitution_pl": "SCR = 234.8635 MVA / 1.1 MVA",
         "symbol": "SCR"
       },
       {
@@ -30,7 +30,7 @@
         "symbol": "werdykt"
       }
     ],
-    "why_pl": "SCR = 213.4995 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
+    "why_pl": "SCR = 213.5123 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
   },
   "kontekst_sily_sieci_powod_pl": null,
   "liczba_zapadow": 2,

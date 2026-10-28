@@ -318,3 +318,10 @@
   font-size: 12px;
   color: var(--mvd-muted);
 }
+
+/* ---- dane przyjęte wkładów i rozpływu punktu (zasada nr 4: dyskretnie, bez ostrzeżeń) ---- */
+.mvd-zwarcia-dane-przyjete {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--mvd-text);
+}

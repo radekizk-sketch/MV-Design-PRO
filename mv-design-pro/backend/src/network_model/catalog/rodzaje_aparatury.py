@@ -1,6 +1,6 @@
 """Rodzaje aparatury łączeniowej SN i właściwe im wielkości zwarciowe — JEDNO źródło.
 
-Liść bez importów modułów projektu: czytają go bramka rekordu (KAT-T-048 w
+Liść bez importów modułów projektu: czytają go bramka rekordu (KAT-T-050 w
 ``catalog.types``), projekcja ``APARAT_SN`` (``catalog.repository``), rejestr wartości
 roboczych (``catalog.wartosci_robocze`` — ``types`` importuje ten rejestr, więc zbiory nie
 mogą żyć w ``types``), most dowodu doboru (``equipment_proof.catalog_bridge``) i eksport
@@ -15,7 +15,7 @@ Rozróżnienie dwóch braków liczby w rekordzie aparatu:
 * „brak danych” — wielkość jest właściwa rodzajowi, a karta katalogowa jej nie podaje —
   pole ``None``.
 
-Zero nie jest żadnym z nich (bramka KAT-T-048 odrzuca je w każdej wielkości).
+Zero nie jest żadnym z nich (bramka KAT-T-050 odrzuca je w każdej wielkości).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ RODZAJE_APARATURY_LACZENIOWEJ: frozenset[str] = frozenset(
 #: Rodzaje aparatury łączeniowej SN ze ZNAMIONOWĄ zdolnością łączeniową zwarciową
 #: (``SwitchEquipmentType.ik_ka``): wyłącznik i reklozer (PN-EN 62271-100 / -111) oraz
 #: bezpiecznik (PN-EN 60282-1). Rozłącznik, odłącznik i uziemnik tej zdolności nie mają
-#: z definicji normy — JEDNO źródło dla bramki rekordu (KAT-T-048) i dla odczytu
+#: z definicji normy — JEDNO źródło dla bramki rekordu (KAT-T-050) i dla odczytu
 #: „nie dotyczy” zdolności wyłączania (``equipment_proof.catalog_bridge``).
 RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA: frozenset[str] = frozenset(
     {"CIRCUIT_BREAKER", "RECLOSER", "FUSE"}
@@ -38,7 +38,7 @@ RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA: frozenset[str] = frozenset(
 RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO: frozenset[str] = frozenset({"FUSE"})
 
 
-#: Wielkości zwarciowe rekordu łącznika (``SwitchEquipmentType``) objęte bramką KAT-T-048.
+#: Wielkości zwarciowe rekordu łącznika (``SwitchEquipmentType``) objęte bramką KAT-T-050.
 WIELKOSCI_ZWARCIOWE_LACZNIKA: tuple[str, ...] = ("ik_ka", "icw_ka", "i_cu_ka")
 
 #: Rodzaj aparatu SN projekcji ``APARAT_SN`` (``MVApparatusType.device_kind``) z rodzaju
@@ -58,7 +58,7 @@ POLE_LACZNIKA_Z_POLA_APARATU_SN: dict[str, str] = {
     "breaking_capacity_ka": "ik_ka",
     "i_th_ka": "icw_ka",
 }
-#: Wielkości zwarciowe pozycji aparatu SN (``MVApparatusType``) objęte bramką KAT-T-048.
+#: Wielkości zwarciowe pozycji aparatu SN (``MVApparatusType``) objęte bramką KAT-T-050.
 WIELKOSCI_ZWARCIOWE_APARATU_SN: tuple[str, ...] = (
     "breaking_capacity_ka",
     "making_capacity_ka",
@@ -70,7 +70,7 @@ WIELKOSCI_ZWARCIOWE_APARATU_SN: tuple[str, ...] = (
 def wielkosc_zwarciowa_lacznika_dotyczy(equipment_kind: str, pole: str) -> bool:
     """Czy wielkość zwarciowa ``pole`` rekordu łącznika jest właściwa jego rodzajowi.
 
-    JEDNO źródło rozstrzygnięcia „nie dotyczy” dla bramki rekordu (KAT-T-048),
+    JEDNO źródło rozstrzygnięcia „nie dotyczy” dla bramki rekordu (KAT-T-050),
     projekcji ``APARAT_SN`` i konsumentów wyjaśnień: ``ik_ka`` (znamionowa zdolność
     wyłączania zwarć) i ``i_cu_ka`` (znamionowy prąd wyłączalny zwarciowy) mają wyłącznie
     rodzaje z ``RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA``, ``icw_ka`` (prąd krótkotrwały

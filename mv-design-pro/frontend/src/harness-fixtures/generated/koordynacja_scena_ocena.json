@@ -8,14 +8,14 @@
         "klaster_zacisku": [
           "631a32ef-a9ab-51e1-8a25-d77d8a712c57"
         ],
-        "prad_wylacznika_a": 8623.06935757,
+        "prad_wylacznika_a": 8623.26909853,
         "punkt_wyniku_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-            "prad_netto_od_do_a": 8623.06935757,
-            "wyplyw_z_klastra_a": 8623.06935757
+            "prad_netto_od_do_a": 8623.26909853,
+            "wyplyw_z_klastra_a": 8623.26909853
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -26,13 +26,13 @@
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
-      "i_fault_a": 8623.06935757,
+      "i_fault_a": 8623.26909853,
       "i_pickup_a": 2400.0,
-      "krotnosc_m": 3.59294556565,
-      "margin_percent": 259.29,
+      "krotnosc_m": 3.59302879105,
+      "margin_percent": 259.3,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.3717822626,
+        "alf_wymagany": 14.3721151642,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -55,7 +55,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -109,9 +109,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6223.06935757
+            "wartosc": 6223.26909853
           },
-          "wzgledny": 2.59294556565
+          "wzgledny": 2.59302879105
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -170,7 +170,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8623.06935757
+            "wartosc": 8623.26909853
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -194,31 +194,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8623.06935757,
+          "I_a": 8623.26909853,
           "Is_a": 240.0,
-          "M": 35.9294556565,
-          "M_do_B": 1.0742590295,
+          "M": 35.9302879105,
+          "M_do_B": 1.0742595271,
           "TMS": 0.3,
-          "czas_bazowy_s": 1.885293,
+          "czas_bazowy_s": 1.88528,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0742590295,
+          "mianownik": 0.0742595271,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8623.0694 / 240.0000 = 35.929456; M^0.02 = 35.929456^0.02 = 1.0742590295; denom = 1.0742590295 - 1 = 0.0742590295; t_base = 0.14 / 0.0742590295 = 1.885293 s; t = 0.3 * 1.885293 = 0.565588 s",
+          "podstawienie": "M = 8623.2691 / 240.0000 = 35.930288; M^0.02 = 35.930288^0.02 = 1.0742595271; denom = 1.0742595271 - 1 = 0.0742595271; t_base = 0.14 / 0.0742595271 = 1.885280 s; t = 0.3 * 1.885280 = 0.565584 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.565588,
+          "t_s": 0.565584,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8623.06935757,
+          "I_a": 8623.26909853,
           "Is_a": 2400.0,
-          "M": 3.5929455657,
+          "M": 3.5930287911,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.4,
@@ -247,14 +247,14 @@
         "klaster_zacisku": [
           "631a32ef-a9ab-51e1-8a25-d77d8a712c57"
         ],
-        "prad_wylacznika_a": 8767.755338,
+        "prad_wylacznika_a": 8767.96928629,
         "punkt_wyniku_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-            "prad_netto_od_do_a": 8767.755338,
-            "wyplyw_z_klastra_a": 8767.755338
+            "prad_netto_od_do_a": 8767.96928629,
+            "wyplyw_z_klastra_a": 8767.96928629
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -265,13 +265,13 @@
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
-      "i_fault_a": 8767.755338,
+      "i_fault_a": 8767.96928629,
       "i_pickup_a": 2400.0,
-      "krotnosc_m": 3.65323139083,
-      "margin_percent": 265.32,
+      "krotnosc_m": 3.65332053596,
+      "margin_percent": 265.33,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.6129255633,
+        "alf_wymagany": 14.6132821438,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -294,7 +294,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -348,9 +348,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6367.755338
+            "wartosc": 6367.96928629
           },
-          "wzgledny": 2.65323139083
+          "wzgledny": 2.65332053596
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -409,7 +409,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8767.755338
+            "wartosc": 8767.96928629
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -433,31 +433,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8767.755338,
+          "I_a": 8767.96928629,
           "Is_a": 240.0,
-          "M": 36.5323139083,
-          "M_do_B": 1.0746165966,
+          "M": 36.5332053596,
+          "M_do_B": 1.074617121,
           "TMS": 0.3,
-          "czas_bazowy_s": 1.876258,
+          "czas_bazowy_s": 1.876245,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0746165966,
+          "mianownik": 0.074617121,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8767.7553 / 240.0000 = 36.532314; M^0.02 = 36.532314^0.02 = 1.0746165966; denom = 1.0746165966 - 1 = 0.0746165966; t_base = 0.14 / 0.0746165966 = 1.876258 s; t = 0.3 * 1.876258 = 0.562877 s",
+          "podstawienie": "M = 8767.9693 / 240.0000 = 36.533205; M^0.02 = 36.533205^0.02 = 1.0746171210; denom = 1.0746171210 - 1 = 0.0746171210; t_base = 0.14 / 0.0746171210 = 1.876245 s; t = 0.3 * 1.876245 = 0.562873 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.562877,
+          "t_s": 0.562873,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8767.755338,
+          "I_a": 8767.96928629,
           "Is_a": 2400.0,
-          "M": 3.6532313908,
+          "M": 3.653320536,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.4,
@@ -486,14 +486,14 @@
         "klaster_zacisku": [
           "631a32ef-a9ab-51e1-8a25-d77d8a712c57"
         ],
-        "prad_wylacznika_a": 8550.94147773,
+        "prad_wylacznika_a": 8551.13358524,
         "punkt_wyniku_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-            "prad_netto_od_do_a": 8550.94147773,
-            "wyplyw_z_klastra_a": 8550.94147773
+            "prad_netto_od_do_a": 8551.13358524,
+            "wyplyw_z_klastra_a": 8551.13358524
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -504,13 +504,13 @@
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
-      "i_fault_a": 8550.94147773,
+      "i_fault_a": 8551.13358524,
       "i_pickup_a": 2400.0,
-      "krotnosc_m": 3.56289228239,
-      "margin_percent": 256.29,
+      "krotnosc_m": 3.56297232718,
+      "margin_percent": 256.3,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.2515691295,
+        "alf_wymagany": 14.2518893087,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -533,7 +533,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -587,9 +587,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6150.94147773
+            "wartosc": 6151.13358524
           },
-          "wzgledny": 2.56289228239
+          "wzgledny": 2.56297232718
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -648,7 +648,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8550.94147773
+            "wartosc": 8551.13358524
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -672,31 +672,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8550.94147773,
+          "I_a": 8551.13358524,
           "Is_a": 240.0,
-          "M": 35.6289228239,
-          "M_do_B": 1.0740785755,
+          "M": 35.6297232718,
+          "M_do_B": 1.0740790581,
           "TMS": 0.3,
-          "czas_bazowy_s": 1.889885,
+          "czas_bazowy_s": 1.889873,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0740785755,
+          "mianownik": 0.0740790581,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8550.9415 / 240.0000 = 35.628923; M^0.02 = 35.628923^0.02 = 1.0740785755; denom = 1.0740785755 - 1 = 0.0740785755; t_base = 0.14 / 0.0740785755 = 1.889885 s; t = 0.3 * 1.889885 = 0.566966 s",
+          "podstawienie": "M = 8551.1336 / 240.0000 = 35.629723; M^0.02 = 35.629723^0.02 = 1.0740790581; denom = 1.0740790581 - 1 = 0.0740790581; t_base = 0.14 / 0.0740790581 = 1.889873 s; t = 0.3 * 1.889873 = 0.566962 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.566966,
+          "t_s": 0.566962,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8550.94147773,
+          "I_a": 8551.13358524,
           "Is_a": 2400.0,
-          "M": 3.5628922824,
+          "M": 3.5629723272,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.4,
@@ -725,14 +725,14 @@
         "klaster_zacisku": [
           "631a32ef-a9ab-51e1-8a25-d77d8a712c57"
         ],
-        "prad_wylacznika_a": 9057.32558182,
+        "prad_wylacznika_a": 9057.56344885,
         "punkt_wyniku_ref": "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-            "prad_netto_od_do_a": 9057.32558182,
-            "wyplyw_z_klastra_a": 9057.32558182
+            "prad_netto_od_do_a": 9057.56344885,
+            "wyplyw_z_klastra_a": 9057.56344885
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -743,13 +743,13 @@
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
-      "i_fault_a": 9057.32558182,
+      "i_fault_a": 9057.56344885,
       "i_pickup_a": 2400.0,
-      "krotnosc_m": 3.77388565909,
-      "margin_percent": 277.39,
+      "krotnosc_m": 3.77398477035,
+      "margin_percent": 277.4,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 15.0955426364,
+        "alf_wymagany": 15.0959390814,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -767,12 +767,12 @@
       },
       "nazwa_punktu_pl": "Stacja S01",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9057 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6657 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -826,9 +826,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6657.32558182
+            "wartosc": 6657.56344885
           },
-          "wzgledny": 2.77388565909
+          "wzgledny": 2.77398477035
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -878,7 +878,7 @@
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9057 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6657 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -887,7 +887,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 9057.32558182
+            "wartosc": 9057.56344885
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -911,31 +911,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 9057.32558182,
+          "I_a": 9057.56344885,
           "Is_a": 240.0,
-          "M": 37.7388565909,
-          "M_do_B": 1.0753151752,
+          "M": 37.7398477035,
+          "M_do_B": 1.07531574,
           "TMS": 0.3,
-          "czas_bazowy_s": 1.858855,
+          "czas_bazowy_s": 1.858841,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0753151752,
+          "mianownik": 0.07531574,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 9057.3256 / 240.0000 = 37.738857; M^0.02 = 37.738857^0.02 = 1.0753151752; denom = 1.0753151752 - 1 = 0.0753151752; t_base = 0.14 / 0.0753151752 = 1.858855 s; t = 0.3 * 1.858855 = 0.557657 s",
+          "podstawienie": "M = 9057.5634 / 240.0000 = 37.739848; M^0.02 = 37.739848^0.02 = 1.0753157400; denom = 1.0753157400 - 1 = 0.0753157400; t_base = 0.14 / 0.0753157400 = 1.858841 s; t = 0.3 * 1.858841 = 0.557652 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.557657,
+          "t_s": 0.557652,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 9057.32558182,
+          "I_a": 9057.56344885,
           "Is_a": 2400.0,
-          "M": 3.7738856591,
+          "M": 3.7739847704,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.4,
@@ -964,14 +964,14 @@
         "klaster_zacisku": [
           "e1d4911e-f81f-5363-8b52-900f2e123058"
         ],
-        "prad_wylacznika_a": 8622.70444094,
+        "prad_wylacznika_a": 8623.26909853,
         "punkt_wyniku_ref": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-            "prad_netto_od_do_a": 8622.70444094,
-            "wyplyw_z_klastra_a": 8622.70444094
+            "prad_netto_od_do_a": 8623.26909853,
+            "wyplyw_z_klastra_a": 8623.26909853
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -982,13 +982,13 @@
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
-      "i_fault_a": 8622.70444094,
+      "i_fault_a": 8623.26909853,
       "i_pickup_a": 1800.0,
-      "krotnosc_m": 4.79039135608,
-      "margin_percent": 379.04,
+      "krotnosc_m": 4.79070505474,
+      "margin_percent": 379.07,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.3711740682,
+        "alf_wymagany": 14.3721151642,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -1006,12 +1006,12 @@
       },
       "nazwa_punktu_pl": "Stacja S03",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1065,9 +1065,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6822.70444094
+            "wartosc": 6823.26909853
           },
-          "wzgledny": 3.79039135608
+          "wzgledny": 3.79070505474
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -1117,7 +1117,7 @@
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1126,7 +1126,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8622.70444094
+            "wartosc": 8623.26909853
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -1150,31 +1150,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8622.70444094,
+          "I_a": 8623.26909853,
           "Is_a": 180.0,
-          "M": 47.9039135608,
-          "M_do_B": 1.0804568318,
+          "M": 47.9070505474,
+          "M_do_B": 1.0804582468,
           "TMS": 0.1,
-          "czas_bazowy_s": 1.740064,
+          "czas_bazowy_s": 1.740033,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0804568318,
+          "mianownik": 0.0804582468,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8622.7044 / 180.0000 = 47.903914; M^0.02 = 47.903914^0.02 = 1.0804568318; denom = 1.0804568318 - 1 = 0.0804568318; t_base = 0.14 / 0.0804568318 = 1.740064 s; t = 0.1 * 1.740064 = 0.174006 s",
+          "podstawienie": "M = 8623.2691 / 180.0000 = 47.907051; M^0.02 = 47.907051^0.02 = 1.0804582468; denom = 1.0804582468 - 1 = 0.0804582468; t_base = 0.14 / 0.0804582468 = 1.740033 s; t = 0.1 * 1.740033 = 0.174003 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.174006,
+          "t_s": 0.174003,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8622.70444094,
+          "I_a": 8623.26909853,
           "Is_a": 1800.0,
-          "M": 4.7903913561,
+          "M": 4.7907050547,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.1,
@@ -1203,14 +1203,14 @@
         "klaster_zacisku": [
           "e1d4911e-f81f-5363-8b52-900f2e123058"
         ],
-        "prad_wylacznika_a": 8767.38429846,
+        "prad_wylacznika_a": 8767.96928629,
         "punkt_wyniku_ref": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-            "prad_netto_od_do_a": 8767.38429846,
-            "wyplyw_z_klastra_a": 8767.38429846
+            "prad_netto_od_do_a": 8767.96928629,
+            "wyplyw_z_klastra_a": 8767.96928629
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -1221,13 +1221,13 @@
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
-      "i_fault_a": 8767.38429846,
+      "i_fault_a": 8767.96928629,
       "i_pickup_a": 1800.0,
-      "krotnosc_m": 4.8707690547,
-      "margin_percent": 387.08,
+      "krotnosc_m": 4.87109404794,
+      "margin_percent": 387.11,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.6123071641,
+        "alf_wymagany": 14.6132821438,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -1245,12 +1245,12 @@
       },
       "nazwa_punktu_pl": "Stacja S02",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8767 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6967 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1304,9 +1304,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6967.38429846
+            "wartosc": 6967.96928629
           },
-          "wzgledny": 3.8707690547
+          "wzgledny": 3.87109404794
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -1356,7 +1356,7 @@
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8767 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6967 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1365,7 +1365,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8767.38429846
+            "wartosc": 8767.96928629
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -1389,31 +1389,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8767.38429846,
+          "I_a": 8767.96928629,
           "Is_a": 180.0,
-          "M": 48.707690547,
-          "M_do_B": 1.0808164618,
+          "M": 48.7109404794,
+          "M_do_B": 1.0808179041,
           "TMS": 0.1,
-          "czas_bazowy_s": 1.73232,
+          "czas_bazowy_s": 1.732289,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0808164618,
+          "mianownik": 0.0808179041,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8767.3843 / 180.0000 = 48.707691; M^0.02 = 48.707691^0.02 = 1.0808164618; denom = 1.0808164618 - 1 = 0.0808164618; t_base = 0.14 / 0.0808164618 = 1.732320 s; t = 0.1 * 1.732320 = 0.173232 s",
+          "podstawienie": "M = 8767.9693 / 180.0000 = 48.710940; M^0.02 = 48.710940^0.02 = 1.0808179041; denom = 1.0808179041 - 1 = 0.0808179041; t_base = 0.14 / 0.0808179041 = 1.732289 s; t = 0.1 * 1.732289 = 0.173229 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.173232,
+          "t_s": 0.173229,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8767.38429846,
+          "I_a": 8767.96928629,
           "Is_a": 1800.0,
-          "M": 4.8707690547,
+          "M": 4.8710940479,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.1,
@@ -1442,14 +1442,14 @@
         "klaster_zacisku": [
           "e1d4911e-f81f-5363-8b52-900f2e123058"
         ],
-        "prad_wylacznika_a": 8550.57961346,
+        "prad_wylacznika_a": 8551.13358524,
         "punkt_wyniku_ref": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
         "regula_pl": "Bilans prądów klastra zacisku za wyłącznikiem; wkłady źródeł z rozpływu solvera sumowane netto wg kierunku (moduł sumy) — reguła prądu gałęzi z rozpływu.",
         "skladniki_galezi": [
           {
             "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-            "prad_netto_od_do_a": 8550.57961346,
-            "wyplyw_z_klastra_a": 8550.57961346
+            "prad_netto_od_do_a": 8551.13358524,
+            "wyplyw_z_klastra_a": 8551.13358524
           }
         ],
         "wplywy_zrodel_w_klastrze": [],
@@ -1460,13 +1460,13 @@
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "device_type_ref": "REF-OC-200",
       "fault_target_id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
-      "i_fault_a": 8550.57961346,
+      "i_fault_a": 8551.13358524,
       "i_pickup_a": 1800.0,
-      "krotnosc_m": 4.75032200748,
-      "margin_percent": 375.03,
+      "krotnosc_m": 4.75062976958,
+      "margin_percent": 375.06,
       "nasycenie_ct": {
         "alf_efektywny": null,
-        "alf_wymagany": 14.2509660224,
+        "alf_wymagany": 14.2518893087,
         "assumptions": [],
         "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
         "granica_nasycenia_a": null,
@@ -1484,12 +1484,12 @@
       },
       "nazwa_punktu_pl": "Stacja S04",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka f34b25ab8ad8)",
+          "odniesienie": "bieg zwarciowy 3F (migawka e6a726500042)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1543,9 +1543,9 @@
           "skala_rodzaj": "LIMIT",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 6750.57961346
+            "wartosc": 6751.13358524
           },
-          "wzgledny": 3.75032200748
+          "wzgledny": 3.75062976958
         },
         "niepewnosc": {
           "metoda_pl": null,
@@ -1595,7 +1595,7 @@
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1604,7 +1604,7 @@
           "symbol_latex": "I_Q",
           "wartosc": {
             "jednostka": "A",
-            "wartosc": 8550.57961346
+            "wartosc": 8551.13358524
           },
           "wielkosc_pl": "prąd pierwotny płynący przez wyłącznik urządzenia"
         },
@@ -1628,31 +1628,31 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8550.57961346,
+          "I_a": 8551.13358524,
           "Is_a": 180.0,
-          "M": 47.5032200748,
-          "M_do_B": 1.0802753367,
+          "M": 47.5062976958,
+          "M_do_B": 1.0802767364,
           "TMS": 0.1,
-          "czas_bazowy_s": 1.743998,
+          "czas_bazowy_s": 1.743967,
           "etykieta_pl": "I> (51)",
           "funkcja": "overcurrent_51",
           "krzywa": "IEC_SI",
-          "mianownik": 0.0802753367,
+          "mianownik": 0.0802767364,
           "norma": "IEC 60255-151:2009",
-          "podstawienie": "M = 8550.5796 / 180.0000 = 47.503220; M^0.02 = 47.503220^0.02 = 1.0802753367; denom = 1.0802753367 - 1 = 0.0802753367; t_base = 0.14 / 0.0802753367 = 1.743998 s; t = 0.1 * 1.743998 = 0.174400 s",
+          "podstawienie": "M = 8551.1336 / 180.0000 = 47.506298; M^0.02 = 47.506298^0.02 = 1.0802767364; denom = 1.0802767364 - 1 = 0.0802767364; t_base = 0.14 / 0.0802767364 = 1.743967 s; t = 0.1 * 1.743967 = 0.174397 s",
           "stale": {
             "A": 0.14,
             "B": 0.02
           },
-          "t_s": 0.1744,
+          "t_s": 0.174397,
           "wzor_latex": "t = \\mathrm{TMS} \\cdot \\frac{0.14}{(I/I_s)^{0.02} - 1}",
           "zadziala": true,
           "zwloka_s": null
         },
         {
-          "I_a": 8550.57961346,
+          "I_a": 8551.13358524,
           "Is_a": 1800.0,
-          "M": 4.7503220075,
+          "M": 4.7506297696,
           "M_do_B": 0.0,
           "TMS": null,
           "czas_bazowy_s": 0.1,

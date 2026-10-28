@@ -154,6 +154,79 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     expect(etykiety).not.toContain('Straty jałowe P0');
   });
 
+  // Linia 110 kV z przewodem z katalogu: iloczyn {kompletność PELNY, NIEPELNY} × {B1/B0 w modelu,
+  // brak} — inspektor odróżnia wynik na wartościach roboczych od wyniku z danych projektu.
+  it.each([
+    ['NIEPELNY', ['fazy', 'rezystywnosc_gruntu_ohm_m'], 'niepełna — wartości robocze (ESTIMATED): położenie przewodów fazowych, rezystywność gruntu'],
+    ['PELNY', [], 'pełna — dane projektu i katalogu'],
+  ] as const)('linia 110 kV z geometrii (%s): pochodzenie, kompletność, B1/B0 w µS/km', (kompletnosc, robocze, opis) => {
+    const model = pustyModel();
+    (model.branches as unknown[]).push(
+      bazowyElement('L110', {
+        type: 'line_overhead',
+        from_bus_ref: 'bus-a',
+        to_bus_ref: 'bus-b',
+        status: 'closed',
+        length_km: 20,
+        r_ohm_per_km: 0.11902,
+        x_ohm_per_km: 0.40901,
+        b_siemens_per_km: 2.7858e-6,
+        r0_ohm_per_km: 0.30723,
+        x0_ohm_per_km: 1.01621,
+        b0_siemens_per_km: 1.6769e-6,
+        geometria_slupa: kompletnosc === 'PELNY' ? { rezystywnosc_gruntu_ohm_m: 250 } : null,
+        parametry_z_geometrii: {
+          metoda: 'Carson',
+          wersja_metody: '1',
+          odcisk_wejscia: 'abc',
+          kompletnosc_dowodu: kompletnosc,
+          czestotliwosc_hz: 50,
+          temperatura_przewodu_c: 80,
+          r1_temperatura_ohm_per_km: 0.14,
+          r0_bez_odgromowych_ohm_per_km: 0.26148,
+          x0_bez_odgromowych_ohm_per_km: 1.36636,
+          gmd_m: 6.3,
+          gmr_fazy_m: 0.0085,
+          wartosci_robocze: robocze,
+        },
+      }),
+    );
+    const wiersze =
+      mapowanieObiektuInspektora(model, 'L110')?.wlasciwosci.find((s) => s.id === 'katalogowe')
+        ?.wiersze ?? [];
+    const wartosc = (etykieta: string) => wiersze.find((w) => w.etykieta === etykieta)?.wartosc;
+    expect(wartosc('Kompletność dowodu parametrów')).toEqual({ wartosc: opis, jednostka: undefined });
+    expect(wartosc('Parametry linii')?.wartosc).toBe('z geometrii słupa i przewodu z katalogu (Carson 1)');
+    expect(wartosc('Susceptancja B1')).toEqual({ wartosc: expect.closeTo(2.7858, 6), jednostka: 'µS/km' });
+    expect(wartosc('Susceptancja B0')).toEqual({ wartosc: expect.closeTo(1.6769, 6), jednostka: 'µS/km' });
+    expect(wartosc('Rezystancja R1 w temperaturze 80 °C')).toEqual({ wartosc: 0.14, jednostka: 'Ω/km' });
+    expect(wartosc('Rezystywność gruntu (projekt)')).toEqual(
+      kompletnosc === 'PELNY' ? { wartosc: 250, jednostka: 'Ω·m' } : undefined,
+    );
+  });
+
+  it('linia SN bez geometrii i bez B: brak wierszy pochodzenia parametrów i susceptancji', () => {
+    const model = pustyModel();
+    (model.branches as unknown[]).push(
+      bazowyElement('LSN', {
+        type: 'line_overhead',
+        from_bus_ref: 'bus-a',
+        to_bus_ref: 'bus-b',
+        status: 'closed',
+        length_km: 1,
+        r_ohm_per_km: 0.3,
+        x_ohm_per_km: 0.35,
+      }),
+    );
+    const etykiety =
+      mapowanieObiektuInspektora(model, 'LSN')
+        ?.wlasciwosci.find((s) => s.id === 'katalogowe')
+        ?.wiersze.map((w) => w.etykieta) ?? [];
+    expect(etykiety).not.toContain('Parametry linii');
+    expect(etykiety).not.toContain('Kompletność dowodu parametrów');
+    expect(etykiety).not.toContain('Susceptancja B1');
+  });
+
   it('źródło: model wymagany + parametry zwarciowe opcjonalne', () => {
     const model = pustyModel();
     (model.sources as unknown[]).push(

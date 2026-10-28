@@ -36,8 +36,17 @@ R4 — korekta K_T (IEC 60909-0 §6.3.3). Zwarcia stosują Z_TK = K_T·Z_T do tr
      korekty jej postacią bez korekty) = rozpływ BEZ zmian. Tryb „K_T włączona": rozpływ z
      jawnie wstawionym Z_TK = K_T·Z_T = zwarcia bez zmian. Oba tryby muszą dać parytet.
 R5 — uziemienie węzłów zasilających i maszyn. Wyłącznie kontekst zwarciowy
-     (`build(ground_slack_buses=True)`); do parytetu `ground_slack_buses=False`, rozpływ bez
+     (`build(siec_zwarciowa=True)`); do parytetu `siec_zwarciowa=False`, rozpływ bez
      boczników nakładki (`shunts=[]`).
+R6 — admitancje poprzeczne gałęzi (B/2 linii i kabli). RÓŻNICA CELOWA, Z PODSTAWĄ NORMY
+     (karta BEZ-POJEMNOSCI, zgoda B-01 architekta): sieć zwarciowa składowej zgodnej
+     i przeciwnej (`build(siec_zwarciowa=True)`, jedyne wejście `short_circuit_core.build_zbus`)
+     NIE zawiera B/2 — IEC 60909-0:2016 pkt 5.2 f) i pkt 5.3.1
+     (`ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`); rozpływ zawiera, bo w stanie
+     ustalonym pojemność linii jest fizyką (prąd ładowania, Ferranti). Parytet porównuje
+     model π (`siec_zwarciowa=False`); test `test_r6_*` przypina, że macierz zwarciowa różni się
+     od niego DOKŁADNIE o B/2 gałęzi na przekątnej (poza stemplami R5), a mutacja przywracająca
+     B/2 w trybie zwarciowym go czerwieni.
 
 TOLERANCJA Z ROZDZIELCZOŚCI FLOAT, NIE ZASZYTA. Element Y powstaje z sumy m stempli
 (m ≤ 1 + stopień węzła, z łącznikami i gałęziami scalonymi), a każdy stempel z łańcucha
@@ -143,7 +152,7 @@ def rozbieznosc(graf: NetworkGraph) -> tuple[float, float]:
     slack = next((w for w in wezly if graf.nodes[w].node_type == NodeType.SLACK), wezly[0])
 
     budowniczy = AdmittanceMatrixBuilder(graf)
-    y_zwarcia = budowniczy.build(ground_slack_buses=False)
+    y_zwarcia = budowniczy.build(siec_zwarciowa=False)
     wezel_na_indeks = budowniczy.node_id_to_index
 
     # Domena = wszystkie węzły grafu (nie tylko wyspa slacka): zwarcia budują macierz dla
@@ -267,7 +276,7 @@ def test_sieci_golden_pokrywaja_cechy_parytetu() -> None:
     for _, budowniczy in _SIECI_GOLDEN:
         graf = budowniczy()
         scalenie = AdmittanceMatrixBuilder(graf)
-        scalenie.build(ground_slack_buses=False)
+        scalenie.build(siec_zwarciowa=False)
         indeks = scalenie.node_id_to_index
         for galaz in graf.branches.values():
             if not galaz.in_service:
@@ -403,7 +412,7 @@ def test_r1_lacznik_zamkniety_rozplyw_ma_impedancje_zwarcia_scalaja() -> None:
     graf = siec_cech("znamionowa", "Yy0", 0.0, False, "lacznik")
     y_rozplywu, *_ = build_ybus_pu(graf, sorted(graf.nodes), S_BASE_MVA, "GPZ", [], {})
     budowniczy = AdmittanceMatrixBuilder(graf)
-    y_zwarcia = budowniczy.build(ground_slack_buses=False)
+    y_zwarcia = budowniczy.build(siec_zwarciowa=False)
     assert y_rozplywu.shape[0] == y_zwarcia.shape[0] + 1
     assert budowniczy.node_id_to_index["SN_C"] == budowniczy.node_id_to_index["SN_D"]
     # Stempel łącznika rozpływu: 1/(1e-4 + j1e-4) Ω na bazie 15 kV / 100 MVA.
@@ -413,7 +422,7 @@ def test_r1_lacznik_zamkniety_rozplyw_ma_impedancje_zwarcia_scalaja() -> None:
 def test_r2_galaz_rownolegla_do_lacznika_zwarcia_pomijaja_b() -> None:
     graf = siec_cech("znamionowa", "Yy0", 250.0, False, "lacznik_z_galezia_rownolegla")
     budowniczy = AdmittanceMatrixBuilder(graf)
-    budowniczy.build(ground_slack_buses=False)
+    budowniczy.build(siec_zwarciowa=False)
     dodatek = _bocznik_galezi_wewnetrznych(
         graf, budowniczy.node_id_to_index, len(set(budowniczy.node_id_to_index.values()))
     )
@@ -423,7 +432,7 @@ def test_r2_galaz_rownolegla_do_lacznika_zwarcia_pomijaja_b() -> None:
 def test_r3_przesuniecie_fazowe_rozplyw_ma_zwarcia_nie() -> None:
     graf = siec_cech("znamionowa", "Dyn11", 0.0, False, "brak")
     y_rozplywu, indeks, *_ = build_ybus_pu(graf, sorted(graf.nodes), S_BASE_MVA, "GPZ", [], {})
-    y_zwarcia = AdmittanceMatrixBuilder(graf).build(ground_slack_buses=False)
+    y_zwarcia = AdmittanceMatrixBuilder(graf).build(siec_zwarciowa=False)
     i, j = indeks["GPZ"], indeks["SN_A"]
     assert abs(np.angle(y_rozplywu[i, j]) - np.angle(y_zwarcia[i, j])) > 0.5
 
@@ -432,6 +441,70 @@ def test_r4_kt_rozni_macierze_poza_trybem() -> None:
     """Bez podstawienia trybu K_T macierze się RÓŻNIĄ — korekta jest wyłącznie zwarciowa."""
     roznica, tolerancja = rozbieznosc(siec_cech("znamionowa", "Yy0", 0.0, False, "brak"))
     assert roznica > 1e3 * tolerancja
+
+
+def _roznica_r6(graf: NetworkGraph) -> tuple[np.ndarray, np.ndarray, list[int]]:
+    """(Y_π − Y_zwarciowa, oczekiwane Σ B/2 gałęzi na przekątnej, indeksy węzłów ze stemplem R5)."""
+    budowniczy = AdmittanceMatrixBuilder(graf)
+    y_zwarciowa = budowniczy.build(siec_zwarciowa=True)
+    y_pi = AdmittanceMatrixBuilder(graf).build(siec_zwarciowa=False)
+    indeks = budowniczy.node_id_to_index
+    oczekiwane = np.zeros(y_pi.shape, dtype=complex)
+    for galaz, polowa_pu in budowniczy.admitancje_poprzeczne_pominiete():
+        # Niezależnie od budowniczego: stempel B/2 z danych gałęzi (B·ℓ [S] × Z_base / 2).
+        # Bocznik ma wyłącznie linia/kabel (transformator w sieci zwarciowej: Y_poprz = 0).
+        assert isinstance(galaz, LineBranch)
+        u_kv = graf.nodes[galaz.from_node_id].voltage_level
+        z_danych = galaz.get_shunt_admittance() * (u_kv * u_kv / S_BASE_MVA) / 2.0
+        assert polowa_pu == pytest.approx(z_danych, rel=1e-14)
+        oczekiwane[indeks[galaz.from_node_id], indeks[galaz.from_node_id]] += z_danych
+        oczekiwane[indeks[galaz.to_node_id], indeks[galaz.to_node_id]] += z_danych
+    r5 = sorted({indeks[w] for w, n in graf.nodes.items() if n.node_type == NodeType.SLACK})
+    return y_pi - y_zwarciowa, oczekiwane, r5
+
+
+def _bez_r5(macierz: np.ndarray, r5: list[int]) -> np.ndarray:
+    wynik = macierz.copy()
+    for i in r5:
+        wynik[i, i] = 0.0
+    return wynik
+
+
+@pytest.mark.parametrize("cechy", ILOCZYN, ids=["-".join(map(str, c)) for c in ILOCZYN])
+def test_r6_siec_zwarciowa_rozni_sie_od_modelu_pi_dokladnie_o_b_polowa(
+    cechy: tuple[str, str, float, bool, str],
+) -> None:
+    """R6 na całym iloczynie cech: Y_π − Y_zwarciowa = Σ B/2 gałęzi w ruchu na przekątnej
+    (poza stemplem R5 węzła SLACK), także dla gałęzi wyłączonej (bez wkładu) i gałęzi
+    równoległej do łącznika (bez wkładu — zwarcia pomijają ją w całości, R2)."""
+    graf = siec_cech(*cechy)
+    roznica, oczekiwane, r5 = _roznica_r6(graf)
+    np.testing.assert_allclose(_bez_r5(roznica, r5), _bez_r5(oczekiwane, r5), rtol=0, atol=1e-12)
+    if cechy[2] == 0.0:
+        assert not np.any(_bez_r5(roznica, r5)), "B = 0: macierze muszą być równe bit w bit"
+    else:
+        assert np.max(np.abs(_bez_r5(oczekiwane, r5))) > 1e-4, "iloczyn bez realnego B/2"
+
+
+def test_r6_mutacja_b_polowa_w_sieci_zwarciowej(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Iniekcja: tryb zwarciowy przywraca B/2 (stan sprzed karty BEZ-POJEMNOSCI) — R6 czerwony."""
+    graf = siec_cech("znamionowa", "Yy0", 250.0, False, "brak")
+    roznica, oczekiwane, r5 = _roznica_r6(graf)
+    assert np.allclose(_bez_r5(roznica, r5), _bez_r5(oczekiwane, r5), rtol=0, atol=1e-12)
+
+    oryginal = AdmittanceMatrixBuilder.build
+
+    def build_z_b_polowa(self: AdmittanceMatrixBuilder, *, siec_zwarciowa: bool) -> Any:
+        y = oryginal(self, siec_zwarciowa=siec_zwarciowa)
+        if siec_zwarciowa:
+            for galaz, polowa_pu in self.admitancje_poprzeczne_pominiete():
+                for wezel in (galaz.from_node_id, galaz.to_node_id):
+                    y[self.node_id_to_index[wezel], self.node_id_to_index[wezel]] += polowa_pu
+        return y
+
+    monkeypatch.setattr(AdmittanceMatrixBuilder, "build", build_z_b_polowa)
+    roznica, oczekiwane, r5 = _roznica_r6(graf)
+    assert not np.allclose(_bez_r5(roznica, r5), _bez_r5(oczekiwane, r5), rtol=0, atol=1e-12)
 
 
 # ---------------------------------------------------------------------------

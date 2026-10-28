@@ -216,6 +216,46 @@ export interface PortRef {
   port_id: string;
 }
 
+/**
+ * Karta LINIA-110: położenie przewodu w przekroju poprzecznym linii [m] —
+ * `x_m` od osi słupa, `y_m` ŚREDNIA wysokość nad ziemią w przęśle.
+ */
+export interface PolozeniePrzewoduLinii {
+  x_m: number;
+  y_m: number;
+}
+
+/**
+ * Karta LINIA-110: geometria słupa linii 110 kV — dana projektu. Każda składowa
+ * opcjonalna: `null` = projekt jej nie podaje i obliczenie biegnie z wartością
+ * roboczą (ESTIMATED, kompletność dowodu NIEPELNY). `odgromowe: []` = linia bez
+ * przewodu odgromowego.
+ */
+export interface GeometriaSlupaLinii {
+  fazy?: PolozeniePrzewoduLinii[] | null;
+  liczba_w_wiazce?: number;
+  odstep_wiazki_m?: number | null;
+  odgromowe?: PolozeniePrzewoduLinii[] | null;
+  przewod_odgromowy_ref?: string | null;
+  rezystywnosc_gruntu_ohm_m?: number | null;
+}
+
+/** Karta LINIA-110: proweniencja R′/X′/B′/Z′0 wyliczonych z geometrii słupa. */
+export interface ParametryLiniiZGeometrii {
+  metoda: string;
+  wersja_metody: string;
+  odcisk_wejscia: string;
+  kompletnosc_dowodu: 'PELNY' | 'NIEPELNY';
+  czestotliwosc_hz: number;
+  temperatura_przewodu_c: number;
+  r1_temperatura_ohm_per_km: number;
+  r0_bez_odgromowych_ohm_per_km: number;
+  x0_bez_odgromowych_ohm_per_km: number;
+  gmd_m: number;
+  gmr_fazy_m: number;
+  wartosci_robocze?: string[];
+}
+
 export interface OverheadLine extends BranchBase {
   type: 'line_overhead';
   length_km: number;
@@ -245,6 +285,10 @@ export interface OverheadLine extends BranchBase {
   operating_temperature_c?: number | null;
   short_circuit_temperature_c?: number | null;
   thermal_source_ref?: string | null;
+  /** Karta LINIA-110: geometria słupa (linia z przewodem z katalogu PRZEWOD_LINII_WN). */
+  geometria_slupa?: GeometriaSlupaLinii | null;
+  /** Karta LINIA-110: proweniencja parametrów z geometrii (zapis operacji domenowej). */
+  parametry_z_geometrii?: ParametryLiniiZGeometrii | null;
 }
 
 export interface Cable extends BranchBase {

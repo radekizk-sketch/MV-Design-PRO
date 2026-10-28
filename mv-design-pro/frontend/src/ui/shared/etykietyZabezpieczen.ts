@@ -1,7 +1,7 @@
 /**
- * Etykiety zabezpieczeń po polsku — JEDNO źródło dla inspektora (`ui2/adapters/inspectorAdapter`),
- * formularza zabezpieczenia (`ui/topology/modals/ProtectionModal`) i konfiguratora stacji
- * (`ui/network-build/station-configurator/przekaznikiStacji`). Dawniej dwie kopie mapy różniły
+ * Etykiety zabezpieczeń po polsku — JEDNO źródło dla inspektora (`ui2/adapters/inspectorAdapter`)
+ * i konfiguratora stacji (`ui/network-build/station-configurator/przekaznikiStacji`); dawny
+ * formularz `ui/topology/modals/ProtectionModal` (bez montażu) skasowano jako martwy kod. Dawniej dwie kopie mapy różniły
  * się brzmieniem tej samej wartości („Nadprądowe kierunkowe” / „Kierunkowe nadprądowe”).
  */
 import type { ProtectionAssignment, ProtectionSetting } from '../../types/enm';

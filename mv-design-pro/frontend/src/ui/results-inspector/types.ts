@@ -182,6 +182,53 @@ export interface ShortCircuitBranchFlow {
 }
 
 /**
+ * Wpis zestawienia „wkład pominięty na podstawie tolerancji numerycznej" (karta
+ * PROG-ZERA-WKLADOW) — para źródło×gałąź, której |I| jest poniżej progu rdzenia
+ * (`PROG_WKLADU_POMIJALNEGO_A`, odbicie w `prog_wkladu_pominietego_a` odpowiedzi
+ * rozpływu). Projekcja `_sc_wklady_pominiete` (`enm/canonical_analysis.py`): surowe
+ * |I| obcięte do 3 cyfr znaczących w stronę zera (kA); kąt fazora ZAWSZE `null` — poniżej
+ * progu kąt nie jest określony (fazor to reszta arytmetyki zależna od maszyny, karta
+ * KAT-WKLADU-POMINIETEGO; przyczyna w notatce kroku śladu `wklady_pominiete`), więc
+ * prezentacja pokazuje „nie określono", nigdy liczbę. To NIE jest zero ani wkład z listy — tabela rozpływu go nie
+ * pokazuje; zestawienie stoi osobno.
+ */
+export interface WkladPominietyRozplywu {
+  branch_id: string;
+  branch_name: string;
+  source_id: string;
+  /** Tor rdzenia, którym policzono wkład: sieć zastępcza albo superpozycja falownikowa. */
+  tor: 'thevenin' | 'falownik';
+  i_ka: number;
+  /** Kąt fazora nieokreślony poniżej progu — rdzeń nie publikuje liczby. */
+  kat_deg: null;
+}
+
+/**
+ * Wkład jednego źródła do prądu zwarciowego w punkcie (karta WKLAD-ZRODLA) — rozbicie
+ * części Thevenina na zasilania systemowe, szyny sztywne i maszyny wirujące metodą
+ * zastępczego źródła napięcia (IEC 60909-0:2016 §4.2: I_Q,k = Y_Q,k·Z_kf·I_k''(Th)).
+ * Projekcja `_sc_wklady_zrodel` (`enm/canonical_analysis.py`): odnośnik źródła z modelu,
+ * prąd w kA w miejscu zwarcia i na zaciskach źródła, kąt fazora względem I_k''(Th),
+ * udział względem I_k'' (z falownikami) — z rdzenia, zero fizyki w prezentacji. Klasa
+ * wpisu: `WKLAD`, `POMINIETY` (|I| poniżej progu rdzenia) albo `INNA_WYSPA` (wkład
+ * strukturalnie zerowy, przyczyna w `przyczyna`). Falowniki nie są na tej liście — stoją
+ * per źródło w `contributions` wiersza.
+ */
+export interface WkladZrodlaRozplywu {
+  source_id: string;
+  source_name: string | null;
+  rodzaj: 'siec' | 'szyna_sztywna' | 'maszyna_synchroniczna' | 'maszyna_asynchroniczna';
+  node_id: string;
+  node_name: string;
+  klasa: 'WKLAD' | 'POMINIETY' | 'INNA_WYSPA';
+  i_ka: number;
+  i_zaciski_ka: number;
+  kat_deg: number | null;
+  udzial: number;
+  przyczyna: string | null;
+}
+
+/**
  * Single short-circuit result row.
  */
 export interface ShortCircuitRow {
@@ -686,6 +733,14 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   direction: 'Kierunek przepływu prądu zwarciowego',
   fraction_sum: 'Suma współczynników gałęzi dopływających do węzła zwarcia',
   sum_into_fault_a: 'Suma prądów gałęzi dopływających do węzła zwarcia',
+  // Krok `wklady_pominiete` (karta PROG-ZERA-WKLADOW): wkład pominięty na podstawie
+  // tolerancji numerycznej — nie zero; próg czytany z kroku (odbicie jedynej definicji
+  // rdzenia), nie ze stałej frontu.
+  prog_a: 'Próg wkładu pominiętego na podstawie tolerancji numerycznej',
+  liczba_pominietych_thevenin: 'Liczba wkładów pominiętych — sieć zastępcza (Thevenin)',
+  liczba_pominietych_falownik: 'Liczba wkładów pominiętych — źródła falownikowe',
+  suma_modulow_pominietych_thevenin_a: 'Suma modułów wkładów pominiętych — sieć zastępcza',
+  suma_modulow_pominietych_falownik_a: 'Suma modułów wkładów pominiętych — źródła falownikowe',
   s_rt_mva: 'Moc znamionowa transformatora SrT',
   u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
   u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
@@ -737,6 +792,9 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ik_thevenin_a: 'A',
   i_contrib_a: 'A',
   sum_into_fault_a: 'A',
+  prog_a: 'A',
+  suma_modulow_pominietych_thevenin_a: 'A',
+  suma_modulow_pominietych_falownik_a: 'A',
   v_nodes_pu: 'j.w.',
   v_from_pu: 'j.w.',
   v_to_pu: 'j.w.',

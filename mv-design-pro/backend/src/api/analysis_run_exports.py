@@ -27,15 +27,17 @@ from application.dokumentacja_wykonawcza import (
     komunikat_odmowy,
     ocen_gotowosc_dokumentacji_wykonawczej,
 )
+from application.parametry_linii_wn import linie_wn_migawki, slad_linii_do_raportu
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
+from network_model.catalog.wartosci_robocze import zdanie_parametru_maszyny_pl
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
-from network_model.reporting.missing_value import format_wynik
+from network_model.solvers.machine_sc_iec60909 import zdanie_zalozenia_krzywej_pl
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -306,6 +308,11 @@ def build_analysis_run_report_payload(
             "trace_summary": build_trace_summary(trace_payload.get("white_box_trace") or []),
             "white_box_trace": trace_payload.get("white_box_trace", []),
         }
+        # Karta LINIA-110: wywód R′/X′/B′/Z′0 linii 110 kV z geometrii słupa, z którymi liczył
+        # przebieg. Klucz tylko, gdy migawka ma takie linie — raport sieci bez nich bez zmian.
+        linie_wn = slady_linii_wn_biegu(run)
+        if linie_wn:
+            payload["trace"]["parametry_linii"] = linie_wn
 
     return payload
 
@@ -476,36 +483,15 @@ def _format_catalog_binding(entry: dict[str, Any]) -> str:
     return f"{namespace}:{item_id}"
 
 
-def _truncate_catalog_params(value: Any, max_chars: int = 220) -> str:
-    if value is None:
-        return "—"
-    payload = canonicalize_json(value)
-    text = str(payload)
-    if isinstance(payload, dict | list):
-        text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-    if len(text) <= max_chars:
-        return text
-    return f"{text[:max_chars]}..."
-
-
-def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> list[str]:
-    lines: list[str] = []
-    for entry in (bundle.get("catalog_context") or [])[:max_items]:
-        lines.append(
-            " | ".join(
-                [
-                    nazwa_nadana(entry.get("name")) or "-",
-                    str(entry.get("element_type") or "-"),
-                    _format_catalog_binding(entry),
-                    str(entry.get("parameter_source") or entry.get("parameter_origin") or "-"),
-                    _truncate_catalog_params(entry.get("materialized_params")),
-                ]
-            )
-        )
-    return lines
-
-
 def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
+    payload = _eksport_wyniku_bez_linii_wn(run)
+    linie_wn = slady_linii_wn_biegu(run)
+    if linie_wn:
+        payload["parametry_linii"] = linie_wn
+    return payload
+
+
+def _eksport_wyniku_bez_linii_wn(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "short_circuit_sn":
         bundle = _build_short_circuit_export_bundle(run)
         analysis_case_context = bundle.get("analysis_case_context") or build_analysis_case_context(
@@ -586,6 +572,9 @@ def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]
     short_circuit_currents = _build_short_circuit_proof_currents(run)
     if short_circuit_currents:
         trace_payload["short_circuit_proof_currents"] = short_circuit_currents
+    linie_wn = slady_linii_wn_biegu(run)
+    if linie_wn:
+        trace_payload["parametry_linii"] = linie_wn
     trace_payload["proof_pack_ref"] = resolve_proof_pack_ref(run)
     trace_payload["export_artifact"] = build_export_artifact(run, export_kind="whitebox_package")
     trace_payload["export_policy"] = build_export_policy("whitebox_package")
@@ -672,6 +661,49 @@ _SC_BILANS_POLA: tuple[tuple[str, str, str], ...] = (
 )
 
 
+def slady_linii_wn_biegu(run: CanonicalRun) -> list[dict[str, Any]]:
+    """Wywód R′/X′/B′/Z′0 linii 110 kV z geometrii słupa w migawce przebiegu (karta LINIA-110).
+
+    JEDNO źródło dla wszystkich dokumentów przebiegu: raport (JSON/DOCX/PDF), eksport wyniku
+    (JSON) i eksport wywodu (JSON/PDF). Pusta lista dla sieci bez takich linii —
+    dokumenty tych sieci nie zmieniają się (klucz ``parametry_linii`` pojawia się tylko, gdy
+    lista jest niepusta).
+    """
+    return [slad_linii_do_raportu(linia) for linia in linie_wn_migawki(run.snapshot or {})]
+
+
+def _parametry_linii_raportu_linie(slady: list[dict[str, Any]]) -> list[str]:
+    """Wywód parametrów linii 110 kV jako linie tekstu — wszystkie dokumenty PDF i DOCX.
+
+    Kroki mają kształt kroków wywodu biegu, więc formatuje je ten sam ``_krok_wywodu_linie``.
+    """
+    linie: list[str] = []
+    for linia in slady:
+        linie.append(f"Parametry linii 110 kV z geometrii słupa — {linia['nazwa']}")
+        kompletnosc = (
+            "NIEPEŁNY (wartości robocze, jakość ESTIMATED)"
+            if linia["kompletnosc_dowodu"] == "NIEPELNY"
+            else "PEŁNY (dane projektu)"
+        )
+        linie.append(f"Kompletność dowodu: {kompletnosc}")
+        for dana in linia["dane_przyjete"]:
+            wartosc = dana.get("wartosc")
+            liczba = (
+                f" = {_fmt_liczba(wartosc['wartosc'])} {wartosc['jednostka']}"
+                if isinstance(wartosc, dict)
+                else ""
+            )
+            linie.append(f"Dana przyjęta: {dana['nazwa_pl']}{liczba} — {dana['powod_pl']}")
+        if not linia["zgodny_z_modelem"]:
+            linie.append(
+                "Parametry zapisane w linii przebiegu nie pochodzą z tego wyliczenia — "
+                "przelicz model."
+            )
+        for index, krok in enumerate(linia["kroki"], start=1):
+            linie.extend(_krok_wywodu_linie(krok, index))
+    return linie
+
+
 def _krok_wywodu_linie(step: dict[str, Any], index: int) -> list[str]:
     """Krok wywodu jako linie tekstu (wzor LaTeX/podstawienie/wynik/uwagi).
 
@@ -739,6 +771,30 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     zrodlo_tb = row_data.get("tb_zrodlo")
     if isinstance(zrodlo_tb, dict) and zrodlo_tb.get("opis_pl"):
         linie = (*linie, f"Czas wyłączenia tb: {zrodlo_tb['opis_pl']}")
+    # Karta PODSTAWA-Q: μ/q maszyn wyznaczone na założeniu inżynierskim — osobna linia na
+    # założenie (szerokość PDF); I_b na samej normie nie dodaje linii (raport bez zmian).
+    zalozenia = row_data.get("zalozenia_zaniku")
+    if isinstance(zalozenia, list):
+        linie = (
+            *linie,
+            *(
+                f"Założenie krzywej zaniku Ib: {zdanie_zalozenia_krzywej_pl(wpis)}"
+                for wpis in zalozenia
+                if isinstance(wpis, dict)
+            ),
+        )
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wyspy punktu — linia na
+    # wpis (jedno zdanie z rejestru); punkt bez maszyn z wartościami roboczymi — raport bez zmian.
+    robocze = row_data.get("parametry_robocze_maszyn")
+    if isinstance(robocze, list):
+        linie = (
+            *linie,
+            *(
+                f"Wartość robocza: {zdanie_parametru_maszyny_pl(wpis)}"
+                for wpis in robocze
+                if isinstance(wpis, dict)
+            ),
+        )
     return linie
 
 
@@ -813,94 +869,6 @@ def export_run_report_json_response(
     )
 
 
-def _trace_jsonl_lines(trace_payload: dict[str, Any]) -> list[str]:
-    exported_at = canonicalize_json(trace_payload.get("exported_at")) or None
-    if not isinstance(exported_at, str):
-        from datetime import UTC, datetime
-
-        exported_at = datetime.now(UTC).isoformat()
-
-    white_box_trace = trace_payload.get("white_box_trace") or []
-    lines = [
-        json.dumps(
-            {
-                "type": "header",
-                "seq": 1,
-                "exported_at": exported_at,
-                "data": {
-                    "run_id": trace_payload.get("run_id"),
-                    "snapshot_id": trace_payload.get("snapshot_id"),
-                    "input_hash": trace_payload.get("input_hash"),
-                    "total_steps": len(white_box_trace),
-                    "catalog_context_count": len(trace_payload.get("catalog_context") or []),
-                    "catalog_context": trace_payload.get("catalog_context") or [],
-                    "catalog_context_by_element": trace_payload.get("catalog_context_by_element"),
-                    "catalog_context_summary": trace_payload.get("catalog_context_summary"),
-                    "analysis_case_context": trace_payload.get("analysis_case_context"),
-                    "proof_pack_ref": trace_payload.get("proof_pack_ref"),
-                    "export_artifact": trace_payload.get("export_artifact"),
-                    "export_policy": trace_payload.get("export_policy"),
-                    "export_version": "1.0.0",
-                },
-            },
-            ensure_ascii=False,
-        )
-    ]
-
-    for index, step in enumerate(white_box_trace):
-        lines.append(
-            json.dumps(
-                {
-                    "type": "step",
-                    "seq": index + 2,
-                    "exported_at": exported_at,
-                    "data": {
-                        "step_index": index,
-                        "step_number": step.get("step"),
-                        "key": step.get("key") or step.get("step_id"),
-                        "title": step.get("title") or step.get("description"),
-                        "phase": step.get("phase"),
-                        "element_id": step.get("element_id")
-                        or (step.get("catalog_context_entry") or {}).get("element_id"),
-                        "target_id": step.get("target_id"),
-                        "solver_ref": step.get("solver_ref"),
-                        "catalog_binding": step.get("catalog_binding")
-                        or (step.get("catalog_context_entry") or {}).get("catalog_binding"),
-                        "source_catalog": step.get("source_catalog")
-                        or (step.get("catalog_context_entry") or {}).get("source_catalog"),
-                        "source_catalog_label": step.get("source_catalog_label")
-                        or (step.get("catalog_context_entry") or {}).get("source_catalog_label"),
-                        "parameter_origin": step.get("parameter_origin")
-                        or (step.get("catalog_context_entry") or {}).get("parameter_origin"),
-                        "parameter_source": step.get("parameter_source")
-                        or (step.get("catalog_context_entry") or {}).get("parameter_source"),
-                        "formula_latex": step.get("formula_latex"),
-                        "inputs": step.get("inputs"),
-                        "substitution": step.get("substitution"),
-                        # Kontrakt pol kroku (karta DOWOD-CIEPLNY): zapis LaTeX
-                        # podstawienia zyje w `substitution_latex` — eksport go niesie.
-                        "substitution_latex": step.get("substitution_latex"),
-                        "result": step.get("result"),
-                        "proof_ref": step.get("proof_ref"),
-                        "proof_status": step.get("proof_status"),
-                        "reporting_status": step.get("reporting_status"),
-                        "method_basis": step.get("method_basis"),
-                        "materialized_params": step.get("materialized_params")
-                        or (step.get("catalog_context_entry") or {}).get("materialized_params"),
-                        "manual_overrides": step.get("manual_overrides")
-                        or (step.get("catalog_context_entry") or {}).get("manual_overrides"),
-                        "manual_override_count": step.get("manual_override_count")
-                        or (step.get("catalog_context_entry") or {}).get("manual_override_count"),
-                        "notes": step.get("notes"),
-                    },
-                },
-                ensure_ascii=False,
-            )
-        )
-
-    return lines
-
-
 def export_run_json_response(
     run: CanonicalRun,
     *,
@@ -917,286 +885,6 @@ def export_run_json_response(
         media_type="application/json",
         headers={
             "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.json"',
-        },
-    )
-
-
-def export_run_docx_response(
-    run: CanonicalRun,
-    *,
-    filename_stem: str,
-) -> Response:
-    """Deterministyczny: ten sam bieg eksportowany wielokrotnie daje identyczne
-    bajty (`docx_determinism.make_docx_bytes_deterministic` — sam python-docx
-    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
-    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
-    """
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
-        ) from exc
-
-    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
-
-    bundle = _require_power_flow_bundle(run)
-    result = bundle["result"]
-    metadata = bundle["metadata"]
-    catalog_context_lines = _catalog_context_lines(bundle)
-    white_box_trace = bundle.get("white_box_trace") or []
-
-    doc = Document()
-    style = doc.styles["Normal"]
-    style.font.name = "Calibri"
-    style.font.size = Pt(11)
-
-    heading = doc.add_heading("Raport rozpływu mocy", level=0)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    status_parts = [
-        f"Status: {'Zbieżny' if result.get('converged') else 'Niezbieżny'}",
-        f"Iteracje: {result.get('iterations_count', '—')}",
-        f"Uruchomienie: {str(metadata.get('run_id', '—'))[:8]}...",
-    ]
-    subtitle = doc.add_paragraph(" | ".join(status_parts))
-    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    doc.add_paragraph()
-    doc.add_heading("Podsumowanie", level=1)
-    summary = result.get("summary", {})
-    summary_table = doc.add_table(rows=1, cols=2)
-    summary_table.style = "Table Grid"
-    hdr = summary_table.rows[0].cells
-    hdr[0].text = "Parametr"
-    hdr[1].text = "Wartość"
-    for cell in hdr:
-        for paragraph in cell.paragraphs:
-            for run_obj in paragraph.runs:
-                run_obj.bold = True
-
-    def add_row(label: str, value: Any) -> None:
-        row = summary_table.add_row().cells
-        row[0].text = label
-        row[1].text = str(value) if value is not None else "—"
-
-    add_row("Status zbieżności", "Zbieżny" if result.get("converged") else "Niezbieżny")
-    add_row("Liczba iteracji", result.get("iterations_count"))
-    add_row("Węzeł bilansujący", result.get("slack_bus_id"))
-    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
-    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
-    add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
-    add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
-    add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
-
-    doc.add_paragraph()
-    doc.add_heading("Kontekst katalogowy", level=1)
-    if catalog_context_lines:
-        doc.add_paragraph(
-            "Format: element_id | typ | katalog | pochodzenie parametrów | materialized_params"
-        )
-        for line in catalog_context_lines:
-            doc.add_paragraph(line)
-    else:
-        doc.add_paragraph("Brak jawnego kontekstu katalogowego.")
-
-    doc.add_paragraph()
-    doc.add_heading("Wywód szczegółowy", level=1)
-    if white_box_trace:
-        for step in white_box_trace[:12]:
-            title = step.get("title") or step.get("key") or "Krok"
-            doc.add_paragraph(f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)}")
-        if len(white_box_trace) > 12:
-            doc.add_paragraph(f"... oraz {len(white_box_trace) - 12} kolejnych kroków")
-    else:
-        doc.add_paragraph("Brak jawnego śladu obliczeń.")
-
-    doc.add_paragraph()
-    doc.add_heading("Wyniki węzłowe (szyny)", level=1)
-    bus_results = result.get("bus_results", [])
-    if bus_results:
-        bus_table = doc.add_table(rows=1, cols=5)
-        bus_table.style = "Table Grid"
-        header = bus_table.rows[0].cells
-        header[0].text = "ID szyny"
-        header[1].text = "V [pu]"
-        header[2].text = "Kąt [deg]"
-        header[3].text = "P_inj [MW]"
-        header[4].text = "Q_inj [Mvar]"
-        for cell in header:
-            for paragraph in cell.paragraphs:
-                for run_obj in paragraph.runs:
-                    run_obj.bold = True
-        for bus in bus_results[:30]:
-            row = bus_table.add_row().cells
-            row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
-            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
-            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
-            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
-        if len(bus_results) > 30:
-            doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych węzłów")
-    else:
-        doc.add_paragraph("Brak wyników węzłowych.")
-
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    return Response(
-        content=make_docx_bytes_deterministic(buffer.getvalue()),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.docx"',
-        },
-    )
-
-
-def export_run_pdf_response(
-    run: CanonicalRun,
-    *,
-    filename_stem: str,
-) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
-
-    bundle = _require_power_flow_bundle(run)
-    result = bundle["result"]
-    metadata = bundle["metadata"]
-    catalog_context_lines = _catalog_context_lines(bundle)
-    white_box_trace = bundle.get("white_box_trace") or []
-
-    buffer = io.BytesIO()
-    zarejestruj_czcionki()
-    canvas_obj = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
-    page_width, page_height = A4
-    left_margin = 25 * mm
-    top_margin = page_height - 25 * mm
-    y = top_margin
-    line_height = 5 * mm
-
-    canvas_obj.setFont("DejaVuSans-Bold", 16)
-    title = "Raport rozpływu mocy"
-    canvas_obj.drawString(
-        (page_width - canvas_obj.stringWidth(title, "DejaVuSans-Bold", 16)) / 2,
-        y,
-        title,
-    )
-    y -= 10 * mm
-
-    canvas_obj.setFont("DejaVuSans", 10)
-    status_text = (
-        f"Status: {'Zbieżny' if result.get('converged') else 'Niezbieżny'} | "
-        f"Iteracje: {result.get('iterations_count', '—')} | "
-        f"Uruchomienie: {str(metadata.get('run_id', '—'))[:8]}..."
-    )
-    canvas_obj.drawString(left_margin, y, status_text)
-    y -= 8 * mm
-
-    canvas_obj.setFont("DejaVuSans-Bold", 12)
-    canvas_obj.drawString(left_margin, y, "Podsumowanie")
-    y -= 6 * mm
-
-    canvas_obj.setFont("DejaVuSans", 10)
-    summary = result.get("summary", {})
-    summary_lines = [
-        f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
-        f"Całkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
-        f"Całkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
-        f"Min. napięcie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
-        f"Max. napięcie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
-        f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
-    ]
-    for line in summary_lines:
-        canvas_obj.drawString(left_margin, y, line)
-        y -= line_height
-
-    y -= 5 * mm
-    canvas_obj.setFont("DejaVuSans-Bold", 12)
-    canvas_obj.drawString(left_margin, y, "Kontekst katalogowy")
-    y -= 5 * mm
-    canvas_obj.setFont("DejaVuSans", 8)
-    if catalog_context_lines:
-        canvas_obj.drawString(
-            left_margin,
-            y,
-            "Format: element_id | typ | katalog | pochodzenie | materialized_params",
-        )
-        y -= line_height
-        for line in catalog_context_lines:
-            canvas_obj.drawString(left_margin, y, line[:160])
-            y -= line_height
-            if y < 30 * mm:
-                canvas_obj.showPage()
-                y = top_margin
-                canvas_obj.setFont("DejaVuSans", 8)
-    else:
-        canvas_obj.drawString(left_margin, y, "Brak jawnego kontekstu katalogowego.")
-        y -= line_height
-
-    y -= 5 * mm
-    canvas_obj.setFont("DejaVuSans-Bold", 12)
-    canvas_obj.drawString(left_margin, y, "Wywód szczegółowy")
-    y -= 5 * mm
-    canvas_obj.setFont("DejaVuSans", 8)
-    if white_box_trace:
-        for step in white_box_trace[:10]:
-            title = step.get("title") or step.get("key") or "Krok"
-            canvas_obj.drawString(
-                left_margin,
-                y,
-                f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)[:150]}",
-            )
-            y -= line_height
-            if y < 30 * mm:
-                canvas_obj.showPage()
-                y = top_margin
-                canvas_obj.setFont("DejaVuSans", 8)
-        if len(white_box_trace) > 10:
-            canvas_obj.drawString(
-                left_margin,
-                y,
-                f"... oraz {len(white_box_trace) - 10} kolejnych kroków",
-            )
-            y -= line_height
-    else:
-        canvas_obj.drawString(left_margin, y, "Brak jawnego śladu obliczeń.")
-        y -= line_height
-
-    y -= 5 * mm
-    canvas_obj.setFont("DejaVuSans-Bold", 12)
-    canvas_obj.drawString(left_margin, y, "Wyniki węzłowe (top 20)")
-    y -= 5 * mm
-
-    canvas_obj.setFont("DejaVuSans", 9)
-    for bus in result.get("bus_results", [])[:20]:
-        text = (
-            f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
-            f"kąt={format_wynik(bus.get('angle_deg'), '.2f')} deg"
-        )
-        canvas_obj.drawString(left_margin, y, text)
-        y -= line_height
-        if y < 30 * mm:
-            canvas_obj.showPage()
-            y = top_margin
-
-    canvas_obj.save()
-    buffer.seek(0)
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.pdf"',
         },
     )
 
@@ -1387,6 +1075,10 @@ def export_run_report_docx_response(
                     doc.add_paragraph(line)
         else:
             doc.add_paragraph("Brak jawnego śladu obliczeń.")
+        for line in _parametry_linii_raportu_linie(
+            (payload.get("trace", {}) or {}).get("parametry_linii", [])
+        ):
+            doc.add_paragraph(line)
 
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -1547,6 +1239,11 @@ def export_run_report_pdf_response(
                     draw_line(line, size=8)
         else:
             draw_line("Brak jawnego śladu obliczeń.")
+        for line in _parametry_linii_raportu_linie(
+            (payload.get("trace", {}) or {}).get("parametry_linii", [])
+        ):
+            for czesc in textwrap.wrap(line, width=150) or [line]:
+                draw_line(czesc, size=8)
 
     canvas_obj.save()
     buffer.seek(0)
@@ -1555,21 +1252,6 @@ def export_run_report_pdf_response(
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.pdf"',
-        },
-    )
-
-
-def export_run_trace_jsonl_response(
-    run: CanonicalRun,
-    *,
-    filename_stem: str,
-) -> Response:
-    lines = _trace_jsonl_lines(build_analysis_run_trace_export_payload(run))
-    return Response(
-        content="\n".join(lines),
-        media_type="application/x-ndjson",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.jsonl"',
         },
     )
 
@@ -1699,6 +1381,9 @@ def export_run_trace_pdf_response(
                 line_height=4 * mm,
             )
         y -= 2 * mm
+
+    for line in _parametry_linii_raportu_linie(trace_payload.get("parametry_linii") or []):
+        draw_wrapped(line, font_name="DejaVuSans", font_size=8, max_chars=110, line_height=4 * mm)
 
     ensure_page(2)
     canvas_obj.setFont("DejaVuSans", 8)

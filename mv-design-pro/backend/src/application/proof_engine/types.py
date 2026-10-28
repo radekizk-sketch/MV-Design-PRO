@@ -38,6 +38,8 @@ class ProofType(StrEnum):
     AUDIT2_VT_GROUNDING_VALIDATION = "AUDIT2_VT_GROUNDING_VALIDATION"
     # Karta P0.10 (nN): pakiet dowodowy weryfikacji obwodu nN (10 kroków, G-21).
     LV_CIRCUIT_VERIFICATION = "LV_CIRCUIT_VERIFICATION"
+    # Karta LINIA-110: parametry linii napowietrznej 110 kV z geometrii słupa.
+    OVERHEAD_LINE_PARAMETERS = "OVERHEAD_LINE_PARAMETERS"
 
 
 class LoadElementKind(StrEnum):

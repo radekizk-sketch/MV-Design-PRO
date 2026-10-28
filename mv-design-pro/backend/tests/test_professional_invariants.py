@@ -281,8 +281,9 @@ def test_no_any_in_domain_types():
     # (canonicalize, stable_sort_key, to_dict/from_dict, protection interop)
     # but flag excessive use beyond the baseline. Zapadka tylko w dół: pomiar 2026-10-22 —
     # 31 (ponad dawny próg 30), trzy parametry `domain_operations.py` zawężone do `object`
-    # (`_pozycja_normalna_portu`, `dodaj`, `_opt_str`) → 28.
-    max_allowed = 28
+    # (`_pozycja_normalna_portu`, `dodaj`, `_opt_str`) → 28. Pomiar 2026-10-28 po scaleniu
+    # gałęzi UI/UX z programem (karta LINIA-110 zeszła do 29 po swojej stronie): 27.
+    max_allowed = 27
     if len(violations) > max_allowed:
         violation_text = "\n".join(violations[:20])
         pytest.fail(

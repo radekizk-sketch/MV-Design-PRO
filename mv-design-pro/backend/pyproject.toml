@@ -45,6 +45,14 @@ pandas = "^2.1.4"
 # „Brak biblioteki openpyxl" dla KAZDEGO wejscia, a testy tego nie wykrywaly, bo
 # chodzily obok realnej sciezki (`import_from_dict`).
 openpyxl = "^3.1.5"
+# Jedna polityka watkow BLAS w procesie liczacym fizyke (karta DETERMINIZM-HISTORII-PROCESU,
+# 2026-10-23): OpenBLAS numpy i scipy liczy LU/odwrocenie/iloczyn macierzy innym podzialem
+# pracy przy 1, 2 i 4 watkach, wiec ten sam model dawal rozne ostatnie bity Z_bus, kroku
+# Newtona i macierzy wzmocnienia WLS zaleznie od `OPENBLAS_NUM_THREADS` procesu.
+# `network_model/watki_blas.py` przypina 1 watek w KAZDEJ zaladowanej bibliotece BLAS przez
+# threadpoolctl (biblioteka utrzymywana przez zespol scikit-learn; czysty Python, bez
+# zaleznosci przechodnich; rozpoznaje prefiksy `openblas64_` numpy i `scipy_openblas` scipy).
+threadpoolctl = "^3.7.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
@@ -149,6 +157,10 @@ module = [
     "openpyxl.*",
     "reportlab.*",
     "scipy.*",
+    # threadpoolctl 3.7 nie niesie `py.typed` ani stubow (`types-threadpoolctl` nie istnieje);
+    # uzywany wylacznie w `network_model/watki_blas.py`, wynik `threadpool_info()` czytany jako
+    # lista slownikow.
+    "threadpoolctl",
 ]
 ignore_missing_imports = true
 

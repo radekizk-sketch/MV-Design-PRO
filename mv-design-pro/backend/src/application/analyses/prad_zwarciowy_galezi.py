@@ -54,8 +54,12 @@ def prad_zwarciowy_galezi(sc_result: ShortCircuitResult, branch_id: str) -> floa
 
     Zwraca ``None``, gdy solver NIE policzyl rozbicia na galezie
     (``branch_contributions is None``) - brak danych, nie przyblizenie.
-    Zwraca ``0.0``, gdy rozbicie ISTNIEJE, ale galaz nie ma zadnego wpisu -
-    realny brak przeplywu pradu zwarciowego przez ta galaz dla danego zwarcia.
+    Zwraca ``0.0``, gdy rozbicie ISTNIEJE, ale galaz nie ma zadnego wpisu - kazdy
+    wklad zrodla do tej galezi jest „wkladem pominietym na podstawie tolerancji
+    numerycznej (|I| < 1e-6 A)” (karta PROG-ZERA-WKLADOW; surowa wartosc w zestawieniu
+    ``ShortCircuitResult.wklady_pominiete``). ``0.0`` to suma wkladow OPUBLIKOWANYCH,
+    nie zmierzony prad zerowy: wolajacy, ktory pokazuje prad uzytkownikowi, podaje
+    granice progu, nie zero (``wytrzymalosc_cieplna_przewodow``).
     """
     if sc_result.branch_contributions is None:
         return None
@@ -65,3 +69,19 @@ def prad_zwarciowy_galezi(sc_result: ShortCircuitResult, branch_id: str) -> floa
             [c.to_dict() for c in sc_result.branch_contributions], branch_id
         )
     )
+
+
+def galaz_bez_opublikowanego_wkladu(sc_result: ShortCircuitResult, branch_id: str) -> bool:
+    """Czy rozbicie ISTNIEJE, a galaz nie ma na liscie wkladow zadnego wpisu.
+
+    Karta PROG-ZERA-WKLADOW: taki stan znaczy, ze kazdy wklad zrodla do tej galezi jest
+    „wkladem pominietym na podstawie tolerancji numerycznej (|I| < 1e-6 A)” — rdzen
+    odlozyl go do zestawienia ``wklady_pominiete`` z surowa wartoscia. JEDEN predykat dla
+    wszystkich wolajacych, ktorzy pokazuja prad galezi uzytkownikowi (kryterium cieplne,
+    czas wylaczenia): wolajacy nie wykazuje wtedy pradu 0 A, tylko nazywa wklad pominiety
+    i granice progu. Para z ``prad_zwarciowy_galezi``: ten sam zbior wpisow, ten sam klucz
+    galezi — ``True`` dokladnie wtedy, gdy tamta funkcja zwraca ``0.0`` z braku wpisow.
+    """
+    if sc_result.branch_contributions is None:
+        return False
+    return not any(str(c.branch_id) == branch_id for c in sc_result.branch_contributions)

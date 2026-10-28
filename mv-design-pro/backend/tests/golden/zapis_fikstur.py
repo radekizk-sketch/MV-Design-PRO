@@ -39,8 +39,10 @@ DOBÓR ``CYFRY_ZNACZACE = 12`` (dowód w meldunku karty):
   cyfr nie usuwa szumu sięgającego 5. cyfry (przy 6 cyfrach nadal 45 liści estymacji) —
   dla tych generatorów obowiązuje dodatkowo KOTWICA W SZUMIE (plik na dysku zostaje, gdy
   świeża odpowiedź różni się od niego wyłącznie w tolerancji zmierzonej testem tego
-  generatora): ``eksport_fixtur_harnessu.tresc_do_zapisu`` i
-  ``eksport_fixtur_projekcji_nn.tresc_do_zapisu``.
+  generatora): ``eksport_fixtur_harnessu.rozstrzygnij_grupe`` (rozstrzygnięcie GRUPOWE —
+  fixtury jednego biegu kotwicy razem, inaczej jeden bieg dostawał dwa ``result_hash``) i
+  ``eksport_fixtur_projekcji_nn.tresc_do_zapisu`` (jeden scenariusz = jeden bieg = jeden
+  plik, grupa jednoelementowa).
 
 KOTWICA W SZUMIE DLA WSZYSTKICH GENERATORÓW JSON (karta SLD-SUBSTRAT, kontynuacja,
 ``tresc_z_kotwica`` niżej). Pomiar 2026-09-29 po zmianie maszyny wirtualnej: nakładka

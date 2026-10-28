@@ -53,6 +53,8 @@ const czytajFiksture = (nazwa: string): unknown =>
   );
 type OdpowiedzRozplywu = {
   branch_contributions: { branch_name: string; source_id: string; i_ka: number }[];
+  wklady_pominiete?: { branch_name: string; source_id: string }[] | null;
+  prog_wkladu_pominietego_a?: number | null;
 };
 /** Punkt domyślny ekranu = pierwszy wiersz wyników biegu sceny (bez preselekcji). */
 const PUNKT_DOMYSLNY = (
@@ -100,9 +102,11 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja).toBeVisible();
       await expect(sekcja).toContainText('Rozpływ prądu zwarciowego');
 
-      const tabela = sekcja.getByTestId('mvd-wyn-tabela');
+      // Tabela wkładów OPUBLIKOWANYCH (w trybie eksperckim sekcja ma też tabelę zestawienia
+      // wkładów pominiętych |I| < próg — z tymi samymi nagłówkami kolumn).
+      const tabela = sekcja.getByTestId('mvd-zwarcia-rozplyw-tabela');
       // Kolumna „źródło" (tryb ekspercki) — nagłówek kolumny, niezależny od danych.
-      await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
+      await expect(tabela.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
       // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
       // Wiersz maszyny: źródło toru falownika (`source_id="gen_pv"` w kontrakcie
@@ -122,6 +126,27 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       // gałęziami w tej sieci — inaczej niż w dawnej fixturze TH-1 z jedną linią).
       await expect(tabela).toContainText('TR 110/15');
       await expect(tabela).toContainText('TR 15/0.4');
+      // Wkłady pominięte (|I| < próg z odpowiedzi backendu) NIE są wierszami tabeli wkładów:
+      // nota liczy je dokładnie, a zestawienie trybu eksperckiego ma tyle samo wierszy.
+      const pominiete = ZWARCIA_ROZPLYW.wklady_pominiete ?? [];
+      const prog = ZWARCIA_ROZPLYW.prog_wkladu_pominietego_a;
+      expect(pominiete.length, 'fikstura sceny niesie wkłady pominięte').toBeGreaterThan(0);
+      expect(typeof prog).toBe('number');
+      await expect(tabela.getByTestId('mvd-wyn-wiersz')).toHaveCount(
+        ZWARCIA_ROZPLYW.branch_contributions.length,
+      );
+      await expect(sekcja.getByTestId('mvd-zwarcia-rozplyw-pominiete-nota')).toContainText(
+        `(|I| < ${(prog as number).toExponential()} A): ${pominiete.length}.`,
+      );
+      const wierszePominietych = sekcja
+        .getByTestId('mvd-zwarcia-rozplyw-pominiete-tabela')
+        .getByTestId('mvd-wyn-wiersz');
+      await expect(wierszePominietych).toHaveCount(pominiete.length);
+      // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO):
+      // każdy wiersz zestawienia pokazuje „nie określono", nigdy liczbę stopni.
+      for (let i = 0; i < pominiete.length; i += 1) {
+        await expect(wierszePominietych.nth(i)).toContainText('nie określono');
+      }
 
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);

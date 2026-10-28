@@ -48,6 +48,7 @@ from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_wiersza
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.tor_pola import szyna_raportowa
@@ -422,8 +423,16 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
     # Nazwy węzła przyłączenia i modułu z modelu biegu (albo opis rodzaju) — ekran nazywa
     # nimi wiersze; identyfikatory zostają w `bus_ref`/`gen_ref` do wiązania (karta #144).
     nazwy = zbuduj_indeks_nazw(snapshot)
+    # Karta LINIA-110 (kontrakt werdyktu §3): Pst/Plt liczone z Sk'' stojącej na danej przyjętej
+    # gałęzi (linia 110 kV z wartością roboczą geometrii) — pozycja niesie ją addytywnie, poza
+    # odciskiem wejścia (`_input_hash` czyta wyłącznie Sk'', moduły i konfigurację).
+    dane_by_bus = {
+        str(row.get("element_id")): pola_danych_przyjetych_wiersza(row)
+        for row in build_short_circuit_results(run).get("rows", [])
+    }
     for entry in entries:
         entry["bus_name"] = nazwa_po_identyfikatorze(entry["bus_ref"], indeks=nazwy)
+        entry.update(dane_by_bus.get(str(entry["bus_ref"]), {}))
         for module in entry["modules"]:
             module["gen_name"] = nazwa_po_identyfikatorze(module["gen_ref"], indeks=nazwy)
 

@@ -21,6 +21,7 @@
  *   - CASE_ID env z output seed-gn30.mjs
  */
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdir } from 'node:fs/promises';
 
 const OUT = process.env.OUT_DIR ?? '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_iteration_K30_0';
@@ -83,7 +84,7 @@ async function captureForLodAndTheme(page, lod, theme, resName, outDir) {
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(chromiumLaunchOptions({ headless: true }));
 
   const summary = { captured: 0, errors: [] };
 

@@ -1,5 +1,5 @@
 {
-  "analysis_id": "2898bda2fe695c7e3491ceb74cf3e5c47327f59552dfb8331e2ce74105bd5566",
+  "analysis_id": "ff32aca1cce4dd921b01bf9f04ea06a91e7b218c4ea043343992c490ebe02869",
   "context": {
     "project_name": "CGMES Golden Net",
     "case_name": null,
@@ -709,7 +709,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 8.97,
+      "i_bf_ka": 8.9701,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -729,18 +729,18 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 8.5156,
-      "i_arc_min_ka": 8.4232,
+      "i_arc_ka": 8.5157,
+      "i_arc_min_ka": 8.4233,
       "i_arc_at_anchors_ka": {
-        "V600": 6.5839,
-        "V2700": 7.7468,
+        "V600": 6.584,
+        "V2700": 7.7469,
         "V14300": 8.4719
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
       "incident_energy_cal_cm2": 7.6885,
-      "incident_energy_joule_cm2": 32.1686,
-      "arc_flash_boundary_mm": 1487.7103,
+      "incident_energy_joule_cm2": 32.1689,
+      "arc_flash_boundary_mm": 1487.7185,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
       "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
@@ -749,8 +749,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7468 kA, V600=6.5839 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 8.5156 kA, I_arc_min = 8.4232 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -765,8 +765,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9609 J/cm², V2700=28.5185 J/cm², V600=19.8501 J/cm²",
-          "result_pl": "E = 32.1686 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9611 J/cm², V2700=28.5188 J/cm², V600=19.8503 J/cm²",
+          "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -774,7 +774,7 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 1487.7103 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
@@ -787,7 +787,37 @@
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
-      "bus_name": "Szyna SN"
+      "bus_name": "Szyna SN",
+      "status_danych": "UNVALIDATED_INPUT",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 2.5,
+            "jednostka": "MVA"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.15,
+            "jednostka": "p.u. (S_rG, U_rG)"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        }
+      ]
     },
     {
       "bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -810,9 +840,9 @@
       "i_arc_at_anchors_ka": null,
       "arc_variation_cf": null,
       "enclosure_correction_cf": null,
-      "incident_energy_cal_cm2": 3183.7004,
-      "incident_energy_joule_cm2": 13320.6023,
-      "arc_flash_boundary_mm": 23436.1823,
+      "incident_energy_cal_cm2": 3183.7026,
+      "incident_energy_joule_cm2": 13320.6116,
+      "arc_flash_boundary_mm": 23436.1904,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
       "why_pl": "POZA zakresem ważności IEEE 1584-2018 (U=110.0 kV, I_bf=13.99 kA; zakres: 208 V–15 kV, I_bf 200 A–65 kA (600 V<U<=15 kV) dla tej klasy napięcia). Zastosowano metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018): E ≈ 3183.7 cal/cm², AFB ≈ 23436.2 mm, ŚOI = dane niekompletne — tablice NFPA 70E. To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku).",
@@ -822,7 +852,7 @@
           "symbol": "E_Lee",
           "formula_latex": "E = 2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ D^{2}",
           "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s, D=455.0 mm [poza zakresem IEEE 1584-2018]",
-          "result_pl": "E = 3183.7004 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "result_pl": "E = 3183.7026 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "V w kV, I_bf w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
         },
@@ -830,20 +860,50 @@
           "symbol": "AFB_Lee",
           "formula_latex": "D_{AFB} = \\sqrt{2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ 1{,}2}",
           "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s; E_próg = 1.2 cal/cm²",
-          "result_pl": "AFB = 23436.1823 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "result_pl": "AFB = 23436.1904 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "D_AFB w mm; odległość, na której E = 1,2 cal/cm².",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 3183.7004 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 3183.7026 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
-      "bus_name": "GPZ 110 kV"
+      "bus_name": "GPZ 110 kV",
+      "status_danych": "UNVALIDATED_INPUT",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 2.5,
+            "jednostka": "MVA"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.15,
+            "jednostka": "p.u. (S_rG, U_rG)"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        }
+      ]
     },
     {
       "bus_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -880,7 +940,7 @@
       "enclosure_correction_cf": 0.9999,
       "incident_energy_cal_cm2": 9.4221,
       "incident_energy_joule_cm2": 39.4221,
-      "arc_flash_boundary_mm": 1652.2107,
+      "arc_flash_boundary_mm": 1652.2113,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
       "why_pl": "Arc Flash LV (konfiguracja VCB, IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 15.53 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 12.38 kA (I_arc_min ≈ 10.8 kA), energia incydentu E ≈ 9.42 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1652.2 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
@@ -914,7 +974,7 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\text{wiersz 600 V});\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=0.4 kV, D=455.0 mm",
-          "result_pl": "AFB = 1652.2107 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1652.2113 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB,V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
@@ -927,7 +987,37 @@
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
-      "bus_name": "Szyna nN"
+      "bus_name": "Szyna nN",
+      "status_danych": "UNVALIDATED_INPUT",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 2.5,
+            "jednostka": "MVA"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.15,
+            "jednostka": "p.u. (S_rG, U_rG)"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        }
+      ]
     },
     {
       "bus_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -935,7 +1025,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 8.97,
+      "i_bf_ka": 8.9701,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -955,18 +1045,18 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 8.5156,
-      "i_arc_min_ka": 8.4232,
+      "i_arc_ka": 8.5157,
+      "i_arc_min_ka": 8.4233,
       "i_arc_at_anchors_ka": {
-        "V600": 6.5839,
-        "V2700": 7.7468,
+        "V600": 6.584,
+        "V2700": 7.7469,
         "V14300": 8.4719
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
       "incident_energy_cal_cm2": 7.6885,
-      "incident_energy_joule_cm2": 32.1686,
-      "arc_flash_boundary_mm": 1487.7103,
+      "incident_energy_joule_cm2": 32.1689,
+      "arc_flash_boundary_mm": 1487.7185,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
       "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
@@ -975,8 +1065,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7468 kA, V600=6.5839 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 8.5156 kA, I_arc_min = 8.4232 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -991,8 +1081,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9609 J/cm², V2700=28.5185 J/cm², V600=19.8501 J/cm²",
-          "result_pl": "E = 32.1686 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9611 J/cm², V2700=28.5188 J/cm², V600=19.8503 J/cm²",
+          "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -1000,7 +1090,7 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 1487.7103 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
@@ -1013,7 +1103,37 @@
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
-      "bus_name": "Stacja B SN"
+      "bus_name": "Stacja B SN",
+      "status_danych": "UNVALIDATED_INPUT",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 2.5,
+            "jednostka": "MVA"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.15,
+            "jednostka": "p.u. (S_rG, U_rG)"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        }
+      ]
     },
     {
       "bus_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -1021,7 +1141,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 4.6115,
+      "i_bf_ka": 4.6116,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -1041,18 +1161,18 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 4.3795,
-      "i_arc_min_ka": 4.332,
+      "i_arc_ka": 4.3796,
+      "i_arc_min_ka": 4.3321,
       "i_arc_at_anchors_ka": {
-        "V600": 3.3029,
+        "V600": 3.303,
         "V2700": 4.0235,
         "V14300": 4.3593
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
       "incident_energy_cal_cm2": 4.0755,
-      "incident_energy_joule_cm2": 17.0519,
-      "arc_flash_boundary_mm": 992.4605,
+      "incident_energy_joule_cm2": 17.0521,
+      "arc_flash_boundary_mm": 992.4671,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
       "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 4.38 kA (I_arc_min ≈ 4.33 kA), energia incydentu E ≈ 4.08 cal/cm² na odległości roboczej, granica łuku AFB ≈ 992.5 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
@@ -1061,8 +1181,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=4.6115 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.3029 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 4.3795 kA, I_arc_min = 4.332 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.303 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 4.3796 kA, I_arc_min = 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -1077,8 +1197,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=4.6115 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=16.9364 J/cm², V2700=15.0214 J/cm², V600=9.6431 J/cm²",
-          "result_pl": "E = 17.0519 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=16.9365 J/cm², V2700=15.0216 J/cm², V600=9.6432 J/cm²",
+          "result_pl": "E = 17.0521 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -1086,7 +1206,7 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 992.4605 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 992.4671 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
@@ -1099,7 +1219,37 @@
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
-      "bus_name": "Stacja C SN"
+      "bus_name": "Stacja C SN",
+      "status_danych": "UNVALIDATED_INPUT",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 2.5,
+            "jednostka": "MVA"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.15,
+            "jednostka": "p.u. (S_rG, U_rG)"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "jakosc": "ESTIMATED"
+        }
+      ]
     }
   ]
 }

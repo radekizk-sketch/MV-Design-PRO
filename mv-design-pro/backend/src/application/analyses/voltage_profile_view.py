@@ -47,6 +47,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 # dedykowanego modułu, żeby nie zostawiać duplikatu mechanizmu w trzecim miejscu).
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import (
@@ -243,4 +244,5 @@ def build_voltage_profile_view(
         if worst_path is not None:
             payload["segmenty"] = worst_path.to_dict()
 
+    payload.update(pola_danych_przyjetych_biegu(run.raw_result))
     return payload

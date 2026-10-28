@@ -120,6 +120,7 @@ class MaterializationError:
 _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.KABEL_SN.value: "get_cable_type",
     CatalogNamespace.LINIA_SN.value: "get_line_type",
+    CatalogNamespace.PRZEWOD_LINII_WN.value: "get_overhead_conductor_type",
     CatalogNamespace.TRAFO_SN_NN.value: "get_transformer_type",
     CatalogNamespace.APARAT_SN.value: "get_mv_apparatus_type",
     CatalogNamespace.APARAT_NN.value: "get_lv_apparatus_type",

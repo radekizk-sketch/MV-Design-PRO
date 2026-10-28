@@ -103,6 +103,7 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, SondaKondensatora, apply_scenario
 from enm.slownik_komunikatow import opis_obiektu
@@ -524,6 +525,7 @@ def build_compensation_sizing_view(
     return {
         "analysis": "compensation_sizing",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "bus_ref": bus_ref,
             "bus_name": bus.get("name"),

@@ -19,6 +19,7 @@ interface TypePickerProps {
 
 const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   LINE: 'Linie napowietrzne SN',
+  HV_OVERHEAD_CONDUCTOR: 'Przewody linii napowietrznych 110 kV',
   CABLE: 'Kable SN',
   TRANSFORMER: 'Transformatory SN/nN',
   SWITCH_EQUIPMENT: 'Aparatura łączeniowa SN',
@@ -46,6 +47,8 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
     case 'LINE':
     case 'CABLE':
       return `R=${record.r_ohm_per_km ?? '-'} Ohm/km, X=${record.x_ohm_per_km ?? '-'} Ohm/km, I=${record.rated_current_a ?? '-'} A`;
+    case 'HV_OVERHEAD_CONDUCTOR':
+      return `${record.oznaczenie ?? '-'}, ${record.przeznaczenie === 'ODGROMOWY' ? 'odgromowy' : 'fazowy'}, R20=${record.r20_dc_ohm_per_km ?? '-'} Ohm/km, d=${record.srednica_mm ?? '-'} mm`;
     case 'TRANSFORMER':
       return `${record.rated_power_mva ?? '-'} MVA, ${record.voltage_hv_kv ?? '-'} / ${record.voltage_lv_kv ?? '-'} kV, uk=${record.uk_percent ?? '-'}%`;
     case 'SWITCH_EQUIPMENT':

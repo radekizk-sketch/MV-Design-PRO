@@ -26,9 +26,12 @@ ZRODLA DANYCH (plik:linia w kodzie zrodlowym, stan na 2026-07-25):
   OPCJONALNE - ``None``, gdy solver uruchomiony bez
   ``include_branch_contributions=True`` (domyslnie ``False``) -
   ``network_model/solvers/short_circuit_iec60909.py:1049``. Gdy pole NIE jest
-  ``None``, a galaz nie ma zadnego wpisu, oznacza to realny zerowy przeplyw
-  pradu zwarciowego przez ta galaz (solver pomija wpisy z ``i_contrib_a <= 0``,
-  patrz ``short_circuit_iec60909.py:934``) - NIE jest to brak danych.
+  ``None``, a galaz nie ma zadnego wpisu, oznacza to, ze kazdy wklad zrodla do tej
+  galezi jest „wkladem pominietym na podstawie tolerancji numerycznej (|I| < 1e-6 A)”
+  (rdzen odklada go do zestawienia ``wklady_pominiete`` z surowa wartoscia, jedyna
+  definicja progu ``PROG_WKLADU_POMIJALNEGO_A`` w ``short_circuit_contributions``,
+  karta PROG-ZERA-WKLADOW) - galaz poza droga zwarcia. NIE jest to brak danych i NIE
+  jest to prad zerowy: wynik podaje granice, nie zero.
 - czas trwania zwarcia: DWA zrodla, w jawnej kolejnosci pierwszenstwa.
   (1) Czas WYZNACZONY Z NASTAW zabezpieczenia danej galezi -
   ``application/analyses/protection/czas_wylaczenia_galezi.czasy_dla_modelu``,
@@ -69,6 +72,9 @@ from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.prad_zwarciowy_galezi import (
+    galaz_bez_opublikowanego_wkladu,
+)
+from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _branch_fault_current_a,
 )
 from application.analyses.protection.czas_wylaczenia_galezi import (
@@ -81,6 +87,7 @@ from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
 from enm.mapping import map_enm_to_network_graph
@@ -89,7 +96,10 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.store import get_enm
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
@@ -102,7 +112,11 @@ from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
-from network_model.solvers.short_circuit_contributions import ShortCircuitBranchContribution
+from network_model.solvers.short_circuit_contributions import (
+    NAZWA_WKLADU_POMINIETEGO,
+    OPIS_PROGU_WKLADU_POMIJALNEGO,
+    ShortCircuitBranchContribution,
+)
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
@@ -315,27 +329,31 @@ def build_conductor_thermal_withstand_view(
             branch, catalog
         )
 
-        # Galaz o ZEROWYM przeplywie pradu zwarciowego nie lezy na drodze zwarcia.
-        # Kryterium cieplne jest dla niej spelnione trywialnie (0 <= I_dop), ale NIE
-        # wynika to z rachunku — solver fazy 1 slusznie traktuje prad 0 jako brak
-        # danej (zero nie jest wielkoscia fizyczna w miejscu, gdzie zwarcie liczymy).
-        # Rozstrzygniecie nalezy do warstwy INTERPRETACJI: tutaj wiemy, ze zero jest
-        # realne, bo solver pomija wklady i_contrib_a <= 0, a lista wkladow istnieje.
-        if i_fault_a == 0.0:
+        # Galaz bez OPUBLIKOWANEGO wkladu zrodla nie lezy na drodze zwarcia: kazdy wklad
+        # zrodla do niej jest „wkladem pominietym na podstawie tolerancji numerycznej
+        # (|I| < 1e-6 A)” (karta PROG-ZERA-WKLADOW). Kryterium cieplne jest spelnione
+        # trywialnie (prad ponizej 1e-6 A na zrodlo wobec I_dop rzedu kA), ale NIE wynika
+        # to z rachunku. Prad NIE jest zerem — pozycja nie podaje wartosci (None), tylko
+        # granice w uzasadnieniu; solver fazy 1 slusznie nie przyjmuje pradu 0 jako danej.
+        if galaz_bez_opublikowanego_wkladu(sc_result, branch_id):
             items.append(
                 ConductorThermalWithstandItem(
                     branch_id=branch_id,
                     branch_name=nazwa_elementu(branch, "branches"),
                     status="PASS",
-                    i_fault_a=0.0,
+                    i_fault_a=None,
                     i_permissible_a=None,
                     utilization=None,
                     s_min_mm2=None,
                     applied_cross_section_mm2=cross_section_mm2,
                     missing_codes=(),
                     uzasadnienie_pl=(
-                        "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; "
-                        "kryterium cieplne spełnione trywialnie."
+                        "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to "
+                        f"{NAZWA_WKLADU_POMINIETEGO} (zestawienie wkładów pominiętych "
+                        "w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — "
+                        f"dla każdego źródła spełnia {OPIS_PROGU_WKLADU_POMIJALNEGO}, "
+                        "pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium "
+                        "cieplne spełnione trywialnie."
                     ),
                     czas_wylaczenia=slad_czasu,
                 )
@@ -531,15 +549,29 @@ def _pierwszy_wiersz(run: CanonicalRun) -> dict[str, Any]:
 
 
 def _dane_przyjete_biegu(run: CanonicalRun) -> dict[str, Any]:
-    """Dane przyjęte prądów oceny (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): punkt zwarcia
-    w sieci nN liczonej z wartością roboczą tolerancji — wszystkie prądy gałęzi tego biegu
-    stoją na danej przyjętej. Pusty słownik, gdy znacznika nie ma (odpowiedź bez zmian)."""
+    """Dane przyjęte prądów oceny: punkt zwarcia w sieci nN liczonej z wartością roboczą
+    tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA), linie 110 kV z wartością roboczą
+    geometrii w wyspie punktu (karta LINIA-110) i wartości robocze parametrów maszyn
+    wirujących wyspy punktu wpływające na I″k i I_th (karta PODSTAWA-Q) — wszystkie prądy
+    gałęzi tego biegu stoją na danej przyjętej. Pusty słownik, gdy żadnej nie ma (odpowiedź
+    bez zmian)."""
     wiersz = _pierwszy_wiersz(run)
-    if not wiersz.get("tolerancja_nn_robocza"):
-        return {}
     punkt = opis_rodzaju_i_nazwy("szyna", nazwa_nadana(wiersz.get("target_name")))
-    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}")
-    return {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": [dana.model_dump(mode="json")]}
+    dane = (
+        (
+            (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}"),)
+            if wiersz.get("tolerancja_nn_robocza")
+            else ()
+        )
+        + dane_przyjete_galezi_wiersza(wiersz)
+        + dane_przyjete_maszyn(wiersz.get("parametry_robocze_maszyn"), wielkosc=("ikss", "ith"))
+    )
+    if not dane:
+        return {}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [dana.model_dump(mode="json") for dana in dane],
+    }
 
 
 def _odtworz_wynik_zwarciowy(
@@ -590,6 +622,8 @@ def _odtworz_wynik_zwarciowy(
         tb_s=_wymagane_pole_sc(payload, "tb_s"),
         i_dc_a=payload.get("i_dc_a"),
         tb_zrodlo=payload.get("tb_zrodlo"),
+        # Karta PODSTAWA-Q: odtworzenie wyniku kompletne (ocena cieplna I_b nie czyta).
+        zalozenia_zaniku=payload.get("zalozenia_zaniku"),
         # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
         # biegu — opcje audytu 2 czytane tą samą bazą).
         branch_contributions=_odtworz_wklady_galeziowe(

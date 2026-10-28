@@ -48,6 +48,15 @@ _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     "SwitchEquipmentType": ("card_field_status",),
     "MVApparatusType": ("card_field_status",),
 }
+#: Pola-kolekcje typów DODANE PO ZAMROŻENIU odcisków, które w zrzucie kanonicznym występują
+#: WYŁĄCZNIE, gdy są niepuste (ta sama reguła addytywności co wyżej, dla kolekcji). Karta
+#: LINIA-110 (pkt 2): mapa ``wartosci_robocze`` (pole → założenie) — pozycja bez wartości
+#: roboczej ma odcisk sprzed karty, pozycja z nią — inny (zmiana danych katalogu).
+#: Przypięte testem ``tests/network_model/catalog/test_odcisk_katalogu_karty_widmowe.py``.
+_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
+    "CableType": ("wartosci_robocze",),
+    "LineType": ("wartosci_robocze",),
+}
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`
 #: (karta AB-H0 §0.7.5) było `None` w 176/176 pozycjach — kasacja pola nie jest zmianą
@@ -83,6 +92,9 @@ def _postac_typu(typ: Any) -> Any:
         for nazwa in _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE.get(klasa, ()):
             if postac.get(nazwa) is None:
                 postac.pop(nazwa, None)
+        for nazwa in _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE.get(klasa, ()):
+            if nazwa in postac and not postac[nazwa]:
+                postac.pop(nazwa)
         for nazwa in _POLA_SKASOWANE_W_ODCISKU.get(klasa, ()):
             postac.setdefault(nazwa, None)
         return postac

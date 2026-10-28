@@ -3,7 +3,7 @@
  *
  * Wyrocznia `harness-fixtures/generated/rodzaje_wielkosci_zwarciowych_aparatury.json` jest
  * liczona przez `backend/scripts/eksport_fixtur_harnessu.py::rodzaje_wielkosci_zwarciowych_aparatury`
- * z predykatów `network_model/catalog/rodzaje_aparatury.py` (jedno źródło bramki KAT-T-048);
+ * z predykatów `network_model/catalog/rodzaje_aparatury.py` (jedno źródło bramki KAT-T-050);
  * jej aktualność przypina test backendu `tests/ci/test_fixtury_harnessu.py`. Tu: odbicie we
  * froncie musi dawać TO SAMO rozstrzygnięcie dla każdego rodzaju i każdej wielkości.
  */

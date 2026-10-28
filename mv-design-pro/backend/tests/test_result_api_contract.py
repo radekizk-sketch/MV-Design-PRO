@@ -151,7 +151,7 @@ def build_transformer_only_graph() -> NetworkGraph:
 
 def build_z_bus(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
     return np.linalg.inv(y_bus)
 
 

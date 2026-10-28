@@ -30,6 +30,7 @@ from analysis.grid_strength.models import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_wiersza
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from enm.tor_pola import szyna_raportowa
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
@@ -169,6 +170,18 @@ def _sk_mva_by_bus(run: CanonicalRun) -> dict[str, float | None]:
     return out
 
 
+def _dane_przyjete_by_bus(run: CanonicalRun) -> dict[str, dict[str, Any]]:
+    """Karta LINIA-110: pola danych przyjętych S_sc'' per węzeł — z TEGO SAMEGO wiersza co
+    moc zwarciowa (`pola_danych_przyjetych_wiersza`); węzeł bez danych przyjętych nie ma wpisu."""
+    out: dict[str, dict[str, Any]] = {}
+    for row in build_short_circuit_results(run).get("rows", []):
+        bus_ref = row.get("element_id")
+        pola = pola_danych_przyjetych_wiersza(row)
+        if isinstance(bus_ref, str) and pola:
+            out[bus_ref] = pola
+    return out
+
+
 def _nominal_kv_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
     out: dict[str, float | None] = {}
     for bus in snapshot.get("buses") or []:
@@ -237,5 +250,10 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
         for bus_ref, installed in installed_by_bus.items()
     ]
 
-    view = GridStrengthBuilder().build(inputs, context=_context(run))
-    return view.to_dict()
+    view = GridStrengthBuilder().build(inputs, context=_context(run)).to_dict()
+    # Karta LINIA-110 (kontrakt werdyktu §3): SCR liczony z S_sc'' stojącej na danej przyjętej
+    # gałęzi (linia 110 kV z wartością roboczą geometrii) — pozycja niesie ją addytywnie.
+    dane_by_bus = _dane_przyjete_by_bus(run)
+    for entry in view.get("entries") or []:
+        entry.update(dane_by_bus.get(str(entry.get("bus_ref")), {}))
+    return view

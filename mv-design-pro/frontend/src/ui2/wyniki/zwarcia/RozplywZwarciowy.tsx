@@ -15,22 +15,49 @@
  * - `flows === null` → starszy wynik bez pola (kontrakt addytywny) — komunikat,
  * - `flows.length === 0` → policzono, brak prądu w gałęziach (sieć bez źródła
  *   zastępczego i bez falowników zasilających zwarcie).
+ * - wkłady pominięte na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW) —
+ *   nota z liczbą wpisów i progiem Z ODPOWIEDZI (odbicie jedynej definicji rdzenia,
+ *   frontend nie ma własnej stałej) przy każdym stanie z policzonym rozpływem (także
+ *   pustej liście), a przy szczegółach audytowych zestawienie wpisów z surowym |I|. Wpis
+ *   pominięty to nie zero i nie wiersz tabeli rozpływu.
  * Zero fizyki, zero mutacji, zero wołań API.
  */
 
-import type { ShortCircuitBranchFlow } from '../../../ui/results-inspector/types';
-import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
-import type { OdczytPunktuZwarcia } from './api';
-import { ZWARCIA_STRINGS } from './strings';
-import { KLUCZ_ROZPLYW, KOLUMNY_ROZPLYWU, naWierszeRozplywu } from './zwarciaModel';
+import type {
+  ShortCircuitBranchFlow,
+  WkladPominietyRozplywu,
+} from '../../../ui/results-inspector/types';
+import { StanDanychWyniku, TabelaWynikow, useNazwaObiektu } from '../wzorzec';
+import type { DanePrzyjeteWyniku, OdczytPunktuZwarcia } from './api';
+import { ZWARCIA_STRINGS, notaWkladowPominietych } from './strings';
+import {
+  KLUCZ_POMINIETY,
+  KLUCZ_ROZPLYW,
+  KOLUMNY_POMINIETYCH,
+  KOLUMNY_ROZPLYWU,
+  naWierszePominietych,
+  naWierszeRozplywu,
+} from './zwarciaModel';
 
 export interface RozplywZwarciowyProps {
   /** Nazwa wybranego punktu zwarcia (nagłówek sekcji, pierwszy plan). */
   punktNazwa: string;
   /** Wpisy rozpływu z wiersza kanonicznego; `null` = starszy wynik bez pola. */
   flows: ShortCircuitBranchFlow[] | null;
+  /**
+   * Wkłady pominięte na podstawie tolerancji numerycznej z TEJ SAMEJ odpowiedzi co
+   * `flows`; `null` = brak danych (wiersz inline, starszy wynik).
+   */
+  pominiete: WkladPominietyRozplywu[] | null;
+  /** Próg wkładu pominiętego z odpowiedzi (A, odbicie definicji rdzenia); `null` = brak. */
+  progA: number | null;
   /** Stan odczytu dostawcy (`useRozplywZwarciowy`) — rozstrzyga przed `flows`. */
   odczyt: OdczytPunktuZwarcia;
+  /**
+   * Dane przyjęte I″k punktu z TEJ SAMEJ odpowiedzi co `flows` (zasada nr 4, kontrakt werdyktu
+   * §3); `null`/brak = wynik na danych projektu — sekcja nie pokazuje nic.
+   */
+  danePrzyjete?: DanePrzyjeteWyniku | null;
   szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
@@ -38,11 +65,36 @@ export interface RozplywZwarciowyProps {
 export function RozplywZwarciowy({
   punktNazwa,
   flows,
+  pominiete,
+  progA,
   odczyt,
+  danePrzyjete = null,
   szczegolyAudytowe,
   onOtworzDowod,
 }: RozplywZwarciowyProps) {
   const nazwaObiektu = useNazwaObiektu();
+  const odczytany = odczyt === 'gotowe';
+  const zestawienie =
+    odczytany && flows !== null && pominiete !== null && pominiete.length > 0 && progA !== null ? (
+      <div className="mvd-zwarcia-rozplyw-pominiete" data-testid="mvd-zwarcia-rozplyw-pominiete">
+        <p className="mvd-zwarcia-wklady-brak-desc" data-testid="mvd-zwarcia-rozplyw-pominiete-nota">
+          {notaWkladowPominietych(pominiete.length, progA)}
+        </p>
+        {szczegolyAudytowe ? (
+          <div data-testid="mvd-zwarcia-rozplyw-pominiete-tabela">
+            <h4 className="mvd-zwarcia-wklady-tytul">{ZWARCIA_STRINGS.rozplywPominieteTytul}</h4>
+            <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.rozplywPominieteOpis}</p>
+            <TabelaWynikow
+              kolumny={KOLUMNY_POMINIETYCH}
+              wiersze={naWierszePominietych(pominiete, nazwaObiektu)}
+              szczegolyAudytowe={szczegolyAudytowe}
+              kluczWiersza={KLUCZ_POMINIETY}
+            />
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
   return (
     <section
       className="mvd-zwarcia-rozplyw"
@@ -76,18 +128,33 @@ export function RozplywZwarciowy({
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-rozplyw-pusty">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.rozplywBrakWkladow}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.rozplywBrakWkladowOpis}</p>
+          {zestawienie}
         </div>
       ) : (
         <>
           <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.rozplywOpis}</p>
-          <TabelaWynikow
-            kolumny={KOLUMNY_ROZPLYWU}
-            wiersze={naWierszeRozplywu(flows, nazwaObiektu)}
-            onOtworzDowod={onOtworzDowod}
-            szczegolyAudytowe={szczegolyAudytowe}
-            kluczWiersza={KLUCZ_ROZPLYW}
-          />
+          {/* Kontener tabeli wkładów opublikowanych — rozróżnia ją od tabeli zestawienia
+              wkładów pominiętych w tej samej sekcji (szczegóły audytowe). */}
+          <div data-testid="mvd-zwarcia-rozplyw-tabela">
+            <TabelaWynikow
+              kolumny={KOLUMNY_ROZPLYWU}
+              wiersze={naWierszeRozplywu(flows, nazwaObiektu)}
+              onOtworzDowod={onOtworzDowod}
+              szczegolyAudytowe={szczegolyAudytowe}
+              kluczWiersza={KLUCZ_ROZPLYW}
+            />
+          </div>
+          {zestawienie}
         </>
+      )}
+      {odczytany && danePrzyjete && (
+        <div className="mvd-zwarcia-dane-przyjete" data-testid="mvd-zwarcia-rozplyw-dane">
+          <StanDanychWyniku
+            stan={danePrzyjete.stan}
+            dane={danePrzyjete.dane}
+            testId="mvd-zwarcia-rozplyw"
+          />
+        </div>
       )}
     </section>
   );

@@ -24,8 +24,9 @@ from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
+from application.parametry_linii_wn import podglad_parametrow_linii
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
-from enm.models import UKLADY_SIECI_NN, UkladSieciNn
+from enm.models import UKLADY_SIECI_NN, GeometriaSlupaLinii, UkladSieciNn
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -53,7 +54,11 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
-from network_model.catalog.wartosci_robocze import propozycje_aparatu_sn
+from network_model.catalog.wartosci_robocze import (
+    PROPOZYCJE_LINII_WN,
+    propozycje_aparatu_sn,
+    rejestr_maszyn_do_formularza,
+)
 from network_model.core.uziemienie import (
     ROLE_UZIEMNIKA,
     TYPY_PUNKTU_NEUTRALNEGO,
@@ -64,7 +69,7 @@ from network_model.core.uziemienie import (
 )
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mva_na_kva
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +217,42 @@ def list_line_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_line_types()]
 
 
+@router.get("/overhead-conductor-types")
+def list_overhead_conductor_types() -> dict[str, Any]:
+    """Przewody linii napowietrznych 110 kV (karta LINIA-110, przestrzeń PRZEWOD_LINII_WN).
+
+    ``przewody`` — dane wyrobu PN-EN 50182 (bez impedancji linii: R′, X′, B′ i Z′0 liczy solver
+    z geometrii słupa). ``wartosci_robocze`` — czym obliczenie uzupełni składową geometrii,
+    której projekt nie podaje (zasada nr 4): rodzaj źródła, odniesienie, uzasadnienie, wpływ.
+    """
+    return {
+        "przewody": [
+            item.to_dict() for item in get_default_mv_catalog().list_overhead_conductor_types()
+        ],
+        "wartosci_robocze": [p.to_dict() for p in PROPOZYCJE_LINII_WN.values()],
+    }
+
+
+class ZadaniePodgladuLiniiWN(BaseModel):
+    """Geometria słupa z formularza + częstotliwość studium modelu (bez wartości domyślnej)."""
+
+    geometria_slupa: GeometriaSlupaLinii | None = None
+    czestotliwosc_hz: float = Field(gt=0)
+
+
+@router.post("/overhead-conductor-types/{conductor_id}/parametry-linii")
+def preview_overhead_line_parameters(
+    conductor_id: str, zadanie: ZadaniePodgladuLiniiWN
+) -> dict[str, Any]:
+    """Podgląd R′, X′, B′, Z′0 linii 110 kV z przewodu katalogu i geometrii — bez zapisu.
+
+    Ślad White Box każdego kroku, dane przyjęte (``ESTIMATED``) dla składowych bez danych
+    projektu, kompletność dowodu i pasma wiarygodności. Odmowa danych (przewód spoza katalogu,
+    geometria sprzeczna) — 422 z kodem odmowy.
+    """
+    return podglad_parametrow_linii(conductor_id, zadanie.geometria_slupa, zadanie.czestotliwosc_hz)
+
+
 @router.get("/cable-types")
 def list_cable_types() -> list[dict[str, Any]]:
     """List all cable types from the canonical MV catalog."""
@@ -245,6 +286,15 @@ def list_mv_apparatus_types() -> list[dict[str, Any]]:
         }
         for item in get_default_mv_catalog().list_mv_apparatus_types()
     ]
+
+
+@router.get("/maszyny-wirujace/wartosci-robocze")
+def rejestr_wartosci_roboczych_maszyn() -> dict[str, Any]:
+    """Parametry zwarciowe maszyn wirujących i ich propozycje wartości roboczych (karta
+    PODSTAWA-Q, zasada nr 4): rodzaj generatora → rodzina, parametry rodziny z nazwą, jednostką
+    i zakresem bramy oraz propozycja, którą obliczenie przyjmie bez tabliczki i bez wartości
+    projektanta. Dostawca sekcji parametrów maszyny w kreatorze edycji parametrów."""
+    return rejestr_maszyn_do_formularza()
 
 
 @router.get("/lv-apparatus-types")

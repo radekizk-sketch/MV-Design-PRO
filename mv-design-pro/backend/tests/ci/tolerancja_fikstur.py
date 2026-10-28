@@ -11,6 +11,7 @@ Uzasadnienia progow i list pol — przy stalych nizej; piny — w tescie harness
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 #: Tolerancja WZGLĘDNA liczb fixtur. POMIAR (CI run 35290801270, job `pytest`,
 #: commit 8d795200 — 7 czerwonych przy 15 878 zielonych): największa zmierzona
@@ -235,36 +236,6 @@ def _klucz_wielkosci(rodzic: dict[str, object], klucz: str) -> str:
     return klucz
 
 
-#: Listy wpisów rozpływu zwarciowego, które solver (FROZEN, B-01) buduje progiem zerowym na
-#: liczbie (`if i_mag <= 0: continue` / `if i_a <= 0: continue` w
-#: `short_circuit_iec60909.py::_build_branch_contributions_for_*`): gałąź o prądzie
-#: DOKŁADNIE 0 nie wchodzi do listy, a o 1e-17 wchodzi — długość listy jest funkcją szumu
-#: numerycznego maszyny. POMIAR: CI na `ed3afa480`, scena zwarć, punkt `80c21edb…`:
-#: `branch_contributions` 5 (fikstura) wobec 6 (runner) i `branch_flow_trace` 4 wobec 5 —
-#: nadmiarowy wpis to źródło THEVENIN_GRID przez TR SN/nN o `i_ka` 1,4e-17 (kierunek „brak").
-#: Wpisy w paśmie zera (`PASMO_ZERA_FIXTUR`) są z porównania WYŁĄCZONE po obu stronach;
-#: wpis o prądzie realnym, którego brakuje, nadal jest różnicą. Lista ZAMKNIĘTA — pin:
-#: `test_wpisy_rozplywu_w_pasmie_zera_nie_wchodza_do_porownania`.
-POLA_LIST_WPISOW_ROZPLYWU: frozenset[str] = frozenset({"branch_contributions", "branch_flow_trace"})
-
-
-def _prad_wpisu_rozplywu(wpis: object) -> float | None:
-    """Prąd wpisu rozpływu: `i_ka` (wkład gałęzi, kA) albo `result.i_contrib_a` (ślad, A)."""
-    if not isinstance(wpis, dict):
-        return None
-    wynik = wpis.get("result")
-    kandydat = wynik.get("i_contrib_a") if isinstance(wynik, dict) else wpis.get("i_ka")
-    if isinstance(kandydat, bool) or not isinstance(kandydat, int | float):
-        return None
-    return float(kandydat)
-
-
-def _bez_wpisow_szumu(lista: list[object]) -> list[object]:
-    return [
-        w for w in lista if (p := _prad_wpisu_rozplywu(w)) is None or abs(p) > PASMO_ZERA_FIXTUR
-    ]
-
-
 def roznice_z_tolerancja(
     zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
 ) -> list[str]:
@@ -291,8 +262,6 @@ def roznice_z_tolerancja(
             )
         ]
     if isinstance(zloty, list) and isinstance(teraz, list):
-        if klucz in POLA_LIST_WPISOW_ROZPLYWU:
-            zloty, teraz = _bez_wpisow_szumu(zloty), _bez_wpisow_szumu(teraz)
         if len(zloty) != len(teraz):
             return [f"{sciezka}: długość listy {len(zloty)} != {len(teraz)}"]
         return [
@@ -314,3 +283,43 @@ def roznice_z_tolerancja(
         if klucz in POLA_TEKSTU_Z_LICZBAMI:
             return _roznice_w_tekscie(zloty, teraz, sciezka, klucz)
     return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
+
+
+def skroty_nieprzenosne(
+    dane: object, sciezka: str = "$", klucz: str | None = None
+) -> dict[str, str]:
+    """Wszystkie wartości pól z ``POLA_SKROTOW_NIEPRZENOSNYCH`` o kształcie skrótu
+    (ścieżka → wartość)."""
+    if isinstance(dane, dict):
+        znalezione: dict[str, str] = {}
+        for k, v in dane.items():
+            znalezione.update(skroty_nieprzenosne(v, f"{sciezka}.{k}", k))
+        return znalezione
+    if isinstance(dane, list):
+        znalezione = {}
+        for i, v in enumerate(dane):
+            znalezione.update(skroty_nieprzenosne(v, f"{sciezka}[{i}]", klucz))
+        return znalezione
+    if isinstance(dane, str) and klucz in POLA_SKROTOW_NIEPRZENOSNYCH and HEX_SKROTU.search(dane):
+        return {sciezka: dane}
+    return {}
+
+
+def klasy_rownosci_skrotow(
+    dokumenty: Mapping[str, object],
+) -> frozenset[frozenset[tuple[str, str]]]:
+    """Podział miejsc skrótów nieprzenośnych ``(dokument, ścieżka)`` na klasy RÓWNEJ wartości.
+
+    ``roznice_z_tolerancja`` porównuje skrót z ``POLA_SKROTOW_NIEPRZENOSNYCH`` wyłącznie po
+    kształcie, bo jego treść zależy od szumu numeryki maszyny. Przenośna jest natomiast
+    RELACJA RÓWNOŚCI: dwa miejsca niosące skrót tego samego wyniku (``result_hash`` biegu w
+    wyniku i w śladzie, ``proof_id`` dowodu w paśmie i w wynikach) mają go równego na
+    każdej maszynie. Ten podział jest drugą połową porównania grupy fixtur jednego biegu —
+    generator zostawia grupę z dysku tylko wtedy, gdy podział na dysku równa się podziałowi
+    świeżej odpowiedzi (``eksport_fixtur_harnessu.rozstrzygnij_grupe``), a test spójności
+    repo sprawdza to samo (``test_fikstury_jednego_biegu_maja_w_repo_te_same_skroty``)."""
+    klasy: dict[str, set[tuple[str, str]]] = {}
+    for nazwa, dane in dokumenty.items():
+        for sciezka, wartosc in skroty_nieprzenosne(dane).items():
+            klasy.setdefault(wartosc, set()).add((nazwa, sciezka))
+    return frozenset(frozenset(miejsca) for miejsca in klasy.values())

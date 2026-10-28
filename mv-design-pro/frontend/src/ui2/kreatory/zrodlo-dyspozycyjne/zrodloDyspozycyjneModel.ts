@@ -87,8 +87,10 @@ export function walidujFormularz(data: ZrodloDyspozycyjneFormData, kind: Dispatc
     if (data.rated_voltage_kv === null || data.rated_voltage_kv <= 0) {
       errors.push({ field: 'rated_voltage_kv', message: 'Napięcie znamionowe (kV) musi być > 0.' });
     }
-    if (data.power_factor === null || data.power_factor <= 0 || data.power_factor > 1) {
-      errors.push({ field: 'power_factor', message: 'Współczynnik mocy musi być w zakresie (0, 1].' });
+    // Karta PODSTAWA-Q: ten sam zakres co brama backendu (cos φ_rG maszyny synchronicznej,
+    // rejestr `wartosci_robocze`: 0,5–1) — formularz nie przepuszcza wartości, którą odrzuci zapis.
+    if (data.power_factor === null || data.power_factor < 0.5 || data.power_factor > 1) {
+      errors.push({ field: 'power_factor', message: 'Współczynnik mocy musi być w zakresie 0,5–1.' });
     }
     if (!data.genset_operation_mode) {
       errors.push({ field: 'genset_operation_mode', message: 'Tryb pracy agregatu jest wymagany.' });

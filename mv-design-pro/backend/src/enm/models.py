@@ -276,6 +276,60 @@ class BranchBase(ENMElement):
     overrides: list[ParameterOverride] = []
 
 
+class PolozeniePrzewoduLinii(BaseModel):
+    """Położenie przewodu w przekroju poprzecznym linii [m] (karta LINIA-110).
+
+    ``x_m`` — odległość pozioma od osi słupa; ``y_m`` — ŚREDNIA wysokość przewodu nad ziemią
+    w przęśle (wysokość zawieszenia pomniejszona o 2/3 zwisu).
+    """
+
+    x_m: float
+    y_m: float
+
+
+class GeometriaSlupaLinii(BaseModel):
+    """Geometria słupa linii napowietrznej — DANA PROJEKTU (karta LINIA-110).
+
+    Każda składowa opcjonalna: ``None`` = projekt jej nie podaje, a obliczenie parametrów linii
+    biegnie z wartością roboczą rejestru ``network_model.catalog.wartosci_robocze`` (jakość
+    ``ESTIMATED``, kompletność dowodu ``NIEPELNY``). ``odgromowe == []`` to jawna deklaracja
+    linii BEZ przewodu odgromowego. ``liczba_w_wiazce`` — przewody w fazie (1 = przewód
+    pojedynczy, jak w standardzie ENEA linii 110 kV §4.1).
+    """
+
+    fazy: list[PolozeniePrzewoduLinii] | None = None
+    liczba_w_wiazce: int = 1
+    odstep_wiazki_m: float | None = None
+    odgromowe: list[PolozeniePrzewoduLinii] | None = None
+    przewod_odgromowy_ref: str | None = None
+    rezystywnosc_gruntu_ohm_m: float | None = None
+
+
+class ParametryLiniiZGeometrii(BaseModel):
+    """Proweniencja R′/X′/B′/Z′0 linii wyliczonych z geometrii (zapis operacji domenowej).
+
+    Operacja domenowa wpisuje wynik solvera ``parametry_linii_napowietrznej`` do pól impedancji
+    linii i tu zostawia ślad pochodzenia: metodę z wersją, odcisk wejścia (SHA-256 — ta sama
+    geometria i przewód dają ten sam odcisk), kompletność dowodu i składowe przyjęte jako
+    wartości robocze. Pełny ślad obliczenia (wzory, podstawienia) odtwarza deterministycznie
+    endpoint parametrów linii i pakiet dowodowy.
+    """
+
+    metoda: str
+    wersja_metody: str
+    odcisk_wejscia: str
+    kompletnosc_dowodu: Literal["PELNY", "NIEPELNY"]
+    czestotliwosc_hz: float
+    temperatura_przewodu_c: float
+    r1_temperatura_ohm_per_km: float
+    r0_bez_odgromowych_ohm_per_km: float
+    x0_bez_odgromowych_ohm_per_km: float
+    gmd_m: float
+    gmr_fazy_m: float
+    #: Składowe danych linii przyjęte jako wartości robocze (kolejność rejestru).
+    wartosci_robocze: list[str] = []
+
+
 class OverheadLine(BranchBase):
     type: Literal["line_overhead"] = "line_overhead"
     length_km: float
@@ -305,6 +359,11 @@ class OverheadLine(BranchBase):
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None
     endpoint_b_port: PortRef | None = None
+    # Karta LINIA-110: geometria słupa (dana projektu) i proweniencja parametrów linii
+    # policzonych z geometrii dla linii z przewodem z katalogu PRZEWOD_LINII_WN. Pola
+    # addytywne — `None` poza odciskiem ENM (`enm/hash.py`), linie SN bez zmian.
+    geometria_slupa: GeometriaSlupaLinii | None = None
+    parametry_z_geometrii: ParametryLiniiZGeometrii | None = None
 
 
 class Cable(BranchBase):

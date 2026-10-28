@@ -39,7 +39,7 @@ import {
 
 // Wersja pozycji katalogowej ma JEDNO źródło we froncie (`ui/catalog/catalogBinding`)
 // i musi zgadzać się z wersją, którą materializuje backend
-// (`api/domain_ops_policy.DEFAULT_CATALOG_VERSION`). Kreator OZE miał tu własną,
+// (stała wersji katalogu w `api/domain_ops_policy.py`). Kreator OZE miał tu własną,
 // RÓWNOLEGŁĄ stałą `'v12.5'` — bramka spójności tabliczki z katalogiem
 // (`domain_operations_v2._build_converter_materialized_params`) odrzucała przez to
 // KAŻDY zapis źródła OZE komunikatem „Tabliczka podana w formularzu przeczy pozycji

@@ -49,11 +49,15 @@ from application.analyses.fault_loop.service import (
     restrict_graph_to_island_of,
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from enm.dane_przyjete_galezi import dane_przyjete_wezla
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.tolerancja_nn import wyspy_wezlow_nn
-from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+from network_model.catalog.wartosci_robocze import (
+    dane_przyjete_maszyn,
+    rozstrzygnij_tolerancje_nn,
+)
 from network_model.core.voltage_factor import (
     c_for_node,
     zrodlo_c_z_tabeli,
@@ -208,6 +212,12 @@ def _build_upstream_equivalent_snapshot_surowy(
     rx_ratio = (r1_ohm / x1_ohm) if x1_ohm != 0 else None
 
     z0_ohm, z0_missing_reason_pl = _hv_zero_sequence_ohm(enm, hv_equiv.hv_bus_ref)
+    # Karta LINIA-110 (kontrakt werdyktu §3): Z1/Sk″ zawierają linie 110 kV z wartością roboczą
+    # geometrii z wyspy szyny, a Z0 — R′0/X′0 z wartości roboczej katalogu ze składowej sieci
+    # zerowej szyny. Te same predykaty co wiersze biegu zwarciowego (`dane_przyjete_wezla`).
+    dane_przyjete = dane_przyjete_wezla(
+        enm, trafo.hv_bus_ref, ze_skladowa_zerowa=z0_ohm is not None
+    )
 
     operating_state_id = compute_switching_snapshot_hash(enm)
     model_hash = compute_enm_hash(enm)
@@ -261,6 +271,11 @@ def _build_upstream_equivalent_snapshot_surowy(
         "model_revision": enm.header.revision,  # werdykt: modelRevision
         "model_hash": model_hash,  # werdykt: /hash
         "missing_data": [],
+        # Karty LINIA-110 i PODSTAWA-Q (kontrakt werdyktu §3), addytywnie — WYŁĄCZNIE gdy Z1/Z0
+        # stoi na wartości roboczej (linia 110 kV, R′0/X′0 katalogu, parametr maszyny wirującej
+        # wyspy węzła SN): wpisy maszyn, status danych i JEDNA lista danych przyjętych —
+        # równoważnik na danych projektu bez zmian (odcisk projekcji nN bit w bit).
+        **_dane_przyjete_kotwicy(dane_przyjete, hv_equiv.parametry_robocze_maszyn),
         "note_pl": (
             "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
             "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "
@@ -269,6 +284,25 @@ def _build_upstream_equivalent_snapshot_surowy(
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
     }
+
+
+def _dane_przyjete_kotwicy(
+    dane_galezi: tuple[dict[str, Any], ...],
+    wpisy_maszyn: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    """Pola kotwicy dla danych przyjętych: gałęzie z wartością roboczą impedancji (karta
+    LINIA-110) i wartości robocze maszyn (karta PODSTAWA-Q) — jedna lista ``dane_przyjete``
+    i jeden ``status_danych`` (kontrakt werdyktu §3), wpisy maszyn osobno."""
+    dane = list(dane_galezi) + [
+        d.model_dump(mode="json") for d in dane_przyjete_maszyn(wpisy_maszyn, wielkosc="ikss")
+    ]
+    pola: dict[str, Any] = {}
+    if wpisy_maszyn:
+        pola["parametry_robocze_maszyn"] = [dict(w) for w in wpisy_maszyn]
+    if dane:
+        pola["status_danych"] = "UNVALIDATED_INPUT"
+        pola["dane_przyjete"] = dane
+    return pola
 
 
 def build_upstream_equivalent_snapshot(

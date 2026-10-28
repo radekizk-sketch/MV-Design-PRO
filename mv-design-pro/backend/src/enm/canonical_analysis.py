@@ -65,11 +65,18 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
+from enm.dane_przyjete_galezi import (
+    KLUCZ_WIERSZA_DANE_GALEZI,
+    dane_przyjete_galezi_punktow,
+    dane_przyjete_galezi_wiersza,
+)
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
+from enm.mapping import grid_source_graph_id
+from enm.maszyny_robocze import parametry_robocze_maszyn_punktu, wyspy_wezlow_grafu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
     ELEMENT_SPOZA_MODELU,
@@ -109,11 +116,19 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
     KLUCZ_SLADU_ROZPLYWU,
+    KLUCZ_SLADU_WKLADOW_ZRODEL,
+    KLUCZ_WKLADOW_POMINIETYCH,
+    KLUCZ_WKLADOW_ZRODEL,
     KLUCZE_ROZPLYWU,
+    KLUCZE_SLADU_ROZPLYWU,
     canonical_run_repository_scope,
 )
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.autorytet_wyniku_zwarciowego import KLUCZ_IMPEDANCJI_ZWARCIA
 from network_model.core.branch import Branch
 from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
@@ -163,6 +178,10 @@ from network_model.solvers.power_flow_types import (
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedPowerFlowResult,
     solve_unbalanced_backward_forward_sweep,
+)
+from network_model.solvers.short_circuit_contributions import (
+    PROG_WKLADU_POMIJALNEGO_A,
+    RODZAJ_BOCZNIKA_SZYNA_SZTYWNA,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
@@ -301,9 +320,7 @@ POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
 _KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v", "tk_s", "tb_s"})
 #: Poddrzewa śladu White Box wiersza — zerowane bez wykazu ścieżek (setki wpisów bez
 #: wartości diagnostycznej; wykaz `non_physical_fields` nazywa pola KONTRAKTU).
-_KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset(
-    {"white_box_trace", "branch_contributions", "branch_flow_trace"}
-)
+_KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"white_box_trace", *KLUCZE_ROZPLYWU})
 
 
 def _zeruj_liczby_wyniku(
@@ -411,7 +428,8 @@ KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
 )
 
 #: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
-#: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
+#: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n, zestawienie wkładów
+#: pominiętych na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW).
 KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
     {
         "z1_ohm",
@@ -422,6 +440,11 @@ KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
         "n_factor",
         "i_dc_a",
         "tb_zrodlo",
+        "wklady_pominiete",
+        "wklady_zrodel",
+        "wklady_zrodel_slad",
+        "zalozenia_zaniku",
+        "parametry_robocze_maszyn",
     }
 )
 
@@ -904,7 +927,7 @@ def pobierz_rozplyw_biegu(
     Brak w źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
     nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory)[0]
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_ROZPLYWU)
 
 
 def pobierz_slad_rozplywu_biegu(
@@ -919,7 +942,22 @@ def pobierz_slad_rozplywu_biegu(
     (`_rozplyw_punktu`). Brak → ``None``: bieg policzony bez wkładów, punkt nieznany
     albo zapis sprzed dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory)[1]
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_SLADU_ROZPLYWU)
+
+
+def pobierz_wklady_pominiete_biegu(
+    run: CanonicalRun,
+    fault_node_id: str,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Zestawienie wkładów pominiętych punktu (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW).
+
+    Ta sama klasa ładunku i ta sama kolejność źródeł co `pobierz_rozplyw_biegu`
+    (`_rozplyw_punktu`). ``None``: punkt bez wkładów pominiętych (rdzeń nie emituje pustego
+    zestawienia), bieg policzony bez wkładów albo punkt nieznany.
+    """
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_WKLADOW_POMINIETYCH)
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -2453,8 +2491,10 @@ _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva",
 
 def _policz_rozplyw_punktu_na_zadanie(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None] | None:
-    """Wkłady gałęziowe + ślad podziału prądu JEDNEGO punktu policzone z wejścia biegu.
+) -> dict[str, Any] | None:
+    """Ładunek rozpływu JEDNEGO punktu (cała klasa `KLUCZE_ROZPLYWU`: wkłady gałęziowe,
+    ślad podziału prądu, wkłady pominięte, wkłady źródeł i ich ślad) policzony z wejścia
+    biegu.
 
     PERF-SC-50 (krok 3): bieg kanoniczny nie liczy iloczynu źródło×gałąź dla każdego
     z punktów zwarcia (92 % bajtów biegu sieci 50 stacji); punkt wybrany przez
@@ -2498,44 +2538,48 @@ def _policz_rozplyw_punktu_na_zadanie(
             "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
             "uruchom analizę ponownie."
         )
-    wklady = list(odtworzony.get(KLUCZ_ROZPLYWU) or [])
-    slad_surowy = odtworzony.get(KLUCZ_SLADU_ROZPLYWU)
-    # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica co bieg.
-    slad = kroki_zwarcia_w_kontrakcie(slad_surowy) if slad_surowy is not None else None
+    rozplyw: dict[str, Any] = {klucz: odtworzony.get(klucz) for klucz in KLUCZE_ROZPLYWU}
+    rozplyw[KLUCZ_ROZPLYWU] = list(rozplyw[KLUCZ_ROZPLYWU] or [])
+    # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica i TA SAMA krotka
+    # kluczy sladu (`KLUCZE_SLADU_ROZPLYWU`) co bieg.
+    for klucz_sladu in KLUCZE_SLADU_ROZPLYWU:
+        if rozplyw[klucz_sladu] is not None:
+            rozplyw[klucz_sladu] = kroki_zwarcia_w_kontrakcie(rozplyw[klucz_sladu])
     with canonical_run_repository_scope() as repository:
-        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad)
-    return wklady, slad
+        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, rozplyw)
+    return rozplyw
 
 
 def _rozplyw_punktu(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
-    """(wkłady, ślad) punktu — JEDNA prawda dostępu dla obu akcesorów.
+) -> dict[str, Any]:
+    """Ładunek rozpływu punktu — JEDNA prawda dostępu dla akcesorów.
 
+    Słownik po kluczach `KLUCZE_ROZPLYWU` (wkłady gałęziowe, ślad podziału prądu, wkłady
+    pominięte, wkłady źródeł, ślad wkładów źródeł); wartość ``None`` = uczciwy brak treści.
     Kolejność źródeł: (1) inline w artefakcie (świeży bieg `in_run`, zapis sprzed
     rozdzielenia), (2) osobna tabela rozpływu, (3) PERF-SC-50: obliczenie na żądanie
-    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → (None, None): bieg
-    policzony bez wkładów albo nieznany punkt — uczciwy brak.
+    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → same ``None``: bieg
+    policzony bez wkładów albo nieznany punkt.
     """
+    brak: dict[str, Any] = dict.fromkeys(KLUCZE_ROZPLYWU)
     for item in (run.raw_result or {}).get("results", []):
         if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
             continue
-        inline = item.get(KLUCZ_ROZPLYWU)
-        if inline is not None:
-            slad_inline = item.get(KLUCZ_SLADU_ROZPLYWU)
-            return list(inline), (list(slad_inline) if slad_inline is not None else None)
+        if item.get(KLUCZ_ROZPLYWU) is not None:
+            return {
+                klucz: list(item[klucz]) if item.get(klucz) is not None else None
+                for klucz in KLUCZE_ROZPLYWU
+            }
         if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
-            return None, None
+            return brak
         with canonical_run_repository_scope() as repository:
-            z_tabeli = repository.get_branch_flows(run.id, fault_node_id)
-            slad_z_tabeli = repository.get_branch_flow_trace(run.id, fault_node_id)
+            z_tabeli = repository.get_rozplyw_punktu(run.id, fault_node_id)
         if z_tabeli is not None:
-            return z_tabeli, slad_z_tabeli
+            return z_tabeli
         policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id, uow_factory)
-        if policzone is None:
-            return None, None
-        return policzone
-    return None, None
+        return brak if policzone is None else policzone
+    return brak
 
 
 def _execute_short_circuit(
@@ -2569,6 +2613,17 @@ def _execute_short_circuit(
     # scenariusza projektanta — pola nie są czytane); punkty z t_b roboczym → założenie biegu.
     pola_lokalne = pola_lokalne_biegu(wejscie)
     punkty_tb_roboczego: list[dict[str, Any]] = []
+    # Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą impedancji — per punkt, z TYCH
+    # SAMYCH założeń biegu: linie 110 kV z wyspy węzła, R′0/X′0 katalogu ze składowej sieci
+    # zerowej węzła (wyłącznie zwarcia doziemne; kontrakt werdyktu §3).
+    dane_galezi_punktow = dane_przyjete_galezi_punktow(
+        wejscie.zalozenia,
+        graph,
+        reportable_fault_node_ids,
+        skladowe_zerowe=wejscie.skladowe_zerowe,
+    )
+    # Karta PODSTAWA-Q: wyspy grafu RAZ na bieg (maszyny wyspy punktu → dane przyjęte wiersza).
+    wyspy_wezlow = wyspy_wezlow_grafu(graph) if graph.wartosci_robocze_maszyn else {}
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2630,13 +2685,13 @@ def _execute_short_circuit(
             # PERF-SC-50 (krok 3): wiersz NIE niesie wkładów ani śladu podziału prądu —
             # tylko flagę dostępności; treść liczy `pobierz_rozplyw_biegu` z tego samego
             # wejścia (assembler deterministyczny) i utrwala w `canonical_run_branch_flows`.
-            payload.pop(KLUCZ_ROZPLYWU, None)
-            payload.pop(KLUCZ_SLADU_ROZPLYWU, None)
+            for klucz_rozplywu in KLUCZE_ROZPLYWU:
+                payload.pop(klucz_rozplywu, None)
             payload[KLUCZ_DOSTEPNOSCI_ROZPLYWU] = True
         # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY): granica aplikacji zdejmuje
         # kopie LaTeX-u rdzenia B-01 z pola prozy `substitution` PO KLUCZU KROKU —
         # wiersz wyniku i slad biegu dostaja te same kroki.
-        for klucz_sladu in ("white_box_trace", KLUCZ_SLADU_ROZPLYWU):
+        for klucz_sladu in ("white_box_trace", *KLUCZE_SLADU_ROZPLYWU):
             if payload.get(klucz_sladu) is not None:
                 payload[klucz_sladu] = kroki_zwarcia_w_kontrakcie(payload[klucz_sladu])
         node_trace_step_refs: list[int] = []
@@ -2706,8 +2761,23 @@ def _execute_short_circuit(
                     if wejscie.graph.nodes[node_id].tolerancja_nn_robocza
                     else {}
                 ),
+                # Karta LINIA-110: prąd punktu zależy od impedancji gałęzi policzonej
+                # z wartością roboczą — konsumenci werdyktów niosą stąd dane przyjęte
+                # (`dane_przyjete_galezi_wiersza`). Addytywnie, WYŁĄCZNIE gdy niepuste.
+                **(
+                    {KLUCZ_WIERSZA_DANE_GALEZI: dane_galezi_punktow[node_id]}
+                    if node_id in dane_galezi_punktow
+                    else {}
+                ),
             }
         )
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): maszyny wirujące wyspy punktu
+        # liczone z wartościami roboczymi parametrów — addytywnie, WYŁĄCZNIE gdy są.
+        robocze_maszyn = parametry_robocze_maszyn_punktu(
+            wejscie.graph, node_id, short_circuit_type, wyspy=wyspy_wezlow
+        )
+        if robocze_maszyn:
+            payload["parametry_robocze_maszyn"] = robocze_maszyn
         if wejscie.impedancja_zwarcia is not None:
             payload["reporting_limitations"] = [
                 *payload["reporting_limitations"],
@@ -3137,6 +3207,9 @@ def _execute_power_flow(
         # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
         # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
         "pv_to_pq_switches": solution.pv_to_pq_switches,
+        # Karta LINIA-110 (zasada nr 4): założenia biegu — linie 110 kV liczone z wartością
+        # roboczą geometrii słupa. Addytywnie, WYŁĄCZNIE gdy bieg je ma (bit w bit bez nich).
+        **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
         # CV-4.3 K3b: kilka wysp zasilonych = wynik zbiorczy per wyspa (addytywnie,
         # WYŁĄCZNIE gdy wysp jest więcej niż jedna — sieci jednoźródłowe bit w bit).
         **({"wyspy": opis_wysp(rozwiazania)} if len(rozwiazania) > 1 else {}),
@@ -3903,12 +3976,28 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "c_factor": item.get("c_factor"),
         "c_zrodlo": item.get("c_zrodlo"),
         **({"tolerancja_nn_robocza": True} if item.get("tolerancja_nn_robocza") else {}),
+        # Karta LINIA-110: dane przyjęte gałęzi punktu (addytywnie, wyłącznie niepuste).
+        **(
+            {KLUCZ_WIERSZA_DANE_GALEZI: list(item[KLUCZ_WIERSZA_DANE_GALEZI])}
+            if item.get(KLUCZ_WIERSZA_DANE_GALEZI)
+            else {}
+        ),
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
         # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu, gdy
         # nie pochodzi ze scenariusza projektanta (pola lokalne albo wartość robocza).
         **({"tb_zrodlo": item["tb_zrodlo"]} if item.get("tb_zrodlo") is not None else {}),
+        # Karta PODSTAWA-Q (addytywnie, exclude-None): krzywe zaniku μ/q maszyn wyznaczone na
+        # założeniu inżynierskim — konsument werdyktu I_b ≤ I_cu niesie je w zakresie ważności.
+        **({"zalozenia_zaniku": item["zalozenia_zaniku"]} if item.get("zalozenia_zaniku") else {}),
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, addytywnie): wartości robocze parametrów maszyn
+        # wirujących wyspy punktu — konsumenci werdyktów niosą je w `dane_przyjete`.
+        **(
+            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+            if item.get("parametry_robocze_maszyn")
+            else {}
+        ),
         # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9,
         # i_DC(t_b) — składowa nieokresowa rozdz. 10, obie przy t_b punktu (karta
         # TB-WARTOSC-ROBOCZA); None wyłącznie dla wiersza bez solvera / zapisu sprzed kart.
@@ -3938,13 +4027,6 @@ def _wpis_grafu(mapa: dict[str, Any], klucz: object) -> dict[str, Any]:
     return mapa.get(klucz, {}) if isinstance(klucz, str) else {}
 
 
-#: Próg prądu numerycznie zerowego w projekcji rozpływu zwarciowego [kA] = 1 µA.
-#: Poniżej niego kierunek z solvera jest artefaktem arytmetyki (znak ~0), nie
-#: wielkością fizyczną — patrz docstring projekcji rozpływu. Próg prezentacyjny,
-#: nie korekta wyniku: `i_ka` w wierszu pozostaje surową wartością solvera.
-PROG_PRADU_ZEROWEGO_KA = 1e-9
-
-
 def _sc_rozplyw_galeziowy(
     raw: list[dict[str, Any]] | None,
     graph_nodes: dict[str, Any],
@@ -3958,14 +4040,13 @@ def _sc_rozplyw_galeziowy(
     rozpływ prądu od źródła zastępczego (Thevenin / sieć nadrzędna,
     `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID").
     WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu przebiegu) — zero
-    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera, z jednym wyjątkiem
-    prezentacyjnym: gałąź o prądzie NUMERYCZNIE ZEROWYM (|I| < PROG_PRADU_ZEROWEGO_KA)
-    dostaje token "brak" — solver wyznacza kierunek ze znaku różnicy napięć, a dla
-    prądu rzędu 1e-18 kA znak zależy od platformy (CI 2026-09-16, run 5030: ten sam
-    commit dał "from_to" na jednym runnerze i "to_from" na drugim). Strzałka na
-    zerowym prądzie nie niesie treści inżynierskiej; FE token nieznany renderuje
-    parą węzłów bez strzałki. Sort deterministyczny
-    (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
+    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera. Projekcja NIE klasyfikuje
+    wkładów i nie ma własnego progu: wkład numerycznie pomijalny (|I| < 1e-6 A —
+    jedyna definicja `PROG_WKLADU_POMIJALNEGO_A` w `short_circuit_contributions`) rdzeń
+    odkłada do zestawienia `wklady_pominiete` i nie publikuje go na tej liście (karta
+    PROG-ZERA-WKLADOW; dawny token kierunku "brak" dla |I| < 1e-9 kA był drugim progiem
+    tej samej klasy). Sort deterministyczny (branch_id, source_id). Starsze wyniki bez
+    pola → None (uczciwy brak);
     pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
     zastępczego i bez falowników niosących prąd).
 
@@ -4012,15 +4093,97 @@ def _sc_rozplyw_galeziowy(
                 "to_node_id": to_wpis.get("element_id") or to_key,
                 "to_node_name": nazwa_nadana(to_wpis.get("name")) or opis_bez_nazwy("buses"),
                 "i_ka": i_ka,
-                "direction": (
-                    "brak"
-                    if i_ka is not None and abs(i_ka) < PROG_PRADU_ZEROWEGO_KA
-                    else entry.get("direction")
-                ),
+                "direction": entry.get("direction"),
             }
         )
     flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))
     return flows
+
+
+def _sc_wklady_pominiete(
+    raw: list[dict[str, Any]] | None, graph_branches: dict[str, Any]
+) -> list[dict[str, Any]] | None:
+    """Zestawienie wkładów pominiętych punktu (karta PROG-ZERA-WKLADOW) — projekcja.
+
+    Ta sama projekcja prezentacyjna co lista wkładów (`_sc_rozplyw_galeziowy`): ``ref_id``
+    gałęzi z grafu przebiegu, nazwa z modelu, prąd A→kA, ten sam sort (branch_id,
+    source_id). Każdy wpis to „wkład pominięty na podstawie tolerancji numerycznej
+    (|I| < 1e-6 A)” — surowe |I| (3 cyfry znaczące) z rdzenia bez zmian treści; kąt fazora
+    rdzeń podaje jako ``None`` (nieokreślony poniżej progu,
+    `PRZYCZYNA_KATA_NIEOKRESLONEGO`), projekcja przenosi go bez zmian. ``None`` = punkt bez wkładów pominiętych albo bieg bez wkładów.
+    """
+    if raw is None:
+        return None
+    wpisy: list[dict[str, Any]] = []
+    for entry in raw:
+        branch_key = entry.get("branch_id")
+        branch = _wpis_grafu(graph_branches, branch_key)
+        wpisy.append(
+            {
+                "branch_id": branch.get("element_id") or branch_key,
+                "branch_name": nazwa_nadana(branch.get("name"))
+                or opis_galezi_grafu_bez_nazwy(branch),
+                "source_id": entry.get("source_id"),
+                "tor": entry.get("tor"),
+                "i_ka": _amps_to_ka(entry.get("i_a")),
+                "kat_deg": entry.get("kat_deg"),
+            }
+        )
+    wpisy.sort(key=lambda wpis: (wpis["branch_id"] or "", wpis["source_id"] or ""))
+    return wpisy
+
+
+def _sc_wklady_zrodel(
+    raw: list[dict[str, Any]] | None,
+    graph_nodes: dict[str, Any],
+    snapshot: dict[str, Any] | None,
+) -> list[dict[str, Any]] | None:
+    """Wkłady źródeł punktu (karta WKLAD-ZRODLA) — projekcja prezentacyjna, zero fizyki.
+
+    Odnośnik źródła do modelu ENM: zasilanie systemowe ma w grafie identyfikator z reguły
+    `grid_source_graph_id` (ta sama funkcja, którą mapowanie nadaje go przy budowie grafu),
+    maszyna wirująca — ``ref_id`` generatora, szyna sztywna — węzeł grafu (``element_id``
+    szyny). Prąd A→kA; klasa wpisu, przyczyna, kąt fazora i udział z rdzenia bez zmian treści.
+    Sort deterministyczny po odnośniku modelu (``source_id``) — kolejność rdzenia wynika
+    z identyfikatorów grafu (UUID zasilań), nieczytelnych dla projektanta. ``None`` = bieg bez
+    wkładów.
+    """
+    if raw is None:
+        return None
+    zasilania = {
+        grid_source_graph_id(str(zrodlo.get("ref_id"))): zrodlo
+        for zrodlo in (snapshot or {}).get("sources") or []
+        if isinstance(zrodlo, dict) and zrodlo.get("ref_id")
+    }
+    wpisy: list[dict[str, Any]] = []
+    for entry in raw:
+        source_key = str(entry.get("source_id") or "")
+        node_key = entry.get("node_id")
+        wezel = _wpis_grafu(graph_nodes, node_key)
+        zasilanie = zasilania.get(source_key)
+        if zasilanie is not None:
+            element_id = zasilanie.get("ref_id")
+        elif entry.get("rodzaj") == RODZAJ_BOCZNIKA_SZYNA_SZTYWNA:
+            element_id = wezel.get("element_id") or source_key
+        else:
+            element_id = source_key
+        wpisy.append(
+            {
+                "source_id": element_id,
+                "source_name": entry.get("source_name"),
+                "rodzaj": entry.get("rodzaj"),
+                "node_id": wezel.get("element_id") or node_key,
+                "node_name": nazwa_nadana(wezel.get("name")) or opis_bez_nazwy("buses"),
+                "klasa": entry.get("klasa"),
+                "i_ka": _amps_to_ka(entry.get("i_a")),
+                "i_zaciski_ka": _amps_to_ka(entry.get("i_zaciski_a")),
+                "kat_deg": entry.get("kat_deg"),
+                "udzial": entry.get("udzial"),
+                "przyczyna": entry.get("przyczyna"),
+            }
+        )
+    wpisy.sort(key=lambda wpis: str(wpis["source_id"] or ""))
+    return wpisy
 
 
 def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
@@ -4136,7 +4299,10 @@ def build_short_circuit_rozplyw(
     for item in raw_result.get("results", []):
         if item.get("fault_node_id") == target_id:
             # PERF-SC-50: wkłady i ślad JEDNYM odczytem/obliczeniem punktu (`_rozplyw_punktu`).
-            wklady, slad = _rozplyw_punktu(run, target_id, uow_factory)
+            rozplyw = _rozplyw_punktu(run, target_id, uow_factory)
+            wklady = rozplyw[KLUCZ_ROZPLYWU]
+            slad = rozplyw[KLUCZ_SLADU_ROZPLYWU]
+            pominiete = rozplyw[KLUCZ_WKLADOW_POMINIETYCH]
             return {
                 "run_id": str(run.id),
                 "target_id": target_id,
@@ -4146,8 +4312,57 @@ def build_short_circuit_rozplyw(
                 # kroki solvera bez projekcji. `None` = uczciwy brak (patrz
                 # `pobierz_slad_rozplywu_biegu`).
                 "branch_flow_trace": slad,
+                # Karta PROG-ZERA-WKLADOW: wkłady pominięte na podstawie tolerancji
+                # numerycznej — ta sama klasa ładunku; próg jako ODBICIE jedynej definicji
+                # (warstwa prezentacji nie ma własnej stałej).
+                "wklady_pominiete": _sc_wklady_pominiete(pominiete, graph_branches),
+                "prog_wkladu_pominietego_a": (
+                    PROG_WKLADU_POMIJALNEGO_A if wklady is not None else None
+                ),
+                # Karta WKLAD-ZRODLA: wkład KAŻDEGO źródła (zasilanie systemowe per tor,
+                # szyna sztywna, maszyna wirująca) I = |Y·Z_kf|·I_k''(Th) — ta sama klasa
+                # ładunku punktu; ślad kroków (źródło po źródle + bilans) bez projekcji.
+                # Źródła przekształtnikowe stoją per źródło w `contributions` wiersza wyniku.
+                "wklady_zrodel": _sc_wklady_zrodel(
+                    rozplyw[KLUCZ_WKLADOW_ZRODEL], graph_nodes, run.snapshot
+                ),
+                "wklady_zrodel_slad": rozplyw[KLUCZ_SLADU_WKLADOW_ZRODEL],
+                # Partia 2 (uzgodnienie kart WKLAD-ZRODLA, LINIA-110 i PODSTAWA-Q; kontrakt
+                # werdyktu §3): rozpływ i wkłady źródeł są proporcjonalne do I″k TEGO punktu,
+                # więc stoją na tych samych danych przyjętych co wiersz wyniku — jedno źródło
+                # kompletności (`_dane_przyjete_punktu_rozplywu`). Addytywnie, WYŁĄCZNIE gdy są.
+                **_dane_przyjete_punktu_rozplywu(item, graph_nodes.get(target_id) or {}),
             }
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+
+
+def _dane_przyjete_punktu_rozplywu(
+    item: Mapping[str, Any], node: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Status danych i dane przyjęte rozpływu punktu z TEGO SAMEGO wiersza biegu.
+
+    Te same trzy znaczniki wiersza, które niosą werdykty oparte na I″k punktu: tolerancja
+    sieci nN z wartości roboczej (``tolerancja_nn_robocza``), gałęzie z wartością roboczą
+    impedancji (``KLUCZ_WIERSZA_DANE_GALEZI``, karta LINIA-110) i wartości robocze parametrów
+    maszyn wirujących wyspy punktu (``parametry_robocze_maszyn``, karta PODSTAWA-Q, wielkość
+    I″k). Pusty słownik, gdy żadnego nie ma — odpowiedź bit w bit jak przed uzgodnieniem.
+    """
+    nazwa = nazwa_nadana(node.get("name")) or opis_bez_nazwy("buses")
+    dane = (
+        (
+            (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {nazwa}"),)
+            if item.get("tolerancja_nn_robocza")
+            else ()
+        )
+        + dane_przyjete_galezi_wiersza(item)
+        + dane_przyjete_maszyn(item.get("parametry_robocze_maszyn"), wielkosc="ikss")
+    )
+    if not dane:
+        return {}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [d.model_dump(mode="json") for d in dane],
+    }
 
 
 def scenariusz_biegu_zwarciowego(run: CanonicalRun) -> str | None:
@@ -4765,6 +4980,18 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                             if item.get("tb_zrodlo") is not None
                             else {}
                         ),
+                        # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim (addytywnie).
+                        **(
+                            {"zalozenia_zaniku": item["zalozenia_zaniku"]}
+                            if item.get("zalozenia_zaniku")
+                            else {}
+                        ),
+                        # Karta PODSTAWA-Q: wartości robocze parametrów maszyn (addytywnie).
+                        **(
+                            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+                            if item.get("parametry_robocze_maszyn")
+                            else {}
+                        ),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),
@@ -4935,6 +5162,8 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "oltc_annual_profile",
             "oltc_optimization",
             "audit2_applied",
+            # Karta LINIA-110: założenia biegu (linie 110 kV z wartością roboczą geometrii).
+            "zalozenia",
         ):
             if raw_result.get(oltc_key) is not None:
                 global_results[oltc_key] = raw_result[oltc_key]

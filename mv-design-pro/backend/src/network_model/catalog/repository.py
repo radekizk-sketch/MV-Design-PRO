@@ -28,6 +28,7 @@ from .types import (
     LVFuseLinkType,
     LVRcdType,
     MVApparatusType,
+    OverheadConductorType,
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
@@ -175,7 +176,7 @@ def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
     # Wielkości zwarciowe przechodzą BEZ przekształcenia: te same rekordy budują w
-    # ``from_records`` ``SwitchEquipmentType``, którego bramka KAT-T-048 gwarantuje
+    # ``from_records`` ``SwitchEquipmentType``, którego bramka KAT-T-050 gwarantuje
     # ``ik_ka``/``icw_ka`` dodatnie albo ``None`` (zero odrzucone w każdej wielkości,
     # wielkość niewłaściwa rodzajowi zawsze ``None``). Dawny filtr „zero → None” był
     # drugą, cichą konwencją „nie dotyczy” — o „nie dotyczy” rozstrzyga rodzaj
@@ -325,6 +326,9 @@ class CatalogRepository:
     #: z dokumentem (`karty_widmowe.wczytaj_karty_statyczne`); karty projektu dokłada
     #: nakładka modelu (`enm/katalog_projektu.py`).
     karty_widmowe: dict[str, KartaWidmowa] = field(default_factory=dict)
+    #: Karta LINIA-110: przewody linii napowietrznych 110 kV (PRZEWOD_LINII_WN) — dane wyrobu
+    #: PN-EN 50182; parametry linii liczy solver z geometrii słupa.
+    overhead_conductor_types: dict[str, OverheadConductorType] = field(default_factory=dict)
 
     @classmethod
     def from_records(
@@ -356,6 +360,7 @@ class CatalogRepository:
         synchronous_generator_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
         karty_widmowe: Iterable[dict] | None = None,
+        overhead_conductor_types: Iterable[dict] | None = None,
     ) -> CatalogRepository:
         def _build_line_type(record: dict) -> LineType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -456,6 +461,11 @@ class CatalogRepository:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
             return BESSInverterType.from_dict(data)
+
+        def _build_overhead_conductor_type(record: dict) -> OverheadConductorType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return OverheadConductorType.from_dict(data)
 
         def _build_bess_battery_type(record: dict) -> BESSBatteryType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -587,6 +597,12 @@ class CatalogRepository:
             karty_widmowe=_karty_bez_kolizji(
                 [karta_widmowa_z_rekordu(rekord) for rekord in list(karty_widmowe or [])]
             ),
+            overhead_conductor_types={
+                str(item.id): item
+                for item in map(
+                    _build_overhead_conductor_type, list(overhead_conductor_types or [])
+                )
+            },
         )
 
     def list_line_types(self) -> list[LineType]:
@@ -714,6 +730,12 @@ class CatalogRepository:
     def get_bess_inverter_type(self, type_id: str) -> BESSInverterType | None:
         return self.bess_inverter_types.get(str(type_id))
 
+    def list_overhead_conductor_types(self) -> list[OverheadConductorType]:
+        return self._sorted(self.overhead_conductor_types.values())
+
+    def get_overhead_conductor_type(self, type_id: str) -> OverheadConductorType | None:
+        return self.overhead_conductor_types.get(str(type_id))
+
     def list_bess_battery_types(self) -> list[BESSBatteryType]:
         return self._sorted(self.bess_battery_types.values())
 
@@ -825,6 +847,7 @@ def get_default_mv_catalog() -> CatalogRepository:
 
     This is the canonical catalog for MV network design.
     """
+    from .hv_overhead_conductor_catalog import get_all_overhead_conductor_types
     from .karty_widmowe import wczytaj_karty_statyczne
     from .mv_auxiliary_catalog import (
         get_all_ct_types,
@@ -884,4 +907,5 @@ def get_default_mv_catalog() -> CatalogRepository:
         synchronous_generator_types=get_all_benchmark_synchronous_generator_records(),
         ptpiree_generator_certificates=get_all_ptpiree_generator_certificates(),
         karty_widmowe=wczytaj_karty_statyczne(),
+        overhead_conductor_types=get_all_overhead_conductor_types(),
     )

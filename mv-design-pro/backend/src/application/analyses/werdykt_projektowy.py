@@ -118,6 +118,10 @@ from werdykt import format_liczba
 
 # --- Stany kryterium ---------------------------------------------------------
 
+#: Kompletność dowodu kontraktu werdyktu (§3) — wartość jedyna, którą agregat emituje
+#: (dowód pełny = brak klucza: słowniki werdyktu na danych projektu bez zmian).
+KOMPLETNOSC_NIEPELNA = "NIEPELNY"
+
 STAN_SPELNIONE = "SPELNIONE"
 STAN_NARUSZONE = "NARUSZONE"
 STAN_NIEJEDNOZNACZNE = "NIEJEDNOZNACZNE"
@@ -522,6 +526,10 @@ class OcenaElementu:
     wniosek_pl: str = ""
     #: Odwolanie do dowodu obliczeniowego: bieg + element (``None`` = brak biegu).
     dowod: dict[str, str] | None = None
+    #: Dane przyjęte widoku dostawcy (wartości robocze: tolerancja sieci nN, linie 110 kV
+    #: z wartością roboczą geometrii), na których stoi liczba elementu — kontrakt werdyktu §3:
+    #: ocena na nich ma kompletność dowodu ``NIEPELNY`` (nie potwierdzony dowód zgodności).
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -541,6 +549,16 @@ class OcenaElementu:
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wniosek_pl": self.wniosek_pl,
             "dowod": self.dowod,
+            # Addytywnie, WYŁĄCZNIE przy danych przyjętych — element na danych projektu
+            # ma słownik bit w bit jak przed kartą LINIA-110.
+            **(
+                {
+                    "dane_przyjete": [dict(d) for d in self.dane_przyjete],
+                    "kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA,
+                }
+                if self.dane_przyjete
+                else {}
+            ),
         }
 
 
@@ -583,9 +601,17 @@ class PozycjaWerdyktu:
                 "powod_pl": self.powod_pl,
                 "run_id": self.run_id,
                 "elementy": [element.to_dict() for element in self.elementy],
+                # Agregat nie zastępuje składowych (kontrakt werdyktu §2.3): pozycja, której
+                # którykolwiek element stoi na danej przyjętej, ma dowód niepełny.
+                **({"kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA} if self.dowod_niepelny else {}),
             }
         )
         return payload
+
+    @property
+    def dowod_niepelny(self) -> bool:
+        """Czy którykolwiek element pozycji stoi na danej przyjętej (jedno źródło: elementy)."""
+        return any(element.dane_przyjete for element in self.elementy)
 
 
 @dataclass(frozen=True)
@@ -676,6 +702,13 @@ class WerdyktProjektowy:
                 "ocena": self.ocena,
                 "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
                 "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
+                # Werdykt całościowy na danych przyjętych jest dowodem niepełnym (§2.3, §3) —
+                # addytywnie, WYŁĄCZNIE gdy którakolwiek pozycja ma dowód niepełny.
+                **(
+                    {"kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA}
+                    if any(pozycja.dowod_niepelny for pozycja in self.pozycje)
+                    else {}
+                ),
             }
         )
         return kontrakt
@@ -862,7 +895,15 @@ def _ocena_elementu(
     uwaga_pl: str | None = None,
     uzasadnienie_pl: str | None = None,
     run_id: str | None = None,
+    dane_przyjete: Sequence[Mapping[str, Any]] = (),
+    zrodlo_liczb_pl: str = "Wielkości",
 ) -> OcenaElementu:
+    dane = tuple(dict(d) for d in dane_przyjete)
+    # Uwaga przy SPEŁNIA: „spełnia" nazywa daną przyjętą (kontrakt werdyktu §3) — obok
+    # uwagi dostawcy (np. pasmo ostrzegawcze), nigdy zamiast niej.
+    if dane:
+        uwaga_danych = _uwaga_danych_przyjetych(dane, zrodlo_liczb_pl)
+        uwaga_pl = f"{uwaga_pl.rstrip('.')}. {uwaga_danych}" if uwaga_pl else uwaga_danych
     jedn = jednostka if jednostka is not None else definicja.jednostka
     wart = _liczba(wartosc)
     odn = _liczba(odniesienie)
@@ -910,7 +951,23 @@ def _ocena_elementu(
         uzasadnienie_pl=uzasadnienie_pl,
         wniosek_pl=wniosek,
         dowod=dowod,
+        dane_przyjete=dane,
     )
+
+
+def _uwaga_danych_przyjetych(dane: Sequence[Mapping[str, Any]], zrodlo_liczb_pl: str) -> str:
+    """JEDNO zdanie uwagi o danych przyjętych dla każdego dostawcy (cieplny, wiarygodność Ik″,
+    warunki przyłączenia, walidacja energetyczna)."""
+    return (
+        f"{zrodlo_liczb_pl} liczone z daną przyjętą (wartość robocza): "
+        + "; ".join(str(d.get("nazwa_pl")) for d in dane)
+        + " — ocena na danej przyjętej, nie potwierdzony dowód zgodności"
+    )
+
+
+def _dane_przyjete_widoku(widok: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    """Dane przyjęte widoku dostawcy (``dane_przyjete`` — kształt wspólny widoków biegu)."""
+    return tuple(d for d in (widok.get("dane_przyjete") or []) if isinstance(d, Mapping))
 
 
 # Mapy „status dostawcy -> wynik elementu" — JEDNA na dostawce, bo dostawcy maja rozna
@@ -1038,6 +1095,8 @@ def _pozycje_warunkow_przylaczenia(
             jednostka=str(surowa.get("jednostka") or definicja.jednostka),
             uzasadnienie_pl=opis,
             run_id=run_id,
+            dane_przyjete=_dane_przyjete_widoku(widok),
+            zrodlo_liczb_pl="Wielkości rozpływu",
         )
         # Stan pozycji z TEJ SAMEJ agregacji co u pozostalych dostawcow (jedno zrodlo).
         bez_podstaw = element.wynik == WYNIK_BRAK_PODSTAW
@@ -1111,7 +1170,9 @@ def _pozycje_walidacji_energetycznej(
         wiodacy = _wiodacy_wiersz_walidacji(naruszenia or niesprawdzone or ostrzezenia)
         definicja = _definicja(kryterium_id)
         elementy = tuple(
-            _element_walidacji(definicja, wiersz, run_id=run_id)
+            _element_walidacji(
+                definicja, wiersz, run_id=run_id, dane_przyjete=_dane_przyjete_widoku(widok)
+            )
             for wiersz in _posortowane_wiersze_walidacji(wiersze)
         )
         pozycje.append(
@@ -1168,7 +1229,11 @@ def _posortowane_wiersze_walidacji(
 
 
 def _element_walidacji(
-    definicja: DefinicjaKryterium, wiersz: Mapping[str, Any], *, run_id: str
+    definicja: DefinicjaKryterium,
+    wiersz: Mapping[str, Any],
+    *,
+    run_id: str,
+    dane_przyjete: Sequence[Mapping[str, Any]] = (),
 ) -> OcenaElementu:
     """Pozycja walidacji energetycznej → ocena elementu (liczby 1:1 z dostawcy).
 
@@ -1205,6 +1270,8 @@ def _element_walidacji(
         uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
         uzasadnienie_pl=uzasadnienie,
         run_id=run_id,
+        dane_przyjete=dane_przyjete,
+        zrodlo_liczb_pl="Wielkości rozpływu",
     )
 
 
@@ -1245,16 +1312,9 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     niesprawdzone = [w for (wynik, _), w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW]
     wiodacy = _wiodaca_galaz(naruszenia or niesprawdzone)
     definicja = _definicja(KRYTERIUM_PRZEWOD_CIEPLNY)
-    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: prądy biegu w sieci nN liczonej z wartością roboczą
-    # tolerancji (``dane_przyjete`` widoku dostawcy) — „spełnia" nazywa daną przyjętą.
-    dane_przyjete = [d for d in (widok.get("dane_przyjete") or []) if isinstance(d, Mapping)]
-    uwaga = (
-        "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): "
-        + "; ".join(str(d.get("nazwa_pl")) for d in dane_przyjete)
-        + " — ocena na danej przyjętej, nie potwierdzony dowód zgodności"
-        if dane_przyjete
-        else None
-    )
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA i LINIA-110: prądy biegu na danej przyjętej
+    # (``dane_przyjete`` widoku dostawcy) — „spełnia" nazywa daną przyjętą.
+    dane_przyjete = _dane_przyjete_widoku(widok)
     elementy = tuple(
         _ocena_elementu(
             definicja,
@@ -1265,9 +1325,10 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
             margines=wiersz.get("margines_procent"),
             margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
-            uwaga_pl=uwaga,
             uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
+            dane_przyjete=dane_przyjete,
+            zrodlo_liczb_pl="Prądy zwarciowe",
         )
         for (wynik, uzasadnienie), wiersz in sorted(
             wynik_wiersza,
@@ -1372,6 +1433,8 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             odniesienie_dolne=wiersz.get("lower_ka"),
             uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
+            dane_przyjete=_dane_przyjete_widoku(wiersz),
+            zrodlo_liczb_pl="Prąd zwarciowy",
         )
         for (wynik, uzasadnienie), wiersz in sorted(
             wynik_wiersza,
