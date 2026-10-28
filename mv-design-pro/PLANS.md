@@ -54,12 +54,12 @@
 | `main` | `e973ad2cd` — merge commit PR #489 (298 commitów, 2 213 plików; rodzice `8f7ed3c27` i `b2cf550d9`) | GitHub PR #489 |
 | CI na `0e7a5e7d6` | 9/9 workflowów zielonych | GitHub Actions |
 | Weryfikacja lokalna przed scaleniem #489 | **WYKONANA** na `b2cf550d9` (2026-10-23): backend 38 798 passed, `guardy_z_ci` rc 0, vitest 885 plików + budżety 8 plików, type-check i lint rc 0, e2e 4 shardy (shard 3: `socket hang up` w `kreator-stacji-zrzuty`, powtórka zielona, przyczyna nieustalona) | komentarz pod PR #489 |
-| PR otwarte po 2026-10-23 (#493–#505) | poza rejestrem do 2026-10-28; GPZ SN (#499, #500, #502, #504) przypisane do UX-04/*, GIS (#494–#497, #501, #503, #505) do UX-09, wiedza ENEA (#493) do blokera rysunków UX-04 | `docs/prompts/PROMPT_KONTYNUACJI_2026-10-28.md` |
+| PR otwarte po 2026-10-23 (#493–#505) | od 2026-10-28 w rejestrze: decyzja dla każdego otwartego PR w §C.6; GPZ SN (#499, #500, #502, #504) = materiał UX-04/* (przegląd: `docs/uiux/RAPORT_ROZBIEZNOSCI_GPT_GPZ_SN_2026-10-28.md`), GIS (#494–#497, #501, #503, #505) zamrożone do UX-09 | §C.6 |
 | Pełna regresja (ostatnia zmierzona) | backend 39 083 passed (KATALOG-APARATURA-WN, 2026-10-23, gałąź UI/UX); vitest 893 pliki / 16 269 (tamże); bramka scalenia partii 2: pytest 38 798, vitest 4 604, guardy RC=0 | plan A/B §7 wiersze 2026-10-23 |
 | PR nie do scalenia | #475 (laboratorium dynamiki, RESEARCH ONLY), #488 (audyt rdzenia — źródło kart, „NIE SCALAĆ JAKO ZWALIDOWANEJ NORMY") | plan A/B §14.4 |
 | Program UI/UX | stan bazowy **niezweryfikowany po PR #489** — audyt UX-00 pierwszy (PROGRAM §12.6); ostatni audyt bramek U2–U5: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (U2 8/11, U3 7/9, U4 3/7, U5 4/9 — sierpień, nieaktualny) | PROGRAM §8, §12.6 |
 | SLD | program SCHEMAT-10 S1–S8 i SLD V3 F1–F11 wykonane kodowo (2026-07); audyt wizualny 2026-10-20: **NO-GO**; ocena właściciela rundy H5: **3/10**; B-02 ODRZUCONE | `docs/audit/SLD_WIZUALNY_ODBIOR_2026-10-20.md`, PROGRAM §12.5a |
-| Rysunki ENEA Z.1, Z.4–Z.8 | **BRAK ŹRÓDŁA w repo** — brak = BRAK DOWODU, treści nie wymyśla się | `find` 2026-10-23 |
+| Rysunki ENEA (Zeszyt 1 „Stacje dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, obowiązuje od 2024-04-02) | **pliku źródłowego brak w repo z woli polityki praw autorskich** (`local_cache_only_not_commit_pdf`, PR #486); PR #486 i #493 niosą tylko metadane i OCR poza repo — żaden nie zawiera treści Z.2, Z.7, Z.10–Z.12, Z.17 (przegląd 2026-10-28). Oficjalny PDF pobrany 2026-10-28 z adresu operatora do pamięci podręcznej sesji (99 stron, bez commitu); odczyt rysunków własnymi słowami — w toku (UX-04) | `docs/uiux/AUDYT_UX00_2026-10-28.md`; §C.1 UX-04 |
 | Dane właściciela | pakiety P-A…P-N (`docs/plan/DANE_WLASCICIELA_O59_2026-09.md`) — warunki kart oznaczonych OD-xx; decyzje otwarte: O-5, O-57 (częściowo), O-67, O-74, O-70(c) | plan A/B §2 |
 
 ## C. Jedna kolejka zadań
@@ -75,7 +75,9 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 |---|---|---|---|---|---|---|---|
 | INT-489 | Integracja gałęzi programu → `main` (PR #489, merge commit, bez squasha) | P0 | DOMKNIĘTA | Fable (integrator) | CI 9/9 na czubku; pełna weryfikacja lokalna (backend, `guardy_z_ci.py`, `npm test` dwa kroki, type-check, lint, e2e 4 shardy); porównanie czerwieni z bazą | PR #489 MERGED jako `e973ad2cd`; na czubku `b2cf550d9`: 44 check runy CI success; lokalnie backend 38 798 passed, `guardy_z_ci` rc 0, vitest 885 plików/14 399 passed + budżety 8 plików/193 passed, type-check i lint rc 0, e2e shardy 1/2/4 zielone, shard 3: 2 przypadki `kreator-stacji-zrzuty` (`socket hang up` w przygotowaniu sieci + zależna para dark/light), po jednym powtórzeniu 3 passed — przyczyna zerwania połączenia nieustalona; komentarz z kodami wyjścia pod PR | brak; kolejne partie integracji liczone od `main` |
 | JEDEN-PLAN | Konsolidacja planów (ta karta) | P0 | DO WERYFIKACJI | Fable | — | commit `bafd30392` na `…-karta-jeden-plan` (6 plików dokumentacji, 0 plików aplikacji); 12 guardów dokumentów RC=0, self-testy guardów 40 passed; CI na gałęzi karty: 7 workflowów (e2e filtrowane ścieżką — zmiana bez `frontend/**`/`backend/**`) | wdrożona na `main` w `e973ad2cd` (CI 7/7 na `b2cf550d9`); odbiór planu przez właściciela; dalsze zmiany statusów wyłącznie w tym pliku |
-| UX-00 | Audyt stanu bazowego UI/UX po PR #489 (rzeczywisty HEAD, nie raport sierpniowy) | P0 | DO WERYFIKACJI | Opus (zarządca UI/UX) | INT-489 (HEAD), T+01…T+10 z `docs/research/sel-blueframe/KONTRAKT_DLA_OPUSA.md` §3 | — | tabela `UX-ID \| jest → wykonano \| commit \| jednostkowe \| E2E real \| zrzuty \| ocena właściciela` (PROGRAM §12.6) |
+| SYNC-MAIN-UIUX | Gałąź wątku UI/UX (`…-karta-uiux-przemyslowy`, `fa129e7d`, 46 commitów za `main`) dostaje gałąź programu (`main` `e973ad2cd` + JEDEN-PLAN) merge commitem; dokumenty gałęzi UI/UX dostają nagłówek „karty wykonawcze UX-xx, bez własnego statusu” (§D.15) | P0 — warunek wszystkich kart UX-04 | W TOKU (2026-10-28) | Opus (worker-rdzeń) | INT-489 | próbne scalenie: 322 pliki w konflikcie (4 167 bloków, większość w fiksturach generowanych — regenerowane generatorami, nie ręcznie) | commit scalający + UX-05/STRAZNIKI-GALEZI-UIUX; pełna regresja backendu i vitest na drzewie scalonym przez sesję główną; push gałęzi UI/UX |
+| E2E-ZERWANE-POLACZENIE | `socket hang up` przy `POST /api/projects` w przygotowaniu `e2e/kreator-stacji-zrzuty.spec.ts` (shard 3 weryfikacji PR #489), zamaskowany `retries: 1` | P0 | OTWARTA | Opus (worker) | — | hipotezy z kodu (2026-10-28): keep-alive uvicorna 5 s vs połączenie klienta Node (`playwright.config.ts:126-127`), kolizja portów shardów lokalnych (`playwright-run.mjs:14`), ciężki bieg wykonawcy w procesie API (`wykonawca.py:225`) | odtworzenie przyczyny pomiarem, naprawa u źródła, test rozstrzygający; zerwane połączenie z żywym backendem to defekt, nie flake |
+| UX-00 | Audyt stanu bazowego UI/UX po PR #489 (rzeczywisty HEAD, nie raport sierpniowy) | P0 | CZĘŚCIOWE (audyt statyczny kodu 2026-10-28 na `fa129e7d`; biegi e2e i zrzuty po SYNC-MAIN-UIUX) | Opus (zarządca UI/UX) | INT-489 (HEAD), T+01…T+10 z `docs/research/sel-blueframe/KONTRAKT_DLA_OPUSA.md` §3 | `docs/uiux/AUDYT_UX00_2026-10-28.md`: UX-01 „+” BRAK (tylko menu prawego kliku), UX-02/03/04/05 CZĘŚCIOWE, UX-06 BRAK; T+08 JEST, T+06 POZORNE, pozostałe CZĘŚCIOWE; 0 testów T+01…T+10 w repo; H5-01 BRAK ŹRÓDŁA w repo, H5-04 BRAK, H5-05 ODRZUCONE | tabela `UX-ID \| jest → wykonano \| commit \| jednostkowe \| E2E real \| zrzuty \| ocena właściciela` (PROGRAM §12.6) |
 | UX-04 | SLD SN wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617 (H5-01…H5-05; 110 kV tylko granica zasilania; jedna kanwa `SldCanvasV3`). **Przebudowa rozdzielni SN 15 kV GPZ wg przekazania właściciela 2026-10-28** (`docs/uiux/PRZEKAZANIE_GPZ_SN_15KV_2026-10-28.md`): R5 odrzucone, kompozycja pól od podstaw w kolejności standard ENEA (Z.2, Z.7, Z.10–Z.12, Z.17) → typ pola → sekwencja aparatów i porty → geometria QET → połączenia → automatyczny układ → SCADA (tylko ramki `#F05260` zamknięty / `#2CCF93` otwarty, obejmujące cały symbol) → walidacja; wzorzec czytelności e²TANGO-miniSCADA; interaktywny SVG/React, bez obrazów; bez scalania bez zgody właściciela | P0 | OTWARTA (H5 3/10, B-02 ODRZUCONE, audyt 2026-10-20 NO-GO) | Opus; werdykt — właściciel (B-02) | rysunki ENEA (BRAK ŹRÓDŁA → wpis BRAK DOWODU), ENM/PortRef, W7 (SLD jako projekcja ENM) dla trwałej geometrii | PROGRAM §12.5a macierz H5: wszystkie OCZEKUJE/ODRZUCONE | macierz rysunek → aparat/port ENM → symbol → zrzut → werdykt; pary ENEA ↔ SLD; zrzuty obu motywów do oceny właściciela |
 | UX-04/GPZ-H5-APARATURA | Cała aparatura pól SN GPZ w ENM/katalogu (U_m 7,2 kV, rola `surge_ground`, sprzęgło z `catalog_ref`, pickery z filtrem napięciowym, „brak danych/nie dotyczy" w karcie technicznej) | P0 | OTWARTA (materiał na gałęzi `…-aparatura-wn-wklad-sn`, nie do scalenia wprost) | wątek UI/UX (gałąź `…-karta-uiux-przemyslowy`); B-01 — Fable | KATALOG-APARATURA-WN ✓ (2026-10-23) | — | karta z inwentarzem klasy, testy iloczynu cech, wpis statusu tutaj i H5-02 |
 | UX-04/GPZ-H5-SKLADOWA-ZEROWA | Składowa zerowa po stronie `enm/mapping.py`: Z_U z `GroundingConfig`, `Transformer.hv_neutral`, kasacja stałej `1e6`, trzy nazwane przyczyny braku wyniku | P0 | OTWARTA | wątek UI/UX; B-01 — Fable | — (rdzeń B-01 nietknięty; strona rdzenia = Y0-WYSPY) | — | karta + testy; warunek dla ZEROWA-POJEMNOSCI |
@@ -177,6 +179,31 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 | ZWARCIA-PRO F1–F5, V12.6 academic, E13 łańcuch, fale wygaszania mostu wyników W1–W5 (część B) | Programy zamknięte 2026-07 | DOMKNIĘTE | część B §3.-2, §3.-1 |
 | PR #490, #491 | Pakiet SEL Blueframe; UX-04 = H5/ENEA/PN-EN 60617 | SCALONE 2026-10-23 na gałąź programu | GitHub |
 
+### C.6 Otwarte PR — decyzja integratora (2026-10-28)
+
+Pomiar: `git cherry` każdego PR względem `main` `e973ad2cd` i gałęzi programu — żaden commit tych PR nie jest scalony; decyzja wskazuje, czy treść weszła inną drogą, czy ma następcę. PR zamyka się wyłącznie z komentarzem wskazującym następcę.
+
+| PR | Treść | Decyzja | Następca / wiersz §C |
+|---|---|---|---|
+| #499, #500, #502 (łańcuch) | import QET (licencja CC BY 3.0 zapisana, 7 elementów nN), atlas SVG, „73 symbole” (w większości geometria własna, nie QET), ramka SCADA, rysunek pola `BayWindowSchematic` | MATERIAŁ; wciągane wybiórczo kartami, bez scalenia PR | UX-04/POLE-LINIOWE-WZORZEC, POLA-TR-POMIAR-SPRZEGLO; odrzucone elementy w `docs/uiux/RAPORT_ROZBIEZNOSCI_GPT_GPZ_SN_2026-10-28.md` (druga ścieżka rysunku pola, walidator gotowości we froncie, ramka z wypełnieniem i tylko na korpusie) |
+| #504 | stany łączników z rekordu ENM (`is_open`), przewody port→port, sprzęgło z aparatu; blokady tylko w obrębie pola, front z odmową stałą | MATERIAŁ; zgodne części kartą na gałąź UI/UX, bez scalenia osobno | UX-04/LOGIKA-LACZENIOWA (walidacja na topologii wynikowej — do napisania w backendzie) |
+| #498 | nN CAD, audyt ODRZUCONE 1/10 | NIE SCALAĆ; materiał dowodowy | — |
+| #494–#497, #501, #503, #505 | GIS R05–R15 | ZAMROŻONE do startu UX-09 | UX-09 |
+| #493 | katalog 25 standardów ENEA, CLI, OCR lokalny (wyniki poza repo) | MATERIAŁ; nie zawiera rysunków Z.n | UX-04 (źródło ENEA) |
+| #486 | rejestr źródeł ENEA/Dołęga (metadane, URL oficjalnego PDF Zeszytu 1) | MATERIAŁ; nie zawiera rysunków Z.n | UX-04 (źródło ENEA) |
+| #488 | IEC 60909-0 2016/2026, zmiana rdzenia FROZEN | NIE SCALAĆ (B-01); źródło kart | BILANS-THEVENIN i karty toru S (§C.2) |
+| #487 | dossier IEC 60909-0:2026 (dokumenty), tematyczny duplikat #488 | MATERIAŁ | PROFIL-NORMY (§C.2) |
+| #483 | SLD v3: kamera skupiająca stację na poziomie L2, nawigator stacji, dowody PNG przed/po | MATERIAŁ; aktualne części kartą (konflikt z kanwą gałęzi UI/UX spodziewany) | UX-01 i narzędzie dowodowe B-02 dla UX-04 |
+| #481 | edytor pola SN E05 (drugi edytor obok `EdytorWyposazeniaPola.tsx`) | MATERIAŁ; przydatny wzorzec adaptera katalogu OEM zgłaszającego brak danych | UX-04/POLE-LINIOWE-WZORZEC |
+| #485 | ZASADA NR 4 (nieblokujące braki katalogowe) | SCALONE-TREŚCI (zasada w `CLAUDE.md` na `main`) | zamknąć z komentarzem po sprawdzeniu `SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` |
+| #484 | raport recenzji SLD dla Opusa | MATERIAŁ | UX-04 |
+| #480 | specyfikacja KSR | MATERIAŁ | KSR-SKLAD-DER (§C.2) |
+| #479 | monitor postępu (konkurencyjny rejestr) | NIE SCALAĆ (§A — jeden rejestr) | — |
+| #478 | KSR P0 skład PV/BESS | NASTĘPCA | KSR-SKLAD-DER (§C.2) |
+| #477 | plan Fable SC/EAZ/dynamika | SCALONE-TREŚCI (karty audytu domknięte, §C.5) | — |
+| #475 | laboratorium dynamiki | NIE DO SCALENIA (badawcze) | — |
+| #471 | naprawa skanu tras, kasacja martwych suit | NIE SCALAĆ — wyprzedzony przez `main` (nowsze wersje strażników) | — |
+
 ## D. Rozstrzygnięcia sprzeczności (konsolidacja 2026-10-23)
 
 | # | Sprzeczność | Rozstrzygnięcie |
@@ -222,9 +249,9 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 
 | Miara | Wartość |
 |---|---|
-| Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 67 |
-| w tym P0 / P1 / P2 / P3 | 22 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
-| Nieukończone (OTWARTA/OTWARTE 50, W TOKU 1, DO WERYFIKACJI 6, CZĘŚCIOWE 1, NIEODEBRANE 1) | 59 |
+| Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 69 |
+| w tym P0 / P1 / P2 / P3 | 24 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
+| Nieukończone (OTWARTA/OTWARTE 51, W TOKU 2, DO WERYFIKACJI 5, CZĘŚCIOWE 2, NIEODEBRANE 1) | 61 |
 | DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 6 |
 | ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 0 |
 | Pozycje domknięte §C.5 (programy i karty, bez odtwarzania) | 16 wierszy zbiorczych |
