@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy adapterów modelu okna „Obszar bezpiecznej pracy P–Q" (karta P30).
  * Weryfikują czyste odwzorowanie odpowiedzi pq-area na struktury prezentacji:

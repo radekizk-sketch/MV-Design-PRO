@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta SLD-SUBSTRAT (kontynuacja) — REGUŁA KOMPLETNOŚCI RYSUNKU i macierz elementów
  * ciągu.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta SC-IB-ITH-ZRODLA — reguła danych t_b po stronie formularza = reguła backendu
  * (`network_model/core/czas_wylaczenia.py::czas_tb_z_danych`): puste = `null` (karta

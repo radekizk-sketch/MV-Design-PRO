@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K11-B §0.2 — TEST KONTRAKTOWY MINIMALNEGO ROZMIARU RENDEROWANIA.
  *

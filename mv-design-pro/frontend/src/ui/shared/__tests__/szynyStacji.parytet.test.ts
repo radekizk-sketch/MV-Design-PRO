@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA SZYNY-STACJI-LUSTRO — PARYTET luster frontu z backendem na KAŻDYM modelu ENM z fikstur
  * generowanych (substrat 52 stacji, fikstury ENM SLD, DEMO-OZE-SC, harness scen).

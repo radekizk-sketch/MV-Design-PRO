@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phase 0A — V2 apparatusContracts unit tests.
  */

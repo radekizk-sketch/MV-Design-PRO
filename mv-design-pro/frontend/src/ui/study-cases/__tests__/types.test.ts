@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Study Cases Types Tests
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * 7 pozycji PLAN recenzji NO-GO właściciela 2026-07-17 (rejestr:
  * docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md, spec §12.5) — dowody sceny:

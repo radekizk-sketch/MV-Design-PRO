@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * E3 NETWORK AUTO-LAYOUT — DoD: the whole 53-station network lays out deterministically, every
  * station is placed (NO-ORPHAN, independent of switch state), the radial tree is intact, and the

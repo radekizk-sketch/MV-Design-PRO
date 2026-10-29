@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD-nN-TOPOLOGIA T0→T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.4) —
  * WYROCZNIA ZGODNOŚCI SCENY. Buduje scenę Stacji B DZISIEJSZYM pipeline

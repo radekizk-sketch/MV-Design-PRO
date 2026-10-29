@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 — WYROCZNIE SCHEMAT-10 S2 (V12K-135; audyt
  * `docs/sld/AUDYT_SCHEMATOW_OD_ZERA_2026-07.md` §1 D2/D4/D5 + §3 wiersz

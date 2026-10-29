@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy rdzenia magistrali zdarzen powloki (E15.1).
  * Kryteria akceptacji: docs/uiux/karty/U1_E15_1_MAGISTRALA.md §7.1.

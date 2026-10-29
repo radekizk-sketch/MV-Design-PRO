@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy wspólnego formatera energii magazynu (`formatEnergia`, karta P47a / TODO
  * konsolidacji frontu OZE). Kontrakt: jeden formater PL — kWh dla < 1000 kWh,

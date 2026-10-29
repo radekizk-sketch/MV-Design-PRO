@@ -19,7 +19,7 @@ from application.topologia_zasilenia import zbuduj_stan_zasilenia, zbuduj_tor_el
 from enm.topology import derive, podziel_krawedzie
 from network_model.core.topologia import drogi_proste, skladowe_spojne
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
 
 
 def _multigraf(los: random.Random, n: int, m: int) -> list[tuple[str, str, str]]:
@@ -100,7 +100,7 @@ def test_drogi_proste_dlugi_ciag_bez_rekursji() -> None:
 
 @pytest.fixture(scope="module")
 def sieci():
-    return sieci_enm_rejestru()
+    return kopie_sieci_enm_rejestru()
 
 
 def test_podzial_krawedzi_jest_zbiorem_krawedzi_wysp_derive(sieci) -> None:

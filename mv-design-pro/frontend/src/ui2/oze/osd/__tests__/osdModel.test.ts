@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy adapterów okna „Odpowiedź na polecenia OSD" (karta P40). Czysta warstwa
  * prezentacji: dobór źródła ze snapshotu, mapowanie parametrów polecenia, karty

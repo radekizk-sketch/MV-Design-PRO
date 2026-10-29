@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Kanon słownictwa ról pól SN (karta #141) — jedna nazwa roli w całym produkcie.
  *

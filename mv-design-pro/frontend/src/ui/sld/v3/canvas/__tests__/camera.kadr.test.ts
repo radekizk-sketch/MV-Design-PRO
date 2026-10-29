@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2 (UI-04, W5-UI-15) — akcja kamery `'kadruj'`: kadr podzbioru rysunku.
  *

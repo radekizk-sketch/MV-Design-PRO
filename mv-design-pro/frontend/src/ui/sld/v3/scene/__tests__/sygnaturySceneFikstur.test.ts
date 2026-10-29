@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Narzędzie dowodowe (wprowadzone kartą W5-B, bramka 0.8 b): sygnatura sceny SLD v3 dla każdej fikstury ENM
 // generowanej narzędziami backendu, przy każdym LOD, zapisana do JSON. Uruchamiane PRZED
 // (bazowy kod + bazowe fikstury) i PO (kod karty + fikstury przegenerowane) — pliki porównuje

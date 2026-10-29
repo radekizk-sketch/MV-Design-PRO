@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * DER-MENU-V3 (Karta SLD-P, GAP P-1) — rodzaj DER jako pole ADDYTYWNE meta
  * sceny (`PreviewElementMeta.derKind`), REALNA wartość łańcucha

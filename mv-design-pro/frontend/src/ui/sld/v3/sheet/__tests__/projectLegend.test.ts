@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — wyrocznie
  * `computeProjectLegendEntries` (legenda „na żądanie" liczona z REALNEJ

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F9.7 — wyrocznia `source_symbol_probe` (SLD_CAD_SPEC_V3 §13.2).
  * `sourceKindSymbolsAreInjective` domyka lukę udokumentowaną w

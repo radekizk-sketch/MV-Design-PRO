@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Most nazw wyników (karta #145) — parytet reguły identyfikatora grafu z backendem
  * i iloczyn cech rozpoznawania obiektu.

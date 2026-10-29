@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLOT-DRYF-PRZĘSŁA — WYROCZNIE KARTY.
  *

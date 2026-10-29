@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * R4 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.10/15; program WYNIKI-SLD R4) —
  * testy TRYBU PORÓWNAWCZEGO + MINI TRENDU budowniczego etykiet

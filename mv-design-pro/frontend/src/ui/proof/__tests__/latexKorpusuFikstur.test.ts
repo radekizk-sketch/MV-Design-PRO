@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Każde pole `*_latex` odpowiedzi backendu renderuje się przez KaTeX (karta DOWOD-CIEPLNY).
  *

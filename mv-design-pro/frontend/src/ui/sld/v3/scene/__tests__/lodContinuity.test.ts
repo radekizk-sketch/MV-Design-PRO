@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K11-B §0.3 (a) — TEST KONTRAKTOWY strażnika ciągłości toru energii w LOD.
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy jednostkowe modelu sekcji „Sekwencja zapadów": serializacja edytora do
  * parametru API (KROPKA dziesiętna) oraz adaptery tabeli zapadów (pierwszy plan:

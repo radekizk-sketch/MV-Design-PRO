@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W5-A: literały uziemienia frontu (`types/uziemienie.ts`) PRZYPIĘTE do kontraktu backendu
  * (`backend/schemas/openapi_snapshot.json`, `GET /api/catalog/slowniki-uziemienia`,

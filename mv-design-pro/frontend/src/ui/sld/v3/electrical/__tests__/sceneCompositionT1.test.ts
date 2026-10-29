@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Scena SN na fixturze „Stacja B" (model z PEŁNĄ rozdzielnicą nN) —
  * architektura LV Domain Projection po B-02 (`docs/sld/

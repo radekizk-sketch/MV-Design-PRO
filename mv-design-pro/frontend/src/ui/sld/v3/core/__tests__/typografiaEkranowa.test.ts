@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-7 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md` C-4/C-6) — TYPOGRAFIA
  * EKRANOWA i SKRACANIE ZACHOWUJĄCE CZŁON ROZRÓŻNIAJĄCY.

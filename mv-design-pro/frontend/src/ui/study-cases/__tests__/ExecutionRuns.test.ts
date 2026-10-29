@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Execution Runs Tests — PR-14: StudyCase → Run → ResultSet
  *

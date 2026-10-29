@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for protection-curves/types — coverage gap fix (Pakiet I).
  *

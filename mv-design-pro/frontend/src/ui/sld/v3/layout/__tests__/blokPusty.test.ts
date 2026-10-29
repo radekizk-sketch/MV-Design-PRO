@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * BLOK-PUSTY — WYROCZNIE KARTY (zgłoszenie właściciela 2026-08-07, pkt 6:
  * „wnętrze ramy stacji w większości puste"; zrzuty

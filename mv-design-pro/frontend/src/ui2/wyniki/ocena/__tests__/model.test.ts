@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Model prezentacji ekranu „Ocena techniczna wyników" (karta B-02 / W3-E) — czyste
  * mapowanie, zero fizyki i zero ocen własnych.

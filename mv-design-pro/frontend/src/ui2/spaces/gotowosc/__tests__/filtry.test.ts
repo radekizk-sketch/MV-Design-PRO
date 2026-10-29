@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { FILTRY_PUSTE, czyFiltrPusty, filtrujProblemy } from '../filtry';
 import { naProblemGotowosci } from '../grupowanieCelow';

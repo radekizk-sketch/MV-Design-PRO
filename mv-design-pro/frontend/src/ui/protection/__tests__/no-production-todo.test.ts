@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Test guard: brak produkcyjnych TODO w hookach protection module (Etap 8).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * F13.2 (D3-3/D3-11/D3-13, spec §22.1) — testy czystego modułu skrzyżowań.
  * Sekcja C: testy negatywne (wyrocznia/kontrakt MUSI gryźć).

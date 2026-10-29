@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tożsamość wytwórcy: moc jednostki vs grupy, tor mocy, stan konfiguracji (V12K-245).
  *

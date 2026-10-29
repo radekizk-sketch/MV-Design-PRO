@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2b §0.4 — WIDOK ROBOCZY: punkt normalnie otwarty na KAŻDYM poziomie szczegółu
  * i rozróżnienie kabel / linia napowietrzna, oba z ENM.

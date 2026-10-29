@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SupplyPathHighlighter — testy interpretacji toru zasilania (czysta topologia).
  *

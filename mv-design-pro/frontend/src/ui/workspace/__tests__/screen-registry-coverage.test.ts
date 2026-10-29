@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import { CANONICAL_SCREEN_CODES, getScreenDefinition, getScreensByArea } from '../screenCanonRegistry';

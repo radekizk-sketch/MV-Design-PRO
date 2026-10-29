@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA W5-B/C — PARYTET lustra reguł pól (`polaStacji.ts`) z backendem `enm/pola.py` na
  * KAŻDYM modelu ENM z fikstur generowanych i na modelu iloczynu cech pól.

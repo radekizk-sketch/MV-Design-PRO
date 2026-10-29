@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy modelu okna „Estymacja stanu (WLS)" — serializacja i walidacja żądania
  * (`zbudujZadanie`) oraz adaptery wyniku na wspólny wzorzec tabeli (węzły +

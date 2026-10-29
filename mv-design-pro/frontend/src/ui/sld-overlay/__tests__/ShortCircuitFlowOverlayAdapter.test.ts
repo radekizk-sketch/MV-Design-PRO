@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy adaptera overlay rozpływu zwarciowego (karta W-C, ZWARCIA-PRO F4 pkt 7).
  * Czysta projekcja wiersza kanonicznego → OverlayPayloadV1: znacznik punktu

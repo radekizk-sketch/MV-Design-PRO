@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Formularz biegu „co-jeśli" NC RfG (karta AB-1a Pakiet D2 §2/§8).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PR-13 — Testy SldCommandService (menu kontekstowe + toast bus).
  */

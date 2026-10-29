@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Lustro tabeli napięcia najwyższego sieci U_s i równości napięć znamionowych ↔ jedno źródło
  * backendu (`network_model/pochodne/pasma_napieciowe.py`).

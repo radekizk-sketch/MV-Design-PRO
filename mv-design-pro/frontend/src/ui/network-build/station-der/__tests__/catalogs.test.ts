@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy katalogów station-der (Faza B).
  */

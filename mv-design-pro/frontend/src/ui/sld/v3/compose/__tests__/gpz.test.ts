@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F5b — testy `compose/gpz.ts` (SLD_CAD_SPEC_V3 §3/§8/§11).
  *

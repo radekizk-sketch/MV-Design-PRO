@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD-GEN-POLA — kontrakt GENERATORA mini-SLD pola.
  *

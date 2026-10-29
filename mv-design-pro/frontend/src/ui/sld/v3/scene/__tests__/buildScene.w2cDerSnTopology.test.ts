@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W2c — TOR DER PRZYŁĄCZONEGO PO STRONIE SN na scenie (POLECENIE_DER_SN_TOPOLOGIA_
  * 2026-07, reguły 1–7). Testy end-to-end: fixtura ENM (adapter v2 → scena v3),

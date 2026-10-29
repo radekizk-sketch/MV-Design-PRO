@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KOMPOZYTOR SCENY nN — geometria z ról i stanów backendu (§1/§5/§7/§8/§10/
  * §11/§31): dwa kikuty na aparat (każdy w stanie SWOJEGO zacisku), sprzęgło

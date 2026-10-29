@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Test rejestru akcji naprawczych (K1 / F-E6.3): mapowanie rodzaj → akcja
  * + fallback (brak rodzaju = akcja generyczna 1:1). Czysty moduł — bez React.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for profileTypes — walidacja długości, agregacje 8760h, CSV.
  */

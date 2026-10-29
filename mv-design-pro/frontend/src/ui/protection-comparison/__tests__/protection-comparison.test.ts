@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P15b — Protection Comparison Frontend Tests
  *

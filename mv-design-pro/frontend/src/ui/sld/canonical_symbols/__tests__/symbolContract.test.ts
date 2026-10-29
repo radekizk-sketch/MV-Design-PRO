@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Symbol Contract Test — PLAN_SLD_REWORK F1 §3.3.
  *
