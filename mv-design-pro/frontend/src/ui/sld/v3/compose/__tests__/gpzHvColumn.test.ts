@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F13.1 — testy kolumny WN GPZ (SLD_CAD_SPEC_V3 §21, audyt
  * `docs/sld/SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`, D3-1/D3-2/D3-8/D3-9/

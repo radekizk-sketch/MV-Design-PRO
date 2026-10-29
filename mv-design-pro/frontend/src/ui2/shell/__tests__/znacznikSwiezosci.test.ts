@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy czystego helpera znacznika świeżości (karta K4/D1) — fixture'ami, bez
  * Reacta. Pilnują też spójności etykiet powłoki ze STATUS_WYNIKOW_LABEL

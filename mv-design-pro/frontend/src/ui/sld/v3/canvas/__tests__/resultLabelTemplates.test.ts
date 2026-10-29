@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * R1 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.1–5; program WYNIKI-SLD R1) — testy
  * UNIWERSALNEGO REJESTRU szablonów treści etykiet wynikowych

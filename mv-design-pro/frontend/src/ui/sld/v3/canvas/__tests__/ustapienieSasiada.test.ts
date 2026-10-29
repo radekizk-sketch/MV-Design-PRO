@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Plan etykiet (f) — USTĄPIENIE SKRACALNEGO SĄSIADA (`canvas/labelLegibility.ts`
  * `ustapSasiadow`, karta GPZ-MODEL).

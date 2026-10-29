@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy czystych adapterów ekranu „Składowe symetryczne i sieć zerowa"
  * (E-29, karta P-3). Fixture 1:1 z realnym kontraktem: wiersze kanoniczne

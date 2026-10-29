@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * LOD spine visibility — testy widoczności nowych element kinds spine_*.
  *

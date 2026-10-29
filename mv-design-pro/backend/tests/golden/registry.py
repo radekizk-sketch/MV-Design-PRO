@@ -15,7 +15,9 @@ maleje (zapadka).
 
 from __future__ import annotations
 
+import copy
 import dataclasses
+import functools
 import importlib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -651,6 +653,26 @@ def zbuduj_wszystkie(id_: str) -> list[Any]:
             for rekord in obiekt:
                 sieci.append(_rozpakuj(rekord.budowniczy()))
     return sieci
+
+
+@functools.cache
+def _wzorce_wpisu(id_: str) -> tuple[Any, ...]:
+    """Sieci wpisu zbudowane RAZ na proces — nigdy nie wydawane na zewnątrz (tylko kopie)."""
+    return tuple(zbuduj_wszystkie(id_))
+
+
+def kopie_sieci_wpisu(id_: str) -> list[Any]:
+    """Sieci wpisu jako NIEZALEŻNE głębokie kopie budowy wykonanej raz na proces.
+
+    PO CO (karta SZYBKIE-TESTY-2, 2026-10-28). Moduły parametryzowane danymi rejestru
+    (`tests/network_model/pochodne/*`, bliźniaki benchmarków, parytet admitancji) budowały
+    rejestr przy KOLEKCJI, każdy osobno i kilka razy (dekorator `parametrize` wywołuje
+    pomocnika przy każdym teście) — pomiar 2026-10-28 na 1465336df: 351 s z 379 s kolekcji
+    jednego procesu, a pod xdist kolekcję wykonuje KAŻDY proces. Kopia zamiast wspólnego
+    obiektu: test mutujący sieć nie zmienia sieci żadnego innego testu (przypięte
+    `tests/ci/test_kopie_sieci_rejestru.py`). Determinizmu budowniczych NIE sprawdza się
+    na kopiach — testy porównujące dwie budowy wołają `zbuduj_wszystkie` dwa razy."""
+    return copy.deepcopy(list(_wzorce_wpisu(id_)))
 
 
 def pokrycie_rodzin() -> dict[RodzinaSolvera, set[KlasaWyroczni]]:

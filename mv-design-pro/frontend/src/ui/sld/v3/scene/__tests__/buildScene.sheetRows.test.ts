@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-1 — ŁAMANIE ARKUSZA na scenie produkcyjnej (karta S9-1; decyzja
  * `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`; audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`

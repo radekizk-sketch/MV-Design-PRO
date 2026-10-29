@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * PRZYPIĘCIE DEKLARACJI (reguła KLASA, NIE INSTANCJA §4: „deklaracja bez testu =
  * fałszywa pewność"). Karta S9-11 stawia mocne zdanie:

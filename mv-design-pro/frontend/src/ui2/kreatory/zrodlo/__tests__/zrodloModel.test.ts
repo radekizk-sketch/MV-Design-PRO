@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy kontraktu modelu kreatora źródła zasilania — payload operacji domenowej
  * i walidacja są przeniesione 1:1 z retirowanego GridSourceEditor/AddGridSourceForm,

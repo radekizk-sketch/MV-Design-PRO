@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ: wieże kolejnych transformatorów tej samej sekcji SN. Dawniej każda wieża
  * (pole WN TR → TR2W → pole TR) stała na środku swojej sekcji docelowej, więc dwa

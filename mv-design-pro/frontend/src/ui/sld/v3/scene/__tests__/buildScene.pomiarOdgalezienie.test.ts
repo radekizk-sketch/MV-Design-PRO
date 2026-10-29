@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Sieć pokazowa „pomiar rozliczeniowy w odgałęzieniu" na realnej scenie v3.
  *

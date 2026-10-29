@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F4 — wyrocznie label resolvera (SLD_CAD_SPEC_V3 §4/§5.5, §11.1).
  * Syntetyki budowane na PRAWDZIWYM potoku measure → bands → columns (F2/F3),

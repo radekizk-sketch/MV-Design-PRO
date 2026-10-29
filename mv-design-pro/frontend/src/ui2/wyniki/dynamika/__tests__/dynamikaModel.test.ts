@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Model ekranu dynamiki (karta AB-P1) na odpowiedziach REALNEGO biegu backendu
  * (fixtury `harness-fixtures/generated/dynamika_scena_*`, liczone tymi samymi funkcjami,

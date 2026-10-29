@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * D2 (RECENZJA_DER_SN_DOBORY_2026-07): test klienta końcówki DOBORU toru DER-SN.
  * Dobór liczy backend (WHITE BOX); klient tylko wysyła parametry i mapuje wynik.

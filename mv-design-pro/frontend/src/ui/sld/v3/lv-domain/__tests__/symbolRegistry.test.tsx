@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * REJESTR SYMBOLI nN → SYMBOLE CAD (R2 §4–§12, §18, §19): odwzorowanie
  * „typ gałęzi ENM × klasa funkcjonalna wyrobu (device_kind)" → symbol CAD,

@@ -731,6 +731,22 @@ def parsuj_py(path: Path) -> ast.Module:
     return drzewo
 
 
+#: Wezly drzewa w kolejnosci `ast.walk` — liczone RAZ na drzewo. ~20 bramek przechodzilo
+#: te same drzewa od nowa (pomiar 2026-10-28: 29 mln odwiedzin wezla na bieg, ~100 s
+#: z ~150 s biegu pod profilerem). Wartosc trzyma samo drzewo, wiec `id` nie zostanie
+#: uzyte ponownie przez inny obiekt; drzewo z nowej tresci pliku (`parsuj_py`) to nowy klucz.
+_WEZLY: dict[int, tuple[ast.AST, tuple[ast.AST, ...]]] = {}
+
+
+def wezly(tree: ast.AST) -> tuple[ast.AST, ...]:
+    """`tuple(ast.walk(tree))` z pamiecia na drzewo (bramki tylko czytaja drzewa)."""
+    wpis = _WEZLY.get(id(tree))
+    if wpis is None or wpis[0] is not tree:
+        wpis = (tree, tuple(ast.walk(tree)))
+        _WEZLY[id(tree)] = wpis
+    return wpis[1]
+
+
 def zrodlo_istnieje(path: Path, wzorce: tuple[str, ...] = ("*.py",)) -> bool:
     """Czy pod sciezka istnieje ZRODLO: plik albo katalog z choc jednym plikiem
     zrodlowym (`wzorce`, domyslnie `*.py`; dla frontendu `*.ts`/`*.tsx`) na
@@ -785,7 +801,7 @@ def importy_zakazanych_modulow(
     except ValueError:
         pakiet = ""
     trafienia: list[tuple[int, str, bool]] = []
-    for node in ast.walk(tree):
+    for node in wezly(tree):
         if not isinstance(node, ast.Import | ast.ImportFrom):
             continue
         try:
@@ -819,7 +835,7 @@ def check_legacy_public_paths() -> list[str]:
             tree, module_path, FORBIDDEN_IMPORTS
         ):
             violations.append(_opis_importu(rel_path, lineno, modul, ponad))
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
                 violations.append(f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}")
             if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_NAMES:
@@ -848,7 +864,7 @@ def check_study_case_engine_resurrection() -> list[str]:
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
         tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_ENGINE_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -914,7 +930,7 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
         tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_C4_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -943,7 +959,7 @@ def check_cv42_resurrection() -> list[str]:
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
         tree = parsuj_py(py_file)
         rel_path = py_file.relative_to(ROOT).as_posix()
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_CV42_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -975,7 +991,7 @@ def check_cv43_a4_resurrection() -> list[str]:
     if CV43_A4_ENM_MODULE.exists():
         tree = parsuj_py(CV43_A4_ENM_MODULE)
         rel_path = CV43_A4_ENM_MODULE.relative_to(ROOT).as_posix()
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if (
                 isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
                 and node.name in FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES
@@ -1050,7 +1066,7 @@ def check_w1_legacy_persistence_resurrection() -> list[str]:
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
         tablenames = 0
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
             if node.name in FORBIDDEN_W1_CLASS_NAMES:
@@ -1172,7 +1188,7 @@ def check_k2_reference_networks_resurrection() -> list[str]:
                     _opis_importu(rel_path, lineno, modul, ponad)
                     + ("" if ponad else " (dawny dialekt benchmarków, usunięty kartą K2)")
                 )
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1216,7 +1232,7 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
                 if node.name in FORBIDDEN_W3D_DEF_NAMES:
                     violations.append(
@@ -1258,7 +1274,7 @@ def check_w3a_second_engine_resurrection() -> list[str]:
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3A_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1294,7 +1310,7 @@ def check_w3c1_overcurrent_resurrection() -> list[str]:
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             nazwa: str | None = None
             rodzaj = "definicja"
             if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
@@ -1449,7 +1465,7 @@ def check_trace_v2_resurrection() -> list[str]:
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
             tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1557,7 +1573,7 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
             tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3J_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1711,7 +1727,7 @@ def _solver_w_pakiecie_fazowym(
             f"[resurrected-name] {rel_path}: PhaseStateSNSolver w zasiegu pakietu — {dostep} "
             f"({znak})"
         )
-    for node in ast.walk(tree):
+    for node in wezly(tree):
         if isinstance(node, ast.Name):
             trafienie = node.id == "PhaseStateSNSolver"
         elif isinstance(node, ast.Attribute):
@@ -1751,7 +1767,7 @@ def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
             tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_S3_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1796,7 +1812,7 @@ def check_uniewazniacz_resurrection() -> list[str]:
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
-        for node in ast.walk(tree):
+        for node in wezly(tree):
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1827,8 +1843,9 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # Jedna tabela tozsamosci (`PAKIET_L_WPISY`), trzy rodzaje wpisu:
 #   * `sciezka`   — plik/katalog nie moze istniec (ZRODLO, nie osierocony `__pycache__`),
 #   * `definicja` — symbol nie wraca jako DEFINICJA: backend AST (klasa, funkcja,
-#     przypisanie modulowe, pole klasy zapisane `Klasa.pole`), frontend eksportowana
-#     deklaracja TS (`export function|const|class|interface|type|enum`);
+#     przypisanie modulowe, pole klasy zapisane `Klasa.pole`), frontend deklaracja TS
+#     eksportowana albo nie (`[export [default]] [declare] [async]
+#     function|const|let|var|class|interface|type|enum` — `_TS_DEKLARACJA_PREFIKS`);
 #     `zasieg="globalnie"` = gdziekolwiek w `backend/src`/`frontend/src`,
 #     `zasieg="plik"` = tylko we wskazanym pliku (nazwa ogolna albo kolidujaca z
 #     ZYWA definicja w innym miejscu: `FaultMarker` analizatora koordynacji,
@@ -2639,7 +2656,7 @@ def _definicje_py(tree: ast.Module) -> list[tuple[str, int]]:
     for stmt in tree.body:
         for nazwa in _cele(stmt):
             wynik.append((nazwa, stmt.lineno))
-    for node in ast.walk(tree):
+    for node in wezly(tree):
         if isinstance(node, _PY_DEF_TYPES):
             wynik.append((node.name, node.lineno))
         if isinstance(node, ast.ClassDef):
@@ -2649,12 +2666,31 @@ def _definicje_py(tree: ast.Module) -> list[tuple[str, int]]:
     return wynik
 
 
+#: Poczatek deklaracji TS (eksportowanej albo nie, takze `declare`) z nazwa w grupie 1.
+#: JEDNO zrodlo prawdy dwoch postaci: wzorca jednej nazwy (`_ts_definicja`) i zbioru nazw
+#: deklarowanych w pliku (`_deklaracje_ts`). Do 2026-10-28 modul mial DWIE funkcje
+#: `_ts_definicja` (Pakiet L: tylko `export …`; kasacja SCL/CIM: szersza) — druga
+#: przeslaniala pierwsza przy imporcie, wiec Pakiet L od 2026-09-30 dzialal na szerszej,
+#: a komentarz obiecywal wezsza. Zostaje szersza (stan faktyczny, zielony na drzewie);
+#: przypiete `test_pakiet_l_definicja_ts_bez_eksportu_tez_jest_naruszeniem`.
+_TS_DEKLARACJA_PREFIKS = (
+    r"^[ \t]*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?"
+    r"(?:function|const|let|var|class|interface|type|enum)\s+"
+)
+_TS_DEKLARACJA = re.compile(_TS_DEKLARACJA_PREFIKS + r"(\w+)", re.MULTILINE)
+
+
 def _ts_definicja(nazwa: str) -> re.Pattern[str]:
-    return re.compile(
-        r"^[ \t]*export\s+(?:default\s+)?(?:async\s+)?(?:function|const|class|interface|type|enum)"
-        r"\s+" + re.escape(nazwa) + r"\b",
-        re.MULTILINE,
-    )
+    return re.compile(_TS_DEKLARACJA_PREFIKS + re.escape(nazwa) + r"\b", re.MULTILINE)
+
+
+def _deklaracje_ts(tekst: str) -> set[str]:
+    """Nazwy deklarowane w tresci TS — ten sam wynik co `_ts_definicja(n).search(tekst)` dla
+    kazdej nazwy `n` z samych znakow slowa (jedno przejscie zamiast przejscia na nazwe:
+    pomiar 2026-10-28 — 168 nazw Pakietu L × ~2 400 plikow = 435 tys. przeszukan, 77 s
+    z 133 s straznika). Rownowaznosc przypieta iloczynem cech
+    (`test_deklaracje_ts_rowne_wzorcowi_jednej_nazwy`)."""
+    return {m.group(1) for m in _TS_DEKLARACJA.finditer(tekst)}
 
 
 #: Wpisy spoza inwentarza LEGACY_USUNAC (etykieta wiersza → karta kasacji).
@@ -2719,7 +2755,7 @@ def check_pakiet_l_resurrection() -> list[str]:
     fe_wpisy = [w for w in PAKIET_L_WPISY if w.warstwa == "frontend" and w.rodzaj != "sciezka"]
     if FRONTEND_SRC_DIR.exists():
         globalne_fe = [
-            (w, _ts_definicja(w.symbol))
+            w
             for w in fe_wpisy
             if w.rodzaj == "definicja" and w.zasieg == "globalnie" and w.symbol is not None
         ]
@@ -2732,8 +2768,9 @@ def check_pakiet_l_resurrection() -> list[str]:
                 tekst = _bez_komentarzy_ts(read_text(ts_file))
                 rel_src = ts_file.relative_to(FRONTEND_SRC_DIR).as_posix()
                 rel_path = ts_file.relative_to(ROOT).as_posix()
-                for wpis, wzorzec in globalne_fe:
-                    if wzorzec.search(tekst):
+                deklarowane = _deklaracje_ts(tekst)
+                for wpis in globalne_fe:
+                    if wpis.symbol in deklarowane:
                         violations.append(
                             f"[resurrected-definition] {rel_path}: export {wpis.symbol} "
                             f"(pozycja LEGACY_USUNAC {wpis.wiersz}, usunieta w karcie "
@@ -2859,7 +2896,7 @@ B01I_DEFINICJE_BACKEND: frozenset[str] = frozenset(
 def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
     """Literaly napisowe modulu Pythona POZA dokstringami (modul, klasa, funkcja)."""
     dokstringi: set[int] = set()
-    for node in ast.walk(tree):
+    for node in wezly(tree):
         if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if (
                 node.body
@@ -2869,7 +2906,7 @@ def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
             ):
                 dokstringi.add(id(node.body[0].value))
     wynik: list[tuple[str, int]] = []
-    for node in ast.walk(tree):
+    for node in wezly(tree):
         if (
             isinstance(node, ast.Constant)
             and isinstance(node.value, str)
@@ -2924,7 +2961,7 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                     violations.append(
                         f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak_b01i})"
                     )
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 nazwa_id = (
                     node.id
                     if isinstance(node, ast.Name)
@@ -3047,8 +3084,8 @@ def check_ab1b3b_odbiory_resurrection() -> list[str]:
         rel_path = (
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
-        tree = ast.parse(tekst, filename=str(py_file))
-        for node in ast.walk(tree):
+        tree = parsuj_py(py_file)
+        for node in wezly(tree):
             for nazwa in _nazwy_wezla(node):
                 if nazwa in AB1B3B_IDENTYFIKATORY:
                     violations.append(
@@ -3140,14 +3177,6 @@ KASACJA_SCL_CIM_REJESTR_FORMATOW = "ui/sld/v3/export/formats.ts"
 _TS_ZAKAZANY_FORMAT_MODELU = re.compile(r"""['"](iec61850|cim|scd)['"]""")
 
 
-def _ts_definicja(nazwa: str) -> re.Pattern[str]:
-    return re.compile(
-        r"^[ \t]*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?"
-        rf"(?:function|const|let|var|class|interface|type|enum)\s+{re.escape(nazwa)}\b",
-        re.MULTILINE,
-    )
-
-
 def check_kasacja_scl_cim_klient_resurrection() -> list[str]:
     """Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): klientowe eksportery modelu
     sieci (SCL/SCD, CIM), martwa sciezka eksportu v2, presety bez konsumenta i
@@ -3165,14 +3194,13 @@ def check_kasacja_scl_cim_klient_resurrection() -> list[str]:
             )
 
     if FRONTEND_SRC_DIR.exists():
-        wzorce = {n: _ts_definicja(n) for n in KASACJA_SCL_CIM_DEFINICJE_FRONTEND}
         for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
             for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
                 tekst = _bez_komentarzy_ts(read_text(ts_file))
                 rel_path = ts_file.relative_to(ROOT).as_posix()
-                for nazwa, wzorzec in wzorce.items():
-                    if wzorzec.search(tekst):
-                        violations.append(f"[resurrected-definition] {rel_path}: {nazwa} ({znak})")
+                deklarowane = _deklaracje_ts(tekst)
+                for nazwa in [n for n in KASACJA_SCL_CIM_DEFINICJE_FRONTEND if n in deklarowane]:
+                    violations.append(f"[resurrected-definition] {rel_path}: {nazwa} ({znak})")
         rejestr = FRONTEND_SRC_DIR / KASACJA_SCL_CIM_REJESTR_FORMATOW
         if rejestr.exists():
             for trafienie in _TS_ZAKAZANY_FORMAT_MODELU.finditer(
@@ -3190,7 +3218,7 @@ def check_kasacja_scl_cim_klient_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             for nazwa, lineno in _definicje_py(tree):
                 if nazwa in KASACJA_SCL_CIM_DEFINICJE_BACKEND:
                     violations.append(
@@ -3229,9 +3257,9 @@ def check_dynamika_w_tle_queue_resurrection() -> list[str]:
         )
     if BACKEND_SRC_DIR.exists():
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             rel_path = py_file.relative_to(ROOT).as_posix()
-            for node in ast.walk(tree):
+            for node in wezly(tree):
                 nazwy: list[str] = []
                 if isinstance(node, ast.Import):
                     nazwy = [alias.name for alias in node.names]
@@ -3304,7 +3332,7 @@ def check_partia10_kasacja_resurrection() -> list[str]:
                 if py_file.is_relative_to(ROOT)
                 else str(py_file)
             )
-            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            tree = parsuj_py(py_file)
             for nazwa, lineno in _definicje_py(tree):
                 if nazwa in PARTIA10_SKASOWANE_DEFINICJE_BACKEND:
                     violations.append(

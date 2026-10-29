@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Adres endpointa z kanonicznego klienta (jedyne miejsce budowy adresu); atrapa podmienia

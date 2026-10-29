@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Kontrakt rejestru skrótów Pomocy (karta K2): rejestr NIE obiecuje skrótów,
  * których aplikacja nie obsługuje. Mapa niżej wskazuje pliki obsługi każdego wpisu, a test

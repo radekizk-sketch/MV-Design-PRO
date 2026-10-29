@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Statyczny strażnik klasy „spec e2e pisze zrzuty do drzewa repozytorium".
  *

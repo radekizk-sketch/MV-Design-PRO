@@ -178,7 +178,8 @@ def test_zmienione_pliki_drzewa_roboczego_i_miedzy_commitami(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Bez `--glowa`: zmiany śledzone (także usunięcia) i pliki nieśledzone; z `--glowa`:
-    diff dwóch commitów; głowa spoza historii HEAD jest błędem (graf jest z drzewa roboczego)."""
+    diff dwóch commitów; głowa spoza historii HEAD jest błędem (graf jest z drzewa roboczego).
+    """
     monkeypatch.setattr(bramka, "REPO", tmp_path)
     _git(tmp_path, "init", "-q")
     _zapisz(tmp_path, "a.py", "A = 1\n")
@@ -202,6 +203,74 @@ def test_zmienione_pliki_drzewa_roboczego_i_miedzy_commitami(
     _git(tmp_path, "checkout", "-q", "-")
     with pytest.raises(SystemExit, match="nie jest HEAD ani przodkiem"):
         bramka.zmienione_pliki("HEAD~1", "obca")
+
+
+@pytest.mark.parametrize(
+    ("tresc", "zmieniony", "wybrany"),
+    [
+        # korzeń ustalony, plik pod korzeniem i pasujący do filtra → wybrany
+        (
+            "K = R / 'mv-design-pro' / 'frontend'\ndef test_a():\n    list(K.rglob('*.json'))\n",
+            "mv-design-pro/frontend/src/a.json",
+            True,
+        ),
+        # ten sam skan, plik pod korzeniem, ale inny filtr nazwy → nie
+        (
+            "K = R / 'mv-design-pro' / 'frontend'\ndef test_a():\n    list(K.rglob('*.json'))\n",
+            "mv-design-pro/frontend/src/a.ts",
+            False,
+        ),
+        # plik poza korzeniem → nie
+        (
+            "K = R / 'mv-design-pro' / 'frontend'\ndef test_a():\n    list(K.rglob('*.json'))\n",
+            "mv-design-pro/docs/a.json",
+            False,
+        ),
+        # skan nieustalony → wybrany przy każdej zmianie
+        (
+            "import os\ndef test_a():\n    os.listdir(os.environ['X'])\n",
+            "mv-design-pro/docs/a.md",
+            True,
+        ),
+        # katalog tymczasowy → nigdy
+        ("def test_a(tmp_path):\n    list(tmp_path.glob('*'))\n", "mv-design-pro/docs/a.md", False),
+    ],
+    ids=["korzen-trafiony", "inny-filtr", "poza-korzeniem", "nieustalony", "tmp_path"],
+)
+@pytest.mark.parametrize("posrednio", [False, True], ids=["test-skanuje", "modul-skanuje"])
+def test_regula_skanu_katalogu(
+    drzewo: Path, tresc: str, zmieniony: str, wybrany: bool, posrednio: bool
+) -> None:
+    """Iloczyn: wynik skanu (trafiony / filtr / poza korzeniem / nieustalony / tymczasowy) ×
+    skan w samym teście albo w module, który test importuje."""
+    prolog = "from pathlib import Path\nR = Path(__file__).resolve().parents[3]\n"
+    if posrednio:
+        _zapisz(drzewo, "mv-design-pro/backend/tests/skaner.py", prolog + tresc)
+        _zapisz(drzewo, "mv-design-pro/backend/tests/test_s.py", "from tests import skaner\n")
+    else:
+        _zapisz(drzewo, "mv-design-pro/backend/tests/test_s.py", prolog + tresc)
+    wybrane = _wybrane(drzewo, [zmieniony])
+    assert ("mv-design-pro/backend/tests/test_s.py" in wybrane) is wybrany, wybrane
+    assert "mv-design-pro/backend/tests/test_obcy.py" not in wybrane
+
+
+def test_skan_nieustalony_produktu_z_listy_nie_pociaga_kazdej_zmiany(
+    drzewo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Para predykatów: lista `SKANY_NIEUSTALONE_PRODUKTU` wyłącza skan nieustalony produktu,
+    a ten sam plik spoza listy pociąga test przy każdej zmianie."""
+    _zapisz(
+        drzewo,
+        "mv-design-pro/backend/src/magazyn.py",
+        "import os\nfrom pathlib import Path\ndef lista():\n    return Path(os.environ['M']).glob('*')\n",
+    )
+    _zapisz(drzewo, "mv-design-pro/backend/tests/test_m.py", "import magazyn\n")
+    zmiana = ["mv-design-pro/docs/a.md"]
+    assert "mv-design-pro/backend/tests/test_m.py" in _wybrane(drzewo, zmiana)
+    monkeypatch.setattr(
+        bramka, "SKANY_NIEUSTALONE_PRODUKTU", {"mv-design-pro/backend/src/magazyn.py": "test"}
+    )
+    assert "mv-design-pro/backend/tests/test_m.py" not in _wybrane(drzewo, zmiana)
 
 
 # --- prawdziwe drzewo repozytorium ---------------------------------------------------------
@@ -234,22 +303,33 @@ def test_zmiana_liscia_pochodnych_pociaga_konsumentow(graf: bramka.Graf) -> None
     assert lancuch[-1] == f"zmieniony: {zmieniony}"
 
 
+def _przez_skan(lancuch: tuple[str, ...]) -> bool:
+    return lancuch[-1].startswith(("skanuje ", "skan katalogu o nieustalonym korzeniu"))
+
+
 def test_zmiana_testu_pociaga_sam_test(graf: bramka.Graf) -> None:
+    """Zmiana testu pociąga sam test; poza nim wyłącznie testy SKANUJĄCE katalog testów
+    (albo o skanie nieustalonym) — każdy z uzasadnieniem reguły skanu."""
     zmieniony = "mv-design-pro/backend/tests/test_branch.py"
     wybrane = bramka.wybierz_testy_backendu(graf, [zmieniony]).testy
-    assert set(wybrane) == {zmieniony}
     assert wybrane[zmieniony] == (zmieniony, f"zmieniony: {zmieniony}")
+    inne = {t: lancuch for t, lancuch in wybrane.items() if t != zmieniony}
+    assert all(_przez_skan(lancuch) for lancuch in inne.values()), inne
+    # skaner katalogu testów (rglob tests/**/*.py) MUSI wejść
+    assert "mv-design-pro/backend/tests/ci/test_jedna_tozsamosc_modulow.py" in wybrane
 
 
 def test_zmiana_dokumentacji_bez_testow_backendu_rdzen_zawsze(graf: bramka.Graf) -> None:
+    """Dokument bez odwołań w testach: wybór to wyłącznie reguła skanu (skany dokumentacji
+    i skany nieustalone), reszta planu to rdzeń niezmienników."""
     zmieniony = "mv-design-pro/docs/plan/DOKUMENT_BEZ_ODWOLAN_W_TESTACH_BRAMKI.md"
     wybor = bramka.wybierz_testy_backendu(graf, [zmieniony])
-    assert wybor.testy == {}
+    assert all(_przez_skan(lancuch) for lancuch in wybor.testy.values()), wybor.testy
     assert wybor.pelny_bieg is None
 
     rdzen = bramka.rdzen_niezmiennikow(graf)
     plan = bramka.plan_backendu(wybor, rdzen)
-    assert plan == sorted(rdzen)
+    assert plan == sorted({*rdzen, *wybor.testy})
     for wymagany in (
         "mv-design-pro/backend/tests/test_result_contract_v1.py",
         "mv-design-pro/backend/tests/api/test_openapi_snapshot.py",
@@ -258,6 +338,29 @@ def test_zmiana_dokumentacji_bez_testow_backendu_rdzen_zawsze(graf: bramka.Graf)
         "mv-design-pro/backend/tests/invariants/test_scenariusz_i_bieg.py",
     ):
         assert wymagany in rdzen, wymagany
+
+
+def test_skany_nieustalone_produktu_rowne_liscie(graf: bramka.Graf) -> None:
+    """Lista wyłączeń skanów nieustalonych produktu jest ZAMKNIĘTA w obie strony: każdy plik
+    `backend/src` z nieustalonym skanem jest na liście (z uzasadnieniem), każdy wpis listy
+    ma nieustalony skan."""
+    nieustalone = {
+        rel
+        for rel, skany in graf.skany.items()
+        if rel.startswith("mv-design-pro/backend/src/")
+        and any(s.korzen is None and not s.poza for s in skany)
+    }
+    assert nieustalone == set(bramka.SKANY_NIEUSTALONE_PRODUKTU)
+    assert all(bramka.SKANY_NIEUSTALONE_PRODUKTU.values())
+
+
+def test_skan_frontu_pociaga_test_bez_importu(graf: bramka.Graf) -> None:
+    """Instancja z pomiaru karty: zmiana pliku fikstur frontu wybiera test, który go czyta
+    skanem katalogu (żadna krawędź importu ani nazwa pliku do niego nie prowadzi)."""
+    zmieniony = "mv-design-pro/frontend/src/harness-fixtures/generated/NOWA_FIKSTURA.json"
+    wybrane = bramka.wybierz_testy_backendu(graf, [zmieniony]).testy
+    lancuch = wybrane["mv-design-pro/backend/tests/ci/test_fixtury_harnessu.py"]
+    assert "frontend/src/harness-fixtures/generated" in " ".join(lancuch)
 
 
 def test_rdzen_wylacznie_z_regul(graf: bramka.Graf) -> None:
@@ -325,3 +428,67 @@ def test_wybor_vitest_bez_zmian_frontu(tmp_path: Path) -> None:
         bramka.wybierz_testy_frontu(["mv-design-pro/docs/x.md"], tmp_path / "w.json", "test")
         is None
     )
+
+
+# --- miejsce na dysku i sprzątanie (dyrektywa 2026-10-28) ----------------------------------
+
+
+def _bramka_bez_biegow(drzewo: Path, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    """Bramka na drzewie syntetycznym: zero zmian, polecenia zapisywane zamiast uruchamiane;
+    „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg."""
+    monkeypatch.setattr(bramka, "zmienione_pliki", lambda baza, glowa: [])
+    polecenia: list[list[str]] = []
+
+    def uruchom(nazwa: str, polecenie: list[str], cwd: Path) -> tuple[int, float]:
+        polecenia.append(polecenie)
+        for argument in polecenie:
+            if argument.startswith("--basetemp="):
+                katalog = Path(argument.split("=", 1)[1])
+                katalog.mkdir(parents=True, exist_ok=True)
+                (katalog / "plik_testu.bin").write_bytes(b"x")
+        return 0, 0.0
+
+    monkeypatch.setattr(bramka, "_uruchom", uruchom)
+    return polecenia
+
+
+@pytest.mark.parametrize("jawny_basetemp", [False, True], ids=["domyslny", "jawny"])
+def test_bramka_kasuje_basetemp_i_katalog_roboczy(
+    drzewo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+    jawny_basetemp: bool,
+) -> None:
+    polecenia = _bramka_bez_biegow(drzewo, monkeypatch)
+    robocze = tmp_path_factory.mktemp("robocze")
+    monkeypatch.setattr(bramka.tempfile, "mkdtemp", lambda prefix: str(robocze / prefix))
+    (robocze / "bramka-scalenia-").mkdir()
+    basetemp = tmp_path_factory.mktemp("bt") / "pytest"
+    argumenty = ["--baza", "HEAD", *(["--basetemp", str(basetemp)] if jawny_basetemp else [])]
+    assert bramka.main(argumenty) == 0
+    uzyty = next(
+        Path(a.split("=", 1)[1]) for p in polecenia for a in p if a.startswith("--basetemp=")
+    )
+    assert uzyty == (basetemp if jawny_basetemp else robocze / "bramka-scalenia-" / "pytest")
+    assert not uzyty.exists()
+    assert not (robocze / "bramka-scalenia-").exists()
+
+
+def test_bramka_odmawia_startu_przy_braku_miejsca(
+    drzewo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    polecenia = _bramka_bez_biegow(drzewo, monkeypatch)
+    wolne = {"bajty": int(4.9e9)}
+
+    class Uzycie:
+        def __init__(self) -> None:
+            self.free = wolne["bajty"]
+
+    monkeypatch.setattr(bramka.shutil, "disk_usage", lambda _k: Uzycie())
+    assert bramka.main(["--baza", "HEAD"]) == 2
+    assert polecenia == []
+    assert "wolne miejsce na dysku 4.9 GB < 5 GB" in capsys.readouterr().out
+    # Próg graniczny: dokładnie 5 GB wystarcza.
+    wolne["bajty"] = int(5e9)
+    assert bramka.main(["--baza", "HEAD"]) == 0
+    assert polecenia

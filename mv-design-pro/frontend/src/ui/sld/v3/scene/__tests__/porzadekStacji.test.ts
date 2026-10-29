@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2 (UI-04, nawigacja „poprzednia/następna stacja") — `meta.stationTraversalOrder`.
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `config_id` jest dla frontendu KLUCZEM NIEPRZEZROCZYSTYM — adapter przepisuje
  * go 1:1 i NIE parsuje prefiksu pochodzenia.

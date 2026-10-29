@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * History Store Tests — P30a UNDO/REDO
  *

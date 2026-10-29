@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD-nN-TOPOLOGIA T0 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3,
  * test ścieżkowy P0.12) — dowód na fixturze „Stacja B":

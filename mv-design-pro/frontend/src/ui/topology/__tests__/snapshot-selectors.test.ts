@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Snapshot Store Selectors Tests
  *

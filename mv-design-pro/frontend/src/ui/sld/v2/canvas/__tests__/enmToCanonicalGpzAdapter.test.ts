@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * enmToCanonicalGpzAdapter tests — Phase R3 (operator-grade rebuild).
  *

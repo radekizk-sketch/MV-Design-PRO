@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Test: Brak nazw kodowych w UI
  *

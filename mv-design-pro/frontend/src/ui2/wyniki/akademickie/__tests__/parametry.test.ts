@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy budowy ładunku parametrów projektowych (ui2/wyniki/akademickie/parametry.ts).
  *

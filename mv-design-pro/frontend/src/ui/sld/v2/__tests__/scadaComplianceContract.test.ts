@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCADA Compliance Contract — executable specification.
  *

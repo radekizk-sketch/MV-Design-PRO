@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PARZYSTOSC z regula kanoniczna backendu (V12K-244).
  *

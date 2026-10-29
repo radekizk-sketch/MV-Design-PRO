@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy jednostkowe modelu i formaterów okna „Praca wyspowa" (P46): mapowanie pola
  * na wiersz wzorca (status + tag ostrzegawczy z backendu), sekcja założeń, oraz

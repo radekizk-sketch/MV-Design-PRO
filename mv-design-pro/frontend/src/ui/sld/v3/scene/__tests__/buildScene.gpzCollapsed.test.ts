@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KD-5 — TEST KONTRAKTOWY zwinięcia bloku GPZ na poziomie przeglądowym L0
  * (dług nazwany w V12K-285: „blok GPZ nie jest zwijany na L0 — 30 z 83 symboli

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy wewnętrznego API dowodów porównania (R3-C / K3-G2): kodowanie strony
  * A/B w `dowodRef` komórki i bezpieczne dekodowanie (ref spoza formatu → null).

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy adapterów okna „Walidacja modelu falownika" (karta U4 P38). Weryfikują
  * czyste projekcje: opcje modułów DER (typ przekształtnika / brak typu), opcje

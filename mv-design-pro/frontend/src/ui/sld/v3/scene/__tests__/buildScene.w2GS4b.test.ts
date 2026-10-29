@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W2 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §3/§4; GS-4b / audyt Z2,
  * `AUDYT_POWYKONAWCZY_SLD_2026-07.md`) — poziom sceny (`buildSceneV3`).

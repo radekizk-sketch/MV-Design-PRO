@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K11-B §0.1 — minimapa (nawigator): geometria projekcji.
  *

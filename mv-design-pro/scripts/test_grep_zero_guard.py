@@ -11,7 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from grep_zero_guard import GRUPY, ROOT, sprawdz  # noqa: E402
+import re  # noqa: E402
+
+import pytest  # noqa: E402
+from grep_zero_guard import GRUPY, ROOT, load_config_lines, sprawdz, wymagany_literal  # noqa: E402
 
 INIEKCJE_KOD: tuple[tuple[str, str], ...] = (
     ("backend/src/enm/x.py", 'system = sub.meta["nn_earthing_system"]\n'),
@@ -102,6 +105,85 @@ def test_czerwona_iniekcja_w61() -> None:
         plik.write_text('{"meta": {"load_profile_ref": null}}\n', encoding="utf-8")
         assert sprawdz(tmp, "w61_") == []
         plik.unlink()
+
+
+@pytest.mark.parametrize(
+    ("wzorzec", "literal"),
+    [
+        # literal najwyzszego poziomu, przed nim i za nim elementy nieliteralne
+        (r"\bload_profile_ref\b", "load_profile_ref"),
+        # grupa opcjonalna z literalem — jej tresc NIE jest wymagana
+        (r"\b(ab_|cd_)?pole_x\s*[:=]", "pole_x"),
+        # powtorzenie: `\??` i `x*` nie sa wymagane, `\.` jest literalem kropki
+        (r"\b(bus|b)\??\.grounding\b", ".grounding"),
+        (r"abx*cd", "ab"),
+        # alternatywa na najwyzszym poziomie — zaden literal nie jest wymagany
+        (r"alfa|beta", None),
+        (r"(alfa|beta)", None),
+        # klasa znakow i dowolny znak przerywaja ciag
+        (r"ab[cd]efg", "efg"),
+        (r"ab.cdef", "cdef"),
+        # bez rozroznienia wielkosci liter literal nie jest filtrem
+        (r"(?i)load_profile_ref", None),
+        (r"\w+", None),
+    ],
+)
+def test_wymagany_literal(wzorzec: str, literal: str | None) -> None:
+    assert wymagany_literal(wzorzec) == literal
+
+
+_POLA = "field" + "_specs"
+
+#: Teksty dopasowan z iloczynu cech: kazda galaz alternatywy wzorcow konfiguracji, opcjonalny
+#: przedrostek obecny/nieobecny, cudzyslow pojedynczy/podwojny, odstep przed `=`/`:`.
+_DOPASOWANIA = (
+    *INIEKCJE_KOD,
+    # nazwa dawnego nosnika pol skladana z czesci — pilnuje jej `meta_field_specs_resurrection_guard`
+    ("x", 'meta["' + _POLA + '"]'),
+    ("x", "meta['nn_" + _POLA + "']"),
+    ("x", '"switchgear_' + _POLA + '" : 1'),
+    ("x", "nn_" + _POLA + " = 1"),
+    ("x", "obj.switchgear_" + _POLA),
+    ("x", "szynaSN?.grounding"),
+    ("x", "b.grounding"),
+    ("x", "neutral_grounding_mode = 'rezystor'"),
+    ("x", "collect_bays ("),
+    ("x", "_auto_populate_types"),
+    ("x", "AutoPopulateX"),
+    ("x", "/api/catalog/auto-populate"),
+    ("x", " inverter-types"),
+    ("x", "'nn_earthing_system':"),
+    ("x", "nn_earthing_system = 1"),
+)
+
+
+def test_kazde_dopasowanie_wzorca_zawiera_jego_literal() -> None:
+    """Filtr literalu jest warunkiem KONIECZNYM: kazde dopasowanie kazdego wzorca
+    konfiguracji (wszystkie grupy) zawiera literal wyznaczony dla wzorca — inaczej
+    `sprawdz` pominalby plik z naruszeniem. Kazdy wzorzec z literalem ma tu dopasowanie."""
+    wzorce = [
+        w
+        for grupa in GRUPY
+        for w in load_config_lines(ROOT / "config" / f"grep_zero_{grupa}patterns.txt")
+    ]
+    bez_przykladu = []
+    for wzorzec in wzorce:
+        literal = wymagany_literal(wzorzec)
+        if literal is None:
+            continue
+        trafienia = [
+            m.group(0)
+            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU)
+            for m in re.finditer(wzorzec, tekst)
+        ]
+        if not trafienia and not re.search(wzorzec, literal):
+            bez_przykladu.append(wzorzec)
+        for trafienie in trafienia + ([literal] if re.search(wzorzec, literal) else []):
+            assert literal in trafienie, (wzorzec, literal, trafienie)
+    # przyklady grupy `zu_` to iniekcje `INIEKCJE_ZU` (jedno zrodlo tekstow tej grupy);
+    # wzorce literalne bez przykladu w `_DOPASOWANIA` dopasowuja sam swoj literal (nazwa
+    # pliku, symbol) — ten przypadek pokrywa `re.search(wzorzec, literal)` wyzej
+    assert bez_przykladu == [], bez_przykladu
 
 
 INIEKCJE_ZU: tuple[tuple[str, str], ...] = (

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Catalog API Sorting Tests
  *

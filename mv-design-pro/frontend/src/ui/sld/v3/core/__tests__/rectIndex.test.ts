@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * INDEKS PRZESTRZENNY PROSTOKĄTÓW — równoważność z przeglądem liniowym (S9-9).
  *

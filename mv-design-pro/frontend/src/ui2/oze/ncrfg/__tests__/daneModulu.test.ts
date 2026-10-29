@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Dane modułu NC RfG generatora (`daneModulu.ts`) — lustro JEDNEGO walidatora backendu
  * `enm/deklaracje_modulu.py::pola_nc_rfg_generatora` (plan AB O-50 pkt 5–6). Iloczyn cech:

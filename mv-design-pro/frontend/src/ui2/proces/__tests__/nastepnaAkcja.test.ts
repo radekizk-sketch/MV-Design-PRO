@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy reguły „następna najlepsza akcja". Każda deklaracja z nagłówka
  * `nastepnaAkcja.ts` ma tu przypiętą asercję — deklaracja bez testu jest

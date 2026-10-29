@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy API client'a audit2 (Phase 6 frontend).
  *

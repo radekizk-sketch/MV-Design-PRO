@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA SZYNY-STACJI-LUSTRO — ILOCZYN CECH jednej reguły przynależności szyny do stacji.
  *

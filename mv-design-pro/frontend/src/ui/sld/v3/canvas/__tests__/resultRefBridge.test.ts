@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-2 — MOST PRZESTRZENI REFÓW (`resultRefBridge.ts`): element rysunku ↔ punkt
  * wyniku. Testy pokrywają ILOCZYN CECH, w którym defekt mógłby się schować

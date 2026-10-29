@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
+import re._parser as sre_parse
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -107,6 +108,31 @@ def is_allowlisted(rel_path: str, allowlist: list[str]) -> bool:
     return False
 
 
+def wymagany_literal(wzorzec: str) -> str | None:
+    """Najdluzszy ciag znakow, ktory KAZDE dopasowanie `wzorzec` zawiera, albo ``None``.
+
+    Brane sa wylacznie literaly NAJWYZSZEGO poziomu sekwencji wzorca (element obowiazkowy:
+    nie w grupie, nie w alternatywie, nie w powtorzeniu), wiec brak literalu w tekscie
+    dowodzi braku dopasowania — `sprawdz` pomija wtedy przeszukanie wyrazeniem. Wzorzec
+    z `IGNORECASE` albo bez literalu najwyzszego poziomu nie ma filtra (zawsze przeszukanie).
+    PO CO (karta SZYBKIE-TESTY-2, pomiar 2026-10-28): kazdy wzorzec zaczyna sie od `\\b`,
+    przy ktorym `re` nie ma przyspieszenia przedrostka — 58 wzorcow × ~4 800 plikow
+    (88 MB) = 51 s z 55 s biegu straznika."""
+    sparsowany = sre_parse.parse(wzorzec)
+    if sparsowany.state.flags & re.IGNORECASE:
+        return None
+    najdluzszy = ""
+    biezacy = ""
+    for kod, argument in sparsowany.data:
+        if kod is sre_parse.LITERAL:
+            biezacy += chr(argument)
+            if len(biezacy) > len(najdluzszy):
+                najdluzszy = biezacy
+        else:
+            biezacy = ""
+    return najdluzszy or None
+
+
 def sprawdz(root: Path, grupa: str = "") -> list[str]:
     """Naruszenia jednej grupy konfiguracji względem drzewa ``root`` (config w ``root/config``)."""
     config_dir = root / "config"
@@ -115,7 +141,7 @@ def sprawdz(root: Path, grupa: str = "") -> list[str]:
     ]
     allowlist = load_config_lines(config_dir / f"grep_zero_{grupa}allowlist.txt")
     patterns = [
-        (raw, re.compile(raw))
+        (raw, re.compile(raw), wymagany_literal(raw))
         for raw in load_config_lines(config_dir / f"grep_zero_{grupa}patterns.txt")
     ]
 
@@ -138,7 +164,9 @@ def sprawdz(root: Path, grupa: str = "") -> list[str]:
                 continue
 
             text = file_path.read_text(encoding="utf-8", errors="ignore")
-            for raw_pattern, compiled in patterns:
+            for raw_pattern, compiled, literal in patterns:
+                if literal is not None and literal not in text:
+                    continue
                 match = compiled.search(text)
                 if match is None:
                     continue

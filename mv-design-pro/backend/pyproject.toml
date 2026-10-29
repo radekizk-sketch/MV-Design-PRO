@@ -185,7 +185,11 @@ asyncio_mode = "auto"
 # `importmode = "importlib"` w tej sekcji jest CICHO IGNOROWANY (pytest zglasza
 # tylko `PytestConfigWarning: Unknown config option`), dlatego wchodzi przez
 # `addopts` — inaczej caly ten zapis bylby dekoracja bez skutku.
-addopts = "--import-mode=importlib"
+# `--no-loadscope-reorder` (karta SZYBKIE-TESTY-2): xdist pod `--dist loadfile` zachowuje
+# kolejnosc plikow ustawiona przez `tests/conftest.py::pytest_collection_modifyitems`
+# (malejaco po zmierzonym czasie, `tests/kolejnosc_plikow.py`) zamiast kolejkowac pliki wg
+# liczby testow — najciezsze pliki o malej liczbie testow nie wydluzaja ogona biegu.
+addopts = "--import-mode=importlib --no-loadscope-reorder"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

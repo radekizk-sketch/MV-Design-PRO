@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA W5-B/C — ILOCZYN CECH jednego lustra reguł pól (`polaStacji.ts`).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Model kreatora „Zespół uziemiający SN" (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
  *

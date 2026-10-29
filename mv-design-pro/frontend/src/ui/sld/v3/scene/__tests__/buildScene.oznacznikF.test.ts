@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Ogranicznik przepięć na realnej scenie — oznacznik rodziny „F"
  * (decyzja właściciela 2026-08-07; rejestr V12K-335 pkt 3, karta S9-12).

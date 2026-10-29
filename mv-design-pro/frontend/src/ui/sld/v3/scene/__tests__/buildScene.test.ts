@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F6a — testy `scene/buildScene.ts` (SLD_CAD_SPEC_V3 §5/§7/§9/§10/§11/
  * §16; REBUILD_PLAN_V3 F6). Uruchamiane na REALNEJ fixturze `sldSubstrate52s`

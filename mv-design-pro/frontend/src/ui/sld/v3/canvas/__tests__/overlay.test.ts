@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * F9.5 — testy kontraktu/budowniczego/wyroczni nakładki przepływu mocy
  * (`overlay.ts`, spec §14.2 „Wizualizacja przepływu mocy"). Fixtura REALNA

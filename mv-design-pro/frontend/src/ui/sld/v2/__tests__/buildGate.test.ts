@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V2 — Phase -1 Build Gate smoke test.
  *

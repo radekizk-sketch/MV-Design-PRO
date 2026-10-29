@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * NAKŁADKA RÓŻNIC A/B — klient i store.
  *

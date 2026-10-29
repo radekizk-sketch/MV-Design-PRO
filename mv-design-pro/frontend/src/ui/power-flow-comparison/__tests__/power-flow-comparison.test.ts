@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P20c — Power Flow Comparison Frontend Tests
  *

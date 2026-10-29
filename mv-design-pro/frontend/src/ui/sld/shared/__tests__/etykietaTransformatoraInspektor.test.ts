@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Inspektor transformatora klikniętego na kanwie — etykieta z nazwy modelu, bez zaszytej klasy
  * (karta ETYKIETY-TR; UI-02b: dane z kanwy trafiają do prawego inspektora, dawny panel

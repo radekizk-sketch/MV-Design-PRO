@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy enmToSldAdapter — adapter ENM → model widoku SLD czytany przez scenę v3.
  *

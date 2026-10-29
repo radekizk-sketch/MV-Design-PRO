@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GRAMATYKA WIZUALNA nN (§20–§30, §41–§44) — czyste funkcje: fit, zawijanie,
  * limity znaków, sufit rozmiaru symbolu w slocie, nośniki stanów, rejestr

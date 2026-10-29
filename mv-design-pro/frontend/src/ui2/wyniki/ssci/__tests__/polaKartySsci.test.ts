@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Pola karty falownika w proweniencji SSCI — parytet z KODEM backendu (karta #145).
  *

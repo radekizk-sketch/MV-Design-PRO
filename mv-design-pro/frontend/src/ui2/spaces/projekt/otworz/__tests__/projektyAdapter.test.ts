@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { mapujProjekty } from '../adapters/projektyAdapter';
 import type { Project } from '../../../../../ui/projects/api';
