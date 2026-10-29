@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy useStationDerStore — single source of truth dla integracji E-13 ↔ DER.
  */

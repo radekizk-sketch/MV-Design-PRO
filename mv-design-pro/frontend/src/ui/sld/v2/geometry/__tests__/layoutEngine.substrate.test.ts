@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * LayoutEngine — machine-verifiable acceptance on the real >=52-station substrate.
  *

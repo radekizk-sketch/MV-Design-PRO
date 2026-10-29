@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * JEDEN zestaw tokenów aplikacji (karta K1 POWLOKA, kontrakt UIUX przemysłowy §8).
  *

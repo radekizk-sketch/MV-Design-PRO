@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KD-8 poz. 1 — KONTRAKT PALETY RYSUNKU STEROWANEJ MOTYWEM.
  *

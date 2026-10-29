@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Komunikaty czytnika topologii SLD — nazwa z modelu, nigdy identyfikator (partia integracji 10).
  *

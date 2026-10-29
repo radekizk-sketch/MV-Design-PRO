@@ -32,6 +32,7 @@ Decyzje:
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -61,12 +62,24 @@ def _jako_enm(siec: object) -> EnergyNetworkModel:
 
 
 def sieci_enm_rejestru() -> list[tuple[str, EnergyNetworkModel]]:
-    """Wszystkie sieci ENM rejestru w deterministycznej kolejności (rejestr → indeks)."""
+    """Wszystkie sieci ENM rejestru w deterministycznej kolejności (rejestr → indeks), każda
+    zbudowana OD NOWA — droga testów determinizmu (dwie budowy porównywane ze sobą)."""
+    return _sieci_enm(registry.zbuduj_wszystkie)
+
+
+def kopie_sieci_enm_rejestru() -> list[tuple[str, EnergyNetworkModel]]:
+    """Te same sieci co `sieci_enm_rejestru`, jako niezależne kopie budowy wykonanej raz na
+    proces (`registry.kopie_sieci_wpisu`) — droga testów, które sieci rejestru tylko czytają
+    albo parametryzują nimi kolekcję."""
+    return _sieci_enm(registry.kopie_sieci_wpisu)
+
+
+def _sieci_enm(budowa: Callable[[str], list[Any]]) -> list[tuple[str, EnergyNetworkModel]]:
     wynik: list[tuple[str, EnergyNetworkModel]] = []
     for wpis in REJESTR:
         if not wpis.budowniczowie or wpis.postac is not PostacSieci.ENM:
             continue
-        for indeks, siec in enumerate(registry.zbuduj_wszystkie(wpis.id)):
+        for indeks, siec in enumerate(budowa(wpis.id)):
             enm = _jako_enm(siec)
             nazwa = str(enm.header.name or "").strip() or "bez_nazwy"
             wynik.append((f"{wpis.id}/{indeks:02d}:{nazwa}", enm))

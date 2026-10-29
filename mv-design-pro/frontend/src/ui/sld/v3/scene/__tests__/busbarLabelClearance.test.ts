@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KD-8 poz. 5 — PODPIS SZYNY NIE SIADA NA SZYNIE + PRÓG CZYTELNOŚCI OPISÓW.
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../../ui/sld/v2/station-rozdzielnia/contract';
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy aggregacji readiness Station ↔ DER (Faza F).
  */

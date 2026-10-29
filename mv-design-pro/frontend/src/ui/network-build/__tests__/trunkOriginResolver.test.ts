@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * trunkOriginResolver — testy rozpoznania punktu wyprowadzenia odcinka SN.
  */

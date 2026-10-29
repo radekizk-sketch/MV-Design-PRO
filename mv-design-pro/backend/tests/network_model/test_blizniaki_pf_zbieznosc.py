@@ -17,11 +17,11 @@ from __future__ import annotations
 import pytest
 from enm.canonical_analysis import _execute_power_flow
 
-from tests.golden.parytet_assemblera.harness import _bieg, sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import _bieg, kopie_sieci_enm_rejestru
 
 _BLIZNIAKI = [
     (klucz, enm)
-    for klucz, enm in sieci_enm_rejestru()
+    for klucz, enm in kopie_sieci_enm_rejestru()
     if klucz.startswith("B-BENCH/") and any(b.voltage_kv for b in enm.buses)
 ]
 #: Bliźniaki wyłącznie zwarciowe (bez odbiorów/rozpływu): rozpływ liczy się w 1 iteracji

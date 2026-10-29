@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * layerToggle tests — P0.6 F3 foundation (13 layer toggle).
  */

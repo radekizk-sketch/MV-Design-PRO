@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Słownik tolerancji napięcia sieci nN frontu PRZYPIĘTY do jedynego źródła backendu
  * (`backend/src/network_model/core/voltage_factor.py`: `TOLERANCJE_NAPIECIA_NN`,

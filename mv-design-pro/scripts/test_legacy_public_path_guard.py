@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import legacy_public_path_guard as guard
@@ -2442,6 +2443,57 @@ def test_guard_rejects_pakiet_l_frontend_export_under_other_path(
     ), violations
 
 
+def test_pakiet_l_definicja_ts_bez_eksportu_tez_jest_naruszeniem(tmp_path, monkeypatch) -> None:
+    """Stan faktyczny od 2026-09-30 (jedna definicja `_ts_definicja`, szersza): skasowany
+    symbol wracajacy jako NIEeksportowana deklaracja (`const`, `let`, `declare`) tez jest
+    wskrzeszeniem — komentarz nad `PAKIET_L_WPISY` mowi to samo."""
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    wpis = _wpisy("frontend", "definicja", "globalnie")[0]
+    for i, ksztalt in enumerate(("const {n} = 1;\n", "let {n} = 1;\n", "declare const {n}: 1;\n")):
+        _zapisz(fe / "ui2" / "nowy" / f"lokalny{i}.ts", ksztalt.format(n=wpis.symbol))
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    for i in range(3):
+        assert any(f"lokalny{i}.ts" in v and wpis.symbol in v for v in violations), violations
+
+
+def test_symbole_ts_skanowane_zbiorem_sa_slowami() -> None:
+    """`_deklaracje_ts` zwraca nazwy `\\w+`; symbol z innym znakiem (np. `$`, kropka) nigdy
+    nie trafilby do zbioru — bramka bylaby slepa na niego. Kazdy symbol obu list jest slowem."""
+    symbole = [
+        w.symbol
+        for w in guard.PAKIET_L_WPISY
+        if w.warstwa == "frontend" and w.rodzaj == "definicja" and w.zasieg == "globalnie"
+    ] + list(guard.KASACJA_SCL_CIM_DEFINICJE_FRONTEND)
+    assert symbole
+    assert [s for s in symbole if not re.fullmatch(r"\w+", s or "")] == []
+
+
+_PREFIKSY_TS = ("", "export ", "export default ", "declare ", "export declare ", "  export ")
+_SLOWA_TS = ("function", "const", "let", "var", "class", "interface", "type", "enum", "of")
+_NAZWY_TS = ("Abc", "AbcDef", "Abc$x", "Ab", "Abc_1")
+
+
+@pytest.mark.parametrize("prefiks", _PREFIKSY_TS)
+@pytest.mark.parametrize("asynch", ("", "async "))
+@pytest.mark.parametrize("slowo", _SLOWA_TS)
+@pytest.mark.parametrize("rozdzial", (" ", "\n  ", "\t"))
+def test_deklaracje_ts_rowne_wzorcowi_jednej_nazwy(prefiks, asynch, slowo, rozdzial) -> None:
+    """Iloczyn cech: prefiks (eksport/domyslny/declare/wciecie) × async × slowo kluczowe
+    (takze niebedace deklaracja) × odstep przed nazwa (spacja, nowa linia, tabulator) ×
+    nazwa wobec dluzszego slowa i znaku `$`. Zbior z jednego przejscia (`_deklaracje_ts`)
+    musi dawac dla kazdej nazwy ten sam werdykt co wzorzec tej nazwy (`_ts_definicja`)."""
+    for deklarowana in _NAZWY_TS:
+        tekst = f"// x\n{prefiks}{asynch}{slowo}{rozdzial}{deklarowana} = 1;\nconst inny = 2;\n"
+        zbior = guard._deklaracje_ts(tekst)
+        for nazwa in ("Abc", "AbcDef", "Ab", "Abc_1", "inny", "x"):
+            assert (nazwa in zbior) == (guard._ts_definicja(nazwa).search(tekst) is not None), (
+                tekst,
+                nazwa,
+            )
+
+
 @pytest.mark.parametrize("wpis", _wpisy("frontend", "definicja", "plik"), ids=_id)
 def test_guard_pakiet_l_frontend_file_scoped_definition(tmp_path, monkeypatch, wpis) -> None:
     _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
@@ -3466,3 +3518,22 @@ def test_partia10_nazwa_w_komentarzu_nie_jest_definicja(tmp_path, monkeypatch) -
         '"""Dawne `calculate_curve_points` skasowane."""\n# CurveDefinition\nX = "CurveStandard"\n'
     )
     assert guard.check_partia10_kasacja_resurrection() == []
+
+
+def test_wezly_drzewa_rowne_ast_walk_i_swieze_po_zmianie_tresci(tmp_path, monkeypatch) -> None:
+    """`wezly` (pamiec odwiedzin na drzewo) daje te same wezly w tej samej kolejnosci co
+    `ast.walk`, a plik zmieniony miedzy biegami bramki daje NOWE drzewo i nowe wezly:
+    wskrzeszenie dopisane po czystym biegu w tym samym procesie jest wykryte."""
+    import ast as _ast
+
+    drzewo = _ast.parse("class A:\n    def f(self):\n        return [x for x in ()]\n")
+    assert guard.wezly(drzewo) == tuple(_ast.walk(drzewo))
+    assert guard.wezly(drzewo) is guard.wezly(drzewo)
+
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    wpis = _wpisy("backend", "definicja", "globalnie")[0]
+    plik = src / "nowy" / "modul.py"
+    _zapisz(plik, "WARTOSC = 1\n")
+    assert not any(wpis.symbol in v for v in guard.check_pakiet_l_resurrection())
+    _zapisz(plik, "WARTOSC = 1\n" + _py_definicja(wpis.symbol))
+    assert any("modul.py" in v and wpis.symbol in v for v in guard.check_pakiet_l_resurrection())

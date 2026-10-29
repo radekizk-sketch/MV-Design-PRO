@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F10.5 — testy jednostkowe `protectionTopologyValidation.ts`
  * (SLD_CAD_SPEC_V3 §20.2 `protection_function_topology_validation`).

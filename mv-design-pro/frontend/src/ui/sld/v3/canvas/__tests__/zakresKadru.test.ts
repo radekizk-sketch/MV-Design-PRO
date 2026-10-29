@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2 (UI-04, §0.1) — ZAKRES KADRU: cel → refy rysunku, poziom minimalny,
  * przeszkody (sąsiedzi) i ścieżka kontekstu. Jedno źródło przynależności

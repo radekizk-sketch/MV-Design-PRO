@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA S9-10 — spłata długu `S9-4-DLUG-INSPEKTOR` (rejestr konfliktów):
  * scena NIE przenosiła refu POJEDYNCZEGO aparatu (`ComposedSymbolInstance.

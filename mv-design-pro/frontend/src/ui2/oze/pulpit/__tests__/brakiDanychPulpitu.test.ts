@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Braki danych i werdykty sekcji pulpitu OZE — parytet z KODEM backendu (karta #145).
  *

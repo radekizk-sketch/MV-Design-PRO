@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * routing.ts tests — ortogonalne L-shape routing (PR-5).
  *

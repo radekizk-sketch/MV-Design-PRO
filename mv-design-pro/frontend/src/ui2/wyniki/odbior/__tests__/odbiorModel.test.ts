@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy modelu okna „Zgodność powykonawcza" (karta U4 P45): serializacja żądania
  * (wiersze → JSON `pomiary`, CSV → tekst surowy), walidacja tolerancji przed

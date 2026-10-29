@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy walidacji syntaktycznej property-grid dla źródła (Source) — CV-4.3 K7.
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Etykiety rodzajów elementów (karta UI-02 PANEL-DOLNY): komplet polskich etykiet bez
  * angielskiego zapasu. Kompletność unii pilnuje typ `Record<ElementType, string>`; test

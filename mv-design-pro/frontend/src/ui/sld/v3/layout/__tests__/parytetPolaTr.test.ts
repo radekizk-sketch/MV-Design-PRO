@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PARYTET MARKER ↔ OSTRZEŻENIE — pole transformatorowe SN.
  * Karta KOMPLETNOSC-POLA-TR §0 pkt 2/4.

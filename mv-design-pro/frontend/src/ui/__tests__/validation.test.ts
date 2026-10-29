@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Property Grid Validation Tests — P12b
  *

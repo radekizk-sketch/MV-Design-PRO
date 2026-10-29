@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2b×K3 — STRONY ZASTĘPCZE ETYKIETY PRZY SYMBOLU (`OwnedLabel.obrysKotwicy`).
  *

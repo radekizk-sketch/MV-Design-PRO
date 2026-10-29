@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Wiersze konfiguratora stacji wprost z modelu / projekcji nN — przekaźniki, pola pomiarowe,
  * rozdzielnice i odbiory nN (dawniej stałe puste listy bazowe i stałe bez źródła).

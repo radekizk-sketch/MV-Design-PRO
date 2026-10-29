@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Wytwórcy DER Z MODELU → warsztat (`useStationDerStore`) → ocena zgodności.
  *

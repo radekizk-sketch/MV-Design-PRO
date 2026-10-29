@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-1 — ŁAMANIE ARKUSZA, warstwa planera (`layout/sheetRows.ts`).
  * Karta S9-1, decyzja `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`, audyt C-1.

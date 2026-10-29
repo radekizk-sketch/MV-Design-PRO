@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2 (§0.4) — historia kadrów „Poprzedni widok": stos ograniczony, bez
  * podwójnych wpisów tego samego kadru, zdejmowanie od wierzchu, operacje

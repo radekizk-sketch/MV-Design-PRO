@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Test domykający deklarację „zbiór ZAMKNIĘTY" map etykiet okna N-1
  * (reguła KLASA-NIE-INSTANCJA pkt 4: deklaracja bez testu = fałszywa pewność).

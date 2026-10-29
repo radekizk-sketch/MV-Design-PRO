@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F5a — wyrocznie kompozycji stacji z prymitywów (SLD_CAD_SPEC_V3 §3,
  * §11 rozszerzenie F5). Syntetyki budowane na PRAWDZIWYM potoku

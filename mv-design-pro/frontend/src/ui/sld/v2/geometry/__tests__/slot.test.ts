@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * slot.ts tests — kanoniczna alokacja pozycji hierarchicznych (PR-5).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * buildTechCardSubject — testy adaptera kontraktu karty technicznej.
  *

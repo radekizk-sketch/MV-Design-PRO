@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * §16-v3 — biegi OTWARTE (REBUILD_PLAN_V3 „Dług otwarty" pkt 1).
  *

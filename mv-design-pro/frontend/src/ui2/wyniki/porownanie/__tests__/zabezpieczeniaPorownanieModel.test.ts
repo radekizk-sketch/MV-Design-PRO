@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Model porównania A/B zabezpieczeń — wejście to PRAWDZIWE odpowiedzi backendu dla sieci
  * złotej G08 (wariant A i wariant B z wydłużoną magistralą, urządzenia i nastawy z modelu),

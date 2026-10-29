@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy czystych adapterów okna „Krzywe zdolności P–Q" (karta P41). Weryfikują
  * odwzorowanie odpowiedzi backendu na struktury prezentacji (opcje doboru, punkty

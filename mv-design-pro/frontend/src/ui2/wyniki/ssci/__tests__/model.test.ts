@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy mapowania modelu okna „Stabilność SSCI" (ui2/wyniki/ssci/model). Sprawdzają
  * czyste helpery: wynik → wiersze metryk audytowych (kolejność, wartości PL, uczciwe „—"

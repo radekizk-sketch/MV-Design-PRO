@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Lustro granic pasm napięciowych ↔ jedno źródło backendu (karta PASMO-1KV).
  *

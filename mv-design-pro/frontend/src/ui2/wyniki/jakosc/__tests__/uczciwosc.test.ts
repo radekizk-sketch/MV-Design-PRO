@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Uczciwość natychmiastowa (2026-09-23) — etykieta kontroli pasma wiarygodności.
  * Backend (`analysis/sanity_bounds/short_circuit_bounds.py::CREDIBLE`, wspólna stała

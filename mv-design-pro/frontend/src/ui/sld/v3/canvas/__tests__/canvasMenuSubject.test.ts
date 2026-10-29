@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA S9-5 — TEMAT MENU KONTEKSTOWEGO (jednostkowo, bez renderu).
  *

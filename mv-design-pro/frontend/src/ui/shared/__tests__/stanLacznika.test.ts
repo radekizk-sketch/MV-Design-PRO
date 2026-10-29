@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA W5-C — lustro frontu reguł stanu łącznika (`ui/shared/stanLacznika.ts`).
  *
