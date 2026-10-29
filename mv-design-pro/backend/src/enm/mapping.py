@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -66,7 +66,12 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.uziemienie import ETYKIETA_PL_WARIANTU_UZIEMIENIA, StanAwsc
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
+    TRYBY_IEC60909,
+    StanAwsc,
+    tryb_doziemienia_typu,
+)
 from network_model.core.voltage_factor import (
     Scenario,
     TolerancjaNapieciaNn,
@@ -104,6 +109,7 @@ from .models import (
     EnergyNetworkModel,
     FuseBranch,
     Generator,
+    GroundingConfig,
     OverheadLine,
     Source,
     SwitchBranch,
@@ -538,6 +544,9 @@ class SiecZerowa:
     y0_bus: np.ndarray
     trace: list[dict]
     przyczyny: dict[str, BrakWynikuZerowego]
+    #: Węzeł grafu → sieć SN (``enm.uziemienie_sekcji.UziemienieSekcji``) — źródło trybu
+    #: doziemienia wiersza zwarcia jednofazowego (``doziemienie_sieci``); węzły poza SN — brak.
+    sekcje_wezlow: dict[str, Any] = field(default_factory=dict)
 
 
 #: Rodzaj bocznika składowej zerowej w węźle — klasyfikacja przyczyn braku wyniku zerowego.
@@ -547,6 +556,15 @@ class SiecZerowa:
 _BOCZNIK_REZYSTANCYJNY = "rezystancyjny"
 _BOCZNIK_DLAWIK = "dlawik"
 _BOCZNIK_POJEMNOSC = "pojemnosc"
+
+
+def _rodzaj_bocznika_uzwojenia(konfiguracja: GroundingConfig | None) -> str:
+    """Rodzaj bocznika punktu neutralnego uzwojenia transformatora z trybu doziemienia jego
+    konfiguracji (``tryb_doziemienia_typu`` — ten sam predykat ``TRYBY_IEC60909`` co zespół
+    uziemiający): bezpośrednio i przez rezystor — rezystancyjny; przez dławik — dławik
+    (sieć skompensowana, prąd doziemny poza zakresem IEC 60909-0)."""
+    tryb = tryb_doziemienia_typu(None if konfiguracja is None else konfiguracja.type)
+    return _BOCZNIK_REZYSTANCYJNY if tryb in TRYBY_IEC60909 else _BOCZNIK_DLAWIK
 
 
 def _assemble_zero_sequence_y0(
@@ -687,10 +705,13 @@ def _assemble_zero_sequence_y0(
         # bocznik). ``b0_siemens_per_km`` jest już w S/km (NIE μS/km — w
         # odróżnieniu od ``b_us_per_km`` zgodnej, patrz nazwa pola i
         # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
-        # Zero fabrykacji: gdy b0 brak, bocznik pomijany (bez zmiany, jak dla
-        # r0/x0 wyżej) — NIE podstawiamy zera znaczącego fizycznie.
-        if branch.b0_siemens_per_km is not None:
-            y0_shunt_total_s = branch.b0_siemens_per_km * branch.length_km
+        # Zero fabrykacji: B′0 z modelu albo z wartości roboczej odcinka SN (zasada nr 4 —
+        # ``skladowa_zerowa_galezi``: kabel B′0 = B′1, linia B′0 = 0,4·B′1, dana przyjęta
+        # ESTIMATED); bez podstawy (nN, WN, B′1 nieznane) bocznik pomijany — NIE podstawiamy
+        # zera znaczącego fizycznie.
+        b0_siemens_per_km = skladowa.b0_s_per_km
+        if b0_siemens_per_km is not None:
+            y0_shunt_total_s = b0_siemens_per_km * branch.length_km
             y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
             y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
             y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
@@ -706,17 +727,27 @@ def _assemble_zero_sequence_y0(
                 formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
                 inputs={
                     "ref_id": branch.ref_id,
-                    "b0_siemens_per_km": branch.b0_siemens_per_km,
+                    "b0_siemens_per_km": b0_siemens_per_km,
                     "length_km": branch.length_km,
                     "z_base_ohm": z_base_ohm,
                 },
                 substitution=(
-                    f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
+                    f"B0={b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
                     f"{y0_shunt_total_s:.6g} S; Y0 na każdym końcu = "
                     f"j{y0_shunt_per_end_pu.imag:.6g} pu (na {nazwa_szyny[branch.from_bus_ref]} "
                     f"i {nazwa_szyny[branch.to_bus_ref]})"
                 ),
                 result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
+                notes=(
+                    "Wartość robocza (zasada nr 4): "
+                    + "; ".join(
+                        f"{etykieta} = {wartosc:.6g} S/km — {zalozenie}"
+                        for _, etykieta, zalozenie, wartosc in skladowa.robocze_b0
+                    )
+                    + "."
+                    if skladowa.robocze_b0
+                    else None
+                ),
             )
 
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
@@ -900,17 +931,22 @@ def _assemble_zero_sequence_y0(
                 y0_bus[lv_idx, lv_idx] += y_pu
         elif model.connection == ZeroSeqConnection.HV_SHUNT_GROUND:
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
-            boczniki.setdefault(node_index[hv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
+            boczniki.setdefault(node_index[hv_id], set()).add(
+                _rodzaj_bocznika_uzwojenia(trafo.hv_neutral)
+            )
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
-            boczniki.setdefault(node_index[lv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
+            boczniki.setdefault(node_index[lv_id], set()).add(
+                _rodzaj_bocznika_uzwojenia(trafo.lv_neutral)
+            )
 
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające sieci SN — bocznik
     # Z_0 = Z_0,TU + 3·Z_N (IEC 60909-0: impedancja punktu neutralnego wchodzi do obwodu
     # zerowego jako 3·Z_N) z JEDYNEJ prawdy o uziemieniu sekcji (``uziemienie_sieci``).
     # Ślad niesie OBA stany AWSC (Z.13: jX w spoczynku, R‖jX po załączeniu), Y0 — stan
     # przypadku obliczeniowego.
-    for sekcja in uziemienie_sieci(enm) if enm.zespoly_uziemiajace else ():
+    sekcje_sn = uziemienie_sieci(enm)
+    for sekcja in sekcje_sn:
         for punkt in sekcja.punkty:
             if punkt.rodzaj != "zespol_uziemiajacy":
                 continue
@@ -974,6 +1010,13 @@ def _assemble_zero_sequence_y0(
             **{t.ref_id: nazwa_elementu(t, "transformers") for t in enm.transformers},
         },
     )
+    _przyczyny_trybu_sieci_sn(
+        przyczyny,
+        sekcje=sekcje_sn,
+        stan_awsc=stan_awsc,
+        ref_to_node_id=ref_to_node_id,
+        node_index=node_index,
+    )
 
     # Kotwica numeryczna WYŁĄCZNIE dla węzłów składowych bez żadnego bocznika (droga prądu
     # zerowego zablokowana grupą połączeń, podsieć pływająca): ich blok Y0 jest osobliwy,
@@ -1025,6 +1068,12 @@ def _assemble_zero_sequence_y0(
         y0_bus=y0_bus,
         trace=tracer.to_list() + transformer_trace + slad_odniesienia.to_list(),
         przyczyny=przyczyny,
+        sekcje_wezlow={
+            wezel: sekcja
+            for sekcja in sekcje_sn
+            for szyna in sekcja.szyny
+            if (wezel := ref_to_node_id.get(szyna)) is not None and wezel in node_index
+        },
     )
 
 
@@ -1203,6 +1252,71 @@ def _przyczyny_braku_zerowej(
     return wynik, kotwice
 
 
+def _przyczyny_trybu_sieci_sn(
+    przyczyny: dict[str, BrakWynikuZerowego],
+    *,
+    sekcje: tuple[Any, ...],
+    stan_awsc: StanAwsc,
+    ref_to_node_id: dict[str, str],
+    node_index: dict[str, int],
+) -> None:
+    """Węzły sieci SN izolowanej i skompensowanej NIE są liczone jako zwarcie IEC 60909 —
+    niezależnie od tego, czy ich składowa Y0 styka się z bocznikiem rezystancyjnym (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru 2026-10-29: sposób pracy punktu
+    neutralnego nie przechodzi przez jeden model Z1 + Z2 + Z0).
+
+    Klasyfikacja składowych Y0 (``_przyczyny_braku_zerowej``) widzi bocznik, nie sieć:
+    punkt neutralny uzwojenia YNyn przez dławik łączy sieć SN szeregowo z uziemioną siecią
+    110 kV, więc składowa ma bocznik rezystancyjny źródła i węzeł SN byłby liczony prądem
+    zwarciowym przez 3·jX_L. Tryb doziemienia sieci SN (``UziemienieSekcji.tryb_doziemienia``
+    — ten sam predykat ``TRYBY_IEC60909`` co rodzaj bocznika) rozstrzyga o węzłach SN:
+    tryb izolowany/kompensowany → ``poza_zakresem_iec60909`` (także zamiast ``brak_drogi`` —
+    sieć SN ma pojemności doziemne, a brak ich danych nazywa wynik doziemienia). Przyczyna
+    ``brak_danych`` zostaje (brak danych składowej zerowej to brak podstawy, nie tryb).
+    Sieć z odmową nazwaną punktu uziemienia nie ma trybu — klasyfikacja bez zmian."""
+    from .uziemienie_sekcji import KOD_PRZYCZYNY_BRAKU_ZEROWEJ, STATUS_PRZYCZYNY_BRAKU_ZEROWEJ
+
+    for sekcja in sekcje:
+        if sekcja.odmowy:
+            continue
+        tryb = sekcja.tryb_doziemienia(stan_awsc)
+        if tryb in TRYBY_IEC60909:
+            continue
+        opis = (
+            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem "
+            "pojemnościowym sieci I_C"
+            if tryb == "izolowany"
+            else "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania "
+            "składowej czynnej): prąd doziemienia jest prądem resztkowym "
+            "√(I_w² + (I_C − I_L)²)"
+        )
+        brak = BrakWynikuZerowego(
+            przyczyna="poza_zakresem_iec60909",
+            kod=KOD_PRZYCZYNY_BRAKU_ZEROWEJ["poza_zakresem_iec60909"],
+            status=STATUS_PRZYCZYNY_BRAKU_ZEROWEJ["poza_zakresem_iec60909"],
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    f"{opis}, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione "
+                    "przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu "
+                    "pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+                ),
+                przyczyna_pl=(
+                    "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych "
+                    "i skompensowanych."
+                ),
+            ),
+            elementy=(),
+        )
+        for szyna in sekcja.szyny:
+            wezel = ref_to_node_id.get(szyna)
+            if wezel is None or wezel not in node_index:
+                continue
+            obecna = przyczyny.get(wezel)
+            if obecna is not None and obecna.przyczyna == "brak_danych":
+                continue
+            przyczyny[wezel] = brak
+
+
 @dataclass(frozen=True)
 class WynikSieciZerowej:
     """Z0-bus sieci składowej zerowej i nazwane przyczyny braku wyniku zerowego per węzeł
@@ -1217,6 +1331,8 @@ class WynikSieciZerowej:
     #: stanami AWSC, pominięte Z0 źródeł na szynie SN i domknięcie bloków bez drogi do ziemi.
     #: Bieg doziemny publikuje go jako ``raw_result["siec_zerowa"]``.
     slad: tuple[dict, ...] = ()
+    #: Węzeł grafu → sieć SN (tryb doziemienia wiersza zwarcia jednofazowego).
+    sekcje_wezlow: dict[str, Any] = field(default_factory=dict)
 
 
 def zbuduj_siec_zerowa(
@@ -1232,6 +1348,7 @@ def zbuduj_siec_zerowa(
         z0_bus=_odwroc_y0(siec.size, siec.y0_bus),
         przyczyny=dict(siec.przyczyny),
         slad=tuple(siec.trace),
+        sekcje_wezlow=dict(siec.sekcje_wezlow),
     )
 
 

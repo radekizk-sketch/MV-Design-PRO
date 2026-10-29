@@ -11,7 +11,7 @@ from application.analyses.v126_gotowosc import (
     odpowiedz_gotowosci,
     uzupelnij_parametry_z_modelu,
 )
-from application.analyses.v126_katalog import katalog_do_dict
+from application.analyses.v126_katalog import POZIOMY_IZOLACJI_IEC60071, katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
 from application.execution import wykonawca_biegow
 from domain.execution import StanBiegu, stan_biegu
@@ -528,20 +528,11 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             "tdd_ieee519_default_percent": 5.0,
             "individual_percent": {"5": 6.0, "7": 5.0, "11": 3.5, "13": 3.0},
         },
-        # Tabela IEC 60071-1 zduplikowana z solverem FROZEN (`_insulation`,
-        # `network_model/solvers/v126_academic.py:1653-1658` — B-01, solver
-        # nie eksportuje jej, więc nie ma jak wskazać tu jednego źródła).
-        # STRAŻNIK PARYTETU: `tests/test_v126_bil_parytet.py` uruchamia
-        # `_insulation` przez publiczne wejście solvera (`V126AcademicSolver
-        # .run(INSULATION_COORDINATION, …)`) i porównuje `bil_kv`/
-        # `short_duration_50hz_kv` każdego wiersza z tabelą poniżej — zmiana w
-        # JEDNYM miejscu bez drugiego daje czerwień (karta W3-E, KLASA §4:
-        # deklaracja bez testu = fałszywa pewność).
+        # Tabela IEC 60071-1 — JEDNO źródło: stała solvera `POZIOMY_IZOLACJI_IEC60071`
+        # (re-eksport karty analiz); dawna kopia literałów z testem parytetu skasowana.
         "insulation-levels": [
-            {"u_m_kv": 12.0, "bil_kv": 75.0, "short_duration_50hz_kv": 28.0},
-            {"u_m_kv": 17.5, "bil_kv": 95.0, "short_duration_50hz_kv": 38.0},
-            {"u_m_kv": 24.0, "bil_kv": 125.0, "short_duration_50hz_kv": 50.0},
-            {"u_m_kv": 36.0, "bil_kv": 170.0, "short_duration_50hz_kv": 70.0},
+            {"u_m_kv": u_m, "bil_kv": bil, "short_duration_50hz_kv": w}
+            for u_m, bil, w in POZIOMY_IZOLACJI_IEC60071
         ],
         "reliability-defaults": [
             {"element": "linia_napowietrzna_sn", "lambda_per_km_year": 0.08, "mttr_h": 3.5},

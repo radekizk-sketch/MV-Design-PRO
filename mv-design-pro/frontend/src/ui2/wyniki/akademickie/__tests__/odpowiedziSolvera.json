@@ -16,6 +16,15 @@
   },
   "earth_fault_detection": {
     "alternative_method": "fifth_harmonic",
+    "dane_przyjete": [
+      {
+        "jakosc": "ESTIMATED",
+        "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
+        "powod_pl": "Brak danych przekaźnika — przyjęto komplet metod (watometryczna, admitancyjna, stanów przejściowych, 5. harmonicznej); dostępność metody zalecanej do potwierdzenia kartą przekaźnika.",
+        "wartosc": null
+      }
+    ],
+    "kompletnosc_dowodu": "NIEPELNY",
     "neutral_grounding": "petersen_tuned",
     "recommended_method": "wattmetric",
     "relay_support_status": "spelniony",
@@ -29,7 +38,8 @@
       "i5_multiplier": null,
       "p0_set_w": 1.0,
       "u0_start_percent": 5.0
-    }
+    },
+    "settings_podstawa_pl": "Nastawy startowe metody zalecanej (U0 5 % U_f, P0 1 W, krotność 5. harmonicznej 3) — propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości normowej; dobór ostateczny w projekcie zabezpieczeń."
   },
   "earthing_safety": {
     "fault_clearing_time_s": 0.5,
@@ -75,7 +85,7 @@
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.7,
+        "hosting_capacity_mw": 7.0,
         "monte_carlo_n": 64
       }
     ],
@@ -87,11 +97,65 @@
     }
   },
   "insulation_coordination": {
-    "arresters": [],
+    "arresters": [
+      {
+        "bil_margin_percent": 35.714,
+        "bil_protected_kv": 95.0,
+        "dane_przyjete": [
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+            "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "wartosc": {
+              "jednostka": "kV",
+              "wartosc": 17.5
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+            "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "wartosc": {
+              "jednostka": "kV",
+              "wartosc": 21.0
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
+            "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "wartosc": {
+              "jednostka": "kV",
+              "wartosc": 24.5
+            }
+          }
+        ],
+        "earth_fault_factor": 1.732051,
+        "earth_fault_factor_zrodlo_pl": "solver doziemienia sieci SN",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "location_bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+        "margin_ok": true,
+        "mcov_kv": 17.5,
+        "mcov_ok": true,
+        "mcov_required_kv": 17.5,
+        "network_neutral": "kompensowany",
+        "predicted_tov_kv": 17.5,
+        "short_duration_50hz_kv": 38.0,
+        "tov_10s_kv": 24.5,
+        "tov_duration": "dlugotrwale",
+        "tov_ok": true,
+        "u_m_kv": 17.5,
+        "u_rated_kv": 21.0,
+        "u_residual_at_10ka_kv": 70.0,
+        "uzasadnienie_pl": "U_TOV = k·U_m/√3 = 1,732·17,5/√3 = 17,50 kV (solver doziemienia sieci SN); U_c = 17,50 kV ≥ U_TOV = 17,50 kV (doziemienie długotrwałe, IEC 60099-5) — spełnione; margines (BIL − U_res)/U_res = (95 − 70,00)/70,00 = 35,7 % ≥ 20 % (IEC 60071-2; BIL 95 kV — IEC 60071-1 tab. 2, najbliższy znormalizowany U_m ≥ 17,5 kV) — spełnione.",
+        "verification_status": "spelniony"
+      }
+    ],
+    "kompletnosc_dowodu": "NIEPELNY",
     "sanity": {
-      "checks_passed": 0,
+      "checks_passed": 3,
       "checks_total": 3,
-      "status": "dane niekompletne",
+      "status": "w paśmie wiarygodności",
       "violations": []
     }
   },
@@ -105,6 +169,8 @@
     }
   },
   "neutral_earthing_design": {
+    "active_component_a": 0.0129,
+    "active_component_awsc_a": null,
     "branches_contributing": [
       {
         "b0_siemens_per_km": 0.00012,
@@ -117,23 +183,30 @@
     "branches_missing_b0": [],
     "c0_farad": 1.527887e-06,
     "capacitive_earth_fault_current_a": 12.4708,
+    "coil_current_model_a": 14.9482,
     "coil_current_rating_a": 12.4708,
     "coil_inductance_h": 2.21048532,
     "coil_reactance_ohm": 694.4444,
+    "dane_przyjete": [],
     "design_mode": "petersen_coil",
-    "detuning_assumed": 0.05,
+    "detuning_model": -0.19866,
+    "kompletnosc_dowodu": "PELNY",
     "network_line_voltage_kv": 15.0,
     "neutral_earthing_type": "petersen_coil",
-    "residual_current_at_detuning_a": 0.623538,
-    "residual_current_at_resonance_a": 0.0,
-    "residual_damping_assumed": 0.0,
+    "residual_current_a": 2.477474,
+    "residual_current_at_resonance_a": 0.012901,
+    "residual_current_awsc_a": null,
     "sanity": {
-      "checks_passed": 4,
-      "checks_total": 4,
+      "checks_passed": 3,
+      "checks_total": 3,
       "status": "w paśmie wiarygodności",
       "violations": []
     },
-    "tuning_status": "dostrojony"
+    "tuning_status": "rozstrojony_poza_10pct",
+    "zastrzezenia_pl": [
+      "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna I_w zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
+      "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+    ]
   },
   "opf_loss_lcc": {
     "annual_co2_kg": 119225.92,
@@ -1646,254 +1719,254 @@
     },
     "trv_curve": [
       {
-        "envelope_kv": 0.68182,
+        "envelope_kv": 0.79545,
         "t_us": 2.0,
-        "u_trv_kv": 8.8286
+        "u_trv_kv": 10.30003
       },
       {
-        "envelope_kv": 1.36364,
+        "envelope_kv": 1.59091,
         "t_us": 4.0,
-        "u_trv_kv": 9.32241
+        "u_trv_kv": 10.87614
       },
       {
-        "envelope_kv": 2.04545,
+        "envelope_kv": 2.38636,
         "t_us": 6.0,
-        "u_trv_kv": 10.11971
+        "u_trv_kv": 11.80632
       },
       {
-        "envelope_kv": 2.72727,
+        "envelope_kv": 3.18182,
         "t_us": 8.0,
-        "u_trv_kv": 11.1922
+        "u_trv_kv": 13.05756
       },
       {
-        "envelope_kv": 3.40909,
+        "envelope_kv": 3.97727,
         "t_us": 10.0,
-        "u_trv_kv": 12.50602
-      },
-      {
-        "envelope_kv": 4.09091,
-        "t_us": 12.0,
-        "u_trv_kv": 14.02268
+        "u_trv_kv": 14.59036
       },
       {
         "envelope_kv": 4.77273,
+        "t_us": 12.0,
+        "u_trv_kv": 16.35979
+      },
+      {
+        "envelope_kv": 5.56818,
         "t_us": 14.0,
-        "u_trv_kv": 15.69996
+        "u_trv_kv": 18.31661
       },
       {
-        "envelope_kv": 5.45455,
+        "envelope_kv": 6.36364,
         "t_us": 16.0,
-        "u_trv_kv": 17.49299
+        "u_trv_kv": 20.40849
       },
       {
-        "envelope_kv": 6.13636,
+        "envelope_kv": 7.15909,
         "t_us": 18.0,
-        "u_trv_kv": 19.35534
+        "u_trv_kv": 22.58123
       },
       {
-        "envelope_kv": 6.81818,
+        "envelope_kv": 7.95455,
         "t_us": 20.0,
-        "u_trv_kv": 21.24003
+        "u_trv_kv": 24.78004
       },
       {
-        "envelope_kv": 7.5,
+        "envelope_kv": 8.75,
         "t_us": 22.0,
-        "u_trv_kv": 23.10069
-      },
-      {
-        "envelope_kv": 8.18182,
-        "t_us": 24.0,
-        "u_trv_kv": 24.89252
-      },
-      {
-        "envelope_kv": 8.86364,
-        "t_us": 26.0,
-        "u_trv_kv": 26.5733
+        "u_trv_kv": 26.95081
       },
       {
         "envelope_kv": 9.54545,
+        "t_us": 24.0,
+        "u_trv_kv": 29.04127
+      },
+      {
+        "envelope_kv": 10.34091,
+        "t_us": 26.0,
+        "u_trv_kv": 31.00218
+      },
+      {
+        "envelope_kv": 11.13636,
         "t_us": 28.0,
-        "u_trv_kv": 28.10428
+        "u_trv_kv": 32.78833
       },
       {
-        "envelope_kv": 10.22727,
+        "envelope_kv": 11.93182,
         "t_us": 30.0,
-        "u_trv_kv": 29.451
+        "u_trv_kv": 34.3595
       },
       {
-        "envelope_kv": 10.90909,
+        "envelope_kv": 12.72727,
         "t_us": 32.0,
-        "u_trv_kv": 30.58391
+        "u_trv_kv": 35.68123
       },
       {
-        "envelope_kv": 11.59091,
+        "envelope_kv": 13.52273,
         "t_us": 34.0,
-        "u_trv_kv": 31.479
-      },
-      {
-        "envelope_kv": 12.27273,
-        "t_us": 36.0,
-        "u_trv_kv": 32.11819
-      },
-      {
-        "envelope_kv": 12.95455,
-        "t_us": 38.0,
-        "u_trv_kv": 32.48959
-      },
-      {
-        "envelope_kv": 13.63636,
-        "t_us": 40.0,
-        "u_trv_kv": 32.58767
+        "u_trv_kv": 36.7255
       },
       {
         "envelope_kv": 14.31818,
+        "t_us": 36.0,
+        "u_trv_kv": 37.47122
+      },
+      {
+        "envelope_kv": 15.11364,
+        "t_us": 38.0,
+        "u_trv_kv": 37.90453
+      },
+      {
+        "envelope_kv": 15.90909,
+        "t_us": 40.0,
+        "u_trv_kv": 38.01894
+      },
+      {
+        "envelope_kv": 16.70455,
         "t_us": 42.0,
-        "u_trv_kv": 32.41319
+        "u_trv_kv": 37.81539
       },
       {
-        "envelope_kv": 15.0,
+        "envelope_kv": 17.5,
         "t_us": 44.0,
-        "u_trv_kv": 31.97311
+        "u_trv_kv": 37.30197
       },
       {
-        "envelope_kv": 15.68182,
+        "envelope_kv": 18.29545,
         "t_us": 46.0,
-        "u_trv_kv": 31.28026
-      },
-      {
-        "envelope_kv": 16.36364,
-        "t_us": 48.0,
-        "u_trv_kv": 30.35291
-      },
-      {
-        "envelope_kv": 17.04545,
-        "t_us": 50.0,
-        "u_trv_kv": 29.21426
-      },
-      {
-        "envelope_kv": 17.72727,
-        "t_us": 52.0,
-        "u_trv_kv": 27.89181
-      },
-      {
-        "envelope_kv": 18.40909,
-        "t_us": 54.0,
-        "u_trv_kv": 26.41661
+        "u_trv_kv": 36.49364
       },
       {
         "envelope_kv": 19.09091,
+        "t_us": 48.0,
+        "u_trv_kv": 35.41173
+      },
+      {
+        "envelope_kv": 19.88636,
+        "t_us": 50.0,
+        "u_trv_kv": 34.08331
+      },
+      {
+        "envelope_kv": 20.68182,
+        "t_us": 52.0,
+        "u_trv_kv": 32.54044
+      },
+      {
+        "envelope_kv": 21.47727,
+        "t_us": 54.0,
+        "u_trv_kv": 30.81938
+      },
+      {
+        "envelope_kv": 22.27273,
         "t_us": 56.0,
-        "u_trv_kv": 24.82254
+        "u_trv_kv": 28.95963
       },
       {
-        "envelope_kv": 19.77273,
+        "envelope_kv": 23.06818,
         "t_us": 58.0,
-        "u_trv_kv": 23.14541
-      },
-      {
-        "envelope_kv": 20.45455,
-        "t_us": 60.0,
-        "u_trv_kv": 21.42219
-      },
-      {
-        "envelope_kv": 21.13636,
-        "t_us": 62.0,
-        "u_trv_kv": 19.69008
-      },
-      {
-        "envelope_kv": 21.81818,
-        "t_us": 64.0,
-        "u_trv_kv": 17.98569
-      },
-      {
-        "envelope_kv": 22.5,
-        "t_us": 66.0,
-        "u_trv_kv": 16.34426
-      },
-      {
-        "envelope_kv": 23.18182,
-        "t_us": 68.0,
-        "u_trv_kv": 14.79882
+        "u_trv_kv": 27.00298
       },
       {
         "envelope_kv": 23.86364,
+        "t_us": 60.0,
+        "u_trv_kv": 24.99256
+      },
+      {
+        "envelope_kv": 24.65909,
+        "t_us": 62.0,
+        "u_trv_kv": 22.97176
+      },
+      {
+        "envelope_kv": 25.45455,
+        "t_us": 64.0,
+        "u_trv_kv": 20.98331
+      },
+      {
+        "envelope_kv": 26.25,
+        "t_us": 66.0,
+        "u_trv_kv": 19.0683
+      },
+      {
+        "envelope_kv": 27.04545,
+        "t_us": 68.0,
+        "u_trv_kv": 17.26529
+      },
+      {
+        "envelope_kv": 27.84091,
         "t_us": 70.0,
-        "u_trv_kv": 13.37957
-      },
-      {
-        "envelope_kv": 24.54545,
-        "t_us": 72.0,
-        "u_trv_kv": 12.11322
-      },
-      {
-        "envelope_kv": 25.22727,
-        "t_us": 74.0,
-        "u_trv_kv": 11.02245
-      },
-      {
-        "envelope_kv": 25.90909,
-        "t_us": 76.0,
-        "u_trv_kv": 10.12555
-      },
-      {
-        "envelope_kv": 26.59091,
-        "t_us": 78.0,
-        "u_trv_kv": 9.43601
-      },
-      {
-        "envelope_kv": 27.27273,
-        "t_us": 80.0,
-        "u_trv_kv": 8.96241
-      },
-      {
-        "envelope_kv": 27.95455,
-        "t_us": 82.0,
-        "u_trv_kv": 8.70828
+        "u_trv_kv": 15.6095
       },
       {
         "envelope_kv": 28.63636,
+        "t_us": 72.0,
+        "u_trv_kv": 14.13209
+      },
+      {
+        "envelope_kv": 29.43182,
+        "t_us": 74.0,
+        "u_trv_kv": 12.85953
+      },
+      {
+        "envelope_kv": 30.22727,
+        "t_us": 76.0,
+        "u_trv_kv": 11.81314
+      },
+      {
+        "envelope_kv": 31.02273,
+        "t_us": 78.0,
+        "u_trv_kv": 11.00868
+      },
+      {
+        "envelope_kv": 31.81818,
+        "t_us": 80.0,
+        "u_trv_kv": 10.45615
+      },
+      {
+        "envelope_kv": 32.61364,
+        "t_us": 82.0,
+        "u_trv_kv": 10.15966
+      },
+      {
+        "envelope_kv": 33.40909,
         "t_us": 84.0,
-        "u_trv_kv": 8.67213
+        "u_trv_kv": 10.11749
       },
       {
-        "envelope_kv": 29.31818,
+        "envelope_kv": 34.20455,
         "t_us": 86.0,
-        "u_trv_kv": 8.84765
+        "u_trv_kv": 10.32226
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 88.0,
-        "u_trv_kv": 9.22388
+        "u_trv_kv": 10.76119
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 90.0,
-        "u_trv_kv": 9.78561
+        "u_trv_kv": 11.41655
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 92.0,
-        "u_trv_kv": 10.51381
+        "u_trv_kv": 12.26611
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 94.0,
-        "u_trv_kv": 11.38613
+        "u_trv_kv": 13.28382
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 96.0,
-        "u_trv_kv": 12.37748
+        "u_trv_kv": 14.4404
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 98.0,
-        "u_trv_kv": 13.46068
+        "u_trv_kv": 15.70412
       },
       {
-        "envelope_kv": 30.0,
+        "envelope_kv": 35.0,
         "t_us": 100.0,
-        "u_trv_kv": 14.60706
+        "u_trv_kv": 17.04157
       }
     ],
     "trv_margin_percent": -1194.8609,

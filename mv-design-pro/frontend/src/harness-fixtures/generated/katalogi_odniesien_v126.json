@@ -25,6 +25,16 @@
   "insulation-levels": {
     "items": [
       {
+        "bil_kv": 40.0,
+        "short_duration_50hz_kv": 10.0,
+        "u_m_kv": 3.6
+      },
+      {
+        "bil_kv": 60.0,
+        "short_duration_50hz_kv": 20.0,
+        "u_m_kv": 7.2
+      },
+      {
         "bil_kv": 75.0,
         "short_duration_50hz_kv": 28.0,
         "u_m_kv": 12.0
@@ -43,6 +53,21 @@
         "bil_kv": 170.0,
         "short_duration_50hz_kv": 70.0,
         "u_m_kv": 36.0
+      },
+      {
+        "bil_kv": 250.0,
+        "short_duration_50hz_kv": 95.0,
+        "u_m_kv": 52.0
+      },
+      {
+        "bil_kv": 325.0,
+        "short_duration_50hz_kv": 140.0,
+        "u_m_kv": 72.5
+      },
+      {
+        "bil_kv": 550.0,
+        "short_duration_50hz_kv": 230.0,
+        "u_m_kv": 123.0
       }
     ],
     "namespace": "insulation-levels"

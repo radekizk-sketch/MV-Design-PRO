@@ -24,6 +24,8 @@
  */
 
 import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
+import type { DanaPrzyjeta } from '../../../ui2/wyniki/wzorzec/werdykt';
+import type { DoziemienieSieci } from '../../results-inspector/types';
 
 /**
  * Krzywa P(f) (eng.9, NC RfG art. 13/15) — kształt 1:1 z backendu
@@ -386,9 +388,22 @@ export interface UziemienieSekcjiSn {
   readonly punkty: readonly PunktUziemieniaSn[];
   readonly b0_s: number;
   readonly galezie_bez_b0: readonly string[];
+  /** Σ I_C [A]; `null`, gdy choć jedna gałąź sieci nie ma B′0 — częściowa suma nie jest wynikiem. */
   readonly prad_pojemnosciowy_a: number | null;
+  /** B′0 odcinków z wartości roboczej (jakość ESTIMATED; reguła kabel B′0 = B′1, linia 0,4·B′1). */
+  readonly dane_przyjete_pojemnosci: readonly DanaPrzyjeta[];
+  /** Σ nastaw dławików w ruchu [A] (nastawa albo wartość robocza) — nie prąd I_L przy doziemieniu. */
   readonly prad_dlawikow_a: number | null;
+  /** v = (I_C − I_L)/I_C z solvera doziemienia (I_L z impedancją zerową TU); dodatnie — niedokompensowanie. */
   readonly rozstrojenie: number | null;
+  /** Tryb doziemienia sieci (AWSC w spoczynku) — jedno odwzorowanie `network_model.core.uziemienie`. */
+  readonly tryb_doziemienia: DoziemienieSieci['tryb'];
+  /** Doziemienie metaliczne sieci (AWSC w spoczynku) — solver `doziemienie_sn`. */
+  readonly doziemienie: DoziemienieSieci;
+  /** Choć jeden punkt w ruchu ma automatykę wymuszania składowej czynnej (Z.13). */
+  readonly ma_awsc: boolean;
+  /** Doziemienie po załączeniu AWSC (sieć nadal kompensowana); `null` bez AWSC. */
+  readonly doziemienie_awsc_zalaczony: DoziemienieSieci | null;
   readonly ostrzezenia: readonly string[];
   readonly odmowy: readonly string[];
   readonly kompletnosc: 'PELNY' | 'NIEPELNY';

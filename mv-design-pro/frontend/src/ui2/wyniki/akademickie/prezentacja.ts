@@ -254,6 +254,25 @@ const SPELNIONY: MapaWerdyktu = {
   niespelniony: { tekst: 'niespełnione', istotnosc: 'err' },
 };
 
+/** Koordynacja izolacji: miejsce z U_m powyżej tabeli IEC 60071-1 solvera — brak podstawy. */
+const SPELNIONY_IZOLACJI: MapaWerdyktu = {
+  ...SPELNIONY,
+  brak_podstawy: { tekst: 'brak podstawy poziomu izolacji', istotnosc: 'neutral' },
+};
+
+/** Tryb doziemienia sieci (`network_model.core.uziemienie.TrybDoziemienia`) po polsku. */
+const TRYB_DOZIEMIENIA_IZOLACJI: MapaWerdyktu = {
+  izolowany: { tekst: 'izolowany', istotnosc: 'neutral' },
+  kompensowany: { tekst: 'kompensowany', istotnosc: 'neutral' },
+  rezystor: { tekst: 'przez rezystor', istotnosc: 'neutral' },
+  bezposrednie: { tekst: 'bezpośrednio', istotnosc: 'neutral' },
+};
+
+const CZAS_DOZIEMIENIA_IZOLACJI: MapaWerdyktu = {
+  dlugotrwale: { tekst: 'długotrwale', istotnosc: 'neutral' },
+  do_wylaczenia: { tekst: 'do wyłączenia (≤ 10 s)', istotnosc: 'neutral' },
+};
+
 /**
  * Status węzła w sekcji audytowej jakości energii — `NIE_OCENIONO` (dawniej „zgodny"
  * nawet dla szyny bez danych). Jedyna etykieta: „Ocena niewykonana", kolor neutralny.
@@ -491,7 +510,7 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'arresters',
       kluczStatusu: 'verification_status',
-      mapa: SPELNIONY,
+      mapa: SPELNIONY_IZOLACJI,
       wartoscSpelniona: 'spelniony',
       obiektyDopelniacz: 'miejsc zainstalowania ograniczników',
     },
@@ -503,7 +522,20 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         kluczRef: 'location_bus_ref',
         etykietaRef: 'Miejsce zainstalowania',
         kolumny: [
-          { klucz: 'u_m_kv', etykieta: 'Najwyższe napięcie urządzenia', jednostka: 'kV' },
+          { klucz: 'u_m_kv', etykieta: 'Napięcie najwyższe sieci U_m', jednostka: 'kV' },
+          {
+            klucz: 'network_neutral',
+            etykieta: 'Sposób pracy punktu neutralnego',
+            mapaStatusu: TRYB_DOZIEMIENIA_IZOLACJI,
+          },
+          { klucz: 'earth_fault_factor', etykieta: 'Współczynnik zwarcia doziemnego k' },
+          { klucz: 'predicted_tov_kv', etykieta: 'Przepięcie dorywcze przy doziemieniu U_TOV', jednostka: 'kV' },
+          {
+            klucz: 'tov_duration',
+            etykieta: 'Czas trwania doziemienia',
+            mapaStatusu: CZAS_DOZIEMIENIA_IZOLACJI,
+          },
+          { klucz: 'mcov_required_kv', etykieta: 'Wymagane napięcie trwałej pracy', jednostka: 'kV' },
           { klucz: 'mcov_kv', etykieta: 'Trwałe dopuszczalne napięcie pracy', jednostka: 'kV' },
           { klucz: 'u_rated_kv', etykieta: 'Napięcie znamionowe ogranicznika', jednostka: 'kV' },
           {
@@ -516,13 +548,18 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             etykieta: 'Wytrzymałość udarowa piorunowa izolacji',
             jednostka: 'kV',
           },
-          { klucz: 'predicted_tov_kv', etykieta: 'Przewidywane przepięcie dorywcze', jednostka: 'kV' },
+          {
+            klucz: 'tov_10s_kv',
+            etykieta: 'Wytrzymałość ogranicznika na przepięcie dorywcze 10 s',
+            jednostka: 'kV',
+          },
           { klucz: 'bil_margin_percent', etykieta: 'Margines ochrony izolacji', jednostka: '%' },
           {
             klucz: 'verification_status',
-            etykieta: 'Kryterium ≥ 20 %',
-            mapaStatusu: SPELNIONY,
+            etykieta: 'Margines ≥ 20 %, napięcie pracy i przepięcie dorywcze',
+            mapaStatusu: SPELNIONY_IZOLACJI,
           },
+          { klucz: 'uzasadnienie_pl', etykieta: 'Uzasadnienie oceny (kryteria, wartości, podstawa)' },
         ],
       },
     ],
@@ -725,15 +762,38 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       { sciezka: 'coil_reactance_ohm', etykieta: 'Reaktancja dławika gaszącego', jednostka: 'Ω' },
       { sciezka: 'coil_inductance_h', etykieta: 'Indukcyjność dławika gaszącego', jednostka: 'H' },
       { sciezka: 'coil_current_rating_a', etykieta: 'Prąd znamionowy dławika', jednostka: 'A' },
-      { sciezka: 'detuning_assumed', etykieta: 'Przyjęty stopień rozstrojenia' },
       {
-        sciezka: 'residual_current_at_detuning_a',
-        etykieta: 'Prąd resztkowy przy rozstrojeniu',
+        sciezka: 'coil_current_model_a',
+        etykieta: 'Prąd dławika modelu przy doziemieniu (z impedancją Z₀ transformatora uziemiającego)',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'detuning_model',
+        etykieta: 'Rozstrojenie dławika modelu v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)',
+      },
+      {
+        sciezka: 'residual_current_a',
+        etykieta: 'Prąd resztkowy dławika modelu',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'active_component_a',
+        etykieta: 'Składowa czynna prądu resztkowego',
         jednostka: 'A',
       },
       {
         sciezka: 'residual_current_at_resonance_a',
-        etykieta: 'Prąd resztkowy w rezonansie',
+        etykieta: 'Prąd resztkowy przy dostrojeniu do rezonansu',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'residual_current_awsc_a',
+        etykieta: 'Prąd resztkowy po załączeniu automatyki wymuszania składowej czynnej',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'active_component_awsc_a',
+        etykieta: 'Składowa czynna po załączeniu automatyki wymuszania składowej czynnej',
         jednostka: 'A',
       },
       { sciezka: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca punktu neutralnego', jednostka: 'Ω' },
@@ -751,6 +811,25 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         sciezka: 'resultant_earth_fault_current_a',
         etykieta: 'Wynikowy prąd zwarcia doziemnego',
         jednostka: 'A',
+      },
+      {
+        // Sprawdzenie cieplne rezystora (IEC 60909-0 §12, IEEE Std C57.32): wielkości
+        // rezystora rozstrzygającego — o najkrótszym czasie dopuszczalnym.
+        sciezka: 'thermal_check.i_resistor_a',
+        etykieta: 'Największy prąd rezystora przy doziemieniu (maksymalny współczynnik napięciowy IEC 60909, z impedancją Z₀ transformatora uziemiającego)',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'thermal_check.i_thermal_a',
+        etykieta: 'Prąd zastępczy cieplny rezystora I_th',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'thermal_check.permissible_time_s',
+        etykieta: 'Dopuszczalny czas trwania doziemienia dla rezystora',
+        jednostka: 's',
+        odniesienieSciezka: 'thermal_check.clearing_time_s',
+        odniesienieEtykieta: 'czas wyłączenia',
       },
       {
         sciezka: 'thermal_check.energy_dissipated_j',
@@ -778,10 +857,11 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
           },
           { klucz: 'coil_current_rating_a', etykieta: 'Prąd znamionowy dławika', jednostka: 'A' },
           {
-            klucz: 'residual_current_at_detuning_a',
-            etykieta: 'Prąd resztkowy przy rozstrojeniu',
+            klucz: 'residual_current_a',
+            etykieta: 'Prąd resztkowy dławika modelu',
             jednostka: 'A',
           },
+          { klucz: 'detuning_model', etykieta: 'Rozstrojenie dławika modelu' },
           { klucz: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca', jednostka: 'Ω' },
           {
             klucz: 'resultant_earth_fault_current_a',
@@ -789,6 +869,23 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             jednostka: 'A',
           },
           { klucz: 'tuning_status', etykieta: 'Dostrojenie dławika', mapaStatusu: MAPA_DOBORU_UZIEMIENIA },
+        ],
+      },
+      {
+        // Sprawdzenie cieplne KAŻDEGO rezystora punktu neutralnego w ruchu (zespół z kilkoma
+        // rezystorami — np. dwa transformatory uziemiające sekcji): wiersz na rezystor.
+        sciezka: 'thermal_check.resistors',
+        tytul: 'Obciążalność cieplna rezystorów punktu neutralnego',
+        kluczRef: 'ref',
+        etykietaRef: 'Rezystor punktu neutralnego',
+        tylkoGdyObecna: true,
+        kolumny: [
+          { klucz: 'r_ohm', etykieta: 'Rezystancja', jednostka: 'Ω' },
+          { klucz: 'i_resistor_a', etykieta: 'Największy prąd rezystora', jednostka: 'A' },
+          { klucz: 'i_thermal_a', etykieta: 'Prąd zastępczy cieplny I_th', jednostka: 'A' },
+          { klucz: 'permissible_time_s', etykieta: 'Czas dopuszczalny', jednostka: 's' },
+          { klucz: 'energy_dissipated_j', etykieta: 'Energia wydzielona', jednostka: 'J' },
+          { klucz: 'energy_rating_j', etykieta: 'Energia znamionowa', jednostka: 'J' },
         ],
       },
     ],
@@ -876,8 +973,14 @@ export const NAZWY_BRAKUJACYCH_POL: Readonly<Record<string, string>> = {
   b0_siemens_per_km: 'susceptancja doziemna gałęzi (b₀)',
   nominal_kv: 'napięcie znamionowe sieci',
   ner_clearing_time_s: 'czas wyłączenia zwarcia doziemnego',
+  'uziemienie_sn.sieci.c_max': 'współczynnik napięciowy c_max sieci (IEC 60909-0 tab. 1)',
+  breaker_rated_voltage_kv: 'napięcie znamionowe wyłącznika U_r',
+  trv_natural_frequency_hz: 'częstotliwość własna napięcia powrotnego obwodu',
+  trv_tau_s: 'stała czasowa napięcia powrotnego obwodu',
+  inrush_multiple_in: 'krotność prądu załączania transformatora',
   'uziemienie_sn.sieci.rezystory': 'rezystor punktu neutralnego zespołu uziemiającego (R, I_n, t_n)',
-  'uziemienie_sn.sieci.prad_dlawikow_a': 'prąd dławika gaszącego w układzie dławik ‖ rezystor',
+  'uziemienie_sn.sieci.punkty_neutralne':
+    'punkty uziemienia sieci w ruchu (impedancje dławika, rezystora i transformatora uziemiającego)',
   converter_control_bandwidth_hz: 'pasmo pętli regulacji prądu przekształtnika',
   converter_ref: 'przekształtnik do zbadania',
   benchmark_references: 'wartości referencyjne sieci odniesienia',

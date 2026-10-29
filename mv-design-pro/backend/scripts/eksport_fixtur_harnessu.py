@@ -1190,9 +1190,11 @@ PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
     "earth_fault_detection": {
         "relay_methods": ["wattmetric", "admittance"],
     },
-    # Rozstrojenie dławika 5 % — dana projektanta (ENEA Zeszyt 1 §16 s. 30: praca w punkcie
-    # rezonansowym zakazana); schemat projektu (dławik) wynika z zespołu uziemiającego sceny.
-    "neutral_earthing_design": {"petersen_detuning": 0.05},
+    # Bez parametrów projektanta (karta UX-04, warunek odbioru 2026-10-29): rozstrojenie
+    # i prąd resztkowy liczy solver doziemienia dla DŁAWIKA MODELU sceny (zespół uziemiający
+    # na szynie SN GPZ) — dawne „rozstrojenie dławika 5 %” z formularza nadpisywało model;
+    # jedyny parametr karty (czas wyłączenia) dotyczy wyłącznie rezystora, którego scena nie ma.
+    "neutral_earthing_design": {},
     "transient_trv": {
         "breaker_rated_voltage_kv": 17.5,
         "trv_natural_frequency_hz": 12000,

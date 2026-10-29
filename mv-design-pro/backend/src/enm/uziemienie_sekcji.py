@@ -31,7 +31,7 @@ transformatora, a brak drogi prądu zerowego jest nazwaną przyczyną braku wyni
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from network_model.catalog.governance import Poziom, brakuje_wymaganej_referencji
@@ -40,28 +40,41 @@ from network_model.catalog.mv_zespol_uziemiajacy_catalog import (
     get_all_neutral_earthing_resistor_records,
 )
 from network_model.catalog.wartosci_robocze import (
+    ETYKIETA_B0,
     KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+    POLE_B0,
+    dana_przyjeta_z0,
     wartosc_projektanta,
 )
 from network_model.core.uziemienie import (
     ETYKIETA_PL_WARIANTU_UZIEMIENIA,
+    TRYBY_IEC60909,
     TYP_PUNKTU_NEUTRALNEGO_WARIANTU,
     StanAwsc,
+    TrybDoziemienia,
     TypPunktuNeutralnego,
     WariantUziemieniaSekcji,
+    tryb_doziemienia_wariantu,
 )
+from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rownolegla_ohm,
+    impedancja_z_napiecia_i_mocy_ohm,
     impedancja_zerowa_zespolu_ohm,
     prad_elementu_punktu_neutralnego_a,
     prad_pojemnosciowy_doziemienia_a,
     reaktancja_dlawika_ohm,
     rezystancja_z_pradu_ohm,
-    stopien_rozstrojenia,
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+from network_model.solvers.doziemienie_sn import (
+    DaneDoziemienia,
+    PunktNeutralnyDoziemienia,
+    WynikDoziemienia,
+    oblicz_doziemienie,
+)
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
 from werdykt.proweniencja import FieldQuality
 
@@ -78,6 +91,7 @@ from .models import (
     ZespolUziemiajacy,
 )
 from .nazwy_elementow import nazwa_elementu
+from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .topology import derive
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 
@@ -261,11 +275,19 @@ class RezystorPunktuNeutralnego:
     r: ParametrPunktuNeutralnego
     i_n: ParametrPunktuNeutralnego
     t_n: ParametrPunktuNeutralnego
+    #: Impedancja zerowa w szeregu z rezystorem [Ω/fazę] (droga prądu rezystora przy
+    #: doziemieniu: Z_0/3 + R — sprawdzenie cieplne rezystora wg IEC 60909-0 i prąd
+    #: doziemienia ``doziemienie_sn``): transformator uziemiający zespołu Z_0,TU albo — dla
+    #: rezystora w punkcie neutralnym uzwojenia transformatora sieci — impedancja zerowa
+    #: transformatora Z_T0 (ten sam model co stempel mapowania, ``z0_uzwojenia_ohm``).
+    z0_tu_ohm: complex | None = None
+    #: Parametry Z_0,TU (R0, X0) zespołu — dane przyjęte sprawdzenia cieplnego, gdy robocze.
+    parametry_tu: tuple[ParametrPunktuNeutralnego, ...] = ()
 
     def dane_przyjete(self) -> tuple[DanaPrzyjeta, ...]:
         return tuple(
             _dana_przyjeta_parametru(p, self.nazwa_pl)
-            for p in (self.r, self.i_n, self.t_n)
+            for p in (self.r, self.i_n, self.t_n, *self.parametry_tu)
             if p.roboczy
         )
 
@@ -296,6 +318,14 @@ class PunktUziemienia:
     #: Rezystor punktu neutralnego (gałąź rezystora zespołu albo rezystor uzwojenia TR
     #: uziemionego przez rezystor) — ``None`` bez rezystora.
     rezystor: RezystorPunktuNeutralnego | None = None
+    #: Punkt neutralny uzwojenia transformatora: Z_N z konfiguracji uzwojenia [Ω] (0 —
+    #: bezpośrednio) i impedancja zerowa transformatora Z_T0 [Ω] na napięciu sieci — te same
+    #: wielkości, z których mapowanie stampuje bocznik Z_T0 + 3·Z_N
+    #: (``build_transformer_zero_seq_model``); ``droga_szeregowa`` — obie gwiazdy uziemione
+    #: (YNyn), droga prądu zerowego biegnie dalej przez sieć drugiej strony.
+    z_n_uzwojenia_ohm: complex | None = None
+    z0_uzwojenia_ohm: complex | None = None
+    droga_szeregowa: bool = False
 
     def rezystor_w_ruchu(self, stan_awsc: StanAwsc) -> RezystorPunktuNeutralnego | None:
         """Rezystor punktu, gdy przewodzi w stanie ``stan_awsc`` (odłącznik gałęzi zamknięty)."""
@@ -349,13 +379,31 @@ class PunktUziemienia:
             return None
         return impedancja_zerowa_zespolu_ohm(self.z0_tu_ohm, z_n)
 
+    def tryb_doziemienia(self, stan_awsc: StanAwsc) -> TrybDoziemienia:
+        """Tryb doziemienia punktu (``network_model.core.uziemienie`` — jedno odwzorowanie)."""
+        return tryb_doziemienia_wariantu(self.wariant(stan_awsc))
+
     def bocznik_rezystancyjny(self, stan_awsc: StanAwsc) -> bool:
-        """Bocznik ma składową czynną punktu neutralnego (rezystor, AWSC załączony, wprost) —
-        sieć uziemiona przez małą impedancję w zakresie IEC 60909; sam dławik — nie."""
-        return any(
-            g.rodzaj in ("rezystor", "rezystor_awsc", "bezposrednie")
-            for g in self.galezie_w_ruchu(stan_awsc)
-        )
+        """Bocznik uziemia sieć przez małą impedancję w zakresie IEC 60909 (rezystor, Z.14,
+        wprost). Dławik — także z rezystorem wymuszającym AWSC w stanie załączonym (Z.13) —
+        nie: sieć skompensowana, prąd doziemny to prąd resztkowy, nie zwarciowy. Ten sam
+        predykat ``TRYBY_IEC60909`` co tryb doziemienia sieci."""
+        return self.tryb_doziemienia(stan_awsc) in TRYBY_IEC60909
+
+    def impedancje_doziemienia(self, stan_awsc: StanAwsc) -> tuple[complex, complex | None] | None:
+        """(Z_N, Z_0 w szeregu) punktu w ruchu do prądu doziemienia ``doziemienie_sn``:
+        zespół — Z_N gałęzi w ruchu i Z_0,TU; uzwojenie — Z_N konfiguracji i Z_T0. ``None`` —
+        punkt bez drogi (odmowa, gałęzie odłączone, uzwojenie izolowane)."""
+        if self.odmowa_pl is not None:
+            return None
+        if self.rodzaj == "uzwojenie_transformatora":
+            if self.z_n_uzwojenia_ohm is None:
+                return None
+            return self.z_n_uzwojenia_ohm, self.z0_uzwojenia_ohm
+        z_n = self.z_n_ohm(stan_awsc)
+        if z_n is None:
+            return None
+        return z_n, self.z0_tu_ohm
 
     def dane_przyjete(self) -> tuple[DanaPrzyjeta, ...]:
         """Wszystkie parametry robocze urządzeń punktu (kompletność danych zespołu)."""
@@ -408,8 +456,9 @@ class UziemienieSekcji:
     szyny: tuple[str, ...]
     napiecie_kv: float
     punkty: tuple[PunktUziemienia, ...]
-    #: Σ B_0 linii i kabli w ruchu z danymi B_0 i baterii kondensatorów w gwieździe uziemionej
-    #: tej sieci [S]; gałęzie bez B_0 wymienione obok.
+    #: Σ B_0 linii i kabli w ruchu (B′0 z modelu albo z wartości roboczej odcinka SN — jedno
+    #: źródło ``enm.skladowa_zerowa_galezi``) i baterii kondensatorów w gwieździe uziemionej
+    #: tej sieci [S]; gałęzie bez podstawy B′0 (B′1 nieznane) wymienione obok.
     b0_s: float
     galezie_bez_b0: tuple[str, ...]
     ostrzezenia: tuple[str, ...] = field(default=())
@@ -417,6 +466,9 @@ class UziemienieSekcji:
     #: Y0 = Y1) i ich B_0 [S] — składnik ``b0_s`` (karta UX-04/POLE-BKR-MODEL; przynależność
     #: do sieci tym samym predykatem co gałęzie: szyna baterii w składowej galwanicznej).
     baterie_b0: tuple[tuple[str, float], ...] = field(default=())
+    #: Odcinki tej sieci, których B′0 jest wartością roboczą (zasada nr 4): (ref, nazwa,
+    #: B′0 [S/km], założenie) — dana przyjęta ``ESTIMATED`` każdego wyniku opartego na I_C.
+    galezie_b0_robocze: tuple[tuple[str, str, float, str], ...] = field(default=())
 
     @property
     def punkty_w_ruchu(self) -> tuple[PunktUziemienia, ...]:
@@ -445,10 +497,29 @@ class UziemienieSekcji:
 
     @property
     def prad_pojemnosciowy_a(self) -> float | None:
-        """I_C = √3·U_n·B_0 [A]; ``None`` gdy żadna gałąź ani bateria nie wnosi B_0."""
-        if self.b0_s <= 0.0:
+        """I_C = √3·U_n·B_0 [A]; ``None`` gdy żadna gałąź ani bateria nie wnosi B_0 albo gdy
+        choć jeden odcinek sieci nie ma podstawy B′0 — suma bez niego zaniżałaby I_C (wynik
+        częściowy nie jest wynikiem; ``galezie_bez_b0`` nazywa odcinki)."""
+        if self.b0_s <= 0.0 or self.galezie_bez_b0:
             return None
         return prad_pojemnosciowy_doziemienia_a(self.napiecie_kv, self.b0_s)
+
+    def dane_przyjete_pojemnosci(self) -> tuple[DanaPrzyjeta, ...]:
+        """Dane przyjęte ``ESTIMATED`` B′0 odcinków z wartości roboczej — jedna na (założenie,
+        wartość) z listą odcinków (rozmiar rośnie z liczbą TYPÓW odcinków, nie ich liczbą)."""
+        grupy: dict[tuple[str, float], list[str]] = {}
+        for _, nazwa, b0, zalozenie in self.galezie_b0_robocze:
+            grupy.setdefault((zalozenie, b0), []).append(nazwa)
+        return tuple(
+            dana_przyjeta_z0(
+                pole=POLE_B0,
+                etykieta=ETYKIETA_B0,
+                zalozenie=zalozenie,
+                wartosc=b0,
+                miejsce_pl=", ".join(sorted(nazwy)),
+            )
+            for (zalozenie, b0), nazwy in sorted(grupy.items())
+        )
 
     def prad_dlawikow_a(self) -> float | None:
         """Σ I_L dławików w ruchu [A] (nastawa albo wartość robocza)."""
@@ -460,13 +531,85 @@ class UziemienieSekcji:
         ]
         return sum(prady) if prady else None
 
+    def tryb_doziemienia(self, stan_awsc: StanAwsc = "spoczynek") -> TrybDoziemienia:
+        """Tryb doziemienia sieci (``network_model.core.uziemienie`` — jedno odwzorowanie)."""
+        return tryb_doziemienia_wariantu(self.wariant(stan_awsc))
+
+    def dane_doziemienia(
+        self,
+        stan_awsc: StanAwsc = "spoczynek",
+        *,
+        z1_ohm: complex | None = None,
+        z2_ohm: complex | None = None,
+        z0_ohm: complex | None = None,
+        ikss_iec_a: float | None = None,
+        z_f_ohm: complex | None = None,
+    ) -> DaneDoziemienia:
+        """Wejście solvera doziemienia tej sieci w stanie AWSC ``stan_awsc``: B_0 sieci (ten
+        sam co ``prad_pojemnosciowy_a``; odcinki bez podstawy B′0 — ``None`` z nazwą) i punkty
+        neutralne w ruchu (Z_N, Z_0 w szeregu); impedancje składowych i Ik1 punktu zwarcia —
+        z rdzenia IEC 60909 (tryby uziemione przez małą impedancję)."""
+        brak_b0 = (
+            "odcinki sieci bez susceptancji zerowej B′0 i bez podstawy wartości roboczej "
+            f"(susceptancja zgodna B′1 nieznana): {', '.join(self.galezie_bez_b0)}"
+            if self.galezie_bez_b0
+            else None
+        )
+        punkty: list[PunktNeutralnyDoziemienia] = []
+        for punkt in self.punkty_w_ruchu:
+            impedancje = punkt.impedancje_doziemienia(stan_awsc)
+            if impedancje is None:
+                continue
+            punkty.append(
+                PunktNeutralnyDoziemienia(
+                    nazwa_pl=punkt.nazwa_pl, z_n_ohm=impedancje[0], z0_tu_ohm=impedancje[1]
+                )
+            )
+        return DaneDoziemienia(
+            tryb=self.tryb_doziemienia(stan_awsc),
+            napiecie_kv=self.napiecie_kv,
+            b0_s=None if brak_b0 else self.b0_s,
+            punkty=tuple(punkty),
+            brak_b0_pl=brak_b0,
+            dlawik_w_ruchu=any(
+                g.rodzaj == "dlawik"
+                for p in self.punkty_w_ruchu
+                for g in p.galezie_w_ruchu(stan_awsc)
+            )
+            or any(
+                p.rodzaj == "uzwojenie_transformatora" and p.typ_uzwojenia == "petersen_coil"
+                for p in self.punkty_w_ruchu
+            ),
+            droga_szeregowa=any(p.droga_szeregowa for p in self.punkty_w_ruchu),
+            z1_ohm=z1_ohm,
+            z2_ohm=z2_ohm,
+            z0_ohm=z0_ohm,
+            ikss_iec_a=ikss_iec_a,
+            z_f_ohm=z_f_ohm,
+        )
+
+    def doziemienie(self, stan_awsc: StanAwsc = "spoczynek") -> WynikDoziemienia:
+        """Doziemienie metaliczne sieci bez impedancji składowych punktu zwarcia (prąd sieci
+        izolowanej, skompensowanej i rezystorowej nie zależy od miejsca doziemienia)."""
+        return oblicz_doziemienie(self.dane_doziemienia(stan_awsc))
+
+    def dane_przyjete_doziemienia(
+        self, stan_awsc: StanAwsc = "spoczynek"
+    ) -> tuple[DanaPrzyjeta, ...]:
+        """Dane przyjęte ESTIMATED, które kształtują prąd doziemienia w stanie ``stan_awsc``:
+        B′0 odcinków z wartości roboczej (I_C) i parametry gałęzi punktów neutralnych w ruchu
+        z Z_0,TU (te same, co bocznik składowej zerowej)."""
+        return (
+            *self.dane_przyjete_pojemnosci(),
+            *(d for p in self.punkty_w_ruchu for d in p.dane_przyjete_bocznika(stan_awsc)),
+        )
+
     @property
     def rozstrojenie(self) -> float | None:
-        i_c = self.prad_pojemnosciowy_a
-        i_l = self.prad_dlawikow_a()
-        if i_c is None or i_l is None or i_c <= 0.0:
-            return None
-        return stopien_rozstrojenia(i_l, i_c)
+        """v = (I_C − I_L)/I_C w stanie normalnym (AWSC w spoczynku) — z solvera doziemienia
+        (I_L = −Im I_N: prąd dławików przy U0 = U_f z impedancją zerową transformatora
+        uziemiającego); ``None`` bez dławika w ruchu albo bez I_C."""
+        return self.doziemienie("spoczynek").rozstrojenie
 
     def rezystory_w_ruchu(
         self, stan_awsc: StanAwsc = "spoczynek"
@@ -485,21 +628,13 @@ class UziemienieSekcji:
     def dane_przyjete(self) -> tuple[DanaPrzyjeta, ...]:
         return tuple(d for p in self.punkty_w_ruchu for d in p.dane_przyjete())
 
-    def dane_przyjete_dlawikow(self) -> tuple[DanaPrzyjeta, ...]:
-        """Dane przyjęte parametrów, z których wynika ``prad_dlawikow_a`` (te same gałęzie
-        dławika w ruchu i ten sam zbiór ``parametry_z``)."""
-        return tuple(
-            _dana_przyjeta_parametru(par, p.nazwa_pl)
-            for p in self.punkty_w_ruchu
-            for g in p.galezie_w_ruchu("spoczynek")
-            if g.rodzaj == "dlawik"
-            for par in g.parametry_z
-            if par.roboczy
-        )
-
     @property
     def kompletnosc(self) -> Literal["PELNY", "NIEPELNY"]:
-        return "NIEPELNY" if self.dane_przyjete() else "PELNY"
+        """Kompletność danych sieci: punkty uziemienia ORAZ pojemność doziemna (I_C liczone
+        z B′0 roboczego nie jest potwierdzonym dowodem — kontrakt werdyktu §3)."""
+        if self.dane_przyjete() or self.galezie_b0_robocze:
+            return "NIEPELNY"
+        return "PELNY"
 
     def opis_pl(self, stan_awsc: StanAwsc = "spoczynek") -> str:
         wariant = self.wariant(stan_awsc)
@@ -511,6 +646,11 @@ class UziemienieSekcji:
             for p in self.punkty_w_ruchu
         )
         return f"Punkt neutralny sieci {self.napiecie_kv:g} kV: {etykieta} ({punkty})."
+
+    @property
+    def ma_awsc(self) -> bool:
+        """Choć jeden punkt uziemienia w ruchu ma automatykę wymuszania składowej czynnej."""
+        return any(p.ma_awsc for p in self.punkty_w_ruchu)
 
     def to_dict(self, stan_awsc: StanAwsc = "spoczynek") -> dict[str, Any]:
         return {
@@ -524,8 +664,19 @@ class UziemienieSekcji:
             "galezie_bez_b0": list(self.galezie_bez_b0),
             "baterie_b0": [{"ref": ref, "b0_s": b0} for ref, b0 in self.baterie_b0],
             "prad_pojemnosciowy_a": self.prad_pojemnosciowy_a,
+            "dane_przyjete_pojemnosci": [
+                d.model_dump(mode="json") for d in self.dane_przyjete_pojemnosci()
+            ],
             "prad_dlawikow_a": self.prad_dlawikow_a(),
             "rozstrojenie": self.rozstrojenie,
+            "tryb_doziemienia": self.tryb_doziemienia(stan_awsc),
+            "doziemienie": self.doziemienie(stan_awsc).to_dict(),
+            # Z.13: automatyka wymuszania składowej czynnej — doziemienie także po jej
+            # załączeniu (sieć nadal skompensowana: rośnie składowa czynna I_w); bez AWSC None.
+            "ma_awsc": self.ma_awsc,
+            "doziemienie_awsc_zalaczony": (
+                self.doziemienie("zalaczony").to_dict() if self.ma_awsc else None
+            ),
             "ostrzezenia": list(self.ostrzezenia),
             "odmowy": list(self.odmowy),
             "kompletnosc": self.kompletnosc,
@@ -828,6 +979,7 @@ def punkt_zespolu(zu: ZespolUziemiajacy, u_kv: float) -> PunktUziemienia:
         galezie.extend(_galaz_dlawika(zu.dlawik, u_kv, parametry))
     if zu.rezystor is not None:
         galaz_r, rezystor = _galaz_rezystora(zu.rezystor, u_kv, parametry, zu.ref_id, nazwa)
+        rezystor = replace(rezystor, z0_tu_ohm=z0_tu, parametry_tu=(r0, x0))
         galezie.append(galaz_r)
     odmowa: str | None = None
     if zu.uziemienie_bezposrednie:
@@ -915,6 +1067,11 @@ def _punkty_uzwojen(
                 f"{nazwa_elementu(trafo, 'transformers')}, uzwojenie "
                 f"{'górne' if strona == 'HV' else 'dolne'}"
             )
+            # Z_T0 [Ω] na napięciu sieci — ta sama baza co stempel bocznika w mapowaniu
+            # (Y0 = Z_base(U_n szyny)/Z0: z0_pu na S_base przeliczone bazą szyny).
+            assert model.z_t0_pu is not None
+            z0_uzwojenia = model.z_t0_pu * impedancja_z_napiecia_i_mocy_ohm(u_kv, S_BASE_MVA)
+            rezystor = _rezystor_uzwojenia(cfg, u_kv, trafo.ref_id, nazwa)
             wynik.append(
                 PunktUziemienia(
                     rodzaj="uzwojenie_transformatora",
@@ -922,7 +1079,12 @@ def _punkty_uzwojen(
                     bus_ref=trafo.hv_bus_ref if strona == "HV" else trafo.lv_bus_ref,
                     nazwa_pl=nazwa,
                     typ_uzwojenia=typ,
-                    rezystor=_rezystor_uzwojenia(cfg, u_kv, trafo.ref_id, nazwa),
+                    rezystor=(
+                        None if rezystor is None else replace(rezystor, z0_tu_ohm=z0_uzwojenia)
+                    ),
+                    z_n_uzwojenia_ohm=model.zn_hv_ohm if strona == "HV" else model.zn_lv_ohm,
+                    z0_uzwojenia_ohm=z0_uzwojenia,
+                    droga_szeregowa=model.connection == ZeroSeqConnection.SERIES_THROUGH,
                 )
             )
     return wynik
@@ -969,23 +1131,35 @@ def baterie_sieci_sn(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[Sh
     )
 
 
-def _b0_sieci(
-    enm: EnergyNetworkModel, szyny: frozenset[str]
-) -> tuple[float, tuple[str, ...], tuple[tuple[str, float], ...]]:
+def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[
+    float,
+    tuple[str, ...],
+    tuple[tuple[str, float], ...],
+    tuple[tuple[str, str, float, str], ...],
+]:
     b0 = 0.0
     brak: list[str] = []
+    robocze: list[tuple[str, str, float, str]] = []
+    napiecia = napiecia_szyn_kv(enm)
     for galaz in galezie_sieci_sn(enm, szyny):
-        if galaz.b0_siemens_per_km is None:
+        # B′0 z modelu albo wartość robocza odcinka SN — ten sam predykat co bocznik pojemności
+        # w sieci zerowej zwarć (``enm.mapping``) i wejście V12.6.
+        skladowa = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref))
+        if skladowa.b0_s_per_km is None:
             brak.append(galaz.ref_id)
             continue
-        b0 += galaz.b0_siemens_per_km * galaz.length_km
+        b0 += skladowa.b0_s_per_km * galaz.length_km
+        robocze.extend(
+            (galaz.ref_id, nazwa_elementu(galaz, "branches"), wartosc, zalozenie)
+            for _, _, zalozenie, wartosc in skladowa.robocze_b0
+        )
     baterie: list[tuple[str, float]] = []
     for bateria in baterie_sieci_sn(enm, szyny):
         b0_baterii = b0_baterii_s(enm, bateria)
         if b0_baterii > 0.0:
             baterie.append((bateria.ref_id, b0_baterii))
             b0 += b0_baterii
-    return b0, tuple(brak), tuple(baterie)
+    return b0, tuple(brak), tuple(baterie), tuple(robocze)
 
 
 def _ostrzezenia(sekcja: UziemienieSekcji) -> tuple[str, ...]:
@@ -1044,7 +1218,7 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
             if zu.bus_ref in szyny
         ]
         punkty.extend(_punkty_uzwojen(list(enm.transformers), szyny, u_kv))
-        b0, bez_b0, baterie_b0 = _b0_sieci(enm, szyny)
+        b0, bez_b0, baterie_b0, b0_robocze = _b0_sieci(enm, szyny)
         sekcja = UziemienieSekcji(
             szyny=tuple(sorted(szyny)),
             napiecie_kv=u_kv,
@@ -1052,6 +1226,7 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
             b0_s=b0,
             galezie_bez_b0=bez_b0,
             baterie_b0=baterie_b0,
+            galezie_b0_robocze=b0_robocze,
         )
         wynik.append(
             UziemienieSekcji(
@@ -1062,6 +1237,7 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
                 galezie_bez_b0=sekcja.galezie_bez_b0,
                 ostrzezenia=_ostrzezenia(sekcja),
                 baterie_b0=sekcja.baterie_b0,
+                galezie_b0_robocze=sekcja.galezie_b0_robocze,
             )
         )
     return tuple(wynik)

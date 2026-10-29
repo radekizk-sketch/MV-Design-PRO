@@ -192,12 +192,12 @@ def test_grupy_do_dict_zawiera_wylacznie_grupy_z_karta_prezentowana_raz() -> Non
 
 #: (nazwa stałej katalogu, oczekiwana wartość, fragment tekstu solvera FROZEN).
 #: Fragmenty ustalone RĘCZNIE odczytem `network_model/solvers/v126_academic.py`
-#: (karta B02-BE-TESTY §2) — solver zapisuje 5 z tych 10 progów jako BARE INT
+#: (karta B02-BE-TESTY §2) — solver zapisuje część progów jako BARE INT
 #: (bez „.0": `margin >= 20`, `du <= 15`, `thermal_ratio <= 1`, `min_margin >= 10`,
 #: `second_harmonic_percent >= 10`), więc test NIE porównuje `str(wartość)` z
 #: tekstem solvera wprost — to dałoby FAŁSZYWY rozjazd (wartość ta sama, zapis
 #: inny). Pozostałe 5 progów solver zapisuje jako float identyczny z katalogiem.
-#: ŻADEN z 10 literałów nie okazał się nieobecny w solverze (zweryfikowano
+#: ŻADEN z literałów nie okazał się nieobecny w solverze (zweryfikowano
 #: ręcznym odczytem źródła przy pisaniu tej karty) — gdyby był, ten test by to
 #: wykrył i raport karty B02-BE-TESTY opisałby rozjazd (NIE wolno zmieniać
 #: solvera z tej karty — poprawiałby się katalog).
@@ -205,7 +205,6 @@ _PROGI_LITERALOW_SOLVERA: tuple[tuple[str, float, str], ...] = (
     ("THD_U_PNEN50160_PROCENT", THD_U_PNEN50160_PROCENT, "thd > 8.0"),
     ("THD_U_IEEE519_PROCENT", THD_U_IEEE519_PROCENT, "thd > 5.0"),
     ("TDD_IEEE519_PROCENT", TDD_IEEE519_PROCENT, "tdd > 5.0"),
-    ("MARGINES_BIL_MIN_PROCENT", MARGINES_BIL_MIN_PROCENT, "margin >= 20"),
     ("ZAPAD_ROZRUCHU_MAX_PROCENT", ZAPAD_ROZRUCHU_MAX_PROCENT, "du <= 15"),
     ("WSKAZNIK_CIEPLNY_ROZRUCHU_MAX", WSKAZNIK_CIEPLNY_ROZRUCHU_MAX, "thermal_ratio <= 1"),
     ("MARGINES_TRV_MIN_PROCENT", MARGINES_TRV_MIN_PROCENT, "min_margin >= 10"),
@@ -214,9 +213,21 @@ _PROGI_LITERALOW_SOLVERA: tuple[tuple[str, float, str], ...] = (
         UDZIAL_2H_BLOKADA_87T_PROCENT,
         "second_harmonic_percent >= 10",
     ),
-    ("PRAD_RESZTKOWY_MAX_UDZIAL_IC", PRAD_RESZTKOWY_MAX_UDZIAL_IC, "i_res_detuned_a <= 0.1 * ic_a"),
     ("KROTNOSC_OCHRONY_DODATKOWEJ", KROTNOSC_OCHRONY_DODATKOWEJ, "u_touch <= 1.25 * u_touch_allow"),
 )
+
+
+def test_progi_jednego_zrodla_sa_stalymi_solvera() -> None:
+    """Progi przeniesione do solvera (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): katalog nie ma
+    własnej kopii — importuje stałą solvera (jedno źródło zamiast parytetu tekstowego)."""
+    from network_model.solvers import v126_academic
+
+    for nazwa_stalej, stala_katalogu in (
+        ("MARGINES_BIL_MIN_PROCENT", MARGINES_BIL_MIN_PROCENT),
+        ("PRAD_RESZTKOWY_MAX_UDZIAL_IC", PRAD_RESZTKOWY_MAX_UDZIAL_IC),
+    ):
+        assert stala_katalogu is getattr(v126_academic, nazwa_stalej), nazwa_stalej
+        assert f"{nazwa_stalej} =" not in _tekst(Path(v126_katalog.__file__)), nazwa_stalej
 
 
 def test_literaly_progow_katalogu_sa_stosowane_przez_solver_frozen() -> None:

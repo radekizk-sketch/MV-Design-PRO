@@ -367,7 +367,7 @@ def test_create_1f_run_kabel_bez_z0_liczy_sie_z_wartoscia_robocza():
     zwarcia doziemnego — bieg 1F biegnie z wartością roboczą R′0 = 3·R′1, X′0 = 3·X′1,
     a założenie biegu ``branch.z0_wartosc_robocza`` nazywa kabel i wartości. Pozycja
     ``cable-incomplete-test`` nie ma składowej zerowej, a materializacja daje R′1 = 0,253,
-    X′1 = 0,112 Ω/km: R′0 = 0,759, X′0 = 0,336 Ω/km."""
+    X′1 = 0,112 Ω/km: R′0 = 0,759, X′0 = 0,336 Ω/km; B′0 = B′1."""
     from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE
 
     case_id = "canonical-sc-1f-z0-robocze"
@@ -383,7 +383,15 @@ def test_create_1f_run_kabel_bez_z0_liczy_sie_z_wartoscia_robocza():
     (zalozenie,) = (z for z in result.raw_result["zalozenia"] if z.get("code") == KOD_Z0_ROBOCZE)
     assert zalozenie["element_ref"] == "kabel-bez-z0"
     assert "Kabel bez danych zerowych" in zalozenie["message_pl"]
-    assert [d["wartosc"]["wartosc"] for d in zalozenie["dane_przyjete"]] == [0.759, 0.336]
+    # B′0 kabla bez pojemności doziemnej w modelu: B′0 = B′1 (wartość robocza kabla SN z ekranem
+    # nad każdą żyłą — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, zasada nr 4) — trzecia dana.
+    kabel = next(b for b in get_enm(case_id).branches if b.ref_id == "kabel-bez-z0")
+    assert kabel.b0_siemens_per_km is None and kabel.b_siemens_per_km
+    assert [d["wartosc"]["wartosc"] for d in zalozenie["dane_przyjete"]] == [
+        0.759,
+        0.336,
+        pytest.approx(kabel.b_siemens_per_km, rel=1e-12),
+    ]
     assert all(d["jakosc"] == "ESTIMATED" for d in zalozenie["dane_przyjete"])
 
 

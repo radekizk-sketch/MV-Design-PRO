@@ -66,5 +66,6 @@ def prad_pojemnosciowy_doziemienia_a(u_n_kv: float, b0_calkowite_s: float) -> fl
 
 
 def stopien_rozstrojenia(i_l_a: float, i_c_a: float) -> float:
-    """v = (I_L − I_C)/I_C — stopień rozstrojenia kompensacji (v = 0 to rezonans)."""
-    return (i_l_a - i_c_a) / i_c_a
+    """v = (I_C − I_L)/I_C — stopień rozstrojenia kompensacji (v = 0 to rezonans; v > 0
+    niedokompensowanie I_L < I_C, v < 0 przekompensowanie I_L > I_C)."""
+    return (i_c_a - i_l_a) / i_c_a

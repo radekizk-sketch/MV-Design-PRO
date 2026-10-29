@@ -958,15 +958,6 @@
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_losses_self_impedance",
-      "fix_navigation": {
-        "focus": "r0_ohm_per_km",
-        "panel": "inspector",
-        "tab": "parametry"
-      }
-    },
-    {
-      "area": "ANALYSIS",
       "code": "power_flow.unbalanced_magnetising_branch_omitted",
       "fix_navigation": {
         "panel": "inspector",
@@ -1574,7 +1565,7 @@
       }
     }
   ],
-  "count": 184,
+  "count": 183,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

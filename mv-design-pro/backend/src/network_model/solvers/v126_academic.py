@@ -9,17 +9,30 @@ from itertools import combinations
 from typing import Any
 
 import numpy as np
-from network_model.core.uziemienie import ETYKIETA_PL_WARIANTU_UZIEMIENIA
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
+    TrybDoziemienia,
+    tryb_doziemienia_wariantu,
+)
 from network_model.odmowa_danych import (
     RODZAJ_ELEMENT,
     OdmowaWejsciaRdzenia,
     OdwolanieElementu,
     RekordOdmowy,
 )
+from network_model.solvers.doziemienie_sn import (
+    DaneDoziemienia,
+    PunktNeutralnyDoziemienia,
+    WynikDoziemienia,
+    oblicz_doziemienie,
+)
+from network_model.solvers.short_circuit_core import compute_post_fault_quantities
 from solver_input.v126_contracts import (
     PROJEKT_UZIEMIENIA_WARIANTU,
     V126AcademicInput,
     V126AnalysisType,
+    V126PunktNeutralnySnInput,
+    V126RezystorSnInput,
     V126SiecSnInput,
     brak_uziemienia_sn,
 )
@@ -51,7 +64,18 @@ POLA_KARTY_ZCONV: tuple[tuple[str, str], ...] = (
 # wartością jest jawny brak z powodem. `_z_conv_components` bierze częstotliwość
 # podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
 # rodzajów zmieniają się RAZ, razem z wersją.
-V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
+# 1.3 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru 2026-10-29): sposób pracy punktu
+# neutralnego rozstrzyga model doziemienia — projekt dławika i rezystora oraz detekcja
+# doziemień liczą prąd solverem ``doziemienie_sn`` (I_C, prąd resztkowy z I_w, I_R z Z_0,TU
+# albo Z_T0), sprawdzenie cieplne rezystora — prądem największym IEC 60909-0, koordynacja
+# izolacji — przepięciem dorywczym k·U_m/√3 z k trybu (sieć z rezystorem nie jest już
+# „uziemiona skutecznie”), zdolność ogranicznika z karty nie udaje przepięcia sieci.
+V126_SOLVER_VERSION = "v126-academic-whitebox-1.3"
+
+#: Kryterium dostrojenia dławika gaszącego: prąd resztkowy dławika modelu ≤ 10 % prądu
+#: pojemnościowego sieci (kryterium metody V12.6 — praktyka kompensacji rezonansowej, bez
+#: wartości normowej; JEDNO źródło dla solvera i karty analizy `v126_katalog`).
+PRAD_RESZTKOWY_MAX_UDZIAL_IC = 0.10
 
 
 #: Typ projektu uziemienia punktu neutralnego (słownik `PROJEKT_UZIEMIENIA_WARIANTU`) po polsku —
@@ -104,17 +128,21 @@ def _status(ok: bool) -> str:
 
 def _metoda_detekcji_wariantu(wariant: str, *, nadazna: bool) -> str:
     """Kategoria sieci dla wyboru metody detekcji doziemień z wariantu uziemienia sekcji SN
-    (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4).
+    (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4) — przez JEDNĄ tablicę trybów doziemienia
+    (`network_model.core.uziemienie.tryb_doziemienia_wariantu`, ta sama co wiersz zwarcia
+    jednofazowego i projekt uziemienia).
 
-    Sieć skompensowana z regulacją nadążną dławika (strojenie do rezonansu) → „petersen_tuned";
-    dławik bez regulacji nadążnej → „petersen_detuned"; rezystor i dławik‖rezystor (Z.14 —
-    składowa czynna prądu doziemienia) → „resistor"; punkt neutralny bez impedancji → „solid".
+    Sieć skompensowana (dławik, także z AWSC — Z.13) z regulacją nadążną dławika (strojenie do
+    rezonansu) → „petersen_tuned"; bez regulacji nadążnej → „petersen_detuned"; rezystor
+    i dławik‖rezystor (Z.15, Z.14 — składowa czynna prądu doziemienia) → „resistor"; punkt
+    neutralny bez impedancji → „solid"; izolowany → „isolated".
     """
-    if wariant == "izolowany":
+    tryb = tryb_doziemienia_wariantu(wariant)
+    if tryb == "izolowany":
         return "isolated"
-    if wariant in {"dlawik", "dlawik_awsc"}:
+    if tryb == "kompensowany":
         return "petersen_tuned" if nadazna else "petersen_detuned"
-    if wariant in {"rezystor", "dlawik_rezystor"}:
+    if tryb == "rezystor":
         return "resistor"
     return "solid"
 
@@ -214,6 +242,48 @@ def _finite(*values: float) -> bool:
     return all(isinstance(v, int | float) and math.isfinite(v) for v in values)
 
 
+#: Polskie nazwy parametrów obwodu napięcia powrotnego (komunikat braku, ślad WHITE BOX).
+_NAZWY_PARAMETROW_TRV: dict[str, str] = {
+    "breaker_rated_voltage_kv": "napięcie znamionowe wyłącznika U_r",
+    "trv_natural_frequency_hz": "częstotliwość własna f_n",
+    "trv_tau_s": "stała czasowa τ",
+}
+
+
+def _parametr_dodatni(model: V126AcademicInput, klucz: str) -> float | None:
+    """Parametr biegu jako liczba dodatnia; brak, wartość nieliczbowa albo niedodatnia —
+    ``None`` (nazwany brak u wołającego, bez wartości zastępczej)."""
+    wartosc = model.parameters.get(klucz)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    liczba = float(wartosc)
+    return liczba if math.isfinite(liczba) and liczba > 0.0 else None
+
+
+def _czas_dopuszczalny_rezystora_s(
+    i_k_a: float, z_petli_ohm: complex, u_n_v: float, i_n2_t_n: float
+) -> float:
+    """Czas t_dop [s], po którym całka Joule'a prądu rezystora I_th(t)²·t osiąga I_n²·t_n.
+
+    I_th(t)²·t = I_k²·(m(t) + n)·t rośnie z t (składnik m·t dąży do stałej energii składowej
+    nieokresowej), więc pierwiastek jest jeden; górna granica I_n²·t_n/I_k² (m ≥ 0).
+    Bisekcja o stałej liczbie kroków — wynik deterministyczny (ten sam bit dla tego samego
+    wejścia), dokładność względna 2⁻⁶⁰. m(t) z jedynego źródła I_th
+    (`compute_post_fault_quantities`, IEC 60909-0 §12)."""
+    gorna = i_n2_t_n / i_k_a**2
+    dolna = 0.0
+    for _ in range(60):
+        srodek = 0.5 * (dolna + gorna)
+        ith = compute_post_fault_quantities(
+            ikss=i_k_a, un_v=u_n_v, z_equiv=z_petli_ohm, tk_s=srodek
+        ).ith_a
+        if ith**2 * srodek <= i_n2_t_n:
+            dolna = srodek
+        else:
+            gorna = srodek
+    return dolna
+
+
 class TraceBuilder:
     def __init__(self, analysis_type: V126AnalysisType) -> None:
         self.analysis_type = analysis_type.value
@@ -256,6 +326,280 @@ class TraceBuilder:
                 "reporting_status": "reportable",
             }
         )
+
+
+#: Poziomy izolacji znormalizowane IEC 60071-1:2019 tab. 2 (zakres I): U_m [kV] →
+#: (znamionowe napięcie wytrzymywane udarowe piorunowe LIWL/BIL [kV], krótkotrwałe 50 Hz
+#: [kV]). Dla U_m ≤ 36 kV — wyższa z dwóch klasycznych wartości LIWL (lista 2); 52 i 72,5 kV
+#: mają jedną wartość; 123 kV — 550/230 kV (poziom sieci 110 kV). JEDNO źródło dla solvera
+#: i katalogu `GET /api/catalog/v126/insulation-levels`. U_m powyżej tabeli — brak podstawy
+#: poziomu izolacji (miejsce bez marginesu, nazwane), nie wartość ostatniego wiersza.
+POZIOMY_IZOLACJI_IEC60071: tuple[tuple[float, float, float], ...] = (
+    (3.6, 40.0, 10.0),
+    (7.2, 60.0, 20.0),
+    (12.0, 75.0, 28.0),
+    (17.5, 95.0, 38.0),
+    (24.0, 125.0, 50.0),
+    (36.0, 170.0, 70.0),
+    (52.0, 250.0, 95.0),
+    (72.5, 325.0, 140.0),
+    (123.0, 550.0, 230.0),
+)
+
+#: Granica marginesu ochrony izolacji ogranicznikiem M_BIL [%] (kryterium metody V12.6;
+#: JEDNO źródło dla solvera i karty analizy `v126_katalog`).
+MARGINES_BIL_MIN_PROCENT = 20.0
+
+#: Współczynnik zwarcia doziemnego k — wartość robocza trybu, gdy solver doziemienia sieci
+#: nie podaje k (szyna poza siecią SN modelu, sieć bez danych do doziemienia): sieć
+#: izolowana, kompensowana i z rezystorem ograniczającym prąd to sieci nieskutecznie
+#: uziemione — doziemienie metaliczne podnosi fazy zdrowe do napięcia międzyfazowego
+#: (k = √3); sieć uziemiona bezpośrednio — granica sieci skutecznie uziemionej k = 1,4
+#: (IEC 60071-1, definicja sieci skutecznie uziemionej).
+K_ROBOCZY_TRYBU: dict[str, tuple[float, str]] = {
+    "izolowany": (
+        math.sqrt(3.0),
+        "k = √3 — sieć o izolowanym punkcie neutralnym, doziemienie metaliczne "
+        "(IEC 60071-1: sieć nieskutecznie uziemiona)",
+    ),
+    "kompensowany": (
+        math.sqrt(3.0),
+        "k = √3 — sieć kompensowana, doziemienie metaliczne (IEC 60071-1: sieć "
+        "nieskutecznie uziemiona)",
+    ),
+    "rezystor": (
+        math.sqrt(3.0),
+        "k = √3 — sieć z rezystorem ograniczającym prąd doziemny jest siecią nieskutecznie "
+        "uziemioną (IEC 60071-1: k > 1,4); wartość górna doziemienia metalicznego",
+    ),
+    "bezposrednie": (
+        1.4,
+        "k = 1,4 — granica sieci skutecznie uziemionej (IEC 60071-1)",
+    ),
+}
+
+#: Dobór wstępny ogranicznika bez karty katalogowej — stosunki parametrów ograniczników ZnO
+#: SN katalogu programu (`mv_surge_arrester_catalog`; test przypina je do katalogu):
+#: U_res(10 kA)/U_c — NAJWIĘKSZY w katalogu (zachowawczo: mniejszy margines ochrony),
+#: TOV(10 s)/U_c — NAJMNIEJSZY (zachowawczo), U_r/U_c — największy.
+U_RES_DO_U_C_ROBOCZY = 4.0
+TOV_10S_DO_U_C_ROBOCZY = 1.4
+U_R_DO_U_C_ROBOCZY = 1.2
+
+#: Czas wyłączenia doziemienia, do którego porównuje się wytrzymałość TOV 10 s ogranicznika
+#: w sieci z rezystorem i uziemionej bezpośrednio [s] (założenie: zabezpieczenie ziemnozwarciowe
+#: wyłącza doziemienie w czasie ≤ 10 s; dłuższy czas wymaga krzywej TOV(t) producenta).
+CZAS_TOV_ZALOZONY_S = 10.0
+
+TRYBY_DOZIEMIENIA_DLUGOTRWALEGO = frozenset({"izolowany", "kompensowany"})
+
+
+def _dana_przyjeta_izolacji(
+    nazwa_pl: str, wartosc: float, jednostka: str, powod_pl: str
+) -> JsonDict:
+    return {
+        "nazwa_pl": nazwa_pl,
+        "wartosc": {"wartosc": _round(wartosc, 4), "jednostka": jednostka},
+        "powod_pl": powod_pl,
+        "jakosc": "ESTIMATED",
+    }
+
+
+def _poziom_izolacji(u_m_kv: float) -> tuple[float, float] | None:
+    return next(
+        ((bil, w) for um, bil, w in POZIOMY_IZOLACJI_IEC60071 if u_m_kv <= um + 1e-9),
+        None,
+    )
+
+
+def _wiersz_izolacji(item: Any) -> JsonDict:
+    """Wiersz koordynacji izolacji jednego miejsca zainstalowania (``_insulation``)."""
+    u_m = float(item.u_m_kv)
+    tryb = str(item.network_neutral)
+    dane: list[JsonDict] = []
+    if item.earth_fault_factor is not None:
+        k = float(item.earth_fault_factor)
+        zrodlo_k = item.earth_fault_factor_zrodlo_pl or "solver doziemienia sieci"
+    else:
+        k, zrodlo_k = K_ROBOCZY_TRYBU[tryb]
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Współczynnik zwarcia doziemnego k",
+                k,
+                "1",
+                f"{zrodlo_k}. Wynik doziemienia sieci szyny nie jest dostępny w modelu.",
+            )
+        )
+    u_tov = k * u_m / math.sqrt(3.0)
+    dlugotrwale = tryb in TRYBY_DOZIEMIENIA_DLUGOTRWALEGO
+    u_c_wymagane = u_tov if dlugotrwale else u_m / math.sqrt(3.0)
+    if item.arrester_mcov_kv is not None:
+        mcov = float(item.arrester_mcov_kv)
+    else:
+        # Dobór wstępny spełnia OBA kryteria napięciowe tym samym stosunkiem, którym liczy się
+        # wytrzymałość TOV doboru wstępnego (jedno źródło): przy doziemieniu wyłączanym
+        # U_c ≥ U_m/√3 i TOV(10 s) = 1,4·U_c ≥ U_TOV, czyli U_c ≥ U_TOV/1,4.
+        mcov = u_c_wymagane if dlugotrwale else max(u_c_wymagane, u_tov / TOV_10S_DO_U_C_ROBOCZY)
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+                mcov,
+                "kV",
+                "Brak karty katalogowej ogranicznika — U_c "
+                + (
+                    "równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5)."
+                    if dlugotrwale
+                    else "= max(U_m/√3, U_TOV/"
+                    f"{_lp(TOV_10S_DO_U_C_ROBOCZY)}) — napięcie trwałej pracy i wytrzymałość TOV "
+                    "10 s doboru wstępnego (doziemienie wyłączane samoczynnie, IEC 60099-5)."
+                ),
+            )
+        )
+    if item.arrester_rated_kv is not None:
+        u_r = float(item.arrester_rated_kv)
+    else:
+        u_r = mcov * U_R_DO_U_C_ROBOCZY
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+                u_r,
+                "kV",
+                f"U_r = {_lp(U_R_DO_U_C_ROBOCZY)}·U_c — największy stosunek ograniczników ZnO SN "
+                "katalogu programu (do potwierdzenia kartą producenta).",
+            )
+        )
+    if item.arrester_residual_10ka_kv is not None:
+        residual = float(item.arrester_residual_10ka_kv)
+    else:
+        residual = mcov * U_RES_DO_U_C_ROBOCZY
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Napięcie obniżone ogranicznika przy 10 kA U_res (dobór wstępny)",
+                residual,
+                "kV",
+                f"U_res = {_lp(U_RES_DO_U_C_ROBOCZY)}·U_c — największy stosunek ograniczników ZnO "
+                "SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            )
+        )
+    if item.arrester_tov_10s_kv is not None:
+        tov_cap = float(item.arrester_tov_10s_kv)
+    else:
+        tov_cap = mcov * TOV_10S_DO_U_C_ROBOCZY
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
+                tov_cap,
+                "kV",
+                f"TOV(10 s) = {_lp(TOV_10S_DO_U_C_ROBOCZY)}·U_c — najmniejszy stosunek ograniczników "
+                "ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            )
+        )
+    if not dlugotrwale:
+        dane.append(
+            _dana_przyjeta_izolacji(
+                "Czas trwania przepięcia dorywczego (wyłączenie doziemienia)",
+                CZAS_TOV_ZALOZONY_S,
+                "s",
+                "Założenie: zabezpieczenie ziemnozwarciowe wyłącza doziemienie w czasie "
+                "≤ 10 s — porównanie z wytrzymałością TOV 10 s ogranicznika; dłuższy czas "
+                "wymaga krzywej TOV(t) producenta.",
+            )
+        )
+    mcov_ok = mcov >= u_c_wymagane - 1e-9
+    tov_ok = True if dlugotrwale else tov_cap >= u_tov - 1e-9
+    poziom = _poziom_izolacji(u_m)
+    wiersz: JsonDict = {
+        "location_bus_ref": item.location_bus_ref,
+        "u_m_kv": u_m,
+        "network_neutral": tryb,
+        "earth_fault_factor": _round(k, 6),
+        "earth_fault_factor_zrodlo_pl": zrodlo_k,
+        "tov_duration": "dlugotrwale" if dlugotrwale else "do_wylaczenia",
+        "predicted_tov_kv": _round(u_tov, 4),
+        "mcov_required_kv": _round(u_c_wymagane, 4),
+        "mcov_kv": _round(mcov, 4),
+        "u_rated_kv": _round(u_r, 4),
+        "u_residual_at_10ka_kv": _round(residual, 4),
+        "tov_10s_kv": _round(tov_cap, 4),
+        "mcov_ok": mcov_ok,
+        "tov_ok": tov_ok,
+    }
+    if poziom is None:
+        wiersz.update(
+            {
+                "bil_protected_kv": None,
+                "short_duration_50hz_kv": None,
+                "bil_margin_percent": None,
+                "verification_status": "brak_podstawy",
+                "message_pl": (
+                    f"U_m = {_lp(u_m)} kV powyżej tabeli poziomów izolacji solvera "
+                    "(IEC 60071-1 tab. 2 do 123 kV) — marginesu ochrony nie oceniono."
+                ),
+            }
+        )
+    else:
+        bil, withstand = poziom
+        margin = (bil - residual) / max(residual, 1e-9) * 100.0
+        margin_ok = margin >= MARGINES_BIL_MIN_PROCENT
+        wiersz.update(
+            {
+                "bil_protected_kv": bil,
+                "short_duration_50hz_kv": withstand,
+                "bil_margin_percent": _round(margin, 3),
+                "margin_ok": margin_ok,
+                "verification_status": (
+                    "spelniony" if margin_ok and mcov_ok and tov_ok else "niespelniony"
+                ),
+            }
+        )
+    wiersz["uzasadnienie_pl"] = _uzasadnienie_izolacji(wiersz, dlugotrwale)
+    wiersz["dane_przyjete"] = dane
+    wiersz["kompletnosc_dowodu"] = "NIEPELNY" if dane or poziom is None else "PELNY"
+    return wiersz
+
+
+def _ocena_pl(spelnione: bool) -> str:
+    return "spełnione" if spelnione else "NIESPEŁNIONE"
+
+
+def _lp(wartosc: Any, wzor: str = "g") -> str:
+    """Liczba w zapisie polskim (przecinek dziesiętny) do tekstów wyjaśnień izolacji."""
+    return format(float(wartosc), wzor).replace(".", ",")
+
+
+def _uzasadnienie_izolacji(wiersz: JsonDict, dlugotrwale: bool) -> str:
+    """Wyjaśnienie werdyktu wiersza koordynacji izolacji: każde kryterium składowe z wartością,
+    limitem, podstawą i wynikiem (kontrakt werdyktu wyjaśnialnego)."""
+    czesci = [
+        f"U_TOV = k·U_m/√3 = {_lp(wiersz['earth_fault_factor'], '.4g')}·{_lp(wiersz['u_m_kv'])}/√3"
+        f" = {_lp(wiersz['predicted_tov_kv'], '.2f')} kV ({wiersz['earth_fault_factor_zrodlo_pl']})",
+        f"U_c = {_lp(wiersz['mcov_kv'], '.2f')} kV ≥ "
+        + (
+            f"U_TOV = {_lp(wiersz['mcov_required_kv'], '.2f')} kV (doziemienie długotrwałe, "
+            "IEC 60099-5)"
+            if dlugotrwale
+            else f"U_m/√3 = {_lp(wiersz['mcov_required_kv'], '.2f')} kV (IEC 60099-5)"
+        )
+        + f" — {_ocena_pl(bool(wiersz['mcov_ok']))}",
+    ]
+    if not dlugotrwale:
+        czesci.append(
+            f"TOV(10 s) = {_lp(wiersz['tov_10s_kv'], '.2f')} kV ≥ U_TOV = "
+            f"{_lp(wiersz['predicted_tov_kv'], '.2f')} kV (wyłączenie doziemienia ≤ "
+            f"{_lp(CZAS_TOV_ZALOZONY_S)} s, IEC 60099-5) — {_ocena_pl(bool(wiersz['tov_ok']))}"
+        )
+    if wiersz["bil_margin_percent"] is not None:
+        u_res = _lp(wiersz["u_residual_at_10ka_kv"], ".2f")
+        czesci.append(
+            f"margines (BIL − U_res)/U_res = ({_lp(wiersz['bil_protected_kv'])} − {u_res})/"
+            f"{u_res} = {_lp(wiersz['bil_margin_percent'], '.1f')} % ≥ "
+            f"{_lp(MARGINES_BIL_MIN_PROCENT)} % (IEC 60071-2; BIL {_lp(wiersz['bil_protected_kv'])}"
+            f" kV — IEC 60071-1 tab. 2, najbliższy znormalizowany U_m ≥ {_lp(wiersz['u_m_kv'])} kV)"
+            f" — {_ocena_pl(bool(wiersz['margin_ok']))}"
+        )
+    else:
+        czesci.append(str(wiersz["message_pl"]))
+    return "; ".join(czesci) + "."
 
 
 class V126AcademicSolver:
@@ -1562,12 +1906,24 @@ class V126AcademicSolver:
         u_line_kv = siec.napiecie_kv
 
         # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
-        if b0_total_s <= 0.0 or u_line_kv is None or u_line_kv <= 0.0:
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01, B′0): odcinek sieci bez B′0 i bez podstawy
+        # wartości roboczej (B′1 nieznane — most wejścia daje B′0 z modelu albo z reguły
+        # `enm.skladowa_zerowa_galezi`) to też brak C0: suma bez niego zaniżałaby I_C, a z I_C
+        # dobór dławika i rezystora — wynik częściowy nie jest wynikiem. Ten sam predykat co
+        # `UziemienieSekcji.prad_pojemnosciowy_a` i gotowość (`galezie.b0`).
+        if b0_total_s <= 0.0 or missing_b0 or u_line_kv is None or u_line_kv <= 0.0:
             reason = (
-                "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
-                "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
-                if b0_total_s <= 0.0
-                else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
+                f"Odcinki sieci SN bez susceptancji zerowej B′0 i bez podstawy wartości "
+                f"roboczej (susceptancja zgodna B′1 nieznana): {len(missing_b0)} — suma "
+                "pojemności doziemnej bez nich zaniżałaby I_C, projekt uziemienia nie jest "
+                "liczony z sumy częściowej."
+                if missing_b0
+                else (
+                    "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
+                    "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
+                    if b0_total_s <= 0.0
+                    else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
+                )
             )
             trace.add(
                 "neutral_earthing_no_c0",
@@ -1587,7 +1943,9 @@ class V126AcademicSolver:
                 "status": "dane niekompletne",
                 "neutral_earthing_type": scheme,
                 "message_pl": przedrostek + reason,
-                "missing_fields": (["b0_siemens_per_km"] if b0_total_s <= 0.0 else ["nominal_kv"]),
+                "missing_fields": (
+                    ["b0_siemens_per_km"] if missing_b0 or b0_total_s <= 0.0 else ["nominal_kv"]
+                ),
                 "branches_missing_b0": missing_b0,
                 "sanity": _sanity_block([], has_inputs=False),
             }
@@ -1623,9 +1981,19 @@ class V126AcademicSolver:
         )
 
         if scheme == "resistor_grounded" or scheme == "resistor":
-            result = self._ner_design(model, trace, siec, ic_a, u_phase_v, wiele=wiele)
+            result = self._ner_design(
+                model, trace, siec, b0_total_s, ic_a, u_phase_v, dopisek, przedrostek
+            )
         else:
-            result = self._petersen_design(model, trace, c0_farad, ic_a, omega)
+            result = self._petersen_design(
+                trace, siec, c0_farad, b0_total_s, ic_a, omega, dopisek, przedrostek
+            )
+        # Dane przyjęte ESTIMATED wejścia tej sieci (zasada nr 4): B′0 odcinków z wartości
+        # roboczej (I_C — wchodzi do OBU projektów) i parametry urządzeń punktu neutralnego
+        # (rezystor, Z_0,TU, dławik Z.14) — wynik na nich ma kompletność dowodu NIEPELNY.
+        dane_przyjete = [d.model_dump(mode="json") for d in siec.dane_przyjete]
+        result["dane_przyjete"] = dane_przyjete
+        result["kompletnosc_dowodu"] = "NIEPELNY" if dane_przyjete else "PELNY"
         result["neutral_earthing_type"] = scheme
         result["capacitive_earth_fault_current_a"] = _round(ic_a, 4)
         result["c0_farad"] = _round(c0_farad, 12)
@@ -1637,22 +2005,50 @@ class V126AcademicSolver:
             result["shunt_capacitors_without_zero_path"] = banks_without_zero_path
         return result
 
+    def _doziemienie_sieci(
+        self,
+        siec: V126SiecSnInput,
+        tryb: TrybDoziemienia,
+        b0_total_s: float,
+        punkty: list[V126PunktNeutralnySnInput],
+    ) -> WynikDoziemienia:
+        """Prąd doziemienia sieci z JEDNEGO solvera (`doziemienie_sn`) — tego samego, który
+        liczy wiersz zwarcia jednofazowego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek
+        odbioru 2026-10-29): punkty neutralne w ruchu z mostu wejścia, B_0 tej sieci."""
+        assert siec.napiecie_kv is not None
+        return oblicz_doziemienie(
+            DaneDoziemienia(
+                tryb=tryb,
+                napiecie_kv=siec.napiecie_kv,
+                b0_s=b0_total_s,
+                punkty=tuple(
+                    PunktNeutralnyDoziemienia(
+                        nazwa_pl=p.nazwa_pl,
+                        z_n_ohm=complex(p.z_n_r_ohm, p.z_n_x_ohm),
+                        z0_tu_ohm=(
+                            None
+                            if p.z0_r_ohm is None or p.z0_x_ohm is None
+                            else complex(p.z0_r_ohm, p.z0_x_ohm)
+                        ),
+                    )
+                    for p in punkty
+                ),
+                dlawik_w_ruchu=siec.dlawik_w_ruchu,
+                droga_szeregowa=siec.droga_szeregowa,
+            )
+        )
+
     def _petersen_design(
         self,
-        model: V126AcademicInput,
         trace: TraceBuilder,
+        siec: V126SiecSnInput,
         c0_farad: float,
+        b0_total_s: float,
         ic_a: float,
         omega: float,
+        dopisek: JsonDict,
+        przedrostek: str,
     ) -> JsonDict:
-        params = model.parameters
-        # Rozstrojenie: jawny parametr (default 0.05 = ±5 %), NIE ukryta stała.
-        detuning = float(params.get("petersen_detuning", 0.05))
-        # Składowa rezystancyjna (tłumienie) prądu resztkowego d = I_R/I_C — jawny
-        # parametr, default 0.0 (gdy karta dławika nie podaje strat). Bez d>0 prąd
-        # resztkowy przy idealnym rezonansie = 0 (z modelu, nie zgadnięty).
-        damping_d = float(params.get("petersen_residual_damping", 0.0))
-
         # Rezonans: ωL = 1/(3ωC0) ⇒ L = 1/(3·ω²·C0); X_L = ωL.
         x_coil_ohm = 1.0 / (3.0 * omega * c0_farad)
         l_coil_h = 1.0 / (3.0 * omega**2 * c0_farad)
@@ -1666,6 +2062,7 @@ class V126AcademicSolver:
                 "c0_farad": _round(c0_farad, 12),
                 "omega_rad_s": _round(omega, 6),
                 "ic_a": _round(ic_a, 4),
+                **dopisek,
             },
             f"L=1/(3·{_round(omega, 4)}²·{_round(c0_farad, 12)}); "
             f"X_L=1/(3·{_round(omega, 4)}·{_round(c0_farad, 12)})",
@@ -1676,72 +2073,141 @@ class V126AcademicSolver:
             },
             "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
             result_pl=(
-                f"Dławik gaszący: {_round(l_coil_h, 8)} H, {_round(x_coil_ohm, 4)} \u03a9, prąd znamionowy {_round(i_coil_a, 4)} A"
+                f"{przedrostek}Dławik gaszący dostrojony do rezonansu: {_round(l_coil_h, 8)} H, "
+                f"{_round(x_coil_ohm, 4)} Ω, prąd znamionowy {_round(i_coil_a, 4)} A"
             ),
         )
+        projekt: JsonDict = {
+            "design_mode": "petersen_coil",
+            "coil_reactance_ohm": _round(x_coil_ohm, 4),
+            "coil_inductance_h": _round(l_coil_h, 8),
+            "coil_current_rating_a": _round(i_coil_a, 4),
+        }
+        kontrole_projektu = [
+            (
+                "l_coil_positive",
+                _finite(l_coil_h) and l_coil_h > 0.0,
+                "Indukcyjność dławika ≤ 0 lub nieskończona",
+            ),
+            (
+                "x_coil_positive",
+                _finite(x_coil_ohm) and x_coil_ohm > 0.0,
+                "Reaktancja dławika ≤ 0 lub nieskończona",
+            ),
+        ]
 
-        # Prąd resztkowy: stopień rozstrojenia v ⇒ I_res = Ic·√(d² + v²).
-        # W rezonansie (v=0): I_res = Ic·d (czysto rezystancyjny; =0 gdy d=0).
-        i_res_resonance_a = ic_a * damping_d
-        i_res_detuned_a = ic_a * math.sqrt(damping_d**2 + detuning**2)
+        # Prąd resztkowy DŁAWIKA MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru
+        # 2026-10-29): dawne parametry biegu „stopień rozstrojenia 0,05" i „tłumienie 0"
+        # opisywały inny dławik niż ten w zespole uziemiającym — I_L, I_w i v idą z impedancji
+        # punktów neutralnych w ruchu (dławik, rezystor wymuszający AWSC, Z_0 transformatora
+        # uziemiającego), tym samym solverem co wiersz zwarcia jednofazowego.
+        if not siec.punkty_neutralne:
+            powod = (
+                "Wejście nie niesie punktów uziemienia sieci w ruchu (impedancja dławika i "
+                "transformatora uziemiającego) — prądu resztkowego dławika modelu nie wyznaczono."
+            )
+            trace.add(
+                "petersen_residual_current",
+                "I_res = √(I_w² + (I_C − I_L)²);  v = (I_C − I_L)/I_C",
+                {"missing": ["uziemienie_sn.sieci.punkty_neutralne"], **dopisek},
+                przedrostek + powod,
+                {"status": "dane niekompletne"},
+                "Brak danych urządzenia punktu neutralnego — bez wartości zgadywanej.",
+                result_pl="Brak punktów uziemienia w ruchu — prądu resztkowego nie wyznaczono",
+            )
+            return {
+                **projekt,
+                "status": "dane niekompletne",
+                "message_pl": przedrostek + powod,
+                "missing_fields": ["uziemienie_sn.sieci.punkty_neutralne"],
+                "sanity": _sanity_block(kontrole_projektu, has_inputs=False),
+            }
+        spoczynek = self._doziemienie_sieci(siec, "kompensowany", b0_total_s, siec.punkty_neutralne)
+        assert spoczynek.prad_a is not None and spoczynek.i_l_a is not None
+        assert spoczynek.i_w_a is not None
+        awsc = (
+            self._doziemienie_sieci(siec, "kompensowany", b0_total_s, siec.punkty_neutralne_awsc)
+            if siec.punkty_neutralne_awsc
+            else None
+        )
+        i_res_a = spoczynek.prad_a
+        i_l_a = spoczynek.i_l_a
+        i_w_a = spoczynek.i_w_a
+        v = spoczynek.rozstrojenie
         trace.add(
             "petersen_residual_current",
-            "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            "I_N = Σ U_f/(Z_N + Z_0/3);  I_w = Re I_N;  I_L = −Im I_N;  "
+            "I_res = √(I_w² + (I_C − I_L)²);  v = (I_C − I_L)/I_C",
             {
                 "ic_a": _round(ic_a, 4),
-                "detuning_v": detuning,
-                "residual_damping_d": damping_d,
+                "i_l_a": _round(i_l_a, 4),
+                "i_w_a": _round(i_w_a, 4),
+                "detuning_v": None if v is None else _round(v, 6),
+                "i_w_awsc_a": (
+                    None if awsc is None or awsc.i_w_a is None else _round(awsc.i_w_a, 4)
+                ),
+                "punkty": [p.model_dump(mode="json") for p in siec.punkty_neutralne],
+                **dopisek,
             },
-            f"I_res(rezonans)=Ic·{damping_d}; "
-            f"I_res(±{detuning})=Ic·√({damping_d}²+{detuning}²)",
+            f"I_res=√({_round(i_w_a, 4)}²+({_round(ic_a, 4)}−{_round(i_l_a, 4)})²)"
+            + ("" if v is None else f"; v=({_round(ic_a, 4)}−{_round(i_l_a, 4)})/{_round(ic_a, 4)}")
+            + (
+                ""
+                if awsc is None or awsc.prad_a is None
+                else f"; po załączeniu AWSC I_res={_round(awsc.prad_a, 4)}"
+            ),
             {
-                "i_residual_resonance_a": _round(i_res_resonance_a, 6),
-                "i_residual_detuned_a": _round(i_res_detuned_a, 6),
+                "i_residual_a": _round(i_res_a, 6),
+                "detuning_v": None if v is None else _round(v, 6),
+                "i_residual_awsc_a": (
+                    None if awsc is None or awsc.prad_a is None else _round(awsc.prad_a, 6)
+                ),
             },
-            "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A].",
+            "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
             result_pl=(
-                f"Prąd resztkowy: {_round(i_res_resonance_a, 6)} A w rezonansie, {_round(i_res_detuned_a, 6)} A przy rozstrojeniu"
+                f"{przedrostek}Prąd resztkowy dławika modelu: {_round(i_res_a, 4)} A"
+                + ("" if v is None else f" (rozstrojenie {_round(100.0 * v, 2)} %)")
+                + (
+                    ""
+                    if awsc is None or awsc.prad_a is None
+                    else f"; po załączeniu AWSC {_round(awsc.prad_a, 4)} A"
+                )
             ),
         )
-
-        # K-08: sanity-bounds — wartości skończone i nieujemne; rozstrojenie w [0,1).
+        # K-08: sanity-bounds — wartości skończone i nieujemne (prąd resztkowy dławika modelu
+        # NIE jest ograniczony przez I_C: dławik przekompensowany dwukrotnie daje I_res ≈ I_C,
+        # a składowa czynna AWSC dodaje się w kwadraturze).
         sanity = _sanity_block(
             [
+                *kontrole_projektu,
                 (
-                    "l_coil_positive",
-                    _finite(l_coil_h) and l_coil_h > 0.0,
-                    "Indukcyjność dławika ≤ 0 lub nieskończona",
-                ),
-                (
-                    "x_coil_positive",
-                    _finite(x_coil_ohm) and x_coil_ohm > 0.0,
-                    "Reaktancja dławika ≤ 0 lub nieskończona",
-                ),
-                (
-                    "residual_le_ic",
-                    _finite(i_res_detuned_a) and 0.0 <= i_res_detuned_a <= ic_a + 1e-9,
-                    "Prąd resztkowy poza [0, Ic] (niefizyczny)",
-                ),
-                (
-                    "detuning_range",
-                    _finite(detuning) and 0.0 <= detuning < 1.0,
-                    "Rozstrojenie poza [0,1)",
+                    "residual_finite",
+                    _finite(i_res_a, i_l_a, i_w_a) and i_res_a >= 0.0 and i_w_a >= 0.0,
+                    "Prąd resztkowy lub jego składowe ujemne albo nieskończone (niefizyczne)",
                 ),
             ],
             has_inputs=True,
         )
         return {
+            **projekt,
             "sanity": sanity,
-            "design_mode": "petersen_coil",
-            "coil_reactance_ohm": _round(x_coil_ohm, 4),
-            "coil_inductance_h": _round(l_coil_h, 8),
-            "coil_current_rating_a": _round(i_coil_a, 4),
-            "detuning_assumed": detuning,
-            "residual_damping_assumed": damping_d,
-            "residual_current_at_resonance_a": _round(i_res_resonance_a, 6),
-            "residual_current_at_detuning_a": _round(i_res_detuned_a, 6),
+            "residual_current_a": _round(i_res_a, 6),
+            "detuning_model": None if v is None else _round(v, 6),
+            "coil_current_model_a": _round(i_l_a, 4),
+            "active_component_a": _round(i_w_a, 4),
+            # Dławik dostrojony dokładnie do rezonansu (I_L = I_C): zostaje składowa czynna I_w.
+            "residual_current_at_resonance_a": _round(i_w_a, 6),
+            "residual_current_awsc_a": (
+                None if awsc is None or awsc.prad_a is None else _round(awsc.prad_a, 6)
+            ),
+            "active_component_awsc_a": (
+                None if awsc is None or awsc.i_w_a is None else _round(awsc.i_w_a, 4)
+            ),
+            "zastrzezenia_pl": list(spoczynek.zastrzezenia_pl),
             "tuning_status": (
-                "dostrojony" if i_res_detuned_a <= 0.1 * ic_a else "rozstrojony_poza_10pct"
+                "dostrojony"
+                if i_res_a <= PRAD_RESZTKOWY_MAX_UDZIAL_IC * ic_a
+                else "rozstrojony_poza_10pct"
             ),
         }
 
@@ -1750,43 +2216,35 @@ class V126AcademicSolver:
         model: V126AcademicInput,
         trace: TraceBuilder,
         siec: V126SiecSnInput,
+        b0_total_s: float,
         ic_a: float,
         u_phase_v: float,
-        *,
-        wiele: bool,
+        dopisek: JsonDict,
+        przedrostek: str,
     ) -> JsonDict:
         # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4 (B-01): sprawdzenie REZYSTORA MODELU.
         # Dawne parametry biegu „docelowy prąd doziemienia" (R = U_f/I_ef) i „energia
         # znamionowa rezystora" opisywały inny rezystor niż ten w zespole uziemiającym —
         # nadpisywały model. R, I_n i t_n idą z zespołu (albo z uzwojenia TR uziemionego przez
         # rezystor); wartość robocza urządzenia jest daną przyjętą ESTIMATED (zasada nr 4).
-        uziemienie = siec
-        dopisek = {"siec_sn": siec.nazwa_pl} if wiele else {}
-        przedrostek = f"{siec.nazwa_pl}: " if wiele else ""
-        dane_przyjete = [d.model_dump(mode="json") for d in uziemienie.dane_przyjete]
-        kompletnosc = "NIEPELNY" if dane_przyjete else "PELNY"
-        rezystory = sorted(uziemienie.rezystory, key=lambda r: r.ref)
-        kompensacja = uziemienie.wariant == "dlawik_rezystor"
+        rezystory = sorted(siec.rezystory, key=lambda r: r.ref)
+        kompensacja = siec.wariant == "dlawik_rezystor"
         brak = (
             ["uziemienie_sn.sieci.rezystory"]
             if not rezystory
-            else (
-                ["uziemienie_sn.sieci.prad_dlawikow_a"]
-                if kompensacja and uziemienie.prad_dlawikow_a is None
-                else []
-            )
+            else (["uziemienie_sn.sieci.punkty_neutralne"] if not siec.punkty_neutralne else [])
         )
         if brak:
             reason = (
                 "Sieć SN uziemiona przez rezystor, ale wejście nie niesie danych rezystora "
                 "punktu neutralnego (R, I_n, t_n) — sprawdzenia rezystora nie wykonano."
                 if not rezystory
-                else "Układ dławik ‖ rezystor (Z.14) bez prądu dławika w ruchu — składowej "
-                "biernej prądu doziemienia nie da się wyznaczyć."
+                else "Wejście nie niesie punktów uziemienia sieci w ruchu (impedancje rezystora, "
+                "dławika Z.14 i transformatora uziemiającego) — prądu doziemienia nie wyznaczono."
             )
             trace.add(
                 "ner_no_resistor",
-                "R_N = R_{zespołu};  I_ef = √(I_R² + (I_C − I_L)²)",
+                "R_N = R_{zespołu};  I_ef = |Σ U_f/(Z_N + Z_0/3) + j·I_C|",
                 {"missing": brak, **dopisek},
                 przedrostek + reason,
                 {"status": "dane niekompletne"},
@@ -1801,115 +2259,49 @@ class V126AcademicSolver:
                 "sanity": _sanity_block([], has_inputs=False),
             }
 
-        # R_N rezystorów w ruchu równolegle; I_R = U_f/R_N (rezystancja punktu neutralnego
-        # dominuje impedancję zerową sieci — Z_0,TU i impedancja zgodna pominięte, jak dotąd).
+        # R_N rezystorów w ruchu równolegle — wielkość opisowa projektu.
         r_ohm = 1.0 / sum(1.0 / r.r_ohm for r in rezystory)
-        i_resistive_a = u_phase_v / r_ohm
-        # Składowa bierna: pojemnościowa I_C w kwadraturze; w układzie Z.14 dławik w ruchu
-        # kompensuje ją prądem I_L (nastawa albo wartość robocza z danych przyjętych).
-        # Bez dławika w ruchu (Z.15) składowej kompensacji fizycznie nie ma: I_L = 0. Układ
-        # Z.14 bez prądu dławika jest nazwaną odmową wyżej (`brak`).
-        i_coil_a = 0.0
-        if kompensacja:
-            assert uziemienie.prad_dlawikow_a is not None
-            i_coil_a = float(uziemienie.prad_dlawikow_a)
+        # Prąd doziemienia z JEDNEGO solvera (warunek odbioru 2026-10-29): I_N = Σ U_f/(Z_N +
+        # Z_0/3) po punktach w ruchu (rezystor, dławik Z.14 łącznie, Z_0,TU zespołu albo Z_T0
+        # transformatora w szeregu), I_ef = |I_N + j·I_C| — składowa czynna I_w = Re I_N,
+        # bierna I_C − I_L (I_L = −Im I_N; bez dławika I_L to tylko część indukcyjna Z_0).
+        wynik = self._doziemienie_sieci(siec, "rezystor", b0_total_s, siec.punkty_neutralne)
+        assert wynik.prad_a is not None and wynik.i_w_a is not None and wynik.i_l_a is not None
+        i_ef_a = wynik.prad_a
+        i_resistive_a = wynik.i_w_a
+        i_coil_a = wynik.i_l_a
         i_reactive_a = ic_a - i_coil_a
-        i_ef_a = math.sqrt(i_resistive_a**2 + i_reactive_a**2)
         trace.add(
             "ner_resistance_sizing",
-            "R_N = (Σ 1/R_k)⁻¹;  I_R = U_f/R_N;  I_ef = √(I_R² + (I_C − I_L)²)",
+            "R_N = (Σ 1/R_k)⁻¹;  I_N = Σ U_f/(Z_N + Z_0/3);  I_R = Re I_N;  I_L = −Im I_N;  "
+            "I_ef = √(I_R² + (I_C − I_L)²)",
             {
                 "ref": "Resistance-earthed neutral; ENEA Zeszyt 1 §16 (Z.14, Z.15)",
                 "u_phase_v": _round(u_phase_v, 4),
                 "resistors": [
                     {"ref": r.ref, "nazwa_pl": r.nazwa_pl, "r_ohm": r.r_ohm} for r in rezystory
                 ],
+                "punkty": [p.model_dump(mode="json") for p in siec.punkty_neutralne],
                 "ic_a": _round(ic_a, 4),
+                "i_resistive_a": _round(i_resistive_a, 4),
                 "i_coil_a": _round(i_coil_a, 4),
                 **dopisek,
             },
-            f"R_N={_round(r_ohm, 4)}; I_R={_round(u_phase_v, 4)}/{_round(r_ohm, 4)}; "
+            f"R_N={_round(r_ohm, 4)}; I_R={_round(i_resistive_a, 4)}; "
             f"I_ef=√({_round(i_resistive_a, 4)}²+({_round(ic_a, 4)}−{_round(i_coil_a, 4)})²)",
             {
                 "r_ohm": _round(r_ohm, 4),
                 "i_resistive_a": _round(i_resistive_a, 4),
                 "i_ef_resultant_a": _round(i_ef_a, 4),
             },
-            "V/A=Ω; √(A²+A²)=A.",
+            "V/Ω=A; √(A²+A²)=A.",
             result_pl=(
-                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} \u03a9; "
+                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} Ω; "
                 f"wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
             ),
         )
 
-        # Sprawdzenie cieplne KAŻDEGO rezystora: przez rezystor płynie wyłącznie jego prąd
-        # I_R,k = U_f/R_k (składowa pojemnościowa zamyka się przez pojemności doziemne faz
-        # zdrowych, nie przez punkt neutralny) — E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k
-        # (energia przy prądzie znamionowym w dopuszczalnym czasie jego przepływu).
-        # t_wył: czas wyłączenia zwarcia doziemnego — jawny parametr zabezpieczeń.
-        t_clear_raw = model.parameters.get("ner_clearing_time_s")
-        thermal: JsonDict
-        if t_clear_raw is None:
-            trace.add(
-                "ner_thermal_incomplete",
-                "E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k",
-                {"missing": ["ner_clearing_time_s"]},
-                "Brak czasu wyłączenia zwarcia doziemnego.",
-                {"status": "dane niekompletne"},
-                "Sprawdzenie cieplne wymaga t_wył — bez zgadywania.",
-                result_pl=("Sprawdzenia cieplnego nie wykonano — brak czasu wyłączenia"),
-            )
-            thermal = {"status": "dane niekompletne", "missing_fields": ["ner_clearing_time_s"]}
-        else:
-            t_clear_s = float(t_clear_raw)
-            wiersze: list[JsonDict] = []
-            for rez in rezystory:
-                i_k = u_phase_v / rez.r_ohm
-                e_k = i_k**2 * rez.r_ohm * t_clear_s
-                e_n = rez.i_n_a**2 * rez.r_ohm * rez.t_n_s
-                wiersze.append(
-                    {
-                        "ref": rez.ref,
-                        "nazwa_pl": rez.nazwa_pl,
-                        "r_ohm": rez.r_ohm,
-                        "i_resistor_a": _round(i_k, 4),
-                        "i_n_a": rez.i_n_a,
-                        "t_n_s": rez.t_n_s,
-                        "energy_dissipated_j": _round(e_k, 4),
-                        "energy_rating_j": _round(e_n, 4),
-                        "thermal_ok": e_k <= e_n,
-                    }
-                )
-            # Rozstrzyga rezystor o najmniejszym zapasie (największy stosunek E_k/E_n,k).
-            rozstrzygajacy = max(
-                wiersze, key=lambda w: (w["energy_dissipated_j"] / w["energy_rating_j"], w["ref"])
-            )
-            thermal_ok = all(w["thermal_ok"] for w in wiersze)
-            trace.add(
-                "ner_thermal_withstand",
-                "E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k",
-                {"t_clear_s": t_clear_s, "resistors": wiersze, **dopisek},
-                "; ".join(
-                    f"{w['nazwa_pl']}: E={w['i_resistor_a']}²·{w['r_ohm']}·{t_clear_s} ≤ "
-                    f"{w['i_n_a']}²·{w['r_ohm']}·{w['t_n_s']}"
-                    for w in wiersze
-                ),
-                {"thermal_ok": thermal_ok},
-                "A²·Ω·s = W·s = J ≤ J.",
-                result_pl=(
-                    f"{przedrostek}Energia wydzielona w rezystorze: "
-                    f"{rozstrzygajacy['energy_dissipated_j']} J "
-                    f"(znamionowa: {rozstrzygajacy['energy_rating_j']} J)"
-                ),
-            )
-            thermal = {
-                "status": "zgodny" if thermal_ok else "niezgodny",
-                "energy_dissipated_j": rozstrzygajacy["energy_dissipated_j"],
-                "energy_rating_j": rozstrzygajacy["energy_rating_j"],
-                "clearing_time_s": t_clear_s,
-                "thermal_ok": thermal_ok,
-                "resistors": wiersze,
-            }
+        thermal = self._ner_thermal(model, trace, siec, rezystory, u_phase_v, dopisek, przedrostek)
 
         # K-08: sanity-bounds — R i I_ef skończone i dodatnie.
         sanity = _sanity_block(
@@ -1931,72 +2323,256 @@ class V126AcademicSolver:
             "resistive_component_a": _round(i_resistive_a, 4),
             "coil_current_a": _round(i_coil_a, 4) if kompensacja else None,
             "reactive_component_a": _round(i_reactive_a, 4),
+            "zastrzezenia_pl": list(wynik.zastrzezenia_pl),
             "thermal_check": thermal,
-            "dane_przyjete": dane_przyjete,
-            "kompletnosc_dowodu": kompletnosc,
+        }
+
+    def _ner_thermal(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        siec: V126SiecSnInput,
+        rezystory: list[V126RezystorSnInput],
+        u_phase_v: float,
+        dopisek: JsonDict,
+        przedrostek: str,
+    ) -> JsonDict:
+        """Obciążalność zwarciowa cieplna KAŻDEGO rezystora punktu neutralnego w ruchu.
+
+        Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01). Przez rezystor płynie wyłącznie jego prąd
+        (składowa pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez
+        punkt neutralny). Prąd NAJWIĘKSZY wg IEC 60909-0: doziemienie metaliczne na szynach,
+        napięcie zastępcze c_max·U_f (tab. 1 — z jedynego nośnika c, wejście sieci), droga
+        zerowa gałęzi uziemiającej Z_0,TU + 3·R_k ⇒ I_R,k = 3·c·U_f/(Z_0,TU + 3·R_k) =
+        c·U_f/|R_k + Z_0,TU/3|; impedancje zgodna i przeciwna sieci pominięte (zawyżają prąd —
+        strona bezpieczna). Prąd cieplny zastępczy I_th = I_R,k·√(m + n) (IEC 60909-0 §12,
+        jedyne źródło `compute_post_fault_quantities` z R/X pętli Z_0,TU/3 + R_k; n = 1 — zwarcie
+        odległe). Kryterium adiabatyczne: E_k = I_th²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k
+        (prąd i czas znamionowy rezystora — znamionowanie czasowe IEEE Std C57.32; ogrzewanie
+        bez oddawania ciepła jest górnym oszacowaniem temperatury). Dopuszczalny czas trwania
+        doziemienia t_dop: I_th(t_dop)²·t_dop = I_n,k²·t_n,k — liczony zawsze, także bez czasu
+        wyłączenia (kryterium nastawy czasowej zabezpieczenia ziemnozwarciowego zespołu).
+        """
+        brak_c = siec.c_max is None
+        t_clear_raw = model.parameters.get("ner_clearing_time_s")
+        formula = (
+            "I_R,k = c_max·U_f/|R_k + Z_0,TU/3|;  I_th = I_R,k·√(m+n);  "
+            "E_k = I_th²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k;  "
+            "I_th(t_dop)²·t_dop = I_n,k²·t_n,k"
+        )
+        if brak_c:
+            trace.add(
+                "ner_thermal_incomplete",
+                formula,
+                {"missing": ["uziemienie_sn.sieci.c_max"], **dopisek},
+                "Brak współczynnika napięciowego c_max sieci (IEC 60909-0 tab. 1).",
+                {"status": "dane niekompletne"},
+                "Bez c_max największego prądu rezystora nie da się wyznaczyć — bez zgadywania.",
+                result_pl="Sprawdzenia cieplnego nie wykonano — brak współczynnika c_max sieci",
+            )
+            return {
+                "status": "dane niekompletne",
+                "missing_fields": ["uziemienie_sn.sieci.c_max"],
+            }
+        assert siec.c_max is not None
+        c_max = float(siec.c_max)
+        u_n_v = u_phase_v * math.sqrt(3.0)
+        t_clear_s = None if t_clear_raw is None else float(t_clear_raw)
+        wiersze: list[JsonDict] = []
+        for rez in rezystory:
+            z0_tu = (
+                complex(rez.z0_tu_r_ohm, rez.z0_tu_x_ohm)
+                if rez.z0_tu_r_ohm is not None and rez.z0_tu_x_ohm is not None
+                else None
+            )
+            z_petli = complex(rez.r_ohm, 0.0) + (z0_tu / 3.0 if z0_tu is not None else 0.0)
+            i_k = c_max * u_phase_v / abs(z_petli)
+            e_n = rez.i_n_a**2 * rez.r_ohm * rez.t_n_s
+            t_dop = _czas_dopuszczalny_rezystora_s(i_k, z_petli, u_n_v, e_n / rez.r_ohm)
+            wiersz: JsonDict = {
+                "ref": rez.ref,
+                "nazwa_pl": rez.nazwa_pl,
+                "r_ohm": rez.r_ohm,
+                "z0_tu_ohm": (
+                    None
+                    if z0_tu is None
+                    else {
+                        "r_ohm": _round(z0_tu.real, 6),
+                        "x_ohm": _round(z0_tu.imag, 6),
+                    }
+                ),
+                "z_loop_ohm": {
+                    "r_ohm": _round(z_petli.real, 6),
+                    "x_ohm": _round(z_petli.imag, 6),
+                },
+                "i_resistor_a": _round(i_k, 4),
+                "i_n_a": rez.i_n_a,
+                "t_n_s": rez.t_n_s,
+                "energy_rating_j": _round(e_n, 4),
+                "permissible_time_s": _round(t_dop, 4),
+            }
+            if t_clear_s is not None:
+                pozwarciowe = compute_post_fault_quantities(
+                    ikss=i_k, un_v=u_n_v, z_equiv=z_petli, tk_s=t_clear_s
+                )
+                e_k = pozwarciowe.ith_a**2 * rez.r_ohm * t_clear_s
+                wiersz.update(
+                    {
+                        "kappa": _round(pozwarciowe.kappa, 6),
+                        "m_factor": _round(pozwarciowe.m_factor, 6),
+                        "n_factor": _round(pozwarciowe.n_factor, 6),
+                        "i_thermal_a": _round(pozwarciowe.ith_a, 4),
+                        "energy_dissipated_j": _round(e_k, 4),
+                        "thermal_ok": e_k <= e_n,
+                    }
+                )
+            wiersze.append(wiersz)
+        # Rozstrzyga rezystor o NAJKRÓTSZYM czasie dopuszczalnym: czas wyłączenia jest wspólny
+        # dla sieci, a I_th(t)²·t rośnie z t, więc E_k ≤ E_n,k ⇔ t_wył ≤ t_dop,k — rezystor
+        # o najmniejszym t_dop jako pierwszy przestaje spełniać kryterium (ten sam rezystor
+        # niesie wielkości główne obu kroków: czasu dopuszczalnego i energii).
+        rozstrzygajacy = min(wiersze, key=lambda w: (w["permissible_time_s"], w["ref"]))
+        podstawa_c = siec.c_max_zrodlo_pl or "IEC 60909-0 tab. 1"
+        trace.add(
+            "ner_thermal_permissible_time",
+            "I_R,k = c_max·U_f/|R_k + Z_0,TU/3|;  I_th(t_dop)²·t_dop = I_n,k²·t_n,k",
+            {
+                "c_max": c_max,
+                "c_max_zrodlo_pl": podstawa_c,
+                "u_phase_v": _round(u_phase_v, 4),
+                "resistors": wiersze,
+                **dopisek,
+            },
+            "; ".join(
+                f"{w['nazwa_pl']}: I_R={c_max}·{_round(u_phase_v, 4)}/"
+                f"|{w['z_loop_ohm']['r_ohm']}+j{w['z_loop_ohm']['x_ohm']}|; "
+                f"t_dop: I_th²·t = {w['i_n_a']}²·{w['t_n_s']}"
+                for w in wiersze
+            ),
+            {
+                "permissible_time_s": rozstrzygajacy["permissible_time_s"],
+                "i_resistor_a": rozstrzygajacy["i_resistor_a"],
+            },
+            "V/Ω = A; A²·s = A²·s ⇒ s.",
+            result_pl=(
+                f"{przedrostek}Dopuszczalny czas trwania doziemienia dla rezystora "
+                f"{rozstrzygajacy['nazwa_pl']}: {rozstrzygajacy['permissible_time_s']} s "
+                f"(prąd rezystora {rozstrzygajacy['i_resistor_a']} A)"
+            ),
+        )
+        wspolne: JsonDict = {
+            "c_max": c_max,
+            "c_max_zrodlo_pl": podstawa_c,
+            "i_resistor_a": rozstrzygajacy["i_resistor_a"],
+            "permissible_time_s": rozstrzygajacy["permissible_time_s"],
+            "energy_rating_j": rozstrzygajacy["energy_rating_j"],
+            "resistors": wiersze,
+            "podstawa_pl": (
+                "IEC 60909-0: prąd największy (c_max, tab. 1) i prąd cieplny zastępczy "
+                "I_th = I_k·√(m+n) (§12); IEEE Std C57.32: prąd i czas znamionowy rezystora "
+                "uziemiającego (I_n, t_n) — kryterium adiabatyczne I_th²·t ≤ I_n²·t_n"
+            ),
+        }
+        if t_clear_s is None:
+            trace.add(
+                "ner_thermal_incomplete",
+                formula,
+                {"missing": ["ner_clearing_time_s"], **dopisek},
+                "Brak czasu wyłączenia zwarcia doziemnego.",
+                {"status": "dane niekompletne"},
+                "Porównanie z czasem wyłączenia wymaga t_wył — bez zgadywania; czas "
+                "dopuszczalny t_dop policzono.",
+                result_pl=(
+                    "Porównania z czasem wyłączenia nie wykonano — brak czasu wyłączenia; "
+                    f"czas dopuszczalny {rozstrzygajacy['permissible_time_s']} s"
+                ),
+            )
+            return {
+                "status": "dane niekompletne",
+                "missing_fields": ["ner_clearing_time_s"],
+                **wspolne,
+            }
+        thermal_ok = all(w["thermal_ok"] for w in wiersze)
+        trace.add(
+            "ner_thermal_withstand",
+            formula,
+            {
+                "t_clear_s": t_clear_s,
+                "c_max": c_max,
+                "c_max_zrodlo_pl": podstawa_c,
+                "resistors": wiersze,
+                **dopisek,
+            },
+            "; ".join(
+                f"{w['nazwa_pl']}: E={w['i_thermal_a']}²·{w['r_ohm']}·{t_clear_s} ≤ "
+                f"{w['i_n_a']}²·{w['r_ohm']}·{w['t_n_s']}"
+                for w in wiersze
+            ),
+            {"thermal_ok": thermal_ok},
+            "A²·Ω·s = W·s = J ≤ J.",
+            result_pl=(
+                f"{przedrostek}Energia wydzielona w rezystorze: "
+                f"{rozstrzygajacy['energy_dissipated_j']} J "
+                f"(znamionowa: {rozstrzygajacy['energy_rating_j']} J)"
+            ),
+        )
+        return {
+            **wspolne,
+            "status": "zgodny" if thermal_ok else "niezgodny",
+            "energy_dissipated_j": rozstrzygajacy["energy_dissipated_j"],
+            "energy_rating_j": rozstrzygajacy["energy_rating_j"],
+            "i_thermal_a": rozstrzygajacy["i_thermal_a"],
+            "clearing_time_s": t_clear_s,
+            "thermal_ok": thermal_ok,
         }
 
     def _insulation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        bil_table = [
-            (12.0, 75.0, 28.0),
-            (17.5, 95.0, 38.0),
-            (24.0, 125.0, 50.0),
-            (36.0, 170.0, 70.0),
-        ]
+        """Koordynacja izolacji IEC 60071 wg sposobu pracy punktu neutralnego sieci.
+
+        Przepięcie dorywcze przy doziemieniu U_TOV = k·U_m/√3 (IEC 60071-1: współczynnik
+        zwarcia doziemnego k; IEC 60071-2: reprezentatywne przepięcie dorywcze). Czas jego
+        trwania wynika z trybu: sieć izolowana i kompensowana pracuje z doziemieniem
+        długotrwale — wymagane U_c ≥ U_TOV (IEC 60099-5); sieć z rezystorem i uziemiona
+        bezpośrednio wyłącza doziemienie samoczynnie — U_c ≥ U_m/√3 oraz wytrzymałość TOV
+        ogranicznika ≥ U_TOV (czas wyłączenia ≤ 10 s — założenie jawne w wyniku). Margines
+        ochrony M = (BIL − U_res)/U_res wobec poziomu normowego IEC 60071-1 tab. 2.
+        """
         rows: list[JsonDict] = []
         for item in model.insulation:
-            bil, withstand = next(
-                ((bil, w) for um, bil, w in bil_table if item.u_m_kv <= um),
-                (170.0, 70.0),
-            )
-            if item.arrester_mcov_kv is None:
-                mcov = (
-                    item.u_m_kv * 1.05
-                    if item.network_neutral == "isolated"
-                    else item.u_m_kv / math.sqrt(3) * 1.05
-                )
-            else:
-                mcov = item.arrester_mcov_kv
-            residual = item.arrester_residual_10ka_kv or mcov * 2.8
-            tov = item.predicted_tov_kv or item.u_m_kv * (
-                1.4 if item.network_neutral == "isolated" else 1.15
-            )
-            margin = (bil - residual) / max(residual, 1e-9) * 100.0
-            rows.append(
-                {
-                    "location_bus_ref": item.location_bus_ref,
-                    "u_m_kv": item.u_m_kv,
-                    "mcov_kv": _round(mcov, 4),
-                    "u_rated_kv": _round(mcov * 1.25, 4),
-                    "u_residual_at_10ka_kv": _round(residual, 4),
-                    "tov_10s_kv": _round(mcov * 1.25, 4),
-                    "predicted_tov_kv": _round(tov, 4),
-                    "bil_protected_kv": bil,
-                    "short_duration_50hz_kv": withstand,
-                    "bil_margin_percent": _round(margin, 3),
-                    "verification_status": (
-                        "spelniony" if margin >= 20 and tov <= mcov * 1.25 else "niespelniony"
-                    ),
-                }
-            )
+            rows.append(_wiersz_izolacji(item))
+        nie_spelnione = sum(1 for row in rows if row["verification_status"] != "spelniony")
         trace.add(
             "iec60071_arrester_margin",
-            "Margin_BIL = (BIL - U_res) / U_res * 100%",
-            {"locations": len(rows)},
-            "Trwałe dopuszczalne napięcie pracy ogranicznika dobrano z najwyższego napięcia "
-            "urządzenia i sposobu uziemienia punktu neutralnego; napięcie obniżone przy "
-            "10 kA z karty katalogowej, a przy jej braku jako 2,8-krotność tego napięcia.",
-            {"non_compliant": sum(1 for row in rows if row["verification_status"] != "spelniony")},
-            "Iloraz napięć [kV/kV] wyrażony w %.",
-            result_pl=(
-                f"Miejsc bez wymaganego marginesu ochrony izolacji: "
-                f"{sum(1 for row in rows if row['verification_status'] != 'spelniony')} z {len(rows)}"
-            ),
+            "U_TOV = k·U_m/√3; U_c ≥ U_TOV (doziemienie długotrwałe) albo U_c ≥ U_m/√3 "
+            "i TOV_10s ≥ U_TOV; Margin_BIL = (BIL - U_res) / U_res * 100%",
+            {
+                "locations": len(rows),
+                "miejsca": [
+                    {
+                        "location_bus_ref": row["location_bus_ref"],
+                        "tryb": row["network_neutral"],
+                        "k": row["earth_fault_factor"],
+                        "u_m_kv": row["u_m_kv"],
+                    }
+                    for row in rows
+                ],
+            },
+            "Przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego k sieci "
+            "(solver doziemienia albo wartość robocza trybu) i napięcia najwyższego U_m; "
+            "wymagane napięcie trwałej pracy ogranicznika wg czasu trwania doziemienia "
+            "(sieć izolowana i kompensowana — długotrwale, z rezystorem i uziemiona "
+            "bezpośrednio — do wyłączenia); napięcie obniżone przy 10 kA i wytrzymałość TOV "
+            "z karty katalogowej, a przy jej braku z doboru wstępnego (wartości robocze).",
+            {"non_compliant": nie_spelnione},
+            "Napięcia [kV]; margines — iloraz napięć [kV/kV] wyrażony w %.",
+            result_pl=(f"Miejsc bez wymaganej ochrony izolacji: {nie_spelnione} z {len(rows)}"),
         )
         # K-08: sanity-bounds IEC 60071 — MCOV/BIL/margines skończone i nieujemne.
         mcov_values = [float(r["mcov_kv"]) for r in rows]
-        bil_values = [float(r["bil_protected_kv"]) for r in rows]
-        margin_values = [float(r["bil_margin_percent"]) for r in rows]
+        bil_values = [float(r["bil_protected_kv"]) for r in rows if r["bil_protected_kv"]]
+        margin_values = [
+            float(r["bil_margin_percent"]) for r in rows if r["bil_margin_percent"] is not None
+        ]
         sanity = _sanity_block(
             [
                 (
@@ -2013,7 +2589,12 @@ class V126AcademicSolver:
             ],
             has_inputs=len(model.insulation) > 0,
         )
-        return {"arresters": rows, "sanity": sanity}
+        wynik: JsonDict = {"arresters": rows, "sanity": sanity}
+        if rows:
+            wynik["kompletnosc_dowodu"] = (
+                "NIEPELNY" if any(r["kompletnosc_dowodu"] == "NIEPELNY" for r in rows) else "PELNY"
+            )
+        return wynik
 
     def _earth_fault_detection(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         # Sposób uziemienia WYŁĄCZNIE z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4)
@@ -2025,6 +2606,10 @@ class V126AcademicSolver:
         neutral = _metoda_detekcji_wariantu(
             model.uziemienie_sn.wariant, nadazna=model.uziemienie_sn.regulacja_nadazna
         )
+        # Wyposażenie przekaźnika — dana projektanta; bez niej solver przyjmuje komplet metod
+        # (wartość robocza jawna w wyniku: dostępność metody zalecanej do potwierdzenia kartą
+        # przekaźnika — zasada nr 4, dana przyjęta zamiast cichego domysłu).
+        metody_podane = "relay_methods" in model.parameters
         relay_methods = set(
             model.parameters.get(
                 "relay_methods",
@@ -2074,37 +2659,76 @@ class V126AcademicSolver:
                 "p0_set_w": 1.0 if recommended == "wattmetric" else None,
                 "i5_multiplier": 3.0 if recommended == "fifth_harmonic" else None,
             },
+            "settings_podstawa_pl": (
+                "Nastawy startowe metody zalecanej (U0 5 % U_f, P0 1 W, krotność 5. harmonicznej "
+                "3) — propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości "
+                "normowej; dobór ostateczny w projekcie zabezpieczeń."
+            ),
+            "dane_przyjete": (
+                []
+                if metody_podane
+                else [
+                    {
+                        "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
+                        "wartosc": None,
+                        "powod_pl": (
+                            "Brak danych przekaźnika — przyjęto komplet metod (watometryczna, "
+                            "admitancyjna, stanów przejściowych, 5. harmonicznej); dostępność "
+                            "metody zalecanej do potwierdzenia kartą przekaźnika."
+                        ),
+                        "jakosc": "ESTIMATED",
+                    }
+                ]
+            ),
+            "kompletnosc_dowodu": "PELNY" if metody_podane else "NIEPELNY",
             "sanity": sanity,
         }
 
     def _transient(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        u_r = float(
-            model.parameters.get(
-                "breaker_rated_voltage_kv",
-                max((bus.nominal_kv for bus in model.buses), default=15.0),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01): napięcie znamionowe wyłącznika U_r jest
+        # parametrem biegu — proponuje je gotowość z MODELU (U_r = U_m sieci SN, IEC 60038
+        # tab. 3–5 / IEC 62271-1: napięcie znamionowe aparatu równe napięciu najwyższemu
+        # urządzenia). Dawna wartość zastępcza „najwyższe napięcie szyny modelu" dawała w modelu
+        # GPZ 110 kV dla wyłącznika SN (ta sama klasa co dawne U_l projektu uziemienia); brak
+        # U_r to nazwany brak przebiegu napięcia powrotnego, bez liczby zastępczej.
+        # Ta sama klasa: częstotliwość własna f_n i stała czasowa τ napięcia powrotnego oraz
+        # krotność prądu załączania są WŁAŚCIWOŚCIAMI obwodu i transformatora (katalog analiz:
+        # parametry wymagane, „model ich nie niesie"; gotowość blokuje bieg bez nich) — dawne
+        # wartości zastępcze solvera (12 kHz, 180 µs, 8·I_n) nie miały podstawy normowej
+        # (parametry u_c, t_3 tabel IEC 62271-100 nie są danymi programu). Brak albo wartość
+        # niedodatnia = nazwany brak, bez liczby.
+        u_r = _parametr_dodatni(model, "breaker_rated_voltage_kv")
+        natural_frequency_hz = _parametr_dodatni(model, "trv_natural_frequency_hz")
+        tau_s = _parametr_dodatni(model, "trv_tau_s")
+        brak_trv = [
+            klucz
+            for klucz, wartosc in (
+                ("breaker_rated_voltage_kv", u_r),
+                ("trv_natural_frequency_hz", natural_frequency_hz),
+                ("trv_tau_s", tau_s),
             )
-        )
-        natural_frequency_hz = float(model.parameters.get("trv_natural_frequency_hz", 12000.0))
-        tau_s = float(model.parameters.get("trv_tau_s", 0.00018))
+            if wartosc is None
+        ]
         points: list[JsonDict] = []
         min_margin = 999.0
-        for i in range(1, 51):
-            t = i * 2e-6
-            u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(
-                -t / tau_s
-            ) + u_r / math.sqrt(3)
-            envelope = 2.0 * u_r * min(1.0, t / 88e-6)
-            margin = (envelope - u) / max(envelope, 1e-9) * 100.0
-            min_margin = min(min_margin, margin)
-            points.append(
-                {
-                    "t_us": _round(t * 1e6, 3),
-                    "u_trv_kv": _round(u, 5),
-                    "envelope_kv": _round(envelope, 5),
-                }
-            )
-        inrush_multiple = float(model.parameters.get("inrush_multiple_in", 8.0))
-        second_harmonic_percent = 63.0 / inrush_multiple
+        if u_r is not None and natural_frequency_hz is not None and tau_s is not None:
+            for i in range(1, 51):
+                t = i * 2e-6
+                u = u_r * (1 - math.cos(2 * math.pi * natural_frequency_hz * t)) * math.exp(
+                    -t / tau_s
+                ) + u_r / math.sqrt(3)
+                envelope = 2.0 * u_r * min(1.0, t / 88e-6)
+                margin = (envelope - u) / max(envelope, 1e-9) * 100.0
+                min_margin = min(min_margin, margin)
+                points.append(
+                    {
+                        "t_us": _round(t * 1e6, 3),
+                        "u_trv_kv": _round(u, 5),
+                        "envelope_kv": _round(envelope, 5),
+                    }
+                )
+        inrush_multiple = _parametr_dodatni(model, "inrush_multiple_in")
+        second_harmonic_percent = None if inrush_multiple is None else 63.0 / inrush_multiple
         # Ryzyko ferrorezonansu stoi na POJEMNOŚCI DOCZEPNEJ sieci (suma B·ℓ).
         # Gałąź bez danej o susceptancji nie wnosi do tej sumy ZERA — ona po
         # prostu nic o pojemności nie mówi. Rozróżnienie ma skutek: gdy żaden
@@ -2147,15 +2771,35 @@ class V126AcademicSolver:
         ferro_risk: bool | None = (
             None if powod_uziemienia is not None else siec_izolowana and suma_b_l > 1e-5
         )
+        margines = None if brak_trv else _round(min_margin, 4)
+        opis_braku_trv = (
+            "Brak parametrów obwodu napięcia powrotnego ("
+            + ", ".join(_NAZWY_PARAMETROW_TRV[k] for k in brak_trv)
+            + ") — przebiegu napięcia powrotnego nie wyznaczono; wartości zastępczej nie przyjęto."
+        )
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
-            {"u_r_kv": u_r, "f_n_hz": natural_frequency_hz, "tau_s": tau_s},
-            "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią "
-            "wytrzymałości wyłącznika wg IEC 62271-100.",
-            {"trv_margin_percent": _round(min_margin, 4), "ferro_risk": ferro_risk},
+            {
+                "u_r_kv": u_r,
+                "f_n_hz": natural_frequency_hz,
+                "tau_s": tau_s,
+                "inrush_multiple_in": inrush_multiple,
+            },
+            (
+                opis_braku_trv
+                if brak_trv
+                else "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią "
+                "modelową solvera (narost liniowy do 2·U_r w 88 µs) — nie z obwiednią "
+                "tabel IEC 62271-100 (u_c, t_3 normy nie są danymi programu)."
+            ),
+            {"trv_margin_percent": margines, "ferro_risk": ferro_risk},
             "Napięcia porównywane w [kV]; margines wyrażony w %.",
-            result_pl=(f"Najmniejszy margines napięcia powrotnego: {_round(min_margin, 4)} %"),
+            result_pl=(
+                "Przebiegu napięcia powrotnego nie wyznaczono — brak parametrów obwodu"
+                if margines is None
+                else f"Najmniejszy margines napięcia powrotnego: {margines} %"
+            ),
         )
         # K-08: sanity-bounds IEC 62271 — margines TRV skończony, krotność udaru i 2. harmoniczna fizyczne.
         sanity = _sanity_block(
@@ -2163,27 +2807,59 @@ class V126AcademicSolver:
                 ("trv_margin_finite", _finite(min_margin), "Margines TRV nieskończony/NaN"),
                 (
                     "inrush_multiple_range",
-                    _finite(inrush_multiple) and 0.0 < inrush_multiple <= 30.0,
+                    inrush_multiple is not None
+                    and _finite(inrush_multiple)
+                    and 0.0 < inrush_multiple <= 30.0,
                     "Krotność udaru poza (0,30]×In (nierealna)",
                 ),
                 (
                     "second_harmonic_range",
-                    _finite(second_harmonic_percent) and 0.0 <= second_harmonic_percent <= 100.0,
+                    second_harmonic_percent is not None
+                    and _finite(second_harmonic_percent)
+                    and 0.0 <= second_harmonic_percent <= 100.0,
                     "Udział 2. harmonicznej poza [0,100]%",
                 ),
             ],
-            has_inputs=len(model.buses) > 0,
+            has_inputs=len(model.buses) > 0 and not brak_trv and inrush_multiple is not None,
         )
+        brakujace = [
+            *brak_trv,
+            *([] if inrush_multiple is not None else ["inrush_multiple_in"]),
+        ]
+        opis_braku_udaru = (
+            "Brak krotności prądu załączania transformatora (właściwość transformatora, model "
+            "jej nie niesie) — udziału 2. harmonicznej nie wyznaczono; wartości zastępczej nie "
+            "przyjęto."
+        )
+        # Komunikat braku we wspólnym kluczu kontraktu V12.6 (``message_pl`` + ``missing_fields``
+        # — sekcja braków ekranu, ``SCIEZKA_BRAKOW``).
+        komunikaty_brakow = [
+            *([opis_braku_trv] if brak_trv else []),
+            *([opis_braku_udaru] if inrush_multiple is None else []),
+        ]
         return {
             "sanity": sanity,
             "trv_curve": points,
-            "trv_margin_percent": _round(min_margin, 4),
-            "trv_status": "spelniony" if min_margin >= 10 else "niespelniony",
-            "inrush": {
-                "peak_multiple_in": inrush_multiple,
-                "second_harmonic_percent_of_peak": _round(second_harmonic_percent, 4),
-                "blocking_87t_recommended": second_harmonic_percent >= 10,
-            },
+            "trv_margin_percent": margines,
+            "trv_status": (
+                None if margines is None else ("spelniony" if min_margin >= 10 else "niespelniony")
+            ),
+            **({"message_pl": " ".join(komunikaty_brakow)} if komunikaty_brakow else {}),
+            **({"missing_fields": brakujace} if brakujace else {}),
+            "inrush": (
+                {
+                    "peak_multiple_in": inrush_multiple,
+                    "second_harmonic_percent_of_peak": _round(second_harmonic_percent, 4),
+                    "blocking_87t_recommended": second_harmonic_percent >= 10,
+                }
+                if inrush_multiple is not None and second_harmonic_percent is not None
+                else {
+                    "peak_multiple_in": None,
+                    "second_harmonic_percent_of_peak": None,
+                    "blocking_87t_recommended": None,
+                    "brak_danych": opis_braku_udaru,
+                }
+            ),
             "ferroresonance": {
                 "risk": ferro_risk,
                 "recommendation": (
@@ -2603,7 +3279,7 @@ class V126AcademicSolver:
             "validation_report": rows,
             "references_provided": True,
             "proof_type": overall_proof_type,
-            "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
+            "status": ("PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL"),
         }
 
     def _uncertainty(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:

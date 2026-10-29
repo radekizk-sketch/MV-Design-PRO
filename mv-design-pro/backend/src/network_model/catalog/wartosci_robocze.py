@@ -1284,6 +1284,36 @@ ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
     "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
 )
 
+# Susceptancja ZEROWA (pojemność doziemna) odcinka SN bez B′0 w modelu. Katalog kabli niesie
+# pojemność roboczą C′1 (materializacja: B′1 = 2πf·C′1 przy częstotliwości studium), katalog
+# linii — susceptancję B′1; pojemności doziemnej nie podaje żadna pozycja. Bez B′0 prąd
+# pojemnościowy sieci (I_C), rozstrojenie dławika, projekt uziemienia i bocznik pojemności
+# w sieci zerowej zwarć są nieoznaczalne — zasada nr 4: wartość robocza z relacji pierwszych
+# zasad, dana przyjęta ESTIMATED.
+#
+# Kabel SN: każda żyła ma własny ekran nad izolacją (pole promieniowe — budowa kabli SN wg
+# IEC 60502-2), więc jedyną pojemnością żyły jest pojemność żyła–ekran (ekran uziemiony):
+# macierz pojemności faz jest diagonalna, C′0 = C′1, stąd B′0 = B′1 (ta sama częstotliwość).
+# Linia SN bez przewodu odgromowego: metoda odbić zwierciadlanych daje
+# C′0/C′1 = ln(D/r) / (ln(D/r) + 3·ln(2h/D)); dla typowej geometrii słupów SN (wysokość
+# zawieszenia 8–11 m, odstęp faz 0,6–1,4 m, przewody 6–15 mm) solver parametrów linii tego
+# repozytorium (``network_model.solvers.parametry_linii_napowietrznej``) daje 0,34–0,45 —
+# wartość robocza B′0 = 0,4·B′1 (rozrzut ±15 % wobec geometrii rzeczywistej, jawnie w założeniu).
+#: Stosunek C′0/C′1 linii SN bez przewodu odgromowego (wartość robocza, uzasadnienie wyżej).
+STOSUNEK_B0_B1_LINII_SN: Final[float] = 0.4
+
+ZALOZENIE_ODCINKA_B0_KABEL_SN = (
+    "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; "
+    "jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1)"
+)
+ZALOZENIE_ODCINKA_B0_LINIA_SN = (
+    "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych "
+    "C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; "
+    "rozrzut ±15 % wobec geometrii rzeczywistej)"
+)
+
 #: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
 #: nie „wartością z katalogu” (``dana_przyjeta_z0``).
 ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
@@ -1293,8 +1323,39 @@ ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
         ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
         ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
         ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_B0_KABEL_SN,
+        ZALOZENIE_ODCINKA_B0_LINIA_SN,
     }
 )
+
+#: Pole susceptancji zerowej gałęzi i jego etykieta (dana przyjęta, ślad, komunikaty).
+POLE_B0: Final[str] = "b0_siemens_per_km"
+ETYKIETA_B0: Final[str] = "B′0"
+
+#: Jednostka pola składowej zerowej w danej przyjętej.
+JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {
+    "r0_ohm_per_km": "Ω/km",
+    "x0_ohm_per_km": "Ω/km",
+    POLE_B0: "S/km",
+}
+
+
+def wyprowadz_susceptancje_zerowa_sn(
+    *, kabel: bool, b1: float | None
+) -> tuple[tuple[str, float, str], ...]:
+    """B′0 odcinka SN do przyjęcia wartością roboczą: krotka (pole, wartość [S/km], założenie).
+
+    JEDNA reguła dla każdego konsumenta pojemności doziemnej (sieć zerowa zwarć, prąd
+    pojemnościowy sieci, projekt uziemienia V12.6, gotowość V12.6): kabel SN B′0 = B′1, linia
+    SN B′0 = 0,4·B′1. Pusta krotka, gdy B′1 nieznane albo niedodatnie — pojemności doziemnej
+    nie da się oprzeć na pojemności roboczej, której nie ma. Wołający stosuje regułę
+    WYŁĄCZNIE do odcinków pasma SN (nN i WN — odmowa nazwana u wołającego).
+    """
+    if b1 is None or b1 <= 0:
+        return ()
+    if kabel:
+        return ((POLE_B0, b1, ZALOZENIE_ODCINKA_B0_KABEL_SN),)
+    return ((POLE_B0, round(STOSUNEK_B0_B1_LINII_SN * b1, 15), ZALOZENIE_ODCINKA_B0_LINIA_SN),)
 
 
 def wyprowadz_skladowa_zerowa_kabla_nn(
@@ -1428,14 +1489,15 @@ def pola_z0_robocze(
 
 
 def dana_przyjeta_z0(
-    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+    *, pole: str, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
     """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
-    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4)."""
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4); jednostka
+    z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km)."""
     zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
         nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
-        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        wartosc=Wielkosc(wartosc=wartosc, jednostka=JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ[pole]),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
             "albo pomiar)."

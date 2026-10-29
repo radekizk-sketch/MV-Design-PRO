@@ -244,7 +244,8 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
         etykieta: 'Napięcie znamionowe łącznika',
         rodzaj: 'liczba',
         jednostka: 'kV',
-        opis: 'Puste = najwyższe napięcie znamionowe szyny modelu.',
+        opis: 'Puste = napięcie najwyższe urządzenia U_m sieci SN modelu (IEC 60038 tab. 3–5; '
+          + 'U_r aparatu = U_m, IEC 62271-1).',
       },
       {
         klucz: 'trv_natural_frequency_hz',
@@ -314,15 +315,11 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   // `_neutral_earthing_design` + `_petersen_design` + `_ner_design`. Schemat (dławik albo
   // rezystor) wynika z wariantu zespołu uziemiającego modelu, nie z formularza; rezystor
   // (R, prąd znamionowy, dopuszczalny czas przepływu) jest daną zespołu w modelu — dawne pola
-  // „docelowy prąd doziemienia" i „wytrzymałość cieplna rezystora" nadpisywały model.
+  // „docelowy prąd doziemienia" i „wytrzymałość cieplna rezystora" nadpisywały model. Tak samo
+  // dawne „stopień rozstrojenia" i „tłumienie prądu resztkowego": prąd resztkowy liczy się dla
+  // DŁAWIKA MODELU (impedancje punktów neutralnych w ruchu), nie z liczb formularza.
   neutral_earthing_design: {
     pola: [
-      { klucz: 'petersen_detuning', etykieta: 'Stopień rozstrojenia dławika', rodzaj: 'liczba' },
-      {
-        klucz: 'petersen_residual_damping',
-        etykieta: 'Składowa tłumienia prądu resztkowego',
-        rodzaj: 'liczba',
-      },
       {
         klucz: 'ner_clearing_time_s',
         etykieta: 'Czas wyłączenia zwarcia doziemnego (rezystor)',

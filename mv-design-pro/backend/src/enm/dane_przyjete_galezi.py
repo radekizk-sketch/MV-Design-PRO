@@ -63,9 +63,13 @@ _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
 
 def galezie_z0_robocze(
-    enm: EnergyNetworkModel,
+    enm: EnergyNetworkModel, *, z_pojemnoscia: bool = True
 ) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
-    """Załączone linie i kable, których R′0/X′0 są wartością roboczą (kolejność ref_id).
+    """Załączone linie i kable, których R′0/X′0 (i B′0 przy ``z_pojemnoscia``) są wartością
+    roboczą (kolejność ref_id).
+
+    ``z_pojemnoscia`` — obliczenie czyta pojemność doziemną B′0 (sieć zerowa zwarć z bocznikiem
+    pojemności, impedancja zerowa węzła); rozpływ niesymetryczny jej nie czyta (``False``).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
     wierszy wyniku. Predykat pola: ``enm.skladowa_zerowa_galezi`` — ten sam, z którego sieć
@@ -79,31 +83,41 @@ def galezie_z0_robocze(
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
-        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze
+        skladowa = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref))
+        pola = skladowa.robocze + (skladowa.robocze_b0 if z_pojemnoscia else ())
         if pola:
             wynik.append((galaz, pola))
     return wynik
 
 
 def zalozenia_z0_galezi(
-    enm: EnergyNetworkModel, scenario: str | None, *, galezie: Iterable[str] | None = None
+    enm: EnergyNetworkModel,
+    scenario: str | None,
+    *,
+    galezie: Iterable[str] | None = None,
+    z_pojemnoscia: bool = True,
 ) -> tuple[dict[str, Any], ...]:
     """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej.
 
     ``galezie`` zawęża zbiór (rozpływ niesymetryczny: wyłącznie gałęzie z realnym prądem I0);
-    ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu).
+    ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu). ``z_pojemnoscia``
+    jak w ``galezie_z0_robocze``.
     """
     dozwolone = None if galezie is None else set(galezie)
     zalozenia: list[dict[str, Any]] = []
-    for galaz, pola in galezie_z0_robocze(enm):
+    for galaz, pola in galezie_z0_robocze(enm, z_pojemnoscia=z_pojemnoscia):
         if dozwolone is not None and galaz.ref_id not in dozwolone:
             continue
         nazwa = nazwa_elementu(galaz, "branches")
         przyjete = [
             dana_przyjeta_z0(
-                etykieta=etykieta, zalozenie=zalozenie, wartosc=wartosc, miejsce_pl=nazwa
+                pole=pole,
+                etykieta=etykieta,
+                zalozenie=zalozenie,
+                wartosc=wartosc,
+                miejsce_pl=nazwa,
             )
-            for _, etykieta, zalozenie, wartosc in pola
+            for pole, etykieta, zalozenie, wartosc in pola
         ]
         etykiety = " i ".join(etykieta for _, etykieta, _, _ in pola)
         z_odcinka = {zalozenie in ZALOZENIA_Z0_ODCINKA for _, _, zalozenie, _ in pola}
@@ -209,12 +223,13 @@ def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, 
             grupy.setdefault(klucz, []).append(str(skladnik["nazwa"]))
     return [
         dana_przyjeta_z0(
+            pole=pole,
             etykieta=etykieta,
             zalozenie=zalozenie,
             wartosc=wartosc,
             miejsce_pl=", ".join(sorted(nazwy)),
         ).model_dump(mode="json")
-        for (_, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
+        for (pole, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
     ]
 
 

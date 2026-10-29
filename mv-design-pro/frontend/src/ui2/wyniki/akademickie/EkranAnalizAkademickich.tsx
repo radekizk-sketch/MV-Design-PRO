@@ -69,6 +69,7 @@ import {
 } from './api';
 import {
   POLITYKI_EKSPORTU_RAPORTU,
+  danePrzyjeteWyniku,
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
   liczbaKrokowSladuRaportu,
@@ -1213,6 +1214,35 @@ function PanelBrakow({ payload }: { payload: unknown }) {
   );
 }
 
+/**
+ * Dane przyjęte wyniku (zasada nr 4): wartości robocze ESTIMATED, na których solver policzył
+ * wynik — dyskretnie, z powodem w podpowiedzi; nota o dowodzie niepełnym z `kompletnosc_dowodu`.
+ */
+function PanelDanychPrzyjetych({ payload }: { payload: unknown }) {
+  const dane = danePrzyjeteWyniku(payload);
+  const niepelny = odczytaj(payload, 'kompletnosc_dowodu') === 'NIEPELNY';
+  if (dane.length === 0 && !niepelny) return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-dane-przyjete">
+      <h3 className="mvd-akad-sekcja-tytul">{S.danePrzyjeteTytul}</h3>
+      {niepelny && (
+        <p className="mvd-akad-opis" data-testid="mvd-akad-dane-przyjete-niepelny">
+          {S.danePrzyjeteNiepelny}
+        </p>
+      )}
+      {dane.length > 0 && (
+        <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-dane-przyjete-lista">
+          {dane.map((dana) => (
+            <li key={`${dana.nazwa}::${dana.wartosc ?? ''}`} title={dana.powod}>
+              {dana.wartosc ? `${dana.nazwa}: ${dana.wartosc}` : dana.nazwa}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Wiarygodność wyniku — blok kontroli granic fizycznych solvera. */
 function PanelWiarygodnosci({ payload }: { payload: unknown }) {
   const status = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.status);
@@ -2046,6 +2076,7 @@ export function EkranAnalizAkademickich({
                 />
               ))}
               <PanelBrakow payload={stan.dane.wynik.result.result} />
+              <PanelDanychPrzyjetych payload={stan.dane.wynik.result.result} />
               <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
               <PanelRankinguNieprezentowanego
                 payload={stan.dane.wynik.result.result}

@@ -445,7 +445,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',
   'power_flow.unbalanced_load_phases_unsupported': 'wspolne',
-  'power_flow.unbalanced_losses_self_impedance': 'wspolne',
   'power_flow.unbalanced_magnetising_branch_omitted': 'wspolne',
   'power_flow.unbalanced_no_zero_sequence_path': 'wspolne',
   'power_flow.unbalanced_requires_radial': 'wspolne',

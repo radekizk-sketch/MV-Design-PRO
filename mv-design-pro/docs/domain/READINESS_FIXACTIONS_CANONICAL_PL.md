@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -121,7 +121,7 @@ Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.vector_group_invalid` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz grupę z listy (np. Dyn11, YNd11, Yzn5) | panel: `inspector`, tab: `parametry`, focus: `vector_group` |
 | `transformer.vector_group_missing` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne (składowa zerowa) nie mogą wyznaczyć układu bez tej danej | panel: `katalog`, tab: `transformatory`, focus: `vector_group` |
 | `vt.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `vt`, focus: `burden_va` |
-| `branch.z0_wartosc_robocza` | CATALOGS | 3 | INFO | Składowa zerowa (R′0, X′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; katalog bez danej producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka i przelicz | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
+| `branch.z0_wartosc_robocza` | CATALOGS | 3 | INFO | Składowa zerowa (R′0, X′0, B′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; pojemność doziemna SN: kabel B′0 = B′1, linia napowietrzna B′0 = 0,4·B′1; katalog bez danej producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka i przelicz | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `cable.insulation_data_missing` | CATALOGS | 3 | WARNING | Brak typu izolacji lub temperatury znamionowej kabla w katalogu — bez nich nie da się ocenić starzenia izolacji | panel: `katalog`, tab: `kable`, focus: `insulation_type` |
 | `cable.operating_temperature_missing` | CATALOGS | 3 | WARNING | Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji | panel: `inspector`, tab: `parametry`, focus: `temperatura_pracy_c` |
 | `cable.screen_bonding_reference_mismatch` | CATALOGS | 3 | WARNING | Zamodelowany układ uziemienia ekranu kabla różni się od układu, dla którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy innego układu uziemienia ekranu | panel: `inspector`, tab: `parametry`, focus: `screen_bonding` |
@@ -236,7 +236,6 @@ Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `shunt.parametry_robocze` | ANALYSIS | 3 | INFO | Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz | panel: `inspector`, tab: `parametry`, focus: `parametry_baterii` |
 | `shunt.pominieta_w_skladowej_zgodnej` | ANALYSIS | 3 | INFO | Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona | panel: `inspector`, tab: `parametry`, focus: `uklad_polaczen` |
 | `swz.limit_tt_it_brak_tekstu_normy` | ANALYSIS | 3 | WARNING | Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy | panel: `analizy`, tab: `zwarciowa` |
-| `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
 | `power_flow.unbalanced_shunt_admittance_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową | panel: `inspector`, tab: `parametry`, focus: `b_siemens_per_km` |
 | `power_flow.unbalanced_transformer_series_model` | ANALYSIS | 4 | WARNING | Założenie biegu: transformator jako impedancja szeregowa per faza — składowa zerowa odbiorów przenosi się przez grupę połączeń na stronę zasilającą (wynik po stronie SN przybliżony) | panel: `inspector`, tab: `transformator` |
@@ -248,9 +247,9 @@ Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 67 |
+| WARNING | 66 |
 | INFO | 9 |
-| **Razem** | **184** |
+| **Razem** | **183** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -260,8 +259,8 @@ Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | STATIONS | 32 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
-| ANALYSIS | 29 |
-| **Razem** | **184** |
+| ANALYSIS | 28 |
+| **Razem** | **183** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

@@ -15,10 +15,12 @@ Nie ma drugiej listy warunków.
 
 ZAKAZ FABRYKACJI (karta §0 poz. 4): dana, której model nie niesie i której
 projektant nie podał, jest BRAKIEM — nawet jeśli solver FROZEN ma dla niej
-wartość domyślną (uziom 60×40 m, TRV 12 kHz, wyposażenie przekaźnika = wszystkie
-metody). Domyślną solvera jest wyłącznie parametr metody (rozstrojenie dławika,
-tłumienie prądu resztkowego). Wartości WYPROWADZALNE z modelu (najwyższe Un jako
-napięcie łącznika) są PROPONOWANE z nazwanym źródłem — projektant je potwierdza
+wartość domyślną kontraktu wejścia (uziom 60×40 m, wyposażenie przekaźnika = wszystkie
+metody); napięcie powrotne i prąd załączania nie mają już w solverze wartości zastępczej
+(karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — brak = nazwany brak w wyniku). Domyślną solvera jest
+wyłącznie parametr metody (rozstrojenie dławika, tłumienie prądu resztkowego). Wartości
+WYPROWADZALNE z modelu (U_m sieci SN jako napięcie znamionowe wyłącznika, IEC 60038 /
+IEC 62271-1) są PROPONOWANE z nazwanym źródłem — projektant je potwierdza
 w formularzu, a do biegu trafiają jawnie. Sposób uziemienia punktu neutralnego sieci SN
 NIE jest parametrem (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4): solver czyta go
 z modelu (`V126AcademicInput.uziemienie_sn` z `enm.uziemienie_sekcji`), a gotowość
@@ -38,6 +40,8 @@ from application.analyses.v126_katalog import karta_analizy, nazwa_parametru_pl
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from enm.uziemienie_sekcji import uziemienie_sieci
+from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     PROJEKT_UZIEMIENIA_WARIANTU,
@@ -281,12 +285,40 @@ def _propozycje_z_modelu(
 ) -> dict[str, Proponowana]:
     """Wartości parametrów wyprowadzalne z modelu (nazwane źródło)."""
     propozycje: dict[str, Proponowana] = {}
-    if rodzaj == V126AnalysisType.TRANSIENT_TRV and enm.buses:
-        najwyzsze = max(float(b.voltage_kv) for b in enm.buses)
-        propozycje["breaker_rated_voltage_kv"] = Proponowana(
-            najwyzsze, f"najwyższe napięcie znamionowe szyny modelu ({najwyzsze:g} kV)"
-        )
+    if rodzaj == V126AnalysisType.TRANSIENT_TRV:
+        propozycja_ur = _propozycja_napiecia_wylacznika(enm)
+        if propozycja_ur is not None:
+            propozycje["breaker_rated_voltage_kv"] = propozycja_ur
     return propozycje
+
+
+def _propozycja_napiecia_wylacznika(enm: EnergyNetworkModel) -> Proponowana | None:
+    """U_r wyłącznika = U_m sieci SN modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+
+    Napięcie znamionowe aparatu łączeniowego jest wartością napięcia najwyższego urządzenia
+    U_m (IEC 62271-1), a urządzenie pokrywa sieć, gdy U_m ≥ U_s sieci (IEC 60038 tab. 3–5 —
+    jedyna tabela produktu `napiecie_najwyzsze_sieci_kv`). Sieć z JEDYNEJ prawdy o sieciach SN
+    (`uziemienie_sieci`, ta sama co U_l projektu uziemienia): analiza napięcia powrotnego
+    dotyczy wyłączników SN. Dawniej „najwyższe napięcie szyny modelu" — w modelu GPZ 110 kV
+    dla wyłącznika SN. Model bez sieci SN: najwyższe napięcie znamionowe szyny modelu (sieć WN)
+    przez tę samą tabelę; poza tablicami (nN) — brak propozycji (parametr wymagany)."""
+    sieci_sn = [s.napiecie_kv for s in uziemienie_sieci(enm)]
+    if sieci_sn:
+        u_n = max(sieci_sn)
+        opis = f"sieci SN {u_n:g} kV"
+    elif enm.buses:
+        u_n = max(float(b.voltage_kv) for b in enm.buses)
+        opis = f"najwyższego napięcia szyny modelu {u_n:g} kV"
+    else:
+        return None
+    u_m = napiecie_najwyzsze_sieci_kv(u_n)
+    if u_m is None:
+        return None
+    return Proponowana(
+        u_m,
+        f"napięcie najwyższe urządzenia U_m {opis} ({u_m:g} kV, IEC 60038 tab. 3–5; "
+        "U_r aparatu = U_m, IEC 62271-1)",
+    )
 
 
 def uzupelnij_parametry_z_modelu(
@@ -736,6 +768,12 @@ def _warunki_trv(
     warunki = [
         _warunek_parametru(
             parametry,
+            "breaker_rated_voltage_kv",
+            "Napięcie znamionowe wyłącznika U_r",
+            proponowane=proponowane,
+        ),
+        _warunek_parametru(
+            parametry,
             "trv_natural_frequency_hz",
             "Częstotliwość własna napięcia powrotnego obwodu",
             proponowane=proponowane,
@@ -886,12 +924,17 @@ def _warunki_punktu_neutralnego(
     ]
     baterie = [ref for refs in baterie_sieci for ref in refs]
     zrodla_c0 = (*z_b0, *baterie)
-    # Sieć bez żadnego źródła pojemności doziemnej solver melduje jako „dane niekompletne"
-    # (tylko ją); blokuje bieg dopiero brak pojemności we WSZYSTKICH sieciach.
+    # Sieć bez I_C solver melduje jako „dane niekompletne" (tylko ją): bez żadnego źródła
+    # pojemności doziemnej ALBO z odcinkiem bez podstawy B′0 (B′1 nieznane — suma bez niego
+    # zaniżałaby I_C; ten sam predykat co `_projekt_uziemienia_sieci` i
+    # `UziemienieSekcji.prad_pojemnosciowy_a`). B′0 wejścia to wartość modelu albo robocza
+    # odcinka SN (`enm.skladowa_zerowa_galezi`), więc predykat jest jeden dla trzech miejsc.
+    # Blokuje bieg dopiero brak I_C we WSZYSTKICH sieciach.
     sieci_bez_c0 = tuple(
         siec.szyna_ref
         for siec, galezie, refs in zip(sieci, zamkniete_sieci, baterie_sieci, strict=True)
-        if not any(b.b0_siemens_per_km is not None for b in galezie) and not refs
+        if any(b.b0_siemens_per_km is None for b in galezie)
+        or (not any(b.b0_siemens_per_km is not None for b in galezie) and not refs)
     )
     warunki = [
         Warunek(
@@ -904,12 +947,18 @@ def _warunki_punktu_neutralnego(
                     if baterie
                     else ""
                 )
+                + (
+                    " — w żadnej sieci SN pojemność doziemna nie jest kompletna (odcinki bez "
+                    "podstawy B′0 wymienione niżej)"
+                    if sieci and len(sieci_bez_c0) == len(sieci)
+                    else ""
+                )
                 if zrodla_c0
                 else "Żadna linia ani kabel sieci SN nie niesie susceptancji zerowej ani żadna "
                 "bateria kondensatorów sieci SN nie jest w gwieździe uziemionej — pojemności "
                 "doziemnej sieci nie da się wyznaczyć"
             ),
-            spelniony=bool(zrodla_c0),
+            spelniony=bool(zrodla_c0) and len(sieci_bez_c0) < len(sieci),
             elementy=zrodla_c0,
         ),
         Warunek(
@@ -928,9 +977,10 @@ def _warunki_punktu_neutralnego(
             Warunek(
                 kod="galezie.siec_bez_c0",
                 opis_pl=(
-                    f"Sieci SN bez pojemności doziemnej (linii, kabli ani baterii w gwieździe "
-                    f"uziemionej z susceptancją zerową): {len(sieci_bez_c0)} z {len(sieci)} — "
-                    "projekt uziemienia tych sieci niewykonany"
+                    f"Sieci SN bez wyznaczalnej pojemności doziemnej (bez linii, kabli i baterii "
+                    f"w gwieździe uziemionej z susceptancją zerową albo z odcinkiem bez podstawy "
+                    f"B′0): {len(sieci_bez_c0)} z {len(sieci)} — projekt uziemienia tych sieci "
+                    "niewykonany"
                 ),
                 spelniony=False,
                 elementy=sieci_bez_c0,
@@ -942,8 +992,9 @@ def _warunki_punktu_neutralnego(
             Warunek(
                 kod="galezie.bez_b0",
                 opis_pl=(
-                    f"{len(bez_b0)} z {len(zamkniete)} linii/kabli bez susceptancji zerowej — "
-                    "pominięte w sumie pojemności doziemnej"
+                    f"{len(bez_b0)} z {len(zamkniete)} linii/kabli bez susceptancji zerowej "
+                    "i bez podstawy wartości roboczej (susceptancja zgodna B′1 nieznana) — "
+                    "prąd pojemnościowy ich sieci nie jest liczony (suma bez nich zaniżałaby I_C)"
                 ),
                 spelniony=False,
                 elementy=bez_b0,

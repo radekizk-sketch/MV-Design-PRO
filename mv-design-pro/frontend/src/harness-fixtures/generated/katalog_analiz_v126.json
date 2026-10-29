@@ -437,32 +437,32 @@
           "wzor_opis_pl": ""
         },
         {
-          "wielkosc_pl": "Przepięcie dorywcze",
-          "symbol": "TOV",
+          "wielkosc_pl": "Przepięcie dorywcze przy doziemieniu",
+          "symbol": "U_c",
           "jednostka": "kV",
-          "warunek_pl": "TOV ≤ U_r ogranicznika (1,25·MCOV)",
-          "wartosc_graniczna": "U_r = 1,25·MCOV",
-          "zrodlo_pl": "IEC 60071 / IEC 60099-4",
-          "symbol_latex": "\\mathrm{TOV}",
-          "warunek_latex": "\\mathrm{TOV} \\leq U_r",
-          "wzor_latex": "U_r = 1{,}25\\cdot \\mathrm{MCOV}",
-          "wzor_opis_pl": "MCOV — trwałe dopuszczalne napięcie pracy ogranicznika [kV]; U_r — napięcie znamionowe ogranicznika [kV]. IEC 60071 / IEC 60099-4."
+          "warunek_pl": "U_TOV = k·U_m/√3; sieć izolowana i kompensowana (doziemienie długotrwałe): U_c ≥ U_TOV; sieć z rezystorem i uziemiona bezpośrednio (doziemienie wyłączane): U_c ≥ U_m/√3 oraz wytrzymałość TOV 10 s ≥ U_TOV",
+          "wartosc_graniczna": "k z solvera doziemienia sieci (sposób pracy punktu neutralnego)",
+          "zrodlo_pl": "IEC 60071-1 / IEC 60071-2 / IEC 60099-5",
+          "symbol_latex": "U_c",
+          "warunek_latex": "U_c \\geq U_{\\mathrm{TOV}} \\ \\text{albo}\\ \\left(U_c \\geq \\dfrac{U_m}{\\sqrt{3}} \\wedge \\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}\\right)",
+          "wzor_latex": "U_{\\mathrm{TOV}} = k\\,\\dfrac{U_m}{\\sqrt{3}}",
+          "wzor_opis_pl": "k — współczynnik zwarcia doziemnego sieci (U_fazy zdrowej/U_f) z solvera doziemienia wg sposobu pracy punktu neutralnego; U_m — napięcie najwyższe sieci [kV]; U_c — napięcie trwałej pracy ogranicznika [kV]; TOV_10s — wytrzymałość ogranicznika na przepięcie dorywcze 10 s [kV]."
         }
       ],
       "bez_podstawy_pl": null,
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Ograniczniki przepięć i ich karty katalogowe (MCOV, U_res, TOV, energia)",
+            "nazwa_pl": "Ograniczniki przepięć i ich karty katalogowe (U_c, U_r, U_res, wytrzymałość TOV 10 s)",
             "elementy_pl": "aparaty pierwotne pól i stacji"
           },
           {
-            "nazwa_pl": "Najwyższe napięcie urządzenia U_m",
-            "elementy_pl": "karta ogranicznika albo poziom napięcia szyny"
+            "nazwa_pl": "Napięcie najwyższe sieci U_m",
+            "elementy_pl": "poziom napięcia szyny albo karta ogranicznika"
           },
           {
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
-            "elementy_pl": "szyny, transformatory"
+            "nazwa_pl": "Sposób pracy punktu neutralnego i współczynnik zwarcia doziemnego k",
+            "elementy_pl": "zespoły uziemiające sieci SN (solver doziemienia), źródła, transformatory"
           }
         ],
         "od_uzytkownika": [],
@@ -470,9 +470,16 @@
           {
             "klucz": "arrester_mcov_kv",
             "nazwa_pl": "Dobór wstępny ogranicznika bez karty katalogowej",
-            "wartosc": "MCOV = 1,05·U_m (sieć izolowana) albo 1,05·U_m/√3 (uziemiona); U_res = 2,8·MCOV; TOV = 1,4·U_m (izolowana) albo 1,15·U_m",
+            "wartosc": "U_c = wymagane wg czasu doziemienia (przy doziemieniu wyłączanym U_c dobrane tak, by TOV_10s ≥ U_TOV); U_r = 1,2·U_c; U_res = 4,0·U_c; TOV_10s = 1,4·U_c (skrajne stosunki ograniczników ZnO SN katalogu programu, zachowawczo)",
             "jednostka": "kV",
-            "uzasadnienie_pl": "Reguły doboru wstępnego solvera stosowane WYŁĄCZNIE przy braku karty ogranicznika — miejsce bez karty jest oznaczone w gotowości."
+            "uzasadnienie_pl": "Wartości robocze WYŁĄCZNIE przy braku karty ogranicznika — każda jest daną przyjętą wiersza o jakości szacowanej, a ocena ma kompletność dowodu NIEPEŁNY."
+          },
+          {
+            "klucz": "earth_fault_factor",
+            "nazwa_pl": "Współczynnik zwarcia doziemnego bez wyniku doziemienia sieci",
+            "wartosc": "k = √3 (sieć izolowana, kompensowana, z rezystorem); k = 1,4 (uziemiona bezpośrednio)",
+            "jednostka": "1",
+            "uzasadnienie_pl": "Wartość robocza trybu dla szyny poza siecią SN modelu — dana przyjęta wiersza (IEC 60071-1)."
           }
         ]
       },
@@ -561,7 +568,7 @@
         },
         {
           "symbol": "I_res",
-          "nazwa_pl": "Prąd resztkowy przy rozstrojeniu",
+          "nazwa_pl": "Prąd resztkowy dławika modelu",
           "jednostka": "A",
           "symbol_latex": "I_{\\mathrm{res}}"
         },
@@ -583,9 +590,9 @@
           "wielkosc_pl": "Prąd resztkowy (sieć kompensowana)",
           "symbol": "I_res/I_C",
           "jednostka": "-",
-          "warunek_pl": "I_res przy przyjętym rozstrojeniu ≤ udział granicznego prądu pojemnościowego",
+          "warunek_pl": "I_res = √(I_w² + (I_C − I_L)²) dławika modelu (I_L, I_w z impedancji punktów neutralnych w ruchu) ≤ udział prądu pojemnościowego",
           "wartosc_graniczna": 0.1,
-          "zrodlo_pl": "kompensacja rezonansowa Petersena · IEC 62271-203",
+          "zrodlo_pl": "kompensacja rezonansowa Petersena (ENEA Zeszyt 1 §16, Z.13) — kryterium metody V12.6, bez wartości normowej",
           "symbol_latex": "I_{\\mathrm{res}}/I_C",
           "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
           "wzor_latex": "",
@@ -595,13 +602,13 @@
           "wielkosc_pl": "Energia w rezystorze (sieć uziemiona przez rezystor)",
           "symbol": "E",
           "jednostka": "J",
-          "warunek_pl": "E = I_R²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora",
+          "warunek_pl": "E_k = I_th²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora (I_th = I_R,k·√(m+n), I_R,k = c_max·U_f/|R + Z_0,TU/3|)",
           "wartosc_graniczna": "E ≤ E_n",
           "zrodlo_pl": "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
           "symbol_latex": "E",
           "warunek_latex": "E \\leq E_n",
-          "wzor_latex": "E = I_R^2 \\cdot R \\cdot t_{\\text{wył}} \\leq E_n = I_n^2 \\cdot R \\cdot t_n",
-          "wzor_opis_pl": "I_R = U_f/R — prąd rezystora przy doziemieniu metalicznym [A] (składowa pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez rezystor); R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy rezystora i dopuszczalny czas jego przepływu [A, s]."
+          "wzor_latex": "E_k = I_{\\mathrm{th}}^2 \\cdot R \\cdot t_{\\text{wył}} \\leq E_n = I_n^2 \\cdot R \\cdot t_n\\text{,}\\quad I_{R,k} = \\dfrac{c_{\\max} U_f}{\\left|R + Z_{0,\\mathrm{TU}}/3\\right|}",
+          "wzor_opis_pl": "I_R,k — największy prąd rezystora przy doziemieniu metalicznym wg IEC 60909-0 (c_max z tab. 1, droga zerowa gałęzi uziemiającej Z_0,TU/3 + R) [A]; I_th = I_R,k·√(m+n) — prąd cieplny zastępczy (IEC 60909-0 §12) [A]; R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy rezystora i dopuszczalny czas jego przepływu [A, s] (IEEE Std C57.32)."
         }
       ],
       "bez_podstawy_pl": null,
@@ -620,7 +627,7 @@
             "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
           },
           {
-            "nazwa_pl": "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu) i prąd dławika w układzie dławik ‖ rezystor",
+            "nazwa_pl": "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu), impedancje punktów neutralnych w ruchu (dławik gaszący, rezystor wymuszający AWSC, dławik ‖ rezystor) i impedancja zerowa transformatora uziemiającego",
             "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
           }
         ],
@@ -631,44 +638,15 @@
             "jednostka": "s",
             "wymagane": false,
             "opis_pl": "Dla sieci z rezystorem w punkcie neutralnym; bez wpisu sprawdzenie cieplne rezystora nie jest wykonywane."
-          },
-          {
-            "klucz": "petersen_detuning",
-            "nazwa_pl": "Stopień rozstrojenia dławika",
-            "jednostka": "-",
-            "wymagane": false,
-            "opis_pl": "Opcjonalnie; bez wpisu solver przyjmuje wartość domyślną 0,05 (±5 %)."
-          },
-          {
-            "klucz": "petersen_residual_damping",
-            "nazwa_pl": "Tłumienie prądu resztkowego",
-            "jednostka": "-",
-            "wymagane": false,
-            "opis_pl": "Opcjonalnie (d = I_R/I_C z karty dławika); bez wpisu 0 — bez strat dławika."
           }
         ],
-        "domyslne_solvera": [
-          {
-            "klucz": "petersen_detuning",
-            "nazwa_pl": "Stopień rozstrojenia dławika",
-            "wartosc": 0.05,
-            "jednostka": "-",
-            "uzasadnienie_pl": "Parametr metody: ±5 % rozstrojenia przyjęte przy braku wartości projektanta."
-          },
-          {
-            "klucz": "petersen_residual_damping",
-            "nazwa_pl": "Składowa tłumienia prądu resztkowego",
-            "wartosc": 0.0,
-            "jednostka": "-",
-            "uzasadnienie_pl": "Parametr metody: brak strat dławika w karcie ⇒ 0 (prąd resztkowy w rezonansie = 0)."
-          }
-        ]
+        "domyslne_solvera": []
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
-        "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN."
+        "Dławik dobierany do rezonansu z pojemnością doziemną sieci; prąd resztkowy, rozstrojenie i składowa czynna liczone dla dławika MODELU tym samym solverem co wiersz zwarcia jednofazowego (straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — rzeczywisty prąd resztkowy jest nie mniejszy)."
       ],
       "zakres_oceny": "kryterium"
     },
@@ -708,7 +686,7 @@
           "jednostka": "%",
           "warunek_pl": "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
           "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "IEC 62271-100 (obwiednia napięcia powrotnego)",
+          "zrodlo_pl": "obwiednia modelowa solvera (narost liniowy do 2·U_r w 88 µs) — nie obwiednia tabel IEC 62271-100",
           "symbol_latex": "M_{\\mathrm{TRV}}",
           "warunek_latex": "M_{\\mathrm{TRV}} = \\dfrac{\\text{obwiednia} - u_{\\mathrm{TRV}}}{\\text{obwiednia}}\\cdot 100\\% \\geq 10\\%",
           "wzor_latex": "",
@@ -731,8 +709,8 @@
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Najwyższe napięcie znamionowe szyn (proponowane U_r)",
-            "elementy_pl": "szyny"
+            "nazwa_pl": "Napięcie najwyższe urządzenia U_m sieci SN (proponowane U_r wyłącznika, IEC 60038 / IEC 62271-1)",
+            "elementy_pl": "sieci SN, szyny"
           },
           {
             "nazwa_pl": "Susceptancje doziemne gałęzi (ferrorezonans)",
@@ -749,7 +727,7 @@
             "nazwa_pl": "Napięcie znamionowe wyłącznika",
             "jednostka": "kV",
             "wymagane": false,
-            "opis_pl": "Puste = najwyższe napięcie znamionowe szyny modelu."
+            "opis_pl": "Puste = napięcie najwyższe urządzenia U_m sieci SN modelu (IEC 60038 tab. 3–5; U_r aparatu = U_m, IEC 62271-1)."
           },
           {
             "klucz": "trv_natural_frequency_hz",

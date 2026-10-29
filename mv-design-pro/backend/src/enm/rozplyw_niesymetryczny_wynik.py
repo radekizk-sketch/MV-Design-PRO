@@ -22,7 +22,13 @@ from domain.result_contract_power_flow_unbalanced_v1 import (
 )
 from enm.assembler import WejscieRozplywuNiesymetrycznego, WyspaRozplywuNiesymetrycznego
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
-from network_model.pochodne import napiecie_fazowe_v, prad_fazy_z_mocy_i_napiecia_a
+from network_model.pochodne import (
+    kv_na_v,
+    moc_bazowa_fazy_mva,
+    napiecie_fazowe_v,
+    prad_fazy_z_mocy_i_napiecia_a,
+)
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedPowerFlowBranchResult,
     UnbalancedPowerFlowBusResult,
@@ -134,6 +140,13 @@ def zbuduj_wynik_rozplywu_niesymetrycznego(
                 ),
                 voltage_unbalance_factor_pct=vuf,
                 zrodlo_ref=zrodlo_szyny[node_id],
+                # Potencjał przewodu N szyny nN [V] = |V_N| p.u. · U_LL/√3 (baza napięcia
+                # fazowego węzła — ta sama co napięcia faz).
+                u_n_pe_v=(
+                    abs(wynik_szyny.neutral_voltage_pu) * napiecie_fazowe_v(kv_na_v(un_kv))
+                    if pasmo_napieciowe(un_kv) == "nN"
+                    else None
+                ),
             )
         )
 
@@ -188,6 +201,18 @@ def zbuduj_wynik_rozplywu_niesymetrycznego(
                 losses_p_mw=galaz.losses_p_mw,
                 losses_q_mvar=galaz.losses_q_mvar,
                 rated_current_a=rated,
+                # Prąd przewodu N linii/kabla nN [A]: |I_N| p.u. · S_b,φ/U_b,φ strony
+                # początku (baza prądu jednej fazy, ta sama co prądy faz).
+                prad_n_a=(
+                    prad_fazy_z_mocy_i_napiecia_a(
+                        abs(galaz.neutral_current_pu) * moc_bazowa_fazy_mva(wejscie.base_mva),
+                        u_faz,
+                    )
+                    if obiekt is not None
+                    and element_type == "BRANCH"
+                    and pasmo_napieciowe(un_from) == "nN"
+                    else None
+                ),
             )
         )
 

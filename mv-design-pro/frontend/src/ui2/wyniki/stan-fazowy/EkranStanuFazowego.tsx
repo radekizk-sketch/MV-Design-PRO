@@ -220,6 +220,9 @@ export function EkranStanuFazowego() {
                     <th>
                       {T.rnKolVuf} <span className="mvd-fazowy-jedn">[{T.jednProcent}]</span>
                     </th>
+                    <th>
+                      {T.rnKolUNPe} <span className="mvd-fazowy-jedn">[{T.jednV}]</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -233,9 +236,12 @@ export function EkranStanuFazowego() {
                           <td className="mvd-num">{s.fazy.uB}</td>
                           <td className="mvd-num">{s.fazy.uC}</td>
                           <td className="mvd-num">{s.fazy.vuf}</td>
+                          <td className="mvd-num" data-testid="mvd-fazowy-rn-u-n-pe">
+                            {s.fazy.uNPe}
+                          </td>
                         </>
                       ) : (
-                        <td colSpan={4} className="mvd-fazowy-nota">
+                        <td colSpan={5} className="mvd-fazowy-nota">
                           {T.rnNierozwiazana}
                         </td>
                       )}
@@ -268,6 +274,9 @@ export function EkranStanuFazowego() {
                       {T.rnKolIn} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
                     </th>
                     <th>
+                      {T.rnKolIPrzewoduN} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
                       {T.rnKolStraty} <span className="mvd-fazowy-jedn">[{T.jednKW}]</span>
                     </th>
                   </tr>
@@ -281,6 +290,9 @@ export function EkranStanuFazowego() {
                       <td className="mvd-num">{g.iB}</td>
                       <td className="mvd-num">{g.iC}</td>
                       <td className="mvd-num">{g.iN}</td>
+                      <td className="mvd-num" data-testid="mvd-fazowy-rn-i-przewodu-n">
+                        {g.iPrzewoduN}
+                      </td>
                       <td className="mvd-num">{g.stratyKw}</td>
                     </tr>
                   ))}

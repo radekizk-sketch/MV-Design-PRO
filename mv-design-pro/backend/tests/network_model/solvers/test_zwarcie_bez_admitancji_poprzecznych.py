@@ -504,18 +504,34 @@ def test_iniekcja_b_polowa_czerwieni_bilans_kcl(b_polowa_w_sieci_zgodnej: None) 
     assert abs(suma - 1.0) > 1e-3
 
 
-def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc() -> None:
-    """Zdjęcie B0 z sieci izolowanej: brak JAKIEJKOLWIEK drogi prądu zerowego — nazwana
-    przyczyna ``brak_drogi`` w każdym węźle, nie cichy wynik (kotwica numeryczna bloku
-    osobliwego nie udaje uziemienia — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 7)."""
+@pytest.mark.parametrize("z_b1", [True, False], ids=["b0_robocze_z_b1", "bez_b1"])
+def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc(z_b1: bool) -> None:
+    """Zdjęcie B′0 z sieci izolowanej: prąd doziemny sieci izolowanej NIE jest prądem
+    zwarciowym IEC 60909 — wiersz bez I″k1 z nazwaną przyczyną ``poza_zakresem_iec60909``
+    w każdym węźle (kotwica numeryczna bloku osobliwego nie udaje uziemienia — karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 7; warunek odbioru 2026-10-29: tryb izolowany
+    nie przechodzi przez model Z1+Z2+Z0). Prąd doziemny to I_C = √3·U_n·B_0 w
+    ``doziemienie_sieci``: z B′1 — B′0 z wartości roboczej (dana przyjęta, NIEPELNY); bez B′1
+    — pojemność doziemna nieoznaczalna, nazwany brak bez liczby."""
     migawka, szyny = _siec("kabel_500nF", "promieniowa")
     for galaz in migawka["branches"]:
         galaz["b0_siemens_per_km"] = None
+        if not z_b1:
+            galaz["b_siemens_per_km"] = None
     run = _bieg(migawka, "SC_1F")
     for miejsce in MIEJSCA:
         wiersz = _wiersz(run, szyny[miejsce])
         assert wiersz["ikss_a"] is None
-        assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "brak_drogi"
+        assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "poza_zakresem_iec60909"
+        doziemienie = wiersz["doziemienie_sieci"]
+        assert doziemienie["tryb"] == "izolowany"
+        assert doziemienie["kompletnosc_dowodu"] == "NIEPELNY"
+        if z_b1:
+            assert doziemienie["prad_a"] is not None and doziemienie["brak_pl"] is None
+            assert any("B′0" in d["nazwa_pl"] for d in doziemienie["dane_przyjete"])
+        else:
+            assert doziemienie["prad_a"] is None and doziemienie["i_c_a"] is None
+            assert "nieoznaczalny" in doziemienie["brak_pl"]
 
 
 def test_rozplyw_zachowuje_admitancje_poprzeczna() -> None:

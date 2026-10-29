@@ -167,14 +167,8 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         1,
         "poziom ufności Monte Carlo hosting capacity",
     ),
-    ("network_model/solvers/v126_academic.py", "item.u_m_kv * 1.05"): (
-        1,
-        "MCOV ogranicznika przepięć 1,05·U_m (sieć izolowana)",
-    ),
-    ("network_model/solvers/v126_academic.py", "else item.u_m_kv / math.sqrt(3) * 1.05"): (
-        1,
-        "MCOV ogranicznika przepięć 1,05·U_m/√3",
-    ),
+    # Dawne MCOV ogranicznika 1,05·U_m i 1,05·U_m/√3 (`v126_academic._insulation`) skasowane
+    # kartą UX-04/POLE-ZU-SKLADOWA-ZEROWA: U_c dobierany z U_TOV = k·U_m/√3 trybu doziemienia.
     (
         "network_model/solvers/v126_academic.py",
         "if 0.90 <= voltage <= 1.10 and kryterium_pradowe:",

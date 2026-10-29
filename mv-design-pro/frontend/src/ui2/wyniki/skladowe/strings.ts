@@ -107,6 +107,35 @@ export const SKLADOWE_STRINGS = {
   uziemienieRezystancja: 'R',
   uziemienieReaktancja: 'X',
 
+  // Doziemienie sieci SN wg sposobu pracy punktu neutralnego (solver doziemienie_sn).
+  doziemienieTytul: 'Doziemienie sieci SN wg sposobu pracy punktu neutralnego',
+  doziemienieOpis: 'Prąd w miejscu doziemienia, jego charakter, napięcie składowej zerowej '
+    + 'i napięcia faz zdrowych liczone modelem właściwym dla sposobu pracy punktu neutralnego '
+    + 'sieci tego punktu: sieć izolowana — prąd pojemnościowy, kompensowana — prąd resztkowy, '
+    + 'z rezystorem — prąd rezystancyjno-pojemnościowy, uziemiona bezpośrednio — prąd '
+    + 'zwarciowy IEC 60909.',
+  doziemienieBrakWiersza: 'Wybrany punkt nie niesie doziemienia sieci SN (zwarcie inne niż '
+    + 'jednofazowe, punkt poza siecią SN albo starszy przebieg).',
+  doziemieniePrad: 'Prąd w miejscu doziemienia',
+  doziemienieIC: 'Prąd pojemnościowy sieci I_C',
+  doziemienieIL: 'Prąd indukcyjny dławików I_L',
+  doziemienieIW: 'Składowa czynna I_w',
+  doziemienieV: 'Rozstrojenie v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)',
+  doziemienieUF: 'Napięcie fazowe U_f',
+  doziemienieU0: 'Napięcie składowej zerowej U0',
+  doziemienieUB: 'Napięcie fazy zdrowej B',
+  doziemienieUC: 'Napięcie fazy zdrowej C',
+  doziemienieK: 'Współczynnik zwarcia doziemnego k',
+  doziemienieZF: 'Impedancja w miejscu doziemienia Z_f',
+  doziemienieWzor: 'Wzór',
+  doziemienieUziemienie: 'Układ punktu neutralnego w stanie przebiegu',
+  doziemieniePodstawa: 'Podstawa',
+  doziemienieBrak: 'Brak wyniku',
+  doziemieniePodwojne: 'Podwójne doziemienie',
+  doziemienieZastrzezenia: 'Zastrzeżenia',
+  doziemienieDanePrzyjete: 'Dane przyjęte (wartości robocze)',
+  doziemienieNiepelny: 'Wynik na wartościach roboczych albo z brakiem — dowód niepełny.',
+
   // Raportowalność wybranego punktu.
   raportTytul: 'Raportowalność wybranego punktu',
   raportStatus: 'Werdykt raportowalności',
@@ -124,6 +153,8 @@ export const SKLADOWE_STRINGS = {
 
   // Jednostki i wartości puste.
   jednOhm: 'Ω',
+  jednA: 'A',
+  jednV: 'V',
   jednKA: 'kA',
   jednS: 's',
   kreska: '—',

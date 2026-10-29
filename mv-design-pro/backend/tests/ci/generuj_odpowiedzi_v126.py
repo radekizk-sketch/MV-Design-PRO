@@ -105,10 +105,58 @@ pojemność zerową b0 = 120 µS/km (dawniej brak → „C0 nieoznaczalne").
 Skutek uboczny UJAWNIONY (ten sam mechanizm co 2026-09-05): `hosting_capacity_mw` szyny stacji
 7,8 → 7,7 MW — ziarno Monte Carlo pochodzi ze skrótu całego ładunku wejściowego, a ładunek
 zmienił się (b0 kabla, `uziemienie_sn`); przesunięcie próbki losowej, nie zmiana merytoryczna.
+
+2026-10-29, ta sama karta, odcinek B0 / TRV / NER cieplny (rdzeń B-01 `v126_academic`).
+Solver TRV przestał podstawiać wartości zastępcze (dawne U_r = największe U_n szyn = 15 kV,
+f_n = 12 kHz, τ = 180 µs, krotność załączania 8·I_n — bez podstawy normowej); brak parametru
+jest brakiem nazwanym (`missing_fields`, `message_pl`). Bieg TRV fixtury dostaje te parametry
+JAWNIE (`PARAMETRY_TRV_PROJEKTANTA`, tylko w biegu TRV — odcisk innych rodzajów bez zmian),
+z U_r = U_m = 17,5 kV zamiast dawnych 15 kV (napięcie znamionowe ≠ najwyższe napięcie
+urządzenia): krzywa i obwiednia rosną ×17,5/15, margines TRV bez zmian (−1194,8609 %),
+bo obie strony skalują się z U_r.
+Projekt uziemienia dostał sprawdzenie cieplne rezystora z prądu największego (c_max, Z_0,TU);
+w tej fixturze (dławik) sprawdzenie cieplne nie dotyczy rezystora.
+
+  rodzaj / wielkość                              PRZED                         PO
+  ---------------------------------------------- ----------------------------- ---------------
+  transient_trv: parametry obwodu                zastępcze solvera             jawne z biegu
+  transient_trv.trv_curve[t=2 µs].u_trv_kv       8,8286                        10,30003
+  transient_trv.trv_curve[t=2 µs].envelope_kv    0,68182                       0,79545
+  transient_trv.trv_margin_percent               −1194,8609                    −1194,8609
+  neutral_earthing_design.dane_przyjete          brak klucza                   [] (B′0 z modelu)
+  neutral_earthing_design.kompletnosc_dowodu     brak klucza                   PELNY
+
+2026-10-29, ta sama karta, sposób pracy punktu neutralnego (warunek odbioru właściciela;
+wersja solvera v126-academic-whitebox-1.3). Fixtura dostała dwa wejścia, które dotąd były
+martwe: wiersz koordynacji izolacji leżał w `parameters["insulation"]` (solver go nie czyta —
+w API przenosi go granica `api.v126_academic._with_parameter_payloads`), a sieć SN niosła pole `prad_dlawikow_a`
+spoza kontraktu (pydantic je pomijał; kontrakt wejścia V12.6 odrzuca teraz pola spoza
+kontraktu — `extra="forbid"`). Projekt uziemienia liczy prąd resztkowy solverem doziemienia
+sieci z punktu uziemienia modelu (dławik 15 A, Z_0,TU = 1,5 + j6 Ω) zamiast z założonego
+rozstrojenia 5 % i tłumienia 0; stan „dostrojony” był skutkiem założenia, nie modelu.
+Przesunięcie `hosting_capacity_mw` szyny stacji 7,7 → 7,0 MW to ten sam mechanizm ziarna
+Monte Carlo co 2026-09-05 (odcisk całego wejścia, n = 64 próbek), nie zmiana merytoryczna.
+
+  rodzaj / wielkość                              PRZED                         PO
+  ---------------------------------------------- ----------------------------- ---------------
+  insulation_coordination.arresters              [] (wiersz martwy)            1 wiersz: tryb
+                                                                               kompensowany,
+                                                                               k = √3, U_TOV
+                                                                               17,5 kV, margines
+                                                                               35,714 %
+  neutral_earthing_design.tuning_status          dostrojony (założenie 5 %)    rozstrojony_poza_10pct
+  neutral_earthing_design.detuning_model         brak (detuning_assumed 0,05)  −0,19866
+  neutral_earthing_design.residual_current_a     brak                          2,477474 A
+  neutral_earthing_design.residual_current_at_   0,0 (tłumienie założone 0)    0,012901 A (R_0,TU)
+    resonance_a
+  earth_fault_detection.dane_przyjete            brak klucza                   metody przekaźnika
+                                                                               ESTIMATED
+  hosting_capacity[stacja].hosting_capacity_mw   7,7                           7,0 (ziarno)
 """
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -129,6 +177,8 @@ from solver_input.v126_contracts import (  # noqa: E402
     V126BranchInput,
     V126BusInput,
     V126HarmonicSourceInput,
+    V126InsulationInput,
+    V126PunktNeutralnySnInput,
     V126SiecSnInput,
     V126TransformerInput,
     V126UziemienieSnInput,
@@ -150,6 +200,17 @@ SCIEZKA_FIXTURY = (
 REF_GPZ_SZYNA = "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn"
 REF_STACJA_SZYNA = "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn"
 REF_KABEL = "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001"
+
+
+# Parametry biegu napięcia powrotnego (TRV) i prądu załączania — dane projektanta z formularza
+# biegu: U_r = U_m sieci 15 kV (17,5 kV, IEC 60038 / IEC 62271-1 — propozycja gotowości),
+# f_n, τ i krotność prądu załączania transformatora jako wartości obwodu wpisane przez projektanta.
+PARAMETRY_TRV_PROJEKTANTA: dict[str, float] = {
+    "breaker_rated_voltage_kv": 17.5,
+    "trv_natural_frequency_hz": 12000.0,
+    "trv_tau_s": 0.00018,
+    "inrush_multiple_in": 8.0,
+}
 
 
 def model_wejsciowy() -> V126AcademicInput:
@@ -220,14 +281,6 @@ def model_wejsciowy() -> V126AcademicInput:
                 "length_m": 60.0,
                 "width_m": 40.0,
             },
-            "insulation": [
-                {
-                    "location_bus_ref": REF_STACJA_SZYNA,
-                    "u_m_kv": 17.5,
-                    "network_neutral": "isolated",
-                    "arrester_residual_10ka_kv": 70.0,
-                }
-            ],
             "motors": [
                 {
                     "ref": "motor/5b0f7d1e",
@@ -247,6 +300,21 @@ def model_wejsciowy() -> V126AcademicInput:
             ],
             "hosting_monte_carlo_n": 64,
         },
+        # Miejsce zainstalowania ogranicznika z MODELU (w API: most `build_v126_insulation_from_enm`
+        # albo `wiersze_izolacji_projektanta`, sposób pracy punktu neutralnego i k z solvera
+        # doziemienia sieci). Dawniej wiersz leżał w `parameters["insulation"]`, którego
+        # solver nie czyta (przenosi go tylko granica API) — fixtura pokazywała pustą tabelę
+        # ograniczników i strażnik prezentacji nie widział żadnej kolumny koordynacji izolacji.
+        insulation=[
+            V126InsulationInput(
+                location_bus_ref=REF_STACJA_SZYNA,
+                u_m_kv=17.5,
+                network_neutral="kompensowany",
+                earth_fault_factor=math.sqrt(3.0),
+                earth_fault_factor_zrodlo_pl="solver doziemienia sieci SN",
+                arrester_residual_10ka_kv=70.0,
+            )
+        ],
         # Uziemienie sieci SN z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4): zespół
         # z dławikiem gaszącym o regulacji nadążnej — w API buduje je `uziemienie_sn_v126`.
         uziemienie_sn=V126UziemienieSnInput(
@@ -266,7 +334,21 @@ def model_wejsciowy() -> V126AcademicInput:
                     napiecie_kv=15.0,
                     szyny=[REF_GPZ_SZYNA, REF_STACJA_SZYNA],
                     galezie_sieci=[REF_KABEL],
-                    prad_dlawikow_a=15.0,
+                    # Punkt uziemienia w ruchu (w API: `UziemienieSekcji.dane_doziemienia`):
+                    # dławik o nastawie 15 A (X_L = U_f/I_L = 8660,25 V/15 A) w punkcie
+                    # neutralnym transformatora uziemiającego Z_0,TU = 1,5 + j6 Ω/fazę. Dawne pole
+                    # `prad_dlawikow_a` nie należy do kontraktu wejścia (pydantic je pomijał) —
+                    # projekt uziemienia meldował brak punktów uziemienia sieci.
+                    punkty_neutralne=[
+                        V126PunktNeutralnySnInput(
+                            nazwa_pl="Zespół uziemiający sekcji 1",
+                            z_n_r_ohm=0.0,
+                            z_n_x_ohm=15e3 / math.sqrt(3.0) / 15.0,
+                            z0_r_ohm=1.5,
+                            z0_x_ohm=6.0,
+                        )
+                    ],
+                    dlawik_w_ruchu=True,
                 )
             ],
         ),
@@ -290,13 +372,21 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     # dostają wejście bez niego (ich odcisk wejścia, np. ziarno Monte Carlo przepustowości
     # przyłączeniowej, nie zależy od uziemienia).
     bez_uziemienia = model.model_copy(update={"uziemienie_sn": None})
+
+    def wejscie(analysis_type: V126AnalysisType) -> V126AcademicInput:
+        wybrane = model if analysis_type in ANALIZY_UZIEMIENIA_SN else bez_uziemienia
+        if analysis_type is V126AnalysisType.TRANSIENT_TRV:
+            # Parametry obwodu napięcia powrotnego wpisuje projektant w formularzu biegu (solver
+            # nie ma wartości zastępczych) — tylko w biegu TRV, jak w ścieżce API.
+            return wybrane.model_copy(
+                update={"parameters": {**wybrane.parameters, **PARAMETRY_TRV_PROJEKTANTA}}
+            )
+        return wybrane
+
     return {
         analysis_type.value: wynik_v126_dla_powierzchni(
             analysis_type.value,
-            solver.run(
-                analysis_type,
-                model if analysis_type in ANALIZY_UZIEMIENIA_SN else bez_uziemienia,
-            ),
+            solver.run(analysis_type, wejscie(analysis_type)),
             nazwy=nazwy,
         )["result"]
         for analysis_type in V126AnalysisType

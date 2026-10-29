@@ -91,23 +91,30 @@ export const STAN_FAZOWY_STRINGS = {
   rnSzynyTytul: 'Napięcia fazowe szyn',
   rnSzynyNota: 'Napięcia faza–N [kV] z solvera; VUF — współczynnik asymetrii napięcia wg '
     + 'składowych symetrycznych (IEC 61000-4-30), liczony przez solver. Bieg nie ocenia '
-    + 'progu VUF — wartość bez werdyktu.',
+    + 'progu VUF — wartość bez werdyktu. U_N–PE — potencjał przewodu N szyny nN względem '
+    + 'uziemionego punktu gwiazdowego transformatora zasilającego [V] (spadek napięcia na '
+    + 'przewodzie N od prądu I_A + I_B + I_C; bez uziemień powtórnych PEN — wartość górna); '
+    + 'kreska = szyna poza siecią nN.',
   rnKolSzyna: 'Szyna',
   rnKolUn: 'Uₙ',
   rnKolUA: 'U_A',
   rnKolUB: 'U_B',
   rnKolUC: 'U_C',
   rnKolVuf: 'VUF',
+  rnKolUNPe: 'U_N–PE',
   rnNierozwiazana: 'poza wyspą zasiloną',
   rnGalezieTytul: 'Prądy fazowe gałęzi',
-  rnGalezieNota: 'Prądy faz na początku gałęzi [A] oraz straty czynne gałęzi [kW] z solvera; '
-    + 'prąd znamionowy z katalogu (kreska = brak danych katalogowych).',
+  rnGalezieNota: 'Prądy faz na początku gałęzi [A] oraz straty czynne gałęzi [kW] z solvera '
+    + '(straty z pełnej macierzy impedancji fazowych — z prądem przewodu N); prąd znamionowy '
+    + 'z katalogu (kreska = brak danych katalogowych); I_N — prąd przewodu N gałęzi nN '
+    + '|I_A + I_B + I_C| z solvera (kreska = gałąź poza siecią nN).',
   rnKolGalaz: 'Gałąź',
   rnKolRodzaj: 'Rodzaj',
   rnKolIA: 'I_A',
   rnKolIB: 'I_B',
   rnKolIC: 'I_C',
-  rnKolIn: 'Iₙ',
+  rnKolIn: 'I_r',
+  rnKolIPrzewoduN: 'I_N',
   rnKolStraty: 'Straty P',
   rnPodsumowanieTytul: 'Podsumowanie biegu',
   rnStratyCalkowite: 'Straty czynne całkowite',
@@ -115,6 +122,10 @@ export const STAN_FAZOWY_STRINGS = {
   rnMaxVuf: 'Największy VUF',
   rnMaxVufSzyna: 'Szyna o największym VUF',
   rnSzynyRozwiazane: 'Szyny rozwiązane',
+  rnMaxUNPe: 'Największe napięcie N–PE (nN)',
+  rnMaxUNPeSzyna: 'Szyna o największym napięciu N–PE',
+  rnMaxPradN: 'Największy prąd przewodu N (nN)',
+  rnMaxPradNGalaz: 'Gałąź o największym prądzie przewodu N',
   rnZalozeniaTytul: 'Założenia biegu',
   rnZalozeniaNota: 'Każde założenie jest nazwane kodem kanonu gotowości i wskazuje elementy, '
     + 'których dotyczy — bieg nie podstawia wartości bez nazwania tego tutaj.',
@@ -133,6 +144,7 @@ export const STAN_FAZOWY_STRINGS = {
   // Jednostki i brak danych.
   jednKV: 'kV',
   jednA: 'A',
+  jednV: 'V',
   jednKW: 'kW',
   jednProcent: '%',
   kreska: '—',

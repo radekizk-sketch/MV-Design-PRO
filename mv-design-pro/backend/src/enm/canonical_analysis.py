@@ -71,6 +71,7 @@ from enm.dane_przyjete_galezi import (
     dane_przyjete_galezi_punktow,
     dane_przyjete_galezi_wiersza,
 )
+from enm.doziemienie_sieci import KLUCZ_DOZIEMIENIA_SIECI, doziemienie_wiersza
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
@@ -2842,6 +2843,20 @@ def _execute_short_circuit(
             payload = _oznacz_wiersz_bez_wyniku_zerowego(
                 payload, wejscie.brak_wyniku_zerowego[node_id]
             )
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): wiersz zwarcia
+        # jednofazowego węzła sieci SN niesie doziemienie wg sposobu pracy punktu neutralnego
+        # (izolowany — I_C, kompensowany — I_res, rezystor — I_F, bezpośredni — napięcia faz
+        # z Z1/Z2/Z0 rdzenia). Węzeł z brakiem danych składowej zerowej — bez (brak podstawy).
+        sekcja_sn = wejscie.sekcje_sn_wezlow.get(node_id)
+        brak_zerowej = wejscie.brak_wyniku_zerowego.get(node_id)
+        if (
+            sekcja_sn is not None
+            and node_id not in wezly_bez_odniesienia
+            and (brak_zerowej is None or brak_zerowej.przyczyna != "brak_danych")
+        ):
+            payload[KLUCZ_DOZIEMIENIA_SIECI] = doziemienie_wiersza(
+                sekcja_sn, wejscie.stan_awsc, payload, z_f_ohm=wejscie.impedancja_zwarcia
+            )
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
@@ -4350,7 +4365,11 @@ def build_short_circuit_results(
                 # przyczyna braku wyniku zerowego — addytywnie, tylko gdy wiersz je niesie.
                 **{
                     klucz: item[klucz]
-                    for klucz in ("non_physical_reason", "brak_wyniku_zerowego")
+                    for klucz in (
+                        "non_physical_reason",
+                        "brak_wyniku_zerowego",
+                        KLUCZ_DOZIEMIENIA_SIECI,
+                    )
                     if item.get(klucz) is not None
                 },
                 "proof_ref": item.get("proof_ref"),

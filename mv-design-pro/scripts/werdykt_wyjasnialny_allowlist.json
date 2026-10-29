@@ -1305,16 +1305,16 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._insulation.verification_status",
+   "tozsamosc": "network_model.solvers.v126_academic:_wiersz_izolacji.verification_status",
    "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A20 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
+   "uzasadnienie_pl": "Stan zastany; inwentarz A20 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24). Tożsamość przeniesiona razem z ładunkiem wiersza izolacji do `_wiersz_izolacji` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, 2026-10-29); wiersz niesie `uzasadnienie_pl` z każdym kryterium (wynik, limit, podstawa), migracja do `OcenaKryterium` bez zmian w planie §8.",
    "wiersz_inwentarza": "A20"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._ner_design.thermal.status",
+   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._ner_thermal.status",
    "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
+   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24). Tożsamość przeniesiona razem z oceną cieplną rezystora do `_ner_thermal` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, pozycja D31, 2026-10-29); migracja do `OcenaKryterium` bez zmian w planie §8.",
    "wiersz_inwentarza": "A25"
   },
   {
