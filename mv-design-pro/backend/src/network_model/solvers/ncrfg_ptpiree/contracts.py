@@ -283,7 +283,7 @@ class NcRfgPtpireeModuleResult(BaseModel):
     def _spojnosc(self) -> Self:
         if self.module_type != self.klasyfikacja.modul:
             raise ValueError(
-                f"Moduł {self.der_ref}: module_type {self.module_type} ≠ klasyfikacja "
+                f"Moduł {self.der_ref}: typ modułu {self.module_type} ≠ klasyfikacja "
                 f"{self.klasyfikacja.modul}."
             )
         oczekiwana = technologia_modulu(self.der_kind, self.module_family)

@@ -59,7 +59,7 @@ def _require_canonical_run(run_id: UUID) -> CanonicalRun:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail=f"Nie znaleziono biegu rozpływu mocy {run_id}.",
         )
     return run
 

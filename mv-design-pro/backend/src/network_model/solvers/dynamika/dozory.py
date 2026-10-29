@@ -217,13 +217,13 @@ class Dozor:
             if not isinstance(akcja, AKCJE_DOZORU):
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} nie jest zdarzeniem chwilowym "
+                    f"akcja `{type(akcja).__name__}` nie jest zdarzeniem chwilowym "
                     "(zwarcie ma czas trwania i sposób usunięcia)",
                 )
             if akcja.t_s != 0.0:
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} ma `t_s` = {akcja.t_s} s — chwila akcji jest "
+                    f"akcja `{type(akcja).__name__}` ma `t_s` = {akcja.t_s} s — chwila akcji jest "
                     "WZGLĘDNA (0 = chwila wykonania dozoru)",
                 )
 

@@ -361,7 +361,7 @@ class TestLocalProviderDownload:
         sample_project_id: str,
     ) -> None:
         """Pobranie nieistniejącej kopii powoduje błąd."""
-        with pytest.raises(CloudBackupNotFoundError, match="nie znaleziona"):
+        with pytest.raises(CloudBackupNotFoundError, match="Nie znaleziono kopii zapasowej"):
             local_provider.download(
                 backup_id="nonexistent_backup_id",
                 project_id=sample_project_id,
@@ -482,7 +482,7 @@ class TestLocalProviderDelete:
         sample_project_id: str,
     ) -> None:
         """Usunięcie nieistniejącej kopii powoduje błąd."""
-        with pytest.raises(CloudBackupNotFoundError, match="nie znaleziona"):
+        with pytest.raises(CloudBackupNotFoundError, match="Nie znaleziono kopii zapasowej"):
             local_provider.delete_backup(
                 backup_id="nonexistent",
                 project_id=sample_project_id,
@@ -619,7 +619,7 @@ class TestCreateBackupProvider:
             bucket_name=str(tmp_path),
             region="us-east-1",
         )
-        with pytest.raises(CloudBackupConfigError, match="LOCAL"):
+        with pytest.raises(CloudBackupConfigError, match="magazynu lokalnego"):
             LocalBackupProvider(config)
 
 

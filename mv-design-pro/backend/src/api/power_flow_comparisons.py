@@ -312,7 +312,7 @@ def create_power_flow_comparison(
     except PowerFlowRunNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow run nie znaleziony: {e.run_id}",
+            detail=f"Nie znaleziono biegu rozpływu mocy {e.run_id}.",
         ) from e
     except PowerFlowRunWrongTypeError as e:
         raise HTTPException(
@@ -322,7 +322,7 @@ def create_power_flow_comparison(
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Power flow run nie zakończony (status: {e.status}): {e.run_id}",
+            detail=f"Bieg rozpływu mocy {e.run_id} nie jest zakończony (stan: {e.status}).",
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
@@ -369,7 +369,7 @@ def get_power_flow_comparison(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -397,7 +397,7 @@ def get_power_flow_comparison_results(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -425,7 +425,7 @@ def get_power_flow_comparison_trace(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -455,7 +455,7 @@ def export_power_flow_comparison_json(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Build export payload
@@ -517,7 +517,7 @@ def export_power_flow_comparison_docx(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Create DOCX document
@@ -657,7 +657,7 @@ def export_power_flow_comparison_pdf(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Create PDF in memory

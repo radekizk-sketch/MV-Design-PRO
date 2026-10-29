@@ -88,5 +88,5 @@ def test_generate_sc1_proof_odrzuca_niezgodny_typ_zwarcia():
         a_operator=data.a_operator,
         tk_s=1.0,
     )
-    with pytest.raises(ValueError, match="policzone dla typu"):
+    with pytest.raises(ValueError, match="policzono dla innego rodzaju zwarcia"):
         ProofGenerator.generate_sc1_proof(data)

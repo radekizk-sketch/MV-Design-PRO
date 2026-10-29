@@ -2105,8 +2105,8 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     magnesujaca_pominieta.append(trafo.ref_id)
             else:
                 raise ValueError(
-                    f"Gałąź IR '{branch_id}' typu {type(branch).__name__} nie ma "
-                    "reprezentacji w rozpływie niesymetrycznym"
+                    f"Gałąź '{branch_id}' nie jest linią, kablem ani transformatorem — "
+                    "rozpływ niesymetryczny nie ma dla niej reprezentacji"
                 )
         galezie_ze_sprzezeniem.extend(
             wejscie_galezi.branch_id

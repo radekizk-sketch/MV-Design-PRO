@@ -1078,8 +1078,9 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
     """Dawniej `except Exception` robiło z błędu programu „scenariusz nieudany"; błąd
     programu zostaje błędem (ślad w dzienniku wykonawcy — karta DYNAMIKA-W-TLE: seria
     liczy się w tle, więc nie ma żądania HTTP, które dostałoby 500), a seria NIE zostaje
-    w RUNNING: bieżąca i niewykonane pozycje FAILED z nazwą błędu wewnętrznego (bez
-    treści wyjątku), wcześniejsze zachowują wynik."""
+    w RUNNING: bieżąca i niewykonane pozycje FAILED ze zdaniem o błędzie wewnętrznym (bez
+    treści i bez nazwy klasy wyjątku — identyfikator kodu nie jest zdaniem dla projektanta;
+    nazwę i ślad niesie dziennik serwera), wcześniejsze zachowują wynik."""
     batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
     done = wykonaj_serie(client, batch["batch_id"])
     assert done.status_code == 200, done.text
@@ -1087,7 +1088,8 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
     assert stan["status"] == ("FAILED" if na_pozycji == 1 else "PARTIAL")
     for pozycja in stan["items"][na_pozycji - 1 :]:
         assert pozycja["status"] == "FAILED"
-        assert typ.__name__ in pozycja["error_message"]
+        assert "błędem wewnętrznym programu" in pozycja["error_message"]
+        assert typ.__name__ not in pozycja["error_message"]
         assert "wstrzyknięty wyjątek" not in pozycja["error_message"]
     if na_pozycji == 2:
         assert stan["items"][0]["status"] == "FINISHED"

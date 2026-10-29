@@ -508,7 +508,7 @@ class RunNotFoundError(ComparisonError):
 
     def __init__(self, run_id: UUID):
         self.run_id = run_id
-        super().__init__(f"Run not found: {run_id}")
+        super().__init__(f"Nie znaleziono biegu obliczeń {run_id}.")
 
 
 class RunNotFinishedError(ComparisonError):
@@ -521,7 +521,7 @@ class RunNotFinishedError(ComparisonError):
     def __init__(self, run_id: UUID, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Run not finished (status: {status}): {run_id}")
+        super().__init__(f"Bieg obliczeń {run_id} nie jest zakończony (stan: {status}).")
 
 
 class ResultNotFoundError(ComparisonError):
@@ -530,4 +530,6 @@ class ResultNotFoundError(ComparisonError):
     def __init__(self, run_id: UUID, result_type: str):
         self.run_id = run_id
         self.result_type = result_type
-        super().__init__(f"Results of type {result_type} not found for run: {run_id}")
+        super().__init__(
+            f"Nie znaleziono wyników rodzaju {result_type} dla biegu obliczeń {run_id}."
+        )

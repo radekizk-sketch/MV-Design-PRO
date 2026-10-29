@@ -366,7 +366,7 @@ class TestFastDecoupledOptions:
         with pytest.raises(ValueError) as exc_info:
             FastDecoupledOptions(rebuild_matrices_every=-1)
 
-        assert "rebuild_matrices_every" in str(exc_info.value)
+        assert "przebudowami macierzy" in str(exc_info.value)
 
     def test_rebuild_matrices_every_zero_valid(self) -> None:
         """Test that rebuild_matrices_every=0 is valid."""

@@ -1226,7 +1226,9 @@ def _pozycja_normatywna(
     """
     pulap = pulap_strat_tier2_w(rodzaj, float(moc_kva))
     if pulap is None:
-        raise ValueError(f"{item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat")
+        raise ValueError(
+            f"Transformator katalogowy {item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat"
+        )
     pk_w, p0_w = pulap
     uk_proc, i0_proc = GEAFOL_24KV_UK_I0_PROC[moc_kva]
     tabela = _NUMER_TABELI_TIER2[rodzaj]

@@ -133,8 +133,9 @@ def download_proof_pack(
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
         detail=(
-            "Legacy proof-pack GET oparty o AnalysisRun/OperatingCase został wycofany z toru "
-            "produkcyjnego V12.xx. Użyj kanonicznych eksportów i proof dla StudyCase."
+            "Dawna ścieżka pobrania pakietu dowodowego (oparta o bieg analizy i przypadek "
+            "pracy) została wycofana z toru produkcyjnego. Użyj eksportów kanonicznych "
+            "i dowodu dla przypadku obliczeniowego."
         ),
     )
 

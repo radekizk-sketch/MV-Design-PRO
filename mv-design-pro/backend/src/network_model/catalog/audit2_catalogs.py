@@ -670,13 +670,13 @@ class DeviceWithstandItem:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
             odmowa_twarda(
                 "KAT-T-025",
-                f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
+                f"Aparat {self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
                 f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
             odmowa_twarda(
                 "KAT-T-026",
-                f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
+                f"Aparat {self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
                 f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
             )
 
@@ -832,20 +832,20 @@ class PfCurveItem:
         if not statyzm_min <= self.droop_percent <= statyzm_max:
             odmowa_twarda(
                 "KAT-T-027",
-                f"{self.id}: statyzm {self.droop_percent} % jest poza przedziałem "
+                f"Charakterystyka P(f) {self.id}: statyzm {self.droop_percent} % jest poza przedziałem "
                 f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2).",
             )
         strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
         if not strefa_min <= self.deadband_hz <= strefa_max:
             odmowa_twarda(
                 "KAT-T-028",
-                f"{self.id}: strefa nieczułości {self.deadband_hz} Hz jest poza "
+                f"Charakterystyka P(f) {self.id}: strefa nieczułości {self.deadband_hz} Hz jest poza "
                 f"przedziałem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
             )
         if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
             odmowa_twarda(
                 "KAT-T-029",
-                f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
+                f"Charakterystyka P(f) {self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
                 f"zakresem z załącznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
             )
 

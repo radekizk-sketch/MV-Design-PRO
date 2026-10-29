@@ -245,7 +245,7 @@ def compare_runs(
     except RunNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run nie znaleziony: {e.run_id}",
+            detail=f"Nie znaleziono biegu obliczeń {e.run_id}.",
         )
     except ProjectMismatchError as e:
         raise HTTPException(
@@ -260,10 +260,10 @@ def compare_runs(
     except RunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Run nie zakończony (status: {e.status}): {e.run_id}",
+            detail=f"Bieg obliczeń {e.run_id} nie jest zakończony (stan: {e.status}).",
         )
     except ResultNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wyniki typu {e.result_type} nie znalezione dla run: {e.run_id}",
+            detail=f"Nie znaleziono wyników rodzaju {e.result_type} dla biegu obliczeń {e.run_id}.",
         )

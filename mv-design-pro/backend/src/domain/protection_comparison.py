@@ -558,7 +558,7 @@ class ProtectionRunNotFoundError(ProtectionComparisonError):
 
     def __init__(self, run_id: str):
         self.run_id = run_id
-        super().__init__(f"Protection run nie znaleziony: {run_id}")
+        super().__init__(f"Nie znaleziono biegu analizy zabezpieczeń {run_id}.")
 
 
 class ProtectionRunWrongTypeError(ProtectionComparisonError):
@@ -581,7 +581,9 @@ class ProtectionRunNotFinishedError(ProtectionComparisonError):
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Protection run nie zakończony (status: {status}): {run_id}")
+        super().__init__(
+            f"Bieg analizy zabezpieczeń {run_id} nie jest zakończony (stan: {status})."
+        )
 
 
 class ProtectionProjectMismatchError(ProtectionComparisonError):
@@ -598,4 +600,4 @@ class ProtectionComparisonNotFoundError(ProtectionComparisonError):
 
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
-        super().__init__(f"Protection comparison nie znalezione: {comparison_id}")
+        super().__init__(f"Nie znaleziono porównania analiz zabezpieczeń {comparison_id}.")

@@ -332,7 +332,7 @@ def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> Skla
     z którego policzono κ: X = 0 daje R/X = ∞ i zerową składową, R = 0 — brak zaniku.
     """
     if tb_s <= 0.0:
-        raise ValueError("tb_s must be > 0")
+        raise ValueError("Czas wyłączenia t_b musi być dodatni.")
     wykladnik = OMEGA_50HZ * tb_s * rx_ratio
     wspolczynnik = 0.0 if wykladnik > 700.0 else math.exp(-wykladnik)
     return SkladowaNieokresowa(

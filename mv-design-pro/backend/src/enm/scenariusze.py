@@ -679,12 +679,12 @@ class StanowiskoBadawcze(BaseModel):
         (`zrodlo_testowe.sprawdz_profil`; zgodnosc obu przypieta testem parami)."""
         for skoki_typ, rampy_typ, wielkosc in (
             (SkokNapieciaProfilu, RampaNapieciaProfilu, "amplitudy napięcia"),
-            (SkokCzestotliwosciProfilu, RampaCzestotliwosciProfilu, "czestotliwosci"),
+            (SkokCzestotliwosciProfilu, RampaCzestotliwosciProfilu, "częstotliwości"),
         ):
             chwile = [s.t_s for s in self.profil if isinstance(s, skoki_typ)]
             if len(set(chwile)) != len(chwile):
                 raise ValueError(
-                    f"StanowiskoBadawcze: dwa skoki {wielkosc} w tej samej chwili — profil "
+                    f"Stanowisko badawcze: dwa skoki {wielkosc} w tej samej chwili — profil "
                     "nie ma jednej treści."
                 )
             przedzialy = sorted(
@@ -695,14 +695,14 @@ class StanowiskoBadawcze(BaseModel):
             ):
                 if poczatek_b < koniec_a:
                     raise ValueError(
-                        f"StanowiskoBadawcze: rampy {wielkosc} nakładają się: [{poczatek_a}, "
+                        f"Stanowisko badawcze: rampy {wielkosc} nakładają się: [{poczatek_a}, "
                         f"{koniec_a}) i rampa od {poczatek_b} s."
                     )
             for chwila in chwile:
                 for poczatek, koniec in przedzialy:
                     if poczatek < chwila < koniec:
                         raise ValueError(
-                            f"StanowiskoBadawcze: skok {wielkosc} w t={chwila} s leży wewnątrz "
+                            f"Stanowisko badawcze: skok {wielkosc} w t={chwila} s leży wewnątrz "
                             f"rampy [{poczatek}, {koniec})."
                         )
         return self
@@ -868,7 +868,7 @@ class ScenariuszDynamiczny(BaseModel):
         powtorzone = sorted({ident for ident in identy if identy.count(ident) > 1})
         if powtorzone:
             raise ValueError(
-                f"ScenariuszDynamiczny: detektory o powtorzonych identyfikatorach {powtorzone} "
+                f"Scenariusz dynamiczny: detektory o powtórzonych identyfikatorach {powtorzone} "
                 "— przekroczenie nie miałoby jednoznacznego adresu."
             )
         return self

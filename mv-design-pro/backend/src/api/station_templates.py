@@ -126,7 +126,9 @@ def preview_station_template(
     """
     template = get_template(template_id)
     if template is None:
-        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Nie znaleziono szablonu stacji '{template_id}'."
+        )
 
     from application.station_templates.apply import (
         TemplateApplyError,
@@ -267,7 +269,9 @@ def apply_station_template(
     """
     template = get_template(template_id)
     if template is None:
-        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Nie znaleziono szablonu stacji '{template_id}'."
+        )
 
     try:
         # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
@@ -395,7 +399,9 @@ def get_station_template(template_id: str) -> dict[str, Any]:
     """Full template definition z editable schema."""
     template = get_template(template_id)
     if template is None:
-        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Nie znaleziono szablonu stacji '{template_id}'."
+        )
     return template.to_dict()
 
 

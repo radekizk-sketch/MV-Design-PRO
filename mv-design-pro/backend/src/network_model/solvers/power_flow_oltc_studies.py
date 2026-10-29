@@ -66,7 +66,7 @@ def _tap_step_and_neutral(trafo: TransformerBranch) -> tuple[float, int]:
 def _find_transformer(graph: Any, branch_id: str) -> TransformerBranch:
     branch = graph.branches.get(branch_id)
     if not isinstance(branch, TransformerBranch):
-        raise ValueError(f"Branch '{branch_id}' is not a transformer")
+        raise ValueError(f"Gałąź '{branch_id}' nie jest transformatorem.")
     return branch
 
 

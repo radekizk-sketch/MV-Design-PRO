@@ -97,7 +97,7 @@ class SnapshotReadOnlyGuard:
             fingerprint_after = runtime_fingerprint(self._snapshot)
             if fingerprint_after != self._fingerprint_before:
                 raise SnapshotMutationError(
-                    f"{self._operation} mutated NetworkSnapshot {self._snapshot.meta.snapshot_id}"
+                    f"Operacja {self._operation} zmieniła migawkę sieci {self._snapshot.meta.snapshot_id} — migawka jest niezmienna."
                 )
         return None
 

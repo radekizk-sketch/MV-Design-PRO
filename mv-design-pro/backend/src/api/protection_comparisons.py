@@ -239,7 +239,7 @@ def create_protection_comparison(
     except ProtectionRunNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection run nie znaleziony: {e.run_id}",
+            detail=f"Nie znaleziono biegu analizy zabezpieczeń {e.run_id}.",
         ) from e
     except ProtectionRunWrongTypeError as e:
         raise HTTPException(
@@ -249,7 +249,7 @@ def create_protection_comparison(
     except ProtectionRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Protection run nie zakończony (status: {e.status}): {e.run_id}",
+            detail=f"Bieg analizy zabezpieczeń {e.run_id} nie jest zakończony (stan: {e.status}).",
         ) from e
     except ProtectionProjectMismatchError as e:
         raise HTTPException(
@@ -295,7 +295,7 @@ def get_protection_comparison(
     except ProtectionComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania analiz zabezpieczeń {e.comparison_id}.",
         ) from e
 
 
@@ -322,7 +322,7 @@ def get_protection_comparison_results(
     except ProtectionComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania analiz zabezpieczeń {e.comparison_id}.",
         ) from e
 
 
@@ -349,5 +349,5 @@ def get_protection_comparison_trace(
     except ProtectionComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania analiz zabezpieczeń {e.comparison_id}.",
         ) from e

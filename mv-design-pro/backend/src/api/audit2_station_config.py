@@ -90,7 +90,7 @@ def get_station_audit2_config(
             # 404 gdy brak — frontend traktuje jako pusta konfiguracja.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Brak audit2 config dla project={project_id} station={station_id}",
+                detail=f"Brak konfiguracji audytu stacji {station_id} w projekcie {project_id}.",
             )
         return _to_dict(row)
 

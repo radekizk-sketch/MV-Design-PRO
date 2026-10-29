@@ -511,8 +511,7 @@ def zbuduj_wejscie_nastaw(
         wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = odmowa z powodem
         raise BrakDanychNastawError(
-            "Wariant zwarcia trójfazowego scenariusza MIN przerwany błędem "
-            f"solvera: {type(exc).__name__}: {exc}"
+            "Wariant zwarcia trójfazowego scenariusza MIN przerwany błędem " f"obliczenia: {exc}"
         ) from exc
     ik3_min_beginning_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_poczatku)
     ik3_min_end_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_konca)
@@ -532,8 +531,7 @@ def zbuduj_wejscie_nastaw(
         wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyzej
         raise BrakDanychNastawError(
-            "Wariant zwarcia dwufazowego scenariusza MIN przerwany błędem "
-            f"solvera: {type(exc).__name__}: {exc}"
+            "Wariant zwarcia dwufazowego scenariusza MIN przerwany błędem " f"obliczenia: {exc}"
         ) from exc
     ik2_min_end_a = _prad_zwarciowy_w_wezle(wariant_2f_cmin.raw_result, graf_konca)
     if ik2_min_end_a is None:

@@ -2231,7 +2231,7 @@ class ShortCircuitIEC60909Solver:
         """
         ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
-            raise ValueError("c_factor must be > 0")
+            raise ValueError("Współczynnik napięciowy c musi być dodatni.")
         z_f = ShortCircuitIEC60909Solver._sprawdz_impedancje_przejscia(z_f_ohm, fault_node_id)
 
         core = compute_equivalent_impedance(
@@ -2332,7 +2332,7 @@ class ShortCircuitIEC60909Solver:
         w warstwie wiązania — rdzeń nie ma wartości domyślnej ani gałęzi „brak t_b".
         """
         if tk_s <= 0:
-            raise ValueError("tk_s must be > 0")
+            raise ValueError("Czas trwania zwarcia T_k musi być dodatni.")
         petla = ShortCircuitIEC60909Solver._petla_zwarcia(
             short_circuit_type=short_circuit_type,
             graph=graph,

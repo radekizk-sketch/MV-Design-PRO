@@ -1200,7 +1200,7 @@ class OverheadConductorType:
         if self.przeznaczenie not in PRZEZNACZENIA_PRZEWODU:
             odmowa_twarda(
                 "KAT-T-048",
-                f"{self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
+                f"Przewód {self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
                 f"{', '.join(PRZEZNACZENIA_PRZEWODU)}.",
             )
         for opis, wartosc in (
@@ -1214,17 +1214,17 @@ class OverheadConductorType:
             if not (math.isfinite(wartosc) and wartosc > 0):
                 odmowa_twarda(
                     "KAT-T-048",
-                    f"{self.id}: {opis} musi być dodatnia i skończona (jest {wartosc}).",
+                    f"Przewód {self.id}: {opis} musi być dodatnia i skończona (jest {wartosc}).",
                 )
         if self.gmr_mm is not None and not (0 < self.gmr_mm < self.srednica_mm / 2.0):
             odmowa_twarda(
                 "KAT-T-048",
-                f"{self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
+                f"Przewód {self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
             )
         if not self.warstwy_al or any(w <= 0 for w in self.warstwy_al):
             odmowa_twarda(
                 "KAT-T-049",
-                f"{self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
+                f"Przewód {self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
             )
         srednica_budowy = self.srednica_rdzenia_mm + 2.0 * len(self.warstwy_al) * (
             self.srednica_drutu_al_mm
@@ -1232,7 +1232,7 @@ class OverheadConductorType:
         if abs(srednica_budowy / self.srednica_mm - 1.0) > TOLERANCJA_SREDNICY_Z_BUDOWY:
             odmowa_twarda(
                 "KAT-T-049",
-                f"{self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
+                f"Przewód {self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
                 f"{self.srednica_rdzenia_mm} mm + {len(self.warstwy_al)} warstw drutów "
                 f"{self.srednica_drutu_al_mm} mm) nie zgadza się ze średnicą przewodu "
                 f"{self.srednica_mm} mm.",
@@ -2247,19 +2247,19 @@ class BESSBatteryType:
         if self.capacity_kwh <= 0:
             odmowa_twarda(
                 "KAT-T-018",
-                f"{self.id}: pojemność magazynu energii musi być > 0 kWh "
+                f"Magazyn energii {self.id}: pojemność magazynu energii musi być > 0 kWh "
                 f"(jest {self.capacity_kwh}).",
             )
         if self.nominal_voltage_dc_v <= 0:
             odmowa_twarda(
                 "KAT-T-019",
-                f"{self.id}: napięcie znamionowe DC musi być > 0 V "
+                f"Magazyn energii {self.id}: napięcie znamionowe DC musi być > 0 V "
                 f"(jest {self.nominal_voltage_dc_v}).",
             )
         if self.c_rate <= 0:
             odmowa_twarda(
                 "KAT-T-020",
-                f"{self.id}: współczynnik C (moc względem pojemności) musi być > 0 "
+                f"Magazyn energii {self.id}: współczynnik C (moc względem pojemności) musi być > 0 "
                 f"(jest {self.c_rate}).",
             )
 

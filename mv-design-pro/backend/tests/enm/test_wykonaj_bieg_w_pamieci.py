@@ -139,7 +139,7 @@ def test_wariant_z_para_audit2_bez_fabryki_to_jawny_blad(analysis_type: str) -> 
     }
     wariant = _wariant(kotwica, analysis_type, opcje if analysis_type != "PF" else _para_audit2())
 
-    with pytest.raises(ValueError, match="nie dostał fabryki UnitOfWork"):
+    with pytest.raises(ValueError, match="nie dostał fabryki jednostki pracy bazy danych"):
         wykonaj_bieg_w_pamieci(wariant)
     assert wariant.raw_result is None, "bieg nie moze niesc wyniku po odmowie"
 

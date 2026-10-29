@@ -128,7 +128,7 @@ class Branch:
         else:
             raise ValueError(
                 "Rodzaj gałęzi musi być podany tekstem albo wartością słownika rodzajów "
-                f"gałęzi, otrzymano typ {type(raw_type).__name__}"
+                f"gałęzi, otrzymano {raw_type!r}"
             )
 
         # Dispatch to appropriate subclass

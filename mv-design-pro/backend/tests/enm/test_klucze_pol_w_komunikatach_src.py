@@ -19,10 +19,22 @@ zebrana przechodnio z drzewa składniowego, nie wpisana ręką) albo argument na
 komunikatu (``message_pl``, ``detail``, ``fix_hint_pl``…). Gołe ``KeyError``/``TypeError``/
 ``RuntimeError`` są błędem programu (odpowiedź 500), nie komunikatem — poza kanałem.
 
+REGUŁY TEJ SAMEJ RODZINY (wewnętrzny identyfikator kodu w zdaniu dla projektanta):
+
+* nazwa klasy ``src`` (``CamelCase`` zebrany z drzewa składniowego) albo ``type(x).__name__``
+  w zdaniu — w modułach odmów tłumaczonych dopuszczalna tylko w odwróconych apostrofach, bo
+  tłumacz zamienia ją na polską nazwę rodzaju (``NAZWY_KLAS_DYNAMIKI_PL``);
+* identyfikator elementu w zdaniu ZOSTAJE (projektant potrzebuje wskazania elementu), ale
+  musi stać przy nim polska nazwa rodzaju obiektu („Linia L-12: …”) — goły identyfikator
+  jest naruszeniem;
+* kod reguły („kod reguły: KAT-T-006”) jest dowodem audytowym wyłącznie jako dopisek PO
+  polskim zdaniu — komunikat złożony z samego kodu albo samej wartości jest naruszeniem.
+
+Rdzenie zamrożone B-01 (``scripts/rdzenie_b01.py``) są W zakresie strażnika (pin 0) —
+decyzja B-01 architekta dopuściła zmianę wyłącznie literałów komunikatów tych plików.
+
 WYŁĄCZENIA (każde z uzasadnieniem merytorycznym i testem żywotności):
 
-* rdzenie zamrożone B-01 (``scripts/rdzenie_b01.py`` — jedna lista; edycja wymaga
-  decyzji właściciela, meldunek karty nazywa każde trafienie i jego osiągalność);
 * klasy błędów programu (``BLEDY_PROGRAMU``) — wyjątek oznacza defekt kodu, nie danych;
 * moduły bez konsumenta produkcyjnego (``MODULY_POZA_KLASA``);
 * tokeny FORMATU DANYCH projektanta (``TOKENY_FORMATU_DANYCH``) — nagłówek kolumny
@@ -40,6 +52,7 @@ from __future__ import annotations
 import ast
 import builtins
 import importlib.util
+import re
 from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
@@ -48,11 +61,16 @@ import pytest
 from application.dynamika.odmowy import etykieta_klucza
 
 from tests.enm.test_komunikaty_operacji_bez_kodow import (
+    _LUDZKI,
     SRC,
     Naruszenie,
     ZakresModulu,
+    _interpolacja_identyfikatora,
+    _poza_komunikatem,
+    _rodzice,
     kody_w_tekscie,
     naruszenia_modulu,
+    teksty_komunikatow,
 )
 
 #: Wyjątki biblioteczne, których treść trafia do projektanta.
@@ -136,6 +154,21 @@ TOKENY_FORMATU_DANYCH: dict[str, str] = {
     "catalog/cenniki/loader.py:type_id": "klucz pozycji pliku YAML cennika",
     "catalog/cenniki/loader.py:data_cen": "klucz sekcji głównej pliku YAML cennika",
     "catalog/cenniki/loader.py:energia_strat": "klucz sekcji pliku YAML cennika",
+    # Warstwy normatywne NC RfG (rdzeń B-01, decyzja architekta 2026-10-29: zmiana WYŁĄCZNIE
+    # tekstów — wyrażenia zostają). Pliki są danymi produktu (`catalog/profiles/nc_rfg/`;
+    # publiczne wejścia modułu nie przyjmują innego katalogu — `test_warstwy_nc_rfg_tylko_
+    # z_pakietu`), a komunikat wskazuje opiekunowi danych klucz albo wartość, które ma
+    # poprawić w pliku YAML — cytat zapisu pliku jest jedynym precyzyjnym wskazaniem.
+    "catalog/profiles/nc_rfg/loader.py:bank_nastaw": "klucz sekcji pliku YAML operatora",
+    "catalog/profiles/nc_rfg/loader.py:wykonanie_prawa": "klucz sekcji pliku YAML operatora",
+    "catalog/profiles/nc_rfg/loader.py:` ⟨⟩ `": (
+        "klucz sekcji pliku YAML operatora cytowany zmienną pętli po `bank_nastaw`, "
+        "`wykonanie_prawa`"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:NC_RFG": "wartość klucza `warstwa` pliku YAML warstwy",
+    "catalog/profiles/nc_rfg/loader.py:PROCEDURA_PTPIREE": (
+        "wartość klucza `warstwa` pliku YAML warstwy"
+    ),
 }
 
 #: Moduły, których odmowy przechodzą przez ``komunikat_dla_projektanta`` (prefiks katalogu
@@ -624,18 +657,404 @@ def naruszenia_kluczy_w_argumentach(sciezka: str, plik: Path | None = None) -> l
     return wynik
 
 
+# ---------------------------------------------------------------------------
+# Reguły tej samej rodziny: identyfikator KODU zamiast słowa w zdaniu dla projektanta
+# ---------------------------------------------------------------------------
+
+#: Nazwa klasy w zapisie ``WielkieLiteryBezSpacji`` (co najmniej dwa człony).
+_NAZWA_KLASY = re.compile(r"(?<![\w.`])([A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+)(?![\w])")
+#: Nazwa klasy w zapisie atrybutu (``Measurement.sigma``) — także klasa jednoczłonowa.
+_KLASA_Z_ATRYBUTEM = re.compile(r"(?<![\w.`])([A-Z][A-Za-z0-9]*)\.[a-z_][A-Za-z0-9_]*")
+#: Wyrażenie wstawiające nazwę typu Pythona (``type(x).__name__``, ``x.__class__``).
+_NAZWA_TYPU = re.compile(r"__name__|__class__|__qualname__")
+#: Rdzenie polskich nazw rodzajów elementów i obiektów, które projektant rozpoznaje — przy
+#: identyfikatorze w zdaniu stoi słowo mówiące, CZYM jest wskazany obiekt (rozstrzygnięcie
+#: architekta 2026-10-29: identyfikator elementu zostaje jako wskazanie, warunkiem jest
+#: polska nazwa rodzaju). Lista jest jawna; nowy rodzaj obiektu w komunikacie dopisuje się
+#: tutaj, a nie omija regułę.
+_RODZAJE_OBIEKTOW = re.compile(
+    r"^(?:węz|wez|szyn|gałą|gałę|galaz|galez|transformator|łączni|lacznik|stacj|pol[eau]$|pól"
+    r"|źródł|zrodl|odbi|moduł|modul|profil|przypad|scenariusz|bieg|przebieg|projek|kryteri"
+    r"|wymagani|kart|typ|pozycj|aparat|wkładk|pakiet|rodzin|wzor|szablon|element|blok|seri"
+    r"|kopi|krzyw|charakterystyk|urządze|urzadze|generator|zabezpiecz|przekładnik|kab|lini"
+    r"|bateri|magazyn|segment|krok|dokument|punkt|wysp|obliczeni|test|nastaw|format"
+    r"|producent|wytwórc|zacisk|równani|rownani|rekord|detektor|dozor|zdarzeni|odcin|sekcj"
+    r"|rozdzielnic|zwarci|analiz|ocen|raport|porównani|porownani|cennik|katalog|tor|obwód"
+    r"|obwod|faz|przełącz|zaczep|odgromnik|ogranicznik|uziemie|rdzeń|rdzen|kondensator"
+    r"|dławik|dlawik|turbin|falownik|przekształtnik|przeksztaltnik|składni|skladni|maszyn"
+    r"|regulator|stabilizator|jednostk|odejści|odejsci|konfiguracj|migawk|operacj|przewód"
+    r"|przewod|rcd$|der$|oze$|osd$|operator|wariant|grup|plik|warstw|zestaw|wynik|rozpływ"
+    r"|rozplyw|ścieżk|sciezk|trasa|tras|miejsc|zasob|zasób)",
+    re.IGNORECASE,
+)
+#: Słowa kotwiczące identyfikator (``o ID``, ``identyfikatorem``) — pomijane przy szukaniu
+#: nazwy rodzaju, bo same nie mówią, czym jest obiekt.
+_KOTWICE_IDENTYFIKATORA = re.compile(
+    r"(?:\s+o)?\s+(?:ID|id|identyfikatorze|identyfikatorem|identyfikator|identyfikatora)$"
+)
+#: Zmienna niosąca kod maszynowy (nie zdanie): ``kod``, ``code``, ``kod_reguly``, ``error_code``.
+_ZMIENNA_KODU = re.compile(r"(?:^|\.)(?:kod|code|kod_\w+|code_\w+|\w+_kod|\w+_code)$")
+#: Nazwy parametrów niosących TREŚĆ komunikatu w konstruktorach wyjątków i opakowaniach.
+_PARAMETRY_TRESCI: frozenset[str] = frozenset(
+    {"komunikat", "message", "msg", "tekst", "tresc", "opis", "komunikat_pl", "message_pl"}
+)
+
+
+@cache
+def klasy_src() -> frozenset[str]:
+    """Nazwa każdej klasy zdefiniowanej w ``src`` (z drzewa składniowego)."""
+    return frozenset(
+        wezel.name
+        for plik in sorted(SRC.rglob("*.py"))
+        for wezel in ast.walk(_drzewo(plik))
+        if isinstance(wezel, ast.ClassDef)
+    )
+
+
+def ma_nazwe_rodzaju(przed: str) -> bool:
+    """Czy tekst stojący PRZED identyfikatorem nazywa rodzaj obiektu (ostatnie trzy słowa,
+    bez cudzysłowów, nawiasu otwierającego i słów kotwiczących ``o ID``)."""
+    tekst = przed.replace("⟨⟩", " ").rstrip(" '\"„“”«»(:=#[")
+    tekst = _KOTWICE_IDENTYFIKATORA.sub("", tekst)
+    slowa = re.findall(r"[^\W\d_][\w]*", tekst)[-3:]
+    return any(_RODZAJE_OBIEKTOW.match(slowo) for slowo in slowa)
+
+
+def _dane_wyrazenia(wyrazenie: ast.expr) -> list[ast.Name]:
+    """Zmienne, których WARTOŚĆ wchodzi do wyrażenia (argument, element, operand) — bez
+    odbiorcy metody (``seria.sorted_items()`` nie niesie tekstu ``seria``)."""
+    odbiorcy = {
+        id(w.value)
+        for w in ast.walk(wyrazenie)
+        if isinstance(w, ast.Attribute) and isinstance(w.value, ast.Name)
+    }
+    return [n for n in ast.walk(wyrazenie) if isinstance(n, ast.Name) and id(n) not in odbiorcy]
+
+
+def _nazwy_skazone(drzewo: ast.Module) -> dict[int, set[str]]:
+    """Zmienne lokalne funkcji, których wartość pochodzi z nazwy typu (``obce =
+    tuple(type(z).__name__ for z in …)``), przechodnio — klucz: ``id`` funkcji."""
+    wynik: dict[int, set[str]] = {}
+    for funkcja in ast.walk(drzewo):
+        if not isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        skazone: set[str] = set()
+        while True:
+            nowe = {
+                cel.id
+                for wezel in ast.walk(funkcja)
+                if isinstance(wezel, ast.Assign)
+                for cel in wezel.targets
+                if isinstance(cel, ast.Name)
+                and cel.id not in skazone
+                and (
+                    _NAZWA_TYPU.search(ast.unparse(wezel.value))
+                    or any(n.id in skazone for n in _dane_wyrazenia(wezel.value))
+                )
+            }
+            if not nowe:
+                break
+            skazone |= nowe
+        wynik[id(funkcja)] = skazone
+    return wynik
+
+
+def _w_apostrofach(czesci: list[ast.expr], i: int) -> bool:
+    """Wstawka ``czesci[i]`` f-stringu stoi w odwróconych apostrofach (`` `{…}` ``)."""
+    przed = czesci[i - 1] if i > 0 else None
+    po = czesci[i + 1] if i + 1 < len(czesci) else None
+    return (
+        isinstance(przed, ast.Constant)
+        and str(przed.value).endswith("`")
+        and isinstance(po, ast.Constant)
+        and str(po.value).startswith("`")
+    )
+
+
+def _nazwa_typu_tlumaczona(wyrazenie: ast.expr) -> bool:
+    """``type(x).__name__`` — nazwa klasy, którą ``komunikat_dla_projektanta`` zamienia na
+    rodzaj obiektu słowami (``NAZWY_KLAS_DYNAMIKI_PL``; kompletność przypina test rodzin)."""
+    return (
+        isinstance(wyrazenie, ast.Attribute)
+        and wyrazenie.attr == "__name__"
+        and isinstance(wyrazenie.value, ast.Call)
+        and isinstance(wyrazenie.value.func, ast.Name)
+        and wyrazenie.value.func.id == "type"
+    )
+
+
+def _zlaczenie_w_apostrofach(wezel: ast.AST) -> bool:
+    """``", ".join(f"`{n}`" for n in …)`` — każdy element w odwróconych apostrofach."""
+    return (
+        isinstance(wezel, ast.Call)
+        and isinstance(wezel.func, ast.Attribute)
+        and wezel.func.attr == "join"
+        and len(wezel.args) == 1
+        and isinstance(wezel.args[0], ast.GeneratorExp)
+        and isinstance(wezel.args[0].elt, ast.JoinedStr)
+        and ast.unparse(wezel.args[0].elt).startswith("f'`{")
+        and ast.unparse(wezel.args[0].elt).endswith("}`'")
+    )
+
+
+def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
+    """Ta sama rodzina co klucz pola — identyfikator KODU w zdaniu dla projektanta:
+
+    * ``klasa X`` — nazwa klasy ``src`` w tekście (``NetworkSnapshot``, ``Measurement.sigma``);
+    * ``nazwa typu E`` — wstawka nazwy typu Pythona (``type(x).__name__``) albo zmiennej
+      z niej wyprowadzonej; w module tłumaczonym ``type(x).__name__`` w odwróconych
+      apostrofach przechodzi (rodzaj obiektu słowami z ``NAZWY_KLAS_DYNAMIKI_PL``);
+    * ``identyfikator bez rodzaju E`` — identyfikator elementu bez polskiej nazwy rodzaju
+      przed nim (``Run nie znaleziony: {run_id}``)."""
+    drzewo = _drzewo(plik or SRC / sciezka)
+    zakres = ZakresModulu(sciezka, wywolania=kanaly_wywolan(), slowa_kluczowe=KANALY_SLOW)
+    klasy = klasy_src()
+    tlumaczony = _tlumaczony(sciezka)
+    skazone_funkcji = _nazwy_skazone(drzewo)
+    funkcja_wezla: dict[int, ast.AST] = {}
+    for funkcja in ast.walk(drzewo):
+        if isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
+            for wezel in ast.walk(funkcja):
+                funkcja_wezla[id(wezel)] = funkcja
+    wynik: list[Naruszenie] = []
+    for komunikat, _rodzice_tekstu in teksty_komunikatow(zakres, drzewo):
+        wezel, tekst = komunikat.wezel, komunikat.tekst
+        stale = tekst.replace(" ⟨⟩ ", " ")
+        for nazwa in sorted(
+            set(_NAZWA_KLASY.findall(stale)) | set(_KLASA_Z_ATRYBUTEM.findall(stale))
+        ):
+            if nazwa in klasy:
+                wynik.append(Naruszenie(sciezka, wezel.lineno, f"klasa {nazwa}", tekst))
+        if not isinstance(wezel, ast.JoinedStr):
+            continue
+        funkcja = funkcja_wezla.get(id(wezel))
+        skazone = skazone_funkcji.get(id(funkcja), set()) if funkcja is not None else set()
+        czesci = list(wezel.values)
+        for i, czesc in enumerate(czesci):
+            if not isinstance(czesc, ast.FormattedValue):
+                continue
+            wyrazenie = czesc.value
+            zrodlo = ast.unparse(wyrazenie)
+            uzyte = {n.id for n in _dane_wyrazenia(wyrazenie)} & skazone
+            if _NAZWA_TYPU.search(zrodlo) or uzyte:
+                dozwolone = tlumaczony and (
+                    (_nazwa_typu_tlumaczona(wyrazenie) and _w_apostrofach(czesci, i))
+                    or (
+                        isinstance(wyrazenie, ast.Name)
+                        and funkcja is not None
+                        and all(
+                            _zlaczenie_w_apostrofach(przypisanie.value)
+                            for przypisanie in ast.walk(funkcja)
+                            if isinstance(przypisanie, ast.Assign)
+                            and any(
+                                isinstance(c, ast.Name) and c.id == wyrazenie.id
+                                for c in przypisanie.targets
+                            )
+                        )
+                    )
+                )
+                if not dozwolone:
+                    wynik.append(Naruszenie(sciezka, wezel.lineno, f"nazwa typu {zrodlo}", tekst))
+            identyfikator = _interpolacja_identyfikatora(wyrazenie)
+            if identyfikator is not None:
+                przed = "".join(
+                    str(c.value) if isinstance(c, ast.Constant) else " ⟨⟩ " for c in czesci[:i]
+                )
+                if not ma_nazwe_rodzaju(przed):
+                    wynik.append(
+                        Naruszenie(
+                            sciezka,
+                            wezel.lineno,
+                            f"identyfikator bez rodzaju {identyfikator}",
+                            tekst,
+                        )
+                    )
+    zgloszone = {(n.linia, n.powod) for n in wynik}
+    for komunikat, rodzice in teksty_komunikatow(ZakresModulu(sciezka), drzewo):
+        wezel = komunikat.wezel
+        if not isinstance(wezel, ast.JoinedStr) or _w_bledzie_programu(wezel, rodzice):
+            continue
+        czesci = list(wezel.values)
+        for i, czesc in enumerate(czesci):
+            if not (
+                isinstance(czesc, ast.FormattedValue)
+                and _NAZWA_TYPU.search(ast.unparse(czesc.value))
+            ):
+                continue
+            if tlumaczony and _nazwa_typu_tlumaczona(czesc.value) and _w_apostrofach(czesci, i):
+                continue
+            powod = f"nazwa typu {ast.unparse(czesc.value)}"
+            if (wezel.lineno, powod) not in zgloszone:
+                wynik.append(Naruszenie(sciezka, wezel.lineno, powod, komunikat.tekst))
+    return wynik
+
+
+def _w_bledzie_programu(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
+    """Tekst wyjątku spoza kanału (``TypeError``, ``KeyError``, ``RuntimeError``…) — błąd
+    programu: odpowiedź 500 i dziennik serwera, nie zdanie dla projektanta."""
+    kanaly = kanaly_wywolan()
+    przodek = rodzice.get(id(wezel))
+    while przodek is not None:
+        if isinstance(przodek, ast.Raise):
+            wyjatek = przodek.exc
+            return isinstance(wyjatek, ast.Call) and _nazwa_wywolanej(wyjatek) not in kanaly
+        przodek = rodzice.get(id(przodek))
+    return False
+
+
+@cache
+def pozycje_tresci() -> dict[str, int | None]:
+    """Pozycja argumentu TREŚCI w wywołaniu kanału: pierwszy parametr o nazwie treści
+    (``komunikat``, ``message``…) konstruktora wyjątku albo opakowania ``src``; klasa bez
+    własnego konstruktora — argument 0 (``Exception(komunikat)``); ``None`` — treść
+    wyłącznie argumentem nazwanym (rekordy, ``HTTPException(detail=…)``)."""
+    pozycje: dict[str, int | None] = {
+        "ValueError": 0,
+        "HTTPException": None,
+        "PydanticCustomError": 1,
+    }
+    kanaly = kanaly_wywolan()
+    for plik in sorted(SRC.rglob("*.py")):
+        for wezel in ast.walk(_drzewo(plik)):
+            if isinstance(wezel, ast.ClassDef) and wezel.name in kanaly:
+                if wezel.name in KANALY_REKORDOW:
+                    pozycje.setdefault(wezel.name, None)
+                    continue
+                konstruktor = next(
+                    (
+                        f
+                        for f in wezel.body
+                        if isinstance(f, ast.FunctionDef) and f.name == "__init__"
+                    ),
+                    None,
+                )
+                if konstruktor is None:
+                    pozycje.setdefault(wezel.name, 0)
+                    continue
+                parametry = [a.arg for a in konstruktor.args.args][1:]
+                pozycje.setdefault(
+                    wezel.name,
+                    next((i for i, a in enumerate(parametry) if a in _PARAMETRY_TRESCI), None),
+                )
+            elif isinstance(wezel, ast.FunctionDef) and wezel.name in kanaly:
+                parametry = [a.arg for a in wezel.args.args if a.arg not in {"self", "cls"}]
+                pozycje.setdefault(
+                    wezel.name,
+                    next((i for i, a in enumerate(parametry) if a in _PARAMETRY_TRESCI), None),
+                )
+    return pozycje
+
+
+def _bez_zdania(argument: ast.expr) -> str | None:
+    """Opis argumentu treści, który NIE niesie zdania po polsku (sam kod, pusty napis,
+    wstawki wyłącznie kodów i identyfikatorów); ``None`` — treść jest zdaniem albo
+    zmienną tekstu, której strażnik nie rozstrzyga składniowo."""
+    if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+        return None if _LUDZKI.search(argument.value) else repr(argument.value)
+    if isinstance(argument, ast.JoinedStr):
+        stale = "".join(str(c.value) for c in argument.values if isinstance(c, ast.Constant))
+        if _LUDZKI.search(stale):
+            return None
+        wstawki = [c.value for c in argument.values if isinstance(c, ast.FormattedValue)]
+        if all(
+            _interpolacja_identyfikatora(w) is not None or _ZMIENNA_KODU.search(ast.unparse(w))
+            for w in wstawki
+        ):
+            return ast.unparse(argument)
+        return None
+    if isinstance(argument, ast.Name | ast.Attribute) and _ZMIENNA_KODU.search(
+        ast.unparse(argument)
+    ):
+        return ast.unparse(argument)
+    return None
+
+
+def naruszenia_tresci_bez_zdania(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
+    """Komunikat, którego JEDYNĄ treścią jest kod (``odmowa_twarda("KAT-T-006",
+    "KAT-T-006")``, ``ValueError(kod)``) — rozstrzygnięcie architekta 2026-10-29: kod reguły
+    zostaje WYŁĄCZNIE jako dopisek po polskim zdaniu, które obywa się bez niego. Reguły
+    tekstowe pomijają napis bez słowa po polsku (nie jest zdaniem), więc ta reguła czyta
+    argument treści wprost."""
+    drzewo = _drzewo(plik or SRC / sciezka)
+    rodzice = _rodzice(drzewo)
+    pozycje = pozycje_tresci()
+    kanaly = kanaly_wywolan()
+    wynik: list[Naruszenie] = []
+    for wywolanie in ast.walk(drzewo):
+        if not isinstance(wywolanie, ast.Call):
+            continue
+        nazwa = _nazwa_wywolanej(wywolanie)
+        argumenty: list[ast.expr] = []
+        if nazwa in kanaly:
+            pozycja = pozycje.get(nazwa)
+            if pozycja is not None and len(wywolanie.args) > pozycja:
+                argumenty.append(wywolanie.args[pozycja])
+            argumenty += [
+                k.value
+                for k in wywolanie.keywords
+                if k.arg in _PARAMETRY_TRESCI or k.arg in KANALY_SLOW
+            ]
+        else:
+            argumenty += [k.value for k in wywolanie.keywords if k.arg in KANALY_SLOW]
+        for argument in argumenty:
+            if isinstance(argument, ast.Starred) or _poza_komunikatem(argument, rodzice):
+                continue
+            opis = _bez_zdania(argument)
+            if opis is not None:
+                wynik.append(
+                    Naruszenie(sciezka, wywolanie.lineno, f"treść bez zdania {opis}", opis)
+                )
+    return wynik
+
+
+def _linie_nazw_typow_tlumaczonych(sciezka: str, plik: Path | None = None) -> set[int]:
+    """Wiersze f-stringów, w których KAŻDA wstawka w odwróconych apostrofach jest nazwą typu
+    (``type(x).__name__``) albo złączeniem nazw w apostrofach — w module tłumaczonym zamienia
+    je na rodzaj obiektu słowami ``komunikat_dla_projektanta`` (``NAZWY_KLAS_DYNAMIKI_PL``)."""
+    wiersze: set[int] = set()
+    for napis in ast.walk(_drzewo(plik or SRC / sciezka)):
+        if not isinstance(napis, ast.JoinedStr):
+            continue
+        czesci = list(napis.values)
+        w_apostrofach = [
+            czesc.value
+            for i, czesc in enumerate(czesci)
+            if isinstance(czesc, ast.FormattedValue) and _w_apostrofach(czesci, i)
+        ]
+        if w_apostrofach and all(_nazwa_typu_tlumaczona(w) for w in w_apostrofach):
+            wiersze.add(napis.lineno)
+    return wiersze
+
+
+def _token_naruszenia(naruszenie: Naruszenie) -> str:
+    """Token kodu z powodu naruszenia reguły tekstowej, pętli albo argumentu
+    (``kod bank_nastaw (zmienna pętli sekcja)`` → ``bank_nastaw``)."""
+    token = naruszenie.powod.removeprefix("kod ")
+    return token if token == _ZASTEPNIK else token.split(" (", 1)[0]
+
+
 def naruszenia_klasy(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
     """Naruszenia klasy w module (po wyłączeniach z uzasadnieniem)."""
     wynik: list[Naruszenie] = [
-        *naruszenia_petli_kluczy(sciezka, plik),
-        *naruszenia_kluczy_w_argumentach(sciezka, plik),
+        n
+        for n in (
+            *naruszenia_petli_kluczy(sciezka, plik),
+            *naruszenia_kluczy_w_argumentach(sciezka, plik),
+        )
+        if f"{sciezka}:{_token_naruszenia(n)}" not in TOKENY_FORMATU_DANYCH
     ]
+    wynik += naruszenia_nazw_i_identyfikatorow(sciezka, plik)
+    wynik += naruszenia_tresci_bez_zdania(sciezka, plik)
     for naruszenie in _surowe_naruszenia(sciezka, plik):
-        token = naruszenie.powod.removeprefix("kod ")
+        token = _token_naruszenia(naruszenie)
         if f"{sciezka}:{token}" in TOKENY_FORMATU_DANYCH:
             continue
         if _tlumaczony(sciezka):
             if token == _ZASTEPNIK and sciezka in INTERPOLOWANE_KLUCZE_TLUMACZONE:
+                continue
+            if token == _ZASTEPNIK and naruszenie.linia in _linie_nazw_typow_tlumaczonych(
+                sciezka, plik
+            ):
                 continue
             klucz = token.strip("`")
             if f"`{klucz}`" in naruszenie.tekst and etykieta_klucza(klucz) is not None:
@@ -648,8 +1067,7 @@ def _moduly_klasy() -> list[str]:
     return [
         plik.relative_to(SRC).as_posix()
         for plik in sorted(SRC.rglob("*.py"))
-        if not jest_rdzeniem_b01(plik.relative_to(SRC).as_posix())
-        and not _poza_klasa(plik.relative_to(SRC).as_posix())
+        if not _poza_klasa(plik.relative_to(SRC).as_posix())
     ]
 
 
@@ -720,8 +1138,15 @@ def test_wylaczenia_klasy_sa_zywe() -> None:
             isinstance(w, ast.FunctionDef | ast.ClassDef) and w.name == nazwa for w in drzewo.body
         ), f"{sciezka}::{nazwa}: brak definicji — wpis zbędny"
     for wpis in TOKENY_FORMATU_DANYCH:
-        sciezka, token = wpis.split(":")
-        tokeny = {n.powod.removeprefix("kod ") for n in _surowe_naruszenia(sciezka)}
+        sciezka, token = wpis.split(":", 1)
+        tokeny = {
+            _token_naruszenia(n)
+            for n in (
+                *_surowe_naruszenia(sciezka),
+                *naruszenia_petli_kluczy(sciezka),
+                *naruszenia_kluczy_w_argumentach(sciezka),
+            )
+        }
         assert token in tokeny, f"{wpis}: token nie występuje w komunikacie — wpis zbędny"
     for wpis in MODULY_ODMOW_TLUMACZONYCH:
         assert (SRC / wpis).exists(), wpis
@@ -730,16 +1155,21 @@ def test_wylaczenia_klasy_sa_zywe() -> None:
         assert _ZASTEPNIK in tokeny, sciezka
 
 
-def test_rdzenie_b01_wylaczone_wylacznie_lista_wlasciciela() -> None:
-    """Pominięcie rdzeni pochodzi z JEDNEJ listy B-01; pliki ``network_model/solvers/**``
-    spoza niej są w zakresie strażnika (precedens: trzy karty uznały cały katalog za
-    zamrożony)."""
+def test_rdzenie_b01_sa_w_zakresie_strazenika() -> None:
+    """Pin 0: rdzenie zamrożone B-01 NIE mają wyjątku — decyzja architekta 2026-10-29
+    przyjęła zmianę WYŁĄCZNIE tekstów ich komunikatów (drzewa składniowe z wymazanymi
+    stałymi napisowymi identyczne), więc każdy plik każdego wpisu listy B-01 jest
+    sprawdzany tak samo jak reszta ``src``. Przywrócenie wyjątku czerwieni ten test."""
     moduly = set(_moduly_klasy())
-    assert "network_model/solvers/cable_ampacity_derating.py" in moduly
-    assert "network_model/solvers/protection_lv_curves.py" in moduly
-    assert "network_model/solvers/grid_source_preview.py" in moduly
-    assert "network_model/solvers/short_circuit_iec60909.py" not in moduly
-    assert "catalog/profiles/nc_rfg/loader.py" not in moduly
+    pliki_b01 = sorted(
+        sciezka
+        for plik in SRC.rglob("*.py")
+        if jest_rdzeniem_b01(sciezka := plik.relative_to(SRC).as_posix())
+    )
+    assert len(pliki_b01) >= len(_rdzenie_b01().sciezki_b01())  # type: ignore[attr-defined]
+    assert not [sciezka for sciezka in pliki_b01 if sciezka not in moduly]
+    for wpis in _rdzenie_b01().sciezki_b01():  # type: ignore[attr-defined]
+        assert any(s == wpis or s.startswith(wpis) for s in pliki_b01), wpis
 
 
 def _klucz_w_apostrofach(petla: ast.For) -> bool:
@@ -1292,3 +1722,229 @@ def test_regula_argumentow_wykrywa_klucz_przekazany_pomocnikowi(tmp_path: Path) 
     assert ("api/der_sn_documents.py", "_zastosowana_wartosc") in parametryczne
     assert ("network_model/ir_fields.py", "wymagany_float") not in parametryczne
     assert ("network_model/ir_fields.py", "BrakujacePoleIRError") not in parametryczne
+
+
+# ---------------------------------------------------------------------------
+# Identyfikator KODU w zdaniu: nazwa klasy, nazwa typu, identyfikator bez rodzaju, sam kod
+# ---------------------------------------------------------------------------
+
+
+def _rodziny_klas_dynamiki() -> dict[str, frozenset[str]]:
+    """Rodziny klas rdzenia dynamiki, których nazwę odmowa cytuje ``type(x).__name__``:
+    zdarzenia harmonogramu (``ZdarzenieDynamiki`` — akcja dozoru, tryb stanowiska),
+    segmenty profilu źródła testowego (``SegmentProfilu``) i urządzenia (każda klasa
+    ``urzadzenia/`` deklarująca ``stany_przypisywalne`` — protokół ``Urzadzenie``)."""
+    from typing import get_args
+
+    from network_model.solvers.dynamika.kontrakty import ZdarzenieDynamiki
+    from network_model.solvers.dynamika.urzadzenia.zrodlo_testowe import SegmentProfilu
+
+    urzadzenia = frozenset(
+        wezel.name
+        for plik in sorted((SRC / "network_model/solvers/dynamika/urzadzenia").rglob("*.py"))
+        for wezel in ast.walk(_drzewo(plik))
+        if isinstance(wezel, ast.ClassDef)
+        and any(
+            isinstance(f, ast.FunctionDef) and f.name == "stany_przypisywalne" for f in wezel.body
+        )
+    )
+    return {
+        "zdarzenia": frozenset(k.__name__ for k in get_args(ZdarzenieDynamiki)),
+        "segmenty": frozenset(k.__name__ for k in get_args(SegmentProfilu)),
+        "urzadzenia": urzadzenia,
+    }
+
+
+def test_nazwy_klas_dynamiki_kompletne_wobec_rodzin() -> None:
+    """Warunek wyłączenia ``type(x).__name__`` w apostrofach w module tłumaczonym: KAŻDA
+    klasa każdej rodziny ma rodzaj obiektu słowami, a każdy wpis słownika jest klasą
+    rodziny (martwy wpis byłby fikcją). Rodziny pochodzą z kodu, nie z ręcznej listy."""
+    from application.dynamika.odmowy import NAZWY_KLAS_DYNAMIKI_PL
+
+    rodziny = _rodziny_klas_dynamiki()
+    assert len(rodziny["urzadzenia"]) >= 10, rodziny["urzadzenia"]
+    wszystkie = frozenset().union(*rodziny.values())
+    assert not (wszystkie - set(NAZWY_KLAS_DYNAMIKI_PL)), sorted(
+        wszystkie - set(NAZWY_KLAS_DYNAMIKI_PL)
+    )
+    assert not (set(NAZWY_KLAS_DYNAMIKI_PL) - wszystkie)
+    for etykieta in NAZWY_KLAS_DYNAMIKI_PL.values():
+        assert not kody_w_tekscie(etykieta) and not _NAZWA_KLASY.findall(etykieta), etykieta
+
+
+def test_odmowa_dynamiki_nazywa_rodzaj_obiektu_slowami() -> None:
+    """Realna ścieżka: odmowa rdzenia (akcja dozoru o niechwilowym rodzaju, stan
+    nieprzypisywalny urządzenia) przechodzi przez ``komunikat_dla_projektanta`` i nie niesie
+    nazwy klasy — niesie rodzaj obiektu słowami."""
+    from application.dynamika.odmowy import NAZWY_KLAS_DYNAMIKI_PL, komunikat_dla_projektanta
+    from network_model.solvers.dynamika.urzadzenia.maszyna_klasyczna import MaszynaKlasyczna
+    from network_model.solvers.dynamika.zdarzenia import sprawdz_przypisanie
+
+    urzadzenie = object.__new__(MaszynaKlasyczna)
+    object.__setattr__(urzadzenie, "ident", "G1")
+    with pytest.raises(Exception) as blad:
+        sprawdz_przypisanie(urzadzenie, "omega_pu", 1.0, 0.5)
+    tekst = komunikat_dla_projektanta(str(blad.value), {})
+    assert "MaszynaKlasyczna" not in tekst
+    assert NAZWY_KLAS_DYNAMIKI_PL["MaszynaKlasyczna"] in tekst, tekst
+    assert not [n for n in _NAZWA_KLASY.findall(tekst) if n in klasy_src()], tekst
+
+
+@pytest.mark.parametrize(
+    ("tekst_przed", "oczekiwane"),
+    [
+        ("Nie znaleziono biegu obliczeń ", True),
+        ("Węzeł o ID '", True),
+        ("Generator '⟨⟩' (", True),
+        ("Wykryto model w projekcie ", True),
+        ("Run nie znaleziony: ", False),
+        ("Kopia zapasowa nie znaleziona: project=", False),
+        ("", False),
+    ],
+)
+def test_nazwa_rodzaju_przy_identyfikatorze(tekst_przed: str, oczekiwane: bool) -> None:
+    """Predykat reguły identyfikatora: rodzaj obiektu słowem przed identyfikatorem (także
+    przez cytowaną nazwę i nawias), a nie sam czasownik albo zapis ``klucz=``."""
+    assert ma_nazwe_rodzaju(tekst_przed) is oczekiwane
+
+
+def test_regula_nazw_klas_typow_i_identyfikatorow_wykrywa_iniekcje(tmp_path: Path) -> None:
+    """Iniekcja w kopii modułu (iloczyn: kanał wyjątku × kanał rekordu × tekst w zmiennej ×
+    rodzaj tokenu): nazwa klasy ``src`` w zdaniu, ``type(x).__name__`` w kanale i w tekście
+    zapisanym do zmiennej, zmienna wyprowadzona z nazwy typu, identyfikator bez rodzaju —
+    czerwienieją; identyfikator z rodzajem, nazwa typu w błędzie programu (``TypeError``)
+    i zdanie bez identyfikatora kodu — nie."""
+    wzor = SRC / "network_model" / "solvers" / "protection_lv_curves.py"
+    kopia = tmp_path / "iniekcja_nazw.py"
+    kopia.write_text(
+        wzor.read_text(encoding="utf-8")
+        + "\n\ndef _i1(x):\n"
+        + "    raise ValueError('Migawka NetworkSnapshot została zmieniona przez operację.')\n"
+        + "def _i2(x):\n"
+        + "    raise ValueError(f'Nieobsługiwany element sieci {type(x).__name__} w trasie.')\n"
+        + "def _i3(run_id):\n"
+        + "    raise ValueError(f'Bieg nie znaleziony w rejestrze: {run_id}')\n"
+        + "def _i4(x, run):\n"
+        + "    run.error_message = f'Błąd wewnętrzny programu ({type(x).__name__}) — przerwano.'\n"
+        + "def _i5(xs):\n"
+        + "    obce = tuple(type(x).__name__ for x in xs)\n"
+        + "    raise ValueError(f'Zdarzenia spoza trybu stanowiska: {obce} są odrzucone.')\n"
+        + "def _i6(element_id):\n"
+        + "    return Ostrzezenie(kod='k', message_pl=f'Nie znaleziono: {element_id} w modelu')\n"
+        + "def _ok1(run_id):\n"
+        + "    raise ValueError(f'Nie znaleziono biegu obliczeń {run_id} w rejestrze.')\n"
+        + "def _ok2(x):\n"
+        + "    raise TypeError(f'Wartość typu {type(x).__name__} nie ma postaci kanonicznej.')\n",
+        encoding="utf-8",
+    )
+    sciezka = "network_model/solvers/protection_lv_curves.py"
+    granica = len(wzor.read_text(encoding="utf-8").splitlines())
+    powody = {n.powod for n in naruszenia_klasy(sciezka, kopia) if n.linia > granica}
+    assert powody == {
+        "klasa NetworkSnapshot",
+        "nazwa typu type(x).__name__",
+        "identyfikator bez rodzaju run_id",
+        "nazwa typu obce",
+        "identyfikator bez rodzaju element_id",
+    }, powody
+    linie = sorted(n.linia - granica for n in naruszenia_klasy(sciezka, kopia) if n.linia > granica)
+    # _i2 (kanał) i _i4 (tekst w zmiennej) — oba przypadki nazwy typu są złapane osobno.
+    assert len(linie) == 6, linie
+
+
+def test_nazwa_typu_w_module_tlumaczonym_tylko_w_apostrofach(tmp_path: Path) -> None:
+    """W module tłumaczonym ``type(x).__name__`` w apostrofach (zamiana na rodzaj obiektu
+    słowami) i złączenie nazw w apostrofach przechodzą; bez apostrofów — nie."""
+    wzor = SRC / "network_model" / "solvers" / "dynamika" / "kontrakty.py"
+    kopia = tmp_path / "kontrakty_nazwy.py"
+    kopia.write_text(
+        wzor.read_text(encoding="utf-8")
+        + "\n\ndef _ok(x):\n"
+        + "    raise OdmowaDynamiki('k', f'akcja `{type(x).__name__}` nie jest chwilowa')\n"
+        + "def _ok2(xs):\n"
+        + "    obce = tuple(type(x).__name__ for x in xs)\n"
+        + "    lista = ', '.join(f'`{n}`' for n in sorted(obce))\n"
+        + "    raise OdmowaDynamiki('k', f'zdarzenia ({lista}) należą do innego trybu')\n"
+        + "def _zle(x):\n"
+        + "    raise OdmowaDynamiki('k', f'akcja {type(x).__name__} nie jest chwilowa')\n",
+        encoding="utf-8",
+    )
+    sciezka = "network_model/solvers/dynamika/kontrakty.py"
+    granica = len(wzor.read_text(encoding="utf-8").splitlines())
+    powody = [n.powod for n in naruszenia_klasy(sciezka, kopia) if n.linia > granica]
+    assert powody == ["nazwa typu type(x).__name__"], powody
+
+
+def test_regula_tresci_bez_zdania_wykrywa_sam_kod(tmp_path: Path) -> None:
+    """Rozstrzygnięcie architekta: kod reguły zostaje wyłącznie jako dopisek po zdaniu.
+    Iniekcja: treść będąca samym kodem (napis, zmienna kodu, f-string z samym kodem,
+    argument nazwany rekordu) czerwienieje; zdanie z kodem w dopisku — nie."""
+    wzor = SRC / "network_model" / "catalog" / "niezmienniki_katalogu.py"
+    kopia = tmp_path / "iniekcja_tresci.py"
+    kopia.write_text(
+        wzor.read_text(encoding="utf-8")
+        + "\n\ndef _i1():\n"
+        + "    odmowa_twarda('KAT-T-006', 'KAT-T-006')\n"
+        + "def _i2(kod):\n"
+        + "    raise ValueError(kod)\n"
+        + "def _i3(kod, element_id):\n"
+        + "    raise HTTPException(status_code=422, detail=f'{kod}: {element_id}')\n"
+        + "def _i4(kod):\n"
+        + "    return Ostrzezenie(kod='k', message_pl=kod)\n"
+        + "def _ok(kod):\n"
+        + "    odmowa_twarda('KAT-T-006', f'Przekrój żyły musi być dodatni (reguła {kod}).')\n",
+        encoding="utf-8",
+    )
+    sciezka = "network_model/catalog/niezmienniki_katalogu.py"
+    granica = len(wzor.read_text(encoding="utf-8").splitlines())
+    powody = sorted(
+        n.powod for n in naruszenia_tresci_bez_zdania(sciezka, kopia) if n.linia > granica
+    )
+    assert powody == [
+        "treść bez zdania 'KAT-T-006'",
+        "treść bez zdania f'{kod}: {element_id}'",
+        "treść bez zdania kod",
+        "treść bez zdania kod",
+    ], powody
+
+
+def test_kod_reguly_katalogu_jest_dopiskiem_po_zdaniu() -> None:
+    """Odmowa twardej reguły katalogu: zdanie po polsku, a kod reguły WYŁĄCZNIE jako dopisek
+    ``(kod reguły: …)`` na końcu — zdanie bez dopisku jest pełne (obywa się bez kodu)."""
+    from network_model.catalog.niezmienniki_katalogu import (
+        REGULY_KATALOGU,
+        OdmowaKatalogu,
+        odmowa_twarda,
+    )
+
+    kod = next(k for k, r in sorted(REGULY_KATALOGU.items()) if r.twarda)
+    zdanie = "Przekrój żyły musi być dodatni."
+    with pytest.raises(OdmowaKatalogu) as blad:
+        odmowa_twarda(kod, zdanie)
+    tekst = str(blad.value)
+    assert tekst == f"{zdanie} (kod reguły: {kod})"
+    assert kod not in tekst.removesuffix(f" (kod reguły: {kod})")
+
+
+def test_warstwy_nc_rfg_tylko_z_pakietu() -> None:
+    """Warunek wpisów ``TOKENY_FORMATU_DANYCH`` warstw NC RfG: publiczne wejścia modułu nie
+    przyjmują katalogu warstw ani operatorów (pliki są danymi produktu z pakietu), a żaden
+    moduł ``src`` spoza modułu nie podaje ich katalogu."""
+    sciezka = "catalog/profiles/nc_rfg/loader.py"
+    drzewo = _drzewo(SRC / sciezka)
+    publiczne = [
+        w for w in drzewo.body if isinstance(w, ast.FunctionDef) and not w.name.startswith("_")
+    ]
+    assert publiczne
+    for funkcja in publiczne:
+        parametry = [a.arg for a in (*funkcja.args.args, *funkcja.args.kwonlyargs)]
+        assert not [p for p in parametry if p.startswith("katalog")], funkcja.name
+    for plik in sorted(SRC.rglob("*.py")):
+        if plik.relative_to(SRC).as_posix() == sciezka:
+            continue
+        for wezel in ast.walk(_drzewo(plik)):
+            if isinstance(wezel, ast.keyword) and wezel.arg in {
+                "katalog_warstw",
+                "katalog_operatorow",
+            }:
+                raise AssertionError(f"{plik}: podaje katalog warstw NC RfG")

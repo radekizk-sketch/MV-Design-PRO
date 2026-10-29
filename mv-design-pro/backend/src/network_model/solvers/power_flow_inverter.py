@@ -317,9 +317,9 @@ def apply_inverter_setpoint(
         if idx in zip_table:
             if zip_const is None or not declares_zip_split(spec):
                 raise ValueError(
-                    f"bus {spec.node_id} is in the ZIP recompute set and carries an "
-                    "inverter control, but declares no load/generation split: the "
-                    "load polynomial would scale the source injection"
+                    f"Węzeł {spec.node_id} należy do zbioru przeliczenia odbioru ZIP i niesie "
+                    "regulację falownika, ale nie deklaruje podziału na odbiór i generację: "
+                    "wielomian odbioru skalowałby wstrzyknięcie źródła"
                 )
             target_p, target_q = zip_const
         else:

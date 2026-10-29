@@ -74,7 +74,7 @@ def _sprawdz_wyprzedzenie(nazwa_bloku: str, t_wyprzedzenia_s: float, t_opoznieni
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
             f"{nazwa_bloku}: człon wyprzedzający T={t_wyprzedzenia_s} s bez członu "
-            "opozniajacego (T=0) jest różniczkowaniem idealnym — transmitancja "
+            "opóźniającego (T = 0) jest różniczkowaniem idealnym — transmitancja "
             "niewłaściwa nie ma realizacji stanowej",
             blok=nazwa_bloku,
             t_wyprzedzenia_s=t_wyprzedzenia_s,
@@ -188,7 +188,7 @@ def zbuduj_regulator_napiecia(
             wariant=wariant,
             zlozalne=WARIANTY_WZBUDZENIA_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"RegulatorNapiecia[{wariant}]", tc_s, tb_s)
+    _sprawdz_wyprzedzenie(f"Regulator napięcia (wariant {wariant})", tc_s, tb_s)
     return RegulatorNapieciaSEXS(
         wariant=wariant,
         ka=ka,
@@ -279,7 +279,7 @@ def zbuduj_regulator_obrotow(
             wariant=wariant,
             zlozalne=WARIANTY_TURBINY_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"RegulatorObrotow[{wariant}]", t2_s, t3_s)
+    _sprawdz_wyprzedzenie(f"Regulator obrotów (wariant {wariant})", t2_s, t3_s)
     return RegulatorObrotowTGOV1(
         wariant=wariant,
         r_pu=r_pu,
@@ -383,8 +383,8 @@ def zbuduj_stabilizator(
             wariant=wariant,
             zlozalne=WARIANTY_STABILIZATORA_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] człon 1", t1_s, t2_s)
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] człon 2", t3_s, t4_s)
+    _sprawdz_wyprzedzenie(f"Stabilizator systemowy (wariant {wariant}), człon 1", t1_s, t2_s)
+    _sprawdz_wyprzedzenie(f"Stabilizator systemowy (wariant {wariant}), człon 2", t3_s, t4_s)
     return StabilizatorPSS1A(
         wariant=wariant,
         ks=ks,

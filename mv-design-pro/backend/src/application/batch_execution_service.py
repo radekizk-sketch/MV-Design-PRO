@@ -456,15 +456,15 @@ class BatchExecutionService:
                     return batch
             try:
                 zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
-            except Exception as exc:
+            except Exception:
                 # Błąd PROGRAMU (karta #151) nie jest awarią pozycji: seria nie może
                 # zostać w RUNNING, więc bieżąca i wszystkie niewykonane pozycje dostają
-                # FAILED z nazwą błędu wewnętrznego, seria dostaje status końcowy, a
+                # FAILED ze zdaniem o błędzie wewnętrznym, seria dostaje status końcowy, a
                 # wyjątek leci dalej (500 + pełny ślad w dzienniku).
                 logger.exception("Seria %s przerwana błędem wewnętrznym programu", batch_id)
                 komunikat = (
-                    f"Seria przerwana błędem wewnętrznym programu ({type(exc).__name__}) "
-                    "— szczegóły są w dzienniku serwera."
+                    "Seria przerwana błędem wewnętrznym programu — szczegóły są "
+                    "w dzienniku serwera."
                 )
                 for niewykonana in batch.sorted_items():
                     if niewykonana.position >= pozycja.position:

@@ -2278,8 +2278,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
-            "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
+            "Brak bloku parametrów dynamicznych źródła — obliczenia czasowe nie mogą "
+            "zbudować modelu dynamicznego"
         ),
         fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),

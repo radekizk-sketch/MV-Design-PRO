@@ -90,6 +90,42 @@ POLA_PRZEKSZTALTNIKA_TURBINY: tuple[str, ...] = (
     *POLA_REGULACJI_GFL,
 )
 
+#: Nazwy pól profilu dynamicznego w komunikacie walidacji (klucz pola jest kodem kontraktu).
+NAZWY_POL_PROFILU_DYNAMICZNEGO: dict[str, str] = {
+    "pll_kp": "wzmocnienie proporcjonalne pętli PLL",
+    "pll_ki": "wzmocnienie całkujące pętli PLL",
+    "current_kp": "wzmocnienie proporcjonalne regulatora prądu",
+    "current_ki": "wzmocnienie całkujące regulatora prądu",
+    "frt_k_factor": "współczynnik K prądu biernego przy zakłóceniu (FRT)",
+    "gfm_control": "rodzaj regulacji przekształtnika tworzącego sieć",
+    "virtual_inertia_h_s": "inercja wirtualna H [s]",
+    "virtual_damping_pu": "tłumienie wirtualne [pu]",
+    "virtual_resistance_pu": "rezystancja wirtualna wyjścia [pu]",
+    "virtual_reactance_pu": "reaktancja wirtualna wyjścia [pu]",
+    "current_limit_strategy": "strategia ograniczenia prądu przekształtnika tworzącego sieć",
+    "converter_i_max_pu": "prąd maksymalny przekształtnika [pu]",
+    "iq_priority_during_fault": "pierwszeństwo prądu biernego podczas zakłócenia",
+    "p_f_droop_pu": "statyzm P/f [pu]",
+    "p_f_dead_band_hz": "strefa nieczułości P/f [Hz]",
+    "q_u_droop_pu": "statyzm Q/U [pu]",
+    "q_u_dead_band_pu": "strefa nieczułości Q/U [pu]",
+}
+#: Tryb sterowania falownika i typ turbiny wiatrowej słowami.
+NAZWY_TRYBOW_STEROWANIA: dict[str, str] = {
+    "grid_following": "nadążający za siecią (GFL)",
+    "grid_forming": "tworzący sieć (GFM)",
+}
+NAZWY_TYPOW_TURBINY: dict[str, str] = {
+    "type_1": "typ 1 wg IEC 61400-27-1",
+    "type_2": "typ 2 wg IEC 61400-27-1",
+    "type_3": "typ 3 wg IEC 61400-27-1",
+    "type_4": "typ 4 wg IEC 61400-27-1",
+}
+
+
+def _opis_pol(pola: list[str]) -> str:
+    return ", ".join(NAZWY_POL_PROFILU_DYNAMICZNEGO[pole] for pole in pola) or "—"
+
 
 def priorytet_z_profilu(iq_priority_during_fault: bool) -> PriorytetOgranicznika:
     """Priorytet składowej ogranicznika prądu z deklaracji profilu (A-9).
@@ -213,9 +249,9 @@ class InverterDynamicProfile(BaseModel):
             )
         if brakujace or nadmiarowe:
             raise ValueError(
-                f"InverterDynamicProfile '{self.profile_id}' ({self.control_mode}): "
-                f"brak pól trybu: {', '.join(brakujace) or '—'}; "
-                f"pola spoza trybu: {', '.join(nadmiarowe) or '—'}."
+                f"Profil dynamiczny falownika '{self.profile_id}' (tryb sterowania "
+                f"{NAZWY_TRYBOW_STEROWANIA[self.control_mode]}): brak pól trybu: "
+                f"{_opis_pol(brakujace)}; pola spoza trybu: {_opis_pol(nadmiarowe)}."
             )
         return self
 
@@ -357,9 +393,10 @@ class WindTurbineDynamicProfile(BaseModel):
             brakujace, nadmiarowe = _brakujace_i_nadmiarowe(self, (), POLA_PRZEKSZTALTNIKA_TURBINY)
         if brakujace or nadmiarowe:
             raise ValueError(
-                f"WindTurbineDynamicProfile '{self.profile_id}' ({self.iec_type}): "
-                f"brak pól przekształtnika: {', '.join(brakujace) or '—'}; "
-                f"pola przekształtnika niedopuszczalne dla typu: {', '.join(nadmiarowe) or '—'}."
+                f"Profil dynamiczny turbiny wiatrowej '{self.profile_id}' "
+                f"({NAZWY_TYPOW_TURBINY[self.iec_type]}): brak pól przekształtnika: "
+                f"{_opis_pol(brakujace)}; pola przekształtnika niedopuszczalne dla typu: "
+                f"{_opis_pol(nadmiarowe)}."
             )
         return self
 

@@ -93,7 +93,7 @@ def _wymagana_liczba_galezi(row: dict[str, Any], klucz: str, branch_id: str) -> 
     if wartosc is None:
         raise ValueError(
             f"Profil napięć: gałąź {branch_id!r} w zapisie biegu rozpływu nie ma pola "
-            f"{klucz!r} — zamrożony wynik (PowerFlowBranchResult) nie dopuszcza tu braku, "
+            f"{klucz!r} — zamrożony wynik rozpływu gałęzi nie dopuszcza tu braku, "
             "zapis biegu jest uszkodzony."
         )
     return float(wartosc)
@@ -106,7 +106,7 @@ def _wymagana_liczba_podsumowania(summary_raw: dict[str, Any], klucz: str) -> fl
     if wartosc is None:
         raise ValueError(
             f"Profil napięć: podsumowanie przebiegu rozpływu nie ma pola {klucz!r} — "
-            "zamrożony wynik (PowerFlowSummary) nie dopuszcza tu braku, zapis biegu "
+            "zamrożone podsumowanie rozpływu nie dopuszcza tu braku, zapis biegu "
             "jest uszkodzony."
         )
     return float(wartosc)

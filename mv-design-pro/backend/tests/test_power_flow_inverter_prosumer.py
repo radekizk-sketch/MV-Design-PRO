@@ -357,7 +357,7 @@ def test_zip_recompute_bus_without_split_is_refused_not_scaled() -> None:
         inverter_p_mw=2.0,  # source power known, but no split declared
         inverter_q_mvar=0.0,
     )
-    with pytest.raises(ValueError, match="declares no load/generation split"):
+    with pytest.raises(ValueError, match="nie deklaruje podziału na odbiór i generację"):
         solve_power_flow_physics(_inp(spec))
 
 

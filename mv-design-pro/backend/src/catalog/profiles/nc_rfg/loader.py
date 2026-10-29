@@ -681,7 +681,9 @@ def _czytaj_warstwe(sciezka: Path, warstwa: WarstwaNormatywna) -> dict[str, Any]
 
 def _dokument(dane: dict[str, Any], plik: str) -> DokumentWarstwy:
     if "dokument" not in dane:
-        raise ValueError(f"Warstwa {plik}: brak sekcji `dokument` (proweniencja jest wymagana).")
+        raise ValueError(
+            f"Warstwa {plik}: brak sekcji dokumentu źródłowego (proweniencja jest wymagana)."
+        )
     return DokumentWarstwy.model_validate(dane["dokument"])
 
 
@@ -823,7 +825,10 @@ def _liczba(wartosc: float) -> str:
 
 
 def _klasyfikacja(progi: _ProgiKlas, p_max_kw: float, napiecie_kv: float) -> KlasyfikacjaModulu:
-    for nazwa, wartosc in (("p_max_kw", p_max_kw), ("napiecie_kv", napiecie_kv)):
+    for nazwa, wartosc in (
+        ("moc maksymalna P_max [kW]", p_max_kw),
+        ("napięcie przyłączenia [kV]", napiecie_kv),
+    ):
         if not math.isfinite(wartosc) or wartosc < 0.0:
             raise ValueError(
                 f"Klasyfikacja modułu: {nazwa} = {wartosc!r} — wymagana liczba skończona ≥ 0."
@@ -1045,7 +1050,7 @@ def _wymagania(
             prawo = wpis.get("prawo_operatora", False)
             if not isinstance(prawo, bool):
                 raise ValueError(
-                    f"Wymaganie {identyfikator}: `prawo_operatora` musi być wartością logiczną "
+                    f"Wymaganie {identyfikator}: znacznik prawa operatora musi być wartością logiczną "
                     f"(jest {prawo!r})."
                 )
             skorzystal: bool | None = None
@@ -1103,7 +1108,7 @@ def _program_badan(
     wymagania: tuple[WymaganieRegulacyjne, ...],
 ) -> ProgramBadan:
     if "program_badan" not in procedura:
-        raise ValueError("Warstwa procedury PTPiREE: brak sekcji `program_badan`.")
+        raise ValueError("Warstwa procedury PTPiREE: brak sekcji programu badań.")
     sekcja = procedura["program_badan"]
     testy_katalogu = {t for w in wymagania for t in w.testy}
     scenariusze: list[ScenariuszBadania] = []
@@ -1169,7 +1174,7 @@ def _zloz_profil(
     osd = _czytaj_warstwe(sciezka, "OSD")
     if osd.get("operator_id") != operator_id:
         raise ValueError(
-            f"Plik {sciezka.name}: operator_id {osd.get('operator_id')!r} ≠ nazwa pliku."
+            f"Plik {sciezka.name}: identyfikator operatora {osd.get('operator_id')!r} ≠ nazwa pliku."
         )
     for sekcja in ("bank_nastaw", "wykonanie_prawa"):
         if sekcja not in osd:

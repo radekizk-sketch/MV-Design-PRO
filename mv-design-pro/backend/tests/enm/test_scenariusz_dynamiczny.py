@@ -627,7 +627,7 @@ class TestDetektory:
 
     def test_powtorzony_identyfikator_detektora_odrzucony(self):
         wielkosc = {"rodzaj": "modul_napiecia", "bus_ref": "b1"}
-        with pytest.raises(ValidationError, match="powtorzonych"):
+        with pytest.raises(ValidationError, match="powtórzonych"):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,

@@ -160,7 +160,7 @@ def _require_run(run_id: UUID) -> CanonicalRun:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection analysis run '{run_id}' not found",
+            detail=f"Nie znaleziono biegu analizy zabezpieczeń '{run_id}'.",
         )
     return run
 
@@ -170,7 +170,7 @@ def _require_protection_run(run_id: UUID) -> CanonicalRun:
     if run.analysis_type != "protection_sn":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection analysis run '{run_id}' not found",
+            detail=f"Nie znaleziono biegu analizy zabezpieczeń '{run_id}'.",
         )
     return run
 

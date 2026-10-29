@@ -148,7 +148,9 @@ def get_reference_pack(pack_id: str) -> ReferencePack:
     """Pobiera pakiet po id. KeyError z listą dostępnych gdy brak."""
     if pack_id not in REFERENCE_PACK_REGISTRY:
         available = ", ".join(sorted(REFERENCE_PACK_REGISTRY.keys()))
-        raise BrakZasobuError(f"Unknown reference pack: {pack_id}. Available: {available}")
+        raise BrakZasobuError(
+            f"Nieznany pakiet referencyjny {pack_id}. Dostępne pakiety: {available}"
+        )
     return REFERENCE_PACK_REGISTRY[pack_id]
 
 

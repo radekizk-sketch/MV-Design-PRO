@@ -215,7 +215,8 @@ def _route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
             )
         else:  # pragma: no cover - Odcinek wyczerpuje wszystkie typy gałęzi
             raise RouteExtractionError(
-                f"Nieobsługiwany typ gałęzi na trasie: {type(branch).__name__}"
+                f"Gałąź {nazwa_elementu(branch, 'branches')} na trasie nie jest kablem, linią "
+                "ani transformatorem — trasa pętli zwarcia nie ma dla niej modelu."
             )
     return segments
 

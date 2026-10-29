@@ -374,11 +374,14 @@ def sprawdz_tryb_stanowiska(
         if not isinstance(zdarzenie, ZDARZENIA_TRYBU_STANOWISKA)
     )
     if obce:
+        # Rodzaje zdarzeń w apostrofach odwróconych — etykiety podstawia warstwa aplikacji
+        # (`application.dynamika.odmowy.komunikat_dla_projektanta`).
+        obce_w_zdaniu = ", ".join(f"`{nazwa}`" for nazwa in sorted(set(obce)))
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
             "Bieg stanowiska badawczego (sieć zasila źródło testowe) przyjmuje wyłącznie "
             "profil źródła testowego i komendy regulacji badanego urządzenia; zakłócenia "
-            f"sieci {sorted(set(obce))} należą do biegu trybu sieci — mieszanie trybów "
+            f"sieci ({obce_w_zdaniu}) należą do biegu trybu sieci — mieszanie trybów "
             "dałoby wynik dwóch badań naraz",
             zdarzenia=tuple(sorted(set(obce))),
         )
@@ -594,7 +597,7 @@ def wpisy_zdarzenia(
         if not urzadzenie.agregat_jednostek or urzadzenie.sprzezenie != "pradowe":
             raise OdmowaDynamiki(
                 KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
-                f"Częściowa utrata źródła {zdarzenie.zrodlo!r} ({type(urzadzenie).__name__}) "
+                f"Częściowa utrata źródła {zdarzenie.zrodlo!r} (`{type(urzadzenie).__name__}`) "
                 f"w t={zdarzenie.t_s} s: urządzenie nie jest agregatem identycznych jednostek "
                 "o sprzężeniu prądowym (ekwiwalent sieci nadrzędnej albo źródło testowe) — "
                 "ubytek części jednostek nie opisuje żadnego zjawiska",
@@ -700,11 +703,17 @@ def sprawdz_przypisanie(urzadzenie: Urzadzenie, stan: str, wartosc: float, t_s: 
     nim bylaby stanem, ktorego model nie dopuszcza (np. amplituda ujemna zrodla testowego).
     """
     if stan not in urzadzenie.stany_przypisywalne:
+        # Stany ADRESAMI `<urządzenie>.<stan>` — opis stanu i nazwę urządzenia podstawia
+        # warstwa aplikacji (`application.dynamika.odmowy.komunikat_dla_projektanta`).
+        dozwolone_w_zdaniu = (
+            ", ".join(f"{urzadzenie.ident}.{nazwa}" for nazwa in urzadzenie.stany_przypisywalne)
+            or "żadnego"
+        )
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_PRZYPISANIA_NIEDOZWOLONE,
-            f"Przypisanie stanu {stan!r} urządzenia {urzadzenie.ident!r} "
-            f"({type(urzadzenie).__name__}) w t={t_s} s jest niedozwolone — klasa deklaruje "
-            f"jako przypisywalne wyłącznie {urzadzenie.stany_przypisywalne}; skok strumienia, "
+            f"Przypisanie stanu {urzadzenie.ident}.{stan} "
+            f"(`{type(urzadzenie).__name__}`) w t={t_s} s jest niedozwolone — rodzaj urządzenia "
+            f"dopuszcza przypisanie wyłącznie stanów: {dozwolone_w_zdaniu}; skok strumienia, "
             "kąta, prędkości albo stanu naładowania wymagałby nieskończonej wielkości fizycznej",
             urzadzenie=urzadzenie.ident,
             stan=stan,
@@ -735,7 +744,7 @@ def nastawa_regulacji(urzadzenie: Urzadzenie, wielkosc: WielkoscNastawy, t_s: fl
             raise OdmowaDynamiki(
                 KOD_NASTAWA_NIEOBSLUGIWANA,
                 f"Komenda regulacji {wielkosc.upper()} urządzenia {urzadzenie.ident!r} "
-                f"({type(urzadzenie).__name__}) w t={t_s} s jest nieobsługiwana: "
+                f"(`{type(urzadzenie).__name__}`) w t={t_s} s jest nieobsługiwana: "
                 f"{nastawa.powod_pl}",
                 urzadzenie=urzadzenie.ident,
                 klasa=type(urzadzenie).__name__,

@@ -770,7 +770,7 @@ class PowerFlowRunNotFoundError(PowerFlowComparisonError):
 
     def __init__(self, run_id: str):
         self.run_id = run_id
-        super().__init__(f"Power flow run nie znaleziony: {run_id}")
+        super().__init__(f"Nie znaleziono biegu rozpływu mocy {run_id}.")
 
 
 class PowerFlowRunWrongTypeError(PowerFlowComparisonError):
@@ -793,7 +793,7 @@ class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Power flow run nie zakończony (status: {status}): {run_id}")
+        super().__init__(f"Bieg rozpływu mocy {run_id} nie jest zakończony (stan: {status}).")
 
 
 class PowerFlowProjectMismatchError(PowerFlowComparisonError):
@@ -810,4 +810,4 @@ class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
 
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
-        super().__init__(f"Power flow comparison nie znalezione: {comparison_id}")
+        super().__init__(f"Nie znaleziono porównania rozpływów mocy {comparison_id}.")

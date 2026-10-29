@@ -64,7 +64,7 @@ class OdmowaNazwana(OdmowaDanychError):
         self, komunikat: str, *, kod: str, dane: Mapping[str, object] | None = None
     ) -> None:
         if not kod.strip():
-            raise ValueError("OdmowaNazwana wymaga niepustego kodu maszynowego.")
+            raise ValueError("Odmowa nazwana wymaga niepustego kodu maszynowego.")
         if kod in komunikat:
             raise ValueError(f"Kod maszynowy {kod!r} nie należy do treści zdania dla projektanta.")
         super().__init__(komunikat)

@@ -337,17 +337,17 @@ def test_result_to_dict_serializable() -> None:
 
 
 def test_measurement_rejects_nonpositive_sigma() -> None:
-    with pytest.raises(ValueError, match="sigma"):
+    with pytest.raises(ValueError, match="Odchylenie standardowe pomiaru σ musi być dodatnie"):
         Measurement(MeasurementType.V_MAGNITUDE, 0, value=1.0, sigma=0.0)
 
 
 def test_flow_measurement_requires_bus_j() -> None:
-    with pytest.raises(ValueError, match="bus_j"):
+    with pytest.raises(ValueError, match="węzła końcowego gałęzi j"):
         Measurement(MeasurementType.P_FLOW, 0, value=0.1, sigma=0.01)
 
 
 def test_injection_measurement_rejects_bus_j() -> None:
-    with pytest.raises(ValueError, match="bus_j"):
+    with pytest.raises(ValueError, match="węzła końcowego gałęzi j"):
         Measurement(MeasurementType.P_INJECTION, 0, value=0.1, sigma=0.01, bus_j=1)
 
 
@@ -358,13 +358,13 @@ def test_empty_measurement_set_rejected() -> None:
 
 def test_non_square_ybus_rejected() -> None:
     bm = build_synthetic_benchmark()
-    with pytest.raises(ValueError, match="kwadratową"):
+    with pytest.raises(ValueError, match="musi być kwadratowa"):
         estimate_wls(np.zeros((3, 2), dtype=complex), bm.measurements, 0)
 
 
 def test_slack_index_out_of_range_rejected() -> None:
     bm = build_synthetic_benchmark()
-    with pytest.raises(ValueError, match="slack_index"):
+    with pytest.raises(ValueError, match="Indeks węzła bilansującego"):
         estimate_wls(bm.ybus_pu, bm.measurements, 99)
 
 

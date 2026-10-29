@@ -1032,13 +1032,14 @@ class ProofGenerator:
         quantities = data.quantities
         if quantities.fault_type != fault_type:
             raise ValueError(
-                f"SC1Input.quantities policzone dla typu {quantities.fault_type}, "
-                f"a dowód dotyczy typu {fault_type}"
+                "Wielkości zwarciowe danych wejściowych dowodu policzono dla innego rodzaju "
+                "zwarcia niż rodzaj zwarcia dowodu."
             )
         if quantities.z_f_ohm != data.z_f_ohm:
             raise AssertionError(
-                "SC1Input.quantities policzone dla innej impedancji przejścia Z_f niż ta, "
-                "której dotyczy dowód (karta OD-14: jedna prawda Z_f wyniku i dowodu)."
+                "Wielkości zwarciowe danych wejściowych dowodu policzono dla innej impedancji "
+                "przejścia Z_f niż ta, której dotyczy dowód — wynik i dowód muszą nieść tę samą "
+                "impedancję przejścia."
             )
 
         z_equiv = quantities.z_equiv_ohm
@@ -1058,7 +1059,7 @@ class ProofGenerator:
         for eq_id in step_order:
             equation = EquationRegistry.get_equation(eq_id)
             if equation is None:
-                raise ValueError(f"Missing equation definition for {eq_id}")
+                raise ValueError(f"Brak definicji równania {eq_id} w rejestrze równań.")
             step_number += 1
 
             if eq_id == "EQ_SC1_001":
@@ -1154,7 +1155,9 @@ class ProofGenerator:
                     idyn_ka=idyn_ka,
                 )
             else:
-                raise ValueError(f"Unsupported SC1 equation in step order: {eq_id}")
+                raise ValueError(
+                    f"Równanie {eq_id} nie należy do kolejności kroków dowodu zwarcia jednofazowego."
+                )
             steps.append(step)
 
         header = ProofHeader(
@@ -1561,7 +1564,7 @@ class ProofGenerator:
     ) -> ProofStep:
         equation = EquationRegistry.get_equation(equation_id)
         if equation is None:
-            raise ValueError(f"Missing equation definition for {equation_id}")
+            raise ValueError(f"Brak definicji równania {equation_id} w rejestrze równań.")
 
         input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
@@ -3717,8 +3720,8 @@ class ProofGenerator:
             mapping_key = f.metadata.get("mapping_key")
             if not mapping_key:
                 raise ValueError(
-                    f"Pole danych wejściowych dowodu ({type(obj).__name__}) nie ma klucza "
-                    "mapowania na wielkość dowodu."
+                    "Dane wejściowe dowodu zawierają pole bez klucza mapowania na wielkość "
+                    "dowodu — definicja danych wejściowych jest niekompletna."
                 )
             value = getattr(obj, f.name)
             if value is None:

@@ -67,7 +67,7 @@
       ],
       "akcja_naprawcza": {
         "kod": "der.dynamika_missing",
-        "komunikat_pl": "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego",
+        "komunikat_pl": "Brak bloku parametrów dynamicznych źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego",
         "nawigacja": {
           "panel": "analizy",
           "tab": "dynamika",

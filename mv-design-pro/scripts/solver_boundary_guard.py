@@ -198,6 +198,14 @@ SANCTIONED_CHANGES = {
         "przyczyna PRZYCZYNA_KATA_NIEOKRESLONEGO w notatce kroku i polu przyczyna; krok "
         "wklady_pominiete bez sumy fazorowej. Liczby wkladow publikowanych bez zmian; testy "
         "tests/network_model/solvers/test_kat_wkladu_pominietego.py."
+        " Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -259,6 +267,14 @@ SANCTIONED_CHANGES = {
         "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
         "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
         "tests/network_model/test_modul_zespolony_platformy.py."
+        " Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
@@ -310,6 +326,14 @@ SANCTIONED_CHANGES = {
         "odmowa nazwana. Pomiar przy partii integracji 10 (rozszerzenie WATCHED_PATHS na "
         "cala liste B-01): jedyna zmiana pliku wobec main. Wpis do usuniecia po scaleniu "
         "do main."
+        " Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/v126_academic.py": (
         "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3 i decyzja B-01 partii 9): "
@@ -389,6 +413,56 @@ SANCTIONED_CHANGES = {
         "katalogu IED = adapter iec_curves); etykieta DT z polskimi znakami; cytat stalych "
         "poprawiony na IEC 60255-151:2009 zal. A tab. A.1. Liczby bit w bit (ta sama migawka). "
         "Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/catalog/profiles/nc_rfg/": (
+        "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/ncrfg_ptpiree/": (
+        "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/phase_state_sn.py": (
+        "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/power_flow_gauss_seidel.py": (
+        "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/power_flow_fast_decoupled.py": (
+        "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
+        "dla projektanta”, WYLACZNIE literaly komunikatow): zmienione tylko stale napisowe "
+        "komunikatow odmow i bledow (polskie zdania zamiast kluczy pol, nazw klas i tekstow "
+        "angielskich); porownanie drzew skladniowych z wymazanymi stalymi str wobec 7c8d6cac5 "
+        "identyczne (wyrazenia, warunki, kolejnosc sprawdzen i typy wyjatkow bez zmian), "
+        "goldeny, hashe i testy determinizmu bez zmian; straznik "
+        "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
 }
 

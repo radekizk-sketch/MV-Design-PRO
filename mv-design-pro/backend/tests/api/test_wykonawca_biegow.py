@@ -446,7 +446,8 @@ def test_blad_programu_w_tle_to_failed_z_nazwa_bledu_a_wykonawca_zyje_dalej(
     assert client.post(f"/api/execution/runs/{zdrowy}/execute").status_code == 202
     zle = wykonaj_bieg(client, wybuchajacy).json()
     assert zle["status"] == "FAILED"
-    assert zle["error_message"].startswith("Błąd wewnętrzny programu (KeyError)")
+    assert zle["error_message"].startswith("Błąd wewnętrzny programu — bieg przerwany")
+    assert "KeyError" not in zle["error_message"]  # nazwa klasy nie jest zdaniem
     assert "wstrzyknięty" not in zle["error_message"]
     assert wykonaj_bieg(client, zdrowy).json()["status"] == "DONE"
     # Wykonawca przyjmuje też NOWE zlecenia po błędzie programu (wątek zastępczy żyje).

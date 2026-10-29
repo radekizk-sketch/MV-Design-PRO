@@ -277,7 +277,7 @@ def test_invalid_fault_node_raises():
 def test_nonpositive_c_factor_raises(c_factor: float):
     graph = build_transformer_only_graph()
 
-    with pytest.raises(ValueError, match="c_factor must be > 0"):
+    with pytest.raises(ValueError, match="Współczynnik napięciowy c musi być dodatni"):
         ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id="B",
@@ -291,7 +291,7 @@ def test_nonpositive_c_factor_raises(c_factor: float):
 def test_nonpositive_tk_raises(tk_s: float):
     graph = build_transformer_only_graph()
 
-    with pytest.raises(ValueError, match="tk_s must be > 0"):
+    with pytest.raises(ValueError, match="Czas trwania zwarcia T_k musi być dodatni"):
         ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id="B",

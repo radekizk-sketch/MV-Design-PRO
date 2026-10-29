@@ -85,11 +85,11 @@ class GaussSeidelOptions(PowerFlowOptions):
         """Validate acceleration_factor range."""
         if not (0.5 <= self.acceleration_factor <= 2.0):
             raise ValueError(
-                f"Współczynnik przyspieszenia (acceleration_factor) musi być w zakresie "
+                f"Współczynnik przyspieszenia musi być w zakresie "
                 f"[0.5, 2.0], otrzymano: {self.acceleration_factor}. "
                 f"Wartość 1.0 oznacza standardową metodę Gaussa-Seidla, "
-                f"wartości > 1.0 przyspieszają zbieżność (SOR), "
-                f"wartości < 1.0 zwiększają stabilność (under-relaxation)."
+                f"wartości > 1.0 przyspieszają zbieżność (nadrelaksacja), "
+                f"wartości < 1.0 zwiększają stabilność (podrelaksacja)."
             )
 
 

@@ -76,8 +76,13 @@ FRONT = BACKEND.parent / "frontend" / "src"
 # Rozpoznawanie kodu w tekście dla projektanta
 # ---------------------------------------------------------------------------
 
+#: Rozszerzenia plików danych — ``nc_rfg.yaml`` to NAZWA PLIKU (wskazanie pliku, który
+#: projektant albo opiekun danych otwiera), nie klucz pola.
+_ROZSZERZENIA_PLIKOW = r"\.(?:yaml|yml|json|csv|xlsx|xls|txt|zip|pdf|docx)\b"
 #: Nazwa pola kontraktu albo kod wartości w zapisie ``snake_case`` (z podkreślnikiem).
-_SNAKE = re.compile(r"(?<![\w./-])[a-z][a-z0-9]*(?:_[a-z0-9]+)+(?![\w-])")
+_SNAKE = re.compile(
+    r"(?<![\w./-])[a-z][a-z0-9]*(?:_[a-z0-9]+)+(?![\w-]|" + _ROZSZERZENIA_PLIKOW + ")"
+)
 #: Kod ``WIELKIE_LITERY_Z_PODKRESLNIKIEM``.
 _WIELKIE_KODY = re.compile(r"(?<![\w./-])[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?![\w-])")
 #: Fragment kodu w odwróconych apostrofach (zapis dokumentacji kodu, nie zdania).
@@ -702,9 +707,22 @@ def _korzen_tekstu(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> ast.AST:
     return korzen
 
 
-def naruszenia_modulu(zakres: ZakresModulu, plik: Path | None = None) -> list[Naruszenie]:
-    plik = plik or SRC / zakres.sciezka
-    drzewo = ast.parse(plik.read_text(encoding="utf-8"))
+@dataclass(frozen=True)
+class TekstKomunikatu:
+    """Tekst przekazywany kanałem komunikatu: węzeł literału albo f-stringu, jego treść
+    (wstawki jako `` ⟨⟩ ``) i wyrażenia wstawek — JEDNA definicja „tekstu dla projektanta”
+    dla wszystkich reguł (kody, identyfikatory, sklejenia, nazwy klas)."""
+
+    wezel: ast.Constant | ast.JoinedStr
+    tekst: str
+    wstawki: tuple[ast.expr, ...]
+
+
+def teksty_komunikatow(
+    zakres: ZakresModulu, drzewo: ast.Module
+) -> Iterator[tuple[TekstKomunikatu, dict[int, ast.AST]]]:
+    """Teksty dla projektanta w module (zdanie: fragment ze spacją i słowem po polsku,
+    w zakresie kanału, poza docstringiem, asercją i dziennikiem)."""
     docstringi = _docstringi(drzewo)
     rodzice = _rodzice(drzewo)
     w_fstringach = {
@@ -713,21 +731,19 @@ def naruszenia_modulu(zakres: ZakresModulu, plik: Path | None = None) -> list[Na
         if isinstance(wezel, ast.JoinedStr)
         for czesc in wezel.values
     }
-    wynik: list[Naruszenie] = []
-    sprawdzone_sklejenia: set[int] = set()
     for wezel in ast.walk(drzewo):
         if id(wezel) in docstringi or id(wezel) in w_fstringach:
             continue
         if isinstance(wezel, ast.Constant) and isinstance(wezel.value, str):
             tekst = wezel.value
-            wstawki: list[ast.expr] = []
+            wstawki: tuple[ast.expr, ...] = ()
         elif isinstance(wezel, ast.JoinedStr):
             tekst = "".join(
                 czesc.value if isinstance(czesc, ast.Constant) else " ⟨⟩ " for czesc in wezel.values
             )
-            wstawki = [
+            wstawki = tuple(
                 czesc.value for czesc in wezel.values if isinstance(czesc, ast.FormattedValue)
-            ]
+            )
         else:
             continue
         stale = tekst.replace(" ⟨⟩ ", "\x00")
@@ -737,6 +753,16 @@ def naruszenia_modulu(zakres: ZakresModulu, plik: Path | None = None) -> list[Na
             continue
         if not _w_zakresie(wezel, rodzice, zakres) or _poza_komunikatem(wezel, rodzice):
             continue
+        yield TekstKomunikatu(wezel, tekst, wstawki), rodzice
+
+
+def naruszenia_modulu(zakres: ZakresModulu, plik: Path | None = None) -> list[Naruszenie]:
+    plik = plik or SRC / zakres.sciezka
+    drzewo = ast.parse(plik.read_text(encoding="utf-8"))
+    wynik: list[Naruszenie] = []
+    sprawdzone_sklejenia: set[int] = set()
+    for komunikat, rodzice in teksty_komunikatow(zakres, drzewo):
+        wezel, tekst, wstawki = komunikat.wezel, komunikat.tekst, komunikat.wstawki
         for token in kody_w_tekscie(tekst):
             wynik.append(Naruszenie(zakres.sciezka, wezel.lineno, f"kod {token}", tekst))
         for wstawka in wstawki:

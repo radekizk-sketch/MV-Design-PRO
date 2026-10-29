@@ -1410,8 +1410,8 @@ def _wykonaj_analize_biegu(
 #: `ValueError`). `ArithmeticError` to osobliwość liczbowa DANYCH (`ZeroDivisionError`
 #: przy zerowej impedancji transformatora, `OverflowError` przy rozbieżności). Każdy
 #: INNY wyjątek (`AttributeError`, `TypeError`, `KeyError`...) jest błędem programu:
-#: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED z nazwą
-#: błędu wewnętrznego i wyjątek leci dalej (500 + pełny ślad w dzienniku).
+#: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED ze zdaniem
+#: o błędzie wewnętrznym i wyjątek leci dalej (500 + pełny ślad w dzienniku).
 #: Karta ODMOWA-DANYCH-422 ŚWIADOMIE zostawia tu `ValueError`, nie `OdmowaDanychError`:
 #: bieg woła rdzenie B-01 (IEC 60909, rozpływ NR/GS/FD, stan fazowy, PTPiREE, V12.6),
 #: które zgłaszają odmowę wejścia gołym `ValueError` i `LinAlgError` — zawężenie krotki
@@ -1649,15 +1649,16 @@ def execute_run(
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         return run
-    except Exception as exc:
+    except Exception:
         # Błąd programu (karta #151): bieg NIE zostaje w RUNNING (atomowe przejęcie
-        # zablokowałoby ponowne uruchomienie), dostaje FAILED z nazwą błędu wewnętrznego
-        # — bez treści wyjątku na ekranie — a wyjątek leci dalej: 500 i pełny ślad.
+        # zablokowałoby ponowne uruchomienie), dostaje FAILED ze zdaniem o błędzie
+        # wewnętrznym — bez treści i bez nazwy klasy wyjątku na ekranie (identyfikator kodu
+        # nie jest zdaniem dla projektanta; nazwę i ślad niesie dziennik serwera) — a wyjątek
+        # leci dalej: 500 i pełny ślad.
         logger.exception("Bieg %s przerwany błędem wewnętrznym programu", run_id)
         run.status = "FAILED"
         run.error_message = (
-            f"Błąd wewnętrzny programu ({type(exc).__name__}) — bieg przerwany. "
-            "Szczegóły są w dzienniku serwera."
+            "Błąd wewnętrzny programu — bieg przerwany. Szczegóły są w dzienniku serwera."
         )
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -2397,9 +2398,10 @@ def rozszerzenia_audit2_dla_opcji(
         ) from exc
     if uow_factory is None:
         raise ValueError(
-            "Opcje biegu wskazują konfigurację audytu 2 stacji "
-            f"({project_id_str}/{station_id}), a wykonawca nie dostał fabryki UnitOfWork "
-            "wołającego — bieg nie buduje własnego połączenia z bazą (CV-4.2b)"
+            "Opcje biegu wskazują konfigurację audytu stacji "
+            f"(projekt {project_id_str}, stacja {station_id}), a wykonawca nie dostał fabryki "
+            "jednostki pracy bazy danych od wołającego — bieg nie buduje własnego połączenia "
+            "z bazą"
         )
     from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
