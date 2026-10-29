@@ -32,12 +32,14 @@ import { sldPaletteForTheme } from '../../theme/palette';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { KRYCIE_TLA_POLA_GPZ } from '../GpzAdnotacjeWarstwa';
 import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
+import fxPolGpz from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readFixture = <T,>(name: string): T =>
   JSON.parse(readFileSync(resolve(here, 'fixtures', name), 'utf8')) as T;
 
 const enm = readFixture<EnergyNetworkModel>('s92Bieg.enm.json');
+const enmPolGpz = (fxPolGpz as unknown as { readonly snapshot: EnergyNetworkModel }).snapshot;
 const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
 const zwarcie = readFixture<RawOverlayPayload>('s92Zwarcie.overlay.json');
 const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
@@ -212,6 +214,44 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     const blok = container.querySelector('[data-gpz-sections]');
     expect(blok, 'glif zwiniętego GPZ dostaje liczbę sekcji z kompozycji').not.toBeNull();
   });
+
+  // Rozszerzenie 5 karty UX-04: plakietki automatyki z kodów funkcji pola (SPZ⇔79, SCO⇔SCO,
+  // LRW⇔50BF, NZ⇔NZ, OWG⇔OWG) × motyw; stan funkcji należy do nastaw (ADR-022), których
+  // model nie niesie — obrys kreskowany i zdanie w podpowiedzi, nigdy domyślne „aktywna".
+  // Kody wpisane do rekordów pól migawki tak, jak zapisuje je operacja pola (`protection_codes`).
+  // Migawka: rozdzielnica GPZ z czterema polami liniowymi z generatora backendu (fikstura
+  // `pole_liniowe_z11_gpz_odgalezienie`) — migawka biegu `s92Bieg` ma jedno pole liniowe GPZ
+  // (rola FEEDER), a jej pola `OUT` należą do stacji SN/nN, więc nie mają kart „Pola GPZ".
+  for (const motyw of ['dark_scada', 'light_technical'] as const) {
+    it(`PLAKIETKI × motyw ${motyw}: alfabet z kodów pola, stan funkcji nieustalony i nazwany`, () => {
+      useThemeModeStore.getState().setMode(motyw as ThemeMode);
+      const zKodami = structuredClone(enmPolGpz);
+      const liniowe = (zKodami.bays ?? [])
+        .filter((b) => (b.tags ?? []).includes('gpz_line_field'))
+        .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+      expect(liniowe.length).toBeGreaterThan(1);
+      for (const pole of liniowe) pole.protection_codes = [];
+      liniowe[0].protection_codes = ['51', '50', '67N', 'ZS', '50BF', '79', 'SCO', 'SPZ/SCO'];
+      liniowe[1].protection_codes = ['51', '50', '81U', '50BF', '79', 'SPZE', 'OWG', 'NZ'];
+      useSnapshotStore.setState({ snapshot: zKodami });
+      const container = renderKanwe(2);
+      powiekszDoCzytelnosci(container);
+      const flagiPola = (ref: string): string[] =>
+        [...container.querySelectorAll(`[data-testid^="sld-v3-gpz-plakietka-${ref}-"]`)].map(
+          (n) => n.getAttribute('data-gpz-plakietka') ?? '',
+        );
+      expect(flagiPola(liniowe[0].ref_id)).toEqual(['SPZ', 'SCO', 'LRW']);
+      // 81U (f<) nie jest SCO — plakietki SCO nie ma.
+      expect(flagiPola(liniowe[1].ref_id)).toEqual(['SPZ', 'LRW', 'NZ', 'OWG']);
+      const plakietki = [...container.querySelectorAll('[data-gpz-plakietka]')];
+      expect(plakietki.length).toBe(7);
+      for (const p of plakietki) {
+        expect(p.getAttribute('data-gpz-plakietka-stan')).toBe('nieustalony');
+        expect(p.querySelector('rect')!.getAttribute('stroke-dasharray')).toBe('3 2');
+        expect(p.querySelector('title')!.textContent).toContain('należy do nastaw zabezpieczeń pola');
+      }
+    });
+  }
 
   it('L2: oznaczenie uzwojeń transformatora GPZ dociera do DOM kanwy (stan z grupy połączeń modelu)', () => {
     const container = renderKanwe(2);

@@ -7,6 +7,13 @@
  *      (`colorTokens.ts`) w wyjściu, tło jasne obecne, PARYTET liczności
  *      elementów (segmenty/symbole/etykiety) identyczny przed/po — kolory z
  *      jasnej tabeli, nie utrata treści (spec §3 „parytet eksportu").
+ *
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): kafle stanu
+ * łącznika (`STATE_COLOR`) są JEDNĄ tabelą ekranu i dokumentu — eksport mapuje je na
+ * siebie. INTENCJA dawnych asercji o `state.closed/open/nop` (każdy kolor stanu ma w druku
+ * swoją jednoznaczną parę, dedup Mapy nie nadpisuje cichaczem) zostaje: para kafla = ten sam
+ * kafel, a żaden inny token ekranu nie może dzielić wartości z kaflem (inaczej podmiana po
+ * wartości przemalowałaby stan albo token).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +31,7 @@ import {
   VOLTAGE_COLOR,
   type SldPalette,
 } from '../../theme/colorTokens';
+import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
 import {
   injectExportBackground,
@@ -43,9 +51,6 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
       VOLTAGE_COLOR.hv,
       VOLTAGE_COLOR.sn,
       VOLTAGE_COLOR.nn,
-      STATE_COLOR.closed,
-      STATE_COLOR.open,
-      STATE_COLOR.nop,
       HIGHLIGHT_COLOR.energized,
       HIGHLIGHT_COLOR.deenergized,
       HIGHLIGHT_COLOR.standby,
@@ -81,6 +86,11 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
     const dokument = new Map(liscie(LIGHT_TECHNICAL_V3));
     for (const [klucz, ciemna] of ekran) {
       const out = substituteExportHexColors(`<path fill="${ciemna}"/>`);
+      if (klucz.startsWith('state.')) {
+        // Kafel stanu: para dokumentowa = TEN SAM kolor (jedna konwencja ekranu i druku).
+        expect(out, `kafel ${klucz} przemalowany w eksporcie`).toBe(`<path fill="${ciemna}"/>`);
+        continue;
+      }
       expect(out, `token ${klucz} (${ciemna}) bez pary dokumentowej`).not.toContain(ciemna);
       // Para = wartość tego SAMEGO tokenu w palecie dokumentowej (role nie mieszają się),
       // chyba że dwa tokeny dzielą wartość ciemną (np. nop/open) — wtedy cel wspólny.
@@ -89,17 +99,25 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
     }
   });
 
-  // INTENCJA (zachowana z wersji sprzed V12K-216): gdy dwa tokeny dzielą JEDNĄ
-  // wartość ciemną, deduplikacja Mapy nie może cicho nadpisać celu — cele jasne
-  // muszą się zgadzać. Do V12K-216 taką parą były `hv`/`BASE_STROKE`; dziś `hv`
-  // to czerwień OSD `#D93A2B` (paleta wg praktyki polskich OSD), więc rolę pary
-  // dzielącej wartość pełni WYŁĄCZNIE `nop`/`open` (oba `#FF006E`).
-  it('nop (=open) mapuje na TEN SAM cel jasny — dedup Mapy nie nadpisuje cichaczem', () => {
-    expect(STATE_COLOR.nop).toBe(STATE_COLOR.open);
-    const outNop = substituteExportHexColors(`<a fill="${STATE_COLOR.open}"/><b fill="${STATE_COLOR.nop}"/>`);
-    expect(outNop).toBe(
-      `<a fill="${LIGHT_TECHNICAL_V3.state.open}"/><b fill="${LIGHT_TECHNICAL_V3.state.nop}"/>`,
-    );
+  // INTENCJA (zachowana z wersji sprzed V12K-216): gdy dwa tokeny dzielą JEDNĄ wartość,
+  // deduplikacja Mapy nie może cicho nadpisać celu. Kafle stanu mapują się na siebie, więc
+  // żaden inny token ekranu (w żadnym motywie) nie może nosić wartości kafla — inaczej
+  // podmiana po wartości przemalowałaby kafel na kolor tokenu albo token na kafel.
+  it('kafle stanu: identyczne w eksporcie, rozłączne z każdym innym tokenem obu motywów', () => {
+    const kafle = new Set(Object.values(STATE_COLOR).map((v) => v.toLowerCase()));
+    for (const p of [DARK_SCADA_SLD_PALETTE, LIGHT_TECHNICAL_SLD_PALETTE, LIGHT_TECHNICAL_V3]) {
+      const inne = [
+        p.canvasBackground,
+        p.baseStroke,
+        ...Object.values(p.voltage),
+        ...Object.values(p.highlight),
+        ...Object.values(p.rolaPola),
+      ].map((v) => v.toLowerCase());
+      for (const v of inne) expect(kafle.has(v), v).toBe(false);
+    }
+    const markup = Object.values(STATE_COLOR).map((v) => `<rect fill="${v}"/>`).join('');
+    expect(substituteExportHexColors(markup)).toBe(markup);
+    expect(substituteExportHexColors(markup, LIGHT_TECHNICAL_SLD_PALETTE)).toBe(markup);
   });
 
   // NOWE (V12K-216): WN rozdzielone od bazy na ekranie, ale ZBIEŻNE w druku —
@@ -108,11 +126,11 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
   // rozjazd druku przeszedłby niezauważony.
   it('WN: na ekranie czerwień ≠ baza, w druku oba → tusz (asymetria D11 zamierzona)', () => {
     expect(VOLTAGE_COLOR.hv).not.toBe(BASE_STROKE);
-    expect(VOLTAGE_COLOR.hv).not.toBe(STATE_COLOR.nop);
+    expect(VOLTAGE_COLOR.hv).not.toBe(STATE_COLOR.zamkniety);
     const out = substituteExportHexColors(`<a fill="${BASE_STROKE}"/><b fill="${VOLTAGE_COLOR.hv}"/>`);
     expect(out).toBe(`<a fill="${LIGHT_TECHNICAL_V3.baseStroke}"/><b fill="${LIGHT_TECHNICAL_V3.voltage.hv}"/>`);
     expect(LIGHT_TECHNICAL_V3.voltage.hv).toBe(LIGHT_TECHNICAL_V3.baseStroke);
-    expect(LIGHT_TECHNICAL_V3.voltage.hv).not.toBe(LIGHT_TECHNICAL_V3.state.nop);
+    expect(LIGHT_TECHNICAL_V3.voltage.hv).not.toBe(LIGHT_TECHNICAL_V3.state.zamkniety);
   });
 
   it('nie dotyka treści niebędącej jednym z tokenów (etykieta PL nietknięta)', () => {
@@ -180,7 +198,6 @@ const DARK_TOKEN_VALUES = [
   BASE_STROKE,
   VOLTAGE_COLOR.sn,
   VOLTAGE_COLOR.nn,
-  STATE_COLOR.nop,
   HIGHLIGHT_COLOR.energized,
   HIGHLIGHT_COLOR.deenergized,
   HIGHLIGHT_COLOR.flow,
@@ -220,6 +237,19 @@ describe('exportPalette — integracja na realnym markupie kanwy (parytet ekspor
       for (const dark of DARK_TOKEN_VALUES) {
         expect(out).not.toContain(dark);
       }
+    });
+
+    it(`LOD ${lod}: kafle stanu łączników mają w eksporcie TEN SAM kolor co na kanwie`, () => {
+      // Iniekcja: inna para dokumentowa kafla (np. dawna czerwień drukowalna #B71C1C dla
+      // zamkniętego) — wypełnienia kafli przed i po transformacji rozjeżdżają się.
+      const { svgEl, raw } = renderRealMarkupAtLod(lod);
+      const wypelnienia = (root: ParentNode) =>
+        [...root.querySelectorAll('[data-kafel="tlo"]')].map((n) => n.getAttribute('fill'));
+      const przed = wypelnienia(svgEl);
+      const po = wypelnienia(new DOMParser().parseFromString(toLightTechnicalExportSvg(raw), 'image/svg+xml'));
+      expect(po).toEqual(przed);
+      if (lod === 2) expect(przed.length).toBeGreaterThan(0);
+      for (const f of przed) expect(Object.values(STATE_COLOR)).toContain(f);
     });
 
     it(`LOD ${lod}: tło jasne obecne`, () => {

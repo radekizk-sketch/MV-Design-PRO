@@ -238,8 +238,8 @@ describe('SLD-GEN-POLA — pole rysuje KOMPOZYCJĘ APARATÓW swojej rodziny', ()
     const oznaczenia = Array.from(container.querySelectorAll('[data-oznaczenie]')).map((el) =>
       el.getAttribute('data-oznaczenie'),
     );
-    expect(oznaczenia).toEqual(['Q1', 'Q0', 'T1', 'Q2', 'Q9', 'GK']);
-    expect(tekstRysunku(container)).toContain('Q9');
+    expect(oznaczenia).toEqual(['Q1', 'Q0', 'T1', 'Q9', 'Q8', 'GK']);
+    expect(tekstRysunku(container)).toContain('Q8');
   });
 
   it('rodzina RMU i rodzina wnętrzowa dają RÓŻNE rysunki tej samej roli pola', () => {
@@ -913,9 +913,9 @@ describe('SLD-GEN-POLA — determinizm rysunku', () => {
         `${s.numer}:${s.rola}:${s.scena.symbole.map((sym) => `${sym.oznaczenie}=${sym.id}`).join('>')}`,
     );
     expect(struktura).toEqual([
-      '1:LINIA_IN:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
-      '2:LINIA_OUT:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
-      '3:TRANSFORMATOROWE:Q1=disconnector>Q0=fuseSwitch>Q2=disconnector>Q9=earthSwitch>TR=transformer2W',
+      '1:LINIA_IN:Q1=disconnector>Q0=loadBreakSwitch>Q9=disconnector>Q8=earthSwitch>GK=cableHead',
+      '2:LINIA_OUT:Q1=disconnector>Q0=loadBreakSwitch>Q9=disconnector>Q8=earthSwitch>GK=cableHead',
+      '3:TRANSFORMATOROWE:Q1=disconnector>Q0=fuseSwitch>Q9=disconnector>Q8=earthSwitch>TR=transformer2W',
     ]);
     // Jednostki kablowe pierścienia mają przedział kablowy, transformatorowa —
     // stronę nN. Blok K-K-T czyta się z rysunku, nie z podpisów.

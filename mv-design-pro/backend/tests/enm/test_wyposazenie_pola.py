@@ -32,6 +32,7 @@ from enm.wyposazenie_pola import (
     stan_danych_wyposazenia,
 )
 from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
+from network_model.pochodne.pasma_napieciowe import izolacja_pokrywa_siec
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, _pusty, galaz, wykonaj
 
@@ -54,13 +55,20 @@ def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
     return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
 
 
+#: Napięcie szyn SN sieci testowej [kV] (GPZ 15 kV) — pozycje „poprawne” mają poziom izolacji
+#: pokrywający tę sieć (U_m ≥ U_s = 17,5 kV, `izolacja_pokrywa_siec`), bo operacja odmawia
+#: aparatu niższego poziomu napięcia (`bay_equipment.voltage_insufficient`).
+NAPIECIE_SIECI_KV = 15.0
+
+
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
     """Pierwsza pozycja rodzaju dopuszczona w polu PROJEKTOWANYM (pola sieci testowej budują
     operacje projektowe — zakaz gazów fluorowanych, karta UX-04/POLE-LINIOWE-WZORZEC)."""
     return _pierwsza(
         katalog_biezacy().mv_apparatus_types,
         lambda t: t.device_kind == rodzaj_katalogowy
-        and not czy_medium_z_gazem_fluorowanym(t.medium),
+        and not czy_medium_z_gazem_fluorowanym(t.medium)
+        and izolacja_pokrywa_siec(t.u_n_kv, NAPIECIE_SIECI_KV) is True,
     )
 
 
@@ -69,7 +77,10 @@ def _ref_przestrzeni(przestrzen: str) -> str:
     return {
         "CT": lambda: _pierwsza(katalog.ct_types),
         "VT": lambda: _pierwsza(katalog.vt_types),
-        "OGRANICZNIK_SN": lambda: _pierwsza(katalog.surge_arrester_types),
+        "OGRANICZNIK_SN": lambda: _pierwsza(
+            katalog.surge_arrester_types,
+            lambda t: izolacja_pokrywa_siec(t.u_m_kv, NAPIECIE_SIECI_KV) is True,
+        ),
     }[przestrzen]()
 
 
@@ -648,6 +659,95 @@ def test_drugi_aparat_bledny_nie_zostawia_pierwszego(siec: Any) -> None:
         },
         "catalog.item_not_found",
     )
+
+
+# ---------------------------------------------------------------------------
+# Iloczyn: pole opcjonalne aparatu (przekładnia, odgałęzienie) × rodzaj × postać wartości
+# ---------------------------------------------------------------------------
+
+#: Rodzaje bez katalogu SN (wpis bez `catalog_ref`): przekładnik Ferrantiego — jedyny, któremu
+#: zapisuje się przekładnię (rysunek Z.10/Z.11.1: „1/100"), oraz dwa rodzaje kontrolne.
+RODZAJE_POL_OPCJONALNYCH = ("CORE_BALANCE_CT", "CABLE_HEAD", "VOLTAGE_INDICATOR")
+
+#: Postać wartości → (czy poprawna dla pola, wartość zapisana po normalizacji).
+POSTACI_PRZEKLADNI: dict[str, tuple[Any, bool, Any]] = {
+    "zapis_rysunku": ("1/100", True, "1/100"),
+    "odstepy_brzegowe": (" 1/100 ", True, "1/100"),
+    "pusty": ("", False, None),
+    "same_odstepy": ("   ", False, None),
+    "liczba": (100, False, None),
+}
+POSTACI_ODGALEZIENIA: dict[str, tuple[Any, bool, Any]] = {
+    "identyfikator": ("pn", True, "pn"),
+    "odstepy_brzegowe": (" pn1 ", True, "pn1"),
+    "znak_spoza_identyfikatora": ("p-n", False, None),
+    "pusty": ("", False, None),
+    "liczba": (5, False, None),
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_PRZEKLADNI))
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_przekladnia_wylacznie_przekladnika_ferrantiego(
+    siec: Any, rodzaj: str, postac: str
+) -> None:
+    """Przekładnię zapisuje się WYŁĄCZNIE przekładnikowi Ferrantiego i wyłącznie jako niepusty
+    napis (znormalizowany); każdy inny rodzaj albo postać — odmowa atomowa
+    `bay_equipment.ratio_not_applicable` (model wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_PRZEKLADNI[postac]
+    ladunek = {
+        "bay_ref": pola["IN"],
+        "mode": "katalog",
+        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "przekladnia": wartosc}],
+    }
+    if not (poprawna and rodzaj == "CORE_BALANCE_CT"):
+        _odmowa(enm, ladunek, "bay_equipment.ratio_not_applicable")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat["przekladnia"] == zapisana
+
+
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_brak_przekladni_nie_zostawia_pola_w_rekordzie(siec: Any, rodzaj: str) -> None:
+    """Pole addytywne: aparat bez przekładni nie niesie klucza (odcisk modelu sprzed pola
+    nietknięty — `enm/hash.py`, test odcisku w `test_pole_liniowe_gpz_szablony.py`)."""
+    enm, pola, _ = siec
+    wynik = _wykonaj(
+        enm,
+        {
+            "bay_ref": pola["IN"],
+            "mode": "katalog",
+            "devices": [{"kind": rodzaj, "placement": "MIDSTREAM"}],
+        },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat.get("przekladnia") is None
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_ODGALEZIENIA))
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_odgalezienie_toru_krotkim_identyfikatorem(siec: Any, rodzaj: str, postac: str) -> None:
+    """Odgałęzienie toru (Z.11.1: „pn" — odgałęzienie przekładnika napięciowego) przyjmuje
+    wyłącznie krótki identyfikator z liter i cyfr, dla każdego rodzaju aparatu; inna postać —
+    odmowa atomowa `bay_equipment.branch_invalid`."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_ODGALEZIENIA[postac]
+    ladunek = {
+        "bay_ref": pola["IN"],
+        "mode": "katalog",
+        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}],
+    }
+    if not poprawna:
+        _odmowa(enm, ladunek, "bay_equipment.branch_invalid")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat["odgalezienie"] == zapisana
 
 
 # ---------------------------------------------------------------------------

@@ -67,6 +67,10 @@ function symbole(s: ScenaPola): string[] {
   return s.symbole.map((symbol) => symbol.id);
 }
 
+// Oznaczenia aparatów — jeden schemat roboczy szablonów pól i konfiguracji pól silnika
+// referencyjnego (praktyka DIN 40719-2: Q1 odłącznik szynowy, Q0 aparat główny, T1 przekładnik
+// prądowy, Q9 odłącznik liniowy, Q8 uziemnik; karta UX-04/POLE-LINIOWE-WZORZEC, rejestr
+// konfliktów UX04-OZNACZENIA-APARATOW). Dawne Q2/Q9 (odłącznik liniowy/uziemnik) zastąpione.
 describe('SLD-GEN-POLA — BOM czytany z RZECZYWISTEJ kompozycji szablonu', () => {
   it('pole liniowe UniGear: pełny skład celki z oznaczeniami operatorskimi', () => {
     const bom = zbudujBomPola({ szablon: SZABLON_UNIGEAR_LINE_OUT });
@@ -74,8 +78,8 @@ describe('SLD-GEN-POLA — BOM czytany z RZECZYWISTEJ kompozycji szablonu', () =
       'Q1:ODLACZNIK_SZYNOWY',
       'Q0:APARAT_GLOWNY',
       'T1:PRZEKLADNIK_PRADOWY',
-      'Q2:ODLACZNIK_LINIOWY',
-      'Q9:UZIEMNIK',
+      'Q9:ODLACZNIK_LINIOWY',
+      'Q8:UZIEMNIK',
       'GK:GLOWICA_KABLOWA',
     ]);
   });
@@ -95,7 +99,7 @@ describe('SLD-GEN-POLA — BOM czytany z RZECZYWISTEJ kompozycji szablonu', () =
     const bom = zbudujBomPola({ szablon: SZABLON_SAFERING_LINE_OUT_PRODUCENCKI });
     expect(bom.map((p) => `${p.oznaczenie}:${p.rodzaj}`)).toEqual([
       'Q0:APARAT_GLOWNY',
-      'Q9:UZIEMNIK',
+      'Q8:UZIEMNIK',
       'VPIS:WSKAZNIK_NAPIECIA',
       'GK:GLOWICA_KABLOWA',
     ]);
@@ -322,12 +326,12 @@ describe('SLD-GEN-POLA — cztery role dają CZTERY RÓŻNE rysunki (defekt sprz
     );
     expect(podpisy).toEqual({
       'liniowe rozłącznikowe':
-        'Q1:disconnector>Q0:loadBreakSwitch>Q2:disconnector>[Q9:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
+        'Q1:disconnector>Q0:loadBreakSwitch>Q9:disconnector>[Q8:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
       'liniowe wyłącznikowe':
-        'Q1:disconnector>Q0:breaker>T1:currentTransformer>Q2:disconnector>[Q9:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
+        'Q1:disconnector>Q0:breaker>T1:currentTransformer>Q9:disconnector>[Q8:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
       'transformatorowe switch-fuse':
-        'Q1:disconnector>Q0:fuseSwitch>Q2:disconnector>[Q9:earthSwitch]>TR:transformer2W>{strona-nn}',
-      pomiarowe: 'Q1:disconnector>[T2:voltageTransformer]>[Q9:earthSwitch]',
+        'Q1:disconnector>Q0:fuseSwitch>Q9:disconnector>[Q8:earthSwitch]>TR:transformer2W>{strona-nn}',
+      pomiarowe: 'Q1:disconnector>[T2:voltageTransformer]>[Q8:earthSwitch]',
     });
   });
 
@@ -343,12 +347,12 @@ describe('SLD-GEN-POLA — tor pionowy, odgałęzienia i zakończenia', () => {
   it('uziemnik schodzi ODGAŁĘZIENIEM DO ZIEMI (w lewo), nie stoi w torze', () => {
     const bom = zbudujBomPola({ szablon: SZABLON_UNIGEAR_LINE_OUT });
     const s = scena(bom);
-    const uziemnik = s.symbole.find((symbol) => symbol.oznaczenie === 'Q9');
+    const uziemnik = s.symbole.find((symbol) => symbol.oznaczenie === 'Q8');
     expect(uziemnik?.umiejscowienie).toBe('ZIEMIA');
     expect(uziemnik?.boczny).toBe(true);
     expect(uziemnik!.x).toBeLessThan(0);
     // Terminale: góra na torze, dół w ziemi (zero fizyki — to opis przyłączenia).
-    const terminal = terminalePola(bom).find((t) => t.pozycja.oznaczenie === 'Q9');
+    const terminal = terminalePola(bom).find((t) => t.pozycja.oznaczenie === 'Q8');
     expect(terminal).toEqual({ pozycja: expect.anything(), gora: 'TOR', dol: 'ZIEMIA' });
   });
 
@@ -427,7 +431,7 @@ describe('SLD-GEN-POLA — tor pionowy, odgałęzienia i zakończenia', () => {
     expect(oznaczenia(s)).not.toContain('Q0');
     expect(symbole(s)).not.toContain('breaker');
     // Reszta składu zostaje — brak dotyczy JEDNEGO aparatu, nie całego pola.
-    expect(oznaczenia(s)).toEqual(['Q1', 'T1', 'Q2', 'Q9', 'GK']);
+    expect(oznaczenia(s)).toEqual(['Q1', 'T1', 'Q9', 'Q8', 'GK']);
     expect(roznicaBomScena(bom, s, { symbolAparatuGlownego: null })).toEqual([]);
   });
 
@@ -500,9 +504,9 @@ describe('SLD-GEN-POLA — blok fabryczny RMU K-K-T (kabel–kabel–transformat
       ),
     );
     expect(podpisy).toEqual([
-      'Q1:disconnector>Q0:loadBreakSwitch>Q2:disconnector>[Q9:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
-      'Q1:disconnector>Q0:loadBreakSwitch>Q2:disconnector>[Q9:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
-      'Q1:disconnector>Q0:fuseSwitch>Q2:disconnector>[Q9:earthSwitch]>TR:transformer2W>{strona-nn}',
+      'Q1:disconnector>Q0:loadBreakSwitch>Q9:disconnector>[Q8:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
+      'Q1:disconnector>Q0:loadBreakSwitch>Q9:disconnector>[Q8:earthSwitch]>GK:cableHead>{przedzial-kablowy}',
+      'Q1:disconnector>Q0:fuseSwitch>Q9:disconnector>[Q8:earthSwitch]>TR:transformer2W>{strona-nn}',
     ]);
     // Jednostki kablowe są identyczne z założenia (pierścień), transformatorowa
     // różni się od obu — blok K-K-T czyta się z rysunku.

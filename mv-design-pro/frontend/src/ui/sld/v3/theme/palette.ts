@@ -15,10 +15,12 @@
  *
  * KONTRAKT SEMANTYKI (BINDING). Wolno zmienić jasność/nasycenie per motyw;
  * NIE WOLNO zmienić przypisania barw do klas: WN czerwony, SN zielony, nN
- * niebieski, NOP/otwarty magenta, energizacja zielona, przepływ błękitny,
+ * niebieski, energizacja zielona, przepływ błękitny,
  * OLTC bursztynowy, awaria czerwona, etykiety wynikowe fioletowe. Wariant
  * jasny to te same rodziny barw ściemnione pod biel arkusza — pilnuje tego
- * test `__tests__/palette.test.ts` (rodzina odcienia + próg kontrastu).
+ * test `__tests__/palette.test.ts` (rodzina odcienia + próg kontrastu). Kafle stanu
+ * łącznika (`STATE_COLOR`: czerwony = zamknięty, zielony = otwarty) są w obu motywach
+ * IDENTYCZNE — to konwencja dyspozytorska, nie odcień motywu (karta UX-04, rozszerzenie 5).
  *
  * DETERMINIZM. Paleta NIE wchodzi do sceny: `scene/buildScene.ts` nie zna
  * żadnego koloru (kolor nakłada dopiero render), więc hash geometrii jest
@@ -27,7 +29,7 @@
  */
 import { createContext, useContext } from 'react';
 
-import { DARK_SCADA_SLD_PALETTE, RAMKA_SCADA_COLOR, type SldPalette } from './colorTokens';
+import { DARK_SCADA_SLD_PALETTE, STATE_COLOR, type SldPalette } from './colorTokens';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 
 export type { SldPalette } from './colorTokens';
@@ -51,13 +53,10 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     /** nN — błękit szyny nN ściemniony (7,7:1). */
     nn: '#0A5A78',
   },
-  state: {
-    closed: '#0D7A3E',
-    /** NOP/otwarty — magenta ściemniona (7,1:1). ŚWIADOMIE inna rodzina niż
-     *  WN (czerwień): stan ruchowy nie może zlać się z poziomem napięcia. */
-    open: '#B0004E',
-    nop: '#B0004E',
-  },
+  /** Kafle stanu łącznika — TA SAMA tabela co motyw ciemny i eksport (konwencja
+   *  dyspozytorska czerwony = zamknięty, zielony = otwarty nie jest odcieniem motywu). */
+  state: STATE_COLOR,
+
   highlight: {
     energized: '#1E7A46',
     deenergized: '#6B7684',
@@ -89,10 +88,8 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     sprzeglo: '#56626F',
     pomiarowe: '#0B6E60',
     zrodlowe: '#3C6E1E',
+    kompensacyjne: '#9E2A5E',
   },
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA — TE SAME wartości co motyw
-   *  ciemny (konwencja dyspozytorska niezależna od motywu). */
-  ramkaScada: RAMKA_SCADA_COLOR,
 };
 
 export { DARK_SCADA_SLD_PALETTE } from './colorTokens';

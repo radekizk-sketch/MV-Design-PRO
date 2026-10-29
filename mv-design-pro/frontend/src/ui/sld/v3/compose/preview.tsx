@@ -27,7 +27,14 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type GlyphProps, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import {
+  SYMBOL_GLYPHS,
+  V3_STROKE_APPARATUS,
+  type GlifBaterii,
+  type GlyphProps,
+  type StationDerGlyphKind,
+  type SwitchState,
+} from '../symbols/glyphs';
 import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
@@ -37,7 +44,6 @@ import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
 import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
-import { czyLacznikPola } from './rodzajeAparatuPola';
 import { atrybutStanuObiektu } from '../../../shared/stanObiektu';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
@@ -314,8 +320,9 @@ export interface PreviewElementMeta {
    *  nakładka energizacji i temat menu kluczują po polu). */
   readonly deviceRef?: string;
   /** UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM (`BayPrimaryDevice.kind`) pozycji
-   *  stosu — glif QET rysuje ramkę stanu SCADA wyłącznie dla łącznika pola
-   *  (`czyLacznikPola`, lustro backendu). `undefined` = symbol bez rekordu aparatu. */
+   *  stosu (audytor DOM `data-apparatus-kind`). Kafel stanu NIE zależy od rodzaju, tylko od
+   *  symbolu (`czyLacznikZPolozeniem`) — każdy łącznik z położeniem, także łącznik toru
+   *  i punkt NOP. `undefined` = symbol bez rekordu aparatu. */
   readonly apparatusKind?: BayPrimaryDeviceKind;
   /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola
    *  (przekładnik napięciowy od strony linii), w którym stoi aparat; `undefined` = tor główny
@@ -496,6 +503,8 @@ export interface PreviewSymbol {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń transformatora z grupy połączeń
    *  modelu — dla symbolu `transformer2W` (patrz `symbols/uzwojenia.ts`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — dla symbolu `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
   readonly meta?: PreviewElementMeta;
 }
 
@@ -516,6 +525,7 @@ export function daneGlifuSymbolu(
     state: symbol.state,
     earthingKind: symbol.earthingKind,
     uzwojenia: symbol.uzwojenia,
+    bateria: symbol.bateria,
     labelLines: meta?.protectionCodes,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
@@ -531,9 +541,6 @@ export function daneGlifuSymbolu(
     gpzSections: meta?.gpzGlyph?.sections,
     gpzTransformers: meta?.gpzGlyph?.transformers,
     gpzFeeders: meta?.gpzGlyph?.feeders,
-    // UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA tylko dla łącznika pola (jeden predykat
-    // z lustrem backendu); kolory ramki dokłada kanwa z palety motywu.
-    ramkaLacznika: czyLacznikPola(meta?.apparatusKind),
   };
 }
 
@@ -581,13 +588,13 @@ export function pointsToPath(points: readonly RouteVertex[]): string {
 }
 
 /** Węzeł symbolu podglądu — eksportowany dla kadru pola (`ui/field/SchematPolaSn.tsx`).
- *  `ramkaScada` = kolory ramki stanu łącznika z palety motywu; brak = harness mono bez ramki. */
+ *  `kafleStanu` = kolory kafla stanu łącznika (`SldPalette.state`); brak = harness mono bez kafla. */
 export function PreviewSymbolNode(props: {
   readonly symbol: PreviewSymbol;
   readonly stroke: string;
-  readonly ramkaScada?: GlyphProps['ramkaScada'];
+  readonly kafleStanu?: GlyphProps['kafleStanu'];
 }): JSX.Element {
-  const { symbol, stroke, ramkaScada } = props;
+  const { symbol, stroke, kafleStanu } = props;
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   // F11.3 (spec §13.3): nakładka stanu źródła = WYŁĄCZNIE kolor kreski glifu
   // (tabela `SOURCE_STATE_OVERLAY_COLOR`) + atrybut `data-source-state` —
@@ -616,7 +623,7 @@ export function PreviewSymbolNode(props: {
       data-apparatus-kind={symbol.meta?.apparatusKind}
       data-odgalezienie-toru={symbol.meta?.odgalezienieToru}
     >
-      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} ramkaScada={ramkaScada} />
+      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} kafleStanu={kafleStanu} />
     </g>
   );
 }

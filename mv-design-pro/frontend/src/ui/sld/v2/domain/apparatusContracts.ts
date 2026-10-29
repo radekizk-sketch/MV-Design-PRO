@@ -90,6 +90,11 @@ export const FIELD_ROLE = {
    *  przyłączonego wytwórcy albo z wytwórcami różnych rodzajów) — jawny symbol źródła
    *  nieokreślonego, nigdy PV z domysłu (karta GPZ-PARYTET cz. 2, pkt 3). */
   DER_UNKNOWN: 'DER_UNKNOWN',
+  /** Pole baterii kondensatorów równoległych SN (rola modelu `BKR`, kanoniczna
+   *  `BATERIA_KONDENSATOROW`; ENEA Operator, Stacje 110 kV, Zeszyt 1 §13 s. 23 i Zał. 16).
+   *  Do karty UX-04/POLE-BKR-MODEL adapter stacji zamieniał `BKR` po cichu na pole
+   *  odgałęźne, a adapter GPZ — na pole liniowe odpływowe (dobór feedera sieci). */
+  CAPACITOR_BANK: 'CAPACITOR_BANK',
 } as const;
 
 export type FieldRole = (typeof FIELD_ROLE)[keyof typeof FIELD_ROLE];
@@ -111,6 +116,7 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.DER_PV ||
     role === FIELD_ROLE.DER_BESS ||
     role === FIELD_ROLE.DER_FW ||
-    role === FIELD_ROLE.DER_UNKNOWN
+    role === FIELD_ROLE.DER_UNKNOWN ||
+    role === FIELD_ROLE.CAPACITOR_BANK
   );
 }

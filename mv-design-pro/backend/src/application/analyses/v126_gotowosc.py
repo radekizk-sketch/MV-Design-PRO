@@ -905,17 +905,29 @@ def _warunki_punktu_neutralnego(
     ]
     z_b0 = [b.ref for b in zamkniete if b.b0_siemens_per_km is not None]
     bez_b0 = tuple(b.ref for b in zamkniete if b.b0_siemens_per_km is None)
+    # Baterie kondensatorów w gwieździe uziemionej też niosą pojemność doziemną (karta
+    # UX-04/POLE-BKR-MODEL) — ten sam predykat co suma C0 solvera (`wnosi_pojemnosc_doziemna`),
+    # inaczej gotowość odmawiałaby biegu, który solver liczy (albo odwrotnie).
+    baterie = [b.ref for b in model.shunt_capacitors if b.wnosi_pojemnosc_doziemna]
+    zrodla_c0 = (*z_b0, *baterie)
     warunki = [
         Warunek(
             kod="galezie.b0",
             opis_pl=(
-                f"Linie i kable z susceptancją zerową (pojemność doziemna): {len(z_b0)} z {len(zamkniete)}"
-                if z_b0
-                else "Żadna linia ani kabel nie niesie susceptancji zerowej — pojemności doziemnej "
-                "sieci nie da się wyznaczyć"
+                f"Linie i kable z susceptancją zerową (pojemność doziemna): {len(z_b0)} z "
+                f"{len(zamkniete)}"
+                + (
+                    f"; baterie kondensatorów w gwieździe uziemionej: {len(baterie)}"
+                    if baterie
+                    else ""
+                )
+                if zrodla_c0
+                else "Żadna linia ani kabel nie niesie susceptancji zerowej ani żadna bateria "
+                "kondensatorów nie jest w gwieździe uziemionej — pojemności doziemnej sieci nie "
+                "da się wyznaczyć"
             ),
-            spelniony=bool(z_b0),
-            elementy=tuple(z_b0),
+            spelniony=bool(zrodla_c0),
+            elementy=zrodla_c0,
         ),
         Warunek(
             kod="model.napiecie_sieci",
@@ -933,7 +945,7 @@ def _warunki_punktu_neutralnego(
             proponowane=proponowane,
         ),
     ]
-    if bez_b0 and z_b0:
+    if bez_b0 and zrodla_c0:
         warunki.append(
             Warunek(
                 kod="galezie.bez_b0",

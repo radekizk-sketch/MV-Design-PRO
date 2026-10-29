@@ -46,6 +46,15 @@ export interface DerGeneratorConfigRequest {
   readonly deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
+/**
+ * Werdykt PRÓBY zapisu DER (`dry_run: true` na tej samej końcówce co zapis). `przyjeta` —
+ * backend zapisałby konfigurację; `odmowa` — kod i zdanie backendu (te same co przy zapisie,
+ * np. `converter.transformer_capacity_exceeded` z kontroli mocy O-53). Front nie liczy progu.
+ */
+export type WerdyktProbyDer =
+  | { readonly stan: 'przyjeta' }
+  | { readonly stan: 'odmowa'; readonly kod: string | null; readonly komunikat: string };
+
 export class DerPersistenceApiError extends Error {
   constructor(
     public readonly status: number,
@@ -181,4 +190,37 @@ export async function patchDerCatalogBindings(
   }
 
   return (await response.json()) as DomainOpResponseV1;
+}
+
+/**
+ * Próba zapisu DER — ta sama końcówka, te same reguły i odmowy co `postDerGeneratorConfig`,
+ * a model zostaje bez zmian (`DerGeneratorCreateRequest.dry_run`, HTTP 200 bez migawki).
+ * Odmowa reguły (422) wraca jako werdykt; błąd transportu i inne kody HTTP — wyjątkiem.
+ */
+export async function probaZapisuDer(
+  projectId: string,
+  caseId: string,
+  body: DerGeneratorConfigRequest,
+  options: { signal?: AbortSignal } = {},
+): Promise<WerdyktProbyDer> {
+  const endpoint = `/api/projects/${projectId}/cases/${caseId}/generators`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, dry_run: true }),
+    signal: options.signal,
+  });
+  if (response.ok) return { stan: 'przyjeta' };
+  const detail = await response.json().catch(() => response.statusText);
+  const extracted = extractApiError(detail, response.status);
+  if (response.status === 422) {
+    return { stan: 'odmowa', kod: extracted.code, komunikat: extracted.message };
+  }
+  throw new DerPersistenceApiError(
+    response.status,
+    detail,
+    endpoint,
+    extracted.message,
+    extracted.code,
+  );
 }

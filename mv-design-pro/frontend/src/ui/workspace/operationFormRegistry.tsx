@@ -65,6 +65,9 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   set_bay_equipment: null,
   // Stan obiektu pola zmienia edytor INLINE na karcie pola (E-11, `EdytorStanuObiektuPola`).
   set_object_state: null,
+  // Położenie łącznika pola bez gałęzi (otwórz / zamknij / uziem) wykonuje menu aparatu na
+  // kanwie (`sldActionExecutor`, cel z `celStanuLacznika`) — bez okna, jak `open_switch`.
+  set_bay_apparatus_position: null,
   przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,

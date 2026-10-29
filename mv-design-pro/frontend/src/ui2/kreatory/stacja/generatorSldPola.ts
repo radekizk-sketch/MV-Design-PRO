@@ -135,6 +135,8 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   THREE_POSITION_SWITCH: 'LACZNIK_TROJPOLOZENIOWY',
   VOLTAGE_INDICATOR: 'WSKAZNIK_NAPIECIA',
   CORE_BALANCE_CT: 'PRZEKLADNIK_FERRANTIEGO',
+  UNBALANCE_CT: 'PRZEKLADNIK_PRADOWY',
+  PHASE_TO_PHASE_VT: 'PRZEKLADNIK_NAPIECIOWY',
 };
 
 /**
@@ -153,10 +155,15 @@ export const RODZAJ_Z_KIND_INSTANCJI: Readonly<
   switch_disconnector: 'APARAT_GLOWNY',
   disconnector_busbar: 'ODLACZNIK_SZYNOWY',
   disconnector_line: 'ODLACZNIK_LINIOWY',
+  disconnector_branch: 'ODLACZNIK_ODGALEZIENIA',
+  three_position_switch: 'LACZNIK_TROJPOLOZENIOWY',
   earthing_switch: 'UZIEMNIK',
   fuse_set: 'BEZPIECZNIK',
   current_transformer: 'PRZEKLADNIK_PRADOWY',
   voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
+  unbalance_current_transformer: 'PRZEKLADNIK_PRADOWY',
+  phase_to_phase_voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
+  core_balance_ct: 'PRZEKLADNIK_FERRANTIEGO',
   surge_arrester: 'OGRANICZNIK_PRZEPIEC',
   cable_head: 'GLOWICA_KABLOWA',
   transformer: 'TRANSFORMATOR',

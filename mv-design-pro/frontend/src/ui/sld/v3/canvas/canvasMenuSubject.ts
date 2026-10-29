@@ -247,6 +247,11 @@ export interface CanvasMenuSubject {
   readonly kotwica: MenuAnchorKind;
   /** Rodzina gałęzi (`Branch.type`) — tylko dla kotwicy `galaz`. */
   readonly rodzinaGalezi?: string;
+  /** Ref POJEDYNCZEGO aparatu pola (`BayPrimaryDevice.device_ref`) wskazanego symbolem —
+   *  tylko dla kotwicy `pole`. Akcje stanu łącznika działają na TYM aparacie
+   *  (`sld/shared/celStanuLacznika.ts`), a nie na jedynym łączniku pola; pozostałe akcje
+   *  aparatu dostają ref pola (`modelRef`). */
+  readonly deviceRef?: string;
 }
 
 export type CanvasMenuSubjectResult =
@@ -262,6 +267,8 @@ export interface CanvasMenuSubjectInput {
   readonly derKind?: DerSourceKind;
   /** Kanoniczny `Bus.ref_id` podany wprost przez adapter (szyny GPZ). */
   readonly busRef?: string;
+  /** Ref pojedynczego aparatu pola z trafienia (`CanvasHitArea.deviceRef`). */
+  readonly deviceRef?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +284,8 @@ export interface CanvasModelIndex {
   readonly transformatory: ReadonlySet<string>;
   /** `ref_id` pola SN stacji → ref stacji-właścicielki (rekordy `bays`, `polaSnStacji`). */
   readonly pola: ReadonlyMap<string, string>;
+  /** `device_ref` aparatu pierwotnego pola z `pola` → `ref_id` pola-właściciela. */
+  readonly aparatyPol: ReadonlyMap<string, string>;
 }
 
 function dodajRefy(cel: Set<string>, element: { readonly ref_id?: string; readonly id?: string }): void {
@@ -297,11 +306,15 @@ export function buildCanvasModelIndex(snapshot: EnergyNetworkModel | null): Canv
   const zrodla = new Set<string>();
   const transformatory = new Set<string>();
   const pola = new Map<string, string>();
+  const aparatyPol = new Map<string, string>();
 
   for (const stacja of snapshot?.substations ?? []) {
     if (stacja.ref_id) stacje.set(stacja.ref_id, stacja);
     if (stacja.id) stacje.set(stacja.id, stacja);
-    for (const pole of polaSnStacji(snapshot, stacja.ref_id)) pola.set(pole.ref_id, stacja.ref_id);
+    for (const pole of polaSnStacji(snapshot, stacja.ref_id)) {
+      pola.set(pole.ref_id, stacja.ref_id);
+      for (const aparat of pole.primary_devices ?? []) aparatyPol.set(aparat.device_ref, pole.ref_id);
+    }
   }
   for (const szyna of snapshot?.buses ?? []) {
     if (szyna.ref_id) szyny.set(szyna.ref_id, szyna);
@@ -315,7 +328,7 @@ export function buildCanvasModelIndex(snapshot: EnergyNetworkModel | null): Canv
   for (const zrodlo of snapshot?.sources ?? []) dodajRefy(zrodla, zrodlo);
   for (const transformator of snapshot?.transformers ?? []) dodajRefy(transformatory, transformator);
 
-  return { stacje, szyny, galezie, generatory, zrodla, transformatory, pola };
+  return { stacje, szyny, galezie, generatory, zrodla, transformatory, pola, aparatyPol };
 }
 
 // ---------------------------------------------------------------------------
@@ -583,6 +596,13 @@ export function resolveCanvasMenuSubject(
       modelRef: znaleziona.modelRef,
       kotwica: znaleziona.kotwica,
       ...(znaleziona.rodzinaGalezi === undefined ? {} : { rodzinaGalezi: znaleziona.rodzinaGalezi }),
+      // Aparat wskazany symbolem — WYŁĄCZNIE gdy należy do wyposażenia pola-kotwicy (dowód
+      // z modelu, jak dla samej kotwicy); inny ref aparatu nie jest tematem akcji stanu.
+      ...(znaleziona.kotwica === 'pole'
+        && input.deviceRef !== undefined
+        && index.aparatyPol.get(input.deviceRef) === znaleziona.modelRef
+        ? { deviceRef: input.deviceRef }
+        : {}),
     },
   };
 }

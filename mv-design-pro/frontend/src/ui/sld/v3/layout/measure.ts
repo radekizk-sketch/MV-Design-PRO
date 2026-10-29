@@ -378,12 +378,76 @@ export function planLvTerminal(
  *  leży na osi stosu = `placement.centerX`). `[]` = stacja bez portów LV. */
 export function lvTerminalPortXs(station: StationColumnsInput): readonly number[] {
   return stationSnColumnLayout(station, 0)
-    .filter(
-      (p) =>
-        p.kind === 'transformer'
-        || (p.kind === 'bay' && isTransformerRole(station.snBays[p.bayIndex!].fieldRole)),
-    )
+    .filter((p) => czyKolumnaPortuLv(p, station.snBays))
     .map((p) => p.centerX);
+}
+
+/** Kolumna planu niosąca port LV transformatora: kolumna transformatora bez pola
+ *  albo pole roli TR — JEDEN predykat dla portów zacisku (`lvTerminalPortXs`) i dla
+ *  rezerwy grupy nN za ostatnią z nich (`zarezerwujGrupeNn`). */
+function czyKolumnaPortuLv(p: StationSnColumnPlacement, snBays: readonly MiniBlockBayDescriptor[]): boolean {
+  return p.kind === 'transformer' || (p.kind === 'bay' && isTransformerRole(snBays[p.bayIndex!].fieldRole));
+}
+
+/**
+ * GRUPA-NN-ZA-TR (znalezisko „2. odgałęzienie tej samej stacji", sonda geometrii
+ * 2026-10-29): pierwszy wolny X ZA OSTATNIĄ kolumną portu LV planu — początek rzędu DER
+ * strony nN (`planLvTerminal.derRowFlushX`). Rząd stał dotąd ZA CAŁYM blokiem, więc
+ * jego szyna (`#der-row-bus`, od pionu trunku pod TR do symboli DER) przechodziła POD
+ * każdym polem stojącym na prawo od transformatora, a kabel takiego pola schodzący z
+ * dolnego portu do strefy zejść przecinał ją — scena czytała przecięcie jako węzeł T
+ * (kropka łącząca kabel SN z rzędem nN). Dla stacji, w której TR jest ostatnią kolumną,
+ * wartość jest identyczna jak dawne „za blokiem". `null` = plan bez portu LV.
+ */
+export function nnGroupFlushX(
+  plan: readonly StationSnColumnPlacement[],
+  snBays: readonly MiniBlockBayDescriptor[],
+): number | null {
+  let last: StationSnColumnPlacement | null = null;
+  for (const p of plan) if (czyKolumnaPortuLv(p, snBays)) last = p;
+  return last ? last.leftX + last.width + GRID : null;
+}
+
+/**
+ * GRUPA-NN-ZA-TR: kolumny planu stojące ZA ostatnią kolumną portu LV przesunięte w prawo
+ * tak, by cała grupa strony nN tej kolumny (portal, strzałka odbioru, pion trunku i rząd
+ * DER — `planLvTerminal`, ta sama funkcja co kompozycja) zmieściła się PRZED nimi ze
+ * światłem `MIN_GLYPH_CLEARANCE`. Grupa nie wchodzi wtedy pod żadne pole, więc żaden
+ * kabel pola nie przecina rzędu nN. Plan, w którym nic nie stoi za ostatnią kolumną
+ * portu LV albo grupa mieści się w obrysie kolumny TR, wraca bez zmian.
+ */
+function zarezerwujGrupeNn(
+  station: StationColumnsInput,
+  plan: readonly StationSnColumnPlacement[],
+): readonly StationSnColumnPlacement[] {
+  if (!stationHasLvSide(station)) return plan;
+  let lastLv = -1;
+  const portXs: number[] = [];
+  plan.forEach((p, i) => {
+    if (!czyKolumnaPortuLv(p, station.snBays)) return;
+    lastLv = i;
+    portXs.push(p.centerX);
+  });
+  if (lastLv < 0 || lastLv === plan.length - 1) return plan;
+  const flushX = nnGroupFlushX(plan, station.snBays)!;
+  const nnDer = nnSideSources(station.derSources ?? []);
+  const lv = planLvTerminal(portXs, {
+    hasLoad: station.aggregatedLvLoad != null,
+    hasNnDer: nnDer.length > 0,
+    derRowFlushX: flushX,
+  });
+  const tr = plan[lastLv];
+  const groupRight = Math.max(
+    tr.leftX + tr.width,
+    lv.portalCenterX + LV_PORTAL_WIDTH / 2,
+    lv.loadDropX != null ? lv.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0,
+    nnDer.length > 0 ? lv.derRowStartX + derRowFootprint(nnDer).width : 0,
+  );
+  // Krok przesunięcia to wielokrotność siatki: `leftX` kolumn planu nie musi leżeć na
+  // siatce (szerokości z pomiaru tekstu), ale osie (`centerX`) leżą — i muszą zostać.
+  const delta = snapUp(Math.max(0, groupRight + MIN_GLYPH_CLEARANCE - plan[lastLv + 1].leftX));
+  if (delta === 0) return plan;
+  return plan.map((p, i) => (i > lastLv ? { ...p, leftX: p.leftX + delta, centerX: p.centerX + delta } : p));
 }
 
 function isTransformerRole(role: FieldRole): boolean {
@@ -581,6 +645,7 @@ type StationColumnsInput = Pick<
   | 'snCouplers'
   | 'busVoltageKv'
   | 'stationCode'
+  | 'aggregatedLvLoad'
 >;
 
 /** Gabaryty glifów toru poziomego sprzęgła (`SYMBOL_DEFS.lineSwitch` 32×16,
@@ -640,6 +705,13 @@ export function stationSectionLabelText(
  * „na oko".
  */
 export function stationSnColumnLayout(
+  station: StationColumnsInput,
+  columnX: number,
+): readonly StationSnColumnPlacement[] {
+  return zarezerwujGrupeNn(station, planKolumnBezGrupyNn(station, columnX));
+}
+
+function planKolumnBezGrupyNn(
   station: StationColumnsInput,
   columnX: number,
 ): readonly StationSnColumnPlacement[] {
@@ -1342,8 +1414,10 @@ export function requiredStationWidth(station: StationMeasureInput): number {
     const plan = planLvTerminal(portXs, {
       hasLoad: station.aggregatedLvLoad != null,
       hasNnDer: nnDer.length > 0,
-      // `bx` kompozycji względem `column.x`: blok zaczyna się na `GRID`.
-      derRowFlushX: GRID + blockWidth + GRID,
+      // GRUPA-NN-ZA-TR: rząd DER za OSTATNIĄ kolumną portu LV planu (ta sama
+      // funkcja co kompozycja; `portXs` niepuste ⇒ kolumna portu LV istnieje). Dla
+      // TR na końcu bloku = dawne `GRID + blockWidth + GRID`.
+      derRowFlushX: nnGroupFlushX(stationSnColumnLayout(station, 0), station.snBays)!,
     });
     const portalRight = plan.portalCenterX + LV_PORTAL_WIDTH / 2;
     const loadRight = plan.loadDropX != null ? plan.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0;

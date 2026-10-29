@@ -16,6 +16,12 @@
  *    więc te same role pól mają w niej BOGATSZY skład.
  * Rysunek pola musi tę różnicę pokazywać; jeżeli oba wyjdą tak samo, generator
  * nie czyta kompozycji, tylko roli — czyli defekt sprzed karty wrócił.
+ *
+ * PARYTET Z BACKENDEM: zrzut dryfował (skróty sprzed kilku zmian katalogu, oznaczenia sprzed
+ * schematu DIN 40719-2 karty UX-04 — Q9 odłącznik liniowy, Q8 uziemnik), więc
+ * `backend/tests/ci/test_parytet_fikstur_szablonow_pol.py` porównuje `template_ref`, `hash`
+ * i (rodzaj, oznaczenie) aparatów każdego szablonu tego pliku z odpowiedzią backendu —
+ * rozjazd = czerwony test, nie cicha rozbieżność.
  */
 
 import type {
@@ -39,8 +45,8 @@ export const SZABLON_SAFERING_LINE_IN: CompleteMvBayTemplateSummary = {
     devices: [
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM', optional: false },
-      { kind: 'DS_LINE', designation_q: 'Q2', position: 3, placement: 'DOWNSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'DS_LINE', designation_q: 'Q9', position: 3, placement: 'DOWNSTREAM', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 4, placement: 'GROUND_BRANCH', optional: false },
       { kind: 'CABLE_HEAD', designation_q: 'GK', position: 5, placement: 'DOWNSTREAM', optional: false },
     ],
     ports: [{ kind: 'sn_input', suffix: 'in' }],
@@ -52,7 +58,7 @@ export const SZABLON_SAFERING_LINE_IN: CompleteMvBayTemplateSummary = {
   source_status: 'repo_verified',
   source_refs: [SAFERING_SOURCE],
   version: 'public-product-page-2026-05',
-  hash: 'd8e49c71c8004375bf6e5f2589c68c8d21074db2cdde2b18a02b3fded817a019',
+  hash: '4c96bd01f64d18d34c4817a44088046bbdd4dc88b4d0a6fa87a1f0c491de0433',
   notes_pl:
     'SafeRing: kompletne pole SN z układem aparatury, portami i powiązaniem katalogowym rodziny rozdzielnicy.',
   template_code: null,
@@ -72,7 +78,7 @@ export const SZABLON_SAFERING_LINE_OUT: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'liniowe_odplywowe',
   bay_role: 'OUT',
-  hash: '79492bdbc1780eb284341f3a6a166a30e152a50d814bdf943da2202a4eed4c94',
+  hash: 'f9efe6fc3e641cb0c2a336b7f065fa7807181ab08167db55160439c35b924dd5',
 };
 
 export const SZABLON_SAFERING_TRANSFORMER: CompleteMvBayTemplateSummary = {
@@ -86,8 +92,8 @@ export const SZABLON_SAFERING_TRANSFORMER: CompleteMvBayTemplateSummary = {
     devices: [
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM', optional: false },
-      { kind: 'DS_LINE', designation_q: 'Q2', position: 3, placement: 'DOWNSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'DS_LINE', designation_q: 'Q9', position: 3, placement: 'DOWNSTREAM', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 4, placement: 'GROUND_BRANCH', optional: false },
       {
         kind: 'TRANSFORMER_DEVICE',
         designation_q: 'TR',
@@ -100,7 +106,7 @@ export const SZABLON_SAFERING_TRANSFORMER: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'transformatorowe',
   bay_role: 'TR',
-  hash: 'f79a607f97d071a138e8cdd81846ee1310df23b29157548089d25a03d19e0453',
+  hash: '3b912740e58389f0500a3643f581fcbf97028fcd2accd5c65ae7af398e53a393',
 };
 
 export const SZABLON_UNIGEAR_LINE_OUT: CompleteMvBayTemplateSummary = {
@@ -114,8 +120,8 @@ export const SZABLON_UNIGEAR_LINE_OUT: CompleteMvBayTemplateSummary = {
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM', optional: false },
       { kind: 'CT', designation_q: 'T1', position: 2, placement: 'MIDSTREAM', optional: false },
-      { kind: 'DS_LINE', designation_q: 'Q2', position: 3, placement: 'DOWNSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'DS_LINE', designation_q: 'Q9', position: 3, placement: 'DOWNSTREAM', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 4, placement: 'GROUND_BRANCH', optional: false },
       { kind: 'CABLE_HEAD', designation_q: 'GK', position: 5, placement: 'DOWNSTREAM', optional: false },
     ],
     ports: [{ kind: 'sn_output', suffix: 'out' }],
@@ -127,7 +133,7 @@ export const SZABLON_UNIGEAR_LINE_OUT: CompleteMvBayTemplateSummary = {
   source_status: 'repo_verified',
   source_refs: [UNIGEAR_SOURCE],
   version: 'public-product-page-2026-05',
-  hash: '1c536d040ec2c31766e1d637883491fa1adaa0e727094ea2c795ab02a6482c68',
+  hash: '16a3f03d5484cc6f33c4cde64e8dc4dab8d1e57586c245d33d8225675d3f674a',
   notes_pl:
     'UniGear ZS1: kompletne pole SN z układem aparatury, portami i powiązaniem katalogowym rodziny rozdzielnicy.',
   template_code: null,
@@ -146,8 +152,8 @@ export const SZABLON_UNIGEAR_TRANSFORMER: CompleteMvBayTemplateSummary = {
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM', optional: false },
       { kind: 'CT', designation_q: 'T1', position: 2, placement: 'MIDSTREAM', optional: false },
-      { kind: 'DS_LINE', designation_q: 'Q2', position: 3, placement: 'DOWNSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'DS_LINE', designation_q: 'Q9', position: 3, placement: 'DOWNSTREAM', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 4, placement: 'GROUND_BRANCH', optional: false },
       {
         kind: 'TRANSFORMER_DEVICE',
         designation_q: 'TR',
@@ -160,7 +166,7 @@ export const SZABLON_UNIGEAR_TRANSFORMER: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'transformatorowe',
   bay_role: 'TR',
-  hash: 'f4bc368492cf9c5b864fc1e822f6b787251b1b1d2c19bf42776205241c64c9cb',
+  hash: 'f55c50881d4180a39103828b7a6495f16991764ff81c25bcdd9e756df89a8f07',
 };
 
 export const SZABLON_UNIGEAR_MEASUREMENT: CompleteMvBayTemplateSummary = {
@@ -174,13 +180,13 @@ export const SZABLON_UNIGEAR_MEASUREMENT: CompleteMvBayTemplateSummary = {
     devices: [
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'VT', designation_q: 'T2', position: 1, placement: 'OFF_PATH', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 2, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 2, placement: 'GROUND_BRANCH', optional: false },
     ],
     ports: [{ kind: 'sn_measurement', suffix: 'meas' }],
   },
   bay_kind: 'pomiarowe',
   bay_role: 'MEASUREMENT',
-  hash: '034265c55cec706ec27ec4e771e4b6e744a56ad1ea7d7138b0c7f9deb2be232d',
+  hash: 'f7ec4dc42374aacf8f7a8ae19f20290c7066edcd3b3606a12560c7e4f6f13be3',
 };
 
 export const SZABLON_UNIGEAR_AUX: CompleteMvBayTemplateSummary = {
@@ -194,13 +200,13 @@ export const SZABLON_UNIGEAR_AUX: CompleteMvBayTemplateSummary = {
     devices: [
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'FUSE', designation_q: 'F1', position: 1, placement: 'MIDSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 2, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 2, placement: 'GROUND_BRANCH', optional: false },
     ],
     ports: [{ kind: 'sn_reserve', suffix: 'aux' }],
   },
   bay_kind: 'potrzeb_wlasnych',
   bay_role: 'FEEDER',
-  hash: 'fdd43b1b9bdfa7bbc86d45bbdaedb0a32a3269cee155f4c4c81d07534f567827',
+  hash: '078520371763628d64441d3432354eba607c2bfa163ada494fe32fd4052bca6d',
 };
 
 export const SZABLON_UNIGEAR_COUPLER: CompleteMvBayTemplateSummary = {
@@ -215,7 +221,7 @@ export const SZABLON_UNIGEAR_COUPLER: CompleteMvBayTemplateSummary = {
       { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM', optional: false },
       { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM', optional: false },
       { kind: 'DS_BUS', designation_q: 'Q2', position: 2, placement: 'DOWNSTREAM', optional: false },
-      { kind: 'ES', designation_q: 'Q9', position: 3, placement: 'GROUND_BRANCH', optional: false },
+      { kind: 'ES', designation_q: 'Q8', position: 3, placement: 'GROUND_BRANCH', optional: false },
     ],
     ports: [
       { kind: 'sn_coupler', suffix: 'left' },
@@ -224,7 +230,7 @@ export const SZABLON_UNIGEAR_COUPLER: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'sprzeglowe_poprzeczne',
   bay_role: 'COUPLER',
-  hash: 'e9d0abe075e9300dfacf2f3905d3b8f0ebefab8f52a834ec72ca11fb5f017f0e',
+  hash: '828e5a7bf77527e729cd205a21b857864a1744429b3529ab11f83d04564fa3e2',
 };
 
 /**
@@ -247,7 +253,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
   {
     device_template_ref: 'ABB__SAFERING__LINE_OUT__ES__001',
     apparatus_kind: 'earthing_switch',
-    label: 'Q9',
+    label: 'Q8',
     position_in_bay: 2,
     electrical_side: 'earthing_branch',
     status_wyposazenia: 'FABRYCZNY',

@@ -19,7 +19,16 @@ from enm.rola_pola_sn import (
     nazwa_roli_pola_sn_z_okresleniem,
 )
 from network_model.brak_zasobu import BrakZasobuError
-from network_model.catalog.funkcje_eaz import kody_spoza_slownika
+from network_model.catalog.funkcje_eaz import (
+    funkcja_eaz,
+    kody_spoza_slownika,
+    opis_funkcji_eaz_pl,
+)
+from network_model.catalog.obwody_wtorne_pola import (
+    OBWODY_WTORNE_WYKONANIA_POLA,
+    ObwodyWtornePola,
+    StatusWeryfikacji,
+)
 from network_model.catalog.przekladniki import (
     RdzenPrzekladnikaPradowego,
     UzwojeniePrzekladnikaNapieciowego,
@@ -54,6 +63,8 @@ class BayDeviceTemplate(BaseModel):
         "THREE_POSITION_SWITCH",  # łącznik trójpołożeniowy (SF6, ENEA Zeszyt 1 §13, Z.10)
         "VOLTAGE_INDICATOR",  # pojemnościowy wskaźnik napięcia (odgałęzienie jednoportowe)
         "CORE_BALANCE_CT",  # przekładnik Ferrantiego na kablu (bez przerwy toru)
+        "UNBALANCE_CT",  # przekładnik niezrównoważenia baterii (połączenie międzygwiazdowe)
+        "PHASE_TO_PHASE_VT",  # przekładnik napięciowy międzyfazowy (rozładowanie baterii)
     ]
     designation_q: str  # oznaczenie Q (Q1, Q2, ...)
     position: int  # 0..n od góry do dołu
@@ -73,6 +84,10 @@ class BayDeviceTemplate(BaseModel):
     # Tabliczka przekładnika wg rysunku standardu (`przekladniki`): rdzenie CT, uzwojenia VT.
     rdzenie: list[RdzenPrzekladnikaPradowego] = Field(default_factory=list)
     uzwojenia: list[UzwojeniePrzekladnikaNapieciowego] = Field(default_factory=list)
+    # Przekładnia przekładnika Ferrantiego zapisana jak na rysunku standardu (Z.10/Z.11/Z.11.1:
+    # „1/100") — WYŁĄCZNIE `CORE_BALANCE_CT`; rysunek nie podaje mocy ani klasy, więc to nie
+    # rdzeń `RdzenPrzekladnikaPradowego`. None = szablon jej nie przesądza.
+    przekladnia: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def _tabliczka_zgodna_z_rodzajem(self) -> BayDeviceTemplate:
@@ -80,6 +95,11 @@ class BayDeviceTemplate(BaseModel):
             raise ValueError(f"Szablon aparatu {self.designation_q}: rdzenie wyłącznie dla CT.")
         if self.uzwojenia and self.kind != "VT":
             raise ValueError(f"Szablon aparatu {self.designation_q}: uzwojenia wyłącznie dla VT.")
+        if self.przekladnia is not None and self.kind != "CORE_BALANCE_CT":
+            raise ValueError(
+                f"Szablon aparatu {self.designation_q}: przekładnia wyłącznie dla przekładnika "
+                "Ferrantiego."
+            )
         return self
 
 
@@ -133,6 +153,10 @@ class BayTemplate(BaseModel):
     # Szablon wyłącznie dla rozdzielnicy SN stacji GPZ 110 kV/SN (kreator stacji SN/nN go nie
     # pokazuje).
     tylko_gpz: bool = False
+    # Obwody wtórne wzorca (`obwody_wtorne_pola`): funkcja EAZ → rdzeń CT / uzwojenie VT /
+    # przekładnik Ferrantiego / sygnał, sygnały do wyłącznika i obwody okrężne rysunku.
+    # None = szablon bez rysunku obwodów wtórnych (kanon pól RMU, pola GPZ poza liniowym).
+    obwody_wtorne: ObwodyWtornePola | None = None
 
     @model_validator(mode="after")
     def _funkcje_ze_slownika(self) -> BayTemplate:
@@ -141,7 +165,73 @@ class BayTemplate(BaseModel):
             raise ValueError(
                 f"Szablon {self.template_id}: kody funkcji EAZ spoza słownika: {nieznane}."
             )
+        if self.obwody_wtorne is not None:
+            _sprawdz_obwody_wtorne(self)
         return self
+
+
+def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
+    """Obwody wtórne wzorca zgodne z aparatami i funkcjami szablonu: każda funkcja zestawu
+    rysunku powiązana dokładnie raz (i żadna spoza zestawu), wejście wskazuje aparat właściwego
+    rodzaju i istniejący rdzeń/uzwojenie, wyłącznik wykonawczy jest wyłącznikiem, a każdy rdzeń
+    CT i każde uzwojenie VT ma dokładnie jedno przeznaczenie na rysunku (funkcja EAZ albo
+    odbiornik pomiarowy, albo jawne „niepodłączone")."""
+    obwody = szablon.obwody_wtorne
+    assert obwody is not None
+    # Nazwa szablonu w komunikacie (nie identyfikator — `nazwa_bez_identyfikatora_guard`).
+    nazwa = szablon.description
+    aparaty = {d.designation_q: d for d in szablon.devices}
+    powiazane = [p.funkcja for p in obwody.powiazania]
+    if sorted(powiazane) != sorted(szablon.funkcje_eaz):
+        raise ValueError(
+            f"Szablon {nazwa}: powiązania obwodów wtórnych {sorted(powiazane)} ≠ funkcje EAZ "
+            f"szablonu {sorted(szablon.funkcje_eaz)}."
+        )
+    liczba_obwodow = {"CT": "rdzenie", "VT": "uzwojenia"}
+    rodzaj_wejscia = {
+        "RDZEN_CT": "CT",
+        "UZWOJENIE_VT": "VT",
+        "PRZEKLADNIK_FERRANTIEGO": "CORE_BALANCE_CT",
+    }
+
+    def _obwod(oznaczenie: str, rodzaj: str, numer: int | None, kto: str) -> None:
+        aparat = aparaty.get(oznaczenie)
+        if aparat is None or aparat.kind != rodzaj:
+            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}.")
+        if numer is not None and numer > len(getattr(aparat, liczba_obwodow[rodzaj])):
+            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}.")
+
+    obwody_eaz: set[tuple[str, int]] = set()
+    for p in obwody.powiazania:
+        if p.wylacznik is not None and getattr(aparaty.get(p.wylacznik), "kind", None) != "CB":
+            raise ValueError(f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem.")
+        for w in p.wejscia:
+            if w.aparat is None:
+                continue
+            _obwod(w.aparat, rodzaj_wejscia[w.rodzaj], w.numer, p.funkcja)
+            if w.numer is not None:
+                obwody_eaz.add((w.aparat, w.numer))
+    obwody_poza: set[tuple[str, int]] = set()
+    for przypisanie in obwody.obwody_przekladnikow:
+        klucz = (przypisanie.aparat, przypisanie.numer)
+        rodzaj = getattr(aparaty.get(przypisanie.aparat), "kind", "")
+        if rodzaj not in liczba_obwodow:
+            raise ValueError(f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem.")
+        _obwod(przypisanie.aparat, rodzaj, przypisanie.numer, "przypisanie obwodu")
+        if klucz in obwody_eaz or klucz in obwody_poza:
+            raise ValueError(f"Szablon {nazwa}: obwód {klucz} ma dwa przeznaczenia.")
+        obwody_poza.add(klucz)
+    wszystkie = {
+        (d.designation_q, n)
+        for d in szablon.devices
+        if d.kind in liczba_obwodow
+        for n in range(1, len(getattr(d, liczba_obwodow[d.kind])) + 1)
+    }
+    if wszystkie != obwody_eaz | obwody_poza:
+        raise ValueError(
+            f"Szablon {nazwa}: obwody przekładników bez przeznaczenia na rysunku: "
+            f"{sorted(wszystkie - obwody_eaz - obwody_poza)}."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -157,8 +247,8 @@ BAY_TEMPLATE_LINE_IN = BayTemplate(
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
-        BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
         ),
@@ -177,8 +267,8 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
-        BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
         ),
@@ -223,8 +313,15 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
 # uziemnika kabla przy łączniku trójpołożeniowym standard NIE rysuje: kabel uziemia się przez
 # zamknięty wyłącznik przy łączniku trójpołożeniowym w położeniu „uziemiony" (§13, druk s.24).
 #
-# Oznaczenia aparatów (Q1, Q0, T1, PF0, PF1, GK, T2; uziemnik wyprowadzenia Q9; odgałęzienie
-# Q5/Q51/GK1/T3) — konwencja kanonu szablonów; rysunki ENEA ich nie podają. Wskaźnik napięcia
+# Oznaczenia aparatów — WARTOŚĆ ROBOCZA (ZASADA NR 4), dana modelu edytowalna przez projektanta,
+# z JEDNEGO schematu: praktyka DIN 40719-2 dla łączników (Q0 wyłącznik albo rozłącznik toru, Q1
+# i Q2 odłączniki szynowe, Q8 uziemnik, Q9 odłącznik liniowy), T1 przekładnik prądowy toru,
+# T2 przekładnik Ferrantiego; odgałęzienie przekładnika napięciowego Q5/Q51/GK1/T3 i głowica GK
+# to oznaczenia robocze bez podstawy normowej. Rysunki ENEA oznaczeń literowo-cyfrowych NIE
+# podają — szablon nie twierdzi zgodności oznaczeń z ENEA. Ten sam schemat proponują: konfiguracje
+# pól silnika referencyjnego (`reference_engine.field_configuration_catalog`) i adapter schematu
+# GPZ (`enmToCanonicalGpzAdapter.ts`, rekord bez oznaczenia); jednoznaczność oznaczeń w polu
+# pilnuje walidator (W063, `enm.oznaczenia_aparatow_pola`). Wskaźnik napięcia
 # ma oznaczenie „PF…" (litera klasy P — prezentacja informacji, IEC 81346-2), a NIE „P1":
 # w polu z przekładnikiem prądowym „P1"/„P2" to zaciski pierwotne przekładnika, a „P1" jest
 # też wzorcem kryptonimu zakazanym w tekstach UI (CLAUDE.md reguła 8).
@@ -288,7 +385,11 @@ def odmowa_wykonania_lacznikow_w_izolacji(
 #: Funkcje EAZ wg rysunku (kody słownika `funkcje_eaz`). Z.10: I>, I>>, zabezpieczenie
 #: ziemnozwarciowe z wejściami Io i U0, ZS, LRW, SPZ, SCO1/SCO2 i SPZ po SCO. Z.11/Z.11.1:
 #: I>, I> kierunkowe (ZS), I>>, ziemnozwarciowe, U>, U<, f<, f>, df/dt, ZS, LRW, SPZ, SPZE,
-#: wyłączenie od zabezpieczeń transformatora (OWG) i SCO. Zestaw wg KLASY pola (odbiorcze,
+#: wyłączenie od zabezpieczeń transformatora (OWG), automatyka blokowania od napięcia
+#: zwrotnego (NZ — Zeszyt 1 §26.9.3 i §26.10.3; rysunek s.91 niesie jej obwód pomiaru napięcia
+#: zwrotnego, a lista funkcji §26.9.3 nazywa ją wprost), SCO i SPZ po SCO (wejście okrężne
+#: „SCO/SPZ" na s.90 i s.91 — zweryfikowane na rysunku 2026-10-29). Obwody wtórne każdej
+#: funkcji (z czego mierzy, na co działa) — `obwody_wtorne_pola`. Zestaw wg KLASY pola (odbiorcze,
 #: mieszane, dedykowane wytwórcy — IRiESD II.4.5.4.2) wyprowadza `funkcje_eaz_pola_liniowego`.
 _FUNKCJE_EAZ_WYKONANIA_POLA: dict[str, list[str]] = {
     "Z10": ["51", "50", "67N", "ZS", "50BF", "79", "SCO", "SPZ/SCO"],
@@ -307,7 +408,9 @@ _FUNKCJE_EAZ_WYKONANIA_POLA: dict[str, list[str]] = {
         "79",
         "SPZE",
         "OWG",
+        "NZ",
         "SCO",
+        "SPZ/SCO",
     ],
 }
 _FUNKCJE_EAZ_WYKONANIA_POLA["Z11"] = list(_FUNKCJE_EAZ_WYKONANIA_POLA["Z11_1"])
@@ -344,11 +447,16 @@ _OPIS_CT_WYKONANIA_POLA: dict[str, str] = {
 }
 
 #: Uzwojenia przekładnika napięciowego odgałęzienia (Z.11 s.90, Z.11.1 s.91): SN/√3 / 0,1/√3
-#: / 0,1/√3 / 0,1/3 — przekładnia zapisana jak na rysunku („SN" = napięcie sieci), bo szablon
+#: / 0,1/√3 / 0,1/√3 — trzy uzwojenia wtórne fazowe, BEZ otwartego trójkąta (zweryfikowane na
+#: rysunkach s.90 i s.91 2026-10-29: czwarty ułamek „0,1/√3", nie „0,1/3"; napięcie zerowe
+#: zabezpieczenia ziemnozwarciowego przychodzi obwodami okrężnymi „Z, Zz" z przekładnika
+#: szyn — otwarty trójkąt ma wyłącznie pole pomiaru napięcia szyn Z.17) — przekładnia zapisana
+#: jak na rysunku („SN" = napięcie sieci), bo szablon
 #: obsługuje rozdzielnice 15 kV i 20 kV; typ katalogowy przekładnika (napięcie pierwotne)
 #: wybiera projektant w wyposażeniu pola — szablon go nie przesądza. Rozliczenie w uzwojeniu I
-#: wyłącznie w Z.11 (pomiar rozliczeniowy); w Z.11.1 uzwojenie I służy pomiarowi napięcia
-#: zwrotnego.
+#: wyłącznie w Z.11 (pomiar rozliczeniowy, uzwojenie II — układy regulacyjne); w Z.11.1 rysunek
+#: pozostawia uzwojenia I i II niepodłączone, a napięcie po stronie linii (napięcie zwrotne)
+#: mierzy uzwojenie III — bloki U>/U< i f</f>/df/dt (`obwody_wtorne_pola`, jak w Z.11).
 _UZWOJENIA_VT_WYKONANIA_POLA: dict[str, tuple[UzwojeniePrzekladnikaNapieciowego, ...]] = {
     wykonanie: (
         UzwojeniePrzekladnikaNapieciowego(
@@ -361,11 +469,10 @@ _UZWOJENIA_VT_WYKONANIA_POLA: dict[str, tuple[UzwojeniePrzekladnikaNapieciowego,
             przekladnia="SN/√3 / 0,1/√3", moc_va=7.5, klasa="0,2", przeznaczenie=("POMIAR",)
         ),
         UzwojeniePrzekladnikaNapieciowego(
-            przekladnia="SN/√3 / 0,1/3",
+            przekladnia="SN/√3 / 0,1/√3",
             moc_va=7.5,
             klasa="0,5/3P",
             przeznaczenie=("POMIAR", "ZABEZPIECZENIA"),
-            otwarty_trojkat=True,
         ),
     )
     for wykonanie in ("Z11_1", "Z11")
@@ -469,7 +576,7 @@ def _sekwencja_pola_liniowego_gpz(
                 "odgalezienie": odg,
                 "uzwojenia": list(_UZWOJENIA_VT_WYKONANIA_POLA[wykonanie_pola]),
                 "podstawa": (
-                    f"{podstawa_odg}: przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3"
+                    f"{podstawa_odg}: przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3"
                 ),
             }
         )
@@ -495,7 +602,7 @@ def _sekwencja_pola_liniowego_gpz(
         plan.append(
             {
                 "kind": "ES",
-                "designation_q": "Q9",
+                "designation_q": "Q8",
                 "placement": "GROUND_BRANCH",
                 "podstawa": f"{_PODSTAWA_P13} — uziemnik stały wyprowadzenia",
             }
@@ -513,6 +620,7 @@ def _sekwencja_pola_liniowego_gpz(
             "kind": "CORE_BALANCE_CT",
             "designation_q": "T2",
             "placement": "DOWNSTREAM",
+            "przekladnia": "1/100",
             "podstawa": f"{podstawa} — przekładnik Ferrantiego 1/100",
         }
     )
@@ -542,6 +650,7 @@ def _szablon_pola_liniowego_gpz(wykonanie_pola: str, wykonanie_lacznikow: str) -
         wykonanie_lacznikow=wykonanie_lacznikow,
         tylko_gpz=True,
         funkcje_eaz=list(_FUNKCJE_EAZ_WYKONANIA_POLA[wykonanie_pola]),
+        obwody_wtorne=OBWODY_WTORNE_WYKONANIA_POLA[wykonanie_pola],
         devices=_sekwencja_pola_liniowego_gpz(wykonanie_pola, wykonanie_lacznikow),
         ports=[BayPortTemplate(kind="sn_output", suffix="out")],
     )
@@ -643,6 +752,26 @@ def _wymogi(
 #: dedykowanym: IRiESD II.4.5.4.2.3 nie wymienia SPZ, a pole dedykowane nie ma odbiorców, dla
 #: których SPZ przywraca zasilanie — sesja główna rozstrzygnęła (rozszerzenie 2 karty
 #: UX-04/POLE-LINIOWE-WZORZEC), że SPZ w tym polu jest niezgodnością (`ZAKAZANA`).
+#: Kryteria zabezpieczenia ziemnozwarciowego stosowane w praktyce obok 67N (sygnalizacja U0>,
+#: G0> pola liniowego z generacją na sterowniku polowym — referencja HMI właściciela
+#: 2026-10-29). IRiESD II.4.5.4.2.x pkt 2 wymaga zabezpieczenia ziemnozwarciowego z kryterium
+#: wg sposobu pracy punktu neutralnego, nie konkretnego kryterium — wymóg spełnia 67N, a te
+#: kryteria są DOPUSZCZALNE, nie obowiązkowe.
+_PKT_KRYTERIUM_ZIEMNOZWARCIOWE = (
+    "pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu "
+    "neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29"
+)
+_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI: tuple[tuple[str, str, str], ...] = (
+    ("59N", "DOPUSZCZALNA", _PKT_KRYTERIUM_ZIEMNOZWARCIOWE),
+    ("Yo>", "DOPUSZCZALNA", _PKT_KRYTERIUM_ZIEMNOZWARCIOWE),
+    ("Go>", "DOPUSZCZALNA", _PKT_KRYTERIUM_ZIEMNOZWARCIOWE),
+)
+#: Zabezpieczenie od skutków mocy zwrotnej (P>, 32) w polu z generacją: lista funkcji klasy go
+#: nie wymienia, a IRiESD II.4.5.5.4 oddaje decyzję operatorowi („ENEA Operator decyduje
+#: o potrzebie wyposażenia jednostek wytwórczych lub linii w zabezpieczenie od skutków mocy
+#: zwrotnej") — wymóg „na żądanie operatora".
+_PKT_MOCY_ZWROTNEJ = "(lista funkcji bez zabezpieczenia od mocy zwrotnej); II.4.5.5.4"
+
 WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
     "ODBIORCZE": _wymogi(
         "ODBIORCZE",
@@ -656,6 +785,7 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("81U", "OBOWIAZKOWA", "pkt 5"),
             ("SCO", "DOPUSZCZALNA", "pkt 6"),
             ("SPZ/SCO", "NA_ZADANIE_OSD", "pkt 6"),
+            *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
     "MIESZANE": _wymogi(
@@ -674,8 +804,10 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("59", "NA_ZADANIE_OSD", "pkt 6"),
             ("NZ", "NA_ZADANIE_OSD", "pkt 7"),
             ("67", "NA_ZADANIE_OSD", "pkt 8"),
+            ("32", "NA_ZADANIE_OSD", _PKT_MOCY_ZWROTNEJ),
             ("SCO", "ZAKAZANA", "pkt 6; II.4.5.4.7.1 pkt 1"),
             ("SPZ/SCO", "ZAKAZANA", "pkt 6; II.4.5.4.7.1 pkt 1"),
+            *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
     "DEDYKOWANE_WYTWORCY": _wymogi(
@@ -692,10 +824,12 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("27", "NA_ZADANIE_OSD", "pkt 5"),
             ("59", "NA_ZADANIE_OSD", "pkt 5"),
             ("NZ", "NA_ZADANIE_OSD", "pkt 6"),
+            ("32", "NA_ZADANIE_OSD", _PKT_MOCY_ZWROTNEJ),
             ("79", "ZAKAZANA", "(lista funkcji bez SPZ)"),
             ("SPZE", "ZAKAZANA", "(lista funkcji bez SPZ)"),
             ("SCO", "ZAKAZANA", "II.4.5.4.7.1 pkt 1"),
             ("SPZ/SCO", "ZAKAZANA", "II.4.5.4.7.1 pkt 1"),
+            *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
 }
@@ -814,6 +948,10 @@ BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE: dict[str, list[str]] = {
     "COUPLER": ["WYLACZNIK", "ROZLACZNIK"],
     "MEASUREMENT": ["ODLACZNIK"],
     "OZE": ["WYLACZNIK", "ROZLACZNIK"],
+    # Pole baterii kondensatorów: wyłącznik (Zeszyt 1 Zał. 16 — pole wyłącznikowe; łączenie
+    # baterii i wyłączanie od zabezpieczeń TR wg IRiESD II.4.5.4.4.2 wymaga łącznika
+    # zdolnego do wyłączania prądu pojemnościowego).
+    "BKR": ["WYLACZNIK"],
 }
 
 
@@ -831,8 +969,8 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
-        BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="TRANSFORMER_DEVICE", designation_q="TR", position=5, placement="DOWNSTREAM"
         ),
@@ -851,7 +989,7 @@ BAY_TEMPLATE_MEASUREMENT = BayTemplate(
     devices=[
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="VT", designation_q="T2", position=1, placement="OFF_PATH"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=2, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_measurement", suffix="meas")],
 )
@@ -865,7 +1003,7 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q2", position=2, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=3, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=3, placement="GROUND_BRANCH"),
     ],
     funkcje_eaz=["51", "50"],
     ports=[
@@ -895,8 +1033,8 @@ BAY_TEMPLATE_DER_PV = BayTemplate(
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="VT", designation_q="T2", position=3, placement="OFF_PATH"),
-        BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=4, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=5, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=4, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=5, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=6, placement="DOWNSTREAM"
         ),
@@ -936,7 +1074,7 @@ BAY_TEMPLATE_RESERVE = BayTemplate(
     description="Pole rezerwowe — przygotowane miejsce dla przyszłego przyłączenia.",
     devices=[
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=1, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=1, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_reserve", suffix="reserve")],
 )
@@ -949,7 +1087,7 @@ BAY_TEMPLATE_AUX = BayTemplate(
     devices=[
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="FUSE", designation_q="F1", position=1, placement="MIDSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=2, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_reserve", suffix="aux")],
 )
@@ -1011,10 +1149,158 @@ def funkcje_eaz_szablonu(
     return list(szablon.funkcje_eaz)
 
 
+# ---------------------------------------------------------------------------
+# Profil funkcjonalny EAZ wzorca pola liniowego GPZ (uzupełnienie właściciela 2026-10-29):
+# każda funkcja zestawu rysunku i wymagań klasy ze statusem obowiązkowa / wariantowa /
+# opcjonalna, wymogiem w KAŻDEJ klasie dopuszczającej wykonanie i statusem weryfikacji źródła.
+# ---------------------------------------------------------------------------
+
+WymagalnoscFunkcjiProfilu = Literal["OBOWIAZKOWA", "WARIANTOWA", "OPCJONALNA"]
+#: Wymóg funkcji w klasie: wymóg IRiESD (`WymogFunkcjiEaz`), „WG_RYSUNKU" — funkcja rysunku
+#: standardu, której lista klasy nie wymienia, „NIE_WYSTEPUJE" — klasa usuwa funkcję rysunku
+#: (`_KODY_POMIJANE_KLASY`: pole dedykowane bez blokady kierunkowej).
+WymogKlasyProfilu = Literal[
+    "OBOWIAZKOWA",
+    "NAPOWIETRZNA",
+    "NA_ZADANIE_OSD",
+    "DOPUSZCZALNA",
+    "ZAKAZANA",
+    "WG_RYSUNKU",
+    "NIE_WYSTEPUJE",
+]
+OPIS_WYMOGU_PROFILU_PL: dict[str, str] = {
+    **OPIS_WYMOGU_PL,
+    "WG_RYSUNKU": "wymagana rysunkiem standardu operatora (lista funkcji klasy jej nie wymienia)",
+    "NIE_WYSTEPUJE": "nie występuje w polu tej klasy",
+}
+OPIS_WYMAGALNOSCI_PROFILU_PL: dict[str, str] = {
+    "OBOWIAZKOWA": "obowiązkowa w każdej klasie pola, w której wykonanie jest dopuszczone",
+    "WARIANTOWA": "zależna od klasy pola albo od rodzaju linii (IRiESD II.4.5.4.2)",
+    "OPCJONALNA": "dopuszczalna albo na żądanie operatora — nie jest wymagana z mocy listy",
+}
+_WYMOGI_WYMAGANE = frozenset({"OBOWIAZKOWA", "WG_RYSUNKU"})
+_WYMOGI_OPCJONALNE = frozenset({"DOPUSZCZALNA", "NA_ZADANIE_OSD", "NIE_WYSTEPUJE"})
+#: Wymogi, których podstawą nie jest tekst listy funkcji, lecz wniosek: kryteria
+#: ziemnozwarciowe z praktyki (referencja właściciela 2026-10-29) i zakaz SPZ w polu
+#: dedykowanym (rozstrzygnięcie sesji głównej — rozszerzenie 2 karty UX-04/POLE-LINIOWE-WZORZEC).
+_WYMOGI_Z_INTERPRETACJI: frozenset[tuple[str, str]] = frozenset(
+    {
+        (klasa, kod)
+        for klasa in KLASY_POLA_LINIOWEGO
+        for kod, _w, _p in _KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI
+    }
+    | {("DEDYKOWANE_WYTWORCY", "79"), ("DEDYKOWANE_WYTWORCY", "SPZE")}
+)
+
+
+class WymogFunkcjiWKlasie(BaseModel):
+    """Wymóg funkcji EAZ w jednej klasie pola z podstawą i statusem weryfikacji źródła."""
+
+    klasa: str
+    wymog: WymogKlasyProfilu
+    wymog_pl: str
+    podstawa: str
+    weryfikacja: StatusWeryfikacji
+
+
+class PozycjaProfiluEaz(BaseModel):
+    """Funkcja profilu EAZ wzorca: wymagalność (nie werdykt oceny), wymóg w każdej klasie i obecność na rysunku."""
+
+    kod: str
+    opis_pl: str  # zapis rysunku, numer IEEE C37.2 i nazwa (`opis_funkcji_eaz_pl`)
+    wymagalnosc: WymagalnoscFunkcjiProfilu
+    wymagalnosc_pl: str
+    na_rysunku: bool
+    wymogi: list[WymogFunkcjiWKlasie]
+
+
+def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | None:
+    """Profil funkcjonalny EAZ szablonu pola liniowego GPZ; `None` — szablon bez wykonania
+    pola (profil klas dotyczy pola linii SN). Zbiór funkcji: zestaw rysunku wykonania ∪ kody
+    wymagań KAŻDEJ klasy dopuszczającej wykonanie (`WYKONANIA_POLA_KLASY`). Status:
+    obowiązkowa — w każdej klasie wymagana (lista klasy albo rysunek standardu); opcjonalna —
+    w każdej klasie dopuszczalna, na żądanie operatora albo nieobecna; wariantowa — pozostałe
+    (zależność od klasy pola, zakaz w części klas, wymóg tylko w linii napowietrznej).
+    Kolejność: zestaw rysunku, potem kody wymagań w kolejności klas — deterministyczna."""
+    szablon = BAY_TEMPLATE_REGISTRY.get(template_id or "")
+    if szablon is None or szablon.wykonanie_pola is None:
+        return None
+    wykonanie = szablon.wykonanie_pola
+    klasy = [k for k in KLASY_POLA_LINIOWEGO if wykonanie in WYKONANIA_POLA_KLASY[k]]
+    rysunek = list(_FUNKCJE_EAZ_WYKONANIA_POLA[wykonanie])
+    kody = list(rysunek)
+    for klasa in klasy:
+        for kod, _wymog, _pkt in WYMAGANIA_EAZ_KLASY_POLA[klasa]:
+            if kod not in kody:
+                kody.append(kod)
+    wynik: list[PozycjaProfiluEaz] = []
+    for kod in kody:
+        wymogi: list[WymogFunkcjiWKlasie] = []
+        for klasa in klasy:
+            wpis = next((w for w in WYMAGANIA_EAZ_KLASY_POLA[klasa] if w[0] == kod), None)
+            if wpis is not None:
+                wymog, podstawa = wpis[1], wpis[2]
+                weryfikacja: StatusWeryfikacji = (
+                    "INTERPRETACJA" if (klasa, kod) in _WYMOGI_Z_INTERPRETACJI else "ODCZYT_TEKSTU"
+                )
+            elif kod in funkcje_eaz_pola_liniowego(wykonanie, klasa):
+                wymog, podstawa = "WG_RYSUNKU", f"{szablon.podstawa}; {funkcja_eaz(kod).podstawa}"
+                weryfikacja = "ZWERYFIKOWANE_NA_RYSUNKU"
+            else:
+                wymog = "NIE_WYSTEPUJE"
+                podstawa = f"{PODSTAWA_KLASY_POLA[klasa]} (lista funkcji klasy jej nie wymienia)"
+                weryfikacja = "ODCZYT_TEKSTU"
+            wymogi.append(
+                WymogFunkcjiWKlasie(
+                    klasa=klasa,
+                    wymog=wymog,
+                    wymog_pl=OPIS_WYMOGU_PROFILU_PL[wymog],
+                    podstawa=podstawa,
+                    weryfikacja=weryfikacja,
+                )
+            )
+        zbior = {w.wymog for w in wymogi}
+        wymagalnosc: WymagalnoscFunkcjiProfilu = (
+            "OBOWIAZKOWA"
+            if zbior <= _WYMOGI_WYMAGANE
+            else "OPCJONALNA" if zbior <= _WYMOGI_OPCJONALNE else "WARIANTOWA"
+        )
+        wynik.append(
+            PozycjaProfiluEaz(
+                kod=kod,
+                opis_pl=opis_funkcji_eaz_pl(kod),
+                wymagalnosc=wymagalnosc,
+                wymagalnosc_pl=OPIS_WYMAGALNOSCI_PROFILU_PL[wymagalnosc],
+                na_rysunku=kod in rysunek,
+                wymogi=wymogi,
+            )
+        )
+    return wynik
+
+
+#: Funkcje EAZ roli pola, która NIE ma szablonu kanonicznego (``SZABLON_KANONICZNY_ROLI``) —
+#: rozłącznie z tamtą tablicą: rola bierze zestaw z dokładnie jednego miejsca (przypina test
+#: `tests/network_model/catalog/test_funkcje_eaz_roli.py`). Pole baterii kondensatorów
+#: równoległych SN (karta UX-04/POLE-BKR-MODEL; ENEA Operator, Stacje 110 kV, Zeszyt 1
+#: §26.9.7 s. 54 i Zał. 16; IRiESD II.4.5.4.4.1 s. 54): zwarciowe I>> (50), przeciążeniowe I>
+#: na wartości skutecznej z harmonicznymi (51), ziemnozwarciowe zerowoprądowe (51N), nadprądowe
+#: różnicowe od uszkodzeń kondensatorów — prąd niezrównoważenia między punktami gwiazd, Ir> na
+#: Zał. 16 (60N), nadnapięciowe U> (59) i pobudzenie lokalnej rezerwy wyłącznikowej LRW (50BF;
+#: IRiESD II.4.5.4.7.1 pkt 3). Blokowanie zabezpieczenia szyn od I> i sterowanie zegarem nie
+#: mają kodu ANSI funkcji — są automatyką rozdzielni, nie funkcją zabezpieczeniową pola. Szablon
+#: kanoniczny pola BKR (z odłącznikiem pola) przeniesie ten zestaw do ``BayTemplate.funkcje_eaz``.
+FUNKCJE_EAZ_ROLI_BEZ_SZABLONU: dict[str, tuple[str, ...]] = {
+    "BKR": ("51", "50", "51N", "60N", "59", "50BF"),
+}
+
+
 def funkcje_eaz_roli(bay_role: str) -> list[str]:
-    """Funkcje EAZ szablonu kanonicznego roli (pusta — rola bez szablonu kanonicznego)."""
+    """Funkcje EAZ roli pola: szablonu kanonicznego roli albo — dla roli bez szablonu
+    kanonicznego — ``FUNKCJE_EAZ_ROLI_BEZ_SZABLONU``; pusta lista dla roli spoza obu tablic."""
     szablon = SZABLON_KANONICZNY_ROLI.get(bay_role)
-    return [] if szablon is None else list(szablon.funkcje_eaz)
+    if szablon is not None:
+        return list(szablon.funkcje_eaz)
+    return list(FUNKCJE_EAZ_ROLI_BEZ_SZABLONU.get(bay_role, ()))
 
 
 # ---------------------------------------------------------------------------
@@ -1044,6 +1330,8 @@ _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND: dict[str, str] = {
     "THREE_POSITION_SWITCH": "THREE_POSITION_SWITCH",
     "VOLTAGE_INDICATOR": "VOLTAGE_INDICATOR",
     "CORE_BALANCE_CT": "CORE_BALANCE_CT",
+    "UNBALANCE_CT": "UNBALANCE_CT",
+    "PHASE_TO_PHASE_VT": "PHASE_TO_PHASE_VT",
 }
 
 # Aparaty łączeniowe toru (sterowalne, ze stanem otwarty/zamknięty) — łączniki toru głównego
@@ -1067,6 +1355,28 @@ def _main_apparatus_primary_kind(apparatus_kind: str | None) -> str | None:
     if normalized in {"CB", "BREAKER", "WYLACZNIK", "WYŁĄCZNIK"}:
         return "CB"
     return None
+
+
+#: Pola wzorca ADDYTYWNE wobec odcisku szablonu (`CompleteMvBayTemplate.compute_hash`, odcisk
+#: do unieważniania wyników): `None` = szablon sprzed atrybutu albo atrybut nieprzesądzony —
+#: poza odciskiem (szablon o niezmienionej treści zachowuje odcisk); wartość nadana jest treścią
+#: szablonu. To samo prawo co `enm/hash.py::_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE` dla
+#: modelu. Test: `tests/network_model/catalog/test_obwody_wtorne_pola.py`.
+POLA_SZABLONU_POZA_ODCISKIEM_GDY_NONE: tuple[str, ...] = ("obwody_wtorne",)
+POLA_APARATU_SZABLONU_POZA_ODCISKIEM_GDY_NONE: tuple[str, ...] = ("przekladnia",)
+
+
+def postac_odcisku_szablonu(szablon: BayTemplate) -> dict[str, Any]:
+    """Zrzut szablonu do odcisku — bez pól addytywnych o wartości `None`."""
+    zrzut = szablon.model_dump(mode="json")
+    for pole in POLA_SZABLONU_POZA_ODCISKIEM_GDY_NONE:
+        if zrzut.get(pole) is None:
+            zrzut.pop(pole, None)
+    for aparat in zrzut["devices"]:
+        for pole in POLA_APARATU_SZABLONU_POZA_ODCISKIEM_GDY_NONE:
+            if aparat.get(pole) is None:
+                aparat.pop(pole, None)
+    return zrzut
 
 
 def template_primary_devices(
@@ -1115,6 +1425,8 @@ def template_primary_devices(
             entry["rdzenie"] = [r.model_dump(mode="json") for r in device.rdzenie]
         if device.uzwojenia:
             entry["uzwojenia"] = [u.model_dump(mode="json") for u in device.uzwojenia]
+        if device.przekladnia is not None:
+            entry["przekladnia"] = device.przekladnia
         if device.odgalezienie is not None:
             entry[KLUCZ_ODGALEZIENIA] = device.odgalezienie
         if primary_kind == "ES":
@@ -1171,9 +1483,9 @@ def mv_source_field_primary_devices(
         plan.append(("CT", "T1", "MIDSTREAM"))
     if vt:
         plan.append(("VT", "T2", "OFF_PATH"))
-    plan.append(("DS", "Q2", "DOWNSTREAM"))  # odłącznik liniowy — szkielet pola
+    plan.append(("DS", "Q9", "DOWNSTREAM"))  # odłącznik liniowy — szkielet pola
     if earthing_switch:
-        plan.append(("ES", "Q9", "GROUND_BRANCH"))
+        plan.append(("ES", "Q8", "GROUND_BRANCH"))
     if surge_arrester:
         plan.append(("SURGE_ARRESTER", "Z1", "GROUND_BRANCH"))
     if cable_head:
@@ -1238,6 +1550,7 @@ _FUNCTIONAL_GROUP_BY_ROLE: dict[str, str] = {
     "COUPLER": "sprzeglowe",
     "MEASUREMENT": "pomiarowe",
     "OZE": "OZE",
+    "BKR": "kompensacyjne",
 }
 
 # Mapowanie roli pola → rola pola we frontendowym read-modelu (`field_role`,
@@ -1252,6 +1565,7 @@ _FIELD_ROLE_BY_BAY_ROLE: dict[str, str] = {
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
     "OZE": "OZE",
+    "BKR": "BATERIA_KONDENSATOROW",
 }
 
 

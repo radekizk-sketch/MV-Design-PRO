@@ -20,9 +20,12 @@ import dataclasses
 import hashlib
 import json
 
+from network_model.catalog.mv_shunt_capacitor_catalog import (
+    _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
+)
 from network_model.catalog.odcisk import _kanon, odcisk_katalogu, zrzut_kanoniczny
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import POLA_KARTY_PROJEKCJI
+from network_model.catalog.types import POLA_BATERII_KONDENSATOROW_TYPU, POLA_KARTY_PROJEKCJI
 
 from tests.dziedziny import fabryki as f
 
@@ -172,8 +175,9 @@ ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
 #: i bez pola ``medium`` daje
 #: DOKŁADNIE ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna liczba katalogu się nie
 #: zmieniła. Pełny odcisk katalogu domyślnego po karcie:
-#: 8a75b5ccfb7e26e4775a5a01f9332768ce5aa790ec1746cfe60add70a86b01a7.
-ODCISK_PO_KARCIE_POLA_LINIOWEGO = "c53c5e19e96c3dd16a71058e33d33c20b991a5a0b23be5680020170888333de1"
+#: 179c98a7c33b3b79321978aa3ea1afefb8ad2636d5efca674424606ae251f035 (pomiar po korekcie
+#: pochodzenia przekładników pola liniowego — `source_reference` typów ogólnych OSD).
+ODCISK_PO_KARCIE_POLA_LINIOWEGO = "4d6c88a2ac72db91f224c06af7425475110c661b544488524654f0128d2070de"
 ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
 #: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
 #: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
@@ -181,7 +185,6 @@ PRZEKLADNIKI_POLA_LINIOWEGO = (
     "ct_typ_ogolny_osd_200_400_5_5_5_z11",
     "ct_typ_ogolny_osd_200_400_5_5p20_15va",
 )
-PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
 def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
@@ -199,6 +202,38 @@ def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
     assert len(aparaty) == 50
     for postac in aparaty:
         postac.pop("medium")
+
+
+#: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
+#: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
+#: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
+#: `1465336df` vs drzewo karty): różnią się WYŁĄCZNIE liście `shunt_capacitor_types` — 7 nowych
+#: pól × 6 pozycji i `source_reference` 5 pozycji referencyjnych; wycięcie ich daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
+#: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
+ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+#: Scalenie gałęzi UI/UX (karta UX-04/POLE-BKR-MODEL) z kartą UX-04/POLE-LINIOWE-WZORZEC
+#: (2026-10-29): obie karty zmieniły rozłączne liście katalogu (bateria BKR —
+#: ``shunt_capacitor_types``; pole liniowe — rozłączniki próżniowe, ``medium``, przekładniki
+#: pola liniowego). Dowód obiema drogami w teście niżej. Pełny odcisk katalogu domyślnego po
+#: scaleniu: 744734f2cf6f5084f9fee0a2872a226ce4715992d587d4d0efe293fdf5c2e5cd.
+ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR = (
+    "81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e"
+)
+_ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
+
+
+def _wytnij_pola_baterii_bkr(zrzut: dict[str, object]) -> int:
+    """Cofa zmiany karty UX-04/POLE-BKR-MODEL w zrzucie; zwraca liczbę zmienionych pozycji."""
+    zmienione = 0
+    for postac in zrzut["shunt_capacitor_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_BATERII_KONDENSATOROW_TYPU:
+            postac.pop(nazwa)
+        if postac["source_reference"] == _ZRODLO_BATERII_REFERENCYJNE:
+            postac["source_reference"] = _ZRODLO_BATERII_PRZED_KARTA
+            zmienione += 1
+    return zmienione
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -263,8 +298,16 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_POLA_LINIOWEGO
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    # Scalenie kart UX-04/POLE-LINIOWE-WZORZEC i UX-04/POLE-BKR-MODEL: rozłączne zmiany katalogu,
+    # dowód obiema drogami. Droga A — cofnięcie baterii BKR daje odcisk karty pola liniowego.
+    zrzut_bez_bkr = copy.deepcopy(zrzut)
+    assert _wytnij_pola_baterii_bkr(zrzut_bez_bkr) == 5
+    assert _odcisk_zrzutu(zrzut_bez_bkr) == ODCISK_PO_KARCIE_POLA_LINIOWEGO
+    # Droga B — cofnięcie karty pola liniowego daje odcisk karty BKR.
     _cofnij_karte_pola_liniowego(zrzut)
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
+    assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
 
     # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.

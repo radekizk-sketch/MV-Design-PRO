@@ -25,6 +25,9 @@ import {
   interlockBlockedLabel,
 } from '../../field/fieldLabels';
 import { SEKCJE_MENU_SLD, type SldMenuAction } from '../../sld/v2/command/SldCommandService';
+import { OPIS_POLOZENIA_PL } from '../../sld/v2/model/stanAparatowPola';
+import { stanKaflaPolozenia } from '../../sld/v3/symbols/glyphs';
+import { STATE_COLOR } from '../../sld/v3/theme/colorTokens';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
@@ -198,13 +201,6 @@ export function SekcjaWezlaSn({ wezel }: { readonly wezel: NonNullable<DaneEleme
   );
 }
 
-/** Położenie łącznika w modelu — ten sam stan, który rysuje glif kanwy. */
-export const POLOZENIE_LACZNIKA_PL: Readonly<Record<'closed' | 'open' | 'earthed' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  earthed: 'uziemiony',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
 export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
 
 /**
@@ -213,14 +209,28 @@ export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
  * źródła runtime; brak rekordu = „brak telemetrii", nigdy wartość domyślna.
  */
 export function SekcjaStanuAparatu({ stan }: { readonly stan: DaneElementuKanwy['apparatusState'] }): JSX.Element {
-  const polozenie = stan?.actualState ? POLOZENIE_LACZNIKA_PL[stan.actualState] : BRAK_POLOZENIA_W_MODELU;
+  const polozenie = stan?.actualState ? OPIS_POLOZENIA_PL[stan.actualState] : BRAK_POLOZENIA_W_MODELU;
+  // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: ten sam kafel stanu co na kanwie (JEDNA
+  // tabela `STATE_COLOR`, ta sama reguła `stanKaflaPolozenia`) — inspektor i rysunek mówią
+  // o położeniu tym samym kolorem; tekst obok niesie treść (kolor nie jest jedynym nośnikiem).
+  const kafel = stan?.actualState ? stanKaflaPolozenia(stan.actualState) : null;
   return (
     <section data-testid="inspektor-stan-aparatu" aria-label="Stan i telemetria aparatu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Stan i telemetria aparatu</h4>
       <dl className="flex flex-col gap-1">
         <div className="mvd-kafel-kv-row">
           <dt className="mvd-kafel-kv-label">Położenie łącznika (model)</dt>
-          <dd data-testid="inspektor-aparat-stan" className="mvd-kafel-kv-value">{polozenie}</dd>
+          <dd className="mvd-kafel-kv-value flex items-center gap-2">
+            {kafel && (
+              <span
+                aria-hidden="true"
+                data-testid="inspektor-aparat-kafel"
+                data-kafel-stanu={kafel}
+                style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, background: STATE_COLOR[kafel] }}
+              />
+            )}
+            <span data-testid="inspektor-aparat-stan">{polozenie}</span>
+          </dd>
         </div>
         <div className="mvd-kafel-kv-row">
           <dt className="mvd-kafel-kv-label">Tryb sterowania</dt>

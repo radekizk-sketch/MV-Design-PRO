@@ -7,7 +7,7 @@
  * robił to osobny komponent z własnymi współrzędnymi, własnymi kształtami aparatów i własną
  * (odwrotną do konwencji SCADA) kolorystyką stanu — druga ścieżka rysunku tego samego pola
  * obok kanwy `SldCanvasV3`. Kadr NIE układa niczego: bierze elementy JUŻ policzone przez
- * scenę kanwy (ten sam ENM, ta sama kompozycja, te same glify QET z ramką stanu), więc okno
+ * scenę kanwy (ten sam ENM, ta sama kompozycja, te same glify QET z kaflem stanu), więc okno
  * pola i kanwa nie mogą się rozjechać.
  *
  * Przynależność do pola — JEDEN predykat (`czyElementPola`): `ownerRef` równy refowi pola
@@ -21,7 +21,7 @@ import type { V3Rect } from '../core/grid';
 import { GRID } from '../core/grid';
 import { klasaWagiOdcinka, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
 import { SYMBOL_DEFS } from '../symbols/defs';
-import { RAMKA_SCADA_MARGINES } from '../symbols/glyphs';
+import { KAFEL_STANU_MARGINES } from '../symbols/glyphs';
 import type { SceneV3 } from './buildScene';
 
 /** Margines kadru wokół elementów pola (jednostki świata). */
@@ -79,13 +79,13 @@ export function kadrPolaZeSceny(scene: SceneV3, bayRef: string): KadrPola | null
   let rect: V3Rect | null = null;
   for (const s of symbols) {
     const def = SYMBOL_DEFS[s.symbolId];
-    // Ramka stanu SCADA wystaje o margines poza gabaryt — kadr ją mieści.
+    // Kafel stanu łącznika wystaje o margines poza gabaryt — kadr go mieści.
     rect = rozszerz(
       rect,
-      s.x - RAMKA_SCADA_MARGINES,
-      s.y - RAMKA_SCADA_MARGINES,
-      def.width + 2 * RAMKA_SCADA_MARGINES,
-      def.height + 2 * RAMKA_SCADA_MARGINES,
+      s.x - KAFEL_STANU_MARGINES,
+      s.y - KAFEL_STANU_MARGINES,
+      def.width + 2 * KAFEL_STANU_MARGINES,
+      def.height + 2 * KAFEL_STANU_MARGINES,
     );
   }
   for (const seg of wlasneOdcinki) for (const p of seg.points) rect = rozszerz(rect, p.x, p.y);

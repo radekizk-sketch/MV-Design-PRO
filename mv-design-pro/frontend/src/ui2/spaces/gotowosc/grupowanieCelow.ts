@@ -288,6 +288,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.materialization_incomplete': 'wspolne',
   'catalog.nameplate_mismatch': 'wspolne',
   'catalog.gate_result_mismatch': 'wspolne',
+  'catalog.transformer_voltage_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
   // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
@@ -302,6 +303,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'station.voltage_missing': 'stacje',
   'station.nn_outgoing_min_1': 'stacje',
   'station.required_field_missing': 'stacje',
+  'station.bkr_bay_missing': 'stacje',
+  'station.bkr_unbalance_ct_missing': 'stacje',
+  'station.bkr_discharge_vt_missing': 'stacje',
+  'station.bkr_transformer_trip_incomplete': 'stacje',
+  'shunt.pominieta_w_skladowej_zgodnej': 'zwarcia',
+  'shunt.parametry_robocze': 'wspolne',
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
@@ -373,6 +380,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.no_load_params_missing': 'wspolne',
   'transformer.vector_group_invalid': 'wspolne',
   'transformer.vector_group_missing': 'wspolne',
+  'transformer.winding_voltage_off_nominal': 'wspolne',
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)
@@ -496,7 +504,7 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   relay: 'zabezpieczenia',
   tcc: 'zabezpieczenia',
   station: 'stacje',
-  // Karta UX-04/POLE-LINIOWE-WZORZEC: kody `bay.*` (W045–W053 — gaz fluorowany, wykonanie
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: kody `bay.*` (W049–W057 — gaz fluorowany, wykonanie
   // i klasa pola liniowego GPZ, AJEE) leżą wszystkie w obszarze STATIONS rejestru.
   bay: 'stacje',
   apparatus: 'stacje',

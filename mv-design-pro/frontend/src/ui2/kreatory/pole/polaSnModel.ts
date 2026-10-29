@@ -9,8 +9,9 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import type { BayModelRole } from '../../../types/enm';
 
-export type RolaPola = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
+export type RolaPola = BayModelRole;
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
 
 /**
@@ -42,7 +43,8 @@ export type RodzajPolaSzablonu =
   | 'liniowe_odplywowe'
   | 'transformatorowe'
   | 'pomiarowe'
-  | 'sprzeglowe_podluzne';
+  | 'sprzeglowe_podluzne'
+  | 'bateria_kondensatorow';
 
 /** Rola pola → BayKind szablonu producenta (Reference Engine). */
 export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
@@ -55,6 +57,8 @@ export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
       return 'pomiarowe';
     case 'COUPLER':
       return 'sprzeglowe_podluzne';
+    case 'BKR':
+      return 'bateria_kondensatorow';
     default:
       return 'liniowe_odplywowe'; // OUT / FEEDER / OZE
   }
@@ -104,7 +108,7 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
 };
 
 /** Kolejność ról w wyborze kreatora (najczęstsza rola dokładanego pola na początku). */
-const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
+const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'BKR'];
 
 /**
  * Opcje roli/aparatu = KONTRAKT DANYCH (warstwa modelu): `value` to kanoniczny kod

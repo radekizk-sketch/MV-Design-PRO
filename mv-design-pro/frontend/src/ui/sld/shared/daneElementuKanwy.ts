@@ -94,7 +94,7 @@ export interface DaneElementuKanwy {
    *  pozostałe pola = rekord ŹRÓDŁA runtime (karta #135: `null` = brak telemetrii, nigdy
    *  wartość domyślna). Całość `null`, gdy model nie ma ani położenia, ani rekordu. */
   readonly apparatusState?: {
-    readonly actualState: 'closed' | 'open' | 'earthed' | 'unknown' | null;
+    readonly actualState: 'closed' | 'open' | 'earthed' | 'unknown' | 'bad' | null;
     readonly controlMode: BayControlMode | null;
     readonly communicationOk: boolean | null;
     readonly interlockBlocked: boolean | null;

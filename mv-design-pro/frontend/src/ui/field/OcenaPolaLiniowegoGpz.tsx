@@ -3,7 +3,7 @@
  * karta pola SN (ekran E-11).
  *
  * Treść w całości z backendu (`GET /api/cases/{id}/enm/field-view` → `ocena_pola_liniowego`,
- * `enm/pole_liniowe_gpz.py` — to samo źródło co walidator W049–W053): klasa pola (zadeklarowana
+ * `enm/pole_liniowe_gpz.py` — to samo źródło co walidator W053–W057): klasa pola (zadeklarowana
  * albo przyjęta z sieci za polem), moduły wytwarzania i odbiory za polem, wymóg pomiaru
  * rozliczeniowego i analizatora jakości energii, ocena każdej funkcji EAZ wobec wymogu klasy
  * i niezgodności z akcją. Status oceny funkcji nigdy nie stoi sam: wiersz niesie etykietę ze
@@ -11,7 +11,8 @@
  * kompletności (kontrakt werdyktu wyjaśnialnego). Funkcja zależna od operatora nigdy nie jest „spełnia" — rozstrzygają
  * warunki przyłączenia, których model nie zawiera. Zero reguły w UI.
  */
-import type { OcenaPolaLiniowego } from './useFieldReadModel';
+import { NAZWA_WERYFIKACJI_PL, type ObwodyWtornePola } from '../catalog/api';
+import type { NapiecieZwrotnePola, ObwodFunkcjiPola, OcenaPolaLiniowego } from './useFieldReadModel';
 import { NAZWA_KLASY_POLA_PL } from './wyposazeniePola';
 
 function formatKw(p: number): string {
@@ -115,6 +116,127 @@ export function OcenaPolaLiniowegoGpz({ ocena }: OcenaPolaLiniowegoGpzProps): JS
           ))}
         </ul>
       ) : null}
+      {ocena.napiecie_zwrotne ? <NapiecieZwrotne nz={ocena.napiecie_zwrotne} /> : null}
+      {ocena.obwody_funkcji && ocena.obwody_funkcji.length > 0 ? (
+        <ObwodyFunkcji obwody={ocena.obwody_funkcji} />
+      ) : null}
+      {ocena.obwody_wtorne ? <SygnalyPola obwody={ocena.obwody_wtorne} /> : null}
     </section>
+  );
+}
+
+const KIERUNEK_PL = { WEJSCIE: 'wejście', WYJSCIE: 'wyjście' } as const;
+const OBWOD_PL = { WYLACZNIK: 'do wyłącznika', OKREZNY: 'obwód okrężny', NADRZEDNY: 'nadrzędny' } as const;
+
+/** Napięcie po stronie linii (Z.11.1/Z.11): czym mierzone, czy pole ma blokadę NZ, źródła za
+ *  polem i stan z pomiaru — wszystko z backendu (`NapiecieZwrotnePola`). */
+function NapiecieZwrotne({ nz }: { readonly nz: NapiecieZwrotnePola }): JSX.Element {
+  return (
+    <div data-testid="ocena-pola-liniowego-napiecie-zwrotne" data-stan={nz.stan_pomiaru} data-mozliwe={String(nz.mozliwe)} className="mt-2">
+      <h4 className="font-semibold">Napięcie zwrotne od strony linii</h4>
+      <p className="mt-1">
+        {nz.stan_pomiaru_pl}. {nz.mozliwe ? 'Napięcie zwrotne możliwe' : 'Źródło napięcia zwrotnego za polem: brak'} — {nz.wyjasnienie_pl}.
+      </p>
+      <p className="mt-1 text-scada-muted">
+        Pomiar: {nz.pomiar_pl}. Blokada załączenia od napięcia zwrotnego (NZ) w zestawie funkcji pola:{' '}
+        {nz.blokada_nz ? 'jest' : 'brak'}.
+      </p>
+    </div>
+  );
+}
+
+/** Obwody funkcji EAZ pola wg wzorca rozwiązane na aparatach pola (z czego funkcja mierzy, na co
+ *  działa). Stan funkcji (aktywna, odstawiona) należy do nastaw zabezpieczeń (ADR-022), których
+ *  model nie niesie — karta mówi to jawnie. */
+function ObwodyFunkcji({ obwody }: { readonly obwody: readonly ObwodFunkcjiPola[] }): JSX.Element {
+  return (
+    <div className="mt-2">
+      <h4 className="font-semibold">Obwody wtórne funkcji wg wzorca pola</h4>
+      <p className="mt-1 text-scada-muted">
+        Stan funkcji (aktywna, odstawiona, zablokowana) nieustalony — należy do nastaw zabezpieczeń, których model pola jeszcze nie niesie.
+      </p>
+      <table data-testid="ocena-pola-liniowego-obwody" className="mt-1 w-full table-fixed border-collapse text-left">
+        <colgroup>
+          <col className="w-[20%]" />
+          <col className="w-[14%]" />
+          <col className="w-[32%]" />
+          <col className="w-[18%]" />
+          <col className="w-[16%]" />
+        </colgroup>
+        <thead className="text-scada-muted">
+          <tr>
+            <th className="pr-2 font-medium">Funkcja</th>
+            <th className="pr-2 font-medium">Blok rysunku</th>
+            <th className="pr-2 font-medium">Z czego mierzy</th>
+            <th className="pr-2 font-medium">Działa na</th>
+            <th className="font-medium">Źródło</th>
+          </tr>
+        </thead>
+        <tbody>
+          {obwody.map((o) => (
+            <tr key={o.kod} data-kod={o.kod} data-obecna={String(o.obecna)} data-weryfikacja={o.weryfikacja} className="border-t border-scada-border align-top">
+              <td className="pr-2">
+                {o.funkcja_pl}
+                {o.obecna ? null : <div className="text-scada-muted">we wzorcu, poza zestawem funkcji pola</div>}
+              </td>
+              <td className="pr-2">{o.blok_rysunku ?? '—'}</td>
+              <td className="pr-2">{o.wejscia_pl.join('; ')}</td>
+              <td className="pr-2">{o.wyjscia_pl}</td>
+              <td title={o.uwaga ?? undefined}>
+                {NAZWA_WERYFIKACJI_PL[o.weryfikacja]}
+                {o.uwaga ? <div className="text-scada-muted">{o.uwaga}</div> : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Sygnały wzorca pola: do wyłącznika, obwody okrężne rozdzielni i sygnały nadrzędne rysunku. */
+function SygnalyPola({ obwody }: { readonly obwody: ObwodyWtornePola }): JSX.Element {
+  return (
+    <div className="mt-2">
+      <h4 className="font-semibold">Sygnały pola wg wzorca</h4>
+      <p data-testid="ocena-pola-liniowego-naped" className="mt-1 text-scada-muted">
+        {obwody.podstawa}. Napęd wyłącznika: silnikowy (M) — {NAZWA_WERYFIKACJI_PL[obwody.naped_weryfikacja]}.
+      </p>
+      <table data-testid="ocena-pola-liniowego-sygnaly" className="mt-1 w-full table-fixed border-collapse text-left">
+        <colgroup>
+          <col className="w-[18%]" />
+          <col className="w-[12%]" />
+          <col className="w-[16%]" />
+          <col className="w-[34%]" />
+          <col className="w-[20%]" />
+        </colgroup>
+        <thead className="text-scada-muted">
+          <tr>
+            <th className="pr-2 font-medium">Sygnał</th>
+            <th className="pr-2 font-medium">Kierunek</th>
+            <th className="pr-2 font-medium">Obwód</th>
+            <th className="pr-2 font-medium">Znaczenie</th>
+            <th className="font-medium">Źródło</th>
+          </tr>
+        </thead>
+        <tbody>
+          {obwody.sygnaly.map((s) => (
+            <tr key={s.nazwa} data-sygnal={s.nazwa} data-weryfikacja={s.weryfikacja} className="border-t border-scada-border align-top">
+              <td className="pr-2">{s.nazwa}</td>
+              <td className="pr-2">{KIERUNEK_PL[s.kierunek]}</td>
+              <td className="pr-2">
+                {OBWOD_PL[s.obwod]}
+                {s.sterownik_pola ? <div className="text-scada-muted">sterownik pola</div> : null}
+              </td>
+              <td className="pr-2">{s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje'}</td>
+              <td title={s.uwaga ?? undefined}>
+                {NAZWA_WERYFIKACJI_PL[s.weryfikacja]}
+                {s.uwaga ? <div className="text-scada-muted">{s.uwaga}</div> : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

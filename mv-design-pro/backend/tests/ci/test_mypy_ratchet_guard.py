@@ -114,8 +114,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Scalenie gałęzi programu (partie 9–13) z gałęzią UI/UX: 169/22 → 167/21 — pomiar `mypy src`
     # na obu rodzicach i na drzewie scalonym; zdjęte dokładnie 2 błędy W5-B
     # (`enm/catalog_completion.py`), zero nowych względem żadnego z rodziców.
-    assert modul.BASELINE_ERRORS == 167
-    assert modul.BASELINE_FILES == 21
+    # Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z UX-04/POLE-BKR-MODEL: 167/21 → 166/20 —
+    # pomiar `mypy_ratchet_guard` na pierwszym rodzicu (171/22, 4 błędy karty) i na drzewie
+    # scalonym; zdjęte 4 błędy karty i 1 z `api/catalog.py`, zero nowych.
+    assert modul.BASELINE_ERRORS == 166
+    assert modul.BASELINE_FILES == 20
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

@@ -23,6 +23,7 @@
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, VtMountingAnnotationView } from '../model/widokPolStacji';
 import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 import type { RolaPolaZrodlowego } from '../model/polaZModelu';
+import type { BateriaPolaView } from '../model/bateriaPola';
 
 /**
  * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
@@ -65,7 +66,8 @@ export interface CanonicalGpzSection {
  * Rola pola rozdzielni GPZ wg modelu (`Bay.bay_role`) — klucz tła pola (`gpz.bay.panel`)
  * i legendy ról. Mapowanie 1:1, bez zlewania ról: `IN` → zasilające, `OUT`/`FEEDER` →
  * liniowe (odpływ magistrali i odgałęzienia), `TR` → transformatorowe, `COUPLER` → sprzęgło,
- * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy). Roli „rezerwowe" model
+ * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy), `BKR` → kompensacyjne (pole
+ * baterii kondensatorów, ENEA Zeszyt 1 §13 i Zał. 16). Roli „rezerwowe" model
  * nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola), więc nie istnieje.
  */
 export type RolaPolaGpz =
@@ -74,22 +76,39 @@ export type RolaPolaGpz =
   | 'transformatorowe'
   | 'sprzeglo'
   | 'pomiarowe'
-  | 'zrodlowe';
+  | 'zrodlowe'
+  | 'kompensacyjne';
 
 /**
- * Plakietka funkcji automatyki pola — WYŁĄCZNIE z kodów funkcji zabezpieczeniowych pola
- * w modelu (`Bay.protection_codes`, dane aktywów EAZ, ADR-022):
+ * Plakietka funkcji automatyki pola — WYŁĄCZNIE z kodów funkcji pola w modelu
+ * (`Bay.protection_codes`, kody słownika `backend/src/network_model/catalog/funkcje_eaz.py`,
+ * dane aktywów EAZ, ADR-022). Jeden kod = jedna plakietka (`KOD_FUNKCJI_PLAKIETKI`):
  *
- * * `SPZ` (samoczynne ponowne załączanie) ⇔ kod ANSI 79;
- * * `SCO` (samoczynne częstotliwościowe odciążenie) ⇔ kod 81U na polu, które NIE jest
- *   polem źródłowym — na polu OZE 81U to zabezpieczenie interfejsu wytwórcy (NC RfG),
- *   a nie odciążenie.
+ * * `SPZ` (samoczynne ponowne załączanie) ⇔ kod 79;
+ * * `SCO` (samoczynne częstotliwościowe odciążenie) ⇔ kod SCO słownika (dawne „81U poza
+ *   polem OZE" było domysłem: 81U to zabezpieczenie podczęstotliwościowe f<, które pole
+ *   Z.11.1 ma OBOK automatyki SCO, a nie zamiast niej);
+ * * `LRW` (lokalna rezerwa wyłącznikowa) ⇔ kod 50BF;
+ * * `NZ` (blokada załączenia od napięcia zwrotnego) ⇔ kod NZ;
+ * * `OWG` (wyłączenie pól z generacją od zabezpieczeń transformatora) ⇔ kod OWG.
  *
- * Brak kodu = brak plakietki. OWG nie ma w modelu ani w kanonie definicji (dwa sprzeczne
- * rozwinięcia w historii repo, żadne pole ENM) — kontrakt negatywny w
- * `v3/compose/__tests__/gpz.test.ts`.
+ * Brak kodu = brak plakietki. Plakietka niesie OBECNOŚĆ funkcji; jej STAN (aktywna /
+ * odstawiona, zablokowana) należy do nastaw zabezpieczeń (ADR-022), których model jeszcze
+ * nie niesie — plakietka mówi to jawnie (`STAN_FUNKCJI_PLAKIETKI_PL`), nie zgaduje stanu.
  */
-export type GpzStatusFlag = 'SPZ' | 'SCO';
+export type GpzStatusFlag = 'SPZ' | 'SCO' | 'LRW' | 'NZ' | 'OWG';
+
+/** Kod funkcji słownika EAZ każdej plakietki — JEDNO źródło mapowania i kolejności. */
+export const KOD_FUNKCJI_PLAKIETKI: Readonly<Record<GpzStatusFlag, string>> = {
+  SPZ: '79',
+  SCO: 'SCO',
+  LRW: '50BF',
+  NZ: 'NZ',
+  OWG: 'OWG',
+};
+
+/** Kolejność plakietek (stała, deterministyczna). */
+export const PLAKIETKI_GPZ: readonly GpzStatusFlag[] = ['SPZ', 'SCO', 'LRW', 'NZ', 'OWG'];
 
 export interface CanonicalGpzBay {
   readonly bayRef: string;
@@ -112,10 +131,14 @@ export interface CanonicalGpzBay {
    *  przyłączonych wytwórców (`v2/model/polaZModelu.ts rolaPolaZrodlowego`, ta sama funkcja
    *  co pola źródłowe stacji); nierozstrzygnięty = `DER_UNKNOWN`. Brak dla innych ról. */
   readonly rolaZrodla?: RolaPolaZrodlowego;
+  /** UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola
+   *  (`v2/model/bateriaPola.ts bateriaNaKoncuToruPola`, ta sama funkcja co pola stacji);
+   *  kompozycja dokłada glif `capacitorBank` na końcu stosu. Brak = pole bez baterii. */
+  readonly bateria?: BateriaPolaView;
   /** Stan łączników z modelu (`v2/model/stanAparatowPola.ts`; brak danej = nieznany). */
   readonly cbState?: SwitchState;
   readonly dsState?: SwitchState;
-  readonly esState?: 'closed' | 'open' | 'absent' | 'unknown';
+  readonly esState?: 'closed' | 'open' | 'absent' | 'unknown' | 'bad';
   /** Oznaczenia Q (IEC 81346). */
   readonly qDesignations: {
     readonly cb?: string;
@@ -151,7 +174,11 @@ export type BayFieldRole =
   | 'COUPLER'
   | 'MEASUREMENT'
   /** Pole źródłowe (`Bay.bay_role = 'OZE'`): gramatyka pola kablowego + glif źródła. */
-  | 'SOURCE';
+  | 'SOURCE'
+  /** Pole baterii kondensatorów (`Bay.bay_role = 'BKR'`): stos aparatów z rekordów i glif
+   *  baterii na końcu toru pola; NIE jest polem kablowym sieci (bateria stoi w rozdzielni,
+   *  z pola nie wychodzi magistrala — `czyPoleKabloweGpz`). */
+  | 'CAPACITOR_BANK';
 
 /**
  * Karta GPZ-PARYTET cz. 3: pole KABLOWE rozdzielnicy GPZ — pole, z którego wychodzi kabel
@@ -163,7 +190,9 @@ export function czyPoleKabloweGpz(role: BayFieldRole): boolean {
   return role === 'LINE_IN' || role === 'LINE_OUT' || role === 'LINE_BRANCH' || role === 'SOURCE';
 }
 
-export type SwitchState = 'closed' | 'open' | 'unknown';
+/** Stan łącznika z modelu (`v2/model/stanAparatowPola.ts`): `bad` — rekord „awaria” (kafel błędny
+ *  konwencji `STATE_COLOR`, rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC). */
+export type SwitchState = 'closed' | 'open' | 'unknown' | 'bad';
 
 export interface CanonicalGpzCoupler {
   /** `Branch.ref_id` gałęzi `bus_coupler` (GEOMETRIA-STACJI: jedno źródło sprzęgła). */

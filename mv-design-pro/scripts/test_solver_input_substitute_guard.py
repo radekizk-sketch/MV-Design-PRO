@@ -2022,6 +2022,27 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Scalenie galezi UI/UX z programem (2026-10-28, baza scalenia `8f20bdd3c`): POMIAR guardem
     # na drzewie scalonym = 4387 = 4314 (UI/UX) + 4357 (program) − 4284 (baza) — zmiany obu
     # stron rozlaczne, zero nazw wspolnych ani skasowanych przez obie. PASS niezmieniony.
+    # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 4387 -> 4381 — POMIAR
+    # `contract_fields()` na `f44e042f6` (4387) i na drzewie karty (4381). Roznica zbiorow -6, +0:
+    # `sn_tolerance_kv`, `nn_tolerance_kv` (pola tolerancji `BlockTransformerSelectionInput` —
+    # rownosc napiec z jednego predykatu `to_samo_napiecie_znamionowe`) oraz `problem_id`,
+    # `problems`, `show_on_sld`, `target_ref` (skasowany pakiet `application/validation_problem`
+    # bez konsumenta produkcyjnego). PASS niezmieniony.
+    # Kasacja koncowki podpowiedzi katalogu bez konsumenta (2026-10-28): 4381 -> 4374 — POMIAR
+    # `contract_fields()` na `65bf34150` (4381) i na drzewie karty (4374). Roznica zbiorow -7,
+    # +0: `expected_power_mva`, `expected_current_a`, `prefer_manufacturer` (pola
+    # zadania podpowiedzi katalogu), `dopasowanie`, `certyfikat_ptpiree` (sugestia), `suggestions`,
+    # `total_candidates` (odpowiedz). Plik `api/catalog.py` zostaje — liczba plikow bez zmian.
+    # PASS niezmieniony.
+    # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 4374 -> 4394 — POMIAR `contract_fields()` na
+    # bazie karty `1465336df` (`git archive`: 4374, pin zgodny) i na drzewie karty (4394).
+    # Roznica zbiorow +20, -0: pola baterii kondensatorow elementu i typu (`uklad_polaczen`,
+    # `liczba_stopni`, `stopnie_zalaczone`, `tolerancja_pojemnosci_min_proc`,
+    # `tolerancja_pojemnosci_max_proc`, `dlawik_ograniczajacy`, `dlawik_indukcyjnosc_mh`,
+    # `rezystory_rozladowcze_wewnetrzne`, `wylaczenie_od_transformatorow`), wielkosci admitancji
+    # baterii (`q_n`, `u_n`, `straty_kw`, `x_dlawika`, `y_sekcji_s`, `liczba_sekcji`,
+    # `sekcje_zalaczone`, `parametry_robocze`, `parametry_robocze_pl`) i wejscie v126
+    # (`baterie`, `b0_siemens`). PASS niezmieniony (zero podstawien).
     # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 4387 -> 4418 — POMIAR `contract_fields()`
     # na drzewie bazy karty `f44e042f6` (4387, pin zgodny) i na drzewie karty (4418). Roznica
     # zbiorow +32, -1. Plus: ocena pola liniowego GPZ (`enm/pole_liniowe_gpz.py`: `klasa_oceny`,
@@ -2037,7 +2058,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # lista `rdzenie` z tabliczki). PASS niezmieniony (zero podstawien; podstawienie pozycji
     # `zestaw.index(...) + 1 if ... else 0` w `bay_templates.funkcje_eaz_pola_liniowego` wykryte
     # guardem i przepisane na jawne galezie).
-    assert "Pol kontraktow wejsciowych: 4418." in wyjscie, wyjscie
+    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC z galezia UI/UX (2026-10-29): 4394 + 31 = 4425
+    # — POMIAR `contract_fields()` na drzewie scalonym; zbiory obu kart rozlaczne.
+    # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC i kompletny wzorzec pola (2026-10-29):
+    # 4425 + 33 = 4458 — POMIAR `contract_fields()` (drzewo karty minus suma zbiorow rodzicow
+    # scalenia): obwody wtorne wzorca pola (`obwody_wtorne_pola.py`: powiazania, wejscia,
+    # wyjscia, sygnaly, naped, przeznaczenie rdzeni), profil EAZ (`wymagalnosc`, `wymogi`,
+    # `wymog_pl`, `na_rysunku`), ocena pola (obwody funkcji, napiecie zwrotne, stan pomiaru),
+    # oznaczenia aparatow (`device_refs`). Zero nowych podstawien (PASS).
+    assert "Pol kontraktow wejsciowych: 4458." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2339,11 +2368,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
         # Scalenie galezi UI/UX z programem (2026-10-28): 588 (UI/UX) + 590 (program) − 580
         # (baza `8f20bdd3c`) = 598. POMIAR guardem na drzewie scalonym.
+        # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 598 -> 596 (-2
+        # `application/validation_problem/{__init__,service}.py` — pakiet bez konsumenta
+        # produkcyjnego skasowany); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 596 -> 599 (+3 `enm/bateria_kondensatorow.py`,
+        # `network_model/core/bateria_kondensatorow.py`, `network_model/pochodne/
+        # bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 598 -> 605 (+7 nowych plikow:
         # `enm/{gaz_fluorowany_pola,pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`,
         # `network_model/catalog/{funkcje_eaz,gazy_fluorowane,przekladniki}.py`; zero plikow
         # skasowanych). Dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC z galezia UI/UX: 599 + 7 = 606. POMIAR guardem
+        # na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 606 -> 609 (+3 nowych
+        # plikow: `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`,
+        # `network_model/catalog/obwody_wtorne_pola.py`). Dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "Przeskanowano 609 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2548,9 +2588,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
         # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
         # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 191 -> 193 (+2 `core/bateria_kondensatorow.py`,
+        # `pochodne/bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Karta UX-04/POLE-LINIOWE-WZORZEC: 191 -> 194 (+3 `catalog/{funkcje_eaz,gazy_fluorowane,
         # przekladniki}.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  network_model: pliki_skanowane=194, dlug=10 plikow/suma 67, "
+        # Scalenie obu kart: 191 + 2 + 3 = 196. POMIAR guardem na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: 196 -> 197 (+1
+        # `catalog/obwody_wtorne_pola.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=197, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2634,10 +2679,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
         # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): enm 75 -> 76 (+1 `enm/bateria_kondensatorow.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Karta UX-04/POLE-LINIOWE-WZORZEC: enm 75 -> 79 (+4 `enm/{gaz_fluorowany_pola,
         # pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`); dlug 7/64 BEZ ZMIAN.
         # POMIAR guardem.
-        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Scalenie obu kart: 75 + 1 + 4 = 80. POMIAR guardem na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: enm 80 -> 82 (+2
+        # `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`); dlug 7/64 BEZ ZMIAN. POMIAR.
+        "  enm: pliki_skanowane=82, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2745,7 +2795,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`topologia_zasilenia.py`) = 255; dlug 27/81 programu (UI/UX bez zmian dlugu). POMIAR.
         # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
-        "  application: pliki_skanowane=257, dlug=27 plikow/suma 81, "
+        # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
+        # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

@@ -20,14 +20,812 @@
           "typ": "B"
         }
       ],
+      "napiecie_zwrotne": {
+        "blokada_nz": true,
+        "mozliwe": true,
+        "pomiar_pl": "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P (blok U> U<, wyjście „Blok. ZW”)",
+        "stan_pomiaru": "NIEUSTALONY",
+        "stan_pomiaru_pl": "stan z pomiaru nieustalony — model nie niesie rekordu ruchu pola z łącznością z urządzeniem polowym",
+        "wyjasnienie_pl": "za polem pracuje 1 moduł(y) wytwarzania — przy otwartym wyłączniku linia może pozostać pod napięciem; załączenie blokuje funkcja NZ (sygnał „Blok. ZW”)",
+        "zrodla_za_polem": 1
+      },
       "niezgodnosci": [
         {
           "akcja_pl": "ustaw klasę pola z generacją — zestaw funkcji zostanie przeliczony bez SCO",
           "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
           "kod": "pole.sco_w_polu_z_generacja",
-          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” (pole linii mieszanej (moduły wytwarzania i odbiorcy)) ma samoczynne częstotliwościowe odciążenie (SCO) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.7.1 pkt 1: SCO nie należy uruchamiać w liniach z jednostkami wytwórczymi."
+          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” (pole linii mieszanej (moduły wytwarzania i odbiorcy)) ma samoczynne częstotliwościowe odciążenie (SCO, SPZ/SCO) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.7.1 pkt 1: SCO nie należy uruchamiać w liniach z jednostkami wytwórczymi."
         }
       ],
+      "obwody_funkcji": [
+        {
+          "blok_rysunku": "I> t1",
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "I>> t2",
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+          "kod": "67",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20",
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "LRW",
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, Pobudzenie LRW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZ tSPZ",
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "sygnał „Odstawienie SPZ”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+          "kod": "SPZE",
+          "obecna": true,
+          "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "OWG — wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
+          "kod": "OWG",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "obecna": true,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO1”",
+            "sygnał „SCO2”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "obecna": true,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO/SPZ”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        }
+      ],
+      "obwody_wtorne": {
+        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+        "naped_wylacznika": "SILNIKOWY",
+        "obwody_przekladnikow": [
+          {
+            "aparat": "T1",
+            "numer": 1,
+            "odbiornik_pl": "układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T1",
+            "numer": 2,
+            "odbiornik_pl": "układy regulacyjne",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T3",
+            "numer": 1,
+            "odbiornik_pl": "układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T3",
+            "numer": 2,
+            "odbiornik_pl": "układy regulacyjne",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
+        "podstawa": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 s.90",
+        "powiazania": [
+          {
+            "blok_rysunku": "I> t1",
+            "funkcja": "51",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "I>> t2",
+            "funkcja": "50",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+            "funkcja": "67N",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Z, Zz",
+                "uwaga": "obwód okrężny doprowadzony do bloku zabezpieczenia ziemnozwarciowego",
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "ZS",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "LRW",
+            "funkcja": "50BF",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "Pobudzenie LRW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZ tSPZ",
+            "funkcja": "79",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Odstawienie SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO1",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO2",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SPZ/SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO/SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "67",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              },
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": "kierunek wymaga napięcia; rysunek prowadzi uzwojenie III do bloków U i f tego samego zabezpieczenia, nie do bloku ZS",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "27",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "59",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81U",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81O",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81R",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "NZ",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "SPZE",
+            "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "OWG",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          }
+        ],
+        "sygnaly": [
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blok. ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": false,
+            "uwaga": "rozwinięcie „ZW” (załączenie wyłącznika) — skrót ruchowy, standard go nie rozwija; „Blok.” — napis rysunku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "blokada załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "polecenie załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "OW1",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "obwód wyłączający 1 wyłącznika"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Odstawienie SPZ",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Topologia",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Zasilanie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "napięcie pomocnicze sterownika (biegun dodatni i ujemny)"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "SSiN",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": "rozwinięcie skrótu wg terminologii ENEA, rysunek podaje sam skrót",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "łącze do systemu sterowania i nadzoru stacji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Łącze inżynierskie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Wył. od zab. TR",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "wyłączenie od zabezpieczeń transformatora"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "+AwUp",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Up",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Aw",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Al",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO1",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 1 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO2",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 2 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO/SPZ",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "samoczynne ponowne załączenie po odciążeniu częstotliwościowym"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "UL1, UL2, UL3, N",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcia fazowe szyn sekcji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Pobudzenie LRW",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blokowanie ZS",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "sygnał blokowania logicznego zabezpieczenia szyn"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Z, Zz",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
+          }
+        ]
+      },
       "oceny_funkcji": [
         {
           "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
@@ -307,25 +1105,25 @@
           "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
-            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "etykieta_pl": "Brak wystarczającego dowodu",
             "semantyka": "ostrzegawcza"
           },
           "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
           "kod": "NZ",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": false,
+          "obecna": true,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 7",
-          "status": "NIEJEDNOZNACZNY",
+          "status": "BRAK_DOWODU",
           "wyjasnienie": {
             "czego_brakuje": [
               "warunki przyłączenia operatora systemu dystrybucyjnego"
             ],
-            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -352,6 +1150,32 @@
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
             "zdanie_pl": "Ocena obecności funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+          "kod": "32",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 (lista funkcji bez zabezpieczenia od mocy zwrotnej); II.4.5.5.4",
+          "status": "NIEJEDNOZNACZNY",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -383,25 +1207,97 @@
           "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
           },
           "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
           "kod": "SPZ/SCO",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": false,
+          "obecna": true,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
-          "status": "SPELNIA",
+          "status": "NIE_SPELNIA",
           "wyjasnienie": {
             "czego_brakuje": [],
-            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "przyczyna_pl": "funkcja niedopuszczalna w tej klasie pola jest zadeklarowana",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium naruszone"
           },
           "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+          "kod": "59N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Yo> — ziemnozwarciowe admitancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Yo> — ziemnozwarciowe admitancyjne",
+          "kod": "Yo>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Yo> — ziemnozwarciowe admitancyjne — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Go> — ziemnozwarciowe konduktancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Go> — ziemnozwarciowe konduktancyjne",
+          "kod": "Go>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Go> — ziemnozwarciowe konduktancyjne — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
         }
       ],
       "odbiory": [
@@ -433,6 +1329,15 @@
           "typ": "B"
         }
       ],
+      "napiecie_zwrotne": {
+        "blokada_nz": true,
+        "mozliwe": true,
+        "pomiar_pl": "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P (blok U> U<, wyjście „Blok. ZW”)",
+        "stan_pomiaru": "NIEUSTALONY",
+        "stan_pomiaru_pl": "stan z pomiaru nieustalony — model nie niesie rekordu ruchu pola z łącznością z urządzeniem polowym",
+        "wyjasnienie_pl": "za polem pracuje 1 moduł(y) wytwarzania — przy otwartym wyłączniku linia może pozostać pod napięciem; załączenie blokuje funkcja NZ (sygnał „Blok. ZW”)",
+        "zrodla_za_polem": 1
+      },
       "niezgodnosci": [
         {
           "akcja_pl": "zmień klasę pola na mieszane albo przyłącz odbiory z pola odbiorczego",
@@ -447,6 +1352,783 @@
           "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” wymaga pomiaru rozliczeniowego i analizatora jakości energii — za polem: 1 moduł(y) wytwarzania o mocy ≥ 200 kW, 1 odbiór(y) o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego) — a przekładnik prądowy pola nie ma rdzenia rozliczeniowego."
         }
       ],
+      "obwody_funkcji": [
+        {
+          "blok_rysunku": "I> t1",
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "I>> t2",
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "LRW",
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, Pobudzenie LRW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "OWG — wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
+          "kod": "OWG",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZ tSPZ",
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "obecna": false,
+          "uwaga": null,
+          "wejscia_pl": [
+            "sygnał „Odstawienie SPZ”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "obecna": false,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO1”",
+            "sygnał „SCO2”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "obecna": false,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO/SPZ”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+          "kod": "67",
+          "obecna": false,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20",
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+          "kod": "SPZE",
+          "obecna": false,
+          "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        }
+      ],
+      "obwody_wtorne": {
+        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+        "naped_wylacznika": "SILNIKOWY",
+        "obwody_przekladnikow": [
+          {
+            "aparat": "T3",
+            "numer": 1,
+            "odbiornik_pl": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T3",
+            "numer": 2,
+            "odbiornik_pl": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
+        "podstawa": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11.1 s.91",
+        "powiazania": [
+          {
+            "blok_rysunku": "I> t1",
+            "funkcja": "51",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "I>> t2",
+            "funkcja": "50",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+            "funkcja": "67N",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Z, Zz",
+                "uwaga": "obwód okrężny doprowadzony do bloku zabezpieczenia ziemnozwarciowego",
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "ZS",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "LRW",
+            "funkcja": "50BF",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "Pobudzenie LRW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZ tSPZ",
+            "funkcja": "79",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Odstawienie SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO1",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO2",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SPZ/SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO/SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "67",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              },
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": "kierunek wymaga napięcia; rysunek prowadzi uzwojenie III do bloków U i f tego samego zabezpieczenia, nie do bloku ZS",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "27",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "59",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81U",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81O",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81R",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "NZ",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "SPZE",
+            "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "OWG",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          }
+        ],
+        "sygnaly": [
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blok. ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": false,
+            "uwaga": "rozwinięcie „ZW” (załączenie wyłącznika) — skrót ruchowy, standard go nie rozwija; „Blok.” — napis rysunku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "blokada załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "polecenie załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "OW1",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "obwód wyłączający 1 wyłącznika"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Odstawienie SPZ",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Topologia",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Zasilanie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "napięcie pomocnicze sterownika (biegun dodatni i ujemny)"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "SSiN",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": "rozwinięcie skrótu wg terminologii ENEA, rysunek podaje sam skrót",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "łącze do systemu sterowania i nadzoru stacji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Łącze inżynierskie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Wył. od zab. TR",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "wyłączenie od zabezpieczeń transformatora"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "+AwUp",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Up",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Aw",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Al",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO1",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 1 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO2",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 2 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO/SPZ",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "samoczynne ponowne załączenie po odciążeniu częstotliwościowym"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "UL1, UL2, UL3, N",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcia fazowe szyn sekcji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Pobudzenie LRW",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blokowanie ZS",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "sygnał blokowania logicznego zabezpieczenia szyn"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Z, Zz",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
+          }
+        ]
+      },
       "oceny_funkcji": [
         {
           "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
@@ -702,15 +2384,41 @@
           "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
-            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "etykieta_pl": "Brak wystarczającego dowodu",
             "semantyka": "ostrzegawcza"
           },
           "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
           "kod": "NZ",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
-          "obecna": false,
+          "obecna": true,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+          "kod": "32",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 (lista funkcji bez zabezpieczenia od mocy zwrotnej); II.4.5.5.4",
           "status": "NIEJEDNOZNACZNY",
           "wyjasnienie": {
             "czego_brakuje": [
@@ -720,7 +2428,7 @@
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: wynik niejednoznaczny — wymaga weryfikacji"
+            "zdanie_pl": "Ocena obecności funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: wynik niejednoznaczny — wymaga weryfikacji"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -819,6 +2527,78 @@
             "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
           },
           "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+          "kod": "59N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) — funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania: nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Yo> — ziemnozwarciowe admitancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Yo> — ziemnozwarciowe admitancyjne",
+          "kod": "Yo>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Yo> — ziemnozwarciowe admitancyjne — funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania: nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Go> — ziemnozwarciowe konduktancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Go> — ziemnozwarciowe konduktancyjne",
+          "kod": "Go>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Go> — ziemnozwarciowe konduktancyjne — funkcja dopuszczalna, niewymagana w klasie: pole dedykowane modułom wytwarzania: nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
         }
       ],
       "odbiory": [
@@ -850,6 +2630,7 @@
           "typ": "A"
         }
       ],
+      "napiecie_zwrotne": null,
       "niezgodnosci": [
         {
           "akcja_pl": "ustaw klasę pola mieszane albo dedykowane wytwórcy i wykonanie Z.11.1 albo Z.11",
@@ -858,6 +2639,491 @@
           "komunikat_pl": "Za pola „Pole liniowe GPZ 1.1” pracuje 1 moduł(y) wytwarzania, a pole ma klasę pole odbiorcze (bez modułów wytwarzania) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 dotyczy pola, do którego nie są przyłączone moduły wytwarzania. Pole z generacją wymaga klasy mieszanej albo dedykowanej i przekładnika napięciowego od strony linii (Z.11.1/Z.11)."
         }
       ],
+      "obwody_funkcji": [
+        {
+          "blok_rysunku": "I> t1",
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "I>> t2",
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": true,
+          "uwaga": "wyjścia OW1, OW2 z komórek t1, t2 — linie widoczne na rysunku; „Blok. ZW” wychodzi z nieopisanej komórki bloku zabezpieczenia ziemnozwarciowego — przypisanie tej funkcji jest interpretacją",
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1, OW2, Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": null,
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rysunek wzorca (ENEA Zeszyt 1, Z.10 (s.89); ENEA Zeszyt 1, §13 (druk s.23–25)) nie rysuje tej funkcji — obwód pomiarowy i wyjście dobiera projektant"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "nieopisane we wzorcu"
+        },
+        {
+          "blok_rysunku": "ZS",
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "LRW",
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń I przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, OW2, Pobudzenie LRW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZ tSPZ",
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "sygnał „Odstawienie SPZ”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "obecna": true,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO1”",
+            "sygnał „SCO2”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "obecna": true,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO/SPZ”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        }
+      ],
+      "obwody_wtorne": {
+        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+        "naped_wylacznika": "SILNIKOWY",
+        "obwody_przekladnikow": [],
+        "podstawa": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 s.89",
+        "powiazania": [
+          {
+            "blok_rysunku": "I> t1",
+            "funkcja": "51",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "OW2"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "I>> t2",
+            "funkcja": "50",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "OW2"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+            "funkcja": "67N",
+            "uwaga": "wyjścia OW1, OW2 z komórek t1, t2 — linie widoczne na rysunku; „Blok. ZW” wychodzi z nieopisanej komórki bloku zabezpieczenia ziemnozwarciowego — przypisanie tej funkcji jest interpretacją",
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Z, Zz",
+                "uwaga": "obwód okrężny doprowadzony do bloku zabezpieczenia ziemnozwarciowego",
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1",
+              "OW2",
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS",
+            "funkcja": "ZS",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "LRW",
+            "funkcja": "50BF",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 1,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "OW2",
+              "Pobudzenie LRW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZ tSPZ",
+            "funkcja": "79",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Odstawienie SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO1",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO2",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1",
+              "OW2"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SPZ/SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO/SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          }
+        ],
+        "sygnaly": [
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blok. ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": false,
+            "uwaga": "rozwinięcie „ZW” (załączenie wyłącznika) — skrót ruchowy, standard go nie rozwija; „Blok.” — napis rysunku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "blokada załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "polecenie załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "OW1",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "obwód wyłączający 1 wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "OW2",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "obwód wyłączający 2 wyłącznika"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Odstawienie SPZ",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Topologia",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Zasilanie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "napięcie pomocnicze sterownika (biegun dodatni i ujemny)"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "SSiN",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": "rozwinięcie skrótu wg terminologii ENEA, rysunek podaje sam skrót",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "łącze do systemu sterowania i nadzoru stacji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Łącze inżynierskie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "+AwUp",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Up",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Aw",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Al",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO1",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 1 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO2",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 2 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO/SPZ",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "samoczynne ponowne załączenie po odciążeniu częstotliwościowym"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "UL1, UL2, UL3, N",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcia fazowe szyn sekcji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Pobudzenie LRW",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blokowanie ZS",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "sygnał blokowania logicznego zabezpieczenia szyn"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Z, Zz",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
+          }
+        ]
+      },
       "oceny_funkcji": [
         {
           "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
@@ -1076,6 +3342,78 @@
             "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania): brak wystarczającego dowodu"
           },
           "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+          "kod": "59N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) — funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Yo> — ziemnozwarciowe admitancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Yo> — ziemnozwarciowe admitancyjne",
+          "kod": "Yo>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Yo> — ziemnozwarciowe admitancyjne — funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Go> — ziemnozwarciowe konduktancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Go> — ziemnozwarciowe konduktancyjne",
+          "kod": "Go>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Go> — ziemnozwarciowe konduktancyjne — funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
         }
       ],
       "odbiory": []
@@ -1102,7 +3440,805 @@
           "typ": "B"
         }
       ],
+      "napiecie_zwrotne": {
+        "blokada_nz": true,
+        "mozliwe": true,
+        "pomiar_pl": "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P (blok U> U<, wyjście „Blok. ZW”)",
+        "stan_pomiaru": "NIEUSTALONY",
+        "stan_pomiaru_pl": "stan z pomiaru nieustalony — model nie niesie rekordu ruchu pola z łącznością z urządzeniem polowym",
+        "wyjasnienie_pl": "za polem pracuje 1 moduł(y) wytwarzania — przy otwartym wyłączniku linia może pozostać pod napięciem; załączenie blokuje funkcja NZ (sygnał „Blok. ZW”)",
+        "zrodla_za_polem": 1
+      },
       "niezgodnosci": [],
+      "obwody_funkcji": [
+        {
+          "blok_rysunku": "I> t1",
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "I>> t2",
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+          "kod": "67",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20",
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "f< f> df/dt",
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "ZS (kierunkowe I>)",
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "Blokowanie ZS"
+        },
+        {
+          "blok_rysunku": "LRW",
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "rdzeń III przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1, Pobudzenie LRW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZ tSPZ",
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "obecna": true,
+          "uwaga": null,
+          "wejscia_pl": [
+            "sygnał „Odstawienie SPZ”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+          "kod": "SPZE",
+          "obecna": true,
+          "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "SPZE tE",
+          "funkcja_pl": "OWG — wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
+          "kod": "OWG",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+          "wejscia_pl": [
+            "sygnał „Wył. od zab. TR”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "U> U<",
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "obecna": true,
+          "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+          "wejscia_pl": [
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "obecna": false,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO1”",
+            "sygnał „SCO2”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Sterownik pola",
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "obecna": false,
+          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+          "wejscia_pl": [
+            "sygnał „SCO/SPZ”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "ZW → wyłącznik Q0"
+        }
+      ],
+      "obwody_wtorne": {
+        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+        "naped_wylacznika": "SILNIKOWY",
+        "obwody_przekladnikow": [
+          {
+            "aparat": "T1",
+            "numer": 1,
+            "odbiornik_pl": "układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T1",
+            "numer": 2,
+            "odbiornik_pl": "układy regulacyjne",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T3",
+            "numer": 1,
+            "odbiornik_pl": "układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "T3",
+            "numer": 2,
+            "odbiornik_pl": "układy regulacyjne",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
+        "podstawa": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 s.90",
+        "powiazania": [
+          {
+            "blok_rysunku": "I> t1",
+            "funkcja": "51",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "I>> t2",
+            "funkcja": "50",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+            "funkcja": "67N",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Z, Zz",
+                "uwaga": "obwód okrężny doprowadzony do bloku zabezpieczenia ziemnozwarciowego",
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "ZS",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "LRW",
+            "funkcja": "50BF",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "Pobudzenie LRW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZ tSPZ",
+            "funkcja": "79",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Odstawienie SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO1",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              },
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO2",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Sterownik pola",
+            "funkcja": "SPZ/SCO",
+            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "SCO/SPZ",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "ZS (kierunkowe I>)",
+            "funkcja": "67",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T1",
+                "numer": 3,
+                "rodzaj": "RDZEN_CT",
+                "sygnal": null,
+                "uwaga": "rysunek prowadzi obwód rdzenia zabezpieczeniowego wyłącznie do bloku I>/I>>; blok jest częścią tego samego zabezpieczenia polowego i mierzy te same prądy fazowe",
+                "weryfikacja": "INTERPRETACJA"
+              },
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": "kierunek wymaga napięcia; rysunek prowadzi uzwojenie III do bloków U i f tego samego zabezpieczenia, nie do bloku ZS",
+                "weryfikacja": "INTERPRETACJA"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blokowanie ZS"
+            ],
+            "wylacznik": null
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "27",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "59",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81U",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81O",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "f< f> df/dt",
+            "funkcja": "81R",
+            "uwaga": null,
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "U> U<",
+            "funkcja": "NZ",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.9.3 i §26.10.3 nazywają blokadę załączenia od napięcia zwrotnego; rysunek realizuje ją blokiem U>/U< z wyjściem „Blok. ZW” (napięcie po stronie linii przy otwartym wyłączniku blokuje załączenie)",
+            "wejscia": [
+              {
+                "aparat": "T3",
+                "numer": 3,
+                "rodzaj": "UZWOJENIE_VT",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "Blok. ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "SPZE",
+            "uwaga": "rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje)",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "ZW"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "SPZE tE",
+            "funkcja": "OWG",
+            "uwaga": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1",
+            "wejscia": [
+              {
+                "aparat": null,
+                "numer": null,
+                "rodzaj": "SYGNAL",
+                "sygnal": "Wył. od zab. TR",
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          }
+        ],
+        "sygnaly": [
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blok. ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": false,
+            "uwaga": "rozwinięcie „ZW” (załączenie wyłącznika) — skrót ruchowy, standard go nie rozwija; „Blok.” — napis rysunku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "blokada załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "ZW",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "polecenie załączenia wyłącznika"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "OW1",
+            "obwod": "WYLACZNIK",
+            "sterownik_pola": true,
+            "uwaga": "skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "obwód wyłączający 1 wyłącznika"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Odstawienie SPZ",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Topologia",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Zasilanie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "napięcie pomocnicze sterownika (biegun dodatni i ujemny)"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "SSiN",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": "rozwinięcie skrótu wg terminologii ENEA, rysunek podaje sam skrót",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "łącze do systemu sterowania i nadzoru stacji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Łącze inżynierskie",
+            "obwod": "NADRZEDNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Wył. od zab. TR",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "wyłączenie od zabezpieczeń transformatora"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "+AwUp",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Up",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Aw",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Al",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": null
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO1",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 1 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO2",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "numer stopnia SCO wnioskowany z napisu, standard go nie rozwija",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "pobudzenie stopnia 2 samoczynnego częstotliwościowego odciążenia"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "SCO/SPZ",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "samoczynne ponowne załączenie po odciążeniu częstotliwościowym"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "UL1, UL2, UL3, N",
+            "obwod": "OKREZNY",
+            "sterownik_pola": true,
+            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcia fazowe szyn sekcji"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Pobudzenie LRW",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni"
+          },
+          {
+            "kierunek": "WYJSCIE",
+            "nazwa": "Blokowanie ZS",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": null,
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "znaczenie_pl": "sygnał blokowania logicznego zabezpieczenia szyn"
+          },
+          {
+            "kierunek": "WEJSCIE",
+            "nazwa": "Z, Zz",
+            "obwod": "OKREZNY",
+            "sterownik_pola": false,
+            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
+            "weryfikacja": "INTERPRETACJA",
+            "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
+          }
+        ]
+      },
       "oceny_funkcji": [
         {
           "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
@@ -1382,25 +4518,25 @@
           "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
-            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "etykieta_pl": "Brak wystarczającego dowodu",
             "semantyka": "ostrzegawcza"
           },
           "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
           "kod": "NZ",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": false,
+          "obecna": true,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 7",
-          "status": "NIEJEDNOZNACZNY",
+          "status": "BRAK_DOWODU",
           "wyjasnienie": {
             "czego_brakuje": [
               "warunki przyłączenia operatora systemu dystrybucyjnego"
             ],
-            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -1427,6 +4563,32 @@
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
             "zdanie_pl": "Ocena obecności funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+          "kod": "32",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 (lista funkcji bez zabezpieczenia od mocy zwrotnej); II.4.5.5.4",
+          "status": "NIEJEDNOZNACZNY",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -1477,6 +4639,78 @@
             "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
           },
           "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+          "kod": "59N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Yo> — ziemnozwarciowe admitancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Yo> — ziemnozwarciowe admitancyjne",
+          "kod": "Yo>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Yo> — ziemnozwarciowe admitancyjne — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Go> — ziemnozwarciowe konduktancyjne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "Go> — ziemnozwarciowe konduktancyjne",
+          "kod": "Go>",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2 (kryterium zabezpieczenia ziemnozwarciowego do wyboru wg sposobu pracy punktu neutralnego; wymóg spełnia 67N); praktyka eksploatacyjna, referencja właściciela 2026-10-29",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Go> — ziemnozwarciowe konduktancyjne — funkcja dopuszczalna, niewymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
         }
       ],
       "odbiory": [

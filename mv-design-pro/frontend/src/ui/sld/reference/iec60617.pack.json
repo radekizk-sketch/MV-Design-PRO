@@ -22,6 +22,8 @@
     { "kind": "THREE_POSITION_SWITCH", "symbol_name_pl": "Łącznik trójpołożeniowy", "frontend_symbol_id": "qetThreePositionSwitch", "frontend_symbol_id_qet": "qetThreePositionSwitch" },
     { "kind": "VOLTAGE_INDICATOR", "symbol_name_pl": "Wskaźnik napięcia", "frontend_symbol_id": "qetVoltageIndicator", "frontend_symbol_id_qet": "qetVoltageIndicator" },
     { "kind": "CORE_BALANCE_CT", "symbol_name_pl": "Przekładnik Ferrantiego", "frontend_symbol_id": "qetCoreBalanceCt", "frontend_symbol_id_qet": "qetCoreBalanceCt" },
+    { "kind": "UNBALANCE_CT", "symbol_name_pl": "Przekładnik prądowy niezrównoważenia baterii kondensatorów (rysowany w połączeniu międzygwiazdowym glifu baterii, nie w torze pola)", "frontend_symbol_id": null },
+    { "kind": "PHASE_TO_PHASE_VT", "symbol_name_pl": "Przekładnik napięciowy międzyfazowy", "frontend_symbol_id": "voltageTransformer" },
     { "kind": "GENERATOR_PV", "symbol_name_pl": "Źródło fotowoltaiczne (rysowane jako źródło, nie aparat pola)", "frontend_symbol_id": null },
     { "kind": "GENERATOR_BESS", "symbol_name_pl": "Magazyn energii (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },
     { "kind": "GENERATOR_FW", "symbol_name_pl": "Generator wiatrowy (rysowany jako źródło, nie aparat pola)", "frontend_symbol_id": null },

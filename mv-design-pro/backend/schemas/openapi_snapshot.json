@@ -299,153 +299,6 @@
     "title": "ArchiveSummary",
     "type": "object"
    },
-   "AutoPopulateRequest": {
-    "description": "K30-23 user demand: 'dane mają się maksymalnie podczytywać'.",
-    "properties": {
-     "cross_section_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Cross Section Mm2"
-     },
-     "expected_current_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Expected Current A"
-     },
-     "expected_power_mva": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Expected Power Mva"
-     },
-     "prefer_manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Prefer Manufacturer"
-     },
-     "voltage_kv": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Voltage Kv"
-     }
-    },
-    "title": "AutoPopulateRequest",
-    "type": "object"
-   },
-   "AutoPopulateResponse": {
-    "properties": {
-     "element_type": {
-      "title": "Element Type",
-      "type": "string"
-     },
-     "suggestions": {
-      "items": {
-       "$ref": "#/components/schemas/AutoPopulateSuggestion"
-      },
-      "title": "Suggestions",
-      "type": "array"
-     },
-     "total_candidates": {
-      "title": "Total Candidates",
-      "type": "integer"
-     }
-    },
-    "required": [
-     "element_type",
-     "suggestions",
-     "total_candidates"
-    ],
-    "title": "AutoPopulateResponse",
-    "type": "object"
-   },
-   "AutoPopulateSuggestion": {
-    "properties": {
-     "badge_pl": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Badge Pl"
-     },
-     "catalog_ref": {
-      "title": "Catalog Ref",
-      "type": "string"
-     },
-     "certyfikat_ptpiree": {
-      "default": false,
-      "title": "Certyfikat Ptpiree",
-      "type": "boolean"
-     },
-     "dopasowanie": {
-      "enum": [
-       "PELNE",
-       "CZESCIOWE"
-      ],
-      "title": "Dopasowanie",
-      "type": "string"
-     },
-     "label_pl": {
-      "title": "Label Pl",
-      "type": "string"
-     },
-     "manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Manufacturer"
-     },
-     "rationale_pl": {
-      "title": "Rationale Pl",
-      "type": "string"
-     }
-    },
-    "required": [
-     "catalog_ref",
-     "label_pl",
-     "dopasowanie",
-     "rationale_pl"
-    ],
-    "title": "AutoPopulateSuggestion",
-    "type": "object"
-   },
    "BatchItemResponse": {
     "description": "Jedna pozycja serii — ZERO własnego wyniku (wynik = bieg kanoniczny po\n`canonical_run_id`, `GET /api/execution/runs/{canonical_run_id}`).",
     "properties": {
@@ -3955,6 +3808,11 @@
       ],
       "title": "Der Kind",
       "type": "string"
+     },
+     "dry_run": {
+      "default": false,
+      "title": "Dry Run",
+      "type": "boolean"
      },
      "modul_istniejacy": {
       "anyOf": [
@@ -21735,59 +21593,6 @@
     ]
    }
   },
-  "/api/catalog/auto-populate/{element_type}": {
-   "post": {
-    "description": "K30-23: Return ranked catalog suggestions for element context.\n\nElement types supported: transformer, cable, switch, branch_point, der.\nLogic: filter by voltage compatibility + power/current range + manufacturer\ncascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga\ncertyfikatu PTPiREE — sortowanie deterministyczne\n(dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).",
-    "operationId": "auto_populate_catalog_suggestions_api_catalog_auto_populate__element_type__post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "element_type",
-      "required": true,
-      "schema": {
-       "title": "Element Type",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/AutoPopulateRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/AutoPopulateResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Auto Populate Catalog Suggestions",
-    "tags": [
-     "Type Catalog"
-    ]
-   }
-  },
   "/api/catalog/bay-apparatus-kinds": {
    "get": {
     "description": "Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (readout).\n\nJedno źródło prawdy: `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE` — ta sama tablica,\nktórą operacje domenowe stosują przy budowie pola. Końcówka istnieje\ndokładnie z tego powodu, co bliźniacza `/bay-protection-codes`: kreator\nstacji ma zawęzić picker aparatu do rozwiązań, które w danym polu REALNIE\nwystępują, BEZ kopiowania tablicy do frontendu (zero równoległej definicji,\nzero listy wariantów zaszytej w UI).\n\nWartości to `device_kind` pozycji katalogu APARAT_SN, więc konsument filtruje\nlistę katalogową wprost — nie tłumaczy nazw.",
@@ -28575,7 +28380,7 @@
   },
   "/api/projects/{project_id}/cases/{case_id}/generators": {
    "post": {
-    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
+    "description": "Zapisz konfigurację DER jako generator w kanonicznym ENM.\n\nPRÓBA (`dry_run: true`): ta sama droga i te same odmowy 422 co zapis; przyjęta próba\nzwraca HTTP 200 z `dry_run: true` i `preview.created_refs`, bez migawki — model zostaje\nbez zmian (warstwa zapisuje wyłącznie migawkę).\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków\nStarlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją\npracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których\nw zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.\n\nKontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone\nżądanie nie ma powodu czekać na cudzy cykl.",
     "operationId": "create_der_generator_api_projects__project_id__cases__case_id__generators_post",
     "parameters": [
      {

@@ -34,7 +34,6 @@ import {
   sourceFeederRole,
   sourceProtectionIntent,
   templateOptionsForRole,
-  voltageMatches,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type {
   NnConfiguration,
@@ -53,7 +52,7 @@ import type {
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
-import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
+import { OPIS_PASMA_NN, toSamoNapiecieZnamionowe, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
@@ -78,10 +77,6 @@ export type { NnConfiguration } from '../../../ui/network-build/forms/InsertStat
 
 /** Tryb umiejscowienia stacji względem topologii magistrali. */
 export type TrybUmiejscowienia = 'ENDPOINT_APPEND' | 'SPLIT';
-
-/** Tolerancje zgodności napięć katalogowych (kV) — parytet z legacy. */
-const SN_VOLTAGE_TOLERANCE_KV = 0.01;
-const NN_VOLTAGE_TOLERANCE_KV = 0.001;
 
 /** Standardowe napięcia nN odbioru [kV] (wariant LOAD_NN). */
 export const NAPIECIA_NN_KV = [0.4, 0.69] as const;
@@ -484,7 +479,8 @@ export function walidujFormularz(
 
 /**
  * Dobór transformatorów zgodnych z napięciem SN szyny i wymaganym napięciem
- * strony nN. Wyłącznie porównanie napięć katalogowych — ZERO fizyki. Gdy podano
+ * strony nN. Wyłącznie równość napięć znamionowych (ta sama co operacja wstawienia
+ * stacji w backendzie, `station.insert.transformer_voltage_mismatch`) — ZERO fizyki. Gdy podano
  * moc źródła nN (PV), sort preferuje typy o wystarczającej mocy (parytet legacy,
  * reużycie `compareTransformersForSourcePower`); w przeciwnym razie sort rosnąco
  * po mocy znamionowej (stabilny, deterministyczny porządek doboru).
@@ -497,8 +493,8 @@ export function doborTransformatorow(
 ): TransformerType[] {
   const zgodne = typy.filter(
     (t) =>
-      voltageMatches(t.voltage_hv_kv, snVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
-      && voltageMatches(t.voltage_lv_kv, nnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
+      toSamoNapiecieZnamionowe(t.voltage_hv_kv, snVoltageKv)
+      && toSamoNapiecieZnamionowe(t.voltage_lv_kv, nnVoltageKv),
   );
   if (sourcePowerMva != null) {
     return zgodne.sort(compareTransformersForSourcePower(sourcePowerMva));

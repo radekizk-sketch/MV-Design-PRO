@@ -31,6 +31,7 @@ import {
   fetchSurgeArresterTypes,
   fetchVtTypes,
   getCatalogErrorMessage,
+  NAZWA_WERYFIKACJI_PL,
   type SzablonPolaKanoniczny,
 } from '../catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../catalog/BayTemplatePicker';
@@ -46,6 +47,7 @@ import {
   PRZESTRZEN_KATALOGU_APARATU,
   RODZAJE_APARATU_POLA_SN,
   RODZAJE_KATALOGOWE_APARATU,
+  RODZAJ_Z_PRZEKLADNIA,
   RODZAJE_Z_GALEZIA,
   RODZAJE_Z_ROLA_UZIEMIENIA,
   STAN_DANYCH_WYPOSAZENIA_PL,
@@ -61,7 +63,7 @@ import {
   type WierszAparatu,
   type ZmianaKlasyPola,
 } from './wyposazeniePola';
-import type { DomainOpResponseV1 } from '../../types/enm';
+import type { DomainOpResponseV1, KlasaPolaLiniowego } from '../../types/enm';
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
@@ -307,7 +309,10 @@ export function EdytorWyposazeniaPola({
       <p data-testid="wyposazenie-pola-stan" data-stan={stanDanych ?? ''} className="mt-1 text-scada-text">
         {stanDanych ? STAN_DANYCH_WYPOSAZENIA_PL[stanDanych] : 'Stan danych wyposażenia nieznany — brak modelu odczytu pola.'}
       </p>
-      <ListaDanychPrzyjetych dane={danePrzyjete} testid="wyposazenie-pola-dane-przyjete" />
+      {/* Jedna lista danych przyjętych naraz: po zapisie — lista z odpowiedzi operacji (stan po
+          zapisie), przed zapisem — z odczytu pola. Obie naraz powtarzały te same adnotacje
+          (pomiar ze zrzutu okna pola 2026-10-29). */}
+      {wynik ? null : <ListaDanychPrzyjetych dane={danePrzyjete} testid="wyposazenie-pola-dane-przyjete" />}
       {wynik ? (
         <div data-testid="wyposazenie-pola-wynik" data-stan={wynik.stan_danych} className="mt-1">
           <p>Zapisano. {STAN_DANYCH_WYPOSAZENIA_PL[wynik.stan_danych]}.</p>
@@ -474,6 +479,17 @@ export function EdytorWyposazeniaPola({
                       value={w.odgalezienie}
                       onChange={(e) => zmienWiersz(i, (x) => ({ ...x, odgalezienie: e.target.value }))}
                     />
+                    {w.kind === RODZAJ_Z_PRZEKLADNIA ? (
+                      <input
+                        aria-label={`Przekładnia aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-przekladnia`}
+                        className={`${pole} w-20`}
+                        placeholder="np. 1/100"
+                        title="Przekładnia przekładnika Ferrantiego zapisana jak na rysunku standardu (ENEA Z.10/Z.11/Z.11.1: 1/100)"
+                        value={w.przekladnia}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, przekladnia: e.target.value }))}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       data-testid={`wyposazenie-pola-aparat-${i}-usun`}
@@ -541,6 +557,24 @@ export function EdytorWyposazeniaPola({
                 </li>
               ))}
             </ul>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny?.profil_eaz && wybranyKanoniczny.profil_eaz.length > 0 ? (
+            <div className="mt-1 text-[11px]">
+              <span className="text-scada-text">Profil funkcjonalny zabezpieczeń wzorca (wszystkie klasy pola):</span>
+              <ul data-testid="wyposazenie-pola-szablon-profil-eaz" className="list-disc pl-4 text-scada-muted">
+                {wybranyKanoniczny.profil_eaz.map((p) => (
+                  <li
+                    key={p.kod}
+                    data-kod={p.kod}
+                    data-wymagalnosc={p.wymagalnosc}
+                    title={p.wymogi.map((w) => `${NAZWA_KLASY_POLA_PL[w.klasa as KlasaPolaLiniowego] ?? w.klasa}: ${w.wymog_pl} (${w.podstawa}; ${NAZWA_WERYFIKACJI_PL[w.weryfikacja]})`).join('\n')}
+                  >
+                    {p.opis_pl} — {p.wymagalnosc_pl}
+                    {p.na_rysunku ? '' : ' (poza rysunkiem wzorca — wymóg klasy pola)'}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           {tryb === 'szablon' && niedopuszczone.length > 0 ? (
             <ul data-testid="wyposazenie-pola-szablony-niedostepne" className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">

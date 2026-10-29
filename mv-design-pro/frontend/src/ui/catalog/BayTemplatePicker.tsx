@@ -14,7 +14,7 @@
  */
 
 import { clsx } from 'clsx';
-import type { BayCanonicalRole } from '../../types/enm';
+import type { BayCanonicalRole, BayModelRole } from '../../types/enm';
 import type {
   RdzenPrzekladnikaPradowego,
   UzwojeniePrzekladnikaNapieciowego,
@@ -41,7 +41,8 @@ export type BayKind =
   | 'rezerwowe'
   | 'kablowe'
   | 'napowietrzne'
-  | 'nop_lacznikowe';
+  | 'nop_lacznikowe'
+  | 'bateria_kondensatorow';
 
 export type BayTemplateSourceStatus =
   | 'official_catalog'
@@ -51,7 +52,7 @@ export type BayTemplateSourceStatus =
   | 'requires_catalog'
   | 'incomplete_requires_review';
 
-export type BayRole = 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+export type BayRole = BayModelRole;
 
 /**
  * Aparat KANONICZNEGO układu pola — `BayDeviceTemplate` backendu
@@ -80,7 +81,9 @@ export interface BayDeviceTemplateWire {
     | 'TRANSFORMER_DEVICE'
     | 'THREE_POSITION_SWITCH'
     | 'VOLTAGE_INDICATOR'
-    | 'CORE_BALANCE_CT';
+    | 'CORE_BALANCE_CT'
+    | 'UNBALANCE_CT'
+    | 'PHASE_TO_PHASE_VT';
   readonly designation_q: string;
   readonly position: number;
   readonly placement: 'UPSTREAM' | 'MIDSTREAM' | 'DOWNSTREAM' | 'OFF_PATH' | 'GROUND_BRANCH';
@@ -126,15 +129,20 @@ export interface BayDeviceInstanceWire {
     | 'switch_disconnector'
     | 'disconnector_busbar'
     | 'disconnector_line'
+    | 'disconnector_branch'
     | 'earthing_switch'
     | 'fuse_set'
     | 'current_transformer'
     | 'voltage_transformer'
+    | 'unbalance_current_transformer'
+    | 'phase_to_phase_voltage_transformer'
     | 'surge_arrester'
     | 'cable_head'
     | 'busbar'
     | 'bus_coupler'
     | 'voltage_indicator'
+    | 'three_position_switch'
+    | 'core_balance_ct'
     | 'protection_relay'
     | 'meter'
     | 'transformer'
@@ -265,6 +273,7 @@ const OPIS_RODZAJU_POLA: Readonly<Record<BayKind, OpisRodzajuPola>> = {
   kablowe: { nazwaBezRoli: 'Pole kablowe' },
   napowietrzne: { nazwaBezRoli: 'Pole napowietrzne' },
   nop_lacznikowe: { nazwaBezRoli: 'Pole łącznikowe NOP' },
+  bateria_kondensatorow: { rola: 'BATERIA_KONDENSATOROW' },
 };
 
 /** Nazwa rodzaju pola katalogu — z kanonu ról pól, a dla rodzaju bez roli — jego własna. */

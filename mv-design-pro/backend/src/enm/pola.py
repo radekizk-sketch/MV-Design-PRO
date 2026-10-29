@@ -68,7 +68,10 @@ def _pole_rekordu(rekord: object, klucz: str) -> object:
     return getattr(rekord, klucz, None)
 
 
-def _napis(wartosc: object) -> str | None:
+def napis_lub_none(wartosc: object) -> str | None:
+    """Niepusty napis z ładunku albo rekordu (bez odstępów brzegowych); `None` — brak wartości,
+    wartość pusta albo nie-napis. JEDNA definicja dla modułów operacji i odczytów pól
+    (wcześniej dziewięć identycznych kopii `_napis` w `enm/*`)."""
     return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
 
 
@@ -84,7 +87,7 @@ def pola(enm: Mapping[str, Any] | EnergyNetworkModel) -> list[Any]:
 
 def pole(enm: Mapping[str, Any] | EnergyNetworkModel, ref_id: object) -> Any | None:
     """Rekord pola o identyfikatorze `ref_id` (`None`, gdy nie ma)."""
-    szukany = _napis(ref_id)
+    szukany = napis_lub_none(ref_id)
     if szukany is None:
         return None
     for rekord in pola(enm):
@@ -101,7 +104,7 @@ def pole_aparatu(enm: Mapping[str, Any] | EnergyNetworkModel, element_ref: objec
     """Pole, którego `equipment_refs` wskazuje element (aparat pola, przekładnik,
     transformator) — pierwsze w kolejności zapisu; `None`, gdy element nie należy do pola.
     Rekord pola jest JEDYNYM źródłem przynależności elementu do pola."""
-    szukany = _napis(element_ref)
+    szukany = napis_lub_none(element_ref)
     if szukany is None:
         return None
     for rekord in pola(enm):
@@ -113,7 +116,7 @@ def pole_aparatu(enm: Mapping[str, Any] | EnergyNetworkModel, element_ref: objec
 
 def pola_stacji(enm: Mapping[str, Any] | EnergyNetworkModel, substation_ref: object) -> list[Any]:
     """Pola stacji (SN i nN) w kolejności zapisu."""
-    stacja = _napis(substation_ref)
+    stacja = napis_lub_none(substation_ref)
     if stacja is None:
         return []
     return [r for r in pola(enm) if _pole_rekordu(r, "substation_ref") == stacja]
@@ -123,12 +126,12 @@ def pola_wszystkich_stacji(enm: Mapping[str, Any] | EnergyNetworkModel) -> list[
     """Pola WSZYSTKICH stacji (SN i nN) w kolejności zapisu — bez pól rozdzielnic odgałęźnych
     ZKSN (te należą do punktu rozgałęzienia, `pola_zksn`). Zbiór read-modelu pola i analiz
     czytających pola stacji (kontrakt `BayBaseModel.substation_ref` jest wymagany)."""
-    return [r for r in pola(enm) if _napis(_pole_rekordu(r, "substation_ref")) is not None]
+    return [r for r in pola(enm) if napis_lub_none(_pole_rekordu(r, "substation_ref")) is not None]
 
 
 def pola_zksn(enm: Mapping[str, Any] | EnergyNetworkModel, branch_point_ref: object) -> list[Any]:
     """Pola rozdzielnicy odgałęźnej ZKSN wskazanego punktu rozgałęzienia."""
-    punkt = _napis(branch_point_ref)
+    punkt = napis_lub_none(branch_point_ref)
     if punkt is None:
         return []
     return [r for r in pola(enm) if _pole_rekordu(r, "branch_point_ref") == punkt]
@@ -139,7 +142,7 @@ def stacja_pola(enm: Mapping[str, Any] | EnergyNetworkModel, ref_id: object) -> 
     rekord = pole(enm, ref_id)
     if rekord is None:
         return None
-    wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
+    wlasciciel = napis_lub_none(_pole_rekordu(rekord, "substation_ref"))
     if wlasciciel is None:
         return None
     for stacja in _kolekcja(enm, "substations"):
@@ -152,7 +155,7 @@ def napiecia_szyn(enm: Mapping[str, Any] | EnergyNetworkModel) -> dict[str, floa
     """`bus_ref` → napięcie znamionowe szyny [kV] (brak = `None`)."""
     wynik: dict[str, float | None] = {}
     for szyna in _kolekcja(enm, "buses"):
-        ref = _napis(_pole_rekordu(szyna, "ref_id"))
+        ref = napis_lub_none(_pole_rekordu(szyna, "ref_id"))
         if ref is None:
             continue
         napiecie = _pole_rekordu(szyna, "voltage_kv")
@@ -181,7 +184,7 @@ def stacje_gpz(enm: Mapping[str, Any] | EnergyNetworkModel) -> frozenset[str]:
         ref
         for stacja in _kolekcja(enm, "substations")
         if _pole_rekordu(stacja, "station_type") == "gpz"
-        and (ref := _napis(_pole_rekordu(stacja, "ref_id"))) is not None
+        and (ref := napis_lub_none(_pole_rekordu(stacja, "ref_id"))) is not None
     )
 
 
@@ -208,10 +211,10 @@ def czy_pole_nn(
     `poziom` — dane predykatu zebrane raz (`poziom_pol`) przez wołającego, który ocenia wiele
     pól; bez niego predykat zbiera je sam (jedno pole)."""
     dane = poziom if poziom is not None else poziom_pol(enm)
-    wlasciciel = _napis(_pole_rekordu(rekord, "substation_ref"))
+    wlasciciel = napis_lub_none(_pole_rekordu(rekord, "substation_ref"))
     if wlasciciel is not None and wlasciciel in dane.stacje_gpz:
         return False
-    szyna = _napis(_pole_rekordu(rekord, "bus_ref"))
+    szyna = napis_lub_none(_pole_rekordu(rekord, "bus_ref"))
     if szyna is None:
         return False
     return w_pasmie_nn(dane.napiecia.get(szyna))
@@ -223,7 +226,7 @@ def pola_wg_stacji(enm: Mapping[str, Any] | EnergyNetworkModel) -> dict[str, lis
     dla każdej stacji). Pola ZKSN (bez stacji) nie wchodzą."""
     wynik: dict[str, list[Any]] = {}
     for rekord in pola(enm):
-        stacja = _napis(_pole_rekordu(rekord, "substation_ref"))
+        stacja = napis_lub_none(_pole_rekordu(rekord, "substation_ref"))
         if stacja is not None:
             wynik.setdefault(stacja, []).append(rekord)
     return wynik
@@ -264,9 +267,9 @@ def pola_wg_szyny(
     obsługuje je punkt rozgałęzienia, nie stacja."""
     wg_szyny: dict[str, list[Any]] = {}
     for rekord in pola(enm):
-        if _napis(_pole_rekordu(rekord, "substation_ref")) is None:
+        if napis_lub_none(_pole_rekordu(rekord, "substation_ref")) is None:
             continue
-        szyna = _napis(_pole_rekordu(rekord, "bus_ref"))
+        szyna = napis_lub_none(_pole_rekordu(rekord, "bus_ref"))
         if szyna is None:
             continue
         wg_szyny.setdefault(szyna, []).append(rekord)
@@ -290,20 +293,20 @@ KLUCZ_POLA_WYTWORCY = "field_ref"
 def ref_pola_wytworcy(generator: object) -> str | None:
     """Identyfikator pola, w którym stoi wytwórca (`Generator.meta.field_ref`), albo `None`."""
     meta = _pole_rekordu(generator, "meta")
-    return _napis(meta.get(KLUCZ_POLA_WYTWORCY)) if isinstance(meta, Mapping) else None
+    return napis_lub_none(meta.get(KLUCZ_POLA_WYTWORCY)) if isinstance(meta, Mapping) else None
 
 
 def zacisk_pola(rekord: object) -> str | None:
     """Własny zacisk pola (szyna za aparatem pola) — `terminal_bus_ref`, jedyny nośnik."""
     if rekord is None:
         return None
-    return _napis(_pole_rekordu(rekord, "terminal_bus_ref"))
+    return napis_lub_none(_pole_rekordu(rekord, "terminal_bus_ref"))
 
 
 def punkt_przylaczenia_pola(rekord: object) -> str | None:
     """Szyna, na której pole przyłącza element, któremu służy: własny zacisk, a bez zacisku —
     szyna pola (POLA-W-TORZE)."""
-    return zacisk_pola(rekord) or _napis(_pole_rekordu(rekord, "bus_ref"))
+    return zacisk_pola(rekord) or napis_lub_none(_pole_rekordu(rekord, "bus_ref"))
 
 
 def rola_kanoniczna_pola(rekord: object) -> str:
@@ -423,7 +426,7 @@ def zbuduj_pole(
     meta_kopia: dict[str, Any] = copy.deepcopy(dict(meta)) if meta else {}
     rola_kanoniczna = kanoniczna_rola_pola_sn(field_role) if field_role else None
     wybor: dict[str, Any] | None = None
-    if wybor_bloku and _napis(wybor_bloku.get("factory_configuration_ref")):
+    if wybor_bloku and napis_lub_none(wybor_bloku.get("factory_configuration_ref")):
         wybor = {"factory_configuration_ref": str(wybor_bloku["factory_configuration_ref"]).strip()}
         numer = wybor_bloku.get("factory_unit_index")
         if isinstance(numer, int) and not isinstance(numer, bool):
@@ -431,8 +434,8 @@ def zbuduj_pole(
     pochodzenie: dict[str, Any] | None = None
     if metadane_pochodzenia:
         kandydat = {
-            "bay_kind": _napis(metadane_pochodzenia.get("bay_kind")),
-            "source_status": _napis(metadane_pochodzenia.get("source_status")),
+            "bay_kind": napis_lub_none(metadane_pochodzenia.get("bay_kind")),
+            "source_status": napis_lub_none(metadane_pochodzenia.get("source_status")),
             "source_refs": [str(r) for r in (metadane_pochodzenia.get("source_refs") or [])],
         }
         if kandydat["bay_kind"] or kandydat["source_status"] or kandydat["source_refs"]:
@@ -449,35 +452,35 @@ def zbuduj_pole(
         "tags": [str(t) for t in (tags or [])],
         "meta": meta_kopia,
         "bay_role": bay_role,
-        "substation_ref": _napis(substation_ref),
-        "branch_point_ref": _napis(branch_point_ref),
-        "branch_point_port_id": _napis(branch_point_port_id),
+        "substation_ref": napis_lub_none(substation_ref),
+        "branch_point_ref": napis_lub_none(branch_point_ref),
+        "branch_point_port_id": napis_lub_none(branch_point_port_id),
         "bus_ref": bus_ref,
         "field_role": rola_kanoniczna or None,
-        "terminal_bus_ref": _napis(terminal_bus_ref),
-        "gpz_section_id": _napis(gpz_section_id),
+        "terminal_bus_ref": napis_lub_none(terminal_bus_ref),
+        "gpz_section_id": napis_lub_none(gpz_section_id),
         "equipment_refs": [str(r) for r in (equipment_refs or [])],
-        "protection_ref": _napis(protection_ref),
+        "protection_ref": napis_lub_none(protection_ref),
         "protection_codes": [str(k) for k in (protection_codes or [])],
-        "bay_template_ref": _napis(bay_template_ref),
-        "switchgear_family_ref": _napis(switchgear_family_ref),
-        "manufacturer_ref": _napis(manufacturer_ref),
-        "apparatus_catalog_ref": _napis(apparatus_catalog_ref),
-        "config_id": _napis(config_id),
+        "bay_template_ref": napis_lub_none(bay_template_ref),
+        "switchgear_family_ref": napis_lub_none(switchgear_family_ref),
+        "manufacturer_ref": napis_lub_none(manufacturer_ref),
+        "apparatus_catalog_ref": napis_lub_none(apparatus_catalog_ref),
+        "config_id": napis_lub_none(config_id),
         "catalog_bindings": copy.deepcopy(dict(catalog_bindings)) if catalog_bindings else None,
         "primary_devices": porty_toru_pola(
             aparaty_ze_stanem_pola(
                 [copy.deepcopy(dict(d)) for d in (primary_devices or [])], stan_obiektu
             )
         ),
-        "funkcja_pomiaru": _napis(funkcja_pomiaru),
-        "rodzaj_pomiaru": _napis(rodzaj_pomiaru),
+        "funkcja_pomiaru": napis_lub_none(funkcja_pomiaru),
+        "rodzaj_pomiaru": napis_lub_none(rodzaj_pomiaru),
         "wybor_bloku": wybor,
         "metadane_pochodzenia": pochodzenie,
         "surge_arresters": [copy.deepcopy(dict(o)) for o in (surge_arresters or [])],
-        "bay_number": _napis(bay_number),
-        "feeder_short_name": _napis(feeder_short_name),
-        "outgoing_destination_ref": _napis(outgoing_destination_ref),
+        "bay_number": napis_lub_none(bay_number),
+        "feeder_short_name": napis_lub_none(feeder_short_name),
+        "outgoing_destination_ref": napis_lub_none(outgoing_destination_ref),
         "stan_obiektu": stan_obiektu,
     }
     return waliduj_rekord_pola(rekord)
@@ -593,7 +596,7 @@ def _wszystkie_ref_id(enm: Mapping[str, Any]) -> set[str]:
         "branch_points",
     ):
         for elem in _kolekcja(enm, klucz):
-            ref = _napis(elem.get("ref_id"))
+            ref = napis_lub_none(elem.get("ref_id"))
             if ref:
                 refs.add(ref)
     return refs

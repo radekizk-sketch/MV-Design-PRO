@@ -32,7 +32,7 @@ przyłączenia, których model nie niesie), nieobecna → ``NIEJEDNOZNACZNY`` �
 funkcja dopuszczalna → ``NIE_DOTYCZY``; zakazana obecna → ``NIE_SPELNIA``, nieobecna →
 ``SPELNIA``; SPZ w linii kablowej → ``NIE_DOTYCZY`` (wymóg dotyczy linii napowietrznych).
 
-NIEZGODNOŚCI WALIDATORA (W049–W053) — rekordy z kodem, zdaniem i akcją; walidator modelu
+NIEZGODNOŚCI WALIDATORA (W053–W057) — rekordy z kodem, zdaniem i akcją; walidator modelu
 (`enm.validator`) je raportuje, operacje ich nie blokują (zmiana sieci za polem, np. dołożenie
 źródła, nie jest odrzucana — projektant poprawia klasę albo wykonanie pola).
 """
@@ -52,6 +52,7 @@ from network_model.catalog.bay_templates import (
     WYMAGANIA_EAZ_KLASY_POLA,
 )
 from network_model.catalog.funkcje_eaz import opis_funkcji_eaz_pl
+from network_model.catalog.obwody_wtorne_pola import ObwodyWtornePola, WejscieFunkcjiEaz
 from network_model.pochodne.jednostki import kw_na_mw, mw_na_kw
 from werdykt.etykiety import etykieta
 from werdykt.kontrakt import Etykieta, StatusWerdyktu, WyjasnienieWerdyktu
@@ -68,7 +69,9 @@ __all__ = [
     "KOD_SCO_W_POLU_Z_GENERACJA",
     "KOD_SPZ_W_POLU_DEDYKOWANYM",
     "KODY_WALIDATORA_POLA_LINIOWEGO",
+    "NapiecieZwrotnePola",
     "NiezgodnoscPolaLiniowego",
+    "ObwodFunkcjiPola",
     "OcenaFunkcjiPola",
     "OcenaPolaLiniowego",
     "PROG_AJEE_ODBIORCY_KW",
@@ -86,11 +89,11 @@ KOD_AJEE_BRAK_RDZENIA = "pole.ajee_brak_rdzenia_rozliczeniowego"
 
 #: Kod niezgodności → kod walidatora modelu (kanon gotowości w `domain.readiness_bridge`).
 KODY_WALIDATORA_POLA_LINIOWEGO: dict[str, str] = {
-    KOD_GENERACJA_Z_POLA_ODBIORCZEGO: "W049",
-    KOD_ODBIORY_ZA_POLEM_DEDYKOWANYM: "W050",
-    KOD_SCO_W_POLU_Z_GENERACJA: "W051",
-    KOD_SPZ_W_POLU_DEDYKOWANYM: "W052",
-    KOD_AJEE_BRAK_RDZENIA: "W053",
+    KOD_GENERACJA_Z_POLA_ODBIORCZEGO: "W053",
+    KOD_ODBIORY_ZA_POLEM_DEDYKOWANYM: "W054",
+    KOD_SCO_W_POLU_Z_GENERACJA: "W055",
+    KOD_SPZ_W_POLU_DEDYKOWANYM: "W056",
+    KOD_AJEE_BRAK_RDZENIA: "W057",
 }
 
 AKCJA_NAPRAWCZA_POLA_LINIOWEGO_PL: dict[str, str] = {
@@ -162,7 +165,7 @@ class NiezgodnoscPolaLiniowego:
     bay_ref: str
     komunikat_pl: str
     #: Akcja naprawcza (`AKCJA_NAPRAWCZA_POLA_LINIOWEGO_PL`) — jedno źródło dla walidatora
-    #: (`suggested_fix` W049–W053) i karty pola (`field-view` → `ocena_pola_liniowego`).
+    #: (`suggested_fix` W053–W057) i karty pola (`field-view` → `ocena_pola_liniowego`).
     akcja_pl: str
 
 
@@ -170,6 +173,39 @@ def _niezgodnosc(kod: str, bay_ref: str, komunikat_pl: str) -> NiezgodnoscPolaLi
     return NiezgodnoscPolaLiniowego(
         kod, bay_ref, komunikat_pl, AKCJA_NAPRAWCZA_POLA_LINIOWEGO_PL[kod]
     )
+
+
+@dataclass(frozen=True)
+class ObwodFunkcjiPola:
+    """Obwód wtórny funkcji EAZ pola wg wzorca (`ObwodyWtornePola`) rozwiązany na aparatach
+    TEGO pola: z czego funkcja mierzy (rdzeń, uzwojenie, przekładnik Ferrantiego, sygnał), na
+    co działa i ze statusem weryfikacji rysunku. Funkcja zestawu pola bez obwodu na rysunku
+    wzorca ma ``blok_rysunku = None`` i zdanie, dlaczego (np. f< w Z.10 — wymóg klasy)."""
+
+    kod: str
+    funkcja_pl: str
+    obecna: bool
+    blok_rysunku: str | None
+    wejscia_pl: tuple[str, ...]
+    wyjscia_pl: str
+    weryfikacja: str
+    uwaga: str | None
+
+
+@dataclass(frozen=True)
+class NapiecieZwrotnePola:
+    """Napięcie po stronie linii przy otwartym wyłączniku (Z.11.1/Z.11 — „z pomiarem napięcia
+    zwrotnego"): czym jest mierzone (obwód funkcji NZ wzorca), czy w polu jest blokada NZ, czy
+    za polem są źródła, które mogą je podtrzymać, i stan z pomiaru — WYŁĄCZNIE z rekordu ruchu
+    pola (`Bay.runtime_state`, łączność „ok"); bez niego stan jest nieustalony, nie „brak"."""
+
+    pomiar_pl: str
+    blokada_nz: bool
+    zrodla_za_polem: int
+    mozliwe: bool
+    wyjasnienie_pl: str
+    stan_pomiaru: str
+    stan_pomiaru_pl: str
 
 
 @dataclass(frozen=True)
@@ -187,6 +223,11 @@ class OcenaPolaLiniowego:
     ajee_przyczyna: str
     oceny_funkcji: tuple[OcenaFunkcjiPola, ...]
     niezgodnosci: tuple[NiezgodnoscPolaLiniowego, ...]
+    #: Obwody wtórne wzorca (sygnały do wyłącznika, obwody okrężne, nadrzędne) — dane szablonu
+    #: pola (`BayTemplate.obwody_wtorne`); `None` — pole bez szablonu z rysunkiem obwodów.
+    obwody_wtorne: ObwodyWtornePola | None
+    obwody_funkcji: tuple[ObwodFunkcjiPola, ...]
+    napiecie_zwrotne: NapiecieZwrotnePola | None
 
 
 def _lista(enm: Mapping[str, Any], nazwa: str) -> list[Mapping[str, Any]]:
@@ -457,6 +498,13 @@ def ocena_pola_liniowego(
                 "nie ma rdzenia rozliczeniowego.",
             )
         )
+    obwody = szablon.obwody_wtorne if szablon is not None else None
+    aparaty = {
+        str(a.get("designation")): a
+        for a in pole.get("primary_devices") or []
+        if isinstance(a, Mapping) and a.get("designation")
+    }
+    opis_szablonu = (szablon.podstawa or szablon.template_id) if szablon is not None else ""
     return OcenaPolaLiniowego(
         bay_ref=bay_ref,
         klasa_zadeklarowana=str(zadeklarowana) if zadeklarowana is not None else None,
@@ -471,6 +519,149 @@ def ocena_pola_liniowego(
         ajee_przyczyna=przyczyna_ajee,
         oceny_funkcji=oceny,
         niezgodnosci=tuple(niezgodnosci),
+        obwody_wtorne=obwody,
+        obwody_funkcji=_obwody_funkcji(obwody, kody, aparaty, opis_szablonu),
+        napiecie_zwrotne=_napiecie_zwrotne(obwody, pole, aparaty, kody, moduly),
+    )
+
+
+#: Numer rdzenia/uzwojenia zapisem rysunku standardu (I, II, III).
+_RZYMSKIE = {1: "I", 2: "II", 3: "III", 4: "IV"}
+_NAZWA_PRZEKLADNIKA_PL = {
+    "RDZEN_CT": "przekładnika prądowego",
+    "UZWOJENIE_VT": "przekładnika napięciowego",
+}
+_RODZAJ_OBWODU_PL = {"RDZEN_CT": "rdzeń", "UZWOJENIE_VT": "uzwojenie"}
+_RODZAJ_APARATU_OBWODU = {"RDZEN_CT": "CT", "UZWOJENIE_VT": "VT"}
+
+
+def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str, Any]]) -> str:
+    """Wejście funkcji rozwiązane na aparacie pola: tabliczka z rekordu pola (rdzeń CT,
+    uzwojenie VT, przekładnia Ferrantiego) albo jawny brak aparatu w polu."""
+    if wejscie.rodzaj == "SYGNAL":
+        return f"sygnał „{wejscie.sygnal}”"
+    aparat = aparaty.get(str(wejscie.aparat))
+    if wejscie.rodzaj == "PRZEKLADNIK_FERRANTIEGO":
+        if aparat is None or aparat.get("kind") != "CORE_BALANCE_CT":
+            return f"przekładnik Ferrantiego {wejscie.aparat} — brak aparatu w polu"
+        przekladnia = aparat.get("przekladnia")
+        return f"przekładnik Ferrantiego {wejscie.aparat}" + (
+            f", przekładnia {przekladnia}" if przekladnia else ", przekładnia nieopisana"
+        )
+    rodzaj_pl = _RODZAJ_OBWODU_PL[wejscie.rodzaj]
+    # Numer obwodu jest wymagany dla rdzenia i uzwojenia (`WejscieFunkcjiEaz`); brak — jawny
+    # opis, nie podstawiona liczba.
+    numer = (
+        "bez numeru" if wejscie.numer is None else _RZYMSKIE.get(wejscie.numer, str(wejscie.numer))
+    )
+    poczatek = f"{rodzaj_pl} {numer} {_NAZWA_PRZEKLADNIKA_PL[wejscie.rodzaj]} {wejscie.aparat}"
+    oczekiwany = _RODZAJ_APARATU_OBWODU[wejscie.rodzaj]
+    if aparat is None or aparat.get("kind") != oczekiwany:
+        return f"{poczatek} — brak aparatu w polu"
+    tabliczki = aparat.get("rdzenie" if oczekiwany == "CT" else "uzwojenia") or []
+    if wejscie.numer is None or wejscie.numer > len(tabliczki):
+        return f"{poczatek} — tabliczka aparatu nie opisuje tego obwodu"
+    t = tabliczki[wejscie.numer - 1]
+    moc_va = _liczba(t.get("moc_va"))
+    moc = "moc nieopisana" if moc_va is None else f"{moc_va:g} VA".replace(".", ",")
+    return f"{poczatek}: {t.get('przekladnia')}, {moc}, klasa {t.get('klasa')}"
+
+
+def _obwody_funkcji(
+    obwody: ObwodyWtornePola | None,
+    kody: list[str],
+    aparaty: Mapping[str, Mapping[str, Any]],
+    opis_szablonu: str,
+) -> tuple[ObwodFunkcjiPola, ...]:
+    """Obwody funkcji zestawu pola (kolejność `Bay.protection_codes`) i funkcji wzorca, których
+    pole nie ma (``obecna = False`` — projektant widzi, czego brakuje względem rysunku)."""
+    if obwody is None:
+        return ()
+    wg_kodu = {p.funkcja: p for p in obwody.powiazania}
+    wynik: list[ObwodFunkcjiPola] = []
+    for kod in [*kody, *(k for k in wg_kodu if k not in kody)]:
+        p = wg_kodu.get(kod)
+        if p is None:
+            wynik.append(
+                ObwodFunkcjiPola(
+                    kod=kod,
+                    funkcja_pl=opis_funkcji_eaz_pl(kod),
+                    obecna=True,
+                    blok_rysunku=None,
+                    wejscia_pl=(
+                        f"rysunek wzorca ({opis_szablonu}) nie rysuje tej funkcji — obwód "
+                        "pomiarowy i wyjście dobiera projektant",
+                    ),
+                    wyjscia_pl="nieopisane we wzorcu",
+                    weryfikacja="ZWERYFIKOWANE_NA_RYSUNKU",
+                    uwaga=None,
+                )
+            )
+            continue
+        wyjscia = ", ".join(p.wyjscia)
+        wynik.append(
+            ObwodFunkcjiPola(
+                kod=kod,
+                funkcja_pl=opis_funkcji_eaz_pl(kod),
+                obecna=kod in kody,
+                blok_rysunku=p.blok_rysunku,
+                wejscia_pl=tuple(_opis_wejscia(w, aparaty) for w in p.wejscia),
+                wyjscia_pl=f"{wyjscia} → wyłącznik {p.wylacznik}" if p.wylacznik else wyjscia,
+                weryfikacja=p.weryfikacja,
+                uwaga=p.uwaga,
+            )
+        )
+    return tuple(wynik)
+
+
+def _napiecie_zwrotne(
+    obwody: ObwodyWtornePola | None,
+    pole: Mapping[str, Any],
+    aparaty: Mapping[str, Mapping[str, Any]],
+    kody: list[str],
+    moduly: tuple[ModulZaPolem, ...],
+) -> NapiecieZwrotnePola | None:
+    """Napięcie zwrotne pola wzorca z blokadą NZ (Z.11.1/Z.11); `None` — wzorzec bez pomiaru."""
+    nz = next((p for p in (obwody.powiazania if obwody else []) if p.funkcja == "NZ"), None)
+    if nz is None:
+        return None
+    zrodla = sum(1 for m in moduly if m.p_kw > 0.0)
+    if zrodla:
+        wyjasnienie = (
+            f"za polem pracuje {zrodla} moduł(y) wytwarzania — przy otwartym wyłączniku linia "
+            "może pozostać pod napięciem; załączenie blokuje funkcja NZ (sygnał „Blok. ZW”)"
+        )
+    else:
+        wyjasnienie = (
+            "w konfiguracji normalnej za polem nie ma modułu wytwarzania — napięcie po stronie "
+            "linii przy otwartym wyłączniku może pochodzić wyłącznie z zasilania od drugiego "
+            "końca linii"
+        )
+    ruch = pole.get("runtime_state")
+    lacznosc = ruch.get("secondary_communication_status") if isinstance(ruch, Mapping) else None
+    if isinstance(ruch, Mapping) and lacznosc == "ok":
+        pod = bool((ruch.get("energization_and_safety") or {}).get("energized_from_feeder_side"))
+        stan = "POD_NAPIECIEM" if pod else "BEZ_NAPIECIA"
+        stan_pl = (
+            "pomiar: linia pod napięciem od strony odpływu"
+            if pod
+            else "pomiar: linia bez napięcia od strony odpływu"
+        )
+    else:
+        stan = "NIEUSTALONY"
+        stan_pl = (
+            "stan z pomiaru nieustalony — model nie niesie rekordu ruchu pola z łącznością "
+            "z urządzeniem polowym"
+        )
+    return NapiecieZwrotnePola(
+        pomiar_pl="; ".join(_opis_wejscia(w, aparaty) for w in nz.wejscia)
+        + f" (blok {nz.blok_rysunku}, wyjście „{', '.join(nz.wyjscia)}”)",
+        blokada_nz="NZ" in kody,
+        zrodla_za_polem=zrodla,
+        mozliwe=zrodla > 0,
+        wyjasnienie_pl=wyjasnienie,
+        stan_pomiaru=stan,
+        stan_pomiaru_pl=stan_pl,
     )
 
 

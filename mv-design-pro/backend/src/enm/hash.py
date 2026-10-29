@@ -153,6 +153,22 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # listy. `None` = tabliczka niedostarczona (każdy przekładnik sprzed karty) — poza odciskiem;
     # podana lista jest treścią modelu (dobór obciążenia obwodów wtórnych).
     "measurements": ("rdzenie", "uzwojenia"),
+    # + karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie
+    # (układ połączeń, stopnie, tolerancja pojemności, dławik ograniczający, rezystory
+    # rozładowcze). `None` = parametr nienadany przez projektanta (rozstrzyga typ katalogowy
+    # albo wartość robocza rejestru) — poza odciskiem, żeby bateria sprzed karty haszowała
+    # jak przed nią; podany zmienia wynik rozpływu (stopnie, dławik) albo zwarcia
+    # doziemnego (układ), więc zmienia odcisk.
+    "shunt_capacitors": (
+        "uklad_polaczen",
+        "liczba_stopni",
+        "stopnie_zalaczone",
+        "tolerancja_pojemnosci_min_proc",
+        "tolerancja_pojemnosci_max_proc",
+        "dlawik_ograniczajacy",
+        "dlawik_indukcyjnosc_mh",
+        "rezystory_rozladowcze_wewnetrzne",
+    ),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
@@ -196,6 +212,9 @@ _POLA_SKASOWANE_W_ODCISKU_CIAGOW: tuple[str, ...] = ("nop_station_ref",)
 #: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
 _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
     "bays": ("surge_arresters",),
+    # Karta UX-04/POLE-BKR-MODEL: transformatory, których wyłączenie wyłącza baterię
+    # (IRiESD II.4.5.4.4.2). Pusta lista = powiązanie nienadane — poza odciskiem.
+    "shunt_capacitors": ("wylaczenie_od_transformatorow",),
 }
 
 #: Karta UX-04/POLE-LINIOWE-WZORZEC: pola-LISTY ELEMENTÓW ZAGNIEŻDŻONYCH rekordu (aparat pola
@@ -211,8 +230,11 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] 
 #: Ta sama karta (korekta właściciela 2026-10-28): pola ELEMENTÓW ZAGNIEŻDŻONYCH o wartości
 #: domyślnej `None` — stan obiektu instancji aparatu pola (`BayPrimaryDevice.stan_obiektu`).
 #: `None` = aparat sprzed atrybutu — poza odciskiem; nadany stan jest treścią modelu.
+#: Uzupełnienie właściciela 2026-10-29 (wzorzec pola Z.10/Z.11.1): przekładnia przekładnika
+#: Ferrantiego (`BayPrimaryDevice.przekladnia`) — to samo prawo; test odcisku:
+#: `tests/enm/test_pole_liniowe_gpz_szablony.py::test_odcisk_pustych_list_jak_brak_pola`.
 _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
-    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie")},
+    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie", "przekladnia")},
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja

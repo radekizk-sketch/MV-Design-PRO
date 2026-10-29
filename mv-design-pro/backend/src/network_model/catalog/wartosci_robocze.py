@@ -29,7 +29,10 @@ RODZINY:
     zachowawcza w OBU kierunkach (największy I″k,max i najmniejszy I″k,min);
   * maszyna wirująca (``MASZYNA_SYNCHRONICZNA`` / ``MASZYNA_ASYNCHRONICZNA``) — parametry
     zwarciowe IEC 60909-0:2016 pkt 6.3 i 6.7 (x″d, cos φ_r, I_LR/I_rM, η_r, liczba par biegunów p),
-    nośnik wartości projektanta: ``Generator.overrides``.
+    nośnik wartości projektanta: ``Generator.overrides``;
+  * bateria kondensatorów równoległych SN (karta UX-04/POLE-BKR-MODEL) — układ połączeń, liczba
+    stopni, tolerancja pojemności, dławik ograniczający i rezystory rozładowcze; nośnik wartości
+    projektanta: pola elementu ``ShuntCapacitor``, nośnik danych typu: ``materialized_params``.
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Final, Literal, Protocol
 
 from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
+from network_model.core.bateria_kondensatorow import NAZWY_UKLADOW_POLACZEN_BATERII_PL
 from network_model.core.voltage_factor import (
     ETYKIETA_TOLERANCJI_NN,
     TOLERANCJE_NAPIECIA_NN,
@@ -2009,3 +2013,301 @@ def zalozenia_parametrow_maszyn(
             }
         )
     return tuple(zalozenia)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: bateria kondensatorów równoległych SN (karta UX-04/POLE-BKR-MODEL)
+# ---------------------------------------------------------------------------
+#
+# Pozycja referencyjna katalogu baterii podaje Q_n, U_n, straty i układ połączeń (Zeszyt 1
+# §17); tolerancji pojemności, dławika ograniczającego i rezystorów rozładowczych nie podaje
+# (dane karty producenta). Brak danej nie blokuje obliczeń: rozstrzygnięcie daje wartość
+# projektanta na elemencie (dana projektu, nie dana przyjęta — jak geometria linii 110 kV),
+# potem parametr typu (``materialized_params`` elementu), a na końcu propozycję tego rejestru —
+# wyłącznie ona jest daną przyjętą ``ESTIMATED`` w każdym wyniku, do którego wchodzi.
+
+PARAMETR_BATERII_UKLAD = "uklad_polaczen"
+PARAMETR_BATERII_LICZBA_STOPNI = "liczba_stopni"
+PARAMETR_BATERII_TOLERANCJA_MIN = "tolerancja_pojemnosci_min_proc"
+PARAMETR_BATERII_TOLERANCJA_MAX = "tolerancja_pojemnosci_max_proc"
+PARAMETR_BATERII_DLAWIK = "dlawik_ograniczajacy"
+PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA = "dlawik_indukcyjnosc_mh"
+PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE = "rezystory_rozladowcze_wewnetrzne"
+#: Kolejność stała (determinizm odpowiedzi i danych przyjętych); równa liście pól typu
+#: ``catalog.types.POLA_BATERII_KONDENSATOROW_TYPU`` (przypięte testem modelu baterii).
+PARAMETRY_BATERII_KONDENSATOROW: tuple[str, ...] = (
+    PARAMETR_BATERII_UKLAD,
+    PARAMETR_BATERII_LICZBA_STOPNI,
+    PARAMETR_BATERII_TOLERANCJA_MIN,
+    PARAMETR_BATERII_TOLERANCJA_MAX,
+    PARAMETR_BATERII_DLAWIK,
+    PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA,
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+)
+
+_ODNIESIENIE_ZESZYTU_1_BKR = (
+    "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, §17 s. 32 i Zał. 16"
+)
+_ODNIESIENIE_TOLERANCJI_POJEMNOSCI = (
+    "IEC 60871-1 (kondensatory równoległe do sieci powyżej 1000 V) — tolerancja pojemności "
+    "jednostki −5 %…+10 % wartości znamionowej (parafraza; numer punktu nie został "
+    "zweryfikowany ze źródłem)"
+)
+
+
+@dataclass(frozen=True)
+class PropozycjaDanejBaterii:
+    """Propozycja wartości roboczej parametru baterii kondensatorów (liczba, wybór, tak/nie)."""
+
+    parametr: str
+    nazwa_pl: str
+    wartosc: str | int | float | bool
+    jednostka: str | None
+    rodzaj_zrodla: RodzajZrodla
+    odniesienie: str
+    uzasadnienie_pl: str
+    wplyw_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": self.parametr,
+            "nazwa_pl": self.nazwa_pl,
+            "wartosc": self.wartosc,
+            "jednostka": self.jednostka,
+            "rodzaj_zrodla": self.rodzaj_zrodla,
+            "odniesienie": self.odniesienie,
+            "uzasadnienie_pl": self.uzasadnienie_pl,
+            "wplyw_pl": self.wplyw_pl,
+        }
+
+
+#: Propozycje rodziny baterii — jedno źródło (determinizm brzmienia). Indukcyjność dławika
+#: jest propozycją WYŁĄCZNIE dla baterii z dławikiem (bez dławika parametr nie dotyczy).
+PROPOZYCJE_BATERII_KONDENSATOROW: Mapping[str, PropozycjaDanejBaterii] = {
+    PARAMETR_BATERII_UKLAD: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_UKLAD,
+        nazwa_pl="układ połączeń baterii",
+        wartosc="PODWOJNA_GWIAZDA_IZOLOWANA",
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Ani element, ani typ nie podaje układu połączeń — przyjęto podwójną gwiazdę "
+            "z izolowanymi punktami gwiazd, wymaganą dla baterii rozdzielni SN GPZ"
+        ),
+        wplyw_pl=(
+            "układ rozstrzyga o składowej zerowej: gwiazda izolowana i trójkąt nie dają drogi "
+            "zerowej ani prądu pojemnościowego przy zwarciu doziemnym, gwiazda uziemiona daje "
+            "Y0 = Y1 i zwiększa prąd pojemnościowy sieci; rozpływ symetryczny nie zależy od "
+            "układu"
+        ),
+    ),
+    PARAMETR_BATERII_LICZBA_STOPNI: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_LICZBA_STOPNI,
+        nazwa_pl="liczba stopni baterii",
+        wartosc=1,
+        jednostka="1",
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl="Ani element, ani typ nie podaje liczby stopni — przyjęto jeden stopień",
+        wplyw_pl=(
+            "przy jednym stopniu moc baterii jest w całości załączona albo wyłączona razem "
+            "z polem; podział na stopnie zmienia moc wyłącznie przy wyłączonych stopniach"
+        ),
+    ),
+    PARAMETR_BATERII_TOLERANCJA_MIN: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_TOLERANCJA_MIN,
+        nazwa_pl="dolna tolerancja pojemności",
+        wartosc=-5.0,
+        jednostka="%",
+        rodzaj_zrodla="NORMA",
+        odniesienie=_ODNIESIENIE_TOLERANCJI_POJEMNOSCI,
+        uzasadnienie_pl="Typ nie podaje tolerancji pojemności — przyjęto granicę normy",
+        wplyw_pl=(
+            "tolerancja wyznacza zakres mocy biernej baterii w śladzie rozpływu; wartość "
+            "nominalna rozpływu liczona jest z pojemności znamionowej"
+        ),
+    ),
+    PARAMETR_BATERII_TOLERANCJA_MAX: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_TOLERANCJA_MAX,
+        nazwa_pl="górna tolerancja pojemności",
+        wartosc=10.0,
+        jednostka="%",
+        rodzaj_zrodla="NORMA",
+        odniesienie=_ODNIESIENIE_TOLERANCJI_POJEMNOSCI,
+        uzasadnienie_pl="Typ nie podaje tolerancji pojemności — przyjęto granicę normy",
+        wplyw_pl=(
+            "tolerancja wyznacza zakres mocy biernej baterii w śladzie rozpływu; wartość "
+            "nominalna rozpływu liczona jest z pojemności znamionowej"
+        ),
+    ),
+    PARAMETR_BATERII_DLAWIK: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_DLAWIK,
+        nazwa_pl="dławik ograniczający prąd załączania",
+        wartosc=False,
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Ani element, ani typ nie podaje dławika — przyjęto baterię bez dławika, jak na "
+            "schemacie pola baterii (Zał. 16 nie przedstawia dławika)"
+        ),
+        wplyw_pl=(
+            "dławik szeregowy zwiększa admitancję baterii o czynnik 1/(1 − ω²LC); dla dławików "
+            "ograniczających prąd załączania zmiana mocy biernej jest rzędu setnych części "
+            "procenta"
+        ),
+    ),
+    PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA,
+        nazwa_pl="indukcyjność dławika ograniczającego",
+        wartosc=0.1,
+        jednostka="mH",
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=(
+            "założenie inżynierskie MV-DESIGN-PRO: rząd wielkości dławików ograniczających "
+            "prąd załączania baterii SN (dziesiąte części milihenra); bez źródła normowego"
+        ),
+        uzasadnienie_pl=(
+            "Bateria ma dławik, ale ani element, ani typ nie podaje jego indukcyjności — "
+            "przyjęto 0,1 mH"
+        ),
+        wplyw_pl=(
+            "przy 50 Hz reaktancja 0,1 mH to ok. 0,031 Ω wobec reaktancji baterii rzędu "
+            "dziesiątek do setek omów — zmiana mocy biernej poniżej 0,1 %; indukcyjność "
+            "decyduje o prądzie załączania, którego dziś żaden dobór aparatu nie czyta"
+        ),
+    ),
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE: PropozycjaDanejBaterii(
+        parametr=PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+        nazwa_pl="wewnętrzne rezystory rozładowcze jednostek",
+        wartosc=False,
+        jednostka=None,
+        rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+        odniesienie=_ODNIESIENIE_ZESZYTU_1_BKR,
+        uzasadnienie_pl=(
+            "Typ nie potwierdza wewnętrznych rezystorów rozładowczych — przyjęto ich brak "
+            "(założenie zachowawcze)"
+        ),
+        wplyw_pl=(
+            "przy braku rezystorów wewnętrznych pole baterii wymaga dwóch przekładników "
+            "napięciowych międzyfazowych do rozładowania (reguła walidatora W047); wartość "
+            "nie wchodzi do rozpływu ani do zwarć"
+        ),
+    ),
+}
+
+PochodzenieDanejBaterii = Literal["PROJEKTANT", "KATALOG", "PROPOZYCJA"]
+
+
+@dataclass(frozen=True)
+class DanaBateriiRozstrzygnieta:
+    """Rozstrzygnięty parametr baterii: wartość, pochodzenie i (dla propozycji) jej treść."""
+
+    parametr: str
+    wartosc: Any
+    pochodzenie: PochodzenieDanejBaterii | None
+    propozycja: PropozycjaDanejBaterii | None = None
+
+    @property
+    def robocza(self) -> bool:
+        return self.pochodzenie == "PROPOZYCJA"
+
+    def opis_zrodla_pl(self) -> str:
+        if self.pochodzenie == "PROPOZYCJA" and self.propozycja is not None:
+            p = self.propozycja
+            return (
+                f"wartość robocza ({_RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]}): "
+                f"{_zdanie(p.odniesienie)} {_zdanie(p.uzasadnienie_pl)} "
+                f"Wpływ: {_zdanie(p.wplyw_pl)}"
+            )
+        if self.pochodzenie == "PROJEKTANT":
+            return "dana projektu nadana na elemencie modelu"
+        if self.pochodzenie == "KATALOG":
+            return "dana typu katalogowego baterii"
+        return "parametr nie dotyczy tej baterii"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": self.parametr,
+            "wartosc": self.wartosc,
+            "pochodzenie": self.pochodzenie,
+            "wartosc_robocza": self.robocza,
+            "propozycja": self.propozycja.to_dict() if self.propozycja is not None else None,
+            "opis_zrodla_pl": self.opis_zrodla_pl(),
+        }
+
+
+def rozstrzygnij_dane_baterii(
+    element: Mapping[str, Any], typ: Mapping[str, Any] | None
+) -> dict[str, DanaBateriiRozstrzygnieta]:
+    """Pierwszeństwo: wartość elementu (projektant) > parametr typu > propozycja rejestru.
+
+    ``element`` — pola baterii z elementu modelu (``None`` = nienadane); ``typ`` —
+    ``materialized_params`` elementu (kopia typu katalogowego) albo ``None``. Indukcyjność
+    dławika dla baterii bez dławika nie dotyczy (``pochodzenie is None``, wartość ``None``).
+    Wynik w kolejności ``PARAMETRY_BATERII_KONDENSATOROW``.
+    """
+    karta = typ or {}
+    wynik: dict[str, DanaBateriiRozstrzygnieta] = {}
+    for parametr in PARAMETRY_BATERII_KONDENSATOROW:
+        if (
+            parametr == PARAMETR_BATERII_INDUKCYJNOSC_DLAWIKA
+            and not wynik[PARAMETR_BATERII_DLAWIK].wartosc
+        ):
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, None, None)
+            continue
+        if element.get(parametr) is not None:
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, element[parametr], "PROJEKTANT")
+        elif karta.get(parametr) is not None:
+            wynik[parametr] = DanaBateriiRozstrzygnieta(parametr, karta[parametr], "KATALOG")
+        else:
+            propozycja = PROPOZYCJE_BATERII_KONDENSATOROW[parametr]
+            wynik[parametr] = DanaBateriiRozstrzygnieta(
+                parametr, propozycja.wartosc, "PROPOZYCJA", propozycja
+            )
+    return wynik
+
+
+def dane_przyjete_baterii(
+    dane: Mapping[str, DanaBateriiRozstrzygnieta],
+    *,
+    miejsce_pl: str,
+    parametry: Iterable[str] | None = None,
+) -> tuple[DanaPrzyjeta, ...]:
+    """Wartości robocze baterii jako dane przyjęte werdyktu (``ESTIMATED``, §3c pkt 4).
+
+    ``parametry`` zawęża zbiór do parametrów, które REALNIE weszły do wyniku (np. zwarcie
+    doziemne czyta wyłącznie układ połączeń); ``None`` = wszystkie. Wartość projektanta
+    i parametr typu nie są danymi przyjętymi.
+    """
+    zakres = None if parametry is None else set(parametry)
+    wynik: list[DanaPrzyjeta] = []
+    for parametr in PARAMETRY_BATERII_KONDENSATOROW:
+        dana = dane.get(parametr)
+        if dana is None or not dana.robocza or (zakres is not None and parametr not in zakres):
+            continue
+        assert dana.propozycja is not None
+        wartosc: Wielkosc | None = None
+        opis = dana.opis_zrodla_pl()
+        if dana.propozycja.jednostka is not None and not isinstance(dana.wartosc, bool):
+            wartosc = Wielkosc(wartosc=float(dana.wartosc), jednostka=dana.propozycja.jednostka)
+        else:
+            opis = f"{opis} Przyjęto: {_wartosc_baterii_pl(parametr, dana.wartosc)}."
+        wynik.append(
+            DanaPrzyjeta(
+                nazwa_pl=f"{dana.propozycja.nazwa_pl} ({miejsce_pl})",
+                wartosc=wartosc,
+                powod_pl=opis,
+                jakosc=FieldQuality.ESTIMATED,
+            )
+        )
+    return tuple(wynik)
+
+
+def _wartosc_baterii_pl(parametr: str, wartosc: Any) -> str:
+    if parametr == PARAMETR_BATERII_UKLAD:
+        return NAZWY_UKLADOW_POLACZEN_BATERII_PL[str(wartosc)]
+    if isinstance(wartosc, bool):
+        return "tak" if wartosc else "nie"
+    return str(wartosc)

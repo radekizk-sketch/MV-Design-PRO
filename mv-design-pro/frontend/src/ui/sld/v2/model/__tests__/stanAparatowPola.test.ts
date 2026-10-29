@@ -84,7 +84,10 @@ describe('stanyAparatowPolaZModelu', () => {
     ['zgodny z napędem rozbrojonym', 'zamkniety_naped_rozbrojony', 'closed'],
     ['sprzeczny', 'otwarty', 'unknown'],
     ['nieznany', 'nieznany', 'unknown'],
-    ['awaria', 'awaria', 'unknown'],
+    // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: rekord „awaria" = położenie
+    // niewiarygodne (`bad`, własny kafel) i ma pierwszeństwo przed `status` gałęzi; dawniej
+    // `unknown`. Intencja bez zmian: awaria nigdy nie jest rysowana jako położenie z modelu.
+    ['awaria', 'awaria', 'bad'],
   ] as const)('rekord aparatu %s ze statusem closed → %s', (_opis, rekord, oczekiwany) => {
     const stany = stanyAparatowPolaZModelu(
       pole(['q'], [aparat('CB', 'dev', { linked: 'q', stan: rekord })]),
@@ -114,7 +117,8 @@ describe('stanyAparatowPolaZModelu', () => {
     ['ES bez rekordu', [aparat('ES', 'es')], 'unknown'],
     ['ES zamknięty', [aparat('ES', 'es', { stan: 'zamkniety' })], 'closed'],
     ['ES otwarty', [aparat('ES', 'es', { stan: 'otwarty' })], 'open'],
-    ['ES awaria', [aparat('ES', 'es', { stan: 'awaria' })], 'unknown'],
+    // Uziemnik w awarii: `bad` (rozszerzenie 5), nie „nieustalony".
+    ['ES awaria', [aparat('ES', 'es', { stan: 'awaria' })], 'bad'],
     ['dwa ES, jeden bez rekordu', [aparat('ES', 'e1', { stan: 'otwarty' }), aparat('ES', 'e2')], 'unknown'],
   ] as const)('uziemnik: %s → %s', (_opis, aparaty, oczekiwany) => {
     expect(stanyAparatowPolaZModelu(pole([], [...aparaty]), mapa()).esState).toBe(oczekiwany);

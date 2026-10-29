@@ -10,6 +10,8 @@
  * @see docs/sld/SLD_SYMBOL_LIBRARY.md §6 (paleta) + §4 (wymiary) + §5 (typografia)
  */
 
+import { STATE_COLOR } from '../../v3/theme/colorTokens';
+
 /* ---------------------------------------------------------------------------
    Paleta kolorów dark SCADA neon (brief §6)
    --------------------------------------------------------------------------- */
@@ -23,12 +25,21 @@ export const COLOR_LINE_PRIMARY = '#F2F4F6' as const; // linia główna
 export const COLOR_LINE_SECONDARY = '#C8CDD2' as const; // linia pomocnicza
 export const COLOR_NODE = '#F2F4F6' as const; // węzeł połączeniowy
 
-export const COLOR_DEVICE_CLOSED = '#07983A' as const; // aparat zamknięty
-export const COLOR_DEVICE_CLOSED_BORDER = '#13C45A' as const; // obwódka zamkniętego
-export const COLOR_DEVICE_OPEN = '#C9151B' as const; // aparat otwarty
-export const COLOR_DEVICE_OPEN_BORDER = '#FF333D' as const; // obwódka otwartego
-export const COLOR_DEVICE_UNKNOWN = '#6E737A' as const; // stan nieznany
+/* Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): kolory STANU
+   łącznika pochodzą z JEDNEJ tabeli `v3/theme/colorTokens.ts` `STATE_COLOR` — czerwony =
+   zamknięty, zielony = otwarty (konwencja dyspozytorska). Dawne wartości tej palety miały
+   konwencję ODWROTNĄ (zamknięty zielony, otwarty czerwony) — druga prawda o tym samym
+   znaczeniu. Obwódka = to samo wypełnienie (kafel, nie ramka). Kolory, które nie znaczą
+   stanu łącznika (obwód pod napięciem, wkładka sprawna, funkcja aktywna, wynik spełniony),
+   mają osobny token `COLOR_LIVE`. */
+export const COLOR_DEVICE_CLOSED = STATE_COLOR.zamkniety; // aparat zamknięty
+export const COLOR_DEVICE_CLOSED_BORDER = STATE_COLOR.zamkniety; // obwódka zamkniętego
+export const COLOR_DEVICE_OPEN = STATE_COLOR.otwarty; // aparat otwarty
+export const COLOR_DEVICE_OPEN_BORDER = STATE_COLOR.otwarty; // obwódka otwartego
+export const COLOR_DEVICE_UNKNOWN = STATE_COLOR.nieustalony; // stan nieustalony
 export const COLOR_DEVICE_FAULT = '#FF2B2B' as const; // alarm
+/** Obwód pod napięciem / stan sprawny / funkcja aktywna — NIE stan łącznika. */
+export const COLOR_LIVE = '#13C45A' as const;
 
 export const COLOR_TEXT_PRIMARY = '#F4F6F8' as const; // tekst główny
 export const COLOR_TEXT_SECONDARY = '#B9C0C7' as const; // tekst pomocniczy
@@ -360,11 +371,13 @@ export const LIGHT_TECHNICAL_COLOR_LINE_PRIMARY = '#000000' as const; // czarna 
 export const LIGHT_TECHNICAL_COLOR_LINE_SECONDARY = '#404040' as const;
 export const LIGHT_TECHNICAL_COLOR_NODE = '#000000' as const;
 
-export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED = '#007A3D' as const; // ciemny zielony (czytelność na białym)
-export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED_BORDER = '#005828' as const;
-export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN = '#B71C1C' as const; // ciemny czerwony
-export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN_BORDER = '#8B0000' as const;
-export const LIGHT_TECHNICAL_COLOR_DEVICE_UNKNOWN = '#9E9E9E' as const;
+// Stan łącznika: te same wartości co w motywie ciemnym (`STATE_COLOR`, kontrast kafla do
+// tła ≥ 3:1 w obu motywach) — zmienia się tło, nie konwencja.
+export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED = STATE_COLOR.zamkniety;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED_BORDER = STATE_COLOR.zamkniety;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN = STATE_COLOR.otwarty;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_OPEN_BORDER = STATE_COLOR.otwarty;
+export const LIGHT_TECHNICAL_COLOR_DEVICE_UNKNOWN = STATE_COLOR.nieustalony;
 export const LIGHT_TECHNICAL_COLOR_DEVICE_FAULT = '#D32F2F' as const;
 
 export const LIGHT_TECHNICAL_COLOR_TEXT_PRIMARY = '#000000' as const;

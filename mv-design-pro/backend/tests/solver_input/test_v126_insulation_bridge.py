@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from enm.models import EnergyNetworkModel, ENMHeader
 from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrester_types
 from solver_input.v126_contracts import (
@@ -162,10 +163,33 @@ def test_arrester_without_catalog_ref_derives_um_from_bus_no_card_params() -> No
     rows = build_v126_insulation_from_enm(model)
     assert len(rows) == 1
     row = rows[0]
-    assert row.u_m_kv == 24.0  # najbliższe znormalizowane U_m >= 20 kV
+    assert row.u_m_kv == 24.0  # napięcie najwyższe sieci 20 kV (IEC 60038 tab. 3)
     assert row.arrester_mcov_kv is None
     assert row.arrester_residual_10ka_kv is None
     assert row.predicted_energy_kj_per_kv == 2.0
+
+
+@pytest.mark.parametrize(
+    ("bus_voltage_kv", "u_s_kv"),
+    [
+        (3.0, 3.6),
+        (6.0, 7.2),  # dawny typoszereg 12/17,5/24/36 kV dawał tu 12 kV
+        (10.0, 12.0),
+        (15.0, 17.5),
+        (20.0, 24.0),
+        (30.0, 36.0),
+        (110.0, 123.0),  # dawny typoszereg dawał 36 kV
+        (13.8, 17.5),  # napięcie spoza tablic: najmniejsze U_s > U_n
+    ],
+)
+def test_arrester_without_card_takes_u_s_of_network_from_iec_60038(
+    bus_voltage_kv: float, u_s_kv: float
+) -> None:
+    """Bez karty ogranicznika poziom izolacji wiersza = napięcie najwyższe sieci U_s z tabeli
+    IEC 60038 — ta sama tabela co odmowa poziomu izolacji operacji modelu."""
+    model = _model(devices=[_arrester_device("QA1", None)], bus_voltage_kv=bus_voltage_kv)
+    rows = build_v126_insulation_from_enm(model)
+    assert [row.u_m_kv for row in rows] == [u_s_kv]
 
 
 def test_lv_arrester_without_card_is_skipped() -> None:

@@ -62,7 +62,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -246,7 +246,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -420,7 +420,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -737,7 +737,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -916,7 +916,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -1233,7 +1233,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -1428,7 +1428,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -1602,7 +1602,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -1776,7 +1776,7 @@
         "render_variant": "qet_en60617"
       },
       {
-        "designation": "Q9",
+        "designation": "Q8",
         "kind": "ES",
         "placement": "GROUND_BRANCH",
         "ports": [
@@ -1822,6 +1822,140 @@
       "Q5",
       "Q51",
       "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "rozladowanie1"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "T5",
+        "kind": "PHASE_TO_PHASE_VT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "A",
+            "wezel": "rozladowanie1"
+          },
+          {
+            "port_id": "B",
+            "wezel": "rozladowanie1"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "T6",
+        "kind": "PHASE_TO_PHASE_VT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "A",
+            "wezel": "rozladowanie1"
+          },
+          {
+            "port_id": "B",
+            "wezel": "rozladowanie1"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": null
+      },
+      {
+        "designation": "T7",
+        "kind": "UNBALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": null
+      }
+    ],
+    "nazwa": "pole_bkr_przekladniki_miedzyfazowe_w_odgalezieniu",
+    "poza_torem_glownym": [
+      "Q5",
+      "T5",
+      "T6"
     ]
   }
 ]

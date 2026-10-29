@@ -763,7 +763,7 @@ def test_oznaczenie_kanoniczne_aparatu_liczy_tylko_tor_glowny_szablonow() -> Non
     from enm.pole_katalogowe import OZNACZENIE_KANONICZNE_APARATU
     from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
 
-    assert OZNACZENIE_KANONICZNE_APARATU["earthing_switch"] == "Q9"
+    assert OZNACZENIE_KANONICZNE_APARATU["earthing_switch"] == "Q8"
     assert OZNACZENIE_KANONICZNE_APARATU["cable_head"] == "GK"
     assert OZNACZENIE_KANONICZNE_APARATU["voltage_transformer"] == "T2"
     # Odgałęzienia istnieją w rejestrze (test nie jest pusty z braku danych) i mają INNE

@@ -16,6 +16,8 @@ import {
   COLOR_DEVICE_CLOSED_BORDER,
   COLOR_DEVICE_OPEN,
   COLOR_DEVICE_OPEN_BORDER,
+  COLOR_DEVICE_FAULT,
+  COLOR_LIVE,
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
   COLOR_TEXT_MUTED,
@@ -179,7 +181,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
 
 export function ApparatusCableHead(props: { cx: number; cy: number; energized: boolean }): JSX.Element {
   const { cx, cy, energized } = props;
-  const stroke = energized ? COLOR_DEVICE_CLOSED_BORDER : COLOR_TEXT_MUTED;
+  const stroke = energized ? COLOR_LIVE : COLOR_TEXT_MUTED;
   return (
     <g data-testid="sld-v2-gpz-bay-cable-head">
       <polygon
@@ -219,7 +221,7 @@ interface ApparatusEarthingSwitchProps {
  * w dół). PN-EN 62271-102 wymaga jednoznacznej wizualizacji ES dla BHP.
  *
  * Kolor:
- *  - 'closed'  → czerwony (`COLOR_DEVICE_OPEN`) — uziemnik załączony,
+ *  - 'closed'  → czerwony (`COLOR_DEVICE_CLOSED`) — uziemnik załączony,
  *                pole UZIEMIONE (bezpieczne do prac, ale BLOKADA pracy
  *                pod napięciem)
  *  - 'open'    → szary muted — pole NIE uziemione (normalne)
@@ -232,7 +234,7 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
     return <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state="absent" />;
   }
   const closed = state === 'closed';
-  const stroke = closed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
+  const stroke = closed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
   const sw = closed ? 1.6 : 1.2;
   /* Boczna gałąź wychodzi z osi pola — strona z `slot.side` polityki.
    * Domyślnie po RIGHT (LINE_*, GPZ_LINE_BAY, RMU_LINE, TRANSFORMER,
@@ -329,8 +331,8 @@ interface ApparatusFuseProps {
 export function ApparatusFuse(props: ApparatusFuseProps): JSX.Element {
   const { cx, cy, state = 'unknown' } = props;
   const blown = state === 'blown';
-  const fill = state === 'healthy' ? COLOR_DEVICE_CLOSED : blown ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
-  const stroke = state === 'healthy' ? COLOR_DEVICE_CLOSED_BORDER : blown ? COLOR_DEVICE_OPEN_BORDER : COLOR_TEXT_MUTED;
+  const fill = state === 'healthy' ? COLOR_LIVE : blown ? COLOR_DEVICE_FAULT : COLOR_TEXT_MUTED;
+  const stroke = state === 'healthy' ? COLOR_LIVE : blown ? COLOR_DEVICE_FAULT : COLOR_TEXT_MUTED;
   return (
     <g data-testid="sld-v2-gpz-bay-fuse" data-state={state}>
       <rect
@@ -400,11 +402,11 @@ export function ApparatusThreePositionSwitch(
   const closed = position === 'closed';
   const earthed = position === 'earthed';
   const unknown = position === 'unknown';
-  const liveColor = unknown ? COLOR_TEXT_MUTED : COLOR_DEVICE_CLOSED_BORDER;
+  const liveColor = unknown ? COLOR_TEXT_MUTED : COLOR_LIVE;
   const bladeColor = closed
     ? COLOR_DEVICE_CLOSED_BORDER
     : earthed
-      ? COLOR_DEVICE_OPEN
+      ? COLOR_DEVICE_CLOSED
       : unknown
         ? COLOR_TEXT_MUTED
         : COLOR_DEVICE_OPEN_BORDER;
@@ -430,11 +432,11 @@ export function ApparatusThreePositionSwitch(
       <circle cx={cx} cy={botY} r={1.4} fill={closed ? liveColor : COLOR_TEXT_MUTED} />
       <line x1={cx} y1={botY} x2={cx} y2={botY + 3} stroke={closed ? liveColor : COLOR_TEXT_MUTED} strokeWidth={1.6} />
       {/* Earth contact branch (left) + ground triangle. */}
-      <circle cx={earthX} cy={cy + 1} r={1.2} fill={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} />
-      <line x1={earthX} y1={cy + 2.2} x2={earthX} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
-      <line x1={earthX - 3} y1={cy + 6} x2={earthX + 3} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
-      <line x1={earthX - 2} y1={cy + 7.4} x2={earthX + 2} y2={cy + 7.4} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.0} />
-      <line x1={earthX - 1} y1={cy + 8.8} x2={earthX + 1} y2={cy + 8.8} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={0.8} />
+      <circle cx={earthX} cy={cy + 1} r={1.2} fill={earthed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED} />
+      <line x1={earthX} y1={cy + 2.2} x2={earthX} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED} strokeWidth={1.2} />
+      <line x1={earthX - 3} y1={cy + 6} x2={earthX + 3} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED} strokeWidth={1.2} />
+      <line x1={earthX - 2} y1={cy + 7.4} x2={earthX + 2} y2={cy + 7.4} stroke={earthed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED} strokeWidth={1.0} />
+      <line x1={earthX - 1} y1={cy + 8.8} x2={earthX + 1} y2={cy + 8.8} stroke={earthed ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED} strokeWidth={0.8} />
       {/* The single moving blade from the top pivot to the selected contact. */}
       <line
         x1={cx}

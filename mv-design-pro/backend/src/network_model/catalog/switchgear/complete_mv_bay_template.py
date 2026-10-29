@@ -32,7 +32,7 @@ from enm.rola_pola_sn import RolaPolaModelu, nazwa_roli_pola_sn_z_okresleniem
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
-from ..bay_templates import BayTemplate
+from ..bay_templates import BayTemplate, postac_odcisku_szablonu
 from .device_instance import BayDeviceInstanceTemplate
 from .port_definition import PortDefinitionTemplate
 
@@ -53,6 +53,7 @@ BayKind = Literal[
     "kablowe",
     "napowietrzne",
     "nop_lacznikowe",
+    "bateria_kondensatorow",
 ]
 
 #: Rodzaj pola katalogowego (`BayKind`) → rola kanonu ról pól SN z określeniem rodzaju albo
@@ -78,6 +79,7 @@ OPIS_RODZAJU_POLA_KATALOGOWEGO: dict[str, tuple[str, str] | str] = {
     "kablowe": "Pole kablowe",
     "napowietrzne": "Pole napowietrzne",
     "nop_lacznikowe": "Pole łącznikowe NOP",
+    "bateria_kondensatorow": ("BATERIA_KONDENSATOROW", ""),
 }
 
 #: Rodzaj pola katalogowego → nazwa w treści dla projektanta (karta #142).
@@ -160,12 +162,13 @@ class CompleteMvBayTemplate(BaseModel):
     def compute_hash(self) -> str:
         """Deterministyczny content hash (do invalidacji wyników).
 
-        Hash zawiera: base_template (model_dump), manufacturer_ref,
-        family_ref, bay_kind, bay_role, source_status. NIE zawiera
-        source_refs ani version (te się zmieniają niezależnie).
+        Hash zawiera: base_template (model_dump bez pól addytywnych o wartości `None` —
+        `bay_templates.postac_odcisku_szablonu`), manufacturer_ref, family_ref, bay_kind,
+        bay_role, source_status. NIE zawiera source_refs ani version (te się zmieniają
+        niezależnie).
         """
         payload = {
-            "base_template": self.base_template.model_dump(mode="json"),
+            "base_template": postac_odcisku_szablonu(self.base_template),
             "manufacturer_ref": self.manufacturer_ref,
             "switchgear_family_ref": self.switchgear_family_ref,
             "bay_kind": self.bay_kind,

@@ -21,7 +21,7 @@
     },
     "przebieg_bazowy": {
       "run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",
-      "snapshot_hash": "7fc9e270b3d5da1a94c5bc0525f3d8507982b8bb15d47a6b30385a1018210070"
+      "snapshot_hash": "079195b2a8d7d4214566f6597aee38297d31dbbcc7c65588b9eacb058804f9c7"
     },
     "liczba_wariantow": 1,
     "dowod_certyfikatu": {
@@ -267,15 +267,15 @@
   "zalozenia_pl": [
     "Dokument zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości i nie zastępuje uzgodnień z operatorem systemu dystrybucyjnego.",
     "Sekwencja per wariant: zdolność przyłączeniowa → obszar pracy P–Q → pokrycie wymagań P–Q (ta sama, którą liczy kreator studium).",
-    "Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk snapshotu: 7fc9e270b3d5da1a94c5bc0525f3d8507982b8bb15d47a6b30385a1018210070).",
+    "Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk snapshotu: 079195b2a8d7d4214566f6597aee38297d31dbbcc7c65588b9eacb058804f9c7).",
     "Typ katalogowy przekształtnika: Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV (conv-pv-card-huawei-sun2000-215ktl).",
     "Profil operatora: Enea Operator (enea).",
     "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy przyłączalnej i napięcia węzła wariantu."
   ],
   "odciski_sekcji_sha256": {
     "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "743463d2e428293719a00fe8ac145f57fa9ce39c497ac1b85fff3a691ac3afe7",
-    "zalozenia": "b0d8f52fe77fe5967b738bb339ff7b47227006bc00fb15d9ddfdaa1077b25568",
+    "zalozenia": "1202bc4fd69bb71299d52e97471ee9d30753c7a7843f2aef0e5330fb7038f8a4",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },
-  "input_hash": "a875787af99adc65be9c77317b3e0909e1a982c63fee1bf51b042b6fbecc68a3"
+  "input_hash": "6508a83fbe25e25ab0244e484722d07c3125a50c37868fc3b4ba520c6cf1abbc"
 }

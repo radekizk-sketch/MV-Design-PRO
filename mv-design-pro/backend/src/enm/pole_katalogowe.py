@@ -73,6 +73,7 @@ from network_model.catalog.switchgear.family_validation import (
     opis_pola_katalogowego_pl,
 )
 
+from .pola import napis_lub_none
 from .slownik_komunikatow import pole
 
 # ---------------------------------------------------------------------------
@@ -221,10 +222,6 @@ class PlanPolaKatalogowego:
     factory_unit_index: int | None = None
 
 
-def _tekst(wartosc: object) -> str | None:
-    return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
-
-
 def czy_wybor_katalogowy(payload: dict[str, Any]) -> bool:
     """Czy payload wskazuje POLE KATALOGOWE (a nie kanoniczny szablon)?
 
@@ -234,11 +231,11 @@ def czy_wybor_katalogowy(payload: dict[str, Any]) -> bool:
     `bay_template_line_out` albo ref, którego katalog nie zna) NIE jest wyborem
     katalogowym — idzie ścieżką kanoniczną bez zmiany zachowania.
     """
-    if _tekst(payload.get("complete_bay_template_ref")):
+    if napis_lub_none(payload.get("complete_bay_template_ref")):
         return True
-    if _tekst(payload.get("factory_configuration_ref")):
+    if napis_lub_none(payload.get("factory_configuration_ref")):
         return True
-    ref = _tekst(payload.get("bay_template_ref"))
+    ref = napis_lub_none(payload.get("bay_template_ref"))
     return ref is not None and pole_katalogowe(ref) is not None
 
 
@@ -503,9 +500,9 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
     WYPEŁNIA, więc przy bloku nie jest osobnym wskazaniem: musi się zgadzać
     z polem wyliczonym z jednostki (rozjazd = twardy błąd, nie ciche nadpisanie).
     """
-    ref_pola_jawny = _tekst(payload.get("complete_bay_template_ref"))
-    ref_slotu = _tekst(payload.get("bay_template_ref"))
-    ref_bloku = _tekst(payload.get("factory_configuration_ref"))
+    ref_pola_jawny = napis_lub_none(payload.get("complete_bay_template_ref"))
+    ref_slotu = napis_lub_none(payload.get("bay_template_ref"))
+    ref_bloku = napis_lub_none(payload.get("factory_configuration_ref"))
     if ref_pola_jawny and ref_bloku:
         raise NiezgodnoscKonfiguracjiError(
             "Wskazano jednocześnie katalogowe pole i blok fabryczny — pole "
@@ -559,19 +556,20 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
         )
 
     assert ref_pola is not None  # rozstrzygnięte wyżej: dokładnie jeden kanał
-    szablon = pole_katalogowe(ref_pola)
-    if szablon is None:
+    znalezione = pole_katalogowe(ref_pola)
+    if znalezione is None:
         raise NiezgodnoscKonfiguracjiError(
             "Katalog rodzin rozdzielnic nie zna wskazanego pola — pola stacji "
             "nie da się zmaterializować z pozycji spoza katalogu."
         )
+    szablon = znalezione
     if szablon.switchgear_family_ref is None:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalogowe {szablon.opis_pl()} nie deklaruje rodziny "
             "rozdzielnicy — bez rodziny nie ma czego walidować."
         )
     rodzina = wymagaj_rodziny_oferowanej(szablon.switchgear_family_ref)
-    zadeklarowana_rodzina = _tekst(payload.get("switchgear_family_ref"))
+    zadeklarowana_rodzina = napis_lub_none(payload.get("switchgear_family_ref"))
     if zadeklarowana_rodzina and zadeklarowana_rodzina != rodzina.switchgear_family_ref:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalogowe {szablon.opis_pl()} należy do rodziny {rodzina.family_name}, "

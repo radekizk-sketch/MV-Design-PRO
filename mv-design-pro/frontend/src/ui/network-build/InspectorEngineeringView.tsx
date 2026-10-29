@@ -15,6 +15,7 @@
  */
 
 import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
+import { OPIS_POLOZENIA_PL, stanStatusuGalezi } from '../sld/v2/model/stanAparatowPola';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { SchematPolaSn } from '../field/SchematPolaSn';
@@ -2176,7 +2177,9 @@ function buildSectionsForElement(
           { key: 'ref_id', label: 'Oznaczenie aparatu', value: branch.ref_id },
           { key: 'name', label: 'Nazwa', value: branch.name },
           { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
-          { key: 'status', label: 'Stan ruchowy', value: branch.status === 'closed' ? 'zamknięty' : 'otwarty' },
+          // Jedna mapa etykiet położenia (`OPIS_POLOZENIA_PL`, kafel stanu kanwy i inspektor):
+          // brak `status` to stan nieustalony, nie „otwarty" (dawny domysł).
+          { key: 'status', label: 'Stan ruchowy', value: OPIS_POLOZENIA_PL[stanStatusuGalezi(branch.status)] },
           ...(branchParent ? [{ key: 'parent_station', label: 'Stacja nadrzędna', value: branchParent }] : []),
         ],
       });

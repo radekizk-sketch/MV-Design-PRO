@@ -47,7 +47,7 @@
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_aux::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -137,7 +137,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_coupler::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -245,7 +245,7 @@
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_bess::dev::4",
           "is_controllable": true,
           "kind": "DS",
@@ -264,7 +264,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_bess::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -397,7 +397,7 @@
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_fw::dev::4",
           "is_controllable": true,
           "kind": "DS",
@@ -416,7 +416,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_fw::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -549,7 +549,7 @@
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_pv::dev::4",
           "is_controllable": true,
           "kind": "DS",
@@ -568,7 +568,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_pv::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -713,7 +713,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -759,6 +759,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -903,6 +904,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -998,7 +1000,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -1044,6 +1046,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -1220,8 +1223,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -1276,7 +1279,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::9",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -1322,6 +1325,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -1341,7 +1345,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1488,8 +1494,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -1574,6 +1580,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -1593,7 +1600,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1738,8 +1747,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -1794,7 +1803,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::8",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -1840,6 +1849,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -1859,7 +1869,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2023,8 +2035,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -2098,7 +2110,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::9",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -2144,6 +2156,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -2163,7 +2176,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2310,8 +2325,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -2415,6 +2430,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -2434,7 +2450,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2579,8 +2597,8 @@
             {
               "klasa": "0,5/3P",
               "moc_va": 7.5,
-              "otwarty_trojkat": true,
-              "przekladnia": "SN/√3 / 0,1/3",
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
               "przeznaczenie": [
                 "POMIAR",
                 "ZABEZPIECZENIA"
@@ -2654,7 +2672,7 @@
           "symbol_ref": "symbol:voltage_indicator"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::8",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -2700,6 +2718,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": "1/100",
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:core_balance_ct"
         }
@@ -2719,7 +2738,9 @@
         "79",
         "SPZE",
         "OWG",
-        "SCO"
+        "NZ",
+        "SCO",
+        "SPZ/SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2794,7 +2815,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_line_in::dev::3",
           "is_controllable": true,
           "kind": "DS",
@@ -2813,7 +2834,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_line_in::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -2926,7 +2947,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_line_out::dev::3",
           "is_controllable": true,
           "kind": "DS",
@@ -2945,7 +2966,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_line_out::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3036,7 +3057,7 @@
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_measurement::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3088,7 +3109,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_reserve::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3178,7 +3199,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_transformer::dev::3",
           "is_controllable": true,
           "kind": "DS",
@@ -3197,7 +3218,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_transformer::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3314,7 +3335,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:mv_source_cb::dev::3",
           "is_controllable": true,
           "kind": "DS",
@@ -3333,7 +3354,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:mv_source_cb::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3482,7 +3503,7 @@
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:mv_source_lbs::dev::4",
           "is_controllable": true,
           "kind": "DS",
@@ -3501,7 +3522,7 @@
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:mv_source_lbs::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3593,7 +3614,7 @@
       "pack_id": "abb_safering",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Be::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3681,7 +3702,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:C::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3800,7 +3821,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:CB::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3884,7 +3905,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:De::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -3972,7 +3993,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:F::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4106,7 +4127,7 @@
           "symbol_ref": "symbol:load_switch"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Sl::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4175,7 +4196,7 @@
           "symbol_ref": "symbol:cb"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Sv::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4282,7 +4303,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:V::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4404,7 +4425,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:BT::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4526,7 +4547,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:DF::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4652,7 +4673,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:IF::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4790,7 +4811,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:IFD::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4855,7 +4876,7 @@
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:M::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -4996,7 +5017,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:OFM::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5061,7 +5082,7 @@
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:RM::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5145,7 +5166,7 @@
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:CM::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5267,7 +5288,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:DM1-A::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5329,7 +5350,7 @@
       "pack_id": "schneider_sm6",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:EMB::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5379,7 +5400,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:GAM::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5582,7 +5603,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:IM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5686,7 +5707,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:IMM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5789,7 +5810,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:PM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5896,7 +5917,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:QM::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -5965,7 +5986,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:SM::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6045,7 +6066,7 @@
       "pack_id": "siemens_8djh",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:E::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6129,7 +6150,7 @@
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:H::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6267,7 +6288,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:K(E)::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6390,7 +6411,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:L::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6607,7 +6628,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:R::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6707,7 +6728,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:S::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6829,7 +6850,7 @@
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:T::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -6933,7 +6954,7 @@
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:V::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,

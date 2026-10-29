@@ -8,9 +8,15 @@
  * ścieżką co natywny lewy klik; otwarcie i zamknięcie menu bez akcji zaznaczenia nie zmienia;
  * menu tła nie ma obiektu; uzbrojona paleta OZE nie jest „zrzucana" akcją z menu.
  *
+ * Zaznaczany jest OBIEKT AKCJI: menu symbolu aparatu ma za temat pole z refem aparatu — akcja
+ * stanu łącznika zaznacza aparat (jak lewy klik w symbol), każda inna akcja zaznacza POLE
+ * (pomiar 2026-10-29: „Otwórz okno pola" z menu wyłącznika zostawiało w inspektorze aparat
+ * `…::dev::1`, a okno pokazywało pole).
+ *
  * Iloczyn cech: obiekt {aparat pola GPZ, stacja SN/nN} × akcja {nawigacyjna (karta), formularzowa
- * (operacja), brak akcji (Escape)} × zaznaczenie wstępne {inny obiekt} + menu tła + paleta OZE.
- * Wyrocznia: wynik NATYWNEGO lewego kliku w ten sam uchwyt (jedno źródło refu selekcji).
+ * (operacja), stanu łącznika (tylko aparat), brak akcji (Escape)} × zaznaczenie wstępne {inny
+ * obiekt} + menu tła + paleta OZE. Wyrocznia: wynik NATYWNEGO lewego kliku — w ten sam uchwyt
+ * (stacja; aparat × akcja stanu łącznika) albo ref pola z modelu (aparat × akcja pola).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +26,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
-import { buildSceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
@@ -62,13 +68,28 @@ function uchwyt(container: HTMLElement, selektor: string): Element {
   return el!;
 }
 
-/** Wyrocznia: zaznaczenie po NATYWNYM lewym kliku w uchwyt (osobny render, czyste zaznaczenie). */
-function zaznaczenieLewegoKliku(snapshot: EnergyNetworkModel, selektor: string): string[] {
+type StanZaznaczenia = { readonly zaznaczone: readonly string[]; readonly inspektor: string | null };
+
+function stanZaznaczenia(): StanZaznaczenia {
+  return {
+    zaznaczone: zaznaczone(),
+    inspektor: screen.queryByTestId('inspektor-element-kanwy')?.getAttribute('data-element-id') ?? null,
+  };
+}
+
+/** Wyrocznia: zaznaczenie i obiekt inspektora po NATYWNYM lewym kliku w uchwyt (osobny render,
+ *  czyste zaznaczenie). */
+function lewyKlikW(snapshot: EnergyNetworkModel, selektor: string, lod: SceneLod | undefined): StanZaznaczenia {
   useSnapshotStore.setState({ snapshot });
   useSelectionStore.getState().clearSelection();
-  const { container, unmount } = render(<SldCanvasV3Workspace width={800} height={600} />);
+  const { container, unmount } = render(
+    <>
+      <SldCanvasV3Workspace width={800} height={600} lodOverride={lod} />
+      <InspektorKanwyTestowy />
+    </>,
+  );
   fireEvent.click(uchwyt(container, selektor));
-  const wynik = zaznaczone();
+  const wynik = stanZaznaczenia();
   unmount();
   useSelectionStore.getState().clearSelection();
   return wynik;
@@ -83,6 +104,13 @@ type Przypadek = {
   readonly wstepne: () => string;
   readonly akcjaNawigacyjna: string;
   readonly akcjaFormularzowa: string;
+  /** Poziom szczegółu: symbole POJEDYNCZYCH aparatów pola rysuje dopiero LOD ≥ 1 (na LOD 0
+   *  pole GPZ jest stosem konwencji bez refu aparatu — nie byłoby czego wskazać). */
+  readonly lod?: SceneLod;
+  /** Pozycja akcji stanu łącznika — tylko dla obiektu, którego menu ją ma. */
+  readonly akcjaStanu?: string;
+  /** Obiekt akcji pola, gdy różny od obiektu inspektora po lewym kliku (aparat → jego pole). */
+  readonly obiektAkcjiPola?: () => string;
 };
 
 function selektorStacji(): string {
@@ -92,9 +120,12 @@ function selektorStacji(): string {
   return `[data-hit-for="${testId}"][data-hit-role="obrys"]`;
 }
 
+function poleWylacznika() {
+  return (enmGpz.bays ?? []).find((b) => (b.primary_devices ?? []).some((d) => d.designation === 'Q0'))!;
+}
+
 function selektorWylacznikaPola(): string {
-  const bay = (enmGpz.bays ?? []).find((b) => (b.primary_devices ?? []).some((d) => d.designation === 'Q0'))!;
-  const q0 = bay.primary_devices!.find((d) => d.designation === 'Q0')!;
+  const q0 = poleWylacznika().primary_devices!.find((d) => d.designation === 'Q0')!;
   return `[data-hit-klasa="aparat"][data-hit-device-ref="${q0.device_ref}"]`;
 }
 
@@ -106,6 +137,9 @@ const PRZYPADKI: readonly Przypadek[] = [
     wstepne: () => KABEL,
     akcjaNawigacyjna: 'sld-menu-open-bay',
     akcjaFormularzowa: 'sld-menu-add-arrester',
+    lod: 2,
+    akcjaStanu: 'sld-menu-open-switch',
+    obiektAkcjiPola: () => poleWylacznika().ref_id,
   },
   {
     nazwa: 'stacja SN/nN',
@@ -119,18 +153,30 @@ const PRZYPADKI: readonly Przypadek[] = [
 
 describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)', () => {
   for (const p of PRZYPADKI) {
-    for (const rodzaj of ['nawigacyjna', 'formularzowa', 'brak'] as const) {
+    const rodzaje = p.akcjaStanu === undefined
+      ? (['nawigacyjna', 'formularzowa', 'brak'] as const)
+      : (['nawigacyjna', 'formularzowa', 'stanu', 'brak'] as const);
+    for (const rodzaj of rodzaje) {
       it(`${p.nazwa} × akcja ${rodzaj} × wcześniej zaznaczony inny obiekt`, () => {
-        const oczekiwane = zaznaczenieLewegoKliku(p.snapshot(), p.selektor());
-        expect(oczekiwane.length, 'lewy klik zaznacza obiekt').toBe(1);
+        const lewyKlik = lewyKlikW(p.snapshot(), p.selektor(), p.lod);
+        expect(lewyKlik.zaznaczone.length, 'lewy klik zaznacza obiekt').toBe(1);
+        expect(lewyKlik.inspektor, 'lewy klik pokazuje obiekt w inspektorze').not.toBeNull();
+        // Akcja pola z menu aparatu: zaznaczenie i inspektor = POLE (zaznaczenie pola przez lewy
+        // klik w aparat jest tym samym refem, ale inspektor pokazuje wtedy APARAT — `…::dev::n`).
+        const oczekiwane: StanZaznaczenia = rodzaj !== 'stanu' && rodzaj !== 'brak' && p.obiektAkcjiPola
+          ? { zaznaczone: [p.obiektAkcjiPola()], inspektor: p.obiektAkcjiPola() }
+          : lewyKlik;
+        if (p.obiektAkcjiPola) expect(p.obiektAkcjiPola()).not.toBe(lewyKlik.inspektor);
         const openRouteSurface = vi.fn();
         const openOperationForm = vi.fn();
+        const executeDomainOperation = vi.fn(async () => ({}));
         useNetworkBuildStore.setState({ openRouteSurface, openOperationForm } as never);
+        useSnapshotStore.setState({ executeDomainOperation } as never);
         useAppStateStore.setState({ activeCaseId: 'przypadek-menu' });
         useSnapshotStore.setState({ snapshot: p.snapshot() });
         const { container } = render(
           <>
-            <SldCanvasV3Workspace width={800} height={600} />
+            <SldCanvasV3Workspace width={800} height={600} lodOverride={p.lod} />
             <InspektorKanwyTestowy />
           </>,
         );
@@ -146,15 +192,18 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
           fireEvent.keyDown(document, { key: 'Escape' });
           expect(screen.queryByRole('menu')).toBeNull();
           // Escape kanwy czyści zaznaczenie albo zostawia wstępne — nigdy nie zaznacza obiektu menu.
-          expect(zaznaczone()).not.toEqual(oczekiwane);
+          expect(zaznaczone()).not.toEqual(lewyKlik.zaznaczone);
           return;
         }
-        const pozycja = screen.getByTestId(rodzaj === 'nawigacyjna' ? p.akcjaNawigacyjna : p.akcjaFormularzowa);
+        const pozycja = screen.getByTestId(
+          rodzaj === 'nawigacyjna' ? p.akcjaNawigacyjna : rodzaj === 'stanu' ? p.akcjaStanu! : p.akcjaFormularzowa,
+        );
         fireEvent.click(pozycja);
-        expect(zaznaczone()).toEqual(oczekiwane);
+        // Zaznaczenie i inspektor powłoki — obiekt akcji (ten sam, którego kartę otwarto).
+        expect(stanZaznaczenia()).toEqual(oczekiwane);
         if (rodzaj === 'nawigacyjna') expect(openRouteSurface).toHaveBeenCalledTimes(1);
-        // Inspektor powłoki pokazuje obiekt menu (ten sam, którego kartę otwarto).
-        expect(screen.getByTestId('inspektor-element-kanwy').getAttribute('data-element-id')).toBe(oczekiwane[0]);
+        if (rodzaj === 'formularzowa') expect(openOperationForm).toHaveBeenCalledTimes(1);
+        if (rodzaj === 'stanu') expect(executeDomainOperation).toHaveBeenCalledTimes(1);
       });
     }
   }
@@ -162,7 +211,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
   it('menu tła × akcja nawigacyjna — zaznaczenie bez zmian (tło nie jest obiektem)', () => {
     useNetworkBuildStore.setState({ openRouteSurface: vi.fn() } as never);
     useSnapshotStore.setState({ snapshot: enmGpz });
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
     useSelectionStore.getState().selectElement({ id: KABEL, type: 'LineBranch', name: KABEL });
     // Najpierw menu OBIEKTU zamknięte bez akcji, potem menu tła — ref obiektu nie może przeżyć.
     fireEvent.contextMenu(uchwyt(container, selektorWylacznikaPola()), { clientX: 120, clientY: 80 });

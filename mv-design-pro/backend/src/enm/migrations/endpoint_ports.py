@@ -19,6 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.pochodne.pasma_napieciowe import to_samo_napiecie_znamionowe
+
 from ..models import (
     Cable,
     EnergyNetworkModel,
@@ -153,8 +155,9 @@ def _find_endpoint_candidates(
     for port in _collect_ports_on_bus(model, bus_ref):
         if port.kind not in _COMPATIBLE_PORT_KINDS_SN:
             continue
-        if bus_v is not None and abs(port.nominal_voltage_kv - bus_v) > 0.5:
-            # Tolerancja 0.5 kV — kanoniczne SN: 6/10/15/20/30 kV.
+        if bus_v is not None and not to_samo_napiecie_znamionowe(port.nominal_voltage_kv, bus_v):
+            # Ta sama równość napięć znamionowych co w całym produkcie (dawny margines 0,5 kV
+            # przyjmował port 15,4 kV na szynie 15 kV).
             continue
         if port.occupied_by is not None and port.occupied_by != connection_id:
             continue

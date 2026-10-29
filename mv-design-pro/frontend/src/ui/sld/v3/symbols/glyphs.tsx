@@ -2,17 +2,25 @@
  * SLD V3 — glify symboli IEC 60617 (SLD_CAD_SPEC_V3 §3, §6).
  *
  * Rysunek BAZOWY: neutralny kolor, czytelny w mono (P5). Stan łącznika
- * wyrażony GEOMETRIĄ (wypełnienie CB, kąt noża DS), nie kolorem. Nakładki
- * stanu (energizacja, napięcie) nakłada kanwa — nie glif.
+ * wyrażony GEOMETRIĄ (wypełnienie CB, kąt noża DS). Na kanwie i w eksporcie łącznik
+ * z położeniem dostaje dodatkowo KAFEL STANU (`KafelStanu`, referencja HMI
+ * 2026-10-29): wypełniony kafel pod symbolem w konwencji dyspozytorskiej (czerwony =
+ * zamknięty, zielony = otwarty, szary z „?" = nieustalony, fioletowy z „!" = awaria),
+ * biały symbol na kaflu. Kolor nigdy nie jest jedynym nośnikiem stanu — geometria styku
+ * zostaje. Nakładki energizacji i napięcia nakłada kanwa na tory; na łącznik z kaflem
+ * nie wpływają (warstwa stanu łączeniowego jest rozdzielna od warstwy napięcia).
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, obrysSymbolu, type SymbolId } from './defs';
+import { SYMBOL_DEFS, czyLacznikZPolozeniem, obrysSymbolu, type SymbolId } from './defs';
 import { CadPrimitiveLayer } from '../cad/CadSymbol';
 import { QET_SYMBOLE_POLA_SN, type QetPolozenieNoza, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
-import { BASE_STROKE } from '../theme/colorTokens';
+import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
+import type { UkladPolaczenBaterii } from '../../../../types/enm';
+import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
+import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -22,11 +30,22 @@ export const V3_STROKE_APPARATUS = 1.2;
 
 /** Położenie łącznika na rysunku. `'earthed'` (uziemiony) — WYŁĄCZNIE łącznik
  *  trójpołożeniowy (karta UX-04/POLE-LINIOWE-WZORZEC, ENEA Zeszyt 1 §13): nóż na zestyku
- *  uziemiającym; tor pola jest wtedy OTWARTY. Pozostałe glify rysują go jak `unknown`. */
-export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed';
+ *  uziemiającym; tor pola jest wtedy OTWARTY. Pozostałe glify rysują go jak `unknown`.
+ *  `'bad'` — rekord aparatu zgłasza AWARIĘ (`BayDeviceState` „awaria"): położenie
+ *  niewiarygodne, odpowiednik „bad-state" podwójnego wskazania położenia IEC 61850-7-4
+ *  (Dbpos). Geometria jak `unknown`, kafel własny (`bledny`). Położenia pośredniego
+ *  (Dbpos „intermediate") model ENM nie niesie, więc go tu nie ma. */
+export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
 
-/** Margines ramki stanu SCADA wokół obrysu symbolu QET [px świata]. */
-export const RAMKA_SCADA_MARGINES = 2;
+/** Margines kafla stanu wokół obrysu symbolu [px świata]. */
+export const KAFEL_STANU_MARGINES = 2;
+
+/** Położenie rysowane przez geometrię glifu kanonicznego (dwupołożeniowego): `earthed`
+ *  (nie jest położeniem tych aparatów), `bad` i brak danej rysują się jako nieustalone —
+ *  nigdy jako zamknięte albo otwarte z domysłu. */
+export function polozenieGeometrii(state: SwitchState | undefined): 'closed' | 'open' | 'unknown' {
+  return state === 'closed' || state === 'open' ? state : 'unknown';
+}
 
 /** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
  *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
@@ -139,13 +158,20 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC: `true`, gdy symbol rysuje ŁĄCZNIK pola (rodzaj
-   *  aparatu z `RODZAJE_LACZNIKOW_POLA`, lustro backendu `compose/rodzajeAparatuPola.ts`)
-   *  — WYŁĄCZNIE glify QET czytają to pole i rysują ramkę stanu SCADA. */
-  readonly ramkaLacznika?: boolean;
-  /** Kolory ramki stanu SCADA z palety motywu (`SldPalette.ramkaScada`). Brak = bez ramki
-   *  (harness mono, miniatury paneli). */
-  readonly ramkaScada?: Readonly<Record<'zamkniety' | 'otwarty', string>>;
+  /** Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: kolory kafla stanu (`SldPalette.state`,
+   *  JEDNA tabela `STATE_COLOR`). Podane = łącznik z położeniem (`czyLacznikZPolozeniem`)
+   *  rysuje się na kaflu stanu; brak = sam symbol (legenda, podgląd kreatora, harness mono). */
+  readonly kafleStanu?: KafleStanuLacznika;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
+   *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
+   *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
+  readonly bateria?: GlifBaterii;
+}
+
+/** Dane glifu baterii kondensatorów (`v2/model/bateriaPola.ts BateriaPolaView` bez refu). */
+export interface GlifBaterii {
+  readonly uklad: UkladPolaczenBaterii | null;
+  readonly przekladnikNiezrownowazenia: boolean;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -185,7 +211,7 @@ function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProp
 }
 
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   return (
     <g {...glyphGroupProps('breaker', props)}>
       <rect
@@ -217,7 +243,7 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
  * (`ProtectionRelayGlyph`, 24×24 z `labelLines`).
  */
 export function RecloserGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('recloser', props)}>
@@ -238,7 +264,7 @@ export function RecloserGlyph(props: GlyphProps): JSX.Element {
 }
 
 export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   // Nóż: zamknięty = w osi toru; otwarty = odchylony 45° (IEC 60617-7).
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
@@ -260,7 +286,7 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
  *  POPRZECZKA na końcu styku ruchomego (cecha odróżniająca zdolność
  *  łączenia pod obciążeniem). Stan z geometrii noża jak `DisconnectorGlyph`. */
 export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
     <g {...glyphGroupProps('loadBreakSwitch', props)}>
@@ -294,13 +320,20 @@ export function LoadArrowGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Uziemnik: nóż zamknięty = w osi do ziemi, otwarty = odchylony, nieustalony = nóż
+ *  przerywany w osi (jak `DisconnectorGlyph`). Rozszerzenie 5: dawny domysł „brak danej =
+ *  otwarty" usunięty — uziemnik bez stanu w modelu jest NIEUSTALONY, nie otwarty. */
 export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'open';
+  const state = polozenieGeometrii(props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 10 } : { x: 8, y: 14 };
   return (
     <g {...glyphGroupProps('earthSwitch', props)}>
       <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line
+        x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+        strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+      />
       <line x1={8} y1={14} x2={8} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {/* ⏚ IEC: trzy malejące kreski */}
       <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
@@ -371,14 +404,22 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Rozłącznik bezpiecznikowy SN. Rozszerzenie 5: dawny domysł „brak danej = zamknięty"
+ *  usunięty — bez stanu w modelu nóż jest przerywany (nieustalony). */
 export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'closed';
+  const state = polozenieGeometrii(props.state);
   return (
     <g {...glyphGroupProps('fuseSwitch', props)}>
       <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {state === 'open'
         ? <line x1={8} y1={6} x2={15} y2={12} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-        : <line x1={8} y1={6} x2={8} y2={10} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />}
+        : (
+          <line
+            x1={8} y1={6} x2={8} y2={10}
+            stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+            strokeDasharray={state === 'unknown' ? '1.5 1' : undefined}
+          />
+        )}
       {/* wkładka bezpiecznikowa: prostokąt z żyłą */}
       <rect x={5} y={10} width={6} height={12} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={10} x2={8} y2={22} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
@@ -566,13 +607,31 @@ export function JointSleeveGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * PUNKT NORMALNIE OTWARTY (NOP) — ZNACZNIK FUNKCJI (okrąg) na łączniku podziału sieci.
+ * Rozszerzenie 5 (referencja HMI 2026-10-29): NOP nie jest osobnym kolorem stanu, tylko
+ * funkcją łącznika; jego BIEŻĄCE położenie (`status` gałęzi łącznika NOP) rysuje geometria
+ * toru przez okrąg — otwarty = przerwa, zamknięty = tor ciągły, nieustalony = tor
+ * przerywany — i kafel stanu, jak każdy łącznik.
+ */
 export function NoPointGlyph(props: GlyphProps): JSX.Element {
+  const state = polozenieGeometrii(props.state);
+  const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
-    <g {...glyphGroupProps('noPoint', props)}>
-      {/* jawna PRZERWA toru + okrąg łącznika otwartego */}
-      <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    <g {...glyphGroupProps('noPoint', props)} data-nop-polozenie={state}>
+      {state === 'open' ? (
+        <>
+          <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={w} />
+          <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={w} />
+        </>
+      ) : (
+        <line
+          x1={0} y1={8} x2={16} y2={8}
+          stroke={stroke(props)} strokeWidth={w}
+          strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+        />
+      )}
+      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={w} />
     </g>
   );
 }
@@ -581,7 +640,7 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
  *  `DisconnectorGlyph` obrócona o 90° (nóż w osi toru = zamknięty, odchylony =
  *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego). */
 export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   const bladeEnd = state === 'open' ? { x: 18, y: 1 } : { x: 22, y: 8 };
   return (
     <g {...glyphGroupProps('lineSwitch', props)}>
@@ -600,7 +659,7 @@ export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
 /** Karta SLD-SUBSTRAT (kontynuacja): wyłącznik na torze POZIOMYM — korpus
  *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E. */
 export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   return (
     <g {...glyphGroupProps('lineBreaker', props)}>
       <rect
@@ -1144,7 +1203,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
  * górnym) — cecha, której `BreakerGlyph` (aparat pierwotny SN) nie niesie.
  */
 export function NnBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii(props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('nnBreaker', props)}>
@@ -1228,29 +1287,97 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
 export function polozenieNozaQet(id: QetSymbolPolaSnId, state: SwitchState): QetPolozenieNoza {
   const noz = QET_SYMBOLE_POLA_SN[id].noz;
   if (!noz) return 'open';
+  if (state === 'bad') return 'unknown';
   return noz.katy[state] === undefined ? 'unknown' : state;
 }
 
-/** Ramka stanu SCADA symbolu QET: `zamkniety` (czerwona) dla położenia zamkniętego,
- *  `otwarty` (zielona) dla otwartego i uziemionego (tor pola przerwany); `null` dla stanu
- *  nieznanego albo symbolu bez noża — wtedy ramki nie ma (symbol zostaje). JEDNA reguła dla
- *  rysunku i dla sond sceny. */
-export function rodzajRamkiScada(id: SymbolId, state: SwitchState | undefined): 'zamkniety' | 'otwarty' | null {
-  if (!(id in QET_SYMBOLE_POLA_SN)) return null;
-  const qid = id as QetSymbolPolaSnId;
-  if (!QET_SYMBOLE_POLA_SN[qid].noz) return null;
-  const polozenie = polozenieNozaQet(qid, state ?? 'unknown');
-  if (polozenie === 'closed') return 'zamkniety';
-  if (polozenie === 'open' || polozenie === 'earthed') return 'otwarty';
-  return null;
+/**
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC — STAN KAFLA łącznika z położeniem.
+ * JEDNA reguła dla rysunku, eksportu, legendy, inspektora i sond:
+ *  • `closed` → `zamkniety` (czerwony), `open` → `otwarty` (zielony);
+ *  • `earthed` łącznika trójpołożeniowego → `zamkniety`: zestyk UZIEMIAJĄCY jest zamknięty
+ *    (IEC 61850-7-4 modeluje łącznik trójpołożeniowy jako dwa XSWI — tor otwarty, uziemnik
+ *    zamknięty; kafel niesie położenie styku, który jest zamknięty, a geometria noża mówi
+ *    KTÓRY — nóż na zestyku uziemiającym). Ten sam kolor ma zamknięty uziemnik osobny;
+ *  • `earthed` dla innego symbolu (rekord sprzeczny z rodzajem aparatu) i brak danej →
+ *    `nieustalony` (szary z „?");
+ *  • `bad` (rekord „awaria") → `bledny` (fioletowy z „!").
+ * `null` = symbol bez położenia (patrz `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`) — bez kafla.
+ */
+export function stanKaflaLacznika(id: SymbolId, state: SwitchState | undefined): StanKafla | null {
+  if (!czyLacznikZPolozeniem(id)) return null;
+  // Punkt NOP zadeklarowany na magistrali stacją (`LineRun.nop_station_ref`) nie wskazuje
+  // łącznika — model nie niesie położenia, więc znacznik funkcji stoi bez kafla (kafel „?"
+  // sugerowałby łącznik o nieznanym stanie, którego w modelu nie ma).
+  if (id === 'noPoint' && state === undefined) return null;
+  if (state === 'earthed' && id !== 'qetThreePositionSwitch') return 'nieustalony';
+  return stanKaflaPolozenia(state);
 }
 
-/** Prostokąt ramki stanu SCADA względem lewego górnego rogu gabarytu: obrys CAŁEGO rysunku
- *  (wszystkie położenia noża i porty, `obrysSymbolu`) + `RAMKA_SCADA_MARGINES`. */
-export function prostokatRamkiScada(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+/** Stan kafla z SAMEGO położenia — dla miejsc bez symbolu (inspektor, legenda). `earthed`
+ *  przychodzi tu wyłącznie od łącznika trójpołożeniowego (`stanAparatowPola` rysuje go jako
+ *  nieustalony dla innych rodzajów), więc mapuje się na zestyk zamknięty. */
+export function stanKaflaPolozenia(state: SwitchState | undefined): StanKafla {
+  if (state === 'closed' || state === 'earthed') return 'zamkniety';
+  if (state === 'open') return 'otwarty';
+  if (state === 'bad') return 'bledny';
+  return 'nieustalony';
+}
+
+/** Opis położenia łącznika po polsku — JEDNA mapa (`v2/model/stanAparatowPola.ts`). */
+export { OPIS_POLOZENIA_PL };
+
+/** Znak na kaflu stanów bez położenia pewnego (drugi nośnik obok koloru). */
+const ZNAK_KAFLA: Readonly<Partial<Record<StanKafla, string>>> = { nieustalony: '?', bledny: '!' };
+
+/** Prostokąt kafla stanu względem lewego górnego rogu gabarytu: obrys CAŁEGO rysunku
+ *  (wszystkie położenia noża i porty, `obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
+export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
   const o = obrysSymbolu(id);
-  const m = RAMKA_SCADA_MARGINES;
+  const m = KAFEL_STANU_MARGINES;
   return { x: o.x - m, y: o.y - m, width: o.width + 2 * m, height: o.height + 2 * m };
+}
+
+/** Kafel stanu: wypełniony prostokąt pod symbolem, znak „?"/„!" w rogu, dymek z opisem
+ *  położenia; symbol na kaflu rysuje się kolorem `glif`. */
+function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element): (props: GlyphProps) => JSX.Element {
+  function GlifNaKaflu(props: GlyphProps): JSX.Element {
+    const kafle = props.kafleStanu;
+    const stan = kafle ? stanKaflaLacznika(id, props.state) : null;
+    if (!kafle || !stan) return <Glyph {...props} />;
+    const r = prostokatKaflaStanu(id);
+    const znak = ZNAK_KAFLA[stan];
+    return (
+      <g data-kafel-stanu={stan} data-kafel-symbol={id}>
+        <title>{OPIS_POLOZENIA_PL[props.state ?? 'unknown']}</title>
+        <rect
+          x={props.x + r.x}
+          y={props.y + r.y}
+          width={r.width}
+          height={r.height}
+          rx={1.5}
+          fill={kafle[stan]}
+          stroke="none"
+          data-kafel="tlo"
+        />
+        <Glyph {...props} stroke={kafle.glif} />
+        {znak && (
+          <text
+            x={props.x + r.x + 1}
+            y={props.y + r.y + 6}
+            fill={kafle.glif}
+            fontFamily="sans-serif"
+            fontSize={6}
+            fontWeight={700}
+            data-kafel="znak"
+          >
+            {znak}
+          </text>
+        )}
+      </g>
+    );
+  }
+  return GlifNaKaflu;
 }
 
 function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
@@ -1262,15 +1389,8 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const noz = symbol.noz;
     const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
-    const ramka = props.ramkaLacznika && props.ramkaScada ? rodzajRamkiScada(id, state) : null;
-    const r = ramka ? prostokatRamkiScada(id) : null;
     return (
-      <g
-        {...glyphGroupProps(id, props)}
-        data-symbol-family="qet"
-        data-qet-polozenie={polozenie}
-        data-ramka-scada={ramka ?? (props.ramkaLacznika && noz ? 'brak' : undefined)}
-      >
+      <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
         <CadPrimitiveLayer prims={symbol.stale} ink={ink} paper="none" strokeWidth={w} nonScalingStroke={false} state="closed" />
         {noz && (
           <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
@@ -1284,18 +1404,6 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
             />
           </g>
         )}
-        {ramka && r && props.ramkaScada && (
-          <rect
-            x={r.x}
-            y={r.y}
-            width={r.width}
-            height={r.height}
-            fill="none"
-            stroke={props.ramkaScada[ramka]}
-            strokeWidth={w}
-            data-qet="ramka-scada"
-          />
-        )}
       </g>
     );
   }
@@ -1306,7 +1414,100 @@ const QET_GLYPHS: Readonly<Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.
   (Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]).map((id) => [id, qetGlyph(id)]),
 ) as Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.Element>;
 
-export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
+/**
+ * UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN na końcu toru pola.
+ *
+ * Kondensator — symbol ogólny PN-EN 60617-4 nr 04-02-01: dwie równoległe okładki z
+ * doprowadzeniami w osi. Geometria okładek przeniesiona w skali 1:2 z elementu
+ * QElectroTech `10_electric/91_en_60617/en_60617_04/en_60617_04_02/en_60617_04_02_01.elmt`
+ * („Capacitor, general symbol": okładki szerokości 40 w odstępie 5, doprowadzenia w osi;
+ * licencja CC BY 3.0, autorzy: zespół QElectroTech) — tu okładki 20 w odstępie 2,5.
+ *
+ * Pod kondensatorem ZNAK UKŁADU POŁĄCZEŃ z modelu (`bateria.uklad`, zero domysłu):
+ *  • `PODWOJNA_GWIAZDA_IZOLOWANA` — dwie gwiazdy z izolowanymi punktami gwiazd połączonymi
+ *    przewodem; przekładnik niezrównoważenia (okrąg na połączeniu, port `obwod`) rysowany
+ *    WYŁĄCZNIE, gdy pole niesie jego rekord (ENEA Operator, Zeszyt 1 §17 s. 32, Zał. 16);
+ *  • `GWIAZDA_IZOLOWANA` — gwiazda bez połączenia z ziemią;
+ *  • `GWIAZDA_UZIEMIONA` — gwiazda z punktem gwiazdy połączonym z uziomem (jedyny układ
+ *    z drogą dla składowej zerowej — `backend/src/network_model/core/bateria_kondensatorow.py`);
+ *  • `TROJKAT` — trójkąt;
+ *  • brak danej — znak „?" (układ nieokreślony w modelu; obliczenie przyjmuje wartość
+ *    roboczą, którą pokazują dane przyjęte, nie rysunek).
+ */
+function gwiazda(cx: number, cy: number, r: number): string {
+  const dx = r * Math.sin(Math.PI / 3);
+  const dy = r * Math.cos(Math.PI / 3);
+  return `M ${cx} ${cy} L ${cx} ${cy - r} M ${cx} ${cy} L ${cx - dx} ${cy + dy} M ${cx} ${cy} L ${cx + dx} ${cy + dy}`;
+}
+
+export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  const s = stroke(props);
+  const uklad = props.bateria?.uklad ?? null;
+  const zPrzekladnikiem = uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && props.bateria?.przekladnikNiezrownowazenia === true;
+  return (
+    <g
+      {...glyphGroupProps('capacitorBank', props)}
+      data-uklad-baterii={uklad ?? 'NIEOKRESLONY'}
+      data-przekladnik-niezrownowazenia={zPrzekladnikiem ? 'tak' : 'nie'}
+    >
+      {/* Kondensator (PN-EN 60617-4 04-02-01): doprowadzenie, dwie okładki, doprowadzenie. */}
+      <line x1={16} y1={0} x2={16} y2={6} stroke={s} strokeWidth={w} />
+      <line x1={6} y1={6} x2={26} y2={6} stroke={s} strokeWidth={w} data-okladka-kondensatora="1" />
+      <line x1={6} y1={8.5} x2={26} y2={8.5} stroke={s} strokeWidth={w} data-okladka-kondensatora="2" />
+      <line x1={16} y1={8.5} x2={16} y2={14} stroke={s} strokeWidth={w} />
+      {uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && (
+        <g data-znak-ukladu="PODWOJNA_GWIAZDA_IZOLOWANA">
+          <path d="M 16 14 L 16 17 M 8 17 L 24 17 M 8 17 L 8 20 M 24 17 L 24 20" fill="none" stroke={s} strokeWidth={w} />
+          <path d={`${gwiazda(8, 25, 5)} ${gwiazda(24, 25, 5)}`} fill="none" stroke={s} strokeWidth={w} />
+          {zPrzekladnikiem ? (
+            <>
+              <line x1={8} y1={25} x2={13} y2={25} stroke={s} strokeWidth={w} />
+              <circle
+                cx={16} cy={25} r={3} fill="none" stroke={s} strokeWidth={w}
+                data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA}
+                data-port={PORTY_APARATU_POLA[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA]?.[0]}
+              />
+              <line x1={19} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+            </>
+          ) : (
+            <line x1={8} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+          )}
+        </g>
+      )}
+      {(uklad === 'GWIAZDA_IZOLOWANA' || uklad === 'GWIAZDA_UZIEMIONA') && (
+        <g data-znak-ukladu={uklad}>
+          <line x1={16} y1={14} x2={16} y2={20} stroke={s} strokeWidth={w} />
+          <path d={gwiazda(16, 25, 5)} fill="none" stroke={s} strokeWidth={w} />
+          {uklad === 'GWIAZDA_UZIEMIONA' && (
+            <>
+              <line x1={16} y1={25} x2={16} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={10} y1={31} x2={22} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={12} y1={34} x2={20} y2={34} stroke={s} strokeWidth={w} />
+              <line x1={14} y1={37} x2={18} y2={37} stroke={s} strokeWidth={w} />
+            </>
+          )}
+        </g>
+      )}
+      {uklad === 'TROJKAT' && (
+        <g data-znak-ukladu="TROJKAT">
+          <line x1={16} y1={14} x2={16} y2={19} stroke={s} strokeWidth={w} />
+          <path d="M 16 19 L 22 29 L 10 29 Z" fill="none" stroke={s} strokeWidth={w} />
+        </g>
+      )}
+      {uklad === null && (
+        <text
+          x={16} y={27} textAnchor="middle" data-znak-ukladu="NIEOKRESLONY"
+          fill={s} fontFamily="sans-serif" fontSize={10} fontWeight={700}
+        >
+          ?
+        </text>
+      )}
+    </g>
+  );
+}
+
+const GLIFY_SYMBOLI: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
   disconnector: DisconnectorGlyph,
@@ -1346,7 +1547,18 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnFuseSwitch: NnFuseSwitchGlyph,
   lvPortal: LvPortalGlyph,
   ...QET_GLYPHS,
+  capacitorBank: CapacitorBankGlyph,
 };
+
+/** Rejestr glifów. Łącznik z położeniem jest opakowany kaflem stanu TU, przy budowie
+ *  rejestru — każde miejsce rysujące symbol (kanwa, okno pola, eksport, harness) dostaje
+ *  tę samą regułę, a o kaflu decyduje wyłącznie podanie `kafleStanu`. */
+export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = Object.fromEntries(
+  (Object.keys(GLIFY_SYMBOLI) as SymbolId[]).map((id) => [
+    id,
+    czyLacznikZPolozeniem(id) ? zKafelemStanu(id, GLIFY_SYMBOLI[id]) : GLIFY_SYMBOLI[id],
+  ]),
+) as Record<SymbolId, (props: GlyphProps) => JSX.Element>;
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */
 export const SYMBOL_IDS = Object.keys(SYMBOL_DEFS) as readonly SymbolId[];

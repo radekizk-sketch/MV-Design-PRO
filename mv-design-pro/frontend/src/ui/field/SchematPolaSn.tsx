@@ -7,8 +7,9 @@
  * romb, kółko), wypełnienie kolorem stanu w konwencji odwrotnej do SCADA (otwarty czerwony,
  * zamknięty zielony) i stan nieznany malowany jak zamknięty. Skasowany. Tu scena kanwy
  * (`buildSceneV3`, ten sam ENM, ta sama kompozycja portów i te same glify QElectroTech
- * EN 60617 z ramką stanu `#F05260` zamknięty / `#2CCF93` otwarty, stan nieznany bez ramki
- * z podpisem) jest przycinana do pola (`kadrPolaZeSceny`). Zero fizyki i zero układu tutaj.
+ * EN 60617 na kaflu stanu z JEDNEJ tabeli `STATE_COLOR` — czerwony zamknięty, zielony
+ * otwarty, szary „?" nieustalony, fioletowy „!" awaria; identyczny w obu motywach) jest
+ * przycinana do pola (`kadrPolaZeSceny`). Zero fizyki i zero układu tutaj.
  *
  * Rysunek jest bierny: wybór i przełączanie aparatu odbywają się na kanwie (klik = wybór,
  * przełączenie osobną akcją menu).
@@ -91,7 +92,7 @@ export function SchematPolaSn({ item, snapshot }: SchematPolaSnProps): JSX.Eleme
                 key={`${symbol.meta?.deviceRef ?? symbol.symbolId}-${index}`}
                 symbol={symbol}
                 stroke={baseSymbolStrokeColor(symbol.symbolId, symbol.meta, palette)}
-                ramkaScada={palette.ramkaScada}
+                kafleStanu={palette.state}
               />
             ))}
           </g>

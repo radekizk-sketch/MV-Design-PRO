@@ -14,9 +14,9 @@ z pola → `set_bay_equipment` szablonu z klasą); generator i odbiór są dopis
 końca odcinka. Kombinacja, której operacja odmawia (Z.10 w klasie z generacją), jest
 sprawdzana jako odmowa z kodem.
 
-INIEKCJE: SCO dopisane w polu mieszanym → W051; SPZ dopisane w polu dedykowanym → W052;
-odbiór za polem dedykowanym → W050; generacja za polem odbiorczym → W049; pomiar AJEE bez
-rdzenia rozliczeniowego → W053.
+INIEKCJE: SCO dopisane w polu mieszanym → W055; SPZ dopisane w polu dedykowanym → W056;
+odbiór za polem dedykowanym → W054; generacja za polem odbiorczym → W053; pomiar AJEE bez
+rdzenia rozliczeniowego → W057.
 """
 
 from __future__ import annotations
@@ -235,7 +235,7 @@ def test_ocena_pola_w_iloczynie_cech(wykonanie, klasa, generacja_kw, odbior_kw, 
         assert funkcja.obecna is (funkcja.kod in kody)
         if funkcja.wymog == "NA_ZADANIE_OSD":
             assert funkcja.status in {"BRAK_DOWODU", "NIEJEDNOZNACZNY"}
-    # Walidator modelu raportuje TE SAME niezgodności kodami W049–W053, z akcją naprawczą.
+    # Walidator modelu raportuje TE SAME niezgodności kodami W053–W057, z akcją naprawczą.
     wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(enm))
     zgloszone = sorted(
         i.code
@@ -414,3 +414,107 @@ def test_siec_za_polem_nie_przechodzi_przez_szyny_sekcji_gpz():
     assert ocena is not None
     assert [m.ref_id for m in ocena.moduly] == ["gen-b", "gen-pv"]
     assert [r for r, _p in ocena.odbiory] == ["odb-zaklad"]
+
+
+# --- obwody wtórne funkcji i napięcie zwrotne (uzupełnienie właściciela 2026-10-29) -------------
+# Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × klasa dopuszczająca wykonanie × generacja za polem
+# {brak, 1 MW} × rekord ruchu pola {brak, łączność „ok" pod napięciem, „ok" bez napięcia,
+# łączność „offline"}. Wyrocznia: obwód każdej funkcji z danych wzorca rozwiązany na aparatach
+# TEGO pola; stan napięcia z pomiaru WYŁĄCZNIE przy łączności „ok".
+
+KLASY_WYKONANIA = [
+    (w, k)
+    for w in SZABLON
+    for k in ("ODBIORCZE", "MIESZANE", "DEDYKOWANE_WYTWORCY")
+    if not (w == "Z10" and k != "ODBIORCZE")
+]
+
+
+@pytest.mark.parametrize("wykonanie,klasa", KLASY_WYKONANIA)
+def test_obwody_funkcji_pola_z_wzorca(wykonanie, klasa):
+    enm, pole = _scena(wykonanie, klasa, 1000 if klasa != "ODBIORCZE" else 0, 0, 0)
+    ocena = ocena_pola_liniowego(enm, pole)
+    assert ocena is not None and ocena.obwody_wtorne is not None
+    kody = list(pole["protection_codes"])
+    powiazane = [p.funkcja for p in ocena.obwody_wtorne.powiazania]
+    # Kolejność: zestaw funkcji pola, potem funkcje wzorca, których pole nie ma.
+    assert [o.kod for o in ocena.obwody_funkcji] == [
+        *kody,
+        *(k for k in powiazane if k not in kody),
+    ]
+    for obwod in ocena.obwody_funkcji:
+        assert obwod.obecna is (obwod.kod in kody)
+        if obwod.kod not in powiazane:
+            # Funkcja dopisana klasą, której rysunek wzorca nie rysuje (Z.10: f< z IRiESD).
+            assert obwod.blok_rysunku is None and "nie rysuje" in obwod.wejscia_pl[0]
+            continue
+        assert obwod.blok_rysunku and obwod.wejscia_pl and obwod.wyjscia_pl
+        assert not any("brak aparatu" in w for w in obwod.wejscia_pl)
+    po_kodzie = {o.kod: o for o in ocena.obwody_funkcji}
+    assert po_kodzie["67N"].wejscia_pl == (
+        "przekładnik Ferrantiego T2, przekładnia 1/100",
+        "sygnał „Z, Zz”",
+    )
+    rdzen = "III" if wykonanie == "Z11" else "I"
+    assert po_kodzie["51"].wejscia_pl == (
+        f"rdzeń {rdzen} przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20",
+    )
+    if wykonanie == "Z10":
+        assert ocena.napiecie_zwrotne is None
+        assert po_kodzie["81U"].blok_rysunku is None
+    else:
+        assert po_kodzie["81U"].wejscia_pl == (
+            "uzwojenie III przekładnika napięciowego T3: SN/√3 / 0,1/√3, 7,5 VA, klasa 0,5/3P",
+        )
+
+
+@pytest.mark.parametrize("wykonanie", ["Z11_1", "Z11"])
+@pytest.mark.parametrize("generacja_kw", [0, 1000])
+@pytest.mark.parametrize(
+    "ruch,stan",
+    [
+        (None, "NIEUSTALONY"),
+        ({"secondary_communication_status": "offline"}, "NIEUSTALONY"),
+        (
+            {
+                "secondary_communication_status": "ok",
+                "energization_and_safety": {"energized_from_feeder_side": True},
+            },
+            "POD_NAPIECIEM",
+        ),
+        (
+            {
+                "secondary_communication_status": "ok",
+                "energization_and_safety": {"energized_from_feeder_side": False},
+            },
+            "BEZ_NAPIECIA",
+        ),
+    ],
+)
+def test_napiecie_zwrotne_pola(wykonanie, generacja_kw, ruch, stan):
+    enm, pole = _scena(wykonanie, "MIESZANE", generacja_kw, 5000, 0)
+    if ruch is not None:
+        pole["runtime_state"] = ruch
+    ocena = ocena_pola_liniowego(enm, pole)
+    assert ocena is not None
+    nz = ocena.napiecie_zwrotne
+    assert nz is not None
+    assert nz.stan_pomiaru == stan
+    assert nz.mozliwe is (generacja_kw > 0)
+    assert nz.zrodla_za_polem == (1 if generacja_kw else 0)
+    assert nz.blokada_nz is ("NZ" in pole["protection_codes"])
+    assert nz.pomiar_pl.startswith("uzwojenie III przekładnika napięciowego T3")
+    assert "Blok. ZW" in nz.pomiar_pl and nz.wyjasnienie_pl and nz.stan_pomiaru_pl
+
+
+def test_iniekcja_aparat_wzorca_usuniety_z_pola():
+    """Iniekcja: przekładnik napięciowy pola przemianowany — obwody funkcji nazywają brak aparatu,
+    zamiast udawać pomiar z uzwojenia, którego pole nie ma."""
+    enm, pole = _scena("Z11_1", "MIESZANE", 1000, 5000, 0)
+    (vt,) = (a for a in pole["primary_devices"] if a["kind"] == "VT")
+    vt["designation"] = "T9"
+    ocena = ocena_pola_liniowego(enm, pole)
+    assert ocena is not None and ocena.napiecie_zwrotne is not None
+    assert "brak aparatu w polu" in ocena.napiecie_zwrotne.pomiar_pl
+    nz = next(o for o in ocena.obwody_funkcji if o.kod == "NZ")
+    assert nz.wejscia_pl == ("uzwojenie III przekładnika napięciowego T3 — brak aparatu w polu",)

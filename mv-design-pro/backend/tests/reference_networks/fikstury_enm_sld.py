@@ -25,6 +25,8 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``b2Mala``/``b2Duza`` ``Przed``/``Po`` + ``Operacja`` — wstawienie stacji w środek odcinka
   w sieci małej (3 → 4 stacje) i dużej (14 → 15 stacji);
 * ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
+* ``gpz110kvBkr``, ``gpz110kvBkrGwiazdaUziemiona`` (``public``) — GPZ 110/15 kV z polem
+  baterii kondensatorów (``scena_pola_bkr``, karta UX-04/POLE-BKR-MODEL);
 * ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
@@ -65,6 +67,7 @@ from tests.reference_networks.budowa_przez_api import (
     segmenty_korytarza,
     wiazanie,
 )
+from tests.reference_networks.scena_pola_bkr import zbuduj_gpz_z_bkr
 from tests.utils.biegi import wykonaj_bieg
 
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
@@ -730,6 +733,26 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
 )
 
 
+#: Sceny pola BKR w ``public/test-fixtures`` (plik, nazwa sieci, cechy budowniczego):
+#: układ wg Zał. 16 (podwójna gwiazda z typu, przekładnik niezrównoważenia, dwa przekładniki
+#: napięciowe międzyfazowe) oraz gwiazda uziemiona z dławikiem i rezystorami rozładowczymi
+#: (bez przekładnika niezrównoważenia i bez przekładników rozładowczych — inny glif).
+_SCENY_BKR: tuple[tuple[str, str, dict[str, Any]], ...] = (
+    ("gpz110kvBkr", "GPZ z polem baterii kondensatorów", {}),
+    (
+        "gpz110kvBkrGwiazdaUziemiona",
+        "GPZ z baterią w gwieździe uziemionej",
+        {
+            "uklad": "GWIAZDA_UZIEMIONA",
+            "przekladnik_niezrownowazenia": False,
+            "liczba_vt": 0,
+            "rezystory_wewnetrzne": True,
+            "dlawik_mh": 5.0,
+        },
+    ),
+)
+
+
 def render_fikstur_enm_sld() -> dict[str, str]:
     """Ścieżka względem ``frontend`` -> PEŁNA treść pliku (jeden tor zapisu i testu)."""
     from api.main import app
@@ -749,6 +772,10 @@ def render_fikstur_enm_sld() -> dict[str, str]:
             "GPZ bez odcinków",
             opakuj=False,
         )
+        # Karta UX-04/POLE-BKR-MODEL: GPZ 110/15 kV z polem baterii kondensatorów (scena
+        # `scena_pola_bkr`, operacje domenowe) — harness zrzutów glifu baterii w obu motywach.
+        for plik, nazwa, cechy in _SCENY_BKR:
+            tresci[f"{PUBLICZNE}/{plik}.enm.json"] = _plik_enm(zbuduj_gpz_z_bkr(**cechy), nazwa)
         tresci[f"{PUBLICZNE}/nnBoardDemo.enm.json"] = _plik_enm(
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",

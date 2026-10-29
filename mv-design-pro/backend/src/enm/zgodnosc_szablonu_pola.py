@@ -3,16 +3,16 @@
 Trzy reguły dopuszczalności szablonu pola liniowego GPZ, każda z własnym kodem i podstawą,
 wszystkie z liścia `network_model.catalog.bay_templates`:
 
-* WYKONANIE ŁĄCZNIKÓW × IZOLACJA (W046, ``pole.wykonanie_lacznikow_niezgodne_z_izolacja``) —
+* WYKONANIE ŁĄCZNIKÓW × IZOLACJA (W050, ``pole.wykonanie_lacznikow_niezgodne_z_izolacja``) —
   rozdzielnica z izolacją powietrzną dopuszcza wyłącznie wyłącznik stały z odłącznikiem
   szynowym albo wyłącznik poziomo wysuwny (ENEA Zeszyt 1, §13, druk s.23–25). Nośniki: szablon
   pola (`Bay.bay_template_ref` → `BayTemplate.wykonanie_lacznikow`) i rodzina rozdzielnicy
   (`Bay.switchgear_family_ref` → `SwitchgearFamily.insulation_type` — jedno źródło medium
   izolacyjnego pola);
-* SZABLON GPZ POZA GPZ (W047, ``pole.szablon_tylko_gpz``) — wzorce Z.10/Z.11.1/Z.11 opisują
+* SZABLON GPZ POZA GPZ (W051, ``pole.szablon_tylko_gpz``) — wzorce Z.10/Z.11.1/Z.11 opisują
   pola rozdzielni SN stacji 110 kV/SN (`BayTemplate.tylko_gpz`); pole GPZ = pole sekcji GPZ
   (`Bay.gpz_section_id`, ten sam predykat, którym operacje dobierają szablon domyślny);
-* KLASA POLA × WYKONANIE (W048, ``pole.klasa_pola_niezgodna_z_wykonaniem``) — klasa z generacją
+* KLASA POLA × WYKONANIE (W052, ``pole.klasa_pola_niezgodna_z_wykonaniem``) — klasa z generacją
   (mieszana, dedykowana wytwórcy; IRiESD II.4.5.4.2.2–2.3) dopuszcza wyłącznie Z.11.1 i Z.11
   (`Bay.klasa_pola` × `BayTemplate.wykonanie_pola`).
 
@@ -41,6 +41,7 @@ from network_model.catalog.bay_templates import (
     odmowa_wykonania_lacznikow_w_izolacji,
 )
 
+from .pola import napis_lub_none
 from .slownik_komunikatow import opis_elementu
 
 __all__ = [
@@ -55,9 +56,9 @@ __all__ = [
 
 #: Kod odmowy operacji → kod walidatora modelu (kanon gotowości w `domain.readiness_bridge`).
 KODY_WALIDATORA_SZABLONU: dict[str, str] = {
-    KOD_ODMOWY_WYKONANIA_LACZNIKOW: "W046",
-    KOD_ODMOWY_SZABLONU_TYLKO_GPZ: "W047",
-    KOD_ODMOWY_KLASY_POLA: "W048",
+    KOD_ODMOWY_WYKONANIA_LACZNIKOW: "W050",
+    KOD_ODMOWY_SZABLONU_TYLKO_GPZ: "W051",
+    KOD_ODMOWY_KLASY_POLA: "W052",
 }
 
 AKCJA_NAPRAWCZA_SZABLONU_PL: dict[str, str] = {
@@ -79,13 +80,9 @@ class NiezgodnoscSzablonuPola:
     komunikat_pl: str
 
 
-def _napis(wartosc: object) -> str | None:
-    return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
-
-
 def czy_pole_gpz(pole: Mapping[str, Any]) -> bool:
     """Pole rozdzielni GPZ = pole sekcji GPZ (`Bay.gpz_section_id`)."""
-    return _napis(pole.get("gpz_section_id")) is not None
+    return napis_lub_none(pole.get("gpz_section_id")) is not None
 
 
 def odmowy_szablonu_dla_pola(
@@ -124,7 +121,7 @@ def niezgodnosci_szablonu_pola(
     enm: Mapping[str, Any], pole: Mapping[str, Any]
 ) -> list[NiezgodnoscSzablonuPola]:
     """Niezgodności szablonu w jednym rekordzie pola (kolejność reguł stała)."""
-    szablon = BAY_TEMPLATE_REGISTRY.get(_napis(pole.get("bay_template_ref")) or "")
+    szablon = BAY_TEMPLATE_REGISTRY.get(napis_lub_none(pole.get("bay_template_ref")) or "")
     if szablon is None:
         return []
     # Import LENIWY: pakiet `switchgear` importuje szablony pól, a te — kanon ról pola z `enm`
@@ -133,8 +130,10 @@ def niezgodnosci_szablonu_pola(
 
     bay_ref = str(pole.get("ref_id") or "")
     opis_pola = opis_elementu(dict(enm), bay_ref, "pola")
-    rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(_napis(pole.get("switchgear_family_ref")) or "")
-    klasa = _napis(pole.get("klasa_pola"))
+    rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(
+        napis_lub_none(pole.get("switchgear_family_ref")) or ""
+    )
+    klasa = napis_lub_none(pole.get("klasa_pola"))
     return [
         NiezgodnoscSzablonuPola(
             kod=kod,

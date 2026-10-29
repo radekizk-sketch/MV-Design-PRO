@@ -210,7 +210,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const wykonajAkcje = useCallback(
     (actionId: string) => {
       if (!temat) return;
-      wykonawca(actionId, temat.menuKind, temat.modelRef);
+      wykonawca(actionId, temat.menuKind, temat.modelRef, undefined, temat.deviceRef);
     },
     [temat, wykonawca],
   );

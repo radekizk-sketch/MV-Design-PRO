@@ -38,7 +38,8 @@ import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { BRAK_POLOZENIA_W_MODELU } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { OPIS_POLOZENIA_PL } from '../../../v2/model/stanAparatowPola';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -159,7 +160,7 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
             `selekcja ${klucz}`,
           ).toEqual([symbol.meta!.ownerRef]);
           expect(screen.getByTestId('inspektor-aparat-stan').textContent, klucz).toBe(
-            POLOZENIE_LACZNIKA_PL[symbol.state!],
+            OPIS_POLOZENIA_PL[symbol.state!],
           );
           pokryte.add(klucz.split('|')[0] + '|' + (ROLA_POKRYCIA[symbol.symbolId] ?? 'tor') + '|' + symbol.state);
           fireEvent.keyDown(window, { key: 'Escape' });

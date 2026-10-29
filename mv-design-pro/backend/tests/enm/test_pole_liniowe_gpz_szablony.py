@@ -13,7 +13,7 @@ Przypina:
 * zestaw EAZ szablonu wg klasy i słownik funkcji;
 * materializację: GPZ (każda sekcja) z rodziną {brak, powietrzna, stało-powietrzna, gazowa bez
   F}, `add_sn_bay`, przydział pola przy odgałęzieniu, `set_bay_equipment` szablonu i katalogu
-  (odgałęzienie zachowane przy ponownym zapisie), odmowy W046–W048 w operacji i walidatorze;
+  (odgałęzienie zachowane przy ponownym zapisie), odmowy W050–W052 w operacji i walidatorze;
 * wartości robocze w `dane_przyjete` (ESTIMATED), niezmienność wejścia solverów, determinizm,
   odcisk modelu, odczyt pola i topologię zasilenia.
 
@@ -107,7 +107,7 @@ def tabela_odczytu(pole: str, laczniki: str) -> list[tuple[str, str, str, str, s
     wiersze.append(("CT", "MIDSTREAM", "T1", rys, None))
     wiersze.append(("VOLTAGE_INDICATOR", "OFF_PATH", "PF1", "§13", None))
     if laczniki != "TROJPOLOZENIOWY":  # §13: uziemnik stały wyprowadzenia
-        wiersze.append(("ES", "GROUND_BRANCH", "Q9", "§13", None))
+        wiersze.append(("ES", "GROUND_BRANCH", "Q8", "§13", None))
     wiersze.append(("CABLE_HEAD", "DOWNSTREAM", "GK", rys, None))
     wiersze.append(("CORE_BALANCE_CT", "DOWNSTREAM", "T2", rys, None))
     return wiersze
@@ -250,14 +250,14 @@ def test_porty_aparatow_szablonu_z_sekwencji(pole: str, laczniki: str):
 @pytest.mark.parametrize("pole,laczniki", KOMBINACJE)
 def test_pary_blokad_uziemnikow_z_portow(pole: str, laczniki: str):
     """Uziemnik wiąże łączniki od swojego węzła w stronę szyny do pierwszego odłączającego:
-    Q9 — wyłącznik i odłącznik szynowy (bez łącznika odgałęzienia), Q51 — tylko Q5."""
+    Q8 — wyłącznik i odłącznik szynowy (bez łącznika odgałęzienia), Q51 — tylko Q5."""
     aparaty = template_primary_devices(_id(pole, laczniki), field_ref="pole-x")
     drogi = laczniki_drogi_uziemnika(_krotki(aparaty))
     oczekiwane: dict[str, frozenset[str]] = {}
     if laczniki == "STALY_Z_ODLACZNIKIEM":
-        oczekiwane["Q9"] = frozenset({"Q0", "Q1"})
+        oczekiwane["Q8"] = frozenset({"Q0", "Q1"})
     elif laczniki == "WYSUWNY":
-        oczekiwane["Q9"] = frozenset({"Q0"})
+        oczekiwane["Q8"] = frozenset({"Q0"})
     if pole != "Z10" and laczniki != "TROJPOLOZENIOWY":
         oczekiwane["Q51"] = frozenset({"Q5"})
     assert drogi == oczekiwane
@@ -274,6 +274,29 @@ def test_porty_toru_deterministyczne_idempotentne_i_nie_nadpisuja_jawnych():
     assert porty_toru_pola(jawne) == jawne
 
 
+@pytest.mark.parametrize("w_odgalezieniu", [False, True])
+@pytest.mark.parametrize("rodzaj", sorted(PORTY_APARATU_POLA))
+def test_porty_kazdego_rodzaju_aparatu_z_jednej_listy_portow(rodzaj: str, w_odgalezieniu: bool):
+    """Iloczyn {każdy rodzaj z JEDNEJ listy portów — w tym aparaty pola BKR (przekładnik
+    niezrównoważenia: ``obwod``, przekładnik międzyfazowy: ``A``/``B``)} × {tor główny,
+    odgałęzienie}: aparat dostaje KOMPLET portów swojego rodzaju; aparat nie-torowy (komplet inny
+    niż ``we``/``wy``) przyłącza WSZYSTKIE porty do jednego, bieżącego węzła (dwa zaciski
+    przekładnika międzyfazowego to dwie fazy tego samego węzła jednokreskowego)."""
+    aparat: dict[str, Any] = {"kind": rodzaj}
+    if w_odgalezieniu:
+        aparat["odgalezienie"] = "o"
+    wynik = porty_toru_pola([{"kind": "CB"}, aparat, {"kind": "CABLE_HEAD"}])[1]
+    komplet = PORTY_APARATU_POLA[rodzaj]
+    assert [p["port_id"] for p in wynik["ports"]] == list(komplet)
+    wezly = [p["wezel"] for p in wynik["ports"]]
+    if komplet == ("we", "wy"):
+        # Wejście na węźle za wyłącznikiem, wyjście na nowym węźle (toru albo odgałęzienia).
+        assert wezly == ["w1", "o1" if w_odgalezieniu else "w2"]
+    else:
+        assert len(set(wezly)) == 1, wezly
+        assert wezly[0] == "w1"
+
+
 @pytest.mark.parametrize("pole,laczniki", KOMBINACJE)
 def test_przekladniki_rdzenie_z_katalogu_i_uzwojenia_vt(pole: str, laczniki: str):
     aparaty = template_primary_devices(_id(pole, laczniki), field_ref="pole-x")
@@ -288,12 +311,10 @@ def test_przekladniki_rdzenie_z_katalogu_i_uzwojenia_vt(pole: str, laczniki: str
         assert vt == []
         return
     (t3,) = vt
-    assert [u["otwarty_trojkat"] for u in t3["uzwojenia"]] == [False, False, True]
-    assert [u["przekladnia"] for u in t3["uzwojenia"]] == [
-        "SN/√3 / 0,1/√3",
-        "SN/√3 / 0,1/√3",
-        "SN/√3 / 0,1/3",
-    ]
+    # Rysunki s.90 i s.91: SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3 — trzy uzwojenia fazowe, bez
+    # otwartego trójkąta (napięcie zerowe obwodami okrężnymi „Z, Zz" z przekładnika szyn).
+    assert [u["otwarty_trojkat"] for u in t3["uzwojenia"]] == [False, False, False]
+    assert [u["przekladnia"] for u in t3["uzwojenia"]] == ["SN/√3 / 0,1/√3"] * 3
 
 
 @pytest.mark.parametrize(
@@ -384,7 +405,7 @@ def test_blokada_uziemnika_odgalezienia_nie_zalezy_od_wylacznika():
         "Q0": "zamkniety",
         "Q5": "otwarty",
         "Q51": "otwarty",
-        "Q9": "otwarty",
+        "Q8": "otwarty",
     }
     wejscie = [
         (
@@ -397,7 +418,7 @@ def test_blokada_uziemnika_odgalezienia_nie_zalezy_od_wylacznika():
         if a["designation"] in stany
     ]
     blokady = blokady_zamkniecia(wejscie)
-    assert blokady["Q51"] is False and blokady["Q9"] is True
+    assert blokady["Q51"] is False and blokady["Q8"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +486,7 @@ def test_gpz_kazda_sekcja_pole_liniowe_wg_izolacji_rodziny(rodzina: str | None):
         _sprawdz_pole(enm, pole, RODZINY[rodzina])
     EnergyNetworkModel.model_validate(enm)
     kody = {i.code for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues}
-    assert not kody & {"W046", "W047", "W048"}
+    assert not kody & {"W050", "W051", "W052"}
 
 
 @pytest.mark.parametrize("izolacja", [None, "air", "ssis", "gaz_bez_f", "sf6"])
@@ -645,7 +666,7 @@ def test_set_bay_equipment_katalog_zachowuje_odgalezienie(pole_rys: str):
 
 
 # ---------------------------------------------------------------------------
-# Odmowy W046–W048: operacja i walidator, ta sama reguła
+# Odmowy W050–W052: operacja i walidator, ta sama reguła
 # ---------------------------------------------------------------------------
 
 
@@ -700,9 +721,9 @@ def test_odmowa_operacji_i_walidatora_z_jednej_reguly(rodzina, szablon_id, klasa
         for i in ENMValidator().validate(EnergyNetworkModel.model_validate(zastany)).issues
     }
     oczekiwany = {
-        "pole.wykonanie_lacznikow_niezgodne_z_izolacja": "W046",
-        "pole.szablon_tylko_gpz": "W047",
-        "pole.klasa_pola_niezgodna_z_wykonaniem": "W048",
+        "pole.wykonanie_lacznikow_niezgodne_z_izolacja": "W050",
+        "pole.szablon_tylko_gpz": "W051",
+        "pole.klasa_pola_niezgodna_z_wykonaniem": "W052",
     }[kod]
     assert oczekiwany in kody and kody[oczekiwany].suggested_fix
 
@@ -760,19 +781,34 @@ def test_wejscie_solverow_niezmienione_przez_aparaty_pola(pole_rys: str):
 
 
 def test_odcisk_pustych_list_jak_brak_pola():
+    # Pola addytywne aparatu pola (porty, odgałęzienie, przekładnia przekładnika Ferrantiego):
+    # brak klucza i wartość pusta/`None` to ten sam odcisk (migawki sprzed atrybutu nie
+    # tracą świeżości wyników), a wartość nadana jest treścią modelu.
     enm = _gpz()
+    assert any(
+        aparat.get("przekladnia") for pole in enm["bays"] for aparat in pole["primary_devices"]
+    )
     bez = copy.deepcopy(enm)
     z_pusta = copy.deepcopy(enm)
     for pole in bez["bays"]:
         for aparat in pole["primary_devices"]:
             aparat.pop("ports", None)
             aparat.pop("odgalezienie", None)
+            aparat.pop("przekladnia", None)
     for pole in z_pusta["bays"]:
         for aparat in pole["primary_devices"]:
             aparat["ports"] = []
             aparat["odgalezienie"] = None
+            aparat["przekladnia"] = None
     assert hash_migawki_enm(bez) == hash_migawki_enm(z_pusta)
     assert hash_migawki_enm(enm) != hash_migawki_enm(z_pusta)
+    tylko_przekladnia = copy.deepcopy(z_pusta)
+    for pole, zrodlowe in zip(tylko_przekladnia["bays"], enm["bays"], strict=True):
+        for aparat, zrodlowy in zip(
+            pole["primary_devices"], zrodlowe["primary_devices"], strict=True
+        ):
+            aparat["przekladnia"] = zrodlowy.get("przekladnia")
+    assert hash_migawki_enm(tylko_przekladnia) != hash_migawki_enm(z_pusta)
 
 
 def _z_polozeniem_q1(enm: dict[str, Any], stan: str) -> tuple[dict[str, Any], dict[str, Any]]:

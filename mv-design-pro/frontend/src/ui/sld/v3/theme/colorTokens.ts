@@ -20,7 +20,8 @@
  * sprzecznych znaczeń naraz):
  *   1. stan źródła DER (`operationalState`, `compose/sourceKind.ts`)
  *   2. nakładka wynikowa (energizacja/przepływ/OLTC/zwarcie — `overlay.ts`)
- *   3. stan NOP (punkt podziału, ZAWSZE „otwarty" z definicji domenowej)
+ *   3. kafel stanu łącznika (`STATE_COLOR`) — wypełnienie POD symbolem łącznika, symbol na
+ *      kaflu w kolorze `STATE_COLOR.glif` (NOP = stan łącznika + znacznik `noPoint`)
  *   4. napięcie (baza — gdy nic wyżej nie ustawia koloru)
  * Implementacja precedencji ZOSTAJE w `SldCanvasV3.tsx`/`compose/sourceKind.ts`
  * (logika renderu), ten moduł niesie WYŁĄCZNIE wartości + klasyfikatory
@@ -86,17 +87,15 @@ export type VoltageClass = 'hv' | 'sn' | 'nn';
  * kolor „domyślny", wspólny z elementami NIEELEKTRYCZNYMI rysunku (pomiar: L0
  * niósł dwa kolory w całym drzewie DOM przy trzech poziomach napięcia w modelu).
  *
- * DOBÓR ODCIENIA. `#D93A2B` to czerwień przechylona w ciepło (hue ≈ 7°), wybrana
- * ŚWIADOMIE daleko od `STATE_COLOR.nop`/`open` = `#FF006E` (magenta, hue ≈ 334°):
- * na ekranie czerwień była wolna, bo stan otwarty/NOP nosi magentę, i ta odległość
- * w odcieniu musi zostać zachowana przy każdej przyszłej korekcie — inaczej
- * „poziom napięcia" i „stan ruchowy" zlałyby się w jedną barwę.
+ * DOBÓR ODCIENIA. `#D93A2B` to czerwień przechylona w ciepło (hue ≈ 7°). Od karty
+ * UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 5) czerwień niesie też stan ZAMKNIĘTY łącznika
+ * (`STATE_COLOR.zamkniety` = `#C62828`, konwencja dyspozytorska) — oba znaczenia rozdziela
+ * NOŚNIK, nie odcień: poziom napięcia to kolor KRESKI toru, stan to WYPEŁNIONY kafel pod
+ * symbolem łącznika z białym glifem. Literały są różne (eksport podmienia kolory po
+ * wartości), a kafel różni się od kreski jasnością i powierzchnią.
  *
- * ASYMETRIA WOBEC DRUKU (świadoma, patrz `export/exportPalette.ts`): w druku WN
- * pozostaje czarnym tuszem, bo czerwień drukowalna `#B71C1C` jest zarezerwowana
- * dla NOP (wymóg D11 „WN/SN/nN i NOP wzajemnie rozróżnialne"). Gdy trzeba wybrać,
- * PIERWSZEŃSTWO ma stan ruchowy nad poziomem napięcia — pomyłka co do punktu
- * podziału sieci jest groźniejsza niż pomyłka co do poziomu napięcia.
+ * DRUK (`export/exportPalette.ts`): WN jest czarnym tuszem, kafle stanu zostają w kolorach
+ * konwencji — arkusz mówi to samo co ekran.
  * `sn` = zielony — wartość ZGODNA z kanonicznym zielonym szyny SN w v2
  * (`ui/sld/v2/theme/tokens.ts` `COLOR_BUS_LV`/`COLOR_FIELD_TRUNK_ENERGIZED`,
  * „Szyna 15/30 kV (SN) — zielony tor operatorski"), ale ŚWIADOMIE INNY
@@ -140,19 +139,13 @@ export interface SldPalette {
   readonly canvasBackground: string;
   readonly baseStroke: string;
   readonly voltage: Readonly<Record<VoltageClass, string>>;
-  readonly state: Readonly<Record<'closed' | 'open' | 'nop', string>>;
+  /** Kafle stanu łącznika — `STATE_COLOR`, ta sama tabela w każdym motywie i eksporcie. */
+  readonly state: KafleStanuLacznika;
   readonly highlight: Readonly<Record<HighlightKey, string>>;
   /** GPZ-PARYTET (§0 pkt 3): kolor roli pola rozdzielni GPZ — tło pola (`gpz.bay.panel`,
    *  wypełnienie półprzezroczyste + obrys), próbka w tabeli „Pola GPZ" i legenda ról.
    *  Rola pochodzi z modelu (`Bay.bay_role`), kolor jest wyłącznie kodem roli. */
   readonly rolaPola: Readonly<Record<RolaPolaGpz, string>>;
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu łącznika w konwencji SCADA (obrys bez
-   *  wypełnienia wokół CAŁEGO symbolu QET łącznika pola) — `zamkniety` czerwona,
-   *  `otwarty` zielona (położenie „uziemiony" łącznika trójpołożeniowego = tor otwarty,
-   *  ramka zielona). Wartości IDENTYCZNE w obu motywach i w eksporcie (konwencja
-   *  dyspozytorska, nie odcień motywu) — pilnuje `__tests__/palette.test.ts`. Stan
-   *  nieznany nie ma ramki (symbol zostaje, podpis „stan nieznany"). */
-  readonly ramkaScada: Readonly<Record<'zamkniety' | 'otwarty', string>>;
 }
 
 /**
@@ -194,8 +187,8 @@ export function baseSegmentStrokeColor(
  * `ownerRef` odcinków): `gridSource` = sieć zewnętrzna GPZ, ZAWSZE WN w tej
  * domenie (`CLAUDE.md` terminologia „Source | External Grid"); `loadArrow` =
  * zagregowany odbiór 0,4 kV (`symbols/defs.ts` komentarz „zagregowany odbiór
- * 0,4 kV"), ZAWSZE nN. `noPoint` dostaje kolor STANU (`STATE_COLOR.nop`),
- * NIE napięcia — patrz `baseSymbolStrokeColor` wołający.
+ * 0,4 kV"), ZAWSZE nN. `noPoint` (znacznik punktu normalnie otwartego) idzie kolorem
+ * napięcia toru jak każdy aparat; jego stan niesie kafel (`symbols/glyphs.tsx`).
  *
  * GAP karty S3 — CZĘŚCIOWO ZAMKNIĘTY (V12K-217): aparaty pola WN transformatora
  * GPZ dostają jawne `meta.voltageClass = 'hv'` z kompozycji (`compose/gpz.ts`),
@@ -213,7 +206,6 @@ export function baseSymbolStrokeColor(
   meta: VoltageClassifiableMeta | undefined,
   palette: SldPalette = DARK_SCADA_SLD_PALETTE,
 ): string {
-  if (symbolId === 'noPoint') return palette.state.nop;
   if (symbolId === 'gridSource') return palette.voltage.hv;
   if (symbolId === 'loadArrow') return palette.voltage.nn;
   return palette.voltage[voltageClassOf(meta)];
@@ -224,27 +216,54 @@ export function baseSymbolStrokeColor(
 // ---------------------------------------------------------------------------
 
 /**
- * Stan łącznika ZWYKŁEGO (breaker/disconnector/…) jest GEOMETRIĄ, nie
- * kolorem (`symbols/glyphs.tsx` nagłówek: „Stan łącznika wyrażony GEOMETRIĄ
- * ... nie kolorem" — decyzja SLD_CAD_SPEC_V3 §6 P5, NIETKNIĘTA przez S3).
- * `STATE_COLOR` niesie WIĘC wyłącznie wpis realnie okablowany w kanwie dziś
- * (`nop`) + wpisy rezerwowe dla kompletności tabeli/przyszłych konsumentów
- * (legenda, inspektor) — `closed`/`open` NIE są dziś czytane przez żaden
- * glif (dokumentacyjna kompletność tabeli §3, nie martwy kod: literały
- * pochodzą z `DARK_SCADA_NEON_THEME_SPEC.md` §2.3, gotowe do podłączenia
- * bez nowej decyzji kolorystycznej, gdy przyszły konsument tego zapotrzebuje).
+ * Karta UX-04/POLE-LINIOWE-WZORZEC, rozszerzenie 5 (referencja HMI sterownika polowego,
+ * właściciel 2026-10-29) — JEDNA konwencja stanu łącznika dla kanwy, eksportu, legendy
+ * i inspektora: KAFEL wypełniony pod symbolem łącznika w kolorze stanu, symbol na kaflu
+ * w kolorze `glif`. Konwencja dyspozytorska polskich OSD: czerwony = ZAMKNIĘTY,
+ * zielony = OTWARTY. Kolor nigdy nie jest jedynym nośnikiem stanu — geometria styku
+ * (`symbols/glyphs.tsx`) i znak rodzaju aparatu (×, ○, poprzeczka, EN 60617) mówią to
+ * samo, więc rysunek jest czytelny dla daltonisty i w druku monochromatycznym.
+ *
+ * STANY = położenia, które rozróżnia model (`v2/model/stanAparatowPola.ts`):
+ * zamknięty, otwarty, nieustalony (brak danej, „nieznany", rekord sprzeczny z gałęzią)
+ * i błędny (rekord „awaria" — odpowiednik położenia „bad-state" podwójnego wskazania
+ * IEC 61850-7-4 Dbpos). Położenie „uziemiony" łącznika trójpołożeniowego ma kolor
+ * ZAMKNIĘTEGO: zestyk jest zamknięty na uziemienie (łącznik trójpołożeniowy w praktyce
+ * IEC 61850 to dwa węzły XSWI — tor i uziemienie; uziemiony = węzeł uziemienia „on"),
+ * a geometria noża na zestyku uziemiającym odróżnia go od zamknięcia na tor.
+ * Punkt normalnie otwarty (NOP) NIE ma osobnego koloru: to stan łącznika (zwykle
+ * otwarty) plus ZNACZNIK funkcji NOP (symbol `noPoint` i podpis „NO").
+ *
+ * WARTOŚCI IDENTYCZNE w motywie ciemnym, jasnym i w eksporcie — zmienia się tylko tło.
+ * Progi (pilnuje `__tests__/palette.test.ts`): kafel ≥ 3:1 wobec tła OBU motywów
+ * i arkusza eksportu (kontrast obiektu graficznego WCAG 1.4.11), glif na kaflu ≥ 4,5:1.
+ * Każda wartość jest różna od wszystkich innych tokenów palety (eksport podmienia kolory
+ * po wartości — wspólny literał z innym znaczeniem zlałby dwa znaczenia w dokumencie).
  */
-export const STATE_COLOR = {
-  /** `--scada-switch-closed` (spec §2.3) — rezerwa tabeli, nieużywana dziś. */
-  closed: '#00FF7F',
-  /** `--scada-switch-open`/`--scada-nop-normal` (spec §2.3) — rezerwa tabeli. */
-  open: '#FF006E',
-  /** NOP (D7/D8): punkt podziału jest z DEFINICJI domenowej „normalnie
-   *  otwarty" (`props.isNop`, `buildScene.ts`) — WYRÓŻNIONY (nie zlewa się z
-   *  napięciem/bazą) na KAŻDYM LOD, ta sama wartość co `open` (spec §2.3:
-   *  jeden odcień „stan otwarty/alarm"). */
-  nop: '#FF006E',
-} as const;
+export type StanKafla = 'zamkniety' | 'otwarty' | 'nieustalony' | 'bledny';
+
+export const STANY_KAFLA: readonly StanKafla[] = ['zamkniety', 'otwarty', 'nieustalony', 'bledny'];
+
+export interface KafleStanuLacznika {
+  readonly zamkniety: string;
+  readonly otwarty: string;
+  readonly nieustalony: string;
+  readonly bledny: string;
+  /** Kolor symbolu (kresek glifu i znaku „?"/„!") rysowanego NA kaflu. */
+  readonly glif: string;
+}
+
+export const STATE_COLOR: KafleStanuLacznika = {
+  zamkniety: '#C62828',
+  otwarty: '#2E7D32',
+  nieustalony: '#6B7280',
+  bledny: '#8E44AD',
+  // Biel glifu jako literał RÓŻNY od bieli tła motywu jasnego i arkusza (`#FFFFFF`): eksport
+  // podmienia kolory po wartości, więc wspólny literał z tłem przemalowałby symbol na kaflu
+  // przy każdej zmianie tła dokumentu (pomiar 2026-10-29, `exportPalette.test.tsx`). Kontrast
+  // na najciemniejszym kaflu nieustalonym 4,8:1 (próg 4,5:1, `palette.test.ts`).
+  glif: '#FEFEFE',
+};
 
 // ---------------------------------------------------------------------------
 // 3) Wyróżnienie — nakładki wynikowe + selekcja (dotychczasowe stałe
@@ -347,13 +366,9 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: '#9AA4AF',
   pomiarowe: '#3FBFA8',
   zrodlowe: '#7CC85A',
-};
-
-/** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA łącznika pola — patrz
- *  `SldPalette.ramkaScada`. JEDNA para wartości dla motywu ciemnego, jasnego i eksportu. */
-export const RAMKA_SCADA_COLOR: Readonly<Record<'zamkniety' | 'otwarty', string>> = {
-  zamkniety: '#F05260',
-  otwarty: '#2CCF93',
+  // Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): odcień purpurowo-różowy,
+  // wolny od pozostałych ról (bursztyn, błękit, fiolet, szarość, morski, zieleń).
+  kompensacyjne: '#E07AA8',
 };
 
 export const DARK_SCADA_SLD_PALETTE: SldPalette = {
@@ -363,7 +378,6 @@ export const DARK_SCADA_SLD_PALETTE: SldPalette = {
   state: STATE_COLOR,
   highlight: HIGHLIGHT_COLOR,
   rolaPola: ROLA_POLA_COLOR,
-  ramkaScada: RAMKA_SCADA_COLOR,
 };
 
 // ---------------------------------------------------------------------------

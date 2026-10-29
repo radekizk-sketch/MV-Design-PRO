@@ -69,6 +69,26 @@ const POZYCJE_STANU_LACZNIKA: readonly SldMenuAction[] = [
   { id: 'set-normal-open-point', labelPl: 'Ustaw punkt normalnie otwarty', section: 'Operacje' },
 ];
 
+/** Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: położenie „uziemiony" łącznika
+ *  trójpołożeniowego pola (`set_bay_apparatus_position`) — wyłącznie menu APARATU (symbol
+ *  wskazuje jeden aparat; menu pola nie wybiera aparatu za projektanta). */
+const POZYCJA_UZIEMIENIA: SldMenuAction = { id: 'earth-switch', labelPl: 'Uziem łącznik', section: 'Operacje' };
+const POZYCJE_STANU_APARATU: readonly SldMenuAction[] = [...POZYCJE_STANU_LACZNIKA, POZYCJA_UZIEMIENIA];
+
+/** Powody blokady pozycji menu i odmowy wykonawcy — JEDNO źródło tekstu dla obu końców. */
+export const POWOD_UZIEMIENIA_TYLKO_TROJPOLOZENIOWY_PL =
+  'Położenie „uziemiony” ma wyłącznie łącznik trójpołożeniowy — uziemnik zamyka się pozycją „Zamknij łącznik”.';
+export const POWOD_PRZEZ_OTWARTY_PL =
+  'Łącznik trójpołożeniowy przechodzi między położeniem zamkniętym i uziemionym przez położenie otwarte — najpierw go otwórz.';
+export const POWOD_NOP_APARATU_BEZ_GALEZI_PL =
+  'Punkt normalnie otwarty jest pozycją łącznika modelu sieci (gałęzi) — ten łącznik pola nie ma własnej gałęzi.';
+
+/** Łącznik pola bez własnej gałęzi — stan z rekordu aparatu (`celStanuLacznika`). */
+export interface StanAparatuPolaMenu {
+  readonly trojpolozeniowy: boolean;
+  readonly polozenie: 'zamkniety' | 'otwarty' | 'uziemiony' | null;
+}
+
 /**
  * W5-C: stan łącznika wskazanego przez obiekt menu (`ui/shared/stanLacznika.ts::
  * lacznikTematu`) — ten sam resolver wybiera łącznik dla wykonawcy akcji (predykaty
@@ -80,8 +100,29 @@ export type StanLacznikaMenu =
       readonly maPozycjeNormalna: boolean;
       readonly jestPunktemPodzialu: boolean;
       readonly powodBrakuPl?: undefined;
+      readonly aparatPola?: undefined;
     }
-  | { readonly powodBrakuPl: string };
+  | { readonly aparatPola: StanAparatuPolaMenu; readonly powodBrakuPl?: undefined }
+  | { readonly powodBrakuPl: string; readonly aparatPola?: undefined };
+
+
+/** Powód blokady pozycji dla łącznika pola bez gałęzi; `null` = pozycja dostępna. Blokady
+ *  uziemnik ↔ łącznik toru rozstrzyga operacja backendu (jedna reguła z walidatorem). */
+function powodBlokadyAparatuPola(actionId: string, aparat: StanAparatuPolaMenu): string | null {
+  const { polozenie, trojpolozeniowy } = aparat;
+  if (actionId === 'open-switch') return polozenie === 'otwarty' ? 'Łącznik jest już otwarty.' : null;
+  if (actionId === 'close-switch') {
+    if (polozenie === 'zamkniety') return 'Łącznik jest już zamknięty.';
+    return polozenie === 'uziemiony' ? POWOD_PRZEZ_OTWARTY_PL : null;
+  }
+  if (actionId === 'earth-switch') {
+    if (!trojpolozeniowy) return POWOD_UZIEMIENIA_TYLKO_TROJPOLOZENIOWY_PL;
+    if (polozenie === 'uziemiony') return 'Łącznik jest już uziemiony.';
+    return polozenie === 'zamkniety' ? POWOD_PRZEZ_OTWARTY_PL : null;
+  }
+  if (actionId === 'set-normal-open-point') return POWOD_NOP_APARATU_BEZ_GALEZI_PL;
+  return null;
+}
 
 /** Powód blokady pozycji stanu łącznika; `null` = pozycja dostępna. */
 export function powodBlokadyStanuLacznika(
@@ -89,6 +130,8 @@ export function powodBlokadyStanuLacznika(
   lacznik: StanLacznikaMenu,
 ): string | null {
   if (lacznik.powodBrakuPl !== undefined) return lacznik.powodBrakuPl;
+  if (lacznik.aparatPola !== undefined) return powodBlokadyAparatuPola(actionId, lacznik.aparatPola);
+  if (actionId === 'earth-switch') return POWOD_UZIEMIENIA_TYLKO_TROJPOLOZENIOWY_PL;
   if (actionId === 'open-switch' && lacznik.status === 'open') return 'Łącznik jest już otwarty.';
   if (actionId === 'close-switch' && lacznik.status === 'closed') return 'Łącznik jest już zamknięty.';
   if (actionId === 'set-normal-open-point') {
@@ -199,8 +242,10 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', section: 'Wyniki' },
     { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
     /* W5-C: aparat łącznikowy (gałąź `switch`/`breaker`/`disconnector`/`bus_coupler`/
-     * `fuse` albo aparat pola) — te same trzy operacje stanu co w menu pola. */
-    ...POZYCJE_STANU_LACZNIKA,
+     * `fuse` albo aparat pola) — te same trzy operacje stanu co w menu pola; łącznik pola
+     * bez gałęzi (odłącznik, uziemnik, łącznik trójpołożeniowy) — `set_bay_apparatus_position`
+     * z położeniem „uziemiony" dla łącznika trójpołożeniowego (`celStanuLacznika`). */
+    ...POZYCJE_STANU_APARATU,
   ],
   cable_segment_sn: [
     { id: 'open-segment-card', labelPl: 'Otwórz kartę odcinka', section: 'Otwórz' },
@@ -407,7 +452,7 @@ export function getMenuActions(
     if (typeof powodNn === 'string') {
       return { ...a, disabled: true, disabledReasonPl: powodNn };
     }
-    if (ctx.lacznik && POZYCJE_STANU_LACZNIKA.some((pozycja) => pozycja.id === a.id)) {
+    if (ctx.lacznik && POZYCJE_STANU_APARATU.some((pozycja) => pozycja.id === a.id)) {
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;
     }

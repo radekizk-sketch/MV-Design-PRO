@@ -26,7 +26,7 @@ import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import { symbolIdForPrimaryDeviceKind } from '../../compose/apparatusSequence';
 import type { PreviewSymbol } from '../../compose/preview';
-import { rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
+import { obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
 import { buildSceneV3, type SceneV3 } from '../buildScene';
 import { buildW1cCases, buildW1cMatrixFixture, type W1cCase } from './fixtures/w1cMatrixCatalog';
 
@@ -238,6 +238,46 @@ function sprawdzOdgalezienia(
   return sprawdzone;
 }
 
+/**
+ * Pas podpisów kolumny odgałęzienia (predykaty PARAMI z rezerwą planu `GalazPlanu.rezerwaEtykiet`,
+ * doliczaną za szerokością CAŁEGO podstosu: kolumna + aparaty boczne odgałęzienia). Podpis aparatu
+ * kolumny stoi na prawo od prawej krawędzi podstosu i nie nachodzi na żaden symbol pola. Pomiar
+ * 2026-10-29: podpis kotwiczony tuż za własnym symbolem wchodził w kolumnę aparatów bocznych
+ * odgałęzienia (stacja: 12 z 12 podpisów kolumn macierzy W1c; GPZ: kafel stanu sąsiada).
+ * Etykieta: stacja — `#apparatus-id-<symbol>-odgalezienie-<n>-…` na wysokości symbolu (podpis aparatu
+ * bocznego stoi POD symbolem i nie jest podpisem kolumny),
+ * GPZ — `#etykieta-aparatu-<deviceRef>`. Zwraca liczbę sprawdzonych podpisów.
+ */
+function sprawdzPasPodpisowOdgalezien(scena: SceneV3, bayRef: string, opis: string): number {
+  const wszystkie = scena.symbols.filter((s) => s.meta?.ownerRef === bayRef);
+  const numery = [...new Set(wszystkie.filter((s) => s.meta?.odgalezienieToru != null).map((s) => s.meta!.odgalezienieToru!))];
+  let sprawdzone = 0;
+  for (const n of numery) {
+    const podstos = wszystkie.filter((s) => s.meta?.odgalezienieToru === n);
+    const prawaPodstosu = Math.max(...podstos.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
+    for (const s of podstos.filter((x) => !boczny(x))) {
+      const srodekY = s.y + SYMBOL_DEFS[s.symbolId].height / 2;
+      const podpis = scena.labels.find(
+        (l) =>
+          l.ownerRef === `${bayRef}#etykieta-aparatu-${s.meta?.deviceRef}`
+          || ((l.ownerRef ?? '').startsWith(`${bayRef}#apparatus-id-${s.symbolId}-odgalezienie-${n}-`)
+            && Math.abs(l.rect.y + l.rect.height / 2 - srodekY) < SYMBOL_DEFS[s.symbolId].height / 2),
+      );
+      if (!podpis) continue;
+      expect(podpis.rect.x, `${opis}: podpis „${podpis.text}" w pasie za podstosem odgałęzienia ${n}`).toBeGreaterThanOrEqual(prawaPodstosu);
+      for (const inny of wszystkie) {
+        const o = obrysSymbolu(inny.symbolId);
+        const r = { x: inny.x + o.x, y: inny.y + o.y, width: o.width, height: o.height };
+        const zachodzi = podpis.rect.x < r.x + r.width && r.x < podpis.rect.x + podpis.rect.width
+          && podpis.rect.y < r.y + r.height && r.y < podpis.rect.y + podpis.rect.height;
+        expect(zachodzi, `${opis}: podpis „${podpis.text}" × ${inny.symbolId}`).toBe(false);
+      }
+      sprawdzone += 1;
+    }
+  }
+  return sprawdzone;
+}
+
 /** Oczekiwany ślad braku w notatkach sceny (zdanie z przyczyną) dla iniekcji. */
 function sprawdzBraki(scena: SceneV3, bayRef: string, przed: readonly BayPrimaryDevice[], po: readonly BayPrimaryDevice[], opis: string) {
   for (const d of po) {
@@ -290,9 +330,11 @@ describe('UX-04 — tor z portów: pole STACJI × konfiguracja katalogu × iniek
       let przewody = 0;
       let odczepy = 0;
       let galezie = 0;
+      let podpisyGalezi = 0;
       for (const t of baza.targets) {
         const bay = model.bays.find((b) => b.ref_id === t.fieldRef)!;
         const wynik = sprawdzPole(scena, t.fieldRef, bay.primary_devices ?? [], `stacja ${t.case.configId} [${iniekcja}]`);
+        podpisyGalezi += sprawdzPasPodpisowOdgalezien(scena, t.fieldRef, `stacja ${t.case.configId} [${iniekcja}]`);
         przewody += wynik.przewody;
         odczepy += wynik.odczepy;
         galezie += wynik.galezie;
@@ -303,6 +345,7 @@ describe('UX-04 — tor z portów: pole STACJI × konfiguracja katalogu × iniek
       expect(odczepy).toBeGreaterThan(0);
       // Macierz ćwiczy odgałęzienia toru (szablony Z.11.1/Z.11 katalogu).
       if (iniekcja === 'brak') expect(galezie).toBeGreaterThan(0);
+      if (iniekcja === 'brak') expect(podpisyGalezi, 'podpisy kolumn odgałęzień stacji').toBeGreaterThan(0);
       if (iniekcja === 'brak') {
         expect(scena.meta.stopNotes.filter((n) => n.includes('przewód do aparatu nie jest rysowany'))).toEqual([]);
       }
@@ -332,6 +375,7 @@ describe('UX-04 — tor z portów: pole GPZ × konfiguracja katalogu × iniekcja
     it(`GPZ · iniekcja ${iniekcja}`, () => {
       let przewody = 0;
       let galezie = 0;
+      let podpisyGalezi = 0;
       for (let i = 0; i < przypadki.length; i += polaGpz.length) {
         const partia = przypadki.slice(i, i + polaGpz.length);
         const model = structuredClone(enm) as EnergyNetworkModel;
@@ -347,6 +391,7 @@ describe('UX-04 — tor z portów: pole GPZ × konfiguracja katalogu × iniekcja
         partia.forEach((c, k) => {
           const bay = model.bays!.find((b) => b.ref_id === polaGpz[k])!;
           const wynik = sprawdzPole(scena, bay.ref_id, bay.primary_devices ?? [], `GPZ ${c.configId} [${iniekcja}]`);
+          podpisyGalezi += sprawdzPasPodpisowOdgalezien(scena, bay.ref_id, `GPZ ${c.configId} [${iniekcja}]`);
           przewody += wynik.przewody;
           galezie += wynik.galezie;
           sprawdzBraki(scena, bay.ref_id, przed.get(bay.ref_id)!, bay.primary_devices ?? [], `GPZ ${c.configId}`);
@@ -354,6 +399,7 @@ describe('UX-04 — tor z portów: pole GPZ × konfiguracja katalogu × iniekcja
       }
       expect(przewody).toBeGreaterThan(przypadki.length);
       if (iniekcja === 'brak') expect(galezie).toBeGreaterThan(0);
+      if (iniekcja === 'brak') expect(podpisyGalezi, 'podpisy kolumn odgałęzień GPZ').toBeGreaterThan(0);
     });
   }
 });

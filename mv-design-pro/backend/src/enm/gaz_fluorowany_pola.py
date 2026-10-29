@@ -42,6 +42,7 @@ from network_model.catalog.gazy_fluorowane import (
 
 from .katalog_projektu import katalog_biezacy
 from .nazwy_elementow import nazwa_nadana_pozycji_katalogu
+from .pola import napis_lub_none
 from .slownik_komunikatow import opis_elementu, opis_obiektu
 from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 
@@ -60,7 +61,7 @@ __all__ = [
 
 #: Kod walidatora modelu (`enm.validator.ENMValidator._check_gaz_fluorowany`) — kanon gotowości
 #: `bay.fluorinated_gas_not_existing` (`domain.readiness_bridge`).
-KOD_WALIDATORA_GAZU_FLUOROWANEGO = "W045"
+KOD_WALIDATORA_GAZU_FLUOROWANEGO = "W049"
 
 
 @dataclass(frozen=True)
@@ -86,10 +87,6 @@ def czy_aparat_z_gazem_fluorowanym(catalog_ref: str | None) -> bool:
     return czy_medium_z_gazem_fluorowanym(getattr(pozycja, "medium", None))
 
 
-def _napis(wartosc: object) -> str | None:
-    return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
-
-
 def naruszenia_gazu_fluorowanego_pola(
     enm: Mapping[str, Any], pole: Mapping[str, Any]
 ) -> list[NaruszenieGazuFluorowanego]:
@@ -97,8 +94,8 @@ def naruszenia_gazu_fluorowanego_pola(
     bay_ref = str(pole.get("ref_id") or "")
     opis_pola = opis_elementu(dict(enm), bay_ref, "pola")
     wynik: list[NaruszenieGazuFluorowanego] = []
-    stan_pola = _napis(pole.get("stan_obiektu"))
-    rodzina_ref = _napis(pole.get("switchgear_family_ref"))
+    stan_pola = napis_lub_none(pole.get("stan_obiektu"))
+    rodzina_ref = napis_lub_none(pole.get("switchgear_family_ref"))
     # Import LENIWY: pakiet `switchgear` importuje szablony pól (`bay_templates`), a te — kanon ról
     # pola z `enm`; import na poziomie modułu zamykałby cykl `enm` → walidator → `switchgear`
     # → `bay_templates` → `enm` przy imporcie szablonów jako pierwszych.
@@ -124,10 +121,10 @@ def naruszenia_gazu_fluorowanego_pola(
     for aparat in pole.get("primary_devices") or []:
         if not isinstance(aparat, Mapping):
             continue
-        catalog_ref = _napis(aparat.get("catalog_ref"))
+        catalog_ref = napis_lub_none(aparat.get("catalog_ref"))
         if not czy_aparat_z_gazem_fluorowanym(catalog_ref):
             continue
-        stan_aparatu = _napis(aparat.get("stan_obiektu"))
+        stan_aparatu = napis_lub_none(aparat.get("stan_obiektu"))
         pozycja = katalog_biezacy().mv_apparatus_types.get(str(catalog_ref))
         nazwa = nazwa_nadana_pozycji_katalogu(pozycja) or "pozycja katalogu aparatów"
         device_ref = str(aparat.get("device_ref") or "")
@@ -149,7 +146,7 @@ def naruszenia_gazu_fluorowanego_pola(
     # Aparat główny pola (`Bay.apparatus_catalog_ref`) bez lustra — ani aparat wyposażenia,
     # ani łącznik pola (`equipment_refs`) nie niesie tej pozycji, więc żaden nośnik wyżej ani
     # nośnik ŁĄCZNIK go nie ocenia. Stan: stan pola (aparat główny powstaje razem z polem).
-    glowny_ref = _napis(pole.get("apparatus_catalog_ref"))
+    glowny_ref = napis_lub_none(pole.get("apparatus_catalog_ref"))
     if czy_aparat_z_gazem_fluorowanym(glowny_ref) and not _lustro_aparatu_glownego(
         enm, pole, str(glowny_ref)
     ):
@@ -180,7 +177,7 @@ def _lustro_aparatu_glownego(
     pozycją katalogu (wtedy ocenia go nośnik APARAT albo ŁĄCZNIK — jedno naruszenie na jeden
     fizyczny aparat)."""
     if any(
-        isinstance(a, Mapping) and _napis(a.get("catalog_ref")) == catalog_ref
+        isinstance(a, Mapping) and napis_lub_none(a.get("catalog_ref")) == catalog_ref
         for a in pole.get("primary_devices") or []
     ):
         return True
@@ -189,7 +186,7 @@ def _lustro_aparatu_glownego(
         isinstance(g, Mapping)
         and g.get("ref_id") in refy
         and g.get("type") in RODZAJE_GALEZI_LACZENIOWYCH
-        and _napis(g.get("catalog_ref")) == catalog_ref
+        and napis_lub_none(g.get("catalog_ref")) == catalog_ref
         for g in enm.get("branches") or []
     )
 
@@ -212,7 +209,7 @@ def aparat_lacznika(enm: Mapping[str, Any], ref: str) -> Mapping[str, Any] | Non
     tego fizycznego aparatu; `None`, gdy gałęzi nie opisuje żaden aparat pola."""
     for pole in _pola(enm):
         for aparat in pole.get("primary_devices") or []:
-            if isinstance(aparat, Mapping) and _napis(aparat.get("linked_ref")) == ref:
+            if isinstance(aparat, Mapping) and napis_lub_none(aparat.get("linked_ref")) == ref:
                 return aparat
     return None
 
@@ -228,20 +225,20 @@ def stan_obiektu_lacznika(enm: Mapping[str, Any], galaz: Mapping[str, Any]) -> s
     zapis zastany), łącznik jest istniejący WYŁĄCZNIE, gdy każde źródło mówi „istniejący"
     (brak zgody nie zwalnia z zakazu). Gałąź bez żadnego z tych źródeł należąca do pola
     (`equipment_refs` — rekord sprzed atrybutu) → stan pola."""
-    ref = _napis(galaz.get("ref_id"))
+    ref = napis_lub_none(galaz.get("ref_id"))
     if ref is None:
         return None
     zrodla: list[str | None] = []
     aparat = aparat_lacznika(enm, ref)
     if aparat is not None:
-        zrodla.append(_napis(aparat.get("stan_obiektu")))
-    wlasny = _napis(galaz.get("stan_obiektu"))
+        zrodla.append(napis_lub_none(aparat.get("stan_obiektu")))
+    wlasny = napis_lub_none(galaz.get("stan_obiektu"))
     if wlasny is not None:
         zrodla.append(wlasny)
     if not zrodla:
         for pole in _pola(enm):
             if ref in (pole.get("equipment_refs") or []):
-                return _napis(pole.get("stan_obiektu"))
+                return napis_lub_none(pole.get("stan_obiektu"))
         return None
     if all(stan == "ISTNIEJACY" for stan in zrodla):
         return "ISTNIEJACY"
@@ -257,8 +254,8 @@ def _opisany_aparatem_pola(enm: Mapping[str, Any], ref: str, catalog_ref: str) -
         for aparat in pole.get("primary_devices") or []:
             if (
                 isinstance(aparat, Mapping)
-                and _napis(aparat.get("linked_ref")) == ref
-                and _napis(aparat.get("catalog_ref")) == catalog_ref
+                and napis_lub_none(aparat.get("linked_ref")) == ref
+                and napis_lub_none(aparat.get("catalog_ref")) == catalog_ref
             ):
                 return True
     return False
@@ -272,8 +269,8 @@ def naruszenia_gazu_fluorowanego_lacznikow(
     for galaz in enm.get("branches") or []:
         if not isinstance(galaz, Mapping) or galaz.get("type") not in RODZAJE_GALEZI_LACZENIOWYCH:
             continue
-        ref = _napis(galaz.get("ref_id"))
-        catalog_ref = _napis(galaz.get("catalog_ref"))
+        ref = napis_lub_none(galaz.get("ref_id"))
+        catalog_ref = napis_lub_none(galaz.get("catalog_ref"))
         if ref is None or catalog_ref is None or not czy_aparat_z_gazem_fluorowanym(catalog_ref):
             continue
         if _opisany_aparatem_pola(enm, ref, catalog_ref):

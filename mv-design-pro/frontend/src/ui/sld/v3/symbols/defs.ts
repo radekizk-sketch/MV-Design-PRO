@@ -48,6 +48,7 @@ export type SymbolId =
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
+  | 'capacitorBank'    // bateria kondensatorów równoległych SN (UX-04/POLE-BKR-MODEL)
   // Aparaty nN — rodzina ODRĘBNA od aparatury SN (device_kind katalogu
   // APARAT_NN/APARAT_NN_MCB/WKLADKA_NN), bo fizyczne aparaty nN (MCB modułowy,
   // wkładka NH w podstawie bezpiecznikowej) mają INNĄ sylwetkę niż odpowiedniki
@@ -285,6 +286,15 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   bayReserve: def('bayReserve', 16, 16, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
   ], 'Pole rezerwowe (bez odejścia)'),
+  // UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN (`ShuntCapacitor` ENM) na
+  // końcu toru pola — element MODELU, którego pole jest nośnikiem (jak transformator pola TR),
+  // nie aparat pola. JEDEN port N (za baterią nic się nie przyłącza). Gabaryt 32×40
+  // (4×5 GRID): pas 0–16 kondensator (symbol ogólny PN-EN 60617-4 04-02-01), pas 16–40
+  // znak układu połączeń (podwójna gwiazda z przekładnikiem niezrównoważenia, gwiazda
+  // izolowana, gwiazda uziemiona, trójkąt) — glif `CapacitorBankGlyph`.
+  capacitorBank: def('capacitorBank', 32, 40, [
+    { name: 'top', x: 16, y: 0, dir: 'N' },
+  ], 'Bateria kondensatorów'),
   // F9.4 (spec §13.1/§13.2): sieć zewnętrzna (Source ENM) — jeden port
   // `bottom` (S), gabaryt 16×24 jak `disconnector`/`earthSwitch` (aparat
   // jednokolumnowy, nie DER 32×32 — ten symbol nie jest instalacją DER).
@@ -434,7 +444,8 @@ export function rodzajSymbolu(id: SymbolId): SymbolId {
 /**
  * Obrys RYSUNKU symbolu względem lewego górnego rogu gabarytu — dla symboli QET obwiednia
  * wszystkich położeń noża i portów z importera (`obrys`), dla pozostałych pełny gabaryt.
- * Ramka stanu SCADA i sondy kolizji ramek liczą się z TEGO obrysu (jedno źródło).
+ * Kafel stanu łącznika (`prostokatKaflaStanu`) i sondy kolizji kafli liczą się z TEGO
+ * obrysu (jedno źródło).
  */
 export function obrysSymbolu(id: SymbolId): V3Rect {
   if (czySymbolQet(id)) return QET_SYMBOLE_POLA_SN[id].obrys;
@@ -520,3 +531,35 @@ export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   'lineSwitch',
   'lineBreaker',
 ];
+
+/**
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29) — ŁĄCZNIKI
+ * Z POŁOŻENIEM: każdy symbol, którego geometria styku wyraża położenie (zamknięty / otwarty /
+ * nieustalony, a dla łącznika trójpołożeniowego także uziemiony). Tylko te symbole dostają
+ * KAFEL STANU (`symbols/glyphs.tsx` `KafelStanu`) — kolor kafla nigdy nie jest jedynym
+ * nośnikiem stanu, więc symbol bez geometrii położenia kafla nie dostaje.
+ *
+ * Skład: aparaty ciągłości (`CONTINUITY_APPARATUS_SYMBOL_IDS`, łącznie z punktem normalnie
+ * otwartym `noPoint`, który rysuje położenie łącznika NOP) + uziemniki (`earthSwitch`,
+ * `qetEarthSwitch` — boczna gałąź do ziemi, poza torem ciągłości) + reklozer i wyłącznik nN
+ * (korpus wyłącznika z wypełnieniem = położeniem).
+ *
+ * Świadomie POZA zbiorem: `fuse` (bezpiecznik sam — nie jest łącznikiem sterowanym, glif
+ * celowo nie ma położenia) i `nnFuseSwitch` (podstawa bezpiecznikowa nN bez noża — glif nie
+ * ma geometrii położenia; żadna scena go dziś nie emituje). Przypina to test parytetu
+ * `symbols/__tests__/kafelStanu.test.tsx`.
+ */
+export const SYMBOLE_LACZNIKOW_Z_POLOZENIEM: readonly SymbolId[] = [
+  ...CONTINUITY_APPARATUS_SYMBOL_IDS,
+  'earthSwitch',
+  'qetEarthSwitch',
+  'recloser',
+  'nnBreaker',
+];
+
+const ZBIOR_LACZNIKOW_Z_POLOZENIEM: ReadonlySet<SymbolId> = new Set(SYMBOLE_LACZNIKOW_Z_POLOZENIEM);
+
+/** Czy symbol rysuje położenie łącznika (patrz `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`). */
+export function czyLacznikZPolozeniem(id: SymbolId): boolean {
+  return ZBIOR_LACZNIKOW_Z_POLOZENIEM.has(id);
+}

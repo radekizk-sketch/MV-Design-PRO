@@ -81,6 +81,24 @@ def device_state(bay: Bay, device: BayPrimaryDevice) -> str | None:
     return state.actual_state if state is not None else None
 
 
+def stan_aparatu_z_galezia(
+    bay: Bay, device: BayPrimaryDevice, status_galezi: Mapping[str, str | None]
+) -> str | None:
+    """Położenie aparatu pola z modelu: rekord aparatu (`device_state`), a gdy brak — stan
+    gałęzi łączeniowej, którą aparat opisuje (`linked_ref`; `status` „closed"/„open" →
+    „zamkniety"/„otwarty"). Ta sama kolejność źródeł co model odczytu pola
+    (`application.field_read_model`); `None` = brak danej (zero domysłu)."""
+    stan = device_state(bay, device)
+    if stan is not None or not device.linked_ref:
+        return stan
+    status = status_galezi.get(device.linked_ref)
+    if status == "closed":
+        return "zamkniety"
+    if status == "open":
+        return "otwarty"
+    return None
+
+
 def device_closed(bay: Bay, device: BayPrimaryDevice) -> bool:
     """Stan „zamknięty" aparatu (patrz `device_state`, `is_closed`)."""
     return is_closed(device_state(bay, device))

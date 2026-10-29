@@ -270,8 +270,62 @@ export interface SzablonPolaKanoniczny {
   /** Opis każdej funkcji ze słownika EAZ backendu (`funkcje_eaz.opis_funkcji_eaz_pl`:
    *  zapis rysunku, numer IEEE C37.2, nazwa) — w kolejności `funkcje_eaz`. */
   readonly funkcje_eaz_pl: readonly string[];
+  /** Profil funkcjonalny EAZ wzorca (`bay_templates.profil_eaz_szablonu`); `null` — szablon bez
+   *  wykonania pola liniowego GPZ. */
+  readonly profil_eaz?: readonly PozycjaProfiluEaz[] | null;
+  /** Obwody wtórne wzorca (`obwody_wtorne_pola.ObwodyWtornePola`); `null` — szablon bez rysunku. */
+  readonly obwody_wtorne?: ObwodyWtornePola | null;
   readonly dopuszczony: boolean;
   readonly odmowy: readonly OdmowaSzablonuPola[];
+}
+
+/** Status weryfikacji źródła wpisu wzorca — lustro `obwody_wtorne_pola.StatusWeryfikacji`. */
+export type StatusWeryfikacjiWzorca = 'ZWERYFIKOWANE_NA_RYSUNKU' | 'ODCZYT_TEKSTU' | 'INTERPRETACJA';
+
+/** Nazwa statusu weryfikacji pokazywana inżynierowi (ta sama w karcie pola i w edytorze). */
+export const NAZWA_WERYFIKACJI_PL: Readonly<Record<StatusWeryfikacjiWzorca, string>> = {
+  ZWERYFIKOWANE_NA_RYSUNKU: 'zweryfikowane na rysunku',
+  ODCZYT_TEKSTU: 'odczyt tekstu',
+  INTERPRETACJA: 'interpretacja',
+};
+
+/** Wymóg funkcji w jednej klasie pola — lustro `bay_templates.WymogFunkcjiWKlasie`. */
+export interface WymogFunkcjiWKlasie {
+  readonly klasa: string;
+  readonly wymog: string;
+  readonly wymog_pl: string;
+  readonly podstawa: string;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+}
+
+/** Pozycja profilu EAZ wzorca — lustro `bay_templates.PozycjaProfiluEaz`. */
+export interface PozycjaProfiluEaz {
+  readonly kod: string;
+  readonly opis_pl: string;
+  readonly wymagalnosc: 'OBOWIAZKOWA' | 'WARIANTOWA' | 'OPCJONALNA';
+  readonly wymagalnosc_pl: string;
+  readonly na_rysunku: boolean;
+  readonly wymogi: readonly WymogFunkcjiWKlasie[];
+}
+
+/** Sygnał wzorca pola — lustro `obwody_wtorne_pola.SygnalPola`. */
+export interface SygnalPolaWzorca {
+  readonly nazwa: string;
+  readonly kierunek: 'WEJSCIE' | 'WYJSCIE';
+  readonly obwod: 'WYLACZNIK' | 'OKREZNY' | 'NADRZEDNY';
+  readonly sterownik_pola: boolean;
+  readonly znaczenie_pl: string | null;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+  readonly uwaga: string | null;
+}
+
+/** Obwody wtórne wzorca pola — lustro `obwody_wtorne_pola.ObwodyWtornePola` (karta pola czyta
+ *  z niego sygnały; powiązania funkcji przychodzą rozwiązane na aparatach pola). */
+export interface ObwodyWtornePola {
+  readonly podstawa: string;
+  readonly naped_wylacznika: 'SILNIKOWY';
+  readonly naped_weryfikacja: StatusWeryfikacjiWzorca;
+  readonly sygnaly: readonly SygnalPolaWzorca[];
 }
 
 /** Cechy pola, dla których backend ocenia szablony (ta sama reguła co strażnik operacji). */

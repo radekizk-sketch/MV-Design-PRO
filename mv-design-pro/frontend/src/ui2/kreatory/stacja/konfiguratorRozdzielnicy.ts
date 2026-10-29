@@ -42,12 +42,13 @@ import {
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { SnFieldRole } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { PoleSnWpis } from './stacjaModel';
+import { izolacjaPokrywaSiec, toSamoNapiecieZnamionowe } from '../../model/pasmaNapieciowe';
 import { STACJA_STRINGS as T } from './strings';
 
 /** Tor konfiguracji rodziny — kontrakt `SwitchgearFamily.tor_konfiguracji`. */
 export type TorKonfiguracji = 'MODULARNY' | 'BLOK_RMU';
 
-/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (18 wartości). */
+/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (23 wartości). */
 export type RodzajAparatu = BayDeviceInstanceWire['apparatus_kind'];
 
 // ---------------------------------------------------------------- Bloki RMU
@@ -101,8 +102,10 @@ export interface PozycjaOfertyRodzin {
  * Reguła (karta K-J):
  *  1. karta wymienia napięcia SIECI ⇒ napięcie szyny musi być na tej liście
  *     (producent nazwał sieci, dla których robi wyrób);
- *  2. karta napięć sieci nie podaje ⇒ wystarczy klasa urządzenia Um ≥ napięcie
- *     szyny (PN-EN 62271-1: Um to górna granica napięcia sieci);
+ *  2. karta napięć sieci nie podaje ⇒ wystarczy klasa urządzenia U_m ≥ U_s, napięcia
+ *     najwyższego SIECI szyny (IEC 60071-1 p. 3.9–3.10, IEC 60038 tab. 3; PN-EN 62271-1
+ *     p. 5.2) — predykat `izolacjaPokrywaSiec`, lustro `izolacja_pokrywa_siec` backendu
+ *     (dawne „U_m ≥ napięcie szyny” przyjmowało klasę 24 kV na szynie 24 kV o U_s = 36 kV);
  *  3. karta nie podaje żadnej z dwóch wielkości ⇒ rodzina nie ma czym
  *     potwierdzić zgodności, więc odpowiedź brzmi „nie".
  *
@@ -115,9 +118,9 @@ export function rodzinaObslugujeNapiecie(
 ): boolean {
   if (!(snVoltageKv > 0)) return true;
   if (rodzina.network_voltages_kv.length > 0) {
-    return rodzina.network_voltages_kv.some((napiecie) => Math.abs(napiecie - snVoltageKv) <= 1e-9);
+    return rodzina.network_voltages_kv.some((napiecie) => toSamoNapiecieZnamionowe(napiecie, snVoltageKv));
   }
-  return rodzina.um_classes_kv.some((klasaUm) => klasaUm + 1e-9 >= snVoltageKv);
+  return rodzina.um_classes_kv.some((klasaUm) => izolacjaPokrywaSiec(klasaUm, snVoltageKv) === true);
 }
 
 /**
@@ -211,6 +214,9 @@ export const ROLA_Z_FUNKCJI_POLA: Readonly<Record<BayKind, SnFieldRole | null>> 
   kablowe: null,
   napowietrzne: null,
   nop_lacznikowe: null,
+  // Pole baterii kondensatorów jest polem rozdzielni GPZ (Zeszyt 1 §13, Zał. 16) — powstaje
+  // operacją pola SN (`add_sn_bay`, rola `BKR`), nie wpisem pól stacji SN/nN.
+  bateria_kondensatorow: null,
 };
 
 // ------------------------------------------------------- Wyposażenie pola
@@ -261,7 +267,7 @@ export const KLUCZ_WYPOSAZENIA_Z_APARATU: Readonly<
 
 /**
  * Nazwy PL rodzajów aparatu kompozycji pola — KOMPLET słownika kontraktu
- * (18 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
+ * (23 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
  * projektanta.
  */
 export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
@@ -269,15 +275,20 @@ export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
   switch_disconnector: 'rozłącznik',
   disconnector_busbar: 'odłącznik szynowy',
   disconnector_line: 'odłącznik liniowy',
+  disconnector_branch: 'odłącznik odgałęzienia',
   earthing_switch: 'uziemnik',
   fuse_set: 'zestaw bezpieczników',
   current_transformer: 'przekładnik prądowy',
   voltage_transformer: 'przekładnik napięciowy',
+  unbalance_current_transformer: 'przekładnik niezrównoważenia baterii',
+  phase_to_phase_voltage_transformer: 'przekładnik napięciowy międzyfazowy',
   surge_arrester: 'ogranicznik przepięć',
   cable_head: 'głowica kablowa',
   busbar: 'szyna zbiorcza',
   bus_coupler: 'sprzęgło szyn',
   voltage_indicator: 'wskaźnik obecności napięcia',
+  three_position_switch: 'łącznik trójpołożeniowy',
+  core_balance_ct: 'przekładnik Ferrantiego',
   protection_relay: 'zabezpieczenie',
   meter: 'licznik',
   transformer: 'transformator',

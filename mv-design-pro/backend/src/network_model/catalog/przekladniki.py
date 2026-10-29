@@ -4,8 +4,9 @@ PO CO. Pole liniowe GPZ wg ENEA Operator „Stacje elektroenergetyczne 110 kV", 
 przekładniki listą rdzeni/uzwojeń, a nie liczbą: Z.10 (s.89) — przekładnik prądowy 200-400/5 A
 z jednym rdzeniem 15 VA 5P20; Z.11 (s.90) — przekładnik 200-400/5/5/5 A z trzema rdzeniami
 (10 VA 0,2S FS5 rozliczeniowy i do analizatora jakości energii; 10 VA 0,2 FS5; 15 VA 5P20);
-Z.11.1 (s.91) — przekładnik napięciowy po stronie linii SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3
-z trzema uzwojeniami (0–10 VA kl. 0,2; 7,5 VA kl. 0,2; 7,5 VA kl. 0,5/3P w otwartym trójkącie).
+Z.11.1 (s.91) — przekładnik napięciowy po stronie linii SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3
+z trzema uzwojeniami fazowymi (0–10 VA kl. 0,2; 7,5 VA kl. 0,2; 7,5 VA kl. 0,5/3P), bez
+otwartego trójkąta (ten ma przekładnik pola pomiaru napięcia szyn Z.17).
 Dawna liczba `Measurement.ct_cores` nie mówiła, do czego służy rdzeń ani jaką ma klasę — liczbę
 rdzeni wyprowadza się teraz z listy (`len(rdzenie)`), nie przechowuje osobno.
 

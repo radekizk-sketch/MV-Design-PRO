@@ -93,14 +93,21 @@ PRZYPADKI: list[tuple[str, dict[str, Any], float, bool]] = [
     # deklaracja sieci nie.
     ("sieciowa_szyna_rowna_klasie_um", SIECIOWA, 24.0, False),
     ("sieciowa_szyna_ponad_wszystkim", SIECIOWA, 30.0, False),
-    # — rodzina KLASOWA: rozstrzyga istnienie klasy Um >= Un —
+    # — rodzina KLASOWA: rozstrzyga istnienie klasy U_m >= U_s, gdzie U_s to napięcie
+    # najwyższe SIECI z tabeli IEC 60038 (nie napięcie znamionowe szyny; korekta 2026-10-28:
+    # dawne wiersze „szyna 24 kV równa klasie 24 kV → przechodzi” przypinały porównanie
+    # U_m z U_n — sieć 24 kV ma U_s = 36 kV) —
     ("klasowa_szyna_pod_najnizsza_klasa", KLASOWA, 6.0, True),
     ("klasowa_szyna_miedzy_klasami", KLASOWA, 17.5, True),
     ("klasowa_szyna_rowna_klasie_dolnej", KLASOWA, 12.0, True),
-    ("klasowa_szyna_rowna_klasie_gornej", KLASOWA, 24.0, True),
+    # Brzeg równości U_s = klasa górna (sieć 20 kV, U_s = 24 kV) — dopuszczony.
+    ("klasowa_us_rowne_klasie_gornej", KLASOWA, 20.0, True),
+    # Komórka dyskryminująca: U_n równe klasie górnej, U_s ponad nią.
+    ("klasowa_un_rowne_klasie_gornej", KLASOWA, 24.0, False),
     ("klasowa_szyna_ponad_najwyzsza_klasa", KLASOWA, 25.0, False),
     ("klasowa_jedna_szyna_ponizej", KLASOWA_JEDNA, 15.0, True),
-    ("klasowa_jedna_szyna_rowna_um", KLASOWA_JEDNA, 24.0, True),
+    ("klasowa_jedna_us_rowne_um", KLASOWA_JEDNA, 20.0, True),
+    ("klasowa_jedna_un_rowne_um", KLASOWA_JEDNA, 24.0, False),
     ("klasowa_jedna_szyna_ponad_um", KLASOWA_JEDNA, 24.5, False),
     # — rodzina BEZ DANYCH: brak deklaracji to nie jest zgoda —
     ("bez_danych_szyna_typowa", BEZ_DANYCH, 15.0, False),

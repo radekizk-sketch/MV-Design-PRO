@@ -65,6 +65,7 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
+from enm.bateria_kondensatorow import wynik_baterii_rozplywu
 from enm.dane_przyjete_galezi import (
     KLUCZ_WIERSZA_DANE_GALEZI,
     dane_przyjete_galezi_punktow,
@@ -3210,6 +3211,26 @@ def _execute_power_flow(
         # Karta LINIA-110 (zasada nr 4): założenia biegu — linie 110 kV liczone z wartością
         # roboczą geometrii słupa. Addytywnie, WYŁĄCZNIE gdy bieg je ma (bit w bit bez nich).
         **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
+        # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów — admitancja z pierwszych zasad
+        # (stopnie, straty, dławik, baza szyny) i moc Q = b·|U|²·S_b przy napięciu
+        # rozwiązanym. Addytywnie, WYŁĄCZNIE gdy sieć ma załączone baterie.
+        **(
+            {
+                "baterie_kondensatorow": [
+                    wynik_baterii_rozplywu(
+                        zapis,
+                        (
+                            None
+                            if (wezel := _graph_id_from_ref(str(zapis["bus_ref"]))) in nierozwiazane
+                            else solution.node_u_mag.get(wezel)
+                        ),
+                    )
+                    for zapis in wejscie.baterie
+                ]
+            }
+            if wejscie.baterie
+            else {}
+        ),
         # CV-4.3 K3b: kilka wysp zasilonych = wynik zbiorczy per wyspa (addytywnie,
         # WYŁĄCZNIE gdy wysp jest więcej niż jedna — sieci jednoźródłowe bit w bit).
         **({"wyspy": opis_wysp(rozwiazania)} if len(rozwiazania) > 1 else {}),

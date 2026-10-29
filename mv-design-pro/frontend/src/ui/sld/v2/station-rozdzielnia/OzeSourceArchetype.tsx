@@ -20,7 +20,7 @@
  */
 
 import {
-  COLOR_DEVICE_CLOSED_BORDER,
+  COLOR_DEVICE_UNKNOWN,
   COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_TEXT_MUTED,
   COLOR_TEXT_PRIMARY,
@@ -108,12 +108,13 @@ function FlowArrow(props: { x: number; topY: number; botY: number; direction: 'f
 /** One IEC apparatus glyph by kind — shape = type, state = colour, orthogonal. */
 function ApparatusGlyph(props: { kind: string; cx: number; cy: number }): JSX.Element {
   const { kind, cx, cy } = props;
-  const g = COLOR_DEVICE_CLOSED_BORDER;
+  // Rysunek bez stanu w danych archetypu — neutralny tusz, nie kolor „zamknięty" z domysłu.
+  const g = COLOR_DEVICE_UNKNOWN;
   switch (kind) {
     case 'CB': // wyłącznik □
-      return <rect data-symbol-shape="square" x={cx - 5} y={cy - 5} width={10} height={10} rx={1} fill="#0A8D43" stroke={g} strokeWidth={1.5} />;
+      return <rect data-symbol-shape="square" x={cx - 5} y={cy - 5} width={10} height={10} rx={1} fill="none" stroke={g} strokeWidth={1.5} />;
     case 'LOAD_SWITCH': // rozłącznik ◇
-      return <polygon data-symbol-shape="diamond" points={`${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}`} fill="#0A8D43" stroke={g} strokeWidth={1.5} />;
+      return <polygon data-symbol-shape="diamond" points={`${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}`} fill="none" stroke={g} strokeWidth={1.5} />;
     case 'DS': // odłącznik ◯
     case 'ES': // uziemnik ◯ (na gałęzi ziemi)
       return <circle data-symbol-shape="circle" cx={cx} cy={cy} r={5.5} fill="none" stroke={g} strokeWidth={1.5} />;
@@ -662,8 +663,8 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                   <>
                     <line x1={trX} y1={busY} x2={trX} y2={breakerY - 7} stroke={busColor} strokeWidth={1.8} />
                     <g data-symbol-shape="diamond" data-state="closed">
-                      <polygon points={`${trX},${breakerY - 6} ${trX + 6},${breakerY} ${trX},${breakerY + 6} ${trX - 6},${breakerY}`} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.6} />
-                      <line x1={trX} y1={breakerY - 4.5} x2={trX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1.3} />
+                      <polygon points={`${trX},${breakerY - 6} ${trX + 6},${breakerY} ${trX},${breakerY + 6} ${trX - 6},${breakerY}`} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1.6} />
+                      <line x1={trX} y1={breakerY - 4.5} x2={trX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1.3} />
                     </g>
                   </>
                 )}
@@ -720,7 +721,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                   <line x1={fx} y1={nnBusY} x2={fx} y2={fBreakerY - 6} stroke="#7DD3FC" strokeWidth={1.6} />
                   {/* BTVC fuse (rect) on inverter feeders. */}
                   {!isOwn && detail !== 'far' && (
-                    <rect x={fx - 2.5} y={fBreakerY - 6} width={5} height={9} rx={0.6} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+                    <rect x={fx - 2.5} y={fBreakerY - 6} width={5} height={9} rx={0.6} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1} />
                   )}
                   <line x1={fx} y1={fBreakerY + (isOwn ? 0 : 3)} x2={fx} y2={fSymY - 7} stroke="#7DD3FC" strokeWidth={1.6} />
                   {/* symbol: inverter (~) for source, load triangle for own-needs;

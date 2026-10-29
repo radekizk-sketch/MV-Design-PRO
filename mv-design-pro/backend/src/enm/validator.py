@@ -17,6 +17,21 @@ from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
 )
+from network_model.catalog.rodzaje_aparatury import (
+    LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII,
+    RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+    RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+)
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+    PARAMETR_BATERII_UKLAD,
+)
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    PODSTAWA_POLA_BKR_PL,
+    PODSTAWA_WYLACZENIA_OD_TR_PL,
+    UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA,
+)
 from network_model.core.topologia import skladowe_spojne
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
@@ -26,12 +41,22 @@ from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
+    napiecie_baterii_pasuje_do_sieci,
     pasmo_napieciowe,
     powyzej_pasma_nn,
+    to_samo_napiecie_znamionowe,
     w_pasmie_nn,
 )
 from pydantic import BaseModel
 
+from .bateria_kondensatorow import (
+    niezgodnosc_stopni,
+    parametry_baterii,
+    pole_baterii,
+    rodzaje_aparatow_pola,
+    stacja_gpz_baterii,
+    transformatory_zasilajace_baterie,
+)
 from .fix_actions import FixAction
 from .gaz_fluorowany_pola import (
     KOD_WALIDATORA_GAZU_FLUOROWANEGO,
@@ -175,6 +200,50 @@ class ValidationResult(BaseModel):
 class ReadinessResult(BaseModel):
     ready: bool
     blockers: list[ValidationIssue] = []
+
+
+#: Kod ostrzeżenia: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie.
+KOD_PRZEKLADNI_NIEZNAMIONOWEJ = "W023"
+
+
+def _w023_przekladnia_nieznamionowa(
+    enm: EnergyNetworkModel,
+    trafo: Transformer,
+    strona: str,
+    napiecie_uzwojenia_kv: float,
+    szyna_ref: str,
+    napiecie_szyny_kv: float,
+) -> ValidationIssue:
+    """W023 — wyjaśnienie wg kontraktu werdyktu: co oceniono, obie wartości z jednostką,
+    odchylenie, podstawa, skutek dla obliczeń i akcja naprawcza (przypisanie typu o napięciu
+    szyny). Poziom IMPORTANT: model liczy się poprawnie z przekładnią rzeczywistą."""
+    odchylenie_pct = (napiecie_uzwojenia_kv / napiecie_szyny_kv - 1.0) * 100.0
+    return ValidationIssue(
+        code=KOD_PRZEKLADNI_NIEZNAMIONOWEJ,
+        severity=SEVERITY_IMPORTANT,
+        message_pl=(
+            f"{opis_obiektu(trafo, 'Transformator')}: napięcie znamionowe uzwojenia strony "
+            f"{strona} napięcia {napiecie_uzwojenia_kv:g} kV różni się od napięcia "
+            f"znamionowego szyny {opis_elementu(enm, szyna_ref, 'szyna')} "
+            f"{napiecie_szyny_kv:g} kV (to samo pasmo {pasmo_napieciowe(napiecie_szyny_kv)}, "
+            f"odchylenie {odchylenie_pct:+.2f} %). Przekładnia transformatora jest "
+            "nieznamionowa: rozpływ mocy i zwarcia liczą się z przekładnią rzeczywistą "
+            "z napięć uzwojeń, a współczynnik korekcyjny impedancji transformatora "
+            "z napięcia uzwojenia (IEC 60909-0 §6.3.3), nie ze stosunku napięć sieci."
+        ),
+        element_refs=[trafo.ref_id, szyna_ref],
+        wizard_step_hint="K5",
+        suggested_fix=(
+            "Przypisz transformatorowi typ o napięciach znamionowych równych napięciom jego "
+            "szyn albo zostaw przekładnię nieznamionową, jeśli tabliczka urządzenia ją ma."
+        ),
+        fix_action=FixAction(
+            action_type="SELECT_CATALOG",
+            element_ref=trafo.ref_id,
+            modal_type="TransformerModal",
+            payload_hint={"required": "catalog_ref"},
+        ),
+    )
 
 
 def _sekcje_gpz_wg_szyny(enm: EnergyNetworkModel) -> dict[str, tuple[Substation, GPZSection]]:
@@ -339,6 +408,7 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
+        self._check_baterie_pola_bkr(enm, issues)
         # KATALOG-APARATURA-WN: łącznik topologii zasilania 110 kV bez typu katalogowego
         self._check_lacznik_wn_bez_typu(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
@@ -356,11 +426,13 @@ class ENMValidator:
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
         self._check_rodzaj_stacji(enm, issues)
-        # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany w polu, które nie jest istniejące (W045)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany w polu, które nie jest istniejące (W049)
         self._check_gaz_fluorowany(enm, issues)
-        # Karta UX-04/POLE-LINIOWE-WZORZEC: szablon pola niezgodny z polem (W046–W048)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: szablon pola niezgodny z polem (W050–W052)
         self._check_zgodnosc_szablonu_pola(enm, issues)
         self._check_pole_liniowe_gpz(enm, issues)
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: oznaczenia aparatów pola (W063)
+        self._check_oznaczenia_aparatow_pola(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -542,14 +614,20 @@ class ENMValidator:
                     )
                 )
 
-        # E023: napięcie znamionowe strony transformatora w innym paśmie napięć niż szyna, do
-        # której ta strona jest przyłączona (partia integracji 11). Do tej pory model przyjmował
-        # np. transformator 15/0,4 kV wpięty między szyny 110 kV i 15 kV (pozycja katalogu
-        # SN/nN przypisana transformatorowi GPZ) — przekładnia, impedancja i współczynnik
-        # korekcyjny K_T (IEC 60909-0 eq. 12a, c strony dolnej) liczyły się z napięć, których
-        # sieć nie ma, a wynik wychodził bez ostrzeżenia. Porównanie PASMEM (nN/SN/WN, jedno
-        # źródło `pasma_napieciowe`), nie wartością: napięcie znamionowe uzwojenia różni się od
-        # napięcia sieci w obrębie pasma (np. 15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV).
+        # E023 / W023: napięcie znamionowe strony transformatora wobec napięcia szyny, do której
+        # ta strona jest przyłączona. JEDEN podział (predykaty parami, wzajemnie rozłączne):
+        #   * to samo napięcie (`to_samo_napiecie_znamionowe`, ta sama równość co wszystkie tory
+        #     tworzenia i przypisania typu transformatora) — nic;
+        #   * inne napięcie w TYM SAMYM paśmie (nN/SN/WN, `pasma_napieciowe`) — W023,
+        #     OSTRZEŻENIE: przekładnia nieznamionowa jest fizycznie liczalna (IEC 60909-0 §6.3.3:
+        #     przekładnia rzeczywista t_r = U_rTHV/U_rTLV i K_T z napięcia uzwojenia), ale
+        #     rozpływ i zwarcia liczą się z przekładnią inną niż stosunek napięć sieci, więc
+        #     projektant ma ją widzieć w gotowości. Drogi, które ją tworzą: import (tabliczka
+        #     arkusza 15,75/0,42 kV na szynach 15/0,4 kV) i jawne nadpisanie
+        #     `update_element_parameters`; tory tworzenia i przypisanie typu jej odmawiają;
+        #   * napięcie z INNEGO pasma — E023, BLOKER (partia integracji 11): np. transformator
+        #     15/0,4 kV wpięty między szyny 110 kV i 15 kV — przekładnia, impedancja i K_T
+        #     (IEC 60909-0 eq. 12a, c strony dolnej) liczyłyby się z napięć, których sieć nie ma.
         napiecia_szyn = {b.ref_id: b.voltage_kv for b in enm.buses}
         for trafo in enm.transformers:
             for strona, napiecie_znamionowe, szyna_ref in (
@@ -559,9 +637,16 @@ class ENMValidator:
                 napiecie_szyny = napiecia_szyn.get(szyna_ref)
                 if napiecie_szyny is None or napiecie_szyny <= 0 or napiecie_znamionowe <= 0:
                     continue  # brak szyny i napięcia zerowe zgłaszają inne kontrole
+                if to_samo_napiecie_znamionowe(napiecie_znamionowe, napiecie_szyny):
+                    continue
                 pasmo_uzwojenia = pasmo_napieciowe(napiecie_znamionowe)
                 pasmo_szyny = pasmo_napieciowe(napiecie_szyny)
                 if pasmo_uzwojenia == pasmo_szyny:
+                    issues.append(
+                        _w023_przekladnia_nieznamionowa(
+                            enm, trafo, strona, napiecie_znamionowe, szyna_ref, napiecie_szyny
+                        )
+                    )
                     continue
                 issues.append(
                     ValidationIssue(
@@ -1994,7 +2079,7 @@ class ENMValidator:
                 )
 
     def _check_gaz_fluorowany(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
-        """W045: gaz fluorowany (SF₆) w polu albo aparacie pola, który nie jest istniejący.
+        """W049: gaz fluorowany (SF₆) w polu albo aparacie pola, który nie jest istniejący.
 
         Ta sama reguła co strażnik operacji domenowych (`enm.gaz_fluorowany_pola` →
         `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`): operacje nie
@@ -2052,10 +2137,10 @@ class ENMValidator:
     def _check_zgodnosc_szablonu_pola(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> None:
-        """W046–W048: szablon pola niezgodny z polem (`enm.zgodnosc_szablonu_pola`).
+        """W050–W052: szablon pola niezgodny z polem (`enm.zgodnosc_szablonu_pola`).
 
-        W046 — wykonanie łączników niedopuszczone w izolacji rodziny rozdzielnicy (ENEA Zeszyt 1,
-        §13); W047 — szablon pola rozdzielni GPZ w polu stacji spoza GPZ; W048 — klasa pola
+        W050 — wykonanie łączników niedopuszczone w izolacji rodziny rozdzielnicy (ENEA Zeszyt 1,
+        §13); W051 — szablon pola rozdzielni GPZ w polu stacji spoza GPZ; W052 — klasa pola
         z generacją przy wykonaniu bez przekładnika napięciowego od strony linii (IRiESD
         II.4.5.4.2.2–2.3). Ta sama reguła co strażnik operacji i kroku kreatora: operacje nie
         wprowadzają NOWEJ niezgodności, więc walidator widzi rekordy zastane (zapis sprzed reguły,
@@ -2093,11 +2178,11 @@ class ENMValidator:
     def _check_pole_liniowe_gpz(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> None:
-        """W049–W053: pole liniowe GPZ niezgodne z klasą i siecią za polem
+        """W053–W057: pole liniowe GPZ niezgodne z klasą i siecią za polem
         (`enm.pole_liniowe_gpz`, IRiESD ENEA Operator II.4.5.4.2, ENEA Zeszyt 1 Z.11).
 
-        W049 — generacja zasilana z pola odbiorczego; W050 — odbiory za polem dedykowanym
-        wytwórcy; W051 — SCO w polu z generacją; W052 — SPZ w polu dedykowanym; W053 — brak
+        W053 — generacja zasilana z pola odbiorczego; W054 — odbiory za polem dedykowanym
+        wytwórcy; W055 — SCO w polu z generacją; W056 — SPZ w polu dedykowanym; W057 — brak
         rdzenia rozliczeniowego przy wymaganym pomiarze AJEE. Poziom IMPORTANT: obliczenia
         sieci są poprawne, niezgodny jest opis pola (funkcje, wykonanie, klasa)."""
         if not any(pole.gpz_section_id for pole in enm.bays):
@@ -2121,6 +2206,39 @@ class ENMValidator:
                     )
                 )
 
+    def _check_oznaczenia_aparatow_pola(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W063: dwa aparaty jednego pola o tym samym oznaczeniu (IEC 81346-1 —
+        `enm.oznaczenia_aparatow_pola`). Poziom IMPORTANT: obliczenia sieci nie zależą od
+        oznaczeń, niejednoznaczne jest polecenie łączeniowe i dokumentacja pola."""
+        if not enm.bays:
+            return
+        # Import LENIWY: reguła czyta nazwy rodzajów aparatu (`enm.wyposazenie_pola`), a ten
+        # moduł — szablony pól, które importują kanon ról z pakietu `enm` (cykl przy imporcie).
+        from .oznaczenia_aparatow_pola import (
+            AKCJA_NAPRAWCZA_OZNACZEN_PL,
+            KOD_WALIDATORA_OZNACZEN,
+            zdublowane_oznaczenia,
+        )
+
+        for naruszenie in zdublowane_oznaczenia(enm.bays):
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_OZNACZEN,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref, *naruszenie.device_refs],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        f"{AKCJA_NAPRAWCZA_OZNACZEN_PL[0].upper()}{AKCJA_NAPRAWCZA_OZNACZEN_PL[1:]}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=naruszenie.bay_ref
+                    ),
+                )
+            )
+
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
     # ------------------------------------------------------------------
@@ -2133,7 +2251,7 @@ class ENMValidator:
         E040: bus_ref nie istnieje.
         E041: rated_mvar <= 0 (brak / niepoprawna moc bierna — nie zgadujemy).
         E042: rated_kv <= 0 (brak / niepoprawne napięcie znamionowe).
-        W040: rated_kv niespójne z napięciem szyny (>5% różnicy).
+        W040: rated_kv poza przedziałem U_n ≤ U_N ≤ U_s szyny (`napiecie_baterii_pasuje_do_sieci`).
         """
         bus_by_ref = {b.ref_id: b for b in enm.buses}
         for cap in enm.shunt_capacitors:
@@ -2208,12 +2326,12 @@ class ENMValidator:
                 continue
 
             bus = bus_by_ref.get(cap.bus_ref)
+            # JEDEN predykat z operacją zapisu baterii (`odmowa_tabliczki_baterii`):
+            # U_n ≤ U_N ≤ U_s (IEC 60871-1, IEC 60038) — dawny próg ±5 % ostrzegał przed baterią,
+            # którą operacja przyjmowała (17 kV na 15 kV), i milczał przy 14,5 kV, której odmawia.
             if (
                 bus is not None
-                and bus.voltage_kv
-                and bus.voltage_kv > 0
-                and cap.rated_kv > 0
-                and abs(cap.rated_kv - bus.voltage_kv) / bus.voltage_kv > 0.05
+                and napiecie_baterii_pasuje_do_sieci(cap.rated_kv, bus.voltage_kv) is False
             ):
                 issues.append(
                     ValidationIssue(
@@ -2232,6 +2350,208 @@ class ENMValidator:
                             element_ref=cap.ref_id,
                             modal_type="ShuntCapacitorModal",
                             payload_hint={"required": "rated_kv"},
+                        ),
+                    )
+                )
+
+    # ------------------------------------------------------------------
+    # Bateria kondensatorów: stopnie i pole BKR (E043, W045–W048) — karta UX-04/POLE-BKR-MODEL
+    # ------------------------------------------------------------------
+
+    def _check_baterie_pola_bkr(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Reguły baterii kondensatorów i pola BKR, każda z wyjaśnieniem (kontrakt werdyktu
+        wyjaśnialnego): co oceniono, kryterium z podstawą, stan modelu, skutek, naprawa.
+
+        E043 (BLOCKER): stan stopni niezgodny z liczbą stopni — ten sam predykat co odmowa
+            assemblera (``enm.bateria_kondensatorow.niezgodnosc_stopni``).
+        W045: bateria w rozdzielni SN GPZ bez pola BKR (Zeszyt 1 §13, §17).
+        W046: podwójna gwiazda izolowana bez przekładnika niezrównoważenia w polu BKR
+            (Zeszyt 1 §17, Zał. 16 — zabezpieczenie Ir>).
+        W047: jednostki bez wewnętrznych rezystorów rozładowczych, a pole BKR ma mniej niż
+            dwa przekładniki napięciowe międzyfazowe (Zeszyt 1 §17).
+        W048: lista transformatorów, których wyłączenie wyłącza baterię, nie obejmuje
+            transformatorów zasilających sekcję baterii albo wskazuje nieistniejące
+            (IRiESD II.4.5.4.4.2). Skutek łączeniowy realizuje logika łączeniowa; tu — dane.
+
+        Poziom W: stan jest legalnym stanem roboczym (koncepcja), nie wpływa na liczby
+        rozpływu ani zwarć — wymagania OSD dotyczą wyposażenia i automatyki pola.
+        """
+        transformatory = {t.ref_id for t in enm.transformers}
+        for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id):
+            opis = opis_obiektu(bateria, "Bateria kondensatorów")
+            dane = parametry_baterii(bateria)
+            niezgodnosc = niezgodnosc_stopni(bateria, dane)
+            if niezgodnosc is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E043",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis}: {niezgodnosc}. Udział stopni załączonych u = n_zał/n "
+                            "wchodzi do mocy biernej baterii w rozpływie i do jej admitancji "
+                            "zerowej, więc bez zgodnego stanu stopni nie da się go policzyć."
+                        ),
+                        element_refs=[bateria.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Podaj stan każdego stopnia (tyle pozycji, ile stopni ma bateria) "
+                            "albo zmień liczbę stopni baterii."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "stopnie_zalaczone"},
+                        ),
+                    )
+                )
+            nieznane = [r for r in bateria.wylaczenie_od_transformatorow if r not in transformatory]
+            stacja = stacja_gpz_baterii(enm, bateria)
+            pole = pole_baterii(enm, bateria)
+            if stacja is not None and (pole is None or pole.bay_role != "BKR"):
+                issues.append(
+                    ValidationIssue(
+                        code="W045",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis} stoi w rozdzielni SN {opis_obiektu(stacja, 'GPZ')} "
+                            + (
+                                "wprost na szynie, bez pola"
+                                if pole is None
+                                else f"na końcu pola {opis_obiektu(pole, 'pole')} roli innej niż "
+                                "pole baterii kondensatorów"
+                            )
+                            + f". Kryterium: bateria GPZ przyłączona przez pole BKR z wyłącznikiem, "
+                            f"zabezpieczeniami i przekładnikami ({PODSTAWA_POLA_BKR_PL}). Liczby "
+                            "rozpływu i zwarć są poprawne; brakuje pola, które baterię łączy, "
+                            "zabezpiecza i rozładowuje."
+                        ),
+                        element_refs=[bateria.ref_id, stacja.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Dodaj do sekcji rozdzielni SN pole baterii kondensatorów (BKR) "
+                            "i przyłącz baterię do jego zacisku."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=stacja.ref_id,
+                            modal_type="add_sn_bay",
+                            payload_hint={"bay_role": "BKR"},
+                        ),
+                    )
+                )
+            if pole is not None and pole.bay_role == "BKR":
+                rodzaje = rodzaje_aparatow_pola(pole)
+                uklad = dane[PARAMETR_BATERII_UKLAD]
+                if (
+                    str(uklad.wartosc) in UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA
+                    and RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA not in rodzaje
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            code="W046",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[str(uklad.wartosc)]}"
+                                f"” ({uklad.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} nie ma przekładnika "
+                                "niezrównoważenia w połączeniu międzygwiazdowym. Kryterium: "
+                                "zabezpieczenie niezrównoważeniowe Ir> mierzy prąd między "
+                                f"punktami gwiazd ({PODSTAWA_POLA_BKR_PL}). Bez przekładnika "
+                                "uszkodzenie jednostki baterii nie jest wykrywane."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola przekładnik niezrównoważenia "
+                                "baterii (port obwodu międzygwiazdowego)."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+                rezystory = dane[PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE]
+                liczba_vt = rodzaje.count(RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO)
+                if not rezystory.wartosc and liczba_vt < LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII:
+                    issues.append(
+                        ValidationIssue(
+                            code="W047",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: jednostki bez wewnętrznych rezystorów rozładowczych "
+                                f"({rezystory.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} ma {liczba_vt} z "
+                                f"{LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII} wymaganych "
+                                "przekładników napięciowych międzyfazowych do rozładowania "
+                                f"baterii (L1-L2 i L2-L3; {PODSTAWA_POLA_BKR_PL}). Bez nich "
+                                "bateria po wyłączeniu zostaje naładowana."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola dwa przekładniki napięciowe "
+                                "międzyfazowe albo wskaż typ baterii z wewnętrznymi "
+                                "rezystorami rozładowczymi."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+            wymagane = transformatory_zasilajace_baterie(enm, bateria) if stacja else []
+            brakujace = [t for t in wymagane if t not in bateria.wylaczenie_od_transformatorow]
+            if brakujace or nieznane:
+                opis_brakujacych = (
+                    "nie obejmuje transformatorów zasilających sekcję baterii: "
+                    + lista_pl((opis_elementu(enm, t, "transformator") for t in brakujace), "i")
+                    if brakujace
+                    else ""
+                )
+                opis_nieznanych = (
+                    f"wskazuje {len(nieznane)} "
+                    + (
+                        "transformator, którego"
+                        if len(nieznane) == 1
+                        else "transformatory, których"
+                    )
+                    + " nie ma w modelu"
+                    if nieznane
+                    else ""
+                )
+                opis_listy = (
+                    f"{opis_brakujacych}; {opis_nieznanych}"
+                    if brakujace and nieznane
+                    else opis_brakujacych or opis_nieznanych
+                )
+                issues.append(
+                    ValidationIssue(
+                        code="W048",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: lista transformatorów, których wyłączenie wyłącza baterię, "
+                            + opis_listy
+                            + f". Kryterium: {PODSTAWA_WYLACZENIA_OD_TR_PL}. Logika łączeniowa "
+                            "pola BKR czyta tę listę — bez kompletu bateria zostałaby załączona "
+                            "na sekcji po wyłączeniu jej transformatora."
+                        ),
+                        element_refs=[bateria.ref_id, *brakujace, *nieznane],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Uzupełnij w parametrach baterii listę transformatorów, których "
+                            "wyłączenie ją wyłącza."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "wylaczenie_od_transformatorow"},
                         ),
                     )
                 )
@@ -3194,7 +3514,7 @@ class ENMValidator:
                 continue
             if not (w_pasmie_nn(from_bus.voltage_kv) and w_pasmie_nn(to_bus.voltage_kv)):
                 continue
-            if abs(from_bus.voltage_kv - to_bus.voltage_kv) <= 1e-9:
+            if to_samo_napiecie_znamionowe(from_bus.voltage_kv, to_bus.voltage_kv):
                 continue
             issues.append(
                 ValidationIssue(

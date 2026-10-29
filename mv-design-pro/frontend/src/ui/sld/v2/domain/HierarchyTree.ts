@@ -8,6 +8,7 @@
  * Zastępuje generyczny `topologyAdapterV2.ts` (V1 graph approach).
  */
 
+import type { BayModelRole } from '../../../../types/enm';
 import type { PortKind } from '../core/ports';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { szynyStacji, type GalazDlaSzyn } from '../../../shared/szynyStacji';
@@ -45,7 +46,7 @@ export interface Section {
 export interface Bay {
   readonly id: string;
   readonly designation: string;
-  readonly bayRole: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+  readonly bayRole: BayModelRole;
   readonly templateRef: string | null;
   readonly devices: readonly Device[];
   readonly externalPortKinds: readonly PortKind[];
@@ -63,7 +64,9 @@ export interface Device {
     | 'FUSE'
     | 'SURGE_ARRESTER'
     | 'CABLE_HEAD'
-    | 'TRANSFORMER_DEVICE';
+    | 'TRANSFORMER_DEVICE'
+    | 'UNBALANCE_CT'
+    | 'PHASE_TO_PHASE_VT';
   readonly designationQ: string;
   readonly state: 'closed' | 'open' | 'unknown' | 'fault';
   readonly positionInBay: number;
@@ -139,7 +142,7 @@ export interface EnmInputForHierarchy {
   readonly bays: ReadonlyArray<{
     ref_id: string;
     name: string;
-    bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+    bay_role: BayModelRole;
     substation_ref?: string | null;
     branch_point_ref?: string | null;
     bus_ref: string;

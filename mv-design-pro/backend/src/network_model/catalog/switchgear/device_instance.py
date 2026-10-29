@@ -46,6 +46,8 @@ NAZWY_RODZAJOW_APARATU_PL: dict[str, str] = {
     "fuse_set": "zestaw bezpieczników",
     "current_transformer": "przekładnik prądowy",
     "voltage_transformer": "przekładnik napięciowy",
+    "unbalance_current_transformer": "przekładnik niezrównoważenia baterii",
+    "phase_to_phase_voltage_transformer": "przekładnik napięciowy międzyfazowy",
     "surge_arrester": "ogranicznik przepięć",
     "cable_head": "głowica kablowa",
     "busbar": "szyny zbiorcze",
@@ -76,6 +78,12 @@ ApparatusKind = Literal[
     "fuse_set",
     "current_transformer",
     "voltage_transformer",
+    # Karta UX-04/POLE-BKR-MODEL: przekładnik niezrównoważenia baterii (połączenie
+    # międzygwiazdowe) i przekładnik napięciowy międzyfazowy (rozładowanie, U>) — osobne
+    # tożsamości, bo `APPARATUS_KIND_FOR_TEMPLATE_KIND` jest różnowartościowe; słownik
+    # rodziny zgrubia je do przekładnika prądowego i napięciowego.
+    "unbalance_current_transformer",
+    "phase_to_phase_voltage_transformer",
     "surge_arrester",
     "cable_head",
     "busbar",

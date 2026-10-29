@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATES_GPZ_LINE,
     config_ref_for_template,
@@ -125,14 +126,35 @@ def test_producer_bridge_orders_unordered_apparatus() -> None:
 
 
 def test_producer_double_ds_gets_distinct_designations() -> None:
-    """Celka z DWOMA odłącznikami: szynowy Q1 (UPSTREAM), liniowy Q2 (DOWNSTREAM)."""
+    """Celka z DWOMA odłącznikami: szynowy Q1 (UPSTREAM), liniowy Q9 (DOWNSTREAM)."""
     devices = producer_cell_primary_devices(
         ["DS", "CB", "CT", "DS", "CABLE_HEAD"], config_ref="test:cell2"
     )
     ds = [d for d in devices if d["kind"] == "DS"]
     assert len(ds) == 2
     assert (ds[0]["placement"], ds[0]["designation"]) == ("UPSTREAM", "Q1")
-    assert (ds[1]["placement"], ds[1]["designation"]) == ("DOWNSTREAM", "Q2")
+    assert (ds[1]["placement"], ds[1]["designation"]) == ("DOWNSTREAM", "Q9")
+
+
+@pytest.mark.parametrize(
+    "aparaty",
+    [
+        ["DS", "CB", "CT", "DS", "DS", "CABLE_HEAD"],
+        ["DS", "CB", "ES", "ES", "CABLE_HEAD"],
+        ["DS", "CB", "VT", "VT", "ES", "ES", "ES"],
+        ["CB", "CB", "CT", "CT", "SURGE_ARRESTER", "SURGE_ARRESTER"],
+    ],
+)
+def test_producer_cell_designations_unique_in_bay(aparaty: list[str]) -> None:
+    """Rozszerzenie 5 karty UX-04 (reguła W063): powtórzony rodzaj aparatu w celce (trzeci
+    odłącznik, drugi uziemnik, drugi przekładnik napięciowy, drugi ogranicznik) dostaje
+    JEDNOZNACZNE oznaczenie propozycji (Q8, Q81 …). Iniekcja: bez `_unikalne_oznaczenie`
+    drugi uziemnik nosił „Q8" jak pierwszy — walidator zgłaszał W063 na propozycji systemu."""
+    from enm.oznaczenia_aparatow_pola import klucz_oznaczenia
+
+    devices = producer_cell_primary_devices(aparaty, config_ref="test:dup")
+    klucze = [klucz_oznaczenia(d["designation"]) for d in devices]
+    assert len(klucze) == len(set(klucze)) == len(aparaty)
 
 
 def test_gap_register_is_honest() -> None:

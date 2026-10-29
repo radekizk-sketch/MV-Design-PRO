@@ -14,6 +14,7 @@
         "data_umowy_przylaczeniowej",
         "deklaracje_modulu",
         "der_topology",
+        "dry_run",
         "existing_field_ref",
         "frequency_droop_percent",
         "has_hvrt_curve",
@@ -1592,6 +1593,14 @@
       "pola": [],
       "zagniezdzone": {}
     },
+    "set_bay_apparatus_position": {
+      "pola": [
+        "actual_state",
+        "bay_ref",
+        "device_ref"
+      ],
+      "zagniezdzone": {}
+    },
     "set_bay_equipment": {
       "pola": [
         "bay_ref",
@@ -1610,6 +1619,7 @@
             "linked_ref",
             "odgalezienie",
             "placement",
+            "przekladnia",
             "stan_obiektu"
           ],
           "zagniezdzone": {}
@@ -5916,6 +5926,22 @@
     },
     {
       "operacja": "refresh_snapshot",
+      "ladunek": {
+        "klucz_obcy": 1
+      },
+      "obce": [
+        "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_bay_apparatus_position",
+      "ladunek": {
+        "actual_state": 1
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_bay_apparatus_position",
       "ladunek": {
         "klucz_obcy": 1
       },

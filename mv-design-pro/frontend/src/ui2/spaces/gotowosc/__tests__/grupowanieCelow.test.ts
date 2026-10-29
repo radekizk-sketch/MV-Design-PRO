@@ -108,6 +108,7 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
       'catalog.materialization_incomplete',
       'catalog.nameplate_mismatch',
       'catalog.gate_result_mismatch',
+      'catalog.transformer_voltage_mismatch',
     ]) {
       expect(celDlaKodu(kod)).toBe('wspolne');
     }

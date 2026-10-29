@@ -92,14 +92,19 @@ const POWOD_KARTA_POLA =
   'Klasę pola, wykonanie z szablonu, stan obiektu i funkcje zabezpieczeniowe pola ustawia się na ' +
   'karcie pola — na schemacie kliknij pole prawym przyciskiem i wybierz „Otwórz kartę pola”; ' +
   'karta pokazuje ocenę pola z akcją naprawczą.';
+const POWOD_WYPOSAZENIE_POLA_BKR =
+  'Aparaty pola baterii kondensatorów (przekładnik niezrównoważenia w połączeniu ' +
+  'międzygwiazdowym, dwa przekładniki napięciowe międzyfazowe do rozładowania) ustawia się na ' +
+  'karcie pola — zaznacz pole baterii kondensatorów na schemacie i uzupełnij wyposażenie.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (177 kodów — pomiar rejestru na drzewie karty
- * UX-04/POLE-LINIOWE-WZORZEC: 166 bazy + 9 kodów `bay.*` + 2 kody stanu obiektu w katalogu).
- * Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * KOMPLETNA tabela kodów kanonu (185 kodów — pomiar `len(READINESS_CODES)` na drzewie
+ * scalonym kart UX-04/POLE-BKR-MODEL i UX-04/POLE-LINIOWE-WZORZEC: 166 bazy + 8 kodów pola BKR
+ * + 9 kodów `bay.*` + 2 kody stanu obiektu w katalogu). Brak wpisu dla kodu z rejestru jest
+ * błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -160,7 +165,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'station.required_field_missing': formularz('add_sn_bay'),
   'station.line_field_multiple_segments': formularz('przepnij_element_na_pole'),
   'station.element_bypasses_field': formularz('przepnij_element_na_pole'),
-  // Pole liniowe GPZ i wyposażenie pola (karta UX-04/POLE-LINIOWE-WZORZEC, W045–W053): klasę,
+  // Pole liniowe GPZ i wyposażenie pola (karta UX-04/POLE-LINIOWE-WZORZEC, W049–W057): klasę,
   // wykonanie, stan obiektu i funkcje EAZ edytuje formularz INLINE karty pola (E-11,
   // `set_bay_equipment` / `set_object_state` bez okna w `OPERATION_FORM_REGISTRY`) — droga
   // przez schemat i menu pola, z oceną pola i akcją naprawczą na karcie.
@@ -173,13 +178,28 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'bay.ufls_in_bay_with_generation': przestrzen('schemat', POWOD_KARTA_POLA),
   'bay.reclosing_in_dedicated_generation_bay': przestrzen('schemat', POWOD_KARTA_POLA),
   'bay.settlement_core_missing': przestrzen('schemat', POWOD_KARTA_POLA),
+  // Rozszerzenie 5 karty: oznaczenia aparatów pola (W063) edytuje to samo wyposażenie pola na
+  // karcie pola (pole „Oznaczenie aparatu", `set_bay_equipment`).
+  'bay.apparatus_designation_duplicate': przestrzen('schemat', POWOD_KARTA_POLA),
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),
+  // Karta UX-04/POLE-BKR-MODEL: pole i aparaty baterii kondensatorów (W045–W048) oraz
+  // założenia biegów z baterią (pominięcie w składowej zgodnej, parametry robocze baterii).
+  'station.bkr_bay_missing': formularz('add_sn_bay'),
+  // Wyposażenie pola edytuje wyłącznie karta pola (ekran E-11, `EdytorWyposazeniaPola`,
+  // jedyny dostawca `set_bay_equipment`) — nie ma formularza operacji, kartę otwiera
+  // zaznaczenie pola na schemacie.
+  'station.bkr_unbalance_ct_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_discharge_vt_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_transformer_trip_incomplete': EDYCJA,
+  'shunt.pominieta_w_skladowej_zgodnej': EDYCJA,
+  'shunt.parametry_robocze': EDYCJA,
   'transformer.connection_missing': TRANSFORMATOR,
   'transformer.loss_data_missing': KATALOG,
   'transformer.no_load_params_missing': KATALOG,
   'transformer.vector_group_missing': KATALOG,
+  'transformer.winding_voltage_off_nominal': KATALOG,
   'transformer.vector_group_invalid': EDYCJA,
   'transformer.neutral_grounding_not_accessible': EDYCJA,
   'transformer.lv_earthing_system_missing': EDYCJA,
@@ -419,6 +439,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.materialization_incomplete': KATALOG,
   'catalog.nameplate_mismatch': KATALOG,
   'catalog.gate_result_mismatch': KATALOG,
+  'catalog.transformer_voltage_mismatch': KATALOG,
 };
 
 // ---------------------------------------------------------------------------

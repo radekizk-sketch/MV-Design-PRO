@@ -37,22 +37,18 @@ from network_model.catalog.gazy_fluorowane import NAZWY_STANOW_OBIEKTU_PL, STANY
 from .domain_operations import _error_response, _response
 from .gaz_fluorowany_pola import RODZAJE_GALEZI_LACZENIOWYCH, aparat_lacznika
 from .kopia_graniczna import kopia_graniczna_enm
+from .pola import napis_lub_none, zmien_pole
 from .pola import pole as pole_modelu
-from .pola import zmien_pole
 from .slownik_komunikatow import opis_elementu, opis_obiektu, pole
 
 __all__ = ["set_object_state"]
 
 
-def _napis(wartosc: object) -> str | None:
-    return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
-
-
 def set_object_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Ustaw stan obiektu pola (z aparatami), jednej instancji aparatu pola albo łącznika
     poza polem."""
-    bay_ref = _napis(payload.get("bay_ref"))
-    switch_ref = _napis(payload.get("switch_ref"))
+    bay_ref = napis_lub_none(payload.get("bay_ref"))
+    switch_ref = napis_lub_none(payload.get("switch_ref"))
     if bay_ref is None and switch_ref is None:
         return _error_response(
             f"Uzupełnij pole {pole('bay_ref', 'set_object_state')} albo "
@@ -74,6 +70,7 @@ def set_object_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         )
     if switch_ref is not None:
         return _ustaw_stan_lacznika(enm, switch_ref, stan)
+    assert bay_ref is not None  # rozstrzygnięte wyżej: dokładnie jeden cel (pole albo łącznik)
     nowy = kopia_graniczna_enm(enm)
     rekord = pole_modelu(nowy, bay_ref)
     if rekord is None:

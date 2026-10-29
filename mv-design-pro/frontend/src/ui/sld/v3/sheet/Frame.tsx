@@ -31,6 +31,7 @@ import { SHEET_WIDTH_QUANTUM } from '../layout/sheetRows';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { useSldPalette } from '../theme/palette';
+import type { StanKafla } from '../theme/colorTokens';
 
 /* Kolor bazowy rysunku (spec §2/§6) — nakładki koloru napięcia/energizacji są
  * zakresem `SldCanvasV3.tsx`, nie ramki arkusza. KD-8 poz. 1: ramka arkusza,
@@ -81,7 +82,7 @@ export interface SheetLegendEntry {
    *  przegrywały o miejsce z geometrią (trzy próby odrzucone przez bramki,
    *  V12K-221) — legenda jest ich właściwym miejscem, bo tu nie konkurują
    *  z aparaturą pól. */
-  readonly kind: 'symbol' | 'line' | 'note';
+  readonly kind: 'symbol' | 'line' | 'note' | 'stan';
   readonly id: string;
   readonly labelPl: string;
 }
@@ -252,6 +253,7 @@ function legendEntryContentHeight(entry: SheetLegendEntry): number {
   // symbolu; bez tego rozgałęzienia `SYMBOL_DEFS[id]` byłby `undefined` i layout
   // wierszy sypałby się na NaN.
   if (entry.kind === 'note') return labelLineHeight('t3');
+  if (entry.kind === 'stan') return LEGEND_LINE_SAMPLE_HEIGHT;
   return entry.kind === 'symbol' ? SYMBOL_DEFS[entry.id as SymbolId].height : LEGEND_LINE_SAMPLE_HEIGHT;
 }
 
@@ -272,6 +274,27 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
     y += height;
   }
   return rows;
+}
+
+/**
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: próbka KAFLA STANU łącznika (wpis legendy
+ * `kind: 'stan'`, id `stan-<StanKafla>`) — ten sam kolor z `SldPalette.state` co kafel na
+ * kanwie i w eksporcie, ten sam znak „?"/„!" dla stanów bez położenia pewnego.
+ */
+export function LegendStateTile(props: { readonly id: string; readonly y: number }): JSX.Element {
+  const palette = useSldPalette();
+  const stan = props.id.replace(/^stan-/, '') as StanKafla;
+  const znak = stan === 'nieustalony' ? '?' : stan === 'bledny' ? '!' : null;
+  return (
+    <g data-legenda-kafel={stan}>
+      <rect x={4} y={props.y} width={16} height={12} rx={1.5} fill={palette.state[stan]} />
+      {znak && (
+        <text x={12} y={props.y + 9.5} textAnchor="middle" fontFamily="sans-serif" fontSize={9} fontWeight={700} fill={palette.state.glif}>
+          {znak}
+        </text>
+      )}
+    </g>
+  );
 }
 
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
@@ -344,7 +367,9 @@ export function SheetLegend(props: {
         const glyphY = Glyph ? y + (height - SYMBOL_DEFS[entry.id as SymbolId].height) / 2 : y;
         return (
           <g key={entry.id} data-testid={`sld-sheet-legend-item-${entry.id}`} data-parity-key={`legend-item-${entry.id}`}>
-            {entry.kind === 'note' ? null : Glyph ? (
+            {entry.kind === 'note' ? null : entry.kind === 'stan' ? (
+              <LegendStateTile id={entry.id} y={y + (height - 12) / 2} />
+            ) : Glyph ? (
               // S9-6 (znalezisko uboczne, Zero-Debt): glif legendy MUSI dostać
               // tusz z PALETY. Bez tego `glyphs.tsx` spadał na stałą modułu
               // (`V3_STROKE_BASE` = tusz palety CIEMNEJ, `#E8EEF4`), więc w

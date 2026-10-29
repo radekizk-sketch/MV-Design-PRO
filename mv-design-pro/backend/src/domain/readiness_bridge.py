@@ -60,17 +60,26 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W043": "station.kind_mismatch",
     # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
     "W044": "station.field_role_unknown",
+    # Karta UX-04/POLE-BKR-MODEL: reguły pola BKR == te same warunki (jedno źródło predykatów
+    # `enm/bateria_kondensatorow.py`, emiter `enm/validator.py::_check_baterie_pola_bkr`).
+    "W045": "station.bkr_bay_missing",
+    "W046": "station.bkr_unbalance_ct_missing",
+    "W047": "station.bkr_discharge_vt_missing",
+    "W048": "station.bkr_transformer_trip_incomplete",
     # „Gaz fluorowany w polu, które nie jest istniejące" == ten sam warunek (jedna reguła
     # `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`, karta UX-04).
-    "W045": "bay.fluorinated_gas_not_existing",
-    "W046": "bay.switching_execution_insulation_mismatch",
-    "W047": "bay.gpz_template_outside_gpz",
-    "W048": "bay.line_class_execution_mismatch",
-    "W049": "bay.generation_fed_from_load_bay",
-    "W050": "bay.loads_behind_dedicated_generation_bay",
-    "W051": "bay.ufls_in_bay_with_generation",
-    "W052": "bay.reclosing_in_dedicated_generation_bay",
-    "W053": "bay.settlement_core_missing",
+    "W049": "bay.fluorinated_gas_not_existing",
+    "W050": "bay.switching_execution_insulation_mismatch",
+    "W051": "bay.gpz_template_outside_gpz",
+    "W052": "bay.line_class_execution_mismatch",
+    "W053": "bay.generation_fed_from_load_bay",
+    "W054": "bay.loads_behind_dedicated_generation_bay",
+    "W055": "bay.ufls_in_bay_with_generation",
+    "W056": "bay.reclosing_in_dedicated_generation_bay",
+    "W057": "bay.settlement_core_missing",
+    # „Dwa aparaty pola o tym samym oznaczeniu" == ten sam warunek (jedna reguła
+    # `enm.oznaczenia_aparatow_pola`, rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC).
+    "W063": "bay.apparatus_designation_duplicate",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",
@@ -111,6 +120,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
     # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
     "W001": "branch.zero_sequence_missing",
+    # „Napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym paśmie" == ten sam
+    # warunek (jeden podział E023/W023 w `enm/validator.py`, równość danych
+    # `to_samo_napiecie_znamionowe`).
+    "W023": "transformer.winding_voltage_off_nominal",
     # W5-A (jedna reprezentacja uziemienia): transformator SN/nN bez ukladu sieci nN
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
@@ -157,6 +170,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E040": "Kanon nie ma kodów baterii kondensatorów (referencja katalogowa).",
     "E041": "Kanon nie ma kodów baterii kondensatorów (moc bierna).",
     "E042": "Kanon nie ma kodów baterii kondensatorów (napięcie znamionowe).",
+    "E043": (
+        "Kanon nie ma kodów baterii kondensatorów (stan stopni niezgodny z liczbą stopni) — "
+        "spójność danych elementu, jak E040–E042."
+    ),
     "I001": "Stan łącznika (otwarty) to informacja o topologii, nie brak danych.",
     "I002": (
         "Powtarza warunek E009 na poziomie INFO — jeden warunek ma mieć jeden kod "

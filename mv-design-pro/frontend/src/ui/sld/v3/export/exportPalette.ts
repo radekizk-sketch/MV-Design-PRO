@@ -16,11 +16,11 @@
  * (tło białe, tor SN zielony/nN granatowy przyciemnione dla kontrastu na
  * bieli, WN/tusz bazowy czarny. UWAGA (V12K-216): na EKRANIE `VOLTAGE_COLOR.hv`
  * to już czerwień `#D93A2B` (paleta OSD), więc dawna symetria „hv === BASE_STROKE"
- * NIE obowiązuje. W druku WN zostaje czarnym tuszem ŚWIADOMIE: czerwień drukowalna
- * `#B71C1C` jest zarezerwowana dla NOP (D11), a przy kolizji pierwszeństwo ma stan
- * ruchowy nad poziomem napięcia — WN
- * pozostaje kolorem „bazowym" kanwy w OBU motywach). Semantyka napięć
- * WN/SN/nN i NOP pozostają WZAJEMNIE rozróżnialne w druku (D11 wymóg
+ * NIE obowiązuje. W druku WN zostaje czarnym tuszem ŚWIADOMIE: czerwień w druku niesie
+ * stan ZAMKNIĘTY łącznika (kafel `STATE_COLOR.zamkniety`, karta UX-04/POLE-LINIOWE-WZORZEC,
+ * rozszerzenie 5) i awarię, a przy kolizji pierwszeństwo ma stan ruchowy nad poziomem
+ * napięcia — WN pozostaje kolorem „bazowym" kanwy w OBU motywach). Semantyka napięć
+ * WN/SN/nN i stany łączników pozostają WZAJEMNIE rozróżnialne w druku (D11 wymóg
  * dosłowny). Selekcja WYŁĄCZNIE w torze eksportu
  * (`SldCanvasV3Workspace.handleExportSvg`) — render ekranowy
  * (`SldCanvasV3.tsx`/`sheet/Frame.tsx`) czyta WYŁĄCZNIE `theme/colorTokens.ts`;
@@ -58,7 +58,7 @@
  */
 import {
   DARK_SCADA_SLD_PALETTE,
-  RAMKA_SCADA_COLOR,
+  STANY_KAFLA,
   STATE_COLOR,
   type HighlightKey,
   type SldPalette,
@@ -69,7 +69,7 @@ import type { RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
 
 // ---------------------------------------------------------------------------
 // Tabela jasna — SAME KLUCZE co theme/colorTokens.ts (dark). Wartości
-// drukowalne (kontrast na bieli), semantyka WN/SN/nN i NOP zachowana.
+// drukowalne (kontrast na bieli), semantyka WN/SN/nN i stanów łączników zachowana.
 // ---------------------------------------------------------------------------
 
 /** Tło eksportu — białe (drukowalne), D11 wymóg dosłowny. */
@@ -84,18 +84,17 @@ const EXPORT_VOLTAGE_COLOR: Readonly<Record<VoltageClass, string>> = {
   nn: '#0A5A78',
 };
 
-/** NOP/otwarty — czerwień drukowalna (D11: „NOP wyraźny"), TA SAMA wartość
- *  co v2 `LIGHT_TECHNICAL_COLOR_DEVICE_OPEN` (`v2/theme/tokens.ts`) —
- *  reużycie konwencji „alarm/otwarty" istniejącej w aplikacji zamiast
- *  nowego literału (dyrektywa właściciela pkt 7 „reużycie zamiast
- *  duplikacji"). */
-const EXPORT_NOP_RED = '#B71C1C' as const;
+/** Czerwień drukowalna alarmu/zwarcia — TA SAMA wartość co v2
+ *  `LIGHT_TECHNICAL_COLOR_DEVICE_OPEN` (`v2/theme/tokens.ts`) — reużycie konwencji
+ *  „alarm" istniejącej w aplikacji zamiast nowego literału (dyrektywa właściciela pkt 7
+ *  „reużycie zamiast duplikacji"). */
+const EXPORT_ALARM_RED = '#B71C1C' as const;
 
-const EXPORT_STATE_COLOR: Readonly<Record<keyof typeof STATE_COLOR, string>> = {
-  closed: '#0F8A46',
-  open: EXPORT_NOP_RED,
-  nop: EXPORT_NOP_RED,
-};
+/** Karta UX-04/POLE-LINIOWE-WZORZEC, rozszerzenie 5: kafle stanu łącznika w druku — TA SAMA
+ *  tabela co ekran (`STATE_COLOR`; konwencja dyspozytorska czerwony = zamknięty, zielony =
+ *  otwarty nie zależy od palety, ekran i dokument mówią to samo). Progi kontrastu kafla
+ *  wobec bieli arkusza przypina `theme/__tests__/palette.test.ts`. */
+const EXPORT_STATE_COLOR = STATE_COLOR;
 
 const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   energized: '#1E7A46',
@@ -104,10 +103,8 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   maintenance: '#2166AC',
   flow: '#0B84BF',
   oltc: '#A15C00',
-  // Zwarcie/critical — TA SAMA wartość co `EXPORT_NOP_RED` (v2 „alarm"
-  // konwencja) — spójne z ciemnym motywem, gdzie oba tercyle najwyższego
-  // priorytetu (NOP/critical) dzielą rodzinę czerwieni.
-  fault: EXPORT_NOP_RED,
+  // Zwarcie/critical — czerwień alarmu (v2 „alarm" konwencja).
+  fault: EXPORT_ALARM_RED,
   faultWarning: '#C77700',
   faultOk: '#7A6B00',
   // W4 (§8) — liczbowe etykiety wynikowe; fiolet przyciemniony pod jasny druk
@@ -136,12 +133,8 @@ const EXPORT_ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: '#56626F',
   pomiarowe: '#0B6E60',
   zrodlowe: '#3C6E1E',
+  kompensacyjne: '#9E2A5E',
 };
-
-/** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA w druku — TE SAME wartości co na
- *  ekranie (konwencja dyspozytorska czerwony = zamknięty, zielony = otwarty nie zależy od
- *  palety; ekran i dokument mówią to samo). */
-const EXPORT_RAMKA_SCADA_COLOR: Readonly<Record<'zamkniety' | 'otwarty', string>> = RAMKA_SCADA_COLOR;
 
 /** Tabela jasna eksponowana dla testów/dokumentacji (parytet kluczy z
  *  `colorTokens.ts` — pomiar w `__tests__/exportPalette.test.ts`). */
@@ -152,14 +145,13 @@ export const LIGHT_TECHNICAL_V3 = {
   state: EXPORT_STATE_COLOR,
   highlight: EXPORT_HIGHLIGHT_COLOR,
   rolaPola: EXPORT_ROLA_POLA_COLOR,
-  ramkaScada: EXPORT_RAMKA_SCADA_COLOR,
 } as const;
 
 // ---------------------------------------------------------------------------
 // Mapa substytucji: dark hex -> light hex — DERIVED z importów `colorTokens.ts`
 // (źródło ciemne NIGDY nie dryfuje od prawdy ekranu), deduplikowana Mapą
-// (klucz = wartość ciemna — `STATE_COLOR.open`/`STATE_COLOR.nop` dzielą TĘ SAMĄ
-// wartość ciemną z definicji, patrz `colorTokens.ts`; `BASE_STROKE` i
+// (klucz = wartość ekranu — kafle stanu łącznika mapują się na SIEBIE, bo tabela jest
+// jedna dla ekranu i druku; `BASE_STROKE` i
 // `VOLTAGE_COLOR.hv` dzieliły ją do V12K-216, dziś są rozdzielone — oba nadal
 // celują w `EXPORT_INK`; wszystkie cele jasne MUSZĄ się zgadzać —
 // pilnowane twardym fail niżej, nie cichym nadpisaniem).
@@ -172,9 +164,8 @@ function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string
     [source.voltage.hv, EXPORT_VOLTAGE_COLOR.hv],
     [source.voltage.sn, EXPORT_VOLTAGE_COLOR.sn],
     [source.voltage.nn, EXPORT_VOLTAGE_COLOR.nn],
-    [source.state.closed, EXPORT_STATE_COLOR.closed],
-    [source.state.open, EXPORT_STATE_COLOR.open],
-    [source.state.nop, EXPORT_STATE_COLOR.nop],
+    ...STANY_KAFLA.map((stan) => [source.state[stan], EXPORT_STATE_COLOR[stan]] as const),
+    [source.state.glif, EXPORT_STATE_COLOR.glif],
     [source.highlight.energized, EXPORT_HIGHLIGHT_COLOR.energized],
     [source.highlight.deenergized, EXPORT_HIGHLIGHT_COLOR.deenergized],
     [source.highlight.standby, EXPORT_HIGHLIGHT_COLOR.standby],
@@ -195,8 +186,6 @@ function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string
     ...(Object.keys(EXPORT_ROLA_POLA_COLOR) as RolaPolaGpz[]).map(
       (rola) => [source.rolaPola[rola], EXPORT_ROLA_POLA_COLOR[rola]] as const,
     ),
-    [source.ramkaScada.zamkniety, EXPORT_RAMKA_SCADA_COLOR.zamkniety],
-    [source.ramkaScada.otwarty, EXPORT_RAMKA_SCADA_COLOR.otwarty],
   ];
   const map = new Map<string, string>();
   for (const [screen, doc] of pairs) {

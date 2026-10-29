@@ -14,7 +14,10 @@ pilnuje, że fikstura jest równa temu, co liczy backend (snapshot bez strażnik
 ILOCZYN CECH: wykonanie pola {Z.10, Z.11.1, Z.11} × wykonanie łączników {trójpołożeniowy,
 stały z odłącznikiem, wysuwny} (9 szablonów rejestru) + iniekcje na polu Z.11.1 z odłącznikiem
 {dwie drogi do końca toru (wyłącznik równoległy), brak drogi do końca toru, odgałęzienie od
-węzła szyny}.
+węzła szyny} + pole baterii kondensatorów (scalenie z kartą UX-04/POLE-BKR-MODEL) z aparatami
+pola BKR z JEDNEJ listy portów: dwa przekładniki napięciowe międzyfazowe (zaciski A i B — dwa
+porty, a aparat POZA torem) w odgałęzieniu za odłącznikiem i przekładnik niezrównoważenia
+(port ``obwod``) na końcu toru — liczba portów nie rozstrzyga o położeniu w torze.
 
 Regeneracja (z katalogu `backend/`):
 
@@ -29,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from network_model.catalog.bay_templates import BAY_TEMPLATES_GPZ_LINE, template_primary_devices
-from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym
+from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym, porty_toru_pola
 
 BACKEND = Path(__file__).resolve().parents[2]
 FIKSTURA = (
@@ -90,6 +93,26 @@ def przypadki() -> list[dict[str, Any]]:
     od_szyny = copy.deepcopy(baza)
     _ustaw_port(next(a for a in od_szyny if a["designation"] == "Q5"), "we", "szyna")
     wynik.append(_przypadek("iniekcja_odgalezienie_od_szyny", od_szyny))
+    # Pole baterii kondensatorów: przekładniki międzyfazowe (A, B) w odgałęzieniu za odłącznikiem,
+    # przekładnik niezrównoważenia (obwod) na końcu toru — porty z tej samej reguły sekwencji.
+    sekwencja = [
+        ("Q1", "DS", "UPSTREAM", None),
+        ("Q0", "CB", "MIDSTREAM", None),
+        ("Q5", "DS", "MIDSTREAM", "rozladowanie"),
+        ("T5", "PHASE_TO_PHASE_VT", "MIDSTREAM", "rozladowanie"),
+        ("T6", "PHASE_TO_PHASE_VT", "MIDSTREAM", "rozladowanie"),
+        ("T1", "CT", "MIDSTREAM", None),
+        ("GK", "CABLE_HEAD", "DOWNSTREAM", None),
+        ("T7", "UNBALANCE_CT", "DOWNSTREAM", None),
+    ]
+    bkr = porty_toru_pola(
+        [
+            {"designation": d, "kind": k, "placement": p, "render_variant": None}
+            | ({"odgalezienie": o} if o else {})
+            for d, k, p, o in sekwencja
+        ]
+    )
+    wynik.append(_przypadek("pole_bkr_przekladniki_miedzyfazowe_w_odgalezieniu", bkr))
     return wynik
 
 
@@ -107,12 +130,22 @@ def test_fikstura_parytetu_toru_glownego_rowna_backendowi():
 def test_przypadki_pokrywaja_odgalezienia_i_iniekcje():
     wynik = {p["nazwa"]: p for p in przypadki()}
     z_odgalezieniem = [n for n, p in wynik.items() if p["poza_torem_glownym"]]
-    # Sześć szablonów Z.11.1/Z.11 i odgałęzienie od szyny mają odgałęzienie; Z.10 — nie.
-    assert len(z_odgalezieniem) == 7
+    # Sześć szablonów Z.11.1/Z.11, odgałęzienie od szyny i pole BKR mają odgałęzienie; Z.10 — nie.
+    assert len(z_odgalezieniem) == 8
     assert all("z10" not in n for n in z_odgalezieniem)
     # Tor niejednoznaczny (dwie drogi / zero dróg) — brak wniosku, pusty zbiór.
     assert wynik["iniekcja_dwie_drogi_do_konca_toru"]["poza_torem_glownym"] == []
     assert wynik["iniekcja_brak_drogi_do_konca_toru"]["poza_torem_glownym"] == []
+    # Pole BKR: odgałęzienie (odłącznik + dwa przekładniki międzyfazowe) poza torem, przekładnik
+    # niezrównoważenia na węźle końca toru — w torze (nie przerywa go, ale leży na jego węźle).
+    bkr = wynik["pole_bkr_przekladniki_miedzyfazowe_w_odgalezieniu"]
+    assert bkr["poza_torem_glownym"] == ["Q5", "T5", "T6"]
+    porty_vt = {a["designation"]: a["ports"] for a in bkr["aparaty"]}
+    assert porty_vt["T5"] == [
+        {"port_id": "A", "wezel": "rozladowanie1"},
+        {"port_id": "B", "wezel": "rozladowanie1"},
+    ]
+    assert porty_vt["T7"] == [{"port_id": "obwod", "wezel": "kabel"}]
 
 
 if __name__ == "__main__":

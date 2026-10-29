@@ -15,6 +15,7 @@
 import { GRID, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import type { GpzStatusFlag, RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
+import { KOD_FUNKCJI_PLAKIETKI } from '../../v2/canvas/canonicalGpzModel';
 import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../v2/station-rozdzielnia/contract';
 
 /** Kolejność ról w legendzie i w kontrakcie palety (stała, deterministyczna). */
@@ -25,6 +26,7 @@ export const ROLE_POL_GPZ: readonly RolaPolaGpz[] = [
   'sprzeglo',
   'pomiarowe',
   'zrodlowe',
+  'kompensacyjne',
 ];
 
 /** Etykiety ról z kanonu nazw pól SN (`FIELD_ROLE_LABEL_PL`) — jedna terminologia ról pól
@@ -38,20 +40,40 @@ export const ETYKIETA_ROLI_POLA_PL: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: FIELD_ROLE_LABEL_PL.SPRZEGLO,
   pomiarowe: FIELD_ROLE_LABEL_PL.POMIAROWE,
   zrodlowe: FIELD_SOURCE_LABEL_PL,
+  kompensacyjne: FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW,
 };
 
-/** Rozwinięcie plakietek automatyki (podpowiedź `<title>` i legenda tabeli). */
+/** Rozwinięcie plakietek automatyki (podpowiedź `<title>` i legenda tabeli) — kod funkcji
+ *  słownika EAZ z `KOD_FUNKCJI_PLAKIETKI` (jedno źródło mapowania). */
 export const OPIS_PLAKIETKI_PL: Readonly<Record<GpzStatusFlag, string>> = {
-  SPZ: 'SPZ — samoczynne ponowne załączanie (funkcja 79 w modelu zabezpieczeń pola)',
-  SCO: 'SCO — samoczynne częstotliwościowe odciążenie (funkcja 81U w modelu zabezpieczeń pola)',
+  SPZ: `SPZ — samoczynne ponowne załączanie (funkcja ${KOD_FUNKCJI_PLAKIETKI.SPZ} w zestawie funkcji pola)`,
+  SCO: `SCO — samoczynne częstotliwościowe odciążenie (funkcja ${KOD_FUNKCJI_PLAKIETKI.SCO} w zestawie funkcji pola)`,
+  LRW: `LRW — lokalna rezerwa wyłącznikowa (funkcja ${KOD_FUNKCJI_PLAKIETKI.LRW} w zestawie funkcji pola)`,
+  NZ: `NZ — blokada załączenia od napięcia zwrotnego (funkcja ${KOD_FUNKCJI_PLAKIETKI.NZ} w zestawie funkcji pola)`,
+  OWG: `OWG — wyłączenie pola z generacją od zabezpieczeń transformatora (funkcja ${KOD_FUNKCJI_PLAKIETKI.OWG} w zestawie funkcji pola)`,
 };
 
 /**
+ * Stan funkcji na plakietce (rozszerzenie 5 karty UX-04, referencja HMI 2026-10-29: sterownik
+ * polowy pokazuje „SPZ Wast/Odbl" — włączona/odblokowana). Stan funkcji (aktywna / odstawiona,
+ * zablokowana) należy do nastaw zabezpieczeń — danych aktywów ADR-022 (IED, funkcje, grupy
+ * nastaw), których model sieci jeszcze nie niesie. Plakietka nie zgaduje stanu: obrys
+ * kreskowany i to zdanie w podpowiedzi. Zależność: karta OCHRONA-ADR022-NASTAWY.
+ */
+export const STAN_FUNKCJI_PLAKIETKI_PL =
+  'stan funkcji (aktywna albo odstawiona) nieustalony — należy do nastaw zabezpieczeń pola, których model jeszcze nie zawiera';
+
+/** Wzór kreskowania obrysu plakietki o nieustalonym stanie funkcji. */
+export const KRESKOWANIE_PLAKIETKI_BEZ_STANU = '3 2';
+
+/**
  * KONTRAKT NEGATYWNY (rozstrzygnięcie §0 pkt 6 karty GPZ-PARYTET): elementy nagłówka
- * operatorskiego SCADA dawnego renderera v2 i plakietka OWG, których schemat narzędzia
- * projektowego ŚWIADOMIE nie rysuje. Każdy wpis to klucz parytetu i uzasadnienie;
- * kompozycja nie może wyemitować żadnego z tych kluczy (test w
- * `compose/__tests__/gpz.test.ts`), dowód w `docs/evidence/CONVERGENCE_EVIDENCE.md` P1-11.
+ * operatorskiego SCADA dawnego renderera v2, których schemat narzędzia projektowego
+ * ŚWIADOMIE nie rysuje. Każdy wpis to klucz parytetu i uzasadnienie; kompozycja nie może
+ * wyemitować żadnego z tych kluczy (test w `compose/__tests__/gpz.test.ts`), dowód
+ * w `docs/evidence/CONVERGENCE_EVIDENCE.md` P1-11. Plakietka OWG opuściła tę listę
+ * (rozszerzenie 5 karty UX-04): OWG ma wpis słownika funkcji EAZ z podstawą (Zeszyt 1 Z.11,
+ * Z.11.1 „wył. od zab. TR", §26.10.4) i kod w zestawie funkcji pola Z.11.1/Z.11.
  */
 export const KONTRAKT_NEGATYWNY_GPZ: Readonly<Record<string, string>> = {
   'gpz.header.transmission':
@@ -62,8 +84,6 @@ export const KONTRAKT_NEGATYWNY_GPZ: Readonly<Record<string, string>> = {
     'Nie SCADA: dostępność sterowania zdalnego to stan systemu nadzoru, nie dana projektowa; narzędzie nie steruje łącznikami ruchowo — przycisk bez operacji backendu (reguła phantom).',
   'gpz.header.reset_signals':
     'Nie SCADA: kasowanie sygnalizacji to polecenie do sterownika obiektowego; w narzędziu projektowym nie ma sygnalizacji do skasowania ani operacji backendu (martwy klik, reguła phantom).',
-  'gpz.status_flags.OWG':
-    'Brak podstawy: OWG nie ma pola w modelu ENM ani definicji w kanonie (dwa sprzeczne rozwinięcia w historii repo) — plakietka byłaby domysłem; plakietki tylko z kodów funkcji pola (SPZ ⇔ 79, SCO ⇔ 81U).',
 };
 
 // ---------------------------------------------------------------------------

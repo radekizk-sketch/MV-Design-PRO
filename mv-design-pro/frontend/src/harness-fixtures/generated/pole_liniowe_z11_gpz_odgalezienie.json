@@ -149,6 +149,7 @@
                 "wezel": "szyna"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -178,6 +179,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -207,6 +209,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -236,6 +239,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -265,6 +269,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -290,6 +295,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -318,8 +324,8 @@
               {
                 "klasa": "0,5/3P",
                 "moc_va": 7.5,
-                "otwarty_trojkat": true,
-                "przekladnia": "SN/√3 / 0,1/3",
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
                 "przeznaczenie": [
                   "POMIAR",
                   "ZABEZPIECZENIA"
@@ -348,6 +354,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -383,6 +390,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -412,6 +420,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -437,6 +446,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -460,7 +470,8 @@
           "50BF",
           "79",
           "SPZE",
-          "OWG"
+          "OWG",
+          "NZ"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
@@ -534,6 +545,7 @@
                 "wezel": "szyna"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -563,6 +575,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -592,6 +605,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -621,6 +635,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -650,6 +665,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -675,6 +691,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -703,8 +720,8 @@
               {
                 "klasa": "0,5/3P",
                 "moc_va": 7.5,
-                "otwarty_trojkat": true,
-                "przekladnia": "SN/√3 / 0,1/3",
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
                 "przeznaczenie": [
                   "POMIAR",
                   "ZABEZPIECZENIA"
@@ -733,6 +750,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -768,6 +786,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -797,6 +816,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -822,6 +842,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -845,7 +866,8 @@
           "50BF",
           "79",
           "SPZE",
-          "OWG"
+          "OWG",
+          "NZ"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
@@ -919,6 +941,7 @@
                 "wezel": "szyna"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -948,6 +971,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -977,6 +1001,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1006,6 +1031,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1031,6 +1057,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1060,6 +1087,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1085,6 +1113,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1113,8 +1142,8 @@
               {
                 "klasa": "0,5/3P",
                 "moc_va": 7.5,
-                "otwarty_trojkat": true,
-                "przekladnia": "SN/√3 / 0,1/3",
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
                 "przeznaczenie": [
                   "POMIAR",
                   "ZABEZPIECZENIA"
@@ -1143,6 +1172,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": 5.0,
@@ -1197,6 +1227,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1207,7 +1238,7 @@
           },
           {
             "catalog_ref": null,
-            "designation": "Q9",
+            "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::9",
             "earthing_role": "field_earth",
             "is_controllable": false,
@@ -1222,6 +1253,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1251,6 +1283,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1276,6 +1309,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1296,7 +1330,8 @@
           "81R",
           "ZS",
           "50BF",
-          "OWG"
+          "OWG",
+          "NZ"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
@@ -1370,6 +1405,7 @@
                 "wezel": "szyna"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1399,6 +1435,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1428,6 +1465,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1457,6 +1495,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1482,6 +1521,7 @@
                 "wezel": "pn1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1511,6 +1551,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1536,6 +1577,7 @@
                 "wezel": "pn2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1564,8 +1606,8 @@
               {
                 "klasa": "0,5/3P",
                 "moc_va": 7.5,
-                "otwarty_trojkat": true,
-                "przekladnia": "SN/√3 / 0,1/3",
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
                 "przeznaczenie": [
                   "POMIAR",
                   "ZABEZPIECZENIA"
@@ -1594,6 +1636,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": 5.0,
@@ -1648,6 +1691,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1658,7 +1702,7 @@
           },
           {
             "catalog_ref": null,
-            "designation": "Q9",
+            "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::9",
             "earthing_role": "field_earth",
             "is_controllable": false,
@@ -1673,6 +1717,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1702,6 +1747,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1727,6 +1773,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1747,7 +1794,8 @@
           "81R",
           "ZS",
           "50BF",
-          "OWG"
+          "OWG",
+          "NZ"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",

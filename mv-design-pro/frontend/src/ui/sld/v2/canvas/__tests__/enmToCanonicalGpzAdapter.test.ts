@@ -18,6 +18,7 @@ import type {
 } from '../../../../../types/enm';
 import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
 import { pole } from '../../../../../test/pola';
+import { BAY_MODEL_ROLES } from '../../../../../types/enm';
 
 type EnmFragment = Pick<
   EnergyNetworkModel,
@@ -1080,7 +1081,8 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
    ze spacją}) × ścieżka (funkcja czysta, adapter end-to-end).
    --------------------------------------------------------------------------- */
 
-const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = ['IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
+// Jedna lista ról modelu (`types/enm.ts::BAY_MODEL_ROLES`) — nowa rola wchodzi do iloczynu sama.
+const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = BAY_MODEL_ROLES;
 
 describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)', () => {
   const OCZEKIWANA = {
@@ -1091,6 +1093,7 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     COUPLER: 'sprzeglo',
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
+    BKR: 'kompensacyjne',
   } as const;
 
   for (const rola of ROLE_ENM) {
@@ -1112,21 +1115,33 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
   });
 });
 
-describe('buildCanonicalGpzProps — plakietki SPZ/SCO z kodów funkcji EAZ pola', () => {
+describe('buildCanonicalGpzProps — plakietki automatyki z kodów funkcji EAZ pola', () => {
+  // Rozszerzenie 5 karty UX-04: jeden kod słownika EAZ na plakietkę (SPZ⇔79, SCO⇔SCO,
+  // LRW⇔50BF, NZ⇔NZ, OWG⇔OWG). Wyrocznia NIEZALEŻNA od `KOD_FUNKCJI_PLAKIETKI`. Iniekcja:
+  // przywrócenie „SCO ⇔ 81U poza polem OZE" — kody „81U" i „Z11_1" (81U bez SCO) czerwone.
+  const WYROCZNIA: ReadonlyArray<readonly [string, string]> = [
+    ['SPZ', '79'],
+    ['SCO', 'SCO'],
+    ['LRW', '50BF'],
+    ['NZ', 'NZ'],
+    ['OWG', 'OWG'],
+  ];
   const KODY: ReadonlyArray<readonly [string, readonly string[]]> = [
     ['brak', []],
     ['79', ['79']],
-    ['81U', ['81U']],
-    ['79+81U', ['50', '51', '79', '81U']],
-    ['zapis małymi literami ze spacją', [' 79 ', '81u']],
+    ['81U (f<, nie SCO)', ['81U']],
+    ['SCO', ['SCO']],
+    ['SPZ po SCO bez SCO', ['SPZ/SCO']],
+    ['Z10', ['51', '50', '67N', 'ZS', '50BF', '79', 'SCO', 'SPZ/SCO']],
+    ['Z11_1', ['51', '50', '67', '67N', '27', '59', '81U', '81O', '81R', 'ZS', '50BF', '79', 'SPZE', 'OWG', 'NZ']],
+    ['zapis małymi literami ze spacją', [' 79 ', 'sco', ' 50bf', 'nz ', 'owg']],
   ];
   for (const rola of ROLE_ENM) {
     for (const [opis, kody] of KODY) {
       it(`rola=${rola} × kody=${opis}`, () => {
-        const oczekiwane: string[] = [];
-        if (kody.some((k) => k.trim() === '79')) oczekiwane.push('SPZ');
-        if (kody.some((k) => k.trim().toUpperCase() === '81U') && rola !== 'OZE') oczekiwane.push('SCO');
-        expect(flagiStatusuPola({ protection_codes: [...kody], bay_role: rola })).toEqual(oczekiwane);
+        const zapisane = new Set(kody.map((k) => k.trim().toUpperCase()));
+        const oczekiwane = WYROCZNIA.filter(([, kod]) => zapisane.has(kod)).map(([flaga]) => flaga);
+        expect(flagiStatusuPola({ protection_codes: [...kody] })).toEqual(oczekiwane);
         const enm: EnmFragment = {
           ...emptyEnm(),
           substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],

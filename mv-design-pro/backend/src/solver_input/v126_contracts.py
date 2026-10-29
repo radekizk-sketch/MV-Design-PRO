@@ -4,13 +4,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from enm.bateria_kondensatorow import admitancja_zerowa_baterii_s, parametry_baterii
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
+from network_model.catalog.wartosci_robocze import PARAMETR_BATERII_UKLAD
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
-from pydantic import BaseModel, Field
+from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
+from pydantic import BaseModel, Field, SerializerFunctionWrapHandler, model_serializer
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
 
@@ -186,6 +188,33 @@ class V126InsulationInput(BaseModel):
     predicted_energy_kj_per_kv: float = Field(default=2.0, ge=0)
 
 
+class V126ShuntCapacitorInput(BaseModel):
+    """Bateria kondensatorów w projekcie uziemienia punktu neutralnego (karta
+    UX-04/POLE-BKR-MODEL): susceptancja zerowa fazy względem ziemi B0 [S] policzona w moście
+    z pierwszych zasad (``enm.bateria_kondensatorow.admitancja_zerowa_baterii_s``) — niezerowa
+    WYŁĄCZNIE dla gwiazdy z uziemionym punktem gwiazdy (Y0 = Y1); gwiazda izolowana, podwójna
+    gwiazda izolowana i trójkąt mają B0 = 0 (brak drogi zerowej)."""
+
+    ref: str
+    bus_ref: str
+    uklad_polaczen: str
+    b0_siemens: float = Field(ge=0)
+    is_open: bool = False
+
+    @property
+    def wnosi_pojemnosc_doziemna(self) -> bool:
+        """Bateria wchodzi do pojemności doziemnej sieci: załączona i z drogą zerową (B0 > 0).
+        JEDEN predykat solvera (``V126AcademicSolver._neutral_earthing_design``) i gotowości
+        analizy (``application.analyses.v126_gotowosc._warunki_punktu_neutralnego``)."""
+        return not self.is_open and self.b0_siemens > 0.0
+
+
+#: Pola wejścia V12.6 DODANE PO ZAMROŻENIU odcisków ``input_hash`` — w postaci serializowanej
+#: występują WYŁĄCZNIE, gdy niosą treść (pusta lista = model bez takich elementów; odcisk
+#: wejścia bez baterii bit w bit jak przed kartą UX-04/POLE-BKR-MODEL).
+_POLA_V126_POZA_ODCISKIEM_GDY_PUSTE: tuple[str, ...] = ("shunt_capacitors",)
+
+
 class V126AcademicInput(BaseModel):
     base_frequency_hz: float = Field(default=50.0, gt=0)
     buses: list[V126BusInput]
@@ -197,25 +226,21 @@ class V126AcademicInput(BaseModel):
     earthing: V126EarthingInput | None = None
     insulation: list[V126InsulationInput] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
+    shunt_capacitors: list[V126ShuntCapacitorInput] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _bez_pustych_pol_addytywnych(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, object]:
+        dane: dict[str, object] = handler(self)
+        for pole in _POLA_V126_POZA_ODCISKIEM_GDY_PUSTE:
+            if dane.get(pole) == []:
+                del dane[pole]
+        return dane
 
 
 class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
-
-
-_STANDARD_UM_KV: tuple[float, ...] = (12.0, 17.5, 24.0, 36.0)
-
-
-def _nearest_standard_um_kv(nominal_kv: float) -> float:
-    """Najbliższe znormalizowane napięcie najwyższe urządzenia U_m ≥ napięcie znamionowe szyny.
-
-    IEC 60071-1 typoszereg SN. Nie fabrykuje danych ogranicznika — jedynie
-    przypisuje poziom izolacji do poziomu napięcia szyny (mapowanie normowe).
-    """
-    for u_m in _STANDARD_UM_KV:
-        if nominal_kv <= u_m:
-            return u_m
-    return _STANDARD_UM_KV[-1]
 
 
 def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
@@ -244,7 +269,8 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
     - parametry ogranicznika (MCOV/U_res/TOV/energia) z rekordu katalogu
       ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
-    - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
+    - U_m z karty katalogowej ogranicznika albo — bez karty — napięcie najwyższe sieci U_s
+      szyny (IEC 60038, `pasma_napieciowe.napiecie_najwyzsze_sieci_kv`);
     - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego
       źródła GPZ (W5-A) albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
       (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
@@ -362,9 +388,15 @@ def _wejscia_izolacji(
         if dedup_key in seen:
             return
         params = catalog.get(catalog_ref) if catalog_ref else None
-        if params is None and not powyzej_pasma_nn(bus.voltage_kv):
-            # Ogranicznik nN (albo szyna bez napięcia) bez karty katalogowej — poza zakresem koordynacji
-            # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
+        # Bez karty ogranicznika poziom izolacji chronionych aparatów to napięcie najwyższe
+        # SIECI U_s szyny z tabeli IEC 60038 (`napiecie_najwyzsze_sieci_kv` — ta sama tabela,
+        # co odmowa poziomu izolacji operacji; dawny typoszereg 12/17,5/24/36 kV dawał sieci
+        # 6 kV U_m = 12 kV zamiast 7,2 kV, a sieci 110 kV — 36 kV).
+        u_s_kv = napiecie_najwyzsze_sieci_kv(bus.voltage_kv)
+        if params is None and u_s_kv is None:
+            # Ogranicznik nN (albo szyna bez napięcia lub poza tablicami IEC 60038) bez karty
+            # katalogowej — poza zakresem koordynacji izolacji IEC 60071. Pomiń, aby nie
+            # fabrykować U_m.
             return
         seen.add(dedup_key)
         neutral = _resolve_network_neutral(bus_ref)
@@ -385,11 +417,11 @@ def _wejscia_izolacji(
                     predicted_energy_kj_per_kv=float(params["energy_absorption_kj_per_kv"]),
                 )
             )
-        else:
+        elif u_s_kv is not None:
             rows.append(
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
-                    u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
+                    u_m_kv=u_s_kv,
                     network_neutral=neutral,
                 )
             )
@@ -1024,8 +1056,9 @@ def build_v126_input_from_enm(
         for transformer in enm.transformers
     ]
 
+    czestotliwosc_hz = enm.buses[0].frequency_hz or 50.0 if enm.buses else 50.0
     return V126AcademicInput(
-        base_frequency_hz=enm.buses[0].frequency_hz or 50.0 if enm.buses else 50.0,
+        base_frequency_hz=czestotliwosc_hz,
         buses=buses,
         branches=branches,
         transformers=transformers,
@@ -1033,4 +1066,18 @@ def build_v126_input_from_enm(
         converters=converters,
         insulation=build_v126_insulation_from_enm(enm),
         parameters=parameters or {},
+        # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów z susceptancją zerową względem
+        # ziemi (gwiazda uziemiona wnosi prąd pojemnościowy doziemienia, pozostałe układy nie).
+        shunt_capacitors=[
+            V126ShuntCapacitorInput(
+                ref=bateria.ref_id,
+                bus_ref=bateria.bus_ref,
+                uklad_polaczen=str(parametry_baterii(bateria)[PARAMETR_BATERII_UKLAD].wartosc),
+                b0_siemens=admitancja_zerowa_baterii_s(
+                    bateria.model_dump(mode="json"), czestotliwosc_hz
+                ).imag,
+                is_open=bateria.status == "open",
+            )
+            for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id)
+        ],
     )

@@ -21,10 +21,15 @@
  *
  * Wyrocznie niezależne od kodu kompozycji: tabele odczytu Z.10/Z.11.1/Z.11 (kolejność oznaczeń
  * toru głównego i odgałęzienia, `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`), porty
- * z `SYMBOL_DEFS` (przewód port → port), tabela położenie → ramka, gabaryty i prostokąty
+ * z `SYMBOL_DEFS` (przewód port → port), tabela położenie → kafel stanu, gabaryty i prostokąty
  * etykiet z gotowej sceny. Iniekcje: zamiana portów przekładnika i wyłącznika zmienia
  * kolejność na rysunku; usunięcie portu aparatu daje wpis braku i brak przewodu; odgałęzienie
  * z węzła spoza toru daje wpis braku i brak odczepu.
+ *
+ * Kafel stanu (rozszerzenie 5, referencja HMI właściciela 2026-10-29) zastąpił ramkę SCADA:
+ * intencja dawnych asercji ramki zostaje — tylko łączniki pola niosą oznaczenie stanu, kolor
+ * z jednej tabeli, kafel nie wchodzi na sąsiedni aparat ani etykietę — a stan nieustalony
+ * ma WŁASNY kafel „?" zamiast braku ramki i dopisku „stan nieznany" w etykiecie.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -34,12 +39,12 @@ import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10
 import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
-import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps, STAN_NIEZNANY_PL } from '../../compose/gpz';
+import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
-import { czyLacznikPola } from '../../compose/rodzajeAparatuPola';
+import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import { obrysSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
-import { prostokatRamkiScada, SYMBOL_GLYPHS, type SwitchState } from '../../symbols/glyphs';
-import { DARK_SCADA_SLD_PALETTE } from '../../theme/colorTokens';
+import { prostokatKaflaStanu, SYMBOL_GLYPHS, type SwitchState } from '../../symbols/glyphs';
+import { DARK_SCADA_SLD_PALETTE, type StanKafla } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { buildSceneV3, labelCollisions, labelWireCollisions, noSceneSymbolOverlaps, symbolWireCollisions, type SceneV3 } from '../buildScene';
 
@@ -60,7 +65,7 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
   ['Z.11.1 i Z.11 z odgałęzieniem', (fxZ11 as unknown as { snapshot: EnergyNetworkModel }).snapshot],
 ];
 
-/** Tabela odczytu rysunków: tor główny od szyny — oznaczenie → symbol QET (uziemnik Q9
+/** Tabela odczytu rysunków: tor główny od szyny — oznaczenie → symbol QET (uziemnik Q8
  *  wykonania stałego jest aparatem bocznym, odgałęzienie przekładnika — osobną kolumną). */
 function torOczekiwany(pole: WykonaniePola, laczniki: Laczniki): ReadonlyArray<readonly [string, string]> {
   return [
@@ -119,14 +124,24 @@ const RYSUNEK_Q1: Readonly<Record<StanQ1, SwitchState | undefined>> = {
   brak: undefined,
 };
 const RYSUNEK_Q0: Readonly<Record<StanQ0, SwitchState>> = { zamkniety: 'closed', otwarty: 'open', nieznany: 'unknown' };
-/** Ramka SCADA wg położenia (karta §0 pkt 7): uziemiony = tor otwarty = zielona. */
-const RAMKA: Readonly<Record<string, 'zamkniety' | 'otwarty' | null>> = {
-  closed: 'zamkniety',
-  open: 'otwarty',
-  earthed: 'otwarty',
-  unknown: null,
-  brak: null,
+/** Kafel stanu wg położenia (karta rozszerzenia 5): „uziemiony" łącznika trójpołożeniowego =
+ *  zestyk uziemiający ZAMKNIĘTY (kafel zamknięty); stan bez rekordu albo sprzeczny — kafel
+ *  nieustalony (nigdy brak kafla). Wartości barw z karty — NIEZALEŻNE od palety w kodzie,
+ *  identyczne w obu motywach. */
+function kafelOczekiwany(symbolId: string, state: SwitchState | undefined): StanKafla {
+  if (state === 'closed') return 'zamkniety';
+  if (state === 'open') return 'otwarty';
+  if (state === 'earthed' && symbolId === 'qetThreePositionSwitch') return 'zamkniety';
+  return 'nieustalony';
+}
+const BARWA_KAFLA: Readonly<Record<StanKafla, string>> = {
+  zamkniety: '#C62828',
+  otwarty: '#2E7D32',
+  nieustalony: '#6B7280',
+  bledny: '#8E44AD',
 };
+const czyLacznik = (s: PreviewSymbol): boolean =>
+  s.meta?.apparatusKind !== undefined && RODZAJE_LACZNIKOW_POLA.has(s.meta.apparatusKind);
 
 const zachodzi = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
@@ -300,9 +315,9 @@ function sprawdzPole(enm: EnergyNetworkModel, scena: SceneV3, pole: PoleLiniowe,
   expect(zejscie!.points.every((p) => p.x === koniec.x), `${nazwa}: zejście pionowe w osi portu`).toBe(true);
   const q1Sym = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q1')!;
   const q0Sym = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
-  // 3. Uziemnik Q9 wykonania stałego — aparat boczny toru głównego po stronie kablowej.
+  // 3. Uziemnik Q8 wykonania stałego — aparat boczny toru głównego po stronie kablowej.
   const es = symbolePola(scena, pole.ref).filter((s) => s.symbolId === 'qetEarthSwitch' && s.meta?.odgalezienieToru == null);
-  expect(es.map((s) => mapa.get(s.meta?.deviceRef ?? '')), nazwa).toEqual(pole.laczniki === 'STALY' ? ['Q9'] : []);
+  expect(es.map((s) => mapa.get(s.meta?.deviceRef ?? '')), nazwa).toEqual(pole.laczniki === 'STALY' ? ['Q8'] : []);
   if (es.length === 1) {
     expect(es[0].x, nazwa).toBeGreaterThan(portSwiata(q0Sym, 'S').x);
     expect(scena.segments.some((s) => s.meta?.ownerRef?.startsWith(`${pole.ref}#lateral-`)), nazwa).toBe(true);
@@ -312,24 +327,23 @@ function sprawdzPole(enm: EnergyNetworkModel, scena: SceneV3, pole: PoleLiniowe,
   // 5. Stany glifów z rekordów modelu.
   expect(q1Sym.state, `${nazwa}: Q1`).toBe(RYSUNEK_Q1[q1]);
   expect(q0Sym.state, `${nazwa}: Q0`).toBe(RYSUNEK_Q0[q0]);
-  // 6. Etykieta „stan nieznany" wyłącznie przy łączniku w stanie nieznanym; symbol zostaje.
+  // 6. Etykieta aparatu = samo oznaczenie z modelu (pola fikstur bez numeru pola — bez
+  //    przedrostka); stan niesie kafel, nie podpis (dawny dopisek „· stan nieznany" usunięty).
   for (const s of symbolePola(scena, pole.ref)) {
     const deviceRef = s.meta?.deviceRef;
     if (!deviceRef) continue;
     const etykieta = scena.labels.find((l) => l.ownerRef === `${pole.ref}#etykieta-aparatu-${deviceRef}`);
     expect(etykieta, `${nazwa}: etykieta ${deviceRef}`).toBeDefined();
-    const nieznany = czyLacznikPola(s.meta?.apparatusKind) && (s.state === undefined || s.state === 'unknown');
-    expect(etykieta!.text.endsWith(` · ${STAN_NIEZNANY_PL}`), `${nazwa}: ${etykieta!.text}`).toBe(nieznany);
-    expect(etykieta!.text.startsWith(mapa.get(deviceRef)!), nazwa).toBe(true);
+    expect(etykieta!.text, nazwa).toBe(mapa.get(deviceRef)!);
   }
 }
 
-/** Ramki stanu SCADA łączników pól liniowych — prostokąty w układzie sceny. */
-function ramkiPola(scena: SceneV3, bayRef: string): { readonly symbol: PreviewSymbol; readonly rect: Rect }[] {
+/** Kafle stanu łączników pól liniowych — prostokąty w układzie sceny. */
+function kaflePola(scena: SceneV3, bayRef: string): { readonly symbol: PreviewSymbol; readonly rect: Rect }[] {
   return symbolePola(scena, bayRef)
-    .filter((s) => daneGlifuSymbolu(s).ramkaLacznika && RAMKA[s.state ?? 'brak'] !== null)
+    .filter(czyLacznik)
     .map((s) => {
-      const r = prostokatRamkiScada(s.symbolId);
+      const r = prostokatKaflaStanu(s.symbolId);
       return { symbol: s, rect: { x: s.x + r.x, y: s.y + r.y, width: r.width, height: r.height } };
     });
 }
@@ -384,7 +398,7 @@ describe('UX-04 — pole liniowe na scenie (iloczyn wykonanie × łączniki × s
   }
 });
 
-describe('UX-04 — ramki SCADA na scenie (iloczyn × motyw): obrys, kolor, brak kolizji', () => {
+describe('UX-04 — kafle stanu na scenie (iloczyn × motyw): obrys, kolor, brak kolizji', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
     for (const q0 of STANY_Q0) {
       for (const q1 of ['zamkniety', 'otwarty', 'uziemiony', 'brak'] as const) {
@@ -393,38 +407,38 @@ describe('UX-04 — ramki SCADA na scenie (iloczyn × motyw): obrys, kolor, brak
             const { enm: model, scena } = scenaZ(nazwaFx, enm, q1, q0);
             for (const pole of polaLiniowe(model)) {
               const symbole = symbolePola(scena, pole.ref);
-              // Każdy łącznik pola (także łącznik odgałęzienia Q5) rysuje ramkę wg położenia;
-              // inne aparaty — nigdy.
+              // Każdy łącznik pola (także łącznik odgałęzienia Q5) rysuje kafel wg położenia —
+              // także w stanie nieustalonym; inne aparaty — nigdy.
               for (const s of symbole) {
                 const Glyph = SYMBOL_GLYPHS[s.symbolId];
                 const markup = renderToStaticMarkup(
                   <svg>
-                    <Glyph x={s.x} y={s.y} stroke="#000" {...daneGlifuSymbolu(s)} ramkaScada={paleta.ramkaScada} />
+                    <Glyph x={s.x} y={s.y} stroke="#000" {...daneGlifuSymbolu(s)} kafleStanu={paleta.state} />
                   </svg>,
                 );
-                const ramki = Array.from(
-                  new DOMParser().parseFromString(markup, 'image/svg+xml').querySelectorAll('[data-qet="ramka-scada"]'),
+                const kafle = Array.from(
+                  new DOMParser().parseFromString(markup, 'image/svg+xml').querySelectorAll('[data-kafel-stanu]'),
                 );
-                const oczekiwana = czyLacznikPola(s.meta?.apparatusKind) ? RAMKA[s.state ?? 'brak'] : null;
                 expect(markup, `${pole.ref} ${s.symbolId}: symbol zostaje`).toContain(`data-symbol-canon="${s.symbolId}"`);
-                if (oczekiwana === null) {
-                  expect(ramki, `${pole.ref} ${s.symbolId} ${s.state}`).toHaveLength(0);
+                if (!czyLacznik(s)) {
+                  expect(kafle, `${pole.ref} ${s.symbolId} ${s.state}`).toHaveLength(0);
                   continue;
                 }
-                expect(ramki, `${pole.ref} ${s.symbolId} ${s.state}`).toHaveLength(1);
-                expect(ramki[0].getAttribute('fill')).toBe('none');
-                expect(ramki[0].getAttribute('stroke')).toBe(paleta.ramkaScada[oczekiwana]);
+                const oczekiwany = kafelOczekiwany(s.symbolId, s.state);
+                expect(kafle, `${pole.ref} ${s.symbolId} ${s.state}`).toHaveLength(1);
+                expect(kafle[0].getAttribute('data-kafel-stanu')).toBe(oczekiwany);
+                expect(kafle[0].querySelector('[data-kafel="tlo"]')!.getAttribute('fill')).toBe(BARWA_KAFLA[oczekiwany]);
               }
-              // Ramka nie wchodzi na sąsiednie aparaty pola ani na etykiety sceny.
-              for (const { symbol, rect } of ramkiPola(scena, pole.ref)) {
+              // Kafel nie wchodzi na sąsiednie aparaty pola ani na etykiety sceny.
+              for (const { symbol, rect } of kaflePola(scena, pole.ref)) {
                 for (const inny of symbole) {
                   if (inny === symbol) continue;
                   const o = obrysSymbolu(inny.symbolId);
                   const obrys = { x: inny.x + o.x, y: inny.y + o.y, width: o.width, height: o.height };
-                  expect(zachodzi(rect, obrys), `ramka ${symbol.symbolId} × ${inny.symbolId} (${pole.ref})`).toBe(false);
+                  expect(zachodzi(rect, obrys), `kafel ${symbol.symbolId} × ${inny.symbolId} (${pole.ref})`).toBe(false);
                 }
                 for (const l of scena.labels) {
-                  expect(zachodzi(rect, l.rect), `ramka ${symbol.symbolId} × etykieta „${l.text}"`).toBe(false);
+                  expect(zachodzi(rect, l.rect), `kafel ${symbol.symbolId} × etykieta „${l.text}"`).toBe(false);
                 }
               }
             }
@@ -517,7 +531,7 @@ describe('UX-04 — iniekcje na modelu pola', () => {
     expect(kolejnosc.slice(0, 3)).toEqual(['Q1', 'T1', 'Q0']);
   });
 
-  it('rekord odłącznika w położeniu „uziemiony" (sprzeczny z rodzajem) — stan nieustalony, bez ramki', () => {
+  it('rekord odłącznika w położeniu „uziemiony" (sprzeczny z rodzajem) — stan nieustalony, kafel „?"', () => {
     for (const [, fx] of FIKSTURY) {
       const model = zPolozeniami(fx, 'uziemiony', 'zamkniety');
       const scena = buildSceneV3(model, 2);
@@ -528,9 +542,10 @@ describe('UX-04 — iniekcje na modelu pola', () => {
         const q1 = torGlowny(scena, pole.ref).find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q1')!;
         expect(q1.symbolId).toBe('qetDisconnector');
         expect(q1.state, pole.ref).toBe('unknown');
-        expect(ramkiPola(scena, pole.ref).map((r) => r.symbol)).not.toContain(q1);
+        expect(kaflePola(scena, pole.ref).map((r) => r.symbol)).toContain(q1);
+        expect(kafelOczekiwany(q1.symbolId, q1.state)).toBe('nieustalony');
         const etykieta = scena.labels.find((l) => l.ownerRef === `${pole.ref}#etykieta-aparatu-${q1.meta!.deviceRef}`);
-        expect(etykieta?.text).toBe(`Q1 · ${STAN_NIEZNANY_PL}`);
+        expect(etykieta?.text).toBe('Q1');
       }
     }
   });

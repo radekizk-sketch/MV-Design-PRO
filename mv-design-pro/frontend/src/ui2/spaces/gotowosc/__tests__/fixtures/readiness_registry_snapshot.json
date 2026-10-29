@@ -35,6 +35,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "bay.apparatus_designation_duplicate",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "bay.fluorinated_gas_not_existing",
       "fix_navigation": {
         "panel": "inspector",
@@ -354,6 +362,15 @@
     {
       "area": "CATALOGS",
       "code": "catalog.ref_required",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.transformer_voltage_mismatch",
       "fix_navigation": {
         "modal": "CatalogPicker",
         "panel": "inspector",
@@ -1145,6 +1162,24 @@
       }
     },
     {
+      "area": "ANALYSIS",
+      "code": "shunt.parametry_robocze",
+      "fix_navigation": {
+        "focus": "parametry_baterii",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "shunt.pominieta_w_skladowej_zgodnej",
+      "fix_navigation": {
+        "focus": "uklad_polaczen",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "SOURCES",
       "code": "source.connection_missing",
       "fix_navigation": {
@@ -1227,6 +1262,39 @@
         "focus": "voltage_kv",
         "panel": "inspector",
         "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_bay_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_discharge_vt_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_transformer_trip_incomplete",
+      "fix_navigation": {
+        "focus": "wylaczenie_od_transformatorow",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_unbalance_ct_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
       }
     },
     {
@@ -1400,6 +1468,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "transformer.winding_voltage_off_nominal",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "trunk.catalog_missing",
       "fix_navigation": {
         "modal": "select_catalog",
@@ -1504,7 +1581,7 @@
       }
     }
   ],
-  "count": 177,
+  "count": 186,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1644,19 +1721,25 @@
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
     "W001": "branch.zero_sequence_missing",
     "W010": "inverter.k_sc_missing",
+    "W023": "transformer.winding_voltage_off_nominal",
     "W041": "transformer.bay_missing",
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",
     "W044": "station.field_role_unknown",
-    "W045": "bay.fluorinated_gas_not_existing",
-    "W046": "bay.switching_execution_insulation_mismatch",
-    "W047": "bay.gpz_template_outside_gpz",
-    "W048": "bay.line_class_execution_mismatch",
-    "W049": "bay.generation_fed_from_load_bay",
-    "W050": "bay.loads_behind_dedicated_generation_bay",
-    "W051": "bay.ufls_in_bay_with_generation",
-    "W052": "bay.reclosing_in_dedicated_generation_bay",
-    "W053": "bay.settlement_core_missing",
+    "W045": "station.bkr_bay_missing",
+    "W046": "station.bkr_unbalance_ct_missing",
+    "W047": "station.bkr_discharge_vt_missing",
+    "W048": "station.bkr_transformer_trip_incomplete",
+    "W049": "bay.fluorinated_gas_not_existing",
+    "W050": "bay.switching_execution_insulation_mismatch",
+    "W051": "bay.gpz_template_outside_gpz",
+    "W052": "bay.line_class_execution_mismatch",
+    "W053": "bay.generation_fed_from_load_bay",
+    "W054": "bay.loads_behind_dedicated_generation_bay",
+    "W055": "bay.ufls_in_bay_with_generation",
+    "W056": "bay.reclosing_in_dedicated_generation_bay",
+    "W057": "bay.settlement_core_missing",
+    "W063": "bay.apparatus_designation_duplicate",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

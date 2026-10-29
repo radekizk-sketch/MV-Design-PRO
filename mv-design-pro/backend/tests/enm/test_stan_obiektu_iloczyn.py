@@ -163,7 +163,10 @@ def _pole_z_deklaracji(enm: dict[str, Any], medium: str) -> tuple[str, dict[str,
     return "add_sn_bay", {
         "bus_ref": stacja["bus_refs"][0],
         "station_ref": stacja["ref_id"],
-        "bay_role": "LINIA_OUT",
+        # Rola z JEDNEJ listy ról modelu (`ROLE_POLA_MODELU`): pole liniowe odpływowe. Dawne
+        # „LINIA_OUT" (rola kanoniczna read-modelu) operacja po karcie UX-04/POLE-BKR-MODEL
+        # odrzuca kodem `sn.bay_role_unknown` zamiast cicho budować pole `FEEDER`.
+        "bay_role": "OUT",
         "apparatus_kind": "BREAKER",
         "catalog_ref": WYLACZNIK_SF6 if medium == "SF6" else WYLACZNIK_PROZNIOWY,
     }
@@ -543,7 +546,7 @@ def test_odmowy_operacji_stanu(siec: Any, ladunek: dict[str, Any], kod: str) -> 
 
 
 # ---------------------------------------------------------------------------
-# 8. Walidator modelu W045 — nośnik × stan (rekordy spoza operacji: zapis zastany)
+# 8. Walidator modelu W049 — nośnik × stan (rekordy spoza operacji: zapis zastany)
 # ---------------------------------------------------------------------------
 
 
@@ -551,7 +554,7 @@ def _w045(enm: dict[str, Any]) -> list[Any]:
     model = EnergyNetworkModel.model_validate(enm)
     with kontekst_katalogu(model):
         wynik = ENMValidator().validate(model)
-    return [i for i in wynik.issues if i.code == "W045"]
+    return [i for i in wynik.issues if i.code == "W049"]
 
 
 def _z_nosnikiem(enm: dict[str, Any], nosnik: str, stan: str | None) -> tuple[dict[str, Any], str]:

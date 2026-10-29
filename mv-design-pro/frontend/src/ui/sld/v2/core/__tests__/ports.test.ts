@@ -10,9 +10,6 @@ import {
   isSnPort,
   PORT_CONNECTION_RULES,
   PORT_KIND_LABELS_PL,
-  validatePortVoltages,
-  type PortKind,
-  type SldPort,
 } from '../ports';
 
 describe('SLD v2 — PortKind contract (PR-4)', () => {
@@ -122,43 +119,6 @@ describe('SLD v2 — canConnectPorts', () => {
 
   it('odrzuca sn_measurement (boczny tor) → sn_input (zakaz pola pomiarowego jako liniowego)', () => {
     expect(canConnectPorts('sn_measurement', 'sn_input')).toBe(false);
-  });
-});
-
-describe('SLD v2 — validatePortVoltages', () => {
-  function makePort(id: string, kind: PortKind, voltageKv: number): SldPort {
-    return {
-      id,
-      kind,
-      nominalVoltageKv: voltageKv,
-      bayRef: null,
-      substationRef: 's1',
-      occupiedBy: null,
-      anchor: { x: 0, y: 0 },
-    };
-  }
-
-  it('15 kV ↔ 15 kV: brak niespójności', () => {
-    const a = makePort('a', 'sn_output', 15.0);
-    const b = makePort('b', 'sn_input', 15.0);
-    const result = validatePortVoltages(a, b);
-    expect(result.mismatch).toBe(false);
-  });
-
-  it('15 kV ↔ 0,4 kV: niespójność z propozycją transformatora', () => {
-    const a = makePort('a', 'sn_output', 15.0);
-    const b = makePort('b', 'nn_load', 0.4);
-    const result = validatePortVoltages(a, b);
-    expect(result.mismatch).toBe(true);
-    expect(result.fromKv).toBe(15.0);
-    expect(result.toKv).toBe(0.4);
-    expect(result.suggestionPl).toContain('transformator');
-  });
-
-  it('15.005 kV ↔ 15.0 kV w tolerancji 0.01: brak niespójności', () => {
-    const a = makePort('a', 'sn_output', 15.005);
-    const b = makePort('b', 'sn_input', 15.0);
-    expect(validatePortVoltages(a, b, 0.01).mismatch).toBe(false);
   });
 });
 

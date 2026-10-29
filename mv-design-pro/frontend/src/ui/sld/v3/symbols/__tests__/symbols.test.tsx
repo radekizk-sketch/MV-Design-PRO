@@ -204,10 +204,20 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     );
   });
 
-  it('punkt NO: jawna przerwa toru (dwa odcinki + okrąg)', () => {
+  // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI): NOP jest ZNACZNIKIEM
+  // FUNKCJI (okrąg), a geometrię toru przez okrąg rysuje BIEŻĄCE położenie łącznika — przerwa
+  // tylko w położeniu otwartym; brak położenia nie udaje przerwy (tor przerywany = nieustalony).
+  it.each([
+    ['open', 2, null],
+    ['closed', 1, null],
+    ['unknown', 1, '3 2'],
+    [undefined, 1, '3 2'],
+  ] as const)('punkt NO × położenie %s: %i odcinki toru + okrąg', (state, odcinki, kreskowanie) => {
     const Glyph = SYMBOL_GLYPHS.noPoint;
-    const { container } = render(<svg><Glyph x={0} y={0} /></svg>);
-    expect(container.querySelectorAll('line').length).toBe(2);
+    const { container } = render(<svg><Glyph x={0} y={0} state={state} /></svg>);
+    const linie = [...container.querySelectorAll('line')];
+    expect(linie.length).toBe(odcinki);
+    expect(linie[0]!.getAttribute('stroke-dasharray')).toBe(kreskowanie);
     expect(container.querySelector('circle')).toBeTruthy();
   });
 

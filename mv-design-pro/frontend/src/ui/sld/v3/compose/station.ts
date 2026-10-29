@@ -62,7 +62,7 @@
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
-import type { SwitchState } from '../symbols/glyphs';
+import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
@@ -78,6 +78,7 @@ import {
   planLvTerminal,
   snSideSources,
   stationSnColumnLayout,
+  nnGroupFlushX,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
@@ -362,10 +363,23 @@ export interface ComposedSymbolInstance {
   /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola
    *  (`GalazPlanu`, kolejność planu), w którym stoi aparat; `undefined` = tor główny. */
   readonly odgalezienieToru?: number;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów pola (`bay.bateria`) — WYŁĄCZNIE dla
+   *  symbolu `capacitorBank` (`bateriaSymbolu`), ta sama dana co GPZ. */
+  readonly bateria?: GlifBaterii;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
   readonly ports: Readonly<Record<string, RoutePort>>;
+}
+
+/** UX-04/POLE-BKR-MODEL: dane glifu baterii — wyłącznie dla `capacitorBank`. */
+function bateriaSymbolu(
+  symbolId: SymbolId,
+  bateria: MiniBlockBayDescriptor['bateria'],
+): GlifBaterii | undefined {
+  return symbolId === 'capacitorBank' && bateria
+    ? { uklad: bateria.uklad, przekladnikNiezrownowazenia: bateria.przekladnikNiezrownowazenia }
+    : undefined;
 }
 
 /** GPZ-PARYTET cz. 2 (pkt 1): uzwojenia symbolu stosu pola — wyłącznie dla
@@ -638,6 +652,7 @@ function buildBayStack(
       // BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/...).
       designationSource: stackIdentifierSources[index] ?? undefined,
       uzwojenia: uzwojeniaSymbolu(symbolId, bay.transformerVectorGroup),
+      bateria: bateriaSymbolu(symbolId, bay.bateria),
       x,
       y,
       state: item.state,
@@ -728,6 +743,7 @@ function buildBayStack(
         bayReserve: bay.reserve,
         designationSource: identifierSource ?? undefined,
         uzwojenia: uzwojeniaSymbolu(item.symbolId, bay.transformerVectorGroup),
+        bateria: bateriaSymbolu(item.symbolId, bay.bateria),
         x,
         y: lateralY,
         state: item.state,
@@ -787,6 +803,13 @@ function buildBayStack(
       (i) => items[i]?.device,
       galaz.afterMainIndex >= 0 ? mainItems[galaz.afterMainIndex]?.device : undefined,
     );
+    // Pas podpisów kolumny odgałęzienia — na prawo od CAŁEGO podstosu (kolumna + aparaty
+    // boczne), tam gdzie plan go rezerwuje (`GalazPlanu.rezerwaEtykiet` za `sub.width`); ta
+    // sama reguła co pole GPZ (`compose/gpz.ts`, pomiar 2026-10-29: podpis kolumny stojący tuż
+    // za symbolem wchodził w kolumnę aparatów bocznych odgałęzienia).
+    const prawaPodstosu = Math.max(
+      ...rysunek.pozycje.map((pozycja) => pozycja.x + SYMBOL_DEFS[pozycja.symbolId].width),
+    );
     rysunek.pozycje.forEach((pozycja) => {
       const item = items[pozycja.sequenceIndex];
       const def = SYMBOL_DEFS[pozycja.symbolId];
@@ -819,7 +842,7 @@ function buildBayStack(
         labelClass: 't4',
         ...(pozycja.boczny
           ? { anchor: { x: pozycja.x + def.width / 2, y: pozycja.y + def.height }, placement: 'below' as const }
-          : { anchor: { x: pozycja.x + def.width, y: pozycja.y + def.height / 2 }, placement: 'right' as const }),
+          : { anchor: { x: prawaPodstosu, y: pozycja.y + def.height / 2 }, placement: 'right' as const }),
         obrysKotwicy: { x: pozycja.x, y: pozycja.y, width: def.width, height: def.height },
         designationSource: identifierSource ?? undefined,
       });
@@ -1117,17 +1140,6 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const hasLvSection = input.hasLvSection ?? false;
   const annotationDetail = input.annotationDetail ?? 'full';
   const bayDirectionCaptions = station.bayDirectionCaptions ?? [];
-
-  // FIX-4 (recenzja F5a): `tapX` w `measure`/`segments.ts`
-  // (`computeStationTaps`) jest `snapToGrid(column.x + GRID + blockWidth/2)`
-  // — odtwarzanie `blockLeftX` z `tapX - blockWidth/2` to ROUND-TRIP przez tę
-  // zaokrągloną wartość: gdy `blockWidth/2 ≡ 4 mod 8`, zaokrąglenie `tapX` w
-  // GÓRĘ/DÓŁ nie odwraca się dokładnie, dryf do 8px (poprzedni komentarz
-  // „identyczny wynik z definicji" był błędny — patrz recenzja). `column.x +
-  // GRID` to PRAWDA measure WPROST (ten sam margines lewy GRID, spec §5.1
-  // "+2×GRID"), bez zaokrąglenia po drodze — `column.x` jest już na siatce z
-  // konstrukcji (prefix-sum wielokrotności GRID).
-  const blockLeftX = column.x + GRID;
 
   const symbols: ComposedSymbolInstance[] = [];
   const segments: ComposedSegment[] = [];
@@ -1702,11 +1714,6 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     if (chainSource) composeDerSnChain(chainSource, stack.bottomPort, centerX, chainSink);
   });
 
-  // Pierwszy wolny X ZA blokiem kolumn (pola + kolumny transformatorów bez
-  // pola) — baza rzędu DER i pól źródłowych SN, dopisywanych PO PRAWEJ bloku.
-  const lastColumn = columnPlan.length > 0 ? columnPlan[columnPlan.length - 1] : null;
-  const bx = lastColumn ? lastColumn.leftX + lastColumn.width + GRID : blockLeftX;
-
   // TR2W-BEZ-POLA (§0.C.4 „zero fabrykacji"): domena mówi „stacja ma
   // transformator", ale migawka nie niesie ŻADNEGO rekordu `Transformer` z
   // refem — nie rysujemy symbolu na wymyślonym identyfikatorze. Uczciwa
@@ -1971,9 +1978,20 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // (odgałęzienia boczne ES/VT/SA zakotwiczone w porcie LV wiszą poniżej
     // portu — `lvColumnBottoms`); zwisy zacisku nie mogą na nie nachodzić.
     const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y), ...lvColumnBottoms) + GRID);
+    const derRowFlushX = nnGroupFlushX(columnPlan, station.snBays);
+    // Porty LV kompozycji i kolumny portu LV planu to ten sam zbiór (`lvTerminalPortXs`,
+    // test spójności measure↔compose) — brak kolumny przy istniejącym porcie to błąd planu.
+    if (derRowFlushX == null) throw new Error(`composeStation: stacja ${station.id} ma port LV bez kolumny planu`);
     const plan = planLvTerminal(
       lvPorts.map((p) => p.x),
-      { hasLoad: station.aggregatedLvLoad != null, hasNnDer: derSources.length > 0, derRowFlushX: bx },
+      // GRUPA-NN-ZA-TR (`nnGroupFlushX`, `layout/measure.ts`): rząd DER stoi za OSTATNIĄ
+      // kolumną portu LV, w rezerwie, którą plan kolumn zostawił przed kolejnymi polami
+      // — jego szyna nie przechodzi pod polem na prawo od transformatora.
+      {
+        hasLoad: station.aggregatedLvLoad != null,
+        hasNnDer: derSources.length > 0,
+        derRowFlushX,
+      },
     );
     segments.push({
       ownerRef: `${station.id}#lv-bus`,

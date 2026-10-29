@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **186** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -97,6 +97,8 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.namespace_mismatch` | CATALOGS | 1 | BLOCKER | Kategoria katalogu nie pasuje do rodzaju elementu — wskaż pozycję właściwej kategorii | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.namespace_missing` | CATALOGS | 1 | BLOCKER | Brak kategorii katalogu w wiązaniu elementu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.namespace_required` | CATALOGS | 1 | BLOCKER | Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia katalogowego | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.object_state_invalid` | CATALOGS | 1 | BLOCKER | Stan obiektu łącznika musi być istniejący albo projektowany i wymaga pozycji katalogu łącznika | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.object_state_not_applicable` | CATALOGS | 1 | BLOCKER | Stan obiektu przy przypisaniu katalogu dotyczy wyłącznie łącznika — stan pola ustawia karta pola | panel: `inspector`, tab: `katalog` |
 | `catalog.ref_missing` | CATALOGS | 1 | BLOCKER | Element nie ma wskazanej referencji katalogowej | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_required` | CATALOGS | 1 | BLOCKER | Segment lub transformator wymaga referencji katalogowej przed utworzeniem | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.type_incomplete` | CATALOGS | 1 | BLOCKER | Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej (moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika nie wyprowadzono; uzupełnij rekord z karty producenta | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
@@ -109,6 +111,7 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.materialization_incomplete` | CATALOGS | 2 | BLOCKER | Materializacja katalogu nie dała wszystkich parametrów wymaganych przez solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną | panel: `inspector`, tab: `katalog` |
 | `catalog.materialization_required` | CATALOGS | 2 | BLOCKER | Wiązanie wyłącza materializację, a element techniczny musi brać parametry z katalogu | panel: `inspector`, tab: `katalog` |
 | `catalog.nameplate_mismatch` | CATALOGS | 2 | BLOCKER | Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą z katalogu, więc wybierz pozycję o właściwych parametrach | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.transformer_voltage_mismatch` | CATALOGS | 2 | BLOCKER | Napięcia znamionowe uzwojeń typu transformatora różnią się od napięć szyn, do których transformator jest przyłączony — wybierz typ o napięciach szyn (operacja odrzucona, model bez zmian) | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.wartosc_projektanta_niedopuszczalna` | CATALOGS | 2 | BLOCKER | Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach elementu i zapisz | panel: `inspector`, tab: `parametry`, focus: `overrides` |
 | `conductor.fault_current_missing` | CATALOGS | 2 | WARNING | Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić wytrzymałość zwarciową przekroju | panel: `analizy`, tab: `zwarciowa` |
 | `conductor.thermal_data_missing` | CATALOGS | 2 | WARNING | Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
@@ -132,6 +135,7 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.catalog_missing` | CATALOGS | 3 | BLOCKER | Transformator nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `select_catalog` |
 | `transformer.loading_factor_missing` | CATALOGS | 3 | WARNING | Brak współczynnika obciążenia transformatora — bez niego nie da się policzyć strat w punkcie pracy | panel: `inspector`, tab: `parametry`, focus: `beta` |
 | `transformer.loss_data_missing` | CATALOGS | 3 | WARNING | Brak strat jałowych lub obciążeniowych transformatora w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `transformatory`, focus: `p0_kw` |
+| `transformer.winding_voltage_off_nominal` | CATALOGS | 3 | WARNING | Napięcie znamionowe uzwojenia transformatora różni się od napięcia szyny w tym samym paśmie — rozpływ i zwarcia liczą się z przekładnią nieznamionową z napięć uzwojeń (IEC 60909-0 §6.3.3); przypisz typ o napięciach szyn albo zostaw przekładnię, jeśli tabliczka urządzenia ją ma | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `trunk.catalog_missing` | CATALOGS | 3 | BLOCKER | Odcinek SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `select_catalog` |
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
@@ -147,6 +151,7 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.lv_earthing_system_missing` | STATIONS | 2 | BLOCKER | Transformator SN/nN nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone | panel: `inspector`, tab: `parametry`, focus: `lv_earthing_system` |
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
+| `bay.apparatus_designation_duplicate` | STATIONS | 3 | WARNING | Dwa aparaty pola noszą to samo oznaczenie — oznaczenie aparatu musi być jednoznaczne w obrębie pola (IEC 81346-1) | panel: `inspector`, tab: `pola` |
 | `bay.fluorinated_gas_not_existing` | STATIONS | 3 | WARNING | Pole albo aparat pola z gazem fluorowanym (SF₆) nie jest oznaczone jako istniejące — pole projektowane wymaga wykonania bez gazów fluorowanych | panel: `inspector`, tab: `pola` |
 | `bay.generation_fed_from_load_bay` | STATIONS | 3 | WARNING | Za polem odbiorczym pracują moduły wytwarzania — pole z generacją wymaga klasy mieszanej albo dedykowanej i wykonania Z.11.1 albo Z.11 | panel: `inspector`, tab: `pola` |
 | `bay.gpz_template_outside_gpz` | STATIONS | 3 | WARNING | Pole stacji spoza GPZ ma szablon pola liniowego rozdzielni GPZ — wybierz szablon pola stacji SN | panel: `inspector`, tab: `pola` |
@@ -160,6 +165,10 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
 | `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
+| `station.bkr_bay_missing` | STATIONS | 3 | WARNING | Bateria kondensatorów w rozdzielni SN GPZ nie jest przyłączona przez pole baterii kondensatorów (BKR) — dodaj pole BKR i przyłącz baterię do jego zacisku | panel: `inspector`, tab: `pola` |
+| `station.bkr_discharge_vt_missing` | STATIONS | 3 | WARNING | Bateria bez wewnętrznych rezystorów rozładowczych nie ma w polu BKR dwóch przekładników napięciowych międzyfazowych do rozładowania — uzupełnij wyposażenie | panel: `inspector`, tab: `pola` |
+| `station.bkr_transformer_trip_incomplete` | STATIONS | 3 | WARNING | Lista transformatorów, których wyłączenie wyłącza baterię kondensatorów, nie obejmuje transformatorów zasilających jej sekcję — uzupełnij ją w parametrach baterii | panel: `inspector`, tab: `parametry`, focus: `wylaczenie_od_transformatorow` |
+| `station.bkr_unbalance_ct_missing` | STATIONS | 3 | WARNING | Bateria w podwójnej gwieździe nie ma w polu BKR przekładnika niezrównoważenia w połączeniu międzygwiazdowym (zabezpieczenie Ir>) — uzupełnij wyposażenie pola | panel: `inspector`, tab: `pola` |
 | `station.element_bypasses_field` | STATIONS | 3 | WARNING | Element jest przyłączony do szyny głównej stacji z pominięciem pola rozdzielnicy — aparat pola nie leży w jego torze prądowym | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `station.field_role_unknown` | STATIONS | 3 | WARNING | Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono bez tego pola | panel: `inspector`, tab: `pola` |
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
@@ -226,6 +235,8 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
 | `analysis.as_built_measurement_terminal_missing` | ANALYSIS | 3 | BLOCKER | Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce | panel: `analizy`, tab: `odbior` |
 | `fault.czas_tb_wartosc_robocza` | ANALYSIS | 3 | WARNING | Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej | panel: `analizy`, tab: `zwarciowa` |
+| `shunt.parametry_robocze` | ANALYSIS | 3 | INFO | Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz | panel: `inspector`, tab: `parametry`, focus: `parametry_baterii` |
+| `shunt.pominieta_w_skladowej_zgodnej` | ANALYSIS | 3 | INFO | Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona | panel: `inspector`, tab: `parametry`, focus: `uklad_polaczen` |
 | `swz.limit_tt_it_brak_tekstu_normy` | ANALYSIS | 3 | WARNING | Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy | panel: `analizy`, tab: `zwarciowa` |
 | `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
@@ -238,21 +249,21 @@ Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 105 |
-| WARNING | 64 |
-| INFO | 6 |
-| **Razem** | **175** |
+| BLOCKER | 108 |
+| WARNING | 70 |
+| INFO | 8 |
+| **Razem** | **186** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
-| CATALOGS | 51 |
-| STATIONS | 32 |
+| CATALOGS | 55 |
+| STATIONS | 37 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
-| ANALYSIS | 27 |
-| **Razem** | **175** |
+| ANALYSIS | 29 |
+| **Razem** | **186** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

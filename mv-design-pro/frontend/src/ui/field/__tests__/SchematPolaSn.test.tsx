@@ -5,8 +5,11 @@
  *
  * ILOCZYN CECH: fikstura {wyłącznik stały w sekcji 1, w sekcji 2} × pole liniowe GPZ {4 pola: łącznik trójpołożeniowy / wyłącznik stały z odłącznikiem
  * × zajęte/wolne} × motyw {ciemny, jasny}. Wyrocznie niezależne od komponentu: zbiór aparatów
- * i ich pozycje ze sceny kanwy, tabela położenie → kolor ramki (wartości z karty), etykiety
- * oznaczeń z modelu, atrybucja licencji QElectroTech.
+ * i ich pozycje ze sceny kanwy, tabela położenie → kolor kafla stanu (wartości z referencji HMI
+ * właściciela 2026-10-29: czerwony = zamknięty, zielony = otwarty, szary „?" = nieustalony —
+ * TE SAME w obu motywach), etykiety oznaczeń z modelu, atrybucja licencji QElectroTech.
+ * Intencja dawnego testu ramki SCADA zostaje: tylko łączniki pola niosą oznaczenie stanu,
+ * a stan nieznany nie udaje stanu — dziś ma WŁASNY kafel zamiast braku ramki.
  */
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,7 +19,7 @@ import fxStaly1 from '../../../harness-fixtures/generated/pole_liniowe_z10_gpz_s
 import fxStaly2 from '../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import { useThemeModeStore, type ThemeMode } from '../../../ui2/theme/themeMode';
 import { buildSceneV3 } from '../../sld/v3/scene/buildScene';
-import { czyLacznikPola } from '../../sld/v3/compose/rodzajeAparatuPola';
+import { RODZAJE_LACZNIKOW_POLA } from '../../sld/v3/compose/rodzajeAparatuPola';
 import type { BayPrimaryDeviceKind } from '../../../types/enm';
 import { SchematPolaSn } from '../SchematPolaSn';
 import type { FieldReadModelItem } from '../useFieldReadModel';
@@ -26,13 +29,18 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
   ['wyłącznik stały w sekcji 2', (fxStaly2 as unknown as { snapshot: EnergyNetworkModel }).snapshot],
 ];
 const MOTYWY: readonly ThemeMode[] = ['dark_scada', 'light_technical'];
-/** Kolor ramki wg położenia — wartości z karty (§0 pkt 7), NIEZALEŻNE od palety w kodzie. */
-const RAMKA: Readonly<Record<string, string | null>> = {
-  closed: '#F05260',
-  open: '#2CCF93',
-  earthed: '#2CCF93',
-  unknown: null,
+/** Kolor kafla wg położenia — wartości z karty rozszerzenia 5 (referencja HMI), NIEZALEŻNE od
+ *  palety w kodzie. „Uziemiony" jest położeniem tylko łącznika trójpołożeniowego (zestyk
+ *  uziemiający zamknięty → kafel zamknięty); na innym symbolu to stan bez znaczenia. */
+const KAFEL: Readonly<Record<string, string>> = {
+  closed: '#C62828',
+  open: '#2E7D32',
+  unknown: '#6B7280',
 };
+function oczekiwanyKafel(state: string | undefined, symbolId: string): string {
+  if (state === 'earthed') return symbolId === 'qetThreePositionSwitch' ? KAFEL.closed : KAFEL.unknown;
+  return KAFEL[state ?? 'unknown'] ?? KAFEL.unknown;
+}
 
 function item(enm: EnergyNetworkModel, bayRef: string): FieldReadModelItem {
   const bay = (enm.bays ?? []).find((b) => b.ref_id === bayRef)!;
@@ -78,17 +86,15 @@ describe('UX-04 — schemat pola w oknie pola = wycinek sceny kanwy (fikstura ×
             expect(s.x).toBeLessThanOrEqual(vx + vw);
             expect(s.y).toBeLessThanOrEqual(vy + vh);
           }
-          // Ramki stanu wg położenia ze sceny; tylko łączniki pola; zawsze bez wypełnienia.
+          // Kafel stanu wg położenia ze sceny; tylko łączniki pola; kolor identyczny w motywach.
           naScenie.forEach((s, i) => {
-            const ramki = narysowane[i].querySelectorAll('[data-qet="ramka-scada"]');
-            const lacznik = czyLacznikPola(s.meta?.apparatusKind as BayPrimaryDeviceKind | undefined);
-            const oczekiwana = lacznik ? RAMKA[s.state ?? 'unknown'] ?? null : null;
-            if (oczekiwana === null) {
-              expect(ramki, `${s.meta?.deviceRef}`).toHaveLength(0);
+            const kafle = narysowane[i].querySelectorAll('[data-kafel="tlo"]');
+            const lacznik = RODZAJE_LACZNIKOW_POLA.has(s.meta?.apparatusKind as BayPrimaryDeviceKind);
+            if (!lacznik) {
+              expect(kafle, `${s.meta?.deviceRef}`).toHaveLength(0);
             } else {
-              expect(ramki).toHaveLength(1);
-              expect(ramki[0].getAttribute('stroke')).toBe(oczekiwana);
-              expect(ramki[0].getAttribute('fill')).toBe('none');
+              expect(kafle, `${s.meta?.deviceRef}`).toHaveLength(1);
+              expect(kafle[0].getAttribute('fill')).toBe(oczekiwanyKafel(s.state, s.symbolId));
             }
           });
           // Etykiety oznaczeń aparatów z modelu (te same co na kanwie).
@@ -106,7 +112,7 @@ describe('UX-04 — schemat pola w oknie pola = wycinek sceny kanwy (fikstura ×
     }
   }
 
-  it('wyłącznik stały: odłącznik bez rekordu położenia — bez ramki, symbol zostaje, podpis „stan nieznany"', () => {
+  it('wyłącznik stały: odłącznik bez rekordu położenia — własny kafel „?", symbol zostaje, podpis bez dopisku stanu', () => {
     const [, enm] = FIKSTURY[1];
     const poleStale = (enm.bays ?? []).find((b) => b.bay_template_ref?.endsWith('_staly_z_odlacznikiem'))!;
     const ds = (poleStale.primary_devices ?? []).find((d) => d.designation === 'Q1')!;
@@ -114,8 +120,15 @@ describe('UX-04 — schemat pola w oknie pola = wycinek sceny kanwy (fikstura ×
     render(<SchematPolaSn item={item(enm, poleStale.ref_id)} snapshot={enm} />);
     const g = screen.getByTestId('bay-svg-renderer').querySelector(`g[data-device-ref="${ds.device_ref}"]`)!;
     expect(g).not.toBeNull();
-    expect(g.querySelectorAll('[data-qet="ramka-scada"]')).toHaveLength(0);
-    expect(screen.getByText('Q1 · stan nieznany')).toBeInTheDocument();
+    // Brak sygnału nie jest słabszy niż stan: kafel nieustalony z „?" i podpowiedzią położenia.
+    const kafel = g.querySelector('[data-kafel-stanu]')!;
+    expect(kafel.getAttribute('data-kafel-stanu')).toBe('nieustalony');
+    expect(kafel.querySelector('[data-kafel="tlo"]')!.getAttribute('fill')).toBe(KAFEL.unknown);
+    expect(kafel.querySelector('[data-kafel="znak"]')!.textContent).toBe('?');
+    expect(kafel.querySelector('title')!.textContent).toBe('nieustalony (model niejednoznaczny)');
+    // Oznaczenie stoi samo (stan niesie kafel) — dawny dopisek „· stan nieznany" usunięty.
+    expect(screen.queryByText(/stan nieznany/)).toBeNull();
+    expect(screen.getAllByText('Q1').length).toBeGreaterThan(0);
   });
 
   it('determinizm: ten sam model → ten sam znacznik SVG', () => {

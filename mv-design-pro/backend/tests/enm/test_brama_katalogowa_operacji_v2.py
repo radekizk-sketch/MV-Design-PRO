@@ -313,7 +313,7 @@ def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
-        "bay_role": "LINIA_OUT",
+        "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
         "apparatus_kind": "BREAKER",
         "catalog_ref": REF_APARAT_SN,
     }

@@ -45,7 +45,7 @@ import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor, PortAparatuPolaView } from '../../v2/model/widokPolStacji';
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
-import { PORTY_APARATU_POLA, PORT_WEJSCIA, PORT_WYJSCIA, WEZEL_SZYNY, WEZLY_KONCA_TORU } from './rodzajeAparatuPola';
+import { PORTY_APARATU_POLA, PORT_WEJSCIA, PORT_WYJSCIA, WEZEL_SZYNY, WEZLY_KONCA_TORU, czyRodzajWTorze } from './rodzajeAparatuPola';
 import { GRID, snapToGrid, snapUp } from '../core/grid';
 
 /** Znacznik pochodzenia stosu aparatów (audytor DOM `data-apparatus-source`) — `'dane'`
@@ -72,11 +72,11 @@ function czyRolaTransformatorowa(role: FieldRole): boolean {
 
 /** Pole, którego elementy modelu rozstrzyga `elementyModeluPola`: rola (z rekordu pola
  *  i przyłączonych wytwórców, adapter) i transformator wskazany przez pole (rekord). */
-export type PoleElementowModelu = Pick<MiniBlockBayDescriptor, 'fieldRole' | 'transformerRef'>;
+export type PoleElementowModelu = Pick<MiniBlockBayDescriptor, 'fieldRole' | 'transformerRef' | 'bateria'>;
 
 /**
- * Elementy MODELU, których pole jest nośnikiem — NIE aparaty pola: transformator pola TR
- * i źródło pola OZE. Transformator WYŁĄCZNIE z rekordu `Transformer` wskazanego przez pole
+ * Elementy MODELU, których pole jest nośnikiem — NIE aparaty pola: transformator pola TR,
+ * źródło pola OZE i bateria kondensatorów na końcu toru pola. Transformator WYŁĄCZNIE z rekordu `Transformer` wskazanego przez pole
  * (`transformerRef`, adapter) — rola TR bez rekordu transformatora nie rysuje transformatora
  * (byłby fabrykacją elementu, którego solver nie liczy). Glif źródła OZE z roli pola, którą
  * adapter wyprowadza z przyłączonych wytwórców (dana modelu). Dokładane za stosem aparatów,
@@ -84,6 +84,14 @@ export type PoleElementowModelu = Pick<MiniBlockBayDescriptor, 'fieldRole' | 'tr
  * wytwórca w `primary_devices` nie ma symbolu pola).
  */
 export function elementyModeluPola(bay: PoleElementowModelu, symbolIds: readonly SymbolId[]): readonly SymbolId[] {
+  // UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola (`bay.bateria`,
+  // relacja `ShuntCapacitor.bus_ref === Bay.terminal_bus_ref`) zamyka stos pola — dana
+  // modelu, nie rola: pole BKR bez baterii nie rysuje baterii.
+  const bateria: readonly SymbolId[] = bay.bateria ? ['capacitorBank'] : [];
+  return [...elementyModeluPolaBezBaterii(bay, symbolIds), ...bateria];
+}
+
+function elementyModeluPolaBezBaterii(bay: PoleElementowModelu, symbolIds: readonly SymbolId[]): readonly SymbolId[] {
   if (czyRolaTransformatorowa(bay.fieldRole)) {
     return bay.transformerRef && !symbolIds.includes('transformer2W') ? ['transformer2W'] : [];
   }
@@ -172,7 +180,17 @@ function symbolKanonicznyRodzaju(kind: BayPrimaryDeviceKind): SymbolId | null {
       return 'earthSwitch';
     case 'CT':
       return 'currentTransformer';
+    case 'UNBALANCE_CT':
+      // UX-04/POLE-BKR-MODEL: przekładnik niezrównoważenia OBEJMUJE połączenie między
+      // punktami gwiazd baterii (Zeszyt 1 Zał. 16), nie leży w torze pola — rysuje go glif
+      // baterii (`capacitorBank`, okrąg na połączeniu międzygwiazdowym, gdy pole niesie
+      // rekord; `v2/model/bateriaPola.ts`). Symbol w osi toru pola byłby fałszywą topologią.
+      return null;
     case 'VT':
+      return 'voltageTransformer';
+    case 'PHASE_TO_PHASE_VT':
+      // Przekładnik napięciowy międzyfazowy (rozładowanie baterii, U>) — symbol przekładnika
+      // napięciowego; para faz jest daną pola, nie kształtem symbolu.
       return 'voltageTransformer';
     case 'CABLE_HEAD':
       return 'cableHead';
@@ -233,17 +251,18 @@ export interface BrakPrzylaczaAparatu {
 }
 
 /** Węzły pola, którymi aparat wchodzi do toru (`wejscie`) i z niego wychodzi (`wyjscie`):
- *  aparat dwuportowy — `we`/`wy`; aparat jednoportowy (odgałęzienie `przylacze`, przekładnik
- *  Ferrantiego `obwod`) — oba końce na jego jedynym węźle (bez przerwy toru). `null` = port
- *  niepodany albo bez węzła. */
+ *  aparat toru (`czyRodzajWTorze`) — `we`/`wy`; aparat poza torem (odgałęzienie `przylacze`,
+ *  przekładnik Ferrantiego i niezrównoważenia `obwod`, przekładnik międzyfazowy `A`/`B`) — oba
+ *  końce na węźle jego pierwszego portu (bez przerwy toru; zaciski A i B przekładnika
+ *  międzyfazowego to dwie fazy tego samego węzła). `null` = port niepodany albo bez węzła. */
 export function wezlyAparatuWTorze(device: Pick<AparatSekwencjiPola, 'kind' | 'ports'>): {
   readonly wejscie: string | null;
   readonly wyjscie: string | null;
 } {
   const komplet = PORTY_APARATU_POLA[device.kind] ?? [];
   const wezel = (portId: string): string | null => device.ports?.find((p) => p.portId === portId)?.wezel ?? null;
-  if (komplet.length === 2) return { wejscie: wezel(PORT_WEJSCIA), wyjscie: wezel(PORT_WYJSCIA) };
-  if (komplet.length === 1) {
+  if (czyRodzajWTorze(device.kind)) return { wejscie: wezel(PORT_WEJSCIA), wyjscie: wezel(PORT_WYJSCIA) };
+  if (komplet.length >= 1) {
     const jedyny = wezel(komplet[0]);
     return { wejscie: jedyny, wyjscie: jedyny };
   }
@@ -305,7 +324,7 @@ export function torPolaZPortow<T extends AparatSekwencjiPola>(
     if (wady.length > 0) braki.push({ deviceRef: refAparatu(device, index), przyczyna: wady.join(', ') });
     else poprawne.push(index);
   });
-  const dwuportowy = (index: number): boolean => (PORTY_APARATU_POLA[devices[index].kind] ?? []).length === 2;
+  const dwuportowy = (index: number): boolean => czyRodzajWTorze(devices[index].kind);
   const wejscie = (index: number): string | null => wezlyAparatuWTorze(devices[index]).wejscie;
   const wyjscie = (index: number): string => wezlyAparatuWTorze(devices[index]).wyjscie!;
   const wyjsciaWezla = new Map<string, number[]>();
@@ -453,7 +472,7 @@ export function galezieSekwencji<T extends AparatSekwencjiPola>(
 }
 
 function dwuportowyRodzaj(device: Pick<AparatSekwencjiPola, 'kind'>): boolean {
-  return (PORTY_APARATU_POLA[device.kind] ?? []).length === 2;
+  return czyRodzajWTorze(device.kind);
 }
 
 /**

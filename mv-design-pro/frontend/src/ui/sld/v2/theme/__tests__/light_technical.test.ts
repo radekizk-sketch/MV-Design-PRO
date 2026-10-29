@@ -35,14 +35,18 @@ describe('Light Technical Theme — V12K-007 eksport tokens', () => {
     expect(LIGHT_TECHNICAL_COLOR_TEXT_PRIMARY).toBe('#000000');
   });
 
-  it('uses darker device-closed (dark green for readability on white)', () => {
-    // dark_scada: #07983A — too saturated for print
-    // light_technical: darker variant
-    expect(LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED).toBe('#007A3D');
+  // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): kolor stanu
+  // łącznika jest JEDNĄ tabelą (`STATE_COLOR`, czerwony = zamknięty, zielony = otwarty), identyczną
+  // w obu motywach i w eksporcie — zmienia się tło. INTENCJA dawnych asercji (stan czytelny na
+  // białym tle wydruku) przypina kontrast kafla do tła ≥ 3:1 w `v3/theme/__tests__/palette.test.ts`.
+  it('device-closed = kafel zamknięty z jednej tabeli (czerwony), ta sama wartość co motyw ciemny', () => {
+    expect(LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED).toBe('#C62828');
+    expect(LIGHT_TECHNICAL_COLOR_DEVICE_CLOSED).toBe(SLD_V2_COLORS.deviceClosed);
   });
 
-  it('uses darker device-open (dark red for readability on white)', () => {
-    expect(LIGHT_TECHNICAL_COLOR_DEVICE_OPEN).toBe('#B71C1C');
+  it('device-open = kafel otwarty z jednej tabeli (zielony), ta sama wartość co motyw ciemny', () => {
+    expect(LIGHT_TECHNICAL_COLOR_DEVICE_OPEN).toBe('#2E7D32');
+    expect(LIGHT_TECHNICAL_COLOR_DEVICE_OPEN).toBe(SLD_V2_COLORS.deviceOpen);
   });
 
   it('LIGHT_TECHNICAL_COLORS object exposes all parity tokens', () => {

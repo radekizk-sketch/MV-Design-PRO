@@ -211,6 +211,10 @@ def profile_id_for_bay(
         return "der_source"
     if bay_role == "FEEDER":
         return "aux" if "FUSE" in set(device_kinds) else "reserve"
+    if bay_role == "BKR":
+        # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL, ENEA Zeszyt 1 Zał. 16) —
+        # technologia wyłącznikowa w każdej stacji (bateria łączona wyłącznikiem).
+        return "capacitor_bank"
     return None
 
 

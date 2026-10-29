@@ -57,6 +57,7 @@ from network_model.catalog.sekcje_modelu import (
     oceny_sekcji,
     typ_katalogowy,
 )
+from network_model.catalog.types import POLA_BATERII_KONDENSATOROW_TYPU
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mvar_na_kvar, mw_na_kw
 from werdykt.proweniencja import FieldQuality
@@ -87,12 +88,23 @@ def _pola_odbioru(element: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _pola_kompensatora(element: Mapping[str, Any]) -> dict[str, Any]:
-    """Bateria kondensatorów: pola typowane elementu (nazwy ``ShuntCapacitorType``)."""
+    """Bateria kondensatorów: pola typowane elementu (nazwy ``ShuntCapacitorType``).
+
+    Parametry karty UX-04/POLE-BKR-MODEL (układ, stopnie, tolerancja, dławik, rozładowanie):
+    wartość projektanta na elemencie, a w jej braku kopia typu (``materialized_params``) — ta
+    sama kolejność co rozstrzygnięcie solvera (``enm.bateria_kondensatorow.parametry_baterii``);
+    brak obu = brak danej w sekcji (obliczenie biegnie z wartością roboczą rejestru)."""
     meta = element.get("meta") or {}
+    typ = element.get("materialized_params")
+    kopia_typu: Mapping[str, Any] = typ if isinstance(typ, Mapping) else {}
     return {
         "rated_mvar": element.get("rated_mvar"),
         "rated_kv": element.get("rated_kv"),
         "loss_kw": meta.get("loss_kw") if isinstance(meta, Mapping) else None,
+        **{
+            pole: element.get(pole) if element.get(pole) is not None else kopia_typu.get(pole)
+            for pole in POLA_BATERII_KONDENSATOROW_TYPU
+        },
     }
 
 

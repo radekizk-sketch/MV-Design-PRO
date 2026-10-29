@@ -11,6 +11,7 @@
 
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement, StanObiektu } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
+import type { BateriaPolaView } from './bateriaPola';
 
 
 /**
@@ -26,7 +27,7 @@ export interface BayPrimaryDeviceView {
   readonly deviceRef: string;
   /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
    *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
-  readonly switchState?: 'closed' | 'open' | 'unknown' | 'earthed';
+  readonly switchState?: 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `BayPrimaryDevice.linked_ref` — dla
    *  aparatów pomiarowych (CT/VT) wskazuje `Measurement.ref_id` (wzorzec
    *  potwierdzony w `backend/src/application/field_read_model.py:488`).
@@ -188,16 +189,20 @@ export interface MiniBlockBayDescriptor {
   readonly destinationName?: string;
   /** K30-63: stan CB (wyłącznika) — pokazuje czerwoną open marker zamiast
    *  domyślnie zielonego closed. 'unknown' → szary z '?'. */
-  readonly cbState?: 'closed' | 'open' | 'unknown';
+  readonly cbState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** K30-63: stan DS (odłącznika). */
-  readonly dsState?: 'closed' | 'open' | 'unknown';
+  readonly dsState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** K30-63: stan ES (uziemnika). Default 'open' (rest position). */
-  readonly esState?: 'closed' | 'open' | 'unknown';
+  readonly esState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** F9.2 (SLD_CAD_SPEC_V3 §12.1): uporządkowana lista aparatów pola z
    *  `Bay.primary_devices` (ENM), gdy dane niepuste. `undefined` gdy pole nie
    *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
    *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola
+   *  (`bateriaPola.ts bateriaNaKoncuToruPola`, ta sama funkcja co pola GPZ) — element
+   *  MODELU, którego pole jest nośnikiem (`compose/apparatusSequence.ts elementyModeluPola`). */
+  readonly bateria?: BateriaPolaView;
   /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
    *  KONFIGURACJI pola — stabilny, deterministyczny (backend `config_ref`).
    *  Niesiony do meta sceny (`configId`) przez `compose/station.ts`, żeby render

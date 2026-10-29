@@ -280,6 +280,17 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("bay_ref", "device_ref", "switch_ref"),
         creates_elements=False,
     ),
+    "set_bay_apparatus_position": OperationSpec(
+        canonical_name="set_bay_apparatus_position",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Położenie łącznika pola bez własnej gałęzi (odłącznik, uziemnik, łącznik "
+            "trójpołożeniowy) — zamknięty, otwarty albo uziemiony, z regułą blokad pola"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("bay_ref", "device_ref", "actual_state"),
+        creates_elements=False,
+    ),
     "add_sn_bay": OperationSpec(
         canonical_name="add_sn_bay",
         category=OperationCategory.SN_NETWORK,
@@ -462,6 +473,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "data_umowy_przylaczeniowej",
             "deklaracje_modulu",
             "der_topology",
+            "dry_run",
             "existing_field_ref",
             "frequency_droop_percent",
             "has_hvrt_curve",
@@ -1655,6 +1667,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "linked_ref",
                     "odgalezienie",
                     "placement",
+                    "przekladnia",
                     "stan_obiektu",
                 }
             ),
@@ -2081,6 +2094,58 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "modal": "update_element_parameters"},
     ),
+    # Karta UX-04/POLE-BKR-MODEL: reguły pola baterii kondensatorów (BKR) rozdzielni SN GPZ
+    # (ENEA Operator, Zeszyt 1 §13, §17, Zał. 16; IRiESD II.4.5.4.4.2). OSTRZEŻENIA, nie
+    # blokady — stan roboczy legalny (koncepcja), liczby rozpływu i zwarć bez zmian. Emiter:
+    # `enm/validator.py::_check_baterie_pola_bkr` (W045–W048) przez `domain/readiness_bridge.py`.
+    "station.bkr_bay_missing": ReadinessCodeSpec(
+        code="station.bkr_bay_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria kondensatorów w rozdzielni SN GPZ nie jest przyłączona przez pole baterii "
+            "kondensatorów (BKR) — dodaj pole BKR i przyłącz baterię do jego zacisku"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_unbalance_ct_missing": ReadinessCodeSpec(
+        code="station.bkr_unbalance_ct_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria w podwójnej gwieździe nie ma w polu BKR przekładnika niezrównoważenia "
+            "w połączeniu międzygwiazdowym (zabezpieczenie Ir>) — uzupełnij wyposażenie pola"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_discharge_vt_missing": ReadinessCodeSpec(
+        code="station.bkr_discharge_vt_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria bez wewnętrznych rezystorów rozładowczych nie ma w polu BKR dwóch "
+            "przekładników napięciowych międzyfazowych do rozładowania — uzupełnij wyposażenie"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_transformer_trip_incomplete": ReadinessCodeSpec(
+        code="station.bkr_transformer_trip_incomplete",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Lista transformatorów, których wyłączenie wyłącza baterię kondensatorów, nie "
+            "obejmuje transformatorów zasilających jej sekcję — uzupełnij ją w parametrach baterii"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "wylaczenie_od_transformatorow",
+        },
+    ),
     # Pole rozdzielnicy SN o roli spoza słownika — nie liczy się do rodzaju stacji (W044).
     "station.field_role_unknown": ReadinessCodeSpec(
         code="station.field_role_unknown",
@@ -2094,7 +2159,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany (SF₆) w polu albo aparacie pola, który
-    # nie jest istniejący (W045; rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a).
+    # nie jest istniejący (W049; rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a).
     "bay.fluorinated_gas_not_existing": ReadinessCodeSpec(
         code="bay.fluorinated_gas_not_existing",
         area=ReadinessArea.STATIONS,
@@ -2107,7 +2172,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Karta UX-04/POLE-LINIOWE-WZORZEC: wykonanie łączników szablonu pola niedopuszczone
-    # w izolacji rodziny rozdzielnicy (W046; ENEA Zeszyt 1, §13, druk s.23–25).
+    # w izolacji rodziny rozdzielnicy (W050; ENEA Zeszyt 1, §13, druk s.23–25).
     "bay.switching_execution_insulation_mismatch": ReadinessCodeSpec(
         code="bay.switching_execution_insulation_mismatch",
         area=ReadinessArea.STATIONS,
@@ -2121,7 +2186,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Ta sama karta: szablon pola liniowego rozdzielni GPZ (ENEA Z.10/Z.11.1/Z.11) w polu stacji
-    # spoza GPZ (W047).
+    # spoza GPZ (W051).
     "bay.gpz_template_outside_gpz": ReadinessCodeSpec(
         code="bay.gpz_template_outside_gpz",
         area=ReadinessArea.STATIONS,
@@ -2134,7 +2199,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Ta sama karta: klasa pola liniowego z generacją (IRiESD II.4.5.4.2.2–2.3) przy wykonaniu
-    # bez przekładnika napięciowego od strony linii (W048).
+    # bez przekładnika napięciowego od strony linii (W052).
     "bay.line_class_execution_mismatch": ReadinessCodeSpec(
         code="bay.line_class_execution_mismatch",
         area=ReadinessArea.STATIONS,
@@ -2146,7 +2211,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
-    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): generacja zasilana z pola odbiorczego (IRiESD II.4.5.4.2.1) — W049.
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): generacja zasilana z pola odbiorczego (IRiESD II.4.5.4.2.1) — W053.
     "bay.generation_fed_from_load_bay": ReadinessCodeSpec(
         code="bay.generation_fed_from_load_bay",
         area=ReadinessArea.STATIONS,
@@ -2158,7 +2223,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
-    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): odbiory za polem dedykowanym wytwórcy (IRiESD II.4.5.4.2.3) — W050.
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): odbiory za polem dedykowanym wytwórcy (IRiESD II.4.5.4.2.3) — W054.
     "bay.loads_behind_dedicated_generation_bay": ReadinessCodeSpec(
         code="bay.loads_behind_dedicated_generation_bay",
         area=ReadinessArea.STATIONS,
@@ -2170,7 +2235,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
-    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): SCO w polu z generacją (IRiESD II.4.5.4.7.1 pkt 1) — W051.
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): SCO w polu z generacją (IRiESD II.4.5.4.7.1 pkt 1) — W055.
     "bay.ufls_in_bay_with_generation": ReadinessCodeSpec(
         code="bay.ufls_in_bay_with_generation",
         area=ReadinessArea.STATIONS,
@@ -2182,7 +2247,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
-    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): SPZ w polu dedykowanym wytwórcy (IRiESD II.4.5.4.2.3) — W052.
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): SPZ w polu dedykowanym wytwórcy (IRiESD II.4.5.4.2.3) — W056.
     "bay.reclosing_in_dedicated_generation_bay": ReadinessCodeSpec(
         code="bay.reclosing_in_dedicated_generation_bay",
         area=ReadinessArea.STATIONS,
@@ -2194,7 +2259,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
-    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): brak rdzenia rozliczeniowego przy wymaganym AJEE (ENEA Zeszyt 1, Z.11) — W053.
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): brak rdzenia rozliczeniowego przy wymaganym AJEE (ENEA Zeszyt 1, Z.11) — W057.
     "bay.settlement_core_missing": ReadinessCodeSpec(
         code="bay.settlement_core_missing",
         area=ReadinessArea.STATIONS,
@@ -2203,6 +2268,18 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Pole wymaga pomiaru rozliczeniowego i analizatora jakości energii (wytwórca ≥ 200 kW "
             "albo odbiorca > 4 MW), a przekładnik prądowy nie ma rdzenia rozliczeniowego"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: dwa aparaty pola o tym samym oznaczeniu (IEC 81346-1) — W063.
+    "bay.apparatus_designation_duplicate": ReadinessCodeSpec(
+        code="bay.apparatus_designation_duplicate",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Dwa aparaty pola noszą to samo oznaczenie — oznaczenie aparatu musi być jednoznaczne "
+            "w obrębie pola (IEC 81346-1)"
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
@@ -2972,6 +3049,25 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "vector_group"},
     ),
+    # Walidator W023: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym
+    # paśmie — przekładnia nieznamionowa (liczalna, IEC 60909-0 §6.3.3), więc OSTRZEŻENIE.
+    "transformer.winding_voltage_off_nominal": ReadinessCodeSpec(
+        code="transformer.winding_voltage_off_nominal",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Napięcie znamionowe uzwojenia transformatora różni się od napięcia szyny "
+            "w tym samym paśmie — rozpływ i zwarcia liczą się z przekładnią nieznamionową "
+            "z napięć uzwojeń (IEC 60909-0 §6.3.3); przypisz typ o napięciach szyn albo "
+            "zostaw przekładnię, jeśli tabliczka urządzenia ją ma"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
     # W5-A: konfiguracja uziemienia na uzwojeniu bez wyprowadzonego punktu
     # neutralnego (litera grupy bez N/n) — walidator E-W5-03.
     "transformer.neutral_grounding_not_accessible": ReadinessCodeSpec(
@@ -3321,6 +3417,34 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "parametry",
             "focus": "geometria_slupa",
         },
+    ),
+    # Karta UX-04/POLE-BKR-MODEL: założenia biegu z baterią kondensatorów. Pominięcie baterii
+    # w składowej zgodnej i przeciwnej zwarcia to JAWNE założenie z podstawą IEC 60909-0
+    # (`enm.bateria_kondensatorow.zalozenia_baterii_zwarcia`) — informacja, nie brak danych.
+    "shunt.pominieta_w_skladowej_zgodnej": ReadinessCodeSpec(
+        code="shunt.pominieta_w_skladowej_zgodnej",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji "
+            "zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "uklad_polaczen"},
+    ),
+    # Zasada nr 4: parametr baterii, który wchodzi do wyniku (dławik, liczba stopni, układ
+    # połączeń w zwarciu doziemnym), z wartości roboczej rejestru — bieg biegnie, wynik niesie
+    # daną przyjętą ESTIMATED (`enm.bateria_kondensatorow`).
+    "shunt.parametry_robocze": ReadinessCodeSpec(
+        code="shunt.parametry_robocze",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, "
+            "liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "parametry_baterii"},
     ),
     # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
     # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy
@@ -3791,6 +3915,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.transformer_voltage_mismatch": ReadinessCodeSpec(
+        code="catalog.transformer_voltage_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Napięcia znamionowe uzwojeń typu transformatora różnią się od napięć szyn, "
+            "do których transformator jest przyłączony — wybierz typ o napięciach szyn "
+            "(operacja odrzucona, model bez zmian)"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
     ),
     # OZE — PV/BESS transformer rule
     "oze.pv_no_transformer": ReadinessCodeSpec(

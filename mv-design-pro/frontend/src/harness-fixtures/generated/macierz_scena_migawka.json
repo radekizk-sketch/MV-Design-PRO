@@ -106,6 +106,7 @@
               "wezel": "w1"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -135,6 +136,7 @@
               "wezel": "w2"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -164,6 +166,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -189,6 +192,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -199,7 +203,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
           "earthing_role": null,
           "is_controllable": true,
@@ -218,6 +222,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -228,7 +233,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -243,6 +248,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -268,6 +274,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -297,6 +304,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -392,6 +400,7 @@
               "wezel": "w1"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -421,6 +430,7 @@
               "wezel": "w2"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -450,6 +460,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -475,6 +486,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -485,7 +497,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "sn/a14bb0e6a533796dc251500f1b5fe5fa/der/source_field::dev::4",
           "earthing_role": null,
           "is_controllable": true,
@@ -504,6 +516,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -514,7 +527,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "sn/a14bb0e6a533796dc251500f1b5fe5fa/der/source_field::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -529,6 +542,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -554,6 +568,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -583,6 +598,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -1432,7 +1448,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7fc9e270b3d5da1a94c5bc0525f3d8507982b8bb15d47a6b30385a1018210070",
+    "hash_sha256": "079195b2a8d7d4214566f6597aee38297d31dbbcc7c65588b9eacb058804f9c7",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

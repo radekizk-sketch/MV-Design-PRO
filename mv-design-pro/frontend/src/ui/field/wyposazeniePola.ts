@@ -34,7 +34,9 @@ export type RodzajAparatuPolaSn =
   | 'TRANSFORMER_DEVICE'
   | 'THREE_POSITION_SWITCH'
   | 'VOLTAGE_INDICATOR'
-  | 'CORE_BALANCE_CT';
+  | 'CORE_BALANCE_CT'
+  | 'UNBALANCE_CT'
+  | 'PHASE_TO_PHASE_VT';
 
 export type PrzestrzenKatalogu = 'APARAT_SN' | 'CT' | 'VT' | 'OGRANICZNIK_SN';
 
@@ -53,6 +55,8 @@ export const PRZESTRZEN_KATALOGU_APARATU: Readonly<Record<RodzajAparatuPolaSn, P
   THREE_POSITION_SWITCH: null,
   VOLTAGE_INDICATOR: null,
   CORE_BALANCE_CT: null,
+  UNBALANCE_CT: 'CT',
+  PHASE_TO_PHASE_VT: 'VT',
 };
 
 /** Rodzaj aparatu APARAT_SN (`device_kind` pozycji) dopuszczony dla rodzaju aparatu pola. */
@@ -82,6 +86,8 @@ export const NAZWA_RODZAJU_APARATU_PL: Readonly<Record<RodzajAparatuPolaSn, stri
   THREE_POSITION_SWITCH: 'łącznik trójpołożeniowy',
   VOLTAGE_INDICATOR: 'wskaźnik napięcia',
   CORE_BALANCE_CT: 'przekładnik Ferrantiego',
+  UNBALANCE_CT: 'przekładnik niezrównoważenia baterii',
+  PHASE_TO_PHASE_VT: 'przekładnik napięciowy międzyfazowy',
 };
 
 export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
@@ -98,6 +104,8 @@ export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
   'THREE_POSITION_SWITCH',
   'VOLTAGE_INDICATOR',
   'CORE_BALANCE_CT',
+  'UNBALANCE_CT',
+  'PHASE_TO_PHASE_VT',
 ];
 
 export const UMIEJSCOWIENIE_PL: Readonly<Record<BayPrimaryPlacement, string>> = {
@@ -142,7 +150,15 @@ export interface WierszAparatu {
    * zapis pola z odgałęzieniem przekładnika napięciowego odtwarza te same porty.
    */
   odgalezienie: string;
+  /**
+   * Przekładnia przekładnika Ferrantiego (`BayPrimaryDevice.przekladnia`, zapis z rysunku
+   * standardu, np. '1/100') — WYŁĄCZNIE rodzaj CORE_BALANCE_CT; `''` = dana nieopisana.
+   */
+  przekladnia: string;
 }
+
+/** Rodzaj aparatu, któremu zapisuje się przekładnię (lustro walidatora `BayPrimaryDevice`). */
+export const RODZAJ_Z_PRZEKLADNIA: RodzajAparatuPolaSn = 'CORE_BALANCE_CT';
 
 export const WIERSZ_PUSTY: WierszAparatu = {
   kind: '',
@@ -153,6 +169,7 @@ export const WIERSZ_PUSTY: WierszAparatu = {
   earthing_role: '',
   stan_obiektu: '',
   odgalezienie: '',
+  przekladnia: '',
 };
 
 function czyRodzajPolaSn(kind: string): kind is RodzajAparatuPolaSn {
@@ -178,6 +195,7 @@ export function wierszeZAparatow(aparaty: readonly BayPrimaryDevice[] | null | u
       // backendu, a zmieniony (wymieniony) musi stać się projektowany.
       stan_obiektu: '',
       odgalezienie: a.odgalezienie ?? '',
+      przekladnia: a.przekladnia ?? '',
     }));
 }
 
@@ -190,6 +208,7 @@ export function zmienRodzaj(wiersz: WierszAparatu, kind: RodzajAparatuPolaSn | '
     catalog_ref: kind === wiersz.kind ? wiersz.catalog_ref : '',
     linked_ref: kind && RODZAJE_Z_GALEZIA.includes(kind) ? wiersz.linked_ref : '',
     earthing_role: kind && RODZAJE_Z_ROLA_UZIEMIENIA.includes(kind) ? wiersz.earthing_role : '',
+    przekladnia: kind === RODZAJ_Z_PRZEKLADNIA ? wiersz.przekladnia : '',
   };
 }
 
@@ -239,6 +258,7 @@ export function zbudujPayloadWyposazenia(
       if (w.earthing_role) aparat.earthing_role = w.earthing_role;
       if (w.stan_obiektu) aparat.stan_obiektu = w.stan_obiektu;
       if (w.odgalezienie.trim()) aparat.odgalezienie = w.odgalezienie.trim();
+      if (w.kind === RODZAJ_Z_PRZEKLADNIA && w.przekladnia.trim()) aparat.przekladnia = w.przekladnia.trim();
       return aparat;
     }),
   };

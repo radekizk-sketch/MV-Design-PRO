@@ -76,8 +76,11 @@ _LATERAL_ORDER: tuple[str, ...] = ("ES", "VT", "SURGE_ARRESTER")
 
 _SWITCHABLE_KINDS = frozenset({"CB", "LOAD_SWITCH", "DS"})
 
-# Kanoniczne oznaczenia Q per typ aparatu (lustro `bay_templates`) — deterministyczne,
-# bez losowości. Drugi DS (liniowy) dostaje Q2 (patrz `_designation`).
+# Proponowane oznaczenia aparatów per rodzaj — TEN SAM schemat co szablony pól
+# (`network_model.catalog.bay_templates`, praktyka DIN 40719-2: Q0 wyłącznik/rozłącznik,
+# Q1 odłącznik szynowy, Q9 odłącznik liniowy, Q8 uziemnik, T1 przekładnik prądowy). Oznaczenie
+# jest wartością roboczą (ZASADA NR 4), projektant zmienia je w modelu; deterministyczne, bez
+# losowości. Drugi DS toru (slot liniowy) dostaje Q9 (patrz `_designation`).
 _DESIGNATION_BY_KIND: dict[str, str] = {
     "DS": "Q1",
     "LOAD_SWITCH": "Q0",
@@ -85,7 +88,7 @@ _DESIGNATION_BY_KIND: dict[str, str] = {
     "FUSE": "F1",
     "CT": "T1",
     "VT": "T2",
-    "ES": "QE1",
+    "ES": "Q8",
     "SURGE_ARRESTER": "Z1",
     "CABLE_HEAD": "GK",
     "TRANSFORMER_DEVICE": "TR",
@@ -93,10 +96,21 @@ _DESIGNATION_BY_KIND: dict[str, str] = {
 
 
 def _designation(kind: str, *, ds_slot: int) -> str:
-    """Oznaczenie Q aparatu; drugi DS (slot liniowy) → Q2, pierwszy → Q1."""
+    """Oznaczenie aparatu; drugi DS (slot liniowy) → Q9, pierwszy → Q1."""
     if kind == "DS" and ds_slot >= 1:
-        return "Q2"
+        return "Q9"
     return _DESIGNATION_BY_KIND.get(kind, kind)
+
+
+def _unikalne_oznaczenie(oznaczenie: str, zajete: set[str]) -> str:
+    """Oznaczenie jednoznaczne w polu (reguła walidatora W063): powtórzona propozycja dostaje
+    kolejną cyfrę (Q8, Q81, Q82 — ten sam zapis co odgałęzienie Q5/Q51 szablonów pól)."""
+    kandydat, numer = oznaczenie, 0
+    while kandydat in zajete:
+        numer += 1
+        kandydat = f"{oznaczenie}{numer}"
+    zajete.add(kandydat)
+    return kandydat
 
 
 def _producer_group(all_kinds: set[str]) -> str:
@@ -128,13 +142,20 @@ def producer_cell_primary_devices(
     plan: list[tuple[str, str, str]] = []  # (kind, placement, designation)
 
     ds_slot = 0
+    ostatni_slot_ds = max(i for i, k in enumerate(_MAIN_PATH_ORDER) if k == "DS")
     for slot_index, slot_kind in enumerate(_MAIN_PATH_ORDER):
-        if slot_kind in remaining:
+        # Slot bierze KAŻDE wystąpienie rodzaju (drugi przekładnik prądowy celki, drugi
+        # wyłącznik) — poza pierwszym slotem DS, który bierze jeden odłącznik szynowy, a resztę
+        # zostawia slotowi liniowemu. Dawniej powtórzenia ginęły po cichu (aparat celki znikał
+        # z rysunku pola).
+        while slot_kind in remaining:
             remaining.remove(slot_kind)
             designation = _designation(slot_kind, ds_slot=ds_slot if slot_kind == "DS" else 0)
             if slot_kind == "DS":
                 ds_slot += 1
             plan.append((slot_kind, _MAIN_PATH_PLACEMENT[slot_index], designation))
+            if slot_kind == "DS" and slot_index != ostatni_slot_ds:
+                break
 
     for lateral_kind in _LATERAL_ORDER:
         while lateral_kind in remaining:
@@ -143,8 +164,17 @@ def producer_cell_primary_devices(
                 (lateral_kind, _LATERAL_PLACEMENT[lateral_kind], _DESIGNATION_BY_KIND[lateral_kind])
             )
 
+    if remaining:
+        # Rodzaj spoza toru głównego i aparatów bocznych — celka opisuje aparat, którego most
+        # nie umie umieścić; jawna odmowa zamiast cichego pominięcia.
+        raise ValueError(
+            f"Celka {config_ref}: rodzaje aparatów bez miejsca w polu: {sorted(set(remaining))}"
+        )
+
     devices: list[dict[str, Any]] = []
-    for position, (kind, placement, designation) in enumerate(plan):
+    zajete: set[str] = set()
+    for position, (kind, placement, proponowane) in enumerate(plan):
+        designation = _unikalne_oznaczenie(proponowane, zajete)
         entry: dict[str, Any] = {
             "device_ref": f"{config_ref}::dev::{position}",
             "symbol_ref": f"symbol:{kind.lower()}",

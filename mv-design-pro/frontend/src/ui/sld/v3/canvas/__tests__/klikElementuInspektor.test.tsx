@@ -23,7 +23,7 @@ import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverl
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { useShellStore } from '../../../../../ui2/shell/useShellStore';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { OPIS_POLOZENIA_PL } from '../../../v2/model/stanAparatowPola';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 afterEach(() => {
@@ -182,7 +182,7 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
     // symbolu (rekord aparatu pola; pełny iloczyn — `stanAparatuParytetGlifu.test.tsx`).
     expect(screen.getByTestId('inspektor-aparat-komunikacja').textContent).toBe('brak telemetrii');
     expect(symbol.state, 'pierwszy aparat sceny to łącznik ze stanem glifu').toBeDefined();
-    expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(POLOZENIE_LACZNIKA_PL[symbol.state!]);
+    expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(OPIS_POLOZENIA_PL[symbol.state!]);
   });
 
   // K6 (Z-12): źródło OZE ma własną kartę techniczną (dotąd panel bez danych — sam pasek

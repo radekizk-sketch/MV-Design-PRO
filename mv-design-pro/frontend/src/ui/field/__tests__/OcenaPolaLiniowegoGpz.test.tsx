@@ -14,6 +14,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { NAZWA_WERYFIKACJI_PL } from '../../catalog/api';
 import { OcenaPolaLiniowegoGpz } from '../OcenaPolaLiniowegoGpz';
 import type { OcenaPolaLiniowego } from '../useFieldReadModel';
 import { NAZWA_KLASY_POLA_PL } from '../wyposazeniePola';
@@ -85,6 +86,44 @@ describe('OcenaPolaLiniowegoGpz — ocena z modelu odczytu pola', () => {
         expect(pozycje[i].textContent).toContain(n.komunikat_pl);
         expect(pozycje[i].textContent).toContain(`Akcja: ${n.akcja_pl}`);
       });
+
+      // Obwody wtórne funkcji wg wzorca (uzupełnienie właściciela 2026-10-29): każdy wiersz
+      // niesie blok rysunku, z czego funkcja mierzy, na co działa i status weryfikacji źródła.
+      const obwody = within(screen.getByTestId('ocena-pola-liniowego-obwody')).getAllByRole('row').slice(1);
+      expect(obwody.map((w) => [w.getAttribute('data-kod'), w.getAttribute('data-obecna'), w.getAttribute('data-weryfikacja')])).toEqual(
+        (ocena.obwody_funkcji ?? []).map((o) => [o.kod, String(o.obecna), o.weryfikacja]),
+      );
+      (ocena.obwody_funkcji ?? []).forEach((o, i) => {
+        const tekst = obwody[i].textContent ?? '';
+        for (const czesc of [o.funkcja_pl, o.blok_rysunku ?? '—', ...o.wejscia_pl, o.wyjscia_pl, NAZWA_WERYFIKACJI_PL[o.weryfikacja], o.uwaga ?? '']) {
+          expect(tekst, `${o.kod}: ${czesc}`).toContain(czesc);
+        }
+      });
+      const sygnaly = within(screen.getByTestId('ocena-pola-liniowego-sygnaly')).getAllByRole('row').slice(1);
+      expect(sygnaly.map((w) => w.getAttribute('data-sygnal'))).toEqual(ocena.obwody_wtorne!.sygnaly.map((s) => s.nazwa));
+      ocena.obwody_wtorne!.sygnaly.forEach((s, i) => {
+        // Skrót, którego standard nie rozwija, nie dostaje odgadniętego znaczenia.
+        expect(sygnaly[i].textContent).toContain(s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje');
+      });
+      expect(screen.getByTestId('ocena-pola-liniowego-naped').textContent).toContain('silnikowy (M)');
+
+      const nz = screen.queryByTestId('ocena-pola-liniowego-napiecie-zwrotne');
+      expect(Boolean(nz)).toBe(Boolean(ocena.napiecie_zwrotne));
+      if (ocena.napiecie_zwrotne && nz) {
+        expect(nz.getAttribute('data-stan')).toBe(ocena.napiecie_zwrotne.stan_pomiaru);
+        expect(nz.getAttribute('data-mozliwe')).toBe(String(ocena.napiecie_zwrotne.mozliwe));
+        for (const czesc of [ocena.napiecie_zwrotne.stan_pomiaru_pl, ocena.napiecie_zwrotne.wyjasnienie_pl, ocena.napiecie_zwrotne.pomiar_pl]) {
+          expect(nz.textContent).toContain(czesc);
+        }
+      }
     });
   }
+
+  it('fikstura pokrywa napięcie zwrotne {brak wzorca, możliwe} i funkcję poza rysunkiem wzorca', () => {
+    expect(new Set(PRZYPADKI.map((p) => (p.ocena.napiecie_zwrotne ? String(p.ocena.napiecie_zwrotne.mozliwe) : 'brak')))).toEqual(
+      new Set(['brak', 'true']),
+    );
+    expect(PRZYPADKI.some((p) => (p.ocena.obwody_funkcji ?? []).some((o) => o.blok_rysunku === null))).toBe(true);
+    expect(PRZYPADKI.some((p) => (p.ocena.obwody_funkcji ?? []).some((o) => !o.obecna))).toBe(true);
+  });
 });

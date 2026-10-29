@@ -90,9 +90,13 @@ describe('colorTokens — baseSegmentStrokeColor', () => {
 });
 
 describe('colorTokens — baseSymbolStrokeColor', () => {
-  it('noPoint (D7/D8): kolor STANU (STATE_COLOR.nop), NIE napięcia — wyróżniony niezależnie od ownerRef', () => {
-    expect(baseSymbolStrokeColor('noPoint', { ownerRef: 'station-7' })).toBe(STATE_COLOR.nop);
-    expect(baseSymbolStrokeColor('noPoint', undefined)).toBe(STATE_COLOR.nop);
+  // Rozszerzenie 5 karty UX-04 (referencja HMI 2026-10-29): NOP to funkcja łącznika, nie kolor
+  // stanu — znacznik idzie kolorem napięcia toru jak każdy aparat, stan niesie kafel. Intencja D7
+  // (NOP odróżnialny od napięcia) przechodzi na znacznik (okrąg „NO"), test w sldCanvasV3.test.tsx.
+  it('noPoint: kolor napięcia toru jak każdy aparat, nigdy barwa kafla stanu', () => {
+    expect(baseSymbolStrokeColor('noPoint', { ownerRef: 'station-7' })).toBe(VOLTAGE_COLOR.sn);
+    expect(baseSymbolStrokeColor('noPoint', undefined)).toBe(VOLTAGE_COLOR.sn);
+    expect(Object.values(STATE_COLOR)).not.toContain(baseSymbolStrokeColor('noPoint', undefined));
   });
 
   it('gridSource ⇒ ZAWSZE hv (sieć zewnętrzna GPZ — deterministyczne po symbolId)', () => {

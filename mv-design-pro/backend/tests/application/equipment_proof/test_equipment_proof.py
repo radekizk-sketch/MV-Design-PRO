@@ -16,8 +16,8 @@ def _base_input() -> EquipmentProofInput:
     device = DeviceRating(
         device_id="SW-001",
         name_pl="Wyłącznik SN",
-        type_ref="CB-15kV",
-        u_m_kv=15.0,
+        type_ref="CB-17.5kV",
+        u_m_kv=17.5,
         i_cu_ka=20.0,
         i_dyn_ka=50.0,
         i_th_ka=20.0,
@@ -25,7 +25,9 @@ def _base_input() -> EquipmentProofInput:
         meta={"vendor": "Test"},
     )
     required = {
-        "u_kv": 12.0,
+        # Sieć 15 kV: wartość wymagana kryterium U to napięcie najwyższe sieci U_s = 17,5 kV
+        # (IEC 60038), aparat klasy 17,5 kV leży na brzegu równości (dopuszczonym).
+        "u_kv": 15.0,
         "ikss_ka": 16.0,
         "ip_ka": 30.0,
         "idyn_ka": 40.0,
@@ -501,8 +503,9 @@ def test_znacznik_bezpiecznika_nie_zmienia_odcisku_innych_aparatow() -> None:
 @pytest.mark.parametrize(
     ("nazwa", "zmiana", "status", "fragmenty"),
     [
-        ("U", {"u_m_kv": 15.0}, "PASS", ("U_m aparatu 15.0000 kV", "12.0000 kV")),
-        ("U", {"u_m_kv": 10.0}, "FAIL", ("U_m aparatu 10.0000 kV", "12.0000 kV")),
+        ("U", {"u_m_kv": 17.5}, "PASS", ("U_m aparatu 17.5000 kV", "17.5000 kV", "U_n = 15")),
+        # Komórka dyskryminująca: U_m równe U_n sieci (15 kV) nie pokrywa U_s = 17,5 kV.
+        ("U", {"u_m_kv": 15.0}, "FAIL", ("U_m aparatu 15.0000 kV", "17.5000 kV", "U_n = 15")),
         ("Icu", {"i_cu_ka": 20.0}, "PASS", ("I_cu aparatu 20.0000 kA", "15.5000 kA")),
         ("Icu", {"i_cu_ka": 10.0}, "FAIL", ("I_cu aparatu 10.0000 kA", "15.5000 kA")),
         ("Idyn", {"i_dyn_ka": 50.0}, "PASS", ("I_dyn aparatu 50.0000 kA", "40.0000 kA")),

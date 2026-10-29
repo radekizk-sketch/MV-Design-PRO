@@ -36,7 +36,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .pola import czy_pole_nn, pola_wg_stacji, poziom_pol, zacisk_pola
+from .pola import czy_pole_nn, napis_lub_none, pola_wg_stacji, poziom_pol, zacisk_pola
 
 #: Rodzaje gałęzi, które są odcinkiem terenowym SN (kabel, linia napowietrzna).
 TYPY_ODCINKA_TERENOWEGO: frozenset[str] = frozenset({"cable", "line_overhead"})
@@ -78,10 +78,6 @@ def _slownik(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
-def _napis(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
-
-
 def _pola_sn_stacji(enm: Mapping[str, Any]) -> Iterable[tuple[str, Mapping[str, Any]]]:
     """Pola SN stacji modelu (rekordy `bays`, predykat poziomu `enm.pola.czy_pole_nn`) w
     kolejności stacji i zapisu pól. Pola nN i pola ZKSN nie są polami liniowymi stacji SN.
@@ -95,9 +91,9 @@ def _pola_sn_stacji(enm: Mapping[str, Any]) -> Iterable[tuple[str, Mapping[str, 
     for stacja in enm.get("substations") or []:
         if not isinstance(stacja, Mapping):
             continue
-        station_ref = _napis(stacja.get("ref_id")) or ""
+        station_ref = napis_lub_none(stacja.get("ref_id")) or ""
         for rekord in wg_stacji.get(station_ref, []):
-            if _napis(rekord.get("ref_id")) and not czy_pole_nn(enm, rekord, poziom):
+            if napis_lub_none(rekord.get("ref_id")) and not czy_pole_nn(enm, rekord, poziom):
                 yield station_ref, rekord
 
 
@@ -112,32 +108,32 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
     odcinki_na_szynie: dict[str, set[str]] = {}
     odcinki_z_pochodzenia: dict[str, list[Mapping[str, Any]]] = {}
     for galaz in odcinki_terenowe:
-        ref = _napis(galaz.get("ref_id"))
+        ref = napis_lub_none(galaz.get("ref_id"))
         if not ref:
             continue
         for koniec in (galaz.get("from_bus_ref"), galaz.get("to_bus_ref")):
-            szyna = _napis(koniec)
+            szyna = napis_lub_none(koniec)
             if szyna:
                 odcinki_na_szynie.setdefault(szyna, set()).add(ref)
-        pochodzenie = _napis(_slownik(galaz.get("meta")).get("origin_bay_ref"))
+        pochodzenie = napis_lub_none(_slownik(galaz.get("meta")).get("origin_bay_ref"))
         if pochodzenie:
             odcinki_z_pochodzenia.setdefault(pochodzenie, []).append(galaz)
 
     galezie = {
         ref: galaz
         for galaz in enm.get("branches") or []
-        if isinstance(galaz, Mapping) and (ref := _napis(galaz.get("ref_id")))
+        if isinstance(galaz, Mapping) and (ref := napis_lub_none(galaz.get("ref_id")))
     }
     korytarze = {
         ref: korytarz
         for korytarz in enm.get("corridors") or []
-        if isinstance(korytarz, Mapping) and (ref := _napis(korytarz.get("ref_id")))
+        if isinstance(korytarz, Mapping) and (ref := napis_lub_none(korytarz.get("ref_id")))
     }
 
     wynik: dict[str, ZajetoscPola] = {}
     for station_ref, spec in _pola_sn_stacji(enm):
-        field_ref = str(_napis(spec.get("ref_id")))
-        szyna_pola = _napis(spec.get("bus_ref"))
+        field_ref = str(napis_lub_none(spec.get("ref_id")))
+        szyna_pola = napis_lub_none(spec.get("bus_ref"))
         zacisk = zacisk_pola(spec)
         wlasny_zacisk = bool(zacisk and zacisk != szyna_pola)
         punkt = zacisk if wlasny_zacisk else szyna_pola
@@ -145,7 +141,10 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
         fizyczne: set[str] = set()
         # R1: odcinek wyprowadzony z pola, z końcem w punkcie przyłączenia pola.
         for galaz in odcinki_z_pochodzenia.get(field_ref, []):
-            konce = {_napis(galaz.get("from_bus_ref")), _napis(galaz.get("to_bus_ref"))}
+            konce = {
+                napis_lub_none(galaz.get("from_bus_ref")),
+                napis_lub_none(galaz.get("to_bus_ref")),
+            }
             if punkt and punkt in konce:
                 fizyczne.add(str(galaz.get("ref_id")))
         # R2: odcinek z końcem na własnym zacisku pola.
@@ -155,7 +154,7 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
         meta = _slownik(spec.get("meta"))
         deklaratywne: set[str] = set()
         # R3: jawny przydział korytarza.
-        przydzial = _napis(meta.get("assigned_corridor_ref"))
+        przydzial = napis_lub_none(meta.get("assigned_corridor_ref"))
         if przydzial and (korytarze.get(przydzial) or {}).get("ordered_segment_refs"):
             deklaratywne.add(przydzial)
         # R4: pole GPZ o indeksie 0 bez własnego zacisku (migawki sprzed przydziałów): zasila
@@ -169,11 +168,13 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
                 if not ref.startswith(f"{prefiks}/corridor_") or not kolejnosc:
                     continue
                 pierwszy = galezie.get(str(kolejnosc[0]))
-                if pierwszy is None or _napis(_slownik(pierwszy.get("meta")).get("origin_bay_ref")):
+                if pierwszy is None or napis_lub_none(
+                    _slownik(pierwszy.get("meta")).get("origin_bay_ref")
+                ):
                     continue
                 if szyna_pola in (
-                    _napis(pierwszy.get("from_bus_ref")),
-                    _napis(pierwszy.get("to_bus_ref")),
+                    napis_lub_none(pierwszy.get("from_bus_ref")),
+                    napis_lub_none(pierwszy.get("to_bus_ref")),
                 ):
                     deklaratywne.add(ref)
 

@@ -135,6 +135,19 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         # Karta UX-04/POLE-LINIOWE-WZORZEC: rdzenie CT i uzwojenia VT jako listy
         # (`Measurement.rdzenie` / `uzwojenia`; brak = tabliczka niedostarczona).
         "measurements": ("rdzenie", "uzwojenia"),
+        # Karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie —
+        # to samo prawo; test odcisku: `tests/enm/test_bateria_kondensatorow_model.py`
+        # (bateria bez pól karty i z polami `None` haszuje jak przed kartą).
+        "shunt_capacitors": (
+            "uklad_polaczen",
+            "liczba_stopni",
+            "stopnie_zalaczone",
+            "tolerancja_pojemnosci_min_proc",
+            "tolerancja_pojemnosci_max_proc",
+            "dlawik_ograniczajacy",
+            "dlawik_indukcyjnosc_mh",
+            "rezystory_rozladowcze_wewnetrzne",
+        ),
     }
 
 

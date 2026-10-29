@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any
 
 from api.dependencies import get_uow_factory
 from api.odmowa_http import OdmowaHttpError
@@ -27,7 +27,6 @@ from application.catalog_governance import CatalogGovernanceService
 from application.parametry_linii_wn import podglad_parametrow_linii
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
 from enm.models import UKLADY_SIECI_NN, GeometriaSlupaLinii, UkladSieciNn
-from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -72,7 +71,6 @@ from network_model.core.uziemienie import (
     UziemienieEkranuKabla,
 )
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -774,6 +772,7 @@ def list_bay_templates_endpoint(
         NAZWY_WYKONANIA_POLA_PL,
         funkcje_eaz_szablonu,
         list_bay_templates,
+        profil_eaz_szablonu,
     )
     from network_model.catalog.funkcje_eaz import opis_funkcji_eaz_pl
     from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
@@ -798,6 +797,11 @@ def list_bay_templates_endpoint(
             klasa_pola=klasa_pola,
             opis_pola="pola",
         )
+        # Szablon pochodzi z rejestru (`list_bay_templates`), więc zestaw istnieje zawsze;
+        # `None` znaczyłoby szablon spoza rejestru — błąd rejestru, nie pusty zestaw.
+        funkcje = funkcje_eaz_szablonu(szablon.template_id, klasa_pola)
+        if funkcje is None:
+            raise RuntimeError(f"Szablon {szablon.template_id} spoza rejestru szablonów pól.")
         wynik.append(
             {
                 "template_ref": szablon.template_id,
@@ -819,13 +823,24 @@ def list_bay_templates_endpoint(
                 "tylko_gpz": szablon.tylko_gpz,
                 # Zestaw EAZ szablonu W KLASIE pola (`funkcje_eaz_szablonu`): ten sam, który
                 # operacja zapisze w `Bay.protection_codes` po wyborze szablonu.
-                "funkcje_eaz": funkcje_eaz_szablonu(szablon.template_id, klasa_pola),
+                "funkcje_eaz": funkcje,
                 # Nazwa każdej funkcji ze słownika EAZ (zapis rysunku, IEEE C37.2, nazwa PL) —
                 # picker pokazuje, czym jest funkcja, bez kopii słownika we froncie.
-                "funkcje_eaz_pl": [
-                    opis_funkcji_eaz_pl(kod)
-                    for kod in funkcje_eaz_szablonu(szablon.template_id, klasa_pola)
-                ],
+                "funkcje_eaz_pl": [opis_funkcji_eaz_pl(kod) for kod in funkcje],
+                # Profil funkcjonalny EAZ wzorca (obowiązkowa / wariantowa / opcjonalna, wymóg
+                # w każdej klasie z podstawą i statusem weryfikacji) i obwody wtórne rysunku
+                # (funkcja → rdzeń CT / uzwojenie VT / sygnał, sygnały do wyłącznika) —
+                # uzupełnienie właściciela 2026-10-29; `None` — szablon bez rysunku standardu.
+                "profil_eaz": (
+                    [pozycja.model_dump(mode="json") for pozycja in profil]
+                    if (profil := profil_eaz_szablonu(szablon.template_id)) is not None
+                    else None
+                ),
+                "obwody_wtorne": (
+                    szablon.obwody_wtorne.model_dump(mode="json")
+                    if szablon.obwody_wtorne is not None
+                    else None
+                ),
                 "dopuszczony": not odmowy,
                 "odmowy": [{"kod": kod, "komunikat_pl": zdanie} for kod, zdanie in odmowy],
             }
@@ -837,15 +852,18 @@ def list_bay_templates_endpoint(
 def list_bay_protection_codes() -> dict[str, list[str]]:
     """Funkcje EAZ pól SN tworzonych wg roli (readout).
 
-    Jedno źródło prawdy: funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI` →
-    `BayTemplate.funkcje_eaz`) — to samo, z którego korzystają operacje domenowe budujące pola
-    bez wskazanego szablonu. Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ
+    Jedno źródło prawdy: `funkcje_eaz_roli` — funkcje szablonu kanonicznego roli
+    (`SZABLON_KANONICZNY_ROLI` → `BayTemplate.funkcje_eaz`), a dla roli bez szablonu
+    kanonicznego (pole baterii kondensatorów) `FUNKCJE_EAZ_ROLI_BEZ_SZABLONU` — to samo,
+    z którego korzystają operacje domenowe budujące pola bez wskazanego szablonu. Klucze to
+    KAŻDA rola modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`). Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ
     kopiowania tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
     pustą — uczciwy brak funkcji wyzwalających, nie luka danych.
     """
-    from network_model.catalog.bay_templates import SZABLON_KANONICZNY_ROLI, funkcje_eaz_roli
+    from enm.rola_pola_sn import ROLE_POLA_MODELU
+    from network_model.catalog.bay_templates import funkcje_eaz_roli
 
-    return {role: funkcje_eaz_roli(role) for role in SZABLON_KANONICZNY_ROLI}
+    return {role: funkcje_eaz_roli(role) for role in ROLE_POLA_MODELU}
 
 
 @router.get("/bay-apparatus-kinds")
@@ -1100,456 +1118,6 @@ def import_protection_library(
     except OdmowaDanychError as exc:
         # Conflicts or validation errors detected
         raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
-
-
-# =============================================================================
-# K30-23: Auto-populate endpoint — suggest catalog types per element context
-# =============================================================================
-
-
-class AutoPopulateRequest(BaseModel):
-    """K30-23 user demand: 'dane mają się maksymalnie podczytywać'."""
-
-    voltage_kv: float | None = None
-    """Element voltage rating (15 / 20 / 0.4 kV typical)."""
-    expected_power_mva: float | None = None
-    """Expected power rating (0.063 - 2.5 MVA dla TR, etc.)."""
-    expected_current_a: float | None = None
-    """Expected nominal current (for switches/cables)."""
-    cross_section_mm2: float | None = None
-    """Cross-section dla cables (50/95/120/150/240/300 mm²)."""
-    prefer_manufacturer: str | None = None
-    """Preferred manufacturer cascade (ZPUE/Elektrometal/ABB/Siemens)."""
-    # Dawne pole `prefer_ptpire_certified` usunięte (karta KATALOG-KOMPLETNY-PROWENIENCJA):
-    # żaden tor go nie czytał — certyfikat zawsze wchodzi do klucza sortowania
-    # (`AutoPopulateSuggestion.klucz_sortowania`), więc kontrolka była fantomem.
-
-
-#: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
-#: (karta FAB-D2, D9). "PELNE" = producent z żądania znaleziony w rekordzie
-#: katalogowym; "CZĘŚCIOWE" = rekord przeszedł filtry (napięcie/moc/prąd), ale
-#: bez dopasowania producenta. Certyfikat PTPiREE jest osobną, jawną flagą —
-#: nie jest już zmieszany w jedną liczbę z dopasowaniem producenta.
-Dopasowanie = Literal["PELNE", "CZESCIOWE"]
-
-#: Ranga sortowania — PELNE przed CZĘŚCIOWE; jedno źródło prawdy dla klucza
-#: sortującego, żeby porządek na liście i porządek w teście nie mogły się rozjechać.
-_RANGA_DOPASOWANIA: dict[Dopasowanie, int] = {"PELNE": 0, "CZESCIOWE": 1}
-
-
-class AutoPopulateSuggestion(BaseModel):
-    catalog_ref: str
-    label_pl: str
-    manufacturer: str | None = None
-    dopasowanie: Dopasowanie
-    certyfikat_ptpiree: bool = False
-    badge_pl: str | None = None  # 'PTPiRE certyfikat' jeśli applicable
-    rationale_pl: str  # Why this suggestion ranked
-
-    def klucz_sortowania(self) -> tuple[int, bool, str]:
-        """Deterministyczny klucz sortowania (dopasowanie, certyfikat, catalog_ref)."""
-        return (
-            _RANGA_DOPASOWANIA[self.dopasowanie],
-            not self.certyfikat_ptpiree,
-            self.catalog_ref,
-        )
-
-
-class AutoPopulateResponse(BaseModel):
-    element_type: str
-    suggestions: list[AutoPopulateSuggestion]
-    total_candidates: int
-
-
-@router.post("/auto-populate/{element_type}")
-def auto_populate_catalog_suggestions(
-    element_type: str,
-    request: AutoPopulateRequest,
-) -> AutoPopulateResponse:
-    """K30-23: Return ranked catalog suggestions for element context.
-
-    Element types supported: transformer, cable, switch, branch_point, der.
-    Logic: filter by voltage compatibility + power/current range + manufacturer
-    cascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga
-    certyfikatu PTPiREE — sortowanie deterministyczne
-    (dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).
-    """
-    normalized = element_type.lower().strip()
-
-    if normalized == "transformer":
-        return _auto_populate_transformers(request)
-    if normalized == "cable":
-        return _auto_populate_cables(request)
-    if normalized in ("switch", "circuit_breaker", "breaker", "disconnector"):
-        return _auto_populate_switches(request, normalized)
-    if normalized in ("protection", "relay"):
-        return _auto_populate_protection(request)
-    if normalized in ("surge_arrester", "arrester", "ogranicznik", "ogranicznik_sn"):
-        return _auto_populate_surge_arresters(request)
-    if normalized in ("der", "pv", "bess", "inverter", "converter", "generator"):
-        return _auto_populate_inverters(request, normalized)
-
-    raise HTTPException(
-        status_code=400,
-        detail=(
-            f"Unknown element_type '{element_type}'. Supported: transformer, cable, "
-            "switch, protection, surge_arrester, inverter."
-        ),
-    )
-
-
-def _liczba_z_katalogu(entry: dict[str, Any], pole: str) -> float | None:
-    """Liczbowe pole pozycji katalogu do filtrow auto-populate — albo `None`.
-
-    FAB-E (klasa „brak danej pokazany jako 0"): `params.get(pole, 0.0)` traktowal
-    pozycje katalogu BEZ pola jak pozycje o wartosci 0 — transformator „0 MVA"
-    przechodzil filtr napiecia i trafial do propozycji z tabliczka „Sn=0 kVA",
-    a kabel „0 mm²" odpadal albo przechodzil zaleznie od filtru, zawsze z
-    fabrykowana liczba w uzasadnieniu. Pozycja bez wymaganego pola jest
-    POMIJANA z nazwanym powodem w logu (defekt DANYCH katalogu, nie wybor
-    projektanta) — nigdy nie jest porownywana jako zero.
-    """
-    params = entry.get("params", {})
-    wartosc = params.get(pole)
-    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
-        logger.warning(
-            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominięta",
-            entry.get("id"),
-            pole,
-        )
-        return None
-    return float(wartosc)
-
-
-def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
-    from network_model.catalog.mv_transformer_catalog import get_all_transformer_types
-
-    all_types = get_all_transformer_types()
-    suggestions: list[AutoPopulateSuggestion] = []
-
-    for entry in all_types:
-        params = entry.get("params", {})
-        rated_mva = _liczba_z_katalogu(entry, "rated_power_mva")
-        v_hv = _liczba_z_katalogu(entry, "voltage_hv_kv")
-        v_lv = _liczba_z_katalogu(entry, "voltage_lv_kv")
-        if rated_mva is None or v_hv is None or v_lv is None:
-            continue
-        manufacturer = params.get("manufacturer", "")
-        is_ptpire = bool(params.get("ptpire_certified", False))
-
-        # Voltage filter (within ±5%)
-        if req.voltage_kv is not None:
-            if not (
-                abs(v_hv - req.voltage_kv) / req.voltage_kv < 0.05
-                or abs(v_lv - req.voltage_kv) / max(v_lv, 0.001) < 0.05
-            ):
-                continue
-
-        # Power filter (within ±50% — wide net dla typical sizing)
-        if req.expected_power_mva is not None:
-            if rated_mva < req.expected_power_mva * 0.5 or rated_mva > req.expected_power_mva * 2.0:
-                continue
-
-        # Manufacturer cascade — dopasowanie PELNE tylko gdy producent z żądania
-        # znaleziony w rekordzie; w przeciwnym razie CZĘŚCIOWE (przeszedł filtry
-        # napięcia/mocy, ale bez trafienia producenta).
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            dopasowanie = "PELNE"
-
-        rationale = (
-            f"Sn={mva_na_kva(rated_mva):.0f} kVA, U_HV={v_hv} kV, "
-            f"U_LV={v_lv} kV ({manufacturer})"
-        )
-
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=entry["id"],
-                label_pl=nazwa_pozycji_katalogu(entry),
-                manufacturer=manufacturer or None,
-                dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_ptpire,
-                badge_pl="PTPiRE" if is_ptpire else None,
-                rationale_pl=rationale,
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="transformer",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
-
-
-def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
-    from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
-
-    all_types = get_all_cable_types()
-    suggestions: list[AutoPopulateSuggestion] = []
-
-    for entry in all_types:
-        params = entry.get("params", {})
-        v_kv = _liczba_z_katalogu(entry, "voltage_rating_kv")
-        cross = _liczba_z_katalogu(entry, "cross_section_mm2")
-        rated_i = _liczba_z_katalogu(entry, "rated_current_a")
-        if v_kv is None or cross is None or rated_i is None:
-            continue
-        manufacturer = params.get("manufacturer", "")
-        is_ptpire = bool(params.get("ptpire_certified", False))
-
-        if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.2:
-                continue
-        if req.cross_section_mm2 is not None:
-            if abs(cross - req.cross_section_mm2) / max(req.cross_section_mm2, 0.001) > 0.3:
-                continue
-        if req.expected_current_a is not None:
-            if rated_i < req.expected_current_a * 0.9:
-                continue
-
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            dopasowanie = "PELNE"
-
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=entry["id"],
-                label_pl=nazwa_pozycji_katalogu(entry),
-                manufacturer=manufacturer or None,
-                dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_ptpire,
-                badge_pl="PTPiRE PN-HD 620" if is_ptpire else None,
-                rationale_pl=f"{int(cross)} mm² {v_kv} kV, In={int(rated_i)} A ({manufacturer})",
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="cable",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
-
-
-def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoPopulateResponse:
-    from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
-
-    all_types = get_all_switch_equipment_types()
-    suggestions: list[AutoPopulateSuggestion] = []
-    target_kind = (
-        "CIRCUIT_BREAKER"
-        if kind_filter in ("circuit_breaker", "breaker")
-        else "DISCONNECTOR" if kind_filter == "disconnector" else None
-    )
-
-    for entry in all_types:
-        params = entry.get("params", {})
-        if target_kind and params.get("equipment_kind") != target_kind:
-            continue
-        v_kv = _liczba_z_katalogu(entry, "un_kv")
-        rated_i = _liczba_z_katalogu(entry, "in_a")
-        if v_kv is None or rated_i is None:
-            continue
-        manufacturer = params.get("manufacturer", "")
-        is_ptpire = bool(params.get("ptpire_certified", False))
-
-        if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) > req.voltage_kv * 0.3:
-                continue
-        if req.expected_current_a is not None:
-            if rated_i < req.expected_current_a * 0.9:
-                continue
-
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            dopasowanie = "PELNE"
-
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=entry["id"],
-                label_pl=nazwa_pozycji_katalogu(entry),
-                manufacturer=manufacturer or None,
-                dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_ptpire,
-                badge_pl="PTPiRE" if is_ptpire else None,
-                rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="switch",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
-
-
-def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
-    from application.analyses.protection.catalog.catalog_store import list_devices
-
-    devices = list_devices()
-    suggestions: list[AutoPopulateSuggestion] = []
-    for d in devices:
-        manufacturer = d.vendor
-        rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if (
-            req.prefer_manufacturer
-            and manufacturer
-            and req.prefer_manufacturer.lower() in manufacturer.lower()
-        ):
-            dopasowanie = "PELNE"
-        # Polski producent to informacja o pochodzeniu, NIE certyfikat: wykaz PTPiREE
-        # (WiPWC) obejmuje moduły wytwarzania energii, nie przekaźniki zabezpieczeniowe,
-        # a katalog zabezpieczeń nie niesie żadnego dokumentu certyfikatu. Dawne
-        # `certyfikat_ptpiree=is_polish` nadawało flagę certyfikatu z narodowości
-        # producenta (karta KATALOG-KOMPLETNY-PROWENIENCJA: flaga certyfikatu ⇒ źródło).
-        is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
-        # Current match
-        if req.expected_current_a is not None and isinstance(rated, int | float):
-            if rated < req.expected_current_a * 0.8:
-                continue
-        # Karta FAB-A/D-33: `manufacturer` None = profil REFERENCYJNY bez marki.
-        # Etykieta MUSI jednoznacznie mowic, ze to nie jest produkt producenta —
-        # konkatenacja f"{manufacturer} {model}" pokazalaby tu literalny "None".
-        label_pl = (
-            f"{manufacturer} {d.model}"
-            if manufacturer
-            else f"Profil referencyjny (nie produkt producenta) - {d.model}"
-        )
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=d.device_id,
-                label_pl=label_pl,
-                manufacturer=manufacturer,
-                dopasowanie=dopasowanie,
-                certyfikat_ptpiree=False,
-                badge_pl=(
-                    "Polski producent"
-                    if is_polish
-                    else ("Profil referencyjny" if not manufacturer else None)
-                ),
-                rationale_pl=f"{label_pl} — funkcje: {', '.join(d.functions_supported[:6])}",
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="protection",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
-
-
-def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResponse:
-    catalog = get_default_mv_catalog()
-    suggestions: list[AutoPopulateSuggestion] = []
-
-    for item in catalog.list_surge_arrester_types():
-        v_kv = item.u_m_kv
-        manufacturer = item.manufacturer or ""
-        if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
-                continue
-
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            dopasowanie = "PELNE"
-
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=item.id,
-                label_pl=item.name,
-                manufacturer=manufacturer or None,
-                dopasowanie=dopasowanie,
-                # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
-                # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
-                certyfikat_ptpiree=False,
-                badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
-                rationale_pl=(
-                    f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
-                    f"Ures10kA={item.u_residual_at_10ka_kv:g} kV, "
-                    f"BIL={item.bil_protected_kv:g} kV"
-                ),
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="surge_arrester",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
-
-
-def _auto_populate_inverters(
-    req: AutoPopulateRequest,
-    normalized_element_type: str,
-) -> AutoPopulateResponse:
-    """Podpowiedzi przeksztaltnikow z JEDYNEGO rejestru przeksztaltnikow.
-
-    ZMIANA ZRODLA (karta KATALOG-NIEZMIENNIKI §5, pomiar 2026-09-17). Funkcja
-    czytala `list_inverter_types()` — rejestr WYPROWADZANY z `converter_types`
-    przez `_derive_inverter_records`, ktory gubil 18 pol kontraktu, w tym `k_sc`,
-    `sc_model`, `dynamic_profile_id`, `grid_code` i `e_kwh` (pomiar: 176 rekordow
-    w obu rejestrach, 18 pol obecnych wylacznie w `converter_types`). Cien
-    lossy ego kontraktu nie ma prawa byc zrodlem podpowiedzi doboru: jedyny rejestr
-    przeksztaltnikow to `converter_types`, a rodzaj (`PV`/`BESS`/`WIND`) jest
-    polem typu, nie osobna klasa.
-    """
-    catalog = get_default_mv_catalog()
-    suggestions: list[AutoPopulateSuggestion] = []
-    target_kind = None
-    if normalized_element_type == "pv":
-        target_kind = "PV"
-    elif normalized_element_type == "bess":
-        target_kind = "BESS"
-
-    for item in catalog.list_converter_types():
-        kind = item.kind.value.upper()
-        if target_kind is not None and kind != target_kind:
-            continue
-        if req.voltage_kv is not None:
-            if abs(item.un_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
-                continue
-        if req.expected_power_mva is not None:
-            if (
-                item.sn_mva < req.expected_power_mva * 0.5
-                or item.sn_mva > req.expected_power_mva * 2.0
-            ):
-                continue
-
-        manufacturer = item.manufacturer or ""
-        is_ptpiree = item.ptpiree_status == "POWIAZANY"
-        dopasowanie: Dopasowanie = "CZESCIOWE"
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            dopasowanie = "PELNE"
-        badge = None
-        if is_ptpiree:
-            badge = f"PTPiREE {item.ptpiree_wipwc_version or ''}".strip()
-
-        suggestions.append(
-            AutoPopulateSuggestion(
-                catalog_ref=item.id,
-                label_pl=item.name,
-                manufacturer=manufacturer or None,
-                dopasowanie=dopasowanie,
-                certyfikat_ptpiree=is_ptpiree,
-                badge_pl=badge,
-                rationale_pl=(
-                    f"{kind}, Un={item.un_kv:g} kV, Sn={item.sn_mva:g} MVA, "
-                    f"Pmax={item.pmax_mw:g} MW"
-                ),
-            )
-        )
-
-    suggestions.sort(key=lambda s: s.klucz_sortowania())
-    return AutoPopulateResponse(
-        element_type="inverter",
-        suggestions=suggestions[:20],
-        total_candidates=len(suggestions),
-    )
 
 
 def _build_production_router() -> APIRouter:

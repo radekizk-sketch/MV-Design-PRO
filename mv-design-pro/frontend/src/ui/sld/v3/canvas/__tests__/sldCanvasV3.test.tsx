@@ -1189,8 +1189,13 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
   });
 });
 
-describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony wg tabeli stanów)', () => {
-  it('symbol noPoint dostaje STATE_COLOR.nop — RÓŻNY od bazy/napięcia — na L1/L2 (GS-1: L0 = marker sylwetki)', () => {
+// Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): NOP jest FUNKCJĄ
+// łącznika, nie osobnym kolorem stanu. INTENCJA dawnego testu D7 („NOP wyróżniony, nie zlewa się
+// z napięciem") zostaje: wyróżnia go ZNACZNIK `noPoint` (okrąg + podpis „NO") na L1/L2, a stan
+// niesie kafel łącznika z jednej tabeli `STATE_COLOR`. Punkt NO stacji nie ma rekordu położenia
+// łącznika — rysuje się sam znacznik w kolorze napięcia toru, bez kafla (brak danej ≠ stan).
+describe('SldCanvasV3 — NOP: znacznik funkcji, stan z kafla łącznika (bez osobnego koloru NOP)', () => {
+  it('symbol noPoint na L1/L2: znacznik w kolorze napięcia toru, żadna barwa kafla stanu bez rekordu położenia', () => {
     // Fixtura bazowa nie niesie żadnego NOP (patrz `buildScene.test.ts`
     // `enmWithSyntheticNop` — ten sam GAP udokumentowany tam). Syntetyzujemy
     // lokalnie: punkt podziału w pierwszej stacji ciągu głównego — pozycja normalna
@@ -1213,7 +1218,10 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
       // Karta S9-4: patrz wyżej — grupa symbolu nie niesie już transparentnego
       // hit-rectu, więc pierwszy descendant ze `stroke` to rysunek glifu.
       const strokedDescendant = nopGroup?.querySelector('[stroke]');
-      expect(strokedDescendant?.getAttribute('stroke')).toBe(STATE_COLOR.nop);
+      expect(strokedDescendant?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
+      expect(Object.values(STATE_COLOR)).not.toContain(strokedDescendant?.getAttribute('stroke'));
+      expect(nopGroup?.querySelector('circle')).not.toBeNull();
+      expect(nopGroup?.querySelectorAll('[data-kafel-stanu]')).toHaveLength(0);
     }
   });
 });

@@ -21,15 +21,18 @@ from __future__ import annotations
 
 from typing import Literal, get_args
 
-#: Rola pola w MODELU (`Bay.bay_role`) — JEDYNA lista ról modelu (rozszerzenie 4 karty
-#: UX-04/POLE-LINIOWE-WZORZEC: dawniej trzy kopie literałów w `enm/models.py`,
-#: `network_model/catalog/bay_templates.py`, `switchgear/complete_mv_bay_template.py` i zbiór
-#: w `domain_operations_v2._normalize_sn_bay_role`). Nowe role (ZU, BKR, PW) dokładają karty
-#: pól GPZ ADDYTYWNIE — wyłącznie tutaj.
-RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
+#: Rola pola w MODELU (`Bay.bay_role`) — JEDYNA lista ról modelu (karty UX-04/POLE-LINIOWE-WZORZEC
+#: rozszerzenie 4 i UX-04/POLE-BKR-MODEL). Dawniej ten sam literał żył w pięciu kopiach
+#: (`enm.models.Bay.bay_role`, `catalog.bay_templates.BayTemplate.bay_role`,
+#: `catalog.switchgear.complete_mv_bay_template`, `enm.domain_ops_models` i zbiór
+#: w `domain_operations_v2._normalize_sn_bay_role`); teraz każda z nich czyta ten typ. Nowe role
+#: (ZU, PW) dokładają karty pól GPZ ADDYTYWNIE — wyłącznie tutaj. `BKR` — pole baterii
+#: kondensatorów równoległych SN (ENEA Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "BKR"]
 ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
 
-#: Rola KANONICZNA pola SN (`Bay.field_role`, `BayBaseModel.bay_role`) — klucze nazw ról.
+#: Rola KANONICZNA pola SN (read-model pola `BayBaseModel.bay_role`, `field_role`) — klucze
+#: `NAZWA_ROLI_POLA_SN_PL` (równość przypina test `tests/enm/test_rola_pola_bkr.py`).
 RolaKanonicznaPolaSn = Literal[
     "LINIA_IN",
     "LINIA_OUT",
@@ -40,6 +43,7 @@ RolaKanonicznaPolaSn = Literal[
     "PV_SN",
     "BESS_SN",
     "FW_SN",
+    "BATERIA_KONDENSATOROW",
 ]
 ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
 
@@ -56,12 +60,14 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    "BKR": "BATERIA_KONDENSATOROW",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
     "LINIA_ODG": "LINIA_ODG",
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+    "BATERIA_KONDENSATOROW": "BATERIA_KONDENSATOROW",
 }
 
 #: Rola kanoniczna pola SN → rola MODELU (`Bay.bay_role`) — wyprowadzona z aliasów (jedna tablica).
@@ -82,6 +88,7 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "PV_SN": "Pole źródłowe PV",
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",
+    "BATERIA_KONDENSATOROW": "Pole baterii kondensatorów",
 }
 
 #: Pole źródłowe bez rozpoznanej technologii (rola modelu `OZE`).

@@ -84,6 +84,7 @@ describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', 
       branchNodeCodes: [],
       runName: null,
       branchRunNames: [],
+      branchBayRefs: [],
     });
   });
 
@@ -95,6 +96,7 @@ describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', 
       branchNodeCodes: ['S15'],
       runName: null,
       branchRunNames: [null],
+      branchBayRefs: ['bay-s02-branch'],
     });
   });
 
@@ -106,6 +108,7 @@ describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', 
       branchNodeCodes: [],
       runName: null,
       branchRunNames: [],
+      branchBayRefs: [],
     });
   });
 
@@ -117,6 +120,7 @@ describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', 
       branchNodeCodes: [],
       runName: null,
       branchRunNames: [],
+      branchBayRefs: [],
     });
   });
 
@@ -128,6 +132,7 @@ describe('V3 compose/directions — resolveStationDirectionContext (spec §9)', 
       branchNodeCodes: [],
       runName: null,
       branchRunNames: [],
+      branchBayRefs: [],
     });
   });
 
@@ -241,6 +246,79 @@ describe('V3 compose/directions — stationBayCaptions (spec §3/§4/§9)', () =
 // gdy nazwa ciągu nieobecna (już pokryte wyżej, ciągi MAIN_RUN/BRANCH_RUN
 // bez `name`).
 // ---------------------------------------------------------------------------
+
+describe('V3 compose/directions — podpis odgałęzienia z tożsamości pola startowego, nie z kolejności ciągów', () => {
+  // Stacja S02 z DWOMA polami odgałęźnymi (LINE_BRANCH bay-2 i bay-3) i dwoma ciągami
+  // odgałęźnymi: „L-15" do S15 z pola bay-3 i „L-16" do S16 z pola bay-2. Iloczyn: kolejność
+  // ciągów w `lineRuns` {prosta, odwrócona} × pole startowe {wskazane, puste, wskazane tylko
+  // dla jednego ciągu}. Przed naprawą podpis szedł za kolejnością ciągów — odwrócenie
+  // przenosiło „L-15 · odg. S15" na pole, z którego wychodzi L-16.
+  const kody: Readonly<Record<string, string>> = { ...STATION_CODES, 'sub-16': 'S16' };
+  const pola = [
+    makeBay(FIELD_ROLE.LINE_IN, 0),
+    makeBay(FIELD_ROLE.LINE_OUT, 1),
+    makeBay(FIELD_ROLE.LINE_BRANCH, 2),
+    makeBay(FIELD_ROLE.LINE_BRANCH, 3),
+  ];
+  function galaz(id: string, nazwa: string, stacja: string, poleStartowe: string): LineRunV1 {
+    return {
+      id,
+      name: nazwa,
+      run_kind: 'branch',
+      starting_bay_ref: poleStartowe,
+      starting_port_ref: `${poleStartowe}/port`,
+      segments: [],
+      stations: [{ substation_ref: stacja, order: 0 }],
+      parent_run_ref: 'run-main',
+      branch_origin_station_ref: 'sub-02',
+    };
+  }
+  function podpisy(galezie: readonly LineRunV1[]): readonly (string | null)[] {
+    const ctx = resolveStationDirectionContext({
+      lineRuns: [MAIN_RUN, ...galezie],
+      stationId: 'sub-02',
+      gpzNodeCode: 'GPZ',
+      stationCodeOf: (ref) => kody[ref] ?? null,
+    });
+    return stationBayCaptions(pola, ctx);
+  }
+
+  for (const kolejnosc of ['prosta', 'odwrócona'] as const) {
+    const ustaw = (g: readonly LineRunV1[]) => (kolejnosc === 'prosta' ? g : [...g].reverse());
+
+    it(`kolejność ${kolejnosc} × pole startowe wskazane: podpis należy do ciągu wychodzącego z pola`, () => {
+      const galezie = ustaw([galaz('run-15', 'L-15', 'sub-15', 'bay-3'), galaz('run-16', 'L-16', 'sub-16', 'bay-2')]);
+      expect(podpisy(galezie)).toEqual(['kier. S01', 'kier. S03', 'L-16 · odg. S16', 'L-15 · odg. S15']);
+    });
+
+    it(`kolejność ${kolejnosc} × pole startowe wskazane tylko dla jednego ciągu: drugi bierze pozostałe pole`, () => {
+      const galezie = ustaw([galaz('run-15', 'L-15', 'sub-15', 'bay-3'), galaz('run-16', 'L-16', 'sub-16', '')]);
+      expect(podpisy(galezie)).toEqual(['kier. S01', 'kier. S03', 'L-16 · odg. S16', 'L-15 · odg. S15']);
+    });
+  }
+
+  it('pole startowe puste dla obu ciągów: reguła spec §9 — kolejne pola odgałęźne w kolejności lineRuns', () => {
+    const galezie = [galaz('run-15', 'L-15', 'sub-15', ''), galaz('run-16', 'L-16', 'sub-16', '')];
+    expect(podpisy(galezie)).toEqual(['kier. S01', 'kier. S03', 'L-15 · odg. S15', 'L-16 · odg. S16']);
+    expect(podpisy([...galezie].reverse())).toEqual(['kier. S01', 'kier. S03', 'L-16 · odg. S16', 'L-15 · odg. S15']);
+  });
+
+  it('więcej pól odgałęźnych niż ciągów: pole bez ciągu degraduje do oznaczenia pola, bez kodu z domysłu', () => {
+    const galezie = [galaz('run-15', 'L-15', 'sub-15', 'bay-3')];
+    expect(podpisy(galezie)).toEqual(['kier. S01', 'kier. S03', 'Pole 2', 'L-15 · odg. S15']);
+  });
+
+  it('kontekst niesie pola startowe index-aligned do kodów gałęzi', () => {
+    const ctx = resolveStationDirectionContext({
+      lineRuns: [MAIN_RUN, galaz('run-15', 'L-15', 'sub-15', 'bay-3'), galaz('run-16', 'L-16', 'sub-16', '')],
+      stationId: 'sub-02',
+      gpzNodeCode: 'GPZ',
+      stationCodeOf: (ref) => kody[ref] ?? null,
+    });
+    expect(ctx.branchNodeCodes).toEqual(['S15', 'S16']);
+    expect(ctx.branchBayRefs).toEqual(['bay-3', null]);
+  });
+});
 
 describe('V3 compose/directions — bayDirectionCaption z nazwą linii (spec §19.2)', () => {
   it('poprzednik/następnik: nazwa ciągu ⇒ "⟨nazwa⟩ · kier. ⟨kod⟩"', () => {

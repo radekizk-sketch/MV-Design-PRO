@@ -72,7 +72,7 @@ import { wierszPolaLiniowego } from '../../network-build/zajetoscPol';
 import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
-import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
+import { powyzejPasmaNn, toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
@@ -99,8 +99,9 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       topologicalType: null,
       topologicalReasonPl: null,
       constructionType: 'kontenerowa' as const,
-      snVoltageKv: 15,
-      nnVoltageLevels: [0.4],
+      // Brak danych stacji = napięcia nieznane (bez domysłu 15 / 0,4 kV).
+      snVoltageKv: null,
+      nnVoltageLevels: [],
       completeness: 'missing' as const,
       mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
       // Karta FAB-L: nadpisane niżej danymi ze snapshotu audytu 2 — pusta
@@ -189,23 +190,12 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-const TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV = 0.5;
-const TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV = 0.05;
-
 function catalogItemIdFromRef(ref: string | null | undefined): string | null {
   if (!ref) return null;
   const trimmed = ref.trim();
   if (!trimmed) return null;
   const parts = trimmed.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? trimmed;
-}
-
-function voltageMatchesCatalog(
-  left: number,
-  right: number,
-  toleranceKv: number,
-): boolean {
-  return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= toleranceKv;
 }
 
 function transformerCatalogMatchesRef(type: TransformerType, ref: string | null | undefined): boolean {
@@ -218,8 +208,8 @@ function isTransformerCatalogVoltageCompatible(
   transformer: Pick<StationConfigTransformerRow, 'uhvKv' | 'ulvKv'>,
 ): boolean {
   return (
-    voltageMatchesCatalog(type.voltage_hv_kv, transformer.uhvKv, TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV)
-    && voltageMatchesCatalog(type.voltage_lv_kv, transformer.ulvKv, TRANSFORMER_NN_VOLTAGE_TOLERANCE_KV)
+    toSamoNapiecieZnamionowe(type.voltage_hv_kv, transformer.uhvKv)
+    && toSamoNapiecieZnamionowe(type.voltage_lv_kv, transformer.ulvKv)
   );
 }
 
@@ -460,7 +450,7 @@ function occupiedLabelForBayPort(
 function deriveStationPortRows(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
-  nominalVoltageKv: number,
+  nominalVoltageKv: number | null,
   stationDers: readonly StationDerConnection[] = [],
   logicalViews: LogicalViewsV1 | null = null,
 ): StationConfigPortRow[] {
@@ -480,7 +470,7 @@ function deriveStationPortRows(
       return {
         portId: nextPortId(kind),
         kind,
-        nominalVoltageKv: kind.startsWith('nn_') ? inferDerBusVoltage(snapshot, der) ?? 0.4 : nominalVoltageKv,
+        nominalVoltageKv: kind.startsWith('nn_') ? inferDerBusVoltage(snapshot, der) : nominalVoltageKv,
         bayDesignation: der.name,
         occupiedByLabelPl: derConnectionPortLabel(der, snapshot),
       };
@@ -567,7 +557,7 @@ function deriveStationTransformerRows(
 
 function uniqueLvVoltages(transformers: readonly StationConfigTransformerRow[]): number[] {
   const values = transformers.map((transformer) => transformer.ulvKv).filter(Number.isFinite);
-  return values.length > 0 ? Array.from(new Set(values)).sort((a, b) => a - b) : [0.4];
+  return Array.from(new Set(values)).sort((a, b) => a - b);
 }
 
 const SUPPORTED_STATION_DEFAULT_CARDS = new Set<StationConfigCardId>([
@@ -865,7 +855,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     const bus = (snapshot?.buses ?? []).find(
       (candidate) => busRefs.has(candidate.ref_id) && powyzejPasmaNn(candidate.voltage_kv),
     );
-    return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? 15;
+    return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? null;
   }, [snapshot?.buses, station?.bus_refs, stationTransformers]);
   const stationPorts = useMemo(
     () => deriveStationPortRows(snapshot, station, stationSnVoltageKv, ders, logicalViews),

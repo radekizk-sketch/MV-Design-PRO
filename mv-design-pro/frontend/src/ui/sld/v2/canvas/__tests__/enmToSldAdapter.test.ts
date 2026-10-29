@@ -2094,7 +2094,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     expect(devices?.map((d) => d.kind)).toEqual(['DS', 'CT', 'CB', 'CABLE_HEAD']);
   });
 
-  it('mapuje switch_state.actual_state na uproszczony słownik closed/open/unknown (mirror cbState/dsState/esState)', () => {
+  it('mapuje switch_state.actual_state na uproszczony słownik closed/open/bad (mirror cbState/dsState/esState)', () => {
     const snap = makeStationOnlySnapshot('ST-1');
     const primaryDevices: BayPrimaryDevice[] = [
       makePrimaryDevice({
@@ -2124,7 +2124,9 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     const byRef = new Map(devices.map((d) => [d.deviceRef, d.switchState]));
     expect(byRef.get('ds-open')).toBe('open');
     expect(byRef.get('cb-closed')).toBe('closed');
-    expect(byRef.get('es-fault')).toBe('unknown');
+    // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: rekord „awaria" = położenie niewiarygodne
+    // (`bad`, własny kafel stanu), nie „nieznany" (`stanAparatowPola.ts::stanRekordu`).
+    expect(byRef.get('es-fault')).toBe('bad');
     expect(byRef.get('ct-no-state')).toBeUndefined();
   });
 
@@ -2609,7 +2611,7 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
     }
   });
 
-  it('aparat powiązany z gałęzią łączeniową: stan z `status` gałęzi; rekord sprzeczny → nieustalony', () => {
+  it('aparat powiązany z gałęzią łączeniową: stan z `status` gałęzi; rekord sprzeczny → nieustalony; awaria → bad', () => {
     const zPowiazaniem = (switchState: Record<string, unknown> | undefined) => {
       const snap = snapshotZAparatemPola(switchState);
       const aparaty = snap.bays[0].primary_devices ?? [];
@@ -2619,7 +2621,9 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
     expect(stanAparatu(zPowiazaniem(undefined))).toBe('closed');
     expect(stanAparatu(zPowiazaniem({ actual_state: 'zamkniety' }))).toBe('closed');
     expect(stanAparatu(zPowiazaniem({ actual_state: 'otwarty' }))).toBe('unknown');
-    expect(stanAparatu(zPowiazaniem({ actual_state: 'awaria' }))).toBe('unknown');
+    // Awaria zgłoszona rekordem ma pierwszeństwo przed `status` gałęzi (położenie niewiarygodne
+    // niezależnie od pozycji w modelu) — rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC.
+    expect(stanAparatu(zPowiazaniem({ actual_state: 'awaria' }))).toBe('bad');
   });
 });
 

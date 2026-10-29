@@ -157,7 +157,8 @@ def test_uzwojenie_vt_iloczyn(klasa, przeznaczenie, otwarty_trojkat):
 
 
 def test_uzwojenia_z11_1_z_rysunku() -> None:
-    """Z.11.1 s.91: SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3 — trzy uzwojenia."""
+    """Z.11.1 s.91: SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3 — trzy uzwojenia fazowe, bez otwartego
+    trójkąta (zweryfikowane na rysunku 2026-10-29; otwarty trójkąt — wyłącznie Z.17)."""
     uzwojenia = [
         UzwojeniePrzekladnikaNapieciowego(
             przekladnia="15/√3 / 0,1/√3", moc_va=10.0, klasa="0,2", przeznaczenie=("ROZLICZENIE",)
@@ -166,14 +167,13 @@ def test_uzwojenia_z11_1_z_rysunku() -> None:
             przekladnia="15/√3 / 0,1/√3", moc_va=7.5, klasa="0,2", przeznaczenie=("POMIAR",)
         ),
         UzwojeniePrzekladnikaNapieciowego(
-            przekladnia="15/√3 / 0,1/3",
+            przekladnia="15/√3 / 0,1/√3",
             moc_va=7.5,
             klasa="0,5/3P",
             przeznaczenie=("POMIAR", "ZABEZPIECZENIA"),
-            otwarty_trojkat=True,
         ),
     ]
-    assert [u.otwarty_trojkat for u in uzwojenia] == [False, False, True]
+    assert [u.otwarty_trojkat for u in uzwojenia] == [False, False, False]
 
 
 # --- typy katalogowe: lista jawna albo wyprowadzona z pól skalarnych ---------------------------

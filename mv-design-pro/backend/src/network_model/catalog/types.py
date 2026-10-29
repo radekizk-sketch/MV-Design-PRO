@@ -50,12 +50,18 @@ from network_model.catalog.wartosci_robocze import (
     KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
     pochodzenie_danej_karty,
 )
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    UKLADY_POLACZEN_BATERII,
+    sprzecznosc_parametrow_baterii,
+)
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
     wymagany_int,
     wymagany_str,
 )
+from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 # =============================================================================
@@ -3060,6 +3066,20 @@ class LoadType:
 # =============================================================================
 
 
+#: Pola typu baterii kondensatorów z karty UX-04/POLE-BKR-MODEL — te same nazwy niesie element
+#: ENM (`enm.models.ShuntCapacitor`, wartość projektanta) i `materialized_params` elementu
+#: (kopia typu przy przypisaniu). JEDNA lista dla `to_dict`, materializacji i rozstrzygnięcia.
+POLA_BATERII_KONDENSATOROW_TYPU: tuple[str, ...] = (
+    "uklad_polaczen",
+    "liczba_stopni",
+    "tolerancja_pojemnosci_min_proc",
+    "tolerancja_pojemnosci_max_proc",
+    "dlawik_ograniczajacy",
+    "dlawik_indukcyjnosc_mh",
+    "rezystory_rozladowcze_wewnetrzne",
+)
+
+
 @dataclass(frozen=True)
 class ShuntCapacitorType:
     """Immutable shunt-capacitor-bank type definition for catalog.
@@ -3076,6 +3096,16 @@ class ShuntCapacitorType:
         rated_kv: Rated voltage [kV].
         loss_kw: Optional active dielectric/resistor losses [kW] (None => lossless).
         manufacturer: Manufacturer/source (optional).
+        uklad_polaczen: Układ połączeń (``network_model.core.bateria_kondensatorow``).
+        liczba_stopni: Liczba jednakowych stopni baterii (≥ 1).
+        tolerancja_pojemnosci_min_proc / tolerancja_pojemnosci_max_proc: Odchyłka pojemności
+            od znamionowej [%] (ujemna dolna, dodatnia górna).
+        dlawik_ograniczajacy / dlawik_indukcyjnosc_mh: Dławik szeregowy ograniczający prąd
+            załączania (jest / nie ma; indukcyjność [mH]).
+        rezystory_rozladowcze_wewnetrzne: Jednostki z wewnętrznymi rezystorami rozładowczymi.
+
+    Pola karty UX-04/POLE-BKR-MODEL: ``None`` = karta typu ich nie podaje — obliczenie biegnie
+    z wartością roboczą rejestru (``catalog.wartosci_robocze``, zasada nr 4).
     """
 
     id: str
@@ -3084,6 +3114,13 @@ class ShuntCapacitorType:
     rated_kv: float = 0.0
     loss_kw: float | None = None
     manufacturer: str | None = None
+    uklad_polaczen: str | None = None
+    liczba_stopni: int | None = None
+    tolerancja_pojemnosci_min_proc: float | None = None
+    tolerancja_pojemnosci_max_proc: float | None = None
+    dlawik_ograniczajacy: bool | None = None
+    dlawik_indukcyjnosc_mh: float | None = None
+    rezystory_rozladowcze_wewnetrzne: bool | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog kompensatorów MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -3098,6 +3135,7 @@ class ShuntCapacitorType:
             "rated_kv": self.rated_kv,
             "loss_kw": self.loss_kw,
             "manufacturer": self.manufacturer,
+            **{pole: getattr(self, pole) for pole in POLA_BATERII_KONDENSATOROW_TYPU},
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3106,6 +3144,60 @@ class ShuntCapacitorType:
                 verification_note=self.verification_note,
             ),
         }
+
+    def __post_init__(self) -> None:
+        """Granice pól karty UX-04/POLE-BKR-MODEL — te same co element ENM
+        (``enm.models.ShuntCapacitor``), sprawdzane przy KAŻDEJ budowie rekordu (konstruktor
+        i ``from_dict``), reguły nazwane w ``niezmienniki_katalogu`` (KAT-T-051…055)."""
+        opis = opis_rodzaju_i_nazwy("Typ baterii kondensatorów", self.name)
+        if self.uklad_polaczen is not None and self.uklad_polaczen not in UKLADY_POLACZEN_BATERII:
+            odmowa_twarda(
+                "KAT-T-051",
+                f"{opis}: nieznany układ połączeń {self.uklad_polaczen!r}. Dozwolone: "
+                f"{', '.join(NAZWY_UKLADOW_POLACZEN_BATERII_PL[u] for u in UKLADY_POLACZEN_BATERII)}.",
+            )
+        if self.liczba_stopni is not None and (
+            isinstance(self.liczba_stopni, bool)
+            or not isinstance(self.liczba_stopni, int)
+            or self.liczba_stopni < 1
+        ):
+            odmowa_twarda(
+                "KAT-T-052",
+                f"{opis}: liczba stopni musi być liczbą "
+                f"całkowitą ≥ 1 (podano {self.liczba_stopni!r}).",
+            )
+        for wartosc, nazwa_pola in (
+            (self.dlawik_ograniczajacy, "dławik ograniczający"),
+            (self.rezystory_rozladowcze_wewnetrzne, "wewnętrzne rezystory rozładowcze"),
+        ):
+            if wartosc is not None and not isinstance(wartosc, bool):
+                odmowa_twarda(
+                    "KAT-T-055",
+                    f"{opis}: {nazwa_pola} — wyłącznie tak/nie albo brak danej "
+                    f"(podano {wartosc!r}).",
+                )
+        dolna = self.tolerancja_pojemnosci_min_proc
+        gorna = self.tolerancja_pojemnosci_max_proc
+        if (dolna is not None and dolna > 0.0) or (gorna is not None and gorna < 0.0):
+            odmowa_twarda(
+                "KAT-T-053",
+                f"{opis}: przedział tolerancji pojemności "
+                f"[{dolna}; {gorna}] % nie zawiera wartości znamionowej (dolna ≤ 0 ≤ górna).",
+            )
+        if self.dlawik_indukcyjnosc_mh is not None and self.dlawik_indukcyjnosc_mh <= 0.0:
+            odmowa_twarda(
+                "KAT-T-054",
+                f"{opis}: indukcyjność dławika musi być "
+                f"dodatnia (podano {self.dlawik_indukcyjnosc_mh} mH).",
+            )
+        sprzecznosc = sprzecznosc_parametrow_baterii(
+            liczba_stopni=self.liczba_stopni,
+            stopnie_zalaczone=None,
+            dlawik_ograniczajacy=self.dlawik_ograniczajacy,
+            dlawik_indukcyjnosc_mh=self.dlawik_indukcyjnosc_mh,
+        )
+        if sprzecznosc is not None:
+            odmowa_twarda("KAT-T-054", f"{opis}: {sprzecznosc}.")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ShuntCapacitorType":
@@ -3116,6 +3208,17 @@ class ShuntCapacitorType:
             rated_kv=wymagany_float(data, "rated_kv", context="ShuntCapacitorType"),
             loss_kw=(float(data["loss_kw"]) if data.get("loss_kw") is not None else None),
             manufacturer=data.get("manufacturer"),
+            uklad_polaczen=data.get("uklad_polaczen"),
+            liczba_stopni=data.get("liczba_stopni"),
+            tolerancja_pojemnosci_min_proc=_opcjonalny_float(
+                data, "tolerancja_pojemnosci_min_proc"
+            ),
+            tolerancja_pojemnosci_max_proc=_opcjonalny_float(
+                data, "tolerancja_pojemnosci_max_proc"
+            ),
+            dlawik_ograniczajacy=data.get("dlawik_ograniczajacy"),
+            dlawik_indukcyjnosc_mh=_opcjonalny_float(data, "dlawik_indukcyjnosc_mh"),
+            rezystory_rozladowcze_wewnetrzne=data.get("rezystory_rozladowcze_wewnetrzne"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog kompensatorów MV-DESIGN-PRO",
@@ -5018,16 +5121,29 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
         namespace=CatalogNamespace.KOMPENSATOR_SN.value,
+        # Karta UX-04/POLE-BKR-MODEL: parametry baterii typu (układ połączeń, stopnie,
+        # tolerancja pojemności, dławik, rezystory rozładowcze) — addytywne, kopiowane do
+        # `materialized_params` elementu WYŁĄCZNIE, gdy pozycja je niesie (brak = wartość
+        # robocza rejestru `wartosci_robocze`, zasada nr 4).
         solver_fields=(
             "rated_mvar",
             "rated_kv",
             "loss_kw",
+            *POLA_BATERII_KONDENSATOROW_TYPU,
         ),
         ui_fields=(
             ("rated_mvar", "Qn [Mvar]", "Mvar"),
             ("rated_kv", "Un [kV]", "kV"),
             ("loss_kw", "Straty [kW]", "kW"),
+            ("uklad_polaczen", "Układ połączeń", ""),
+            ("liczba_stopni", "Liczba stopni", ""),
+            ("tolerancja_pojemnosci_min_proc", "Tolerancja pojemności (dolna) [%]", "%"),
+            ("tolerancja_pojemnosci_max_proc", "Tolerancja pojemności (górna) [%]", "%"),
+            ("dlawik_ograniczajacy", "Dławik ograniczający prąd załączania", ""),
+            ("dlawik_indukcyjnosc_mh", "Indukcyjność dławika [mH]", "mH"),
+            ("rezystory_rozladowcze_wewnetrzne", "Wewnętrzne rezystory rozładowcze", ""),
         ),
+        pola_opcjonalne=POLA_BATERII_KONDENSATOROW_TYPU,
     ),
     CatalogNamespace.GENERATOR_SN.value: MaterializationContract(
         namespace=CatalogNamespace.GENERATOR_SN.value,

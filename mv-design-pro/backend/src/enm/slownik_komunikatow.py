@@ -211,6 +211,9 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_object_state:stan_obiektu": "Stan obiektu",
     "set_object_state:device_ref": "Aparat pola",
     "set_object_state:switch_ref": "Łącznik",
+    "set_bay_apparatus_position:bay_ref": "Pole rozdzielnicy",
+    "set_bay_apparatus_position:device_ref": "Łącznik pola",
+    "set_bay_apparatus_position:actual_state": "Położenie łącznika",
     "assign_catalog_to_element:stan_obiektu": "Stan obiektu łącznika",
     "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
     "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie

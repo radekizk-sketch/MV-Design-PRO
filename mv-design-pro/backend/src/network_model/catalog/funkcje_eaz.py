@@ -113,6 +113,25 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "pracy punktu neutralnego); numer IEEE C37.2 nie jest znormalizowany",
     ),
     FunkcjaEaz(
+        "Go>",
+        "Go>",
+        None,
+        "ziemnozwarciowe konduktancyjne",
+        "ZABEZPIECZENIE",
+        f"{_IR} II.4.5.4.1.4 pkt 3–4 (współczynniki czułości zabezpieczeń konduktancyjnych), "
+        "II.4.5.4.2.1 pkt 2 (kryterium wg sposobu pracy punktu neutralnego); numer IEEE C37.2 "
+        "nie jest znormalizowany",
+    ),
+    FunkcjaEaz(
+        "32",
+        "P>",
+        "32",
+        "kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+        "ZABEZPIECZENIE",
+        f"{_IR} II.4.5.5.4 (o wyposażeniu linii w zabezpieczenie od skutków mocy zwrotnej "
+        "decyduje operator)",
+    ),
+    FunkcjaEaz(
         "27",
         "U<",
         "27",
@@ -217,7 +236,8 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         None,
         "samoczynne częstotliwościowe odciążenie",
         "AUTOMATYKA",
-        f"{_Z1}, Z.10 s.89 (SCO1/SCO2), Z.17 s.97; {_IR} II.4.5.4.2.1 pkt 6 — w liniach "
+        f"{_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91 (SCO1/SCO2), Z.17 s.97; "
+        f"{_IR} II.4.5.4.2.1 pkt 6 — w liniach "
         "z jednostkami wytwórczymi SCO nie należy uruchamiać (II.4.5.4.7.1 pkt 1)",
     ),
     FunkcjaEaz(
@@ -226,7 +246,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         None,
         "samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
         "AUTOMATYKA",
-        f"{_Z1}, Z.10 s.89 (SCO-SPZ), Z.17 s.97",
+        f"{_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91 (wejście okrężne SCO/SPZ), Z.17 s.97",
     ),
     FunkcjaEaz(
         "OWG",
@@ -242,8 +262,8 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         None,
         "blokada załączenia przy napięciu w linii (napięcie zwrotne)",
         "BLOKADA",
-        f"{_IR} II.4.5.4.2.2 pkt 7, II.4.5.4.2.3 pkt 6; {_KS} (>NZ/blNZ — gdy zabezpieczenie "
-        "nie realizuje kontroli synchronizmu)",
+        f"{_Z1}, §26.9.3, §26.10.3; {_IR} II.4.5.4.2.2 pkt 7, II.4.5.4.2.3 pkt 6; {_KS} "
+        "(>NZ/blNZ — gdy zabezpieczenie nie realizuje kontroli synchronizmu)",
     ),
     FunkcjaEaz(
         "25",
@@ -294,7 +314,9 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         f"{_Z1}, Z.13 s.93, Z.14 s.94",
     ),
     FunkcjaEaz(
-        "Ir>",
+        # Kod = numer IEEE C37.2 (jak 51, 50, 67N): ten sam kod nosi zestaw funkcji pola baterii
+        # kondensatorów (`bay_templates.FUNKCJE_EAZ_ROLI_BEZ_SZABLONU["BKR"]`).
+        "60N",
         "Ir>",
         "60N",
         "od niezrównoważenia baterii kondensatorów (prąd między punktami gwiazd)",

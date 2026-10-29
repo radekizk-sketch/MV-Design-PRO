@@ -251,8 +251,15 @@ BACKEND = ROOT / "backend"
 # 169/22) i na drzewie scalonym (167/21); roznica zbiorow (plik, komunikat): scalone minus
 # program = 0, scalone minus UI/UX = 0, program minus scalone = dokladnie 2 bledy `assignment`
 # w `enm/catalog_completion.py`, zdjete przez karte W5-B (wyzej). Zero nowych.
-BASELINE_ERRORS = 167
-BASELINE_FILES = 21
+# Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z karta UX-04/POLE-BKR-MODEL, 2026-10-29:
+# 167/21 -> 166/20. POMIAR `mypy_ratchet_guard`: drzewo bazowe karty (e4b778d35, pierwszy rodzic
+# scalenia) 171/22 przy progu 167/21 — karta wniosla 4 bledy i 1 plik: `enm/stan_obiektu_pola.py`
+# 3 (arg-type/list-item `str | None`), `enm/pole_katalogowe.py` 1 (assignment). Drzewo scalone po
+# naprawie 166/20: zdjete te 4 (cel operacji zawezony po rozstrzygnieciu pole/lacznik; wynik
+# wyszukania pola katalogowego w osobnej zmiennej) oraz 1 z `api/catalog.py` (union-attr: zestaw
+# EAZ szablonu z rejestru bez `None`), oba pliki karty bez bledow. Zero nowych.
+BASELINE_ERRORS = 166
+BASELINE_FILES = 20
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

@@ -106,6 +106,7 @@
               "wezel": "w1"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -135,6 +136,7 @@
               "wezel": "w2"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -164,6 +166,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -189,6 +192,7 @@
               "wezel": "w3"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -199,7 +203,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
           "earthing_role": null,
           "is_controllable": true,
@@ -218,6 +222,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -228,7 +233,7 @@
         },
         {
           "catalog_ref": null,
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
@@ -243,6 +248,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -268,6 +274,7 @@
               "wezel": "w4"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -297,6 +304,7 @@
               "wezel": "kabel"
             }
           ],
+          "przekladnia": null,
           "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
@@ -665,7 +673,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "ca810e639a670e18331583490cc026940bf1cd9ccdb42e278b1443588cd76bda",
+    "hash_sha256": "fab555da048718025d2b7105595a0d2a6b027a87d1a0915f73096d9b14d3b37a",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

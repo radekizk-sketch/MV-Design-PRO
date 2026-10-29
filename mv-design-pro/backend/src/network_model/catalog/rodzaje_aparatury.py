@@ -131,6 +131,23 @@ RODZAJ_PRZEKLADNIKA_FERRANTIEGO = "CORE_BALANCE_CT"
 #: odgałęzienie jednoportowe bez obciążenia toru.
 RODZAJ_WSKAZNIKA_NAPIECIA = "VOLTAGE_INDICATOR"
 
+#: Aparaty pola baterii kondensatorów (BKR, karta UX-04/POLE-BKR-MODEL; ENEA Operator, Stacje
+#: 110 kV, Zeszyt 1, §17 s. 32 i Zał. 16): bateria w układzie podwójnej gwiazdy z izolowanymi
+#: punktami gwiazd ma przekładnik prądowy w połączeniu międzygwiazdowym (zabezpieczenie od
+#: uszkodzeń kondensatorów Ir>) i dwa przekładniki napięciowe międzyfazowe (L1-L2, L2-L3) do
+#: rozładowania baterii i do zabezpieczenia nadnapięciowego U>. Oba rodzaje są aparatami pola
+#: (`BayPrimaryDevice.kind`) z portami w JEDNEJ liście portów aparatów pola
+#: (``PORTY_APARATU_POLA``) — bez osobnej listy portów pola BKR.
+#:
+#: Przekładnik prądowy niezrównoważenia: obejmuje połączenie między punktami gwiazd baterii
+#: (prąd niezrównoważenia przy uszkodzeniu jednostek kondensatorowych), nie przerywa toru —
+#: jedyny port to obwód, który przekładnik OBEJMUJE (``PORT_OBWODU``, jak przekładnik
+#: Ferrantiego).
+RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA = "UNBALANCE_CT"
+#: Przekładnik napięciowy międzyfazowy (nieuziemiony, PN-EN 61869-3 — zaciski pierwotne A i B):
+#: rozładowanie baterii po wyłączeniu i pomiar napięcia do zabezpieczenia U>.
+RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO = "PHASE_TO_PHASE_VT"
+
 #: Port aparatu w torze od strony szyny (wejście) i od strony odpływu (wyjście). Przekładnik
 #: prądowy Z.10: P1 = ``we`` (od wyłącznika), P2 = ``wy`` (od kabla).
 PORT_WEJSCIA = "we"
@@ -138,8 +155,14 @@ PORT_WYJSCIA = "wy"
 #: Jedyny port aparatu odgałęzieniowego (uziemnik, przekładnik napięciowy, ogranicznik
 #: przepięć, wskaźnik napięcia) — przyłączenie do węzła toru.
 PORT_PRZYLACZA = "przylacze"
-#: Jedyny port przekładnika Ferrantiego — węzeł (kabel), który przekładnik OBEJMUJE.
+#: Jedyny port przekładnika Ferrantiego i przekładnika niezrównoważenia baterii — obwód
+#: (kabel, połączenie międzygwiazdowe), który przekładnik OBEJMUJE.
 PORT_OBWODU = "obwod"
+#: Zaciski pierwotne przekładnika napięciowego nieuziemionego wg PN-EN 61869-3 (oznaczenie
+#: A i B). W schemacie jednokreskowym oba przyłączają się do TEGO SAMEGO węzła toru (dwie fazy
+#: jednego węzła) — przekładnik międzyfazowy jest odgałęzieniem, nie aparatem w torze.
+PORT_FAZY_A = "A"
+PORT_FAZY_B = "B"
 
 #: Porty aparatu pola wg rodzaju — kolejność stała (wejście, wyjście). Rodzaj bez wpisu
 #: (wytwórca, falownik, bateria — nie są aparatami pola) nie ma portów pola.
@@ -157,7 +180,20 @@ PORTY_APARATU_POLA: dict[str, tuple[str, ...]] = {
     "SURGE_ARRESTER": (PORT_PRZYLACZA,),
     RODZAJ_WSKAZNIKA_NAPIECIA: (PORT_PRZYLACZA,),
     RODZAJ_PRZEKLADNIKA_FERRANTIEGO: (PORT_OBWODU,),
+    RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA: (PORT_OBWODU,),
+    RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO: (PORT_FAZY_A, PORT_FAZY_B),
 }
+
+#: Rodzaje aparatów pola BKR (podzbiór kluczy ``PORTY_APARATU_POLA``) — czytają reguły pola
+#: baterii (``enm.bateria_kondensatorow``) i lustro frontu (``RODZAJE_APARATOW_POLA_BKR``).
+RODZAJE_APARATOW_POLA_BKR: frozenset[str] = frozenset(
+    {RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA, RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO}
+)
+
+#: Liczba przekładników napięciowych międzyfazowych rozładowujących baterię (Zeszyt 1 §17
+#: s. 32: „2 PN międzyfazowe do rozładowania"; Zał. 16: L1-L2 i L2-L3 — układ V obejmuje
+#: wszystkie trzy fazy baterii).
+LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII = 2
 
 #: Port, który łącznik trójpołożeniowy uziemia w położeniu UZIEMIONY: strona odpływowa
 #: (tor w kierunku wyłącznika). Kabel uziemia się przez zamknięty wyłącznik (§13, druk s.24) —
@@ -220,8 +256,9 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
     Kolejność listy jest kolejnością fizyczną od szyny. Aparat dwuportowy (``we``/``wy``) leży
     w torze: ``we`` na bieżącym węźle, ``wy`` na nowym (``w1``, ``w2``… — ostatni aparat toru
     kończy tor węzłem ``kabel``/``transformator``/``odplyw``). Aparat odgałęzieniowy
-    (``przylacze``) i przekładnik Ferrantiego (``obwod``) przyłączają się do BIEŻĄCEGO węzła —
-    bez przerwy toru. Rodzaj bez portów pola (wytwórca, falownik, bateria) zostaje bez portów.
+    (``przylacze``), przekładnik Ferrantiego i przekładnik niezrównoważenia (``obwod``) oraz
+    przekładnik napięciowy międzyfazowy (oba zaciski ``A`` i ``B`` — dwie fazy jednego węzła)
+    przyłączają się do BIEŻĄCEGO węzła — bez przerwy toru. Rodzaj bez portów pola (wytwórca, falownik, bateria) zostaje bez portów.
 
     Aparat z kluczem ``KLUCZ_ODGALEZIENIA`` leży w ODGAŁĘZIENIU toru: odgałęzienie zaczyna się
     na węźle toru głównego bieżącym przy jego pierwszym aparacie, jego aparaty dwuportowe
@@ -263,7 +300,7 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
                 ]
                 wezly_odgalezien[identyfikator] = nastepny
             elif komplet:
-                aparat["ports"] = [{"port_id": komplet[0], "wezel": biezacy}]
+                aparat["ports"] = [{"port_id": port, "wezel": biezacy} for port in komplet]
             continue
         if komplet == (PORT_WEJSCIA, PORT_WYJSCIA):
             if i == ostatni_toru:
@@ -277,7 +314,7 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
             ]
             wezel = nastepny
         elif komplet:
-            aparat["ports"] = [{"port_id": komplet[0], "wezel": wezel}]
+            aparat["ports"] = [{"port_id": port, "wezel": wezel} for port in komplet]
     return kopie
 
 

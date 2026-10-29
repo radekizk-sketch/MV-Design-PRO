@@ -589,7 +589,7 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
         {...daneGlifuSymbolu(symbol)}
-        ramkaScada={palette.ramkaScada}
+        kafleStanu={palette.state}
       />
     </g>
   );
@@ -3163,6 +3163,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // wprost drawer=1). Capture przenosi się do handlePointerMove — startuje
     // dopiero z FAKTYCZNYM ruchem pan/pinch (klik bez ruchu nie łapie
     // capture, cel klika zostaje na elemencie).
+    // Prawy przycisk otwiera menu kontekstowe, nie przeciąganie: menu renderuje się pod
+    // kursorem, więc `pointerup` trafia w menu, a nie w <svg> (patrz `zwolnijWskaznik`).
+    if (event.button === 2) return;
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const active = Array.from(pointers.current.values());
     if (active.length === 2) {
@@ -3173,8 +3176,39 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
   }, []);
 
+  /** Zwolnienie wskaźnika przeciągania — JEDNO źródło dla wszystkich dróg końca gestu:
+   *  `pointerup`/`pointercancel` na kanwie, te same zdarzenia na oknie (gdy `up` trafia poza
+   *  <svg> — capture startuje dopiero z ruchem, patrz `handlePointerDown`) i ruch bez
+   *  wciśniętego przycisku (gest już się skończył, a jego `up` nie dotarł).
+   *
+   *  Defekt naprawiony u źródła (karta UX-04/POLE-LINIOWE-WZORZEC, pomiar e2e 2026-10-29):
+   *  prawy klik wpisywał wskaźnik do mapy, menu kontekstowe otwierało się pod kursorem
+   *  i przejmowało `pointerup`, więc wskaźnik zostawał „wciśnięty" — każdy późniejszy ruch
+   *  myszy nad kanwą BEZ przycisku przesuwał widok (`pan`), aż do następnego kliku w kanwę.
+   *  Projektant po wyborze pozycji z menu aparatu tracił kadr przy pierwszym ruchu myszy. */
+  const zwolnijWskaznik = useCallback((pointerId: number) => {
+    if (!pointers.current.delete(pointerId)) return;
+    pinchDistance.current = null;
+    const remaining = Array.from(pointers.current.values());
+    panAnchor.current = remaining.length === 1 ? remaining[0] : null;
+  }, []);
+
+  useEffect(() => {
+    const naKoniec = (event: PointerEvent) => zwolnijWskaznik(event.pointerId);
+    window.addEventListener('pointerup', naKoniec, true);
+    window.addEventListener('pointercancel', naKoniec, true);
+    return () => {
+      window.removeEventListener('pointerup', naKoniec, true);
+      window.removeEventListener('pointercancel', naKoniec, true);
+    };
+  }, [zwolnijWskaznik]);
+
   const handlePointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     if (!pointers.current.has(event.pointerId)) return;
+    if (event.buttons === 0) {
+      zwolnijWskaznik(event.pointerId);
+      return;
+    }
     // Capture DOPIERO przy ruchu (pan/pinch w toku) — patrz komentarz w
     // `handlePointerDown`. Optional chaining: jsdom (testy) nie implementuje
     // Pointer Capture API; `hasPointerCapture` chroni przed zbędnym wołaniem.
@@ -3194,14 +3228,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       dispatch({ type: 'pan', delta });
       panAnchor.current = active[0];
     }
-  }, []);
+  }, [zwolnijWskaznik]);
 
-  const handlePointerUp = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
-    pointers.current.delete(event.pointerId);
-    pinchDistance.current = null;
-    const remaining = Array.from(pointers.current.values());
-    panAnchor.current = remaining.length === 1 ? remaining[0] : null;
-  }, []);
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => zwolnijWskaznik(event.pointerId),
+    [zwolnijWskaznik],
+  );
 
   // Wheel: listener NATYWNY (nie JSX `onWheel`) z `passive: false` — jak w
   // `SldCanvasV2.handleWheel` (v2/canvas/SldCanvasV2.tsx) — React dołącza

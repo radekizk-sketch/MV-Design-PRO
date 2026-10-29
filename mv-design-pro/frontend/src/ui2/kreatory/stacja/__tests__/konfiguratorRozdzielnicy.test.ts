@@ -59,6 +59,7 @@ const FUNKCJE_POLA: readonly BayKind[] = [
   'kablowe',
   'napowietrzne',
   'nop_lacznikowe',
+  'bateria_kondensatorow',
 ];
 
 const RODZINA_MODULOWA: SwitchgearFamily = {
@@ -174,11 +175,20 @@ describe('dobór rodziny do napięcia szyny — iloczyn cech (lustro reguły kat
     ['sieciowa: szyna pod klasą, ale spoza listy sieci', [15, 20], [17.5, 24], 12, false],
     ['sieciowa: szyna równa najwyższej klasie Um', [15, 20], [17.5, 24], 24, false],
     ['sieciowa: szyna ponad wszystkim', [15, 20], [17.5, 24], 30, false],
-    // rodzina KLASOWA — wystarczy klasa Um >= napięcie szyny
+    // rodzina KLASOWA — wystarczy klasa U_m >= U_s sieci szyny (IEC 60038 tab. 3), te same
+    // wiersze co `test_switchgear_napiecia_rodzin.py` backendu (korekta 2026-10-28: dawny
+    // wiersz „szyna 24 kV równa klasie 24 kV → przechodzi” przypinał porównanie U_m z Uₙ)
     ['klasowa: szyna pod klasą', [], [12, 24], 6, true],
     ['klasowa: szyna między klasami', [], [12, 24], 17.5, true],
-    ['klasowa: szyna równa klasie', [], [12, 24], 24, true],
+    ['klasowa: szyna równa klasie dolnej', [], [12, 24], 12, true],
+    ['klasowa: U_s równe klasie górnej (sieć 20 kV)', [], [12, 24], 20, true],
+    ['klasowa: Uₙ równe klasie górnej, U_s ponad nią', [], [12, 24], 24, false],
     ['klasowa: szyna ponad najwyższą klasą', [], [12, 24], 25, false],
+    ['klasowa jedna: szyna poniżej', [], [24], 15, true],
+    ['klasowa jedna: U_s równe U_m', [], [24], 20, true],
+    ['klasowa jedna: Uₙ równe U_m', [], [24], 24, false],
+    ['klasowa jedna: klasa 17,5 kV na sieci 15 kV', [], [17.5], 15, true],
+    ['klasowa jedna: klasa 15 kV na sieci 15 kV (U_s = 17,5 kV)', [], [15], 15, false],
     // rodzina BEZ DANYCH — brak deklaracji to nie jest zgoda
     ['bez danych: szyna typowa', [], [], 15, false],
     // szyna bez napięcia — nie ma czego porównać
@@ -376,13 +386,21 @@ describe('odwzorowanie funkcji pola na rolę operacji (dwustronne)', () => {
     expect(ROLA_Z_FUNKCJI_POLA.napowietrzne).toBeNull();
     expect(ROLA_Z_FUNKCJI_POLA.pomiarowe).toBeNull();
     expect(ROLA_Z_FUNKCJI_POLA.rezerwowe).toBeNull();
+    // Pole baterii kondensatorów powstaje operacją pola SN rozdzielni GPZ (rola `BKR`),
+    // nie wpisem pól stacji SN/nN — jawny brak roli stacji (karta UX-04/POLE-BKR-MODEL).
+    expect(ROLA_Z_FUNKCJI_POLA.bateria_kondensatorow).toBeNull();
   });
 });
 
 describe('słowniki nazw PL (komplet kontraktu)', () => {
   it('nazywa KAŻDY rodzaj aparatu kompozycji — zero kodów backendu na ekranie', () => {
     const rodzaje = Object.keys(NAZWY_APARATU_PL);
-    expect(rodzaje).toHaveLength(18);
+    // Komplet względem `ApparatusKind` backendu przypina dwustronnie
+    // `backend/tests/ci/test_parytet_rodzajow_aparatow_pola_bkr.py`. 23 = 18 sprzed kart pola
+    // + 2 aparaty pola baterii kondensatorów (UX-04/POLE-BKR-MODEL) + 3 aparaty pola liniowego
+    // GPZ (UX-04/POLE-LINIOWE-WZORZEC: wskaźnik napięcia, łącznik trójpołożeniowy, przekładnik
+    // Ferrantiego); pomiar 2026-10-29: `len(get_args(device_instance.ApparatusKind))` = 23.
+    expect(rodzaje).toHaveLength(23);
     for (const nazwa of Object.values(NAZWY_APARATU_PL)) {
       expect(nazwa).not.toMatch(/[a-z]+_[a-z]+/);
       expect(nazwa.trim()).not.toBe('');

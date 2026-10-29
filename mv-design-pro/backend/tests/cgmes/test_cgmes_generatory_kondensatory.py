@@ -347,14 +347,22 @@ class TestPlikObcy:
         assert wynik.enm is not None and wynik.enm.shunt_capacitors == []
         assert any("wyłącznie baterię kondensatorów" in o for o in wynik.warnings)
 
-    def test_zalaczenie_czesciowe_pominiete(self) -> None:
+    def test_zalaczenie_czesciowe_to_stopnie_baterii(self) -> None:
+        """Karta UX-04/POLE-BKR-MODEL: model baterii wyraża stopnie — plik z 1 z 3 sekcji
+        załączonych wraca jako bateria trzystopniowa z jednym stopniem załączonym (dawniej
+        pominięta, bo model stałej baterii nie wyrażał załączenia częściowego)."""
         eq, tp = _kondensator_eq()
         eq = eq.replace(
             "<cim:ShuntCompensator.maximumSections>1<", "<cim:ShuntCompensator.maximumSections>3<"
         )
         wynik = import_from_eq_tp(eq.encode("utf-8"), tp)
-        assert wynik.enm is not None and wynik.enm.shunt_capacitors == []
-        assert any("załączenia częściowego" in o for o in wynik.warnings)
+        assert wynik.enm is not None and len(wynik.enm.shunt_capacitors) == 1
+        bateria = wynik.enm.shunt_capacitors[0]
+        assert bateria.liczba_stopni == 3
+        assert bateria.stopnie_zalaczone == [True, False, False]
+        assert bateria.status == "closed"
+        assert bateria.rated_mvar == pytest.approx(1.8, rel=1e-9)
+        assert any("przyjęto pierwsze" in o for o in wynik.warnings)
 
     def test_wiele_sekcji_zalaczonych_moc_calej_baterii(self) -> None:
         eq, tp = _kondensator_eq()
@@ -373,7 +381,10 @@ class TestPlikObcy:
         assert wynik.enm is not None and wynik.enm.shunt_capacitors == []
         assert any("brak nomU" in o for o in wynik.warnings)
 
-    def test_konduktancja_nazwana(self) -> None:
+    def test_konduktancja_wraca_jako_straty(self) -> None:
+        """Karta UX-04/POLE-BKR-MODEL: straty baterii (``meta.loss_kw``) wchodzą do rozpływu
+        jako konduktancja, więc G pliku wraca jako straty P = G·N·U_n² (dawniej pomijana
+        z ostrzeżeniem, bo model baterii nie niósł strat do obliczeń)."""
         eq, tp = _kondensator_eq()
         eq = eq.replace(
             "<cim:LinearShuntCompensator.gPerSection>0<",
@@ -381,7 +392,85 @@ class TestPlikObcy:
         )
         wynik = import_from_eq_tp(eq.encode("utf-8"), tp)
         assert wynik.enm is not None and len(wynik.enm.shunt_capacitors) == 1
-        assert any("gPerSection" in o for o in wynik.warnings)
+        assert wynik.enm.shunt_capacitors[0].meta["loss_kw"] == pytest.approx(
+            0.0001 * 15.0**2 * 1000.0, rel=1e-12
+        )
+        assert not any("gPerSection" in o for o in wynik.warnings)
+
+    def test_konduktancja_ujemna_pominieta_i_nazwana(self) -> None:
+        eq, tp = _kondensator_eq()
+        eq = eq.replace(
+            "<cim:LinearShuntCompensator.gPerSection>0<",
+            "<cim:LinearShuntCompensator.gPerSection>-0.0001<",
+        )
+        wynik = import_from_eq_tp(eq.encode("utf-8"), tp)
+        assert wynik.enm is not None and wynik.enm.shunt_capacitors == []
+        assert any("ujemna" in o for o in wynik.warnings)
+
+
+#: Iloczyn cech zapisu liniowego (karta UX-04/POLE-BKR-MODEL): liczba stopni {1, 2, 3} ×
+#: stan {wszystkie, jeden wyłączony, bateria wyłączona} × straty {brak, są} × dławik {brak, jest}.
+#: Bateria jednostopniowa z wyłączonym stopniem to bateria wyłączona — kombinacja spoza iloczynu.
+_ILOCZYN_SEKCJI = [
+    (n, stan, straty, dlawik)
+    for n, stan, straty, dlawik in itertools.product(
+        (1, 2, 3), ("wszystkie", "jeden_wylaczony", "wylaczona"), (None, 2.5), (None, 0.4)
+    )
+    if not (n == 1 and stan == "jeden_wylaczony")
+]
+
+
+@pytest.mark.parametrize(("n", "stan", "straty", "dlawik_mh"), _ILOCZYN_SEKCJI)
+def test_sekcje_baterii_eksport_i_tor_obcy(
+    n: int, stan: str, straty: float | None, dlawik_mh: float | None
+) -> None:
+    """Eksport zapisuje stopnie jako sekcje, a admitancja stanu zapisanego w pliku (sekcje ×
+    admitancja sekcji) jest równa admitancji, którą liczy rozpływ; tor obcy odtwarza liczbę
+    stopni, stan i straty (dławika zapis liniowy CGMES nie niesie)."""
+    from enm.bateria_kondensatorow import admitancja_baterii
+
+    stopnie = [True] * (n - 1) + [False] if stan == "jeden_wylaczony" else None
+    bateria = ShuntCapacitor(
+        ref_id="c1",
+        name="Bateria",
+        bus_ref="b_sn",
+        rated_mvar=1.2,
+        rated_kv=15.0,
+        status="open" if stan == "wylaczona" else "closed",
+        liczba_stopni=n,
+        stopnie_zalaczone=stopnie,
+        dlawik_ograniczajacy=dlawik_mh is not None,
+        dlawik_indukcyjnosc_mh=dlawik_mh,
+        meta={"loss_kw": straty} if straty is not None else {},
+    )
+    eq, tp = _eq_tp(_siec(kondensatory=[bateria]))
+    oczekiwane_sekcje = 0 if stan == "wylaczona" else (n - 1 if stopnie else n)
+    assert f"<cim:ShuntCompensator.maximumSections>{n}<" in eq
+    assert f"<cim:ShuntCompensator.sections>{oczekiwane_sekcje}<" in eq
+    if oczekiwane_sekcje:
+        b_sek = float(eq.split("<cim:LinearShuntCompensator.bPerSection>")[1].split("<")[0])
+        g_sek = float(eq.split("<cim:LinearShuntCompensator.gPerSection>")[1].split("<")[0])
+        y_rozplywu = admitancja_baterii(
+            bateria.model_dump(mode="json"),
+            napiecie_bazy_kv=15.0,
+            moc_bazy_mva=1.0,
+            czestotliwosc_hz=50.0,
+        ).y_pu
+        # Baza 1 MVA przy U_b = U_n: y[p.u.] = y[S]·U_n²/S_b — porównanie w siemensach.
+        assert complex(g_sek, b_sek) * oczekiwane_sekcje * 15.0**2 == pytest.approx(
+            y_rozplywu, rel=1e-9
+        )
+    wynik = import_from_eq_tp(eq.encode("utf-8"), tp)
+    assert wynik.enm is not None and len(wynik.enm.shunt_capacitors) == 1
+    po = wynik.enm.shunt_capacitors[0]
+    assert po.liczba_stopni == n
+    assert po.status == bateria.status
+    assert po.stopnie_zalaczone == stopnie
+    if dlawik_mh is None:
+        assert po.rated_mvar == pytest.approx(1.2, rel=1e-9)
+        assert (po.meta.get("loss_kw") is None) == (straty is None)
+        if straty is not None:
+            assert po.meta["loss_kw"] == pytest.approx(straty, rel=1e-9)
 
 
 # ---------------------------------------------------------------------------

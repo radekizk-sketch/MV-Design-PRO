@@ -13,7 +13,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Bay, DomainOpResponseV1, EnergyNetworkModel } from '../../../types/enm';
+import type { Bay, DanaPrzyjetaWyposazenia, DomainOpResponseV1, EnergyNetworkModel } from '../../../types/enm';
 import { pole } from '../../../test/pola';
 
 const katalogApi = vi.hoisted(() => ({
@@ -25,7 +25,9 @@ const katalogApi = vi.hoisted(() => ({
   fetchSzablonyPolaKanoniczne: vi.fn(),
 }));
 
-vi.mock('../../catalog/api', () => ({
+vi.mock('../../catalog/api', async (oryginal) => ({
+  // Stałe słowników (nazwy statusu weryfikacji) z modułu rzeczywistego; pobieranie — atrapy.
+  ...(await oryginal<typeof import('../../catalog/api')>()),
   ...katalogApi,
   getCatalogErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }));
@@ -91,13 +93,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderuj(bay: Bay, wykonaj: ReturnType<typeof vi.fn>, opcje: { caseId?: string | null; blad?: string } = {}) {
+function renderuj(
+  bay: Bay,
+  wykonaj: ReturnType<typeof vi.fn>,
+  opcje: { caseId?: string | null; blad?: string; danePrzyjete?: readonly DanaPrzyjetaWyposazenia[] } = {},
+) {
   render(
     <EdytorWyposazeniaPola
       bay={bay}
       snapshot={MIGAWKA}
       stanDanych="BRAK_DANYCH"
-      danePrzyjete={[]}
+      danePrzyjete={opcje.danePrzyjete ?? []}
       activeCaseId={opcje.caseId === undefined ? 'case-1' : opcje.caseId}
       executeDomainOperation={wykonaj as never}
       bladStore={() => opcje.blad ?? null}
@@ -159,6 +165,26 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
     expect(screen.queryByTestId('wyposazenie-pola-wynik-dane-przyjete') !== null).toBe(tryb === 'szablon');
     // Po zapisie edytor wraca do karty — formularz zamknięty.
     expect(screen.queryByTestId('wyposazenie-pola-tryb')).toBeNull();
+  });
+
+  // Iloczyn: dane przyjęte z odczytu pola {są} × zapis {przed, po}. Adnotacja z tym samym
+  // powodem stoi na karcie RAZ — przed zapisem z odczytu pola, po zapisie z odpowiedzi operacji.
+  it('dane przyjęte: jedna lista naraz — po zapisie odpowiedź operacji zastępuje odczyt pola', async () => {
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('PROPOZYCJA'));
+    renderuj(polePola('OUT'), wykonaj, {
+      danePrzyjete: [{ nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu bez pozycji', jakosc: 'ESTIMATED' }],
+    });
+    expect(screen.getAllByText(/aparat z szablonu bez pozycji/)).toHaveLength(1);
+    expect(screen.getByTestId('wyposazenie-pola-dane-przyjete')).toBeTruthy();
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'szablon');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-szablon'), 'szablon-OUT');
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    await screen.findByTestId('wyposazenie-pola-wynik');
+    expect(screen.queryByTestId('wyposazenie-pola-dane-przyjete')).toBeNull();
+    expect(screen.getByTestId('wyposazenie-pola-wynik-dane-przyjete')).toBeTruthy();
+    expect(screen.getAllByText(/aparat z szablonu bez pozycji/)).toHaveLength(1);
   });
 
   it.each(ROLE)('%s: odmowa backendu zostaje w formularzu ze zdaniem i bez wyniku', async (rola) => {
@@ -548,5 +574,70 @@ describe('EdytorWyposazeniaPola — szablony kanoniczne z oceną backendu i klas
     await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
     const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
     expect(urzadzenia.map((d) => d.odgalezienie ?? null)).toEqual([null, 'pn', 'pn']);
+  });
+
+  // Iloczyn: rodzaj aparatu {przekładnik Ferrantiego, przekładnik prądowy} × przekładnia w rekordzie
+  // {zapisana, brak}. Przekładnia wraca do operacji WYŁĄCZNIE dla przekładnika Ferrantiego; pole
+  // edycji istnieje tylko przy tym rodzaju (zero kontrolki, którą backend odrzuci).
+  it('przekładnia przekładnika Ferrantiego wraca do operacji; inny rodzaj nie ma pola przekładni', async () => {
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('MODEL'));
+    renderuj(
+      polePola('OUT', [
+        { device_ref: 'd1', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-1' },
+        { device_ref: 'd2', symbol_ref: 's', kind: 'CORE_BALANCE_CT', placement: 'DOWNSTREAM', przekladnia: '1/100' },
+        { device_ref: 'd3', symbol_ref: 's', kind: 'CORE_BALANCE_CT', placement: 'DOWNSTREAM' },
+      ] as never),
+      wykonaj,
+    );
+    await otworz(user);
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-0-przekladnia')).toBeNull();
+    expect((screen.getByTestId('wyposazenie-pola-aparat-1-przekladnia') as HTMLInputElement).value).toBe('1/100');
+    await user.type(screen.getByTestId('wyposazenie-pola-aparat-2-przekladnia'), '1/50');
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
+    expect(urzadzenia.map((d) => d.przekladnia ?? null)).toEqual([null, '1/100', '1/50']);
+  });
+});
+
+describe('EdytorWyposazeniaPola — profil funkcjonalny EAZ wzorca', () => {
+  it('profil z backendu: wymagalność każdej funkcji, funkcja spoza rysunku nazwana, wymogi klas w podpowiedzi', async () => {
+    const user = userEvent.setup();
+    const profil = [
+      {
+        kod: '51',
+        opis_pl: 'I> (51) — nadprądowe zwłoczne',
+        wymagalnosc: 'OBOWIAZKOWA',
+        wymagalnosc_pl: 'obowiązkowa w każdej klasie pola, w której wykonanie jest dopuszczone',
+        na_rysunku: true,
+        wymogi: [{ klasa: 'ODBIORCZE', wymog: 'OBOWIAZKOWA', wymog_pl: 'wymagana', podstawa: 'IRiESD II.4.5.4.2.1 pkt 1', weryfikacja: 'ODCZYT_TEKSTU' }],
+      },
+      {
+        kod: '81U',
+        opis_pl: 'f< (81U) — podczęstotliwościowe',
+        wymagalnosc: 'OBOWIAZKOWA',
+        wymagalnosc_pl: 'obowiązkowa w każdej klasie pola, w której wykonanie jest dopuszczone',
+        na_rysunku: false,
+        wymogi: [{ klasa: 'ODBIORCZE', wymog: 'OBOWIAZKOWA', wymog_pl: 'wymagana', podstawa: 'IRiESD II.4.5.4.2.1 pkt 5', weryfikacja: 'ODCZYT_TEKSTU' }],
+      },
+    ];
+    katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([{ ...kanoniczny('z10-a', true), profil_eaz: profil }]);
+    renderuj(
+      pole({ ref_id: 'pole-gpz', bay_role: 'OUT', bus_ref: 'szyna-sn', gpz_section_id: 'sekcja-1', equipment_refs: ['q1'], primary_devices: [] }),
+      vi.fn(),
+    );
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'szablon');
+    await waitFor(() => expect(screen.getByTestId('wyposazenie-pola-szablon')).toBeTruthy());
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-szablon'), 'z10-a');
+    const pozycje = within(screen.getByTestId('wyposazenie-pola-szablon-profil-eaz')).getAllByRole('listitem');
+    expect(pozycje.map((li) => [li.getAttribute('data-kod'), li.getAttribute('data-wymagalnosc')])).toEqual([
+      ['51', 'OBOWIAZKOWA'],
+      ['81U', 'OBOWIAZKOWA'],
+    ]);
+    expect(pozycje[0].textContent).not.toContain('poza rysunkiem');
+    expect(pozycje[1].textContent).toContain('poza rysunkiem wzorca — wymóg klasy pola');
+    expect(pozycje[1].getAttribute('title')).toContain('IRiESD II.4.5.4.2.1 pkt 5; odczyt tekstu');
+    expect(pozycje[1].getAttribute('title')).toContain('pole odbiorcze');
   });
 });

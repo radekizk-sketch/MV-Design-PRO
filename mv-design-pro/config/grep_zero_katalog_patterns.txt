@@ -12,3 +12,13 @@
 \bInverterType\b
 \binverter_types\b
 (?<![\w-])inverter-types\b
+# version: 2026-10-28 — kasacja koncowki podpowiedzi katalogu `POST /api/catalog/
+# auto-populate/{element_type}` (K30-23). Pomiar PRZED kasacja: 0 konsumentow we froncie
+# (`frontend/src`), w skryptach i w dokumentach kontraktu; jedynymi wywolaniami byly trzy
+# testy API w `frontend/e2e/critical-engineer-flow.spec.ts` i testy backendu koncowki.
+# Typ elementu wybiera projektant z katalogu w formularzu, a zgodnosc napiec, mocy
+# i izolacji ocenia operacja domenowa (odmowa nazwana, proba `dry_run`) — druga, rozlaczna
+# regula doboru w API byla druga prawda.
+catalog/auto-populate\b
+\bAutoPopulate\w*
+\b_?auto_populate_\w+

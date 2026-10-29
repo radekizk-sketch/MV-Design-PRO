@@ -41,6 +41,8 @@
 import { legendLabelForSymbol, type SheetLegendEntry } from './Frame';
 import { SYMBOL_DEFS, czySymbolQet, type SymbolId } from '../symbols/defs';
 import type { SceneV3 } from '../scene/buildScene';
+import { STANY_KAFLA, type StanKafla } from '../theme/colorTokens';
+import { stanKaflaLacznika } from '../symbols/glyphs';
 
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC — ATRYBUCJA symboli QElectroTech (licencja CC BY 3.0
@@ -118,5 +120,28 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
   const atrybucja = atrybucjaSymboliSceny(scene);
   if (atrybucja) noteEntries.push({ kind: 'note', id: 'qet-atrybucja', labelPl: atrybucja });
 
-  return [...symbolEntries, ...lineEntries, ...noteEntries];
+  return [...symbolEntries, ...stateLegendEntries(scene), ...lineEntries, ...noteEntries];
+}
+
+/** Opisy kafli stanu łącznika w legendzie (rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC). */
+export const OPIS_KAFLA_LEGENDY_PL: Readonly<Record<StanKafla, string>> = {
+  zamkniety: 'Łącznik zamknięty — styk w osi toru (także zestyk uziemiający łącznika trójpołożeniowego w położeniu „uziemiony")',
+  otwarty: 'Łącznik otwarty — styk odchylony',
+  nieustalony: 'Położenie nieustalone — brak danej albo dane sprzeczne w modelu',
+  bledny: 'Awaria aparatu — położenie niewiarygodne',
+};
+
+/** Wpisy legendy dla stanów kafli OBECNYCH na scenie (ta sama reguła `stanKaflaLacznika`,
+ *  którą rysuje kanwa) — stan nieobecny na rysunku nie trafia do legendy. */
+function stateLegendEntries(scene: SceneV3): SheetLegendEntry[] {
+  const obecne = new Set<StanKafla>();
+  for (const s of scene.symbols) {
+    const stan = stanKaflaLacznika(s.symbolId, s.state);
+    if (stan) obecne.add(stan);
+  }
+  return STANY_KAFLA.filter((stan) => obecne.has(stan)).map((stan) => ({
+    kind: 'stan' as const,
+    id: `stan-${stan}`,
+    labelPl: OPIS_KAFLA_LEGENDY_PL[stan],
+  }));
 }

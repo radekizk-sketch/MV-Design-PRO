@@ -4,7 +4,7 @@ Schemat nie ma własnej definicji „co jest łącznikiem pola", „który łąc
 „które położenie odcina tor" ani „jakie porty ma aparat": czyta lustro
 `frontend/src/ui/sld/v3/compose/rodzajeAparatuPola.ts`. Test parsuje ten plik i porównuje
 każdy zbiór z jedynym źródłem w backendzie (`network_model.catalog.rodzaje_aparatury`) —
-zmiana po jednej stronie czerwieni test (predykat ramki SCADA i reguła blokad z jednego
+zmiana po jednej stronie czerwieni test (predykat kafla stanu i reguła blokad z jednego
 źródła, reguła KLASA §3).
 """
 
@@ -49,7 +49,14 @@ def _porty_aparatow(zrodlo: str) -> dict[str, tuple[str, ...]]:
     assert m, "brak deklaracji PORTY_APARATU_POLA w lustrze frontu"
     stale = {
         n: _stala_napisowa(n, zrodlo)
-        for n in ("PORT_WEJSCIA", "PORT_WYJSCIA", "PORT_PRZYLACZA", "PORT_OBWODU")
+        for n in (
+            "PORT_WEJSCIA",
+            "PORT_WYJSCIA",
+            "PORT_PRZYLACZA",
+            "PORT_OBWODU",
+            "PORT_FAZY_A",
+            "PORT_FAZY_B",
+        )
     }
     wynik: dict[str, tuple[str, ...]] = {}
     for rodzaj, porty in re.findall(r"^\s*([A-Z_]+):\s*\[([^\]]*)\]", m.group(1), re.M):
@@ -81,6 +88,8 @@ def test_porty_aparatow_i_wezel_szyny_te_same():
     assert _stala_napisowa("PORT_WYJSCIA", zrodlo) == ra.PORT_WYJSCIA
     assert _stala_napisowa("PORT_PRZYLACZA", zrodlo) == ra.PORT_PRZYLACZA
     assert _stala_napisowa("PORT_OBWODU", zrodlo) == ra.PORT_OBWODU
+    assert _stala_napisowa("PORT_FAZY_A", zrodlo) == ra.PORT_FAZY_A
+    assert _stala_napisowa("PORT_FAZY_B", zrodlo) == ra.PORT_FAZY_B
 
 
 def test_iniekcja_rozjazd_zbioru_lacznikow_czerwieni_porownanie():

@@ -19,11 +19,8 @@ import {
   type SldMenuAction,
   type StanLacznikaMenu,
 } from '../v2/command/SldCommandService';
-import {
-  czyLacznikZPozycjaNormalna,
-  czyPunktPodzialu,
-  lacznikTematu,
-} from '../../shared/stanLacznika';
+import { czyLacznikZPozycjaNormalna, czyPunktPodzialu } from '../../shared/stanLacznika';
+import { celStanuLacznika } from './celStanuLacznika';
 import type { CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
 import {
   parseGpzApparatusSelectionId,
@@ -63,7 +60,7 @@ export function kontekstDostepnosciAkcji(
   const hasResults = activeCaseResultStatus !== 'NONE';
   const apparatusKind = parseGpzApparatusSelectionId(temat.modelRef)?.apparatusKind;
   const lacznik = temat.menuKind === 'bay' || temat.menuKind === 'apparatus'
-    ? stanLacznikaMenu(snapshot, temat.modelRef)
+    ? stanLacznikaMenu(snapshot, temat.modelRef, temat.deviceRef)
     : undefined;
   const wspolne: SldMenuContext = {
     trunkStartAvailable,
@@ -86,18 +83,24 @@ export function kontekstDostepnosciAkcji(
   return { ...wspolne, stationHasNnBus };
 }
 
-/** W5-C: stan łącznika obiektu menu; `undefined` = brak migawki (brak pomiaru). */
+/** W5-C: stan łącznika obiektu menu; `undefined` = brak migawki (brak pomiaru). Cel z TEGO
+ *  SAMEGO resolvera co wykonawca akcji (`celStanuLacznika`): aparat wskazany symbolem
+ *  (`deviceRef`) → jego gałąź albo sam łącznik pola bez gałęzi. */
 export function stanLacznikaMenu(
   snapshot: EnergyNetworkModel | null,
   modelRef: string,
+  deviceRef?: string,
 ): StanLacznikaMenu | undefined {
   if (!snapshot) return undefined;
-  const wynik = lacznikTematu(snapshot, modelRef);
-  if (!wynik.lacznik) return { powodBrakuPl: wynik.powodPl };
+  const cel = celStanuLacznika(snapshot, modelRef, deviceRef);
+  if (cel.rodzaj === 'brak') return { powodBrakuPl: cel.powodPl };
+  if (cel.rodzaj === 'aparat') {
+    return { aparatPola: { trojpolozeniowy: cel.trojpolozeniowy, polozenie: cel.polozenie } };
+  }
   return {
-    status: wynik.lacznik.status,
-    maPozycjeNormalna: czyLacznikZPozycjaNormalna(wynik.lacznik),
-    jestPunktemPodzialu: czyPunktPodzialu(wynik.lacznik),
+    status: cel.lacznik.status,
+    maPozycjeNormalna: czyLacznikZPozycjaNormalna(cel.lacznik),
+    jestPunktemPodzialu: czyPunktPodzialu(cel.lacznik),
   };
 }
 

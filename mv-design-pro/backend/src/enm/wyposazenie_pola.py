@@ -33,9 +33,18 @@ TRZY TRYBY (``mode``):
   szablon kanoniczny daje propozycję, katalogowe pole rodziny — aparaty z BOM-u.
 * ``wyczysc`` — usunięcie wyposażenia (stan ``BRAK_DANYCH``).
 
-GRANICE (nazwane, nie przemilczane). Operacja NIE ocenia doboru aparatu (U_r ≥ U_m sieci,
-I_r ≥ I_obc, I_th/I_dyn ≥ prądy zwarciowe) — to kryteria warstwy analizy (dowód doboru
-aparatury) z wynikiem liczbowym i limitem; ocena „na wejściu" byłaby werdyktem bez
+POZIOM IZOLACJI (reguła modelu, nie ocena doboru). Aparat z katalogu o napięciu najwyższym
+U_m (aparatura rozdzielcza: U_r, PN-EN 62271-1 p. 5.2; ogranicznik: U_m typu) niższym od
+napięcia najwyższego sieci U_s szyny pola (IEC 60038 tab. 3–5, IEC 60071-1:2006 p. 3.9–3.10)
+jest aparatem innego poziomu napięcia — odmowa ``bay_equipment.voltage_insufficient`` w trybie
+``katalog`` i ``szablon`` (aparaty z BOM-u rodziny). Ten sam predykat i ta sama tabela, co
+odmowa ``spd.voltage_mismatch`` operacji ``add_surge_arrester_sn``
+(`domain_operations_v2.odmowa_poziomu_izolacji`). Przekładniki CT/VT: katalog nie niesie U_m
+(tylko przekładnię i klasę), więc reguła nie ma dla nich danej.
+
+GRANICE (nazwane, nie przemilczane). Operacja NIE ocenia doboru aparatu pod obciążenie
+i zwarcie (I_r ≥ I_obc, I_th/I_dyn ≥ prądy zwarciowe) — to kryteria warstwy analizy (dowód
+doboru aparatury) z wynikiem liczbowym i limitem; ocena „na wejściu" byłaby werdyktem bez
 wyjaśnienia. Operacja NIE ustawia stanu łącznika — stan żyje na gałęzi
 (``status``/``normal_state``, operacje ``open_switch``/``close_switch``/
 ``set_normal_open_point``), a aparat pola wskazuje ją ``linked_ref``.
@@ -96,6 +105,10 @@ PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
     "CT": "CT",
     "VT": "VT",
     "SURGE_ARRESTER": "OGRANICZNIK_SN",
+    # Aparaty pola baterii kondensatorów (`catalog.rodzaje_aparatury`): przekładnik
+    # niezrównoważenia jest przekładnikiem prądowym, przekładnik międzyfazowy — napięciowym.
+    "UNBALANCE_CT": "CT",
+    "PHASE_TO_PHASE_VT": "VT",
 }
 
 #: Rodzaj aparatu APARAT_SN (``MVApparatusType.device_kind``) dopuszczony dla rodzaju
@@ -151,6 +164,8 @@ NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
     RODZAJ_WSKAZNIKA_NAPIECIA: "wskaźnik napięcia",
     RODZAJ_PRZEKLADNIKA_FERRANTIEGO: "przekładnik Ferrantiego",
+    "UNBALANCE_CT": "przekładnik niezrównoważenia baterii",
+    "PHASE_TO_PHASE_VT": "przekładnik napięciowy międzyfazowy",
 }
 
 
@@ -196,6 +211,51 @@ def dane_przyjete_wyposazenia(aparaty: list[dict[str, Any]]) -> list[dict[str, A
             ).model_dump(mode="json")
         )
     return wynik
+
+
+def napiecie_najwyzsze_aparatu_kv(rodzaj: object, catalog_ref: object) -> float | None:
+    """Napięcie najwyższe U_m aparatu pola z pozycji katalogu (``None`` — brak danej).
+
+    APARAT_SN: ``u_n_kv`` pozycji (napięcie znamionowe aparatu rozdzielczego jest wartością
+    U_m, PN-EN 62271-1 p. 5.2); OGRANICZNIK_SN: ``u_m_kv`` typu. CT/VT: katalog nie niesie
+    U_m — ``None``.
+    """
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return None
+    przestrzen = PRZESTRZEN_KATALOGU_APARATU.get(str(rodzaj))
+    katalog = katalog_biezacy()
+    if przestrzen == "APARAT_SN":
+        aparat = katalog.get_mv_apparatus_type(catalog_ref)
+        return float(aparat.u_n_kv) if aparat is not None else None
+    if przestrzen == "OGRANICZNIK_SN":
+        ogranicznik = katalog.get_surge_arrester_type(catalog_ref)
+        return float(ogranicznik.u_m_kv) if ogranicznik is not None else None
+    return None
+
+
+def _odmowa_izolacji_aparatow(
+    enm: dict[str, Any], rekord: dict[str, Any], aparaty: Sequence[Mapping[str, Any]]
+) -> dict[str, Any] | None:
+    """Pierwsza odmowa poziomu izolacji wśród aparatów pola (kolejność aparatów)."""
+    from .domain_operations_v2 import _bus_voltage_kv, odmowa_poziomu_izolacji
+
+    bus_ref = rekord.get("bus_ref")
+    napiecie_szyny = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
+    for numer, aparat in enumerate(aparaty, start=1):
+        rodzaj = aparat.get("kind")
+        odmowa = odmowa_poziomu_izolacji(
+            u_m_kv=napiecie_najwyzsze_aparatu_kv(rodzaj, aparat.get("catalog_ref")),
+            bus_voltage_kv=napiecie_szyny,
+            opis_pl=(
+                f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} "
+                f"({NAZWY_RODZAJOW_APARATU_POLA_PL.get(str(rodzaj), 'aparat')}) "
+                f"{opis_elementu(enm, str(rekord.get('ref_id')), 'pola')}"
+            ),
+            error_code="bay_equipment.voltage_insufficient",
+        )
+        if odmowa is not None:
+            return odmowa
+    return None
 
 
 def _odpowiedz(nowy: dict[str, Any], bay_ref: str, aparaty: list[dict[str, Any]]) -> dict[str, Any]:
@@ -409,6 +469,16 @@ def _sprawdz_aparat(
             "i cyfry, np. „pn” — odgałęzienie przekładnika napięciowego).",
             "bay_equipment.branch_invalid",
         )
+    przekladnia = wpis.get("przekladnia")
+    if przekladnia is not None and (
+        rodzaj != "CORE_BALANCE_CT" or not isinstance(przekladnia, str) or not przekladnia.strip()
+    ):
+        return _error_response(
+            f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) ma "
+            "przekładnię, a zapisuje się ją wyłącznie przekładnikowi Ferrantiego (np. „1/100” — "
+            "zapis z rysunku standardu).",
+            "bay_equipment.ratio_not_applicable",
+        )
     aparat: dict[str, Any] = {
         "device_ref": f"{bay_ref}::dev::{indeks}",
         "symbol_ref": f"symbol:{str(rodzaj).lower()}",
@@ -423,6 +493,7 @@ def _sprawdz_aparat(
         ("earthing_role", rola_uziemienia),
         ("linked_ref", linked_ref),
         ("stan_obiektu", stan_obiektu),
+        ("przekladnia", przekladnia.strip() if isinstance(przekladnia, str) else None),
         # Odgałęzienie toru (`rodzaje_aparatury.KLUCZ_ODGALEZIENIA`): porty aparatu wyprowadza
         # z niego pisarz rekordu (`porty_toru_pola`) — ta sama reguła co szablon pola Z.11.1/Z.11.
         (KLUCZ_ODGALEZIENIA, odgalezienie.strip() if isinstance(odgalezienie, str) else None),
@@ -525,6 +596,11 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                     )
                 wskazane_galezie.add(str(linked))
             aparaty.append(aparat)
+
+    # Poziom izolacji — ten sam predykat w trybie katalogu i szablonu (BOM rodziny).
+    odmowa_izolacji = _odmowa_izolacji_aparatow(nowy, rekord, aparaty)
+    if odmowa_izolacji is not None:
+        return odmowa_izolacji
 
     # Funkcje EAZ pola z jego szablonu i klasy — TEN SAM resolver co każda operacja tworząca
     # pole (`_resolve_bay_template_protection_codes`: producent → szablon → rola). Zmiana

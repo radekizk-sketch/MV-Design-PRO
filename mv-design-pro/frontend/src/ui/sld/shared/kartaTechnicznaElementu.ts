@@ -56,7 +56,7 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
-import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
@@ -282,13 +282,6 @@ function edycja(elementRef: string, parametr: string, wartosc: unknown): EdycjaW
   };
 }
 
-const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'earthed' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  earthed: 'uziemiony',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
-
 const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   wnetrzowa: 'wnętrzowa',
   kontenerowa: 'kontenerowa',
@@ -326,6 +319,8 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   THREE_POSITION_SWITCH: 'Łącznik trójpołożeniowy',
   VOLTAGE_INDICATOR: 'Pojemnościowy wskaźnik napięcia',
   CORE_BALANCE_CT: 'Przekładnik Ferrantiego',
+  UNBALANCE_CT: 'Przekładnik niezrównoważenia baterii',
+  PHASE_TO_PHASE_VT: 'Przekładnik napięciowy międzyfazowy',
 };
 
 const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {
@@ -622,7 +617,7 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
   const stan = bay
     ? stanLacznikaPolaZModelu(aparat.ref, bay, ix.galezie)
     : stanLacznikaToruZModelu(aparat.ref, ix.galezie);
-  return stan ? POLOZENIE_PL[stan] : null;
+  return stan ? OPIS_POLOZENIA_PL[stan] : null;
 }
 
 /** Stan obiektu (istniejący / projektowany) — nazwa PL; `null` = stan nieustalony (zapis sprzed
@@ -1155,7 +1150,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('rodzaj', 'Rodzaj', RODZAJ_GALEZI_PL[galaz.type]),
           wiersz('od', 'Początek', koniec(galaz.from_bus_ref)),
           wiersz('do', 'Koniec', koniec(galaz.to_bus_ref)),
-          wiersz('stan', 'Stan (model)', galaz.status === 'open' ? 'otwarty' : galaz.status === 'closed' ? 'zamknięty' : null),
+          wiersz('stan', 'Stan (model)', galaz.status === 'open' || galaz.status === 'closed' ? OPIS_POLOZENIA_PL[galaz.status] : null),
         ],
       },
       {

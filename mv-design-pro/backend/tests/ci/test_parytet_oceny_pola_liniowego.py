@@ -32,15 +32,28 @@ from application.field_read_model import build_field_read_model
 from enm.models import EnergyNetworkModel
 from enm.pole_liniowe_gpz import (
     ModulZaPolem,
+    NapiecieZwrotnePola,
     NiezgodnoscPolaLiniowego,
+    ObwodFunkcjiPola,
     OcenaFunkcjiPola,
     OcenaPolaLiniowego,
 )
-from network_model.catalog.bay_templates import WymogFunkcjiEaz
+from network_model.catalog.bay_templates import (
+    PozycjaProfiluEaz,
+    WymogFunkcjiEaz,
+    WymogFunkcjiWKlasie,
+)
+from network_model.catalog.obwody_wtorne_pola import (
+    ObwodyWtornePola,
+    StatusWeryfikacji,
+    SygnalPola,
+)
 
 BACKEND = Path(__file__).resolve().parents[2]
 FRONT = BACKEND.parent / "frontend" / "src" / "ui" / "field"
 LUSTRO = FRONT / "useFieldReadModel.ts"
+#: Lustro danych wzorca (profil EAZ, obwody wtórne) w API katalogu frontu.
+LUSTRO_KATALOGU = FRONT.parent / "catalog" / "api.ts"
 FIKSTURA = FRONT / "__tests__" / "fixtures" / "ocena_pola_liniowego.json"
 
 SCENY = (
@@ -51,11 +64,11 @@ SCENY = (
 )
 
 
-def _pola_interfejsu(nazwa: str) -> list[str]:
-    zrodlo = LUSTRO.read_text(encoding="utf-8")
+def _pola_interfejsu(nazwa: str, plik: Path = LUSTRO) -> list[str]:
+    zrodlo = plik.read_text(encoding="utf-8")
     m = re.search(rf"export interface {nazwa} \{{(.*?)\n\}}", zrodlo, re.S)
-    assert m, f"brak interfejsu {nazwa} w {LUSTRO.name}"
-    return re.findall(r"^  (\w+)\??:", m.group(1), re.M)
+    assert m, f"brak interfejsu {nazwa} w {plik.name}"
+    return re.findall(r"^  (?:readonly )?(\w+)\??:", m.group(1), re.M)
 
 
 def test_lustro_frontu_ma_pola_dataclass_backendu():
@@ -64,8 +77,30 @@ def test_lustro_frontu_ma_pola_dataclass_backendu():
         ("OcenaFunkcjiPola", OcenaFunkcjiPola),
         ("ModulZaPolem", ModulZaPolem),
         ("NiezgodnoscPolaLiniowego", NiezgodnoscPolaLiniowego),
+        ("ObwodFunkcjiPola", ObwodFunkcjiPola),
+        ("NapiecieZwrotnePola", NapiecieZwrotnePola),
     ):
         assert _pola_interfejsu(interfejs) == [f.name for f in dataclasses.fields(klasa)], interfejs
+
+
+#: Pola modelu wzorca, których karta pola NIE czyta z obwodów surowych: powiązania funkcji
+#: przychodzą rozwiązane na aparatach pola (`ObwodFunkcjiPola`), a przypisania rdzeni poza EAZ
+#: są w nich tłem walidatora szablonu, nie treścią karty.
+_POMINIETE_W_LUSTRZE_OBWODOW = ("powiazania", "obwody_przekladnikow")
+
+
+def test_lustro_frontu_danych_wzorca_rowne_modelom_backendu():
+    for interfejs, model, pominiete in (
+        ("SygnalPolaWzorca", SygnalPola, ()),
+        ("WymogFunkcjiWKlasie", WymogFunkcjiWKlasie, ()),
+        ("PozycjaProfiluEaz", PozycjaProfiluEaz, ()),
+        ("ObwodyWtornePola", ObwodyWtornePola, _POMINIETE_W_LUSTRZE_OBWODOW),
+    ):
+        oczekiwane = [p for p in model.model_fields if p not in pominiete]
+        assert _pola_interfejsu(interfejs, LUSTRO_KATALOGU) == oczekiwane, interfejs
+    zrodlo = LUSTRO_KATALOGU.read_text(encoding="utf-8")
+    m = re.search(r"export type StatusWeryfikacjiWzorca = ([^;]+);", zrodlo)
+    assert m and re.findall(r"'([A-Z_]+)'", m.group(1)) == list(get_args(StatusWeryfikacji))
 
 
 def test_slownik_wymogow_frontu_rowny_backendowi():

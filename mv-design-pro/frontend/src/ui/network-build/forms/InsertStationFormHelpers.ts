@@ -128,21 +128,6 @@ export function hasEnoughTransformerPower(
   return (type.rated_power_mva ?? 0) >= sourcePowerMva;
 }
 
-// Pure helpers - voltage
-export function voltageMatches(
-  left: number | null | undefined,
-  right: number | null | undefined,
-  toleranceKv = 0.5,
-): boolean {
-  return (
-    typeof left === 'number'
-    && Number.isFinite(left)
-    && typeof right === 'number'
-    && Number.isFinite(right)
-    && Math.abs(left - right) <= toleranceKv
-  );
-}
-
 // Pure helpers - feeder count (clamp 1..8 per InsertStationForm constraint)
 export function clampOutgoingFeederCount(value: number): number {
   if (!Number.isFinite(value)) return 1;

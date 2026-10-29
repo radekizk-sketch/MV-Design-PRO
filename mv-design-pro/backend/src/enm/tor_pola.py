@@ -47,7 +47,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from .models import EnergyNetworkModel
-from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol, zacisk_pola
+from .pola import (
+    PoziomPol,
+    czy_pole_nn,
+    napis_lub_none,
+    pola_stacji,
+    poziom_pol,
+    zacisk_pola,
+)
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
 
 #: Rola pola (`Bay.bay_role`), na którego zacisku kończy się połówka odcinka od strony zasilania.
@@ -153,16 +160,12 @@ def _atrybut(obiekt: object, klucz: str) -> Any:
     return getattr(obiekt, klucz, None)
 
 
-def _napis(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
-
-
 def elementy_mocy_na_szynach(enm: Mapping[str, Any]) -> dict[str, set[str]]:
     """Szyna → elementy MOCY przyłączone do niej (bez aparatów łączeniowych)."""
     wynik: dict[str, set[str]] = {}
 
     def dodaj(szyna: object, ref: object) -> None:
-        s, r = _napis(szyna), _napis(ref)
+        s, r = napis_lub_none(szyna), napis_lub_none(ref)
         if s and r:
             wynik.setdefault(s, set()).add(r)
 
@@ -210,9 +213,9 @@ def _pola_z_zaciskiem_wg_szyny(
     dane_poziomu = poziom if poziom is not None else poziom_pol(enm)
     pola_szyny: dict[str, list[Any]] = {}
     for rekord in pola_stacji(enm, station_ref):
-        if not _napis(_atrybut(rekord, "ref_id")) or czy_pole_nn(enm, rekord, dane_poziomu):
+        if not napis_lub_none(_atrybut(rekord, "ref_id")) or czy_pole_nn(enm, rekord, dane_poziomu):
             continue
-        szyna_pola = _napis(_atrybut(rekord, "bus_ref"))
+        szyna_pola = napis_lub_none(_atrybut(rekord, "bus_ref"))
         zacisk = zacisk_pola(rekord)
         if szyna_pola and zacisk and zacisk != szyna_pola:
             pola_szyny.setdefault(szyna_pola, []).append(rekord)
@@ -255,8 +258,8 @@ def _naruszenia_stacji(
     elementy_na_szynach: Mapping[str, set[str]],
     poziom: PoziomPol,
 ) -> list[NaruszenieToru]:
-    station_ref = _napis(stacja.get("ref_id")) or ""
-    szyny_glowne = {s for s in (stacja.get("bus_refs") or []) if _napis(s)}
+    station_ref = napis_lub_none(stacja.get("ref_id")) or ""
+    szyny_glowne = {s for s in (stacja.get("bus_refs") or []) if napis_lub_none(s)}
     pola_szyny = _pola_z_zaciskiem_wg_szyny(enm, station_ref, poziom)
     wynik: list[NaruszenieToru] = []
     if not pola_szyny:
@@ -277,7 +280,7 @@ def _naruszenia_stacji(
                 element_name=str(element.get("name") or ""),
                 rodzaj_elementu=rodzaj,
                 szyna_ref=szyna,
-                field_ref=_napis(spec.get("ref_id")) if spec is not None else None,
+                field_ref=napis_lub_none(spec.get("ref_id")) if spec is not None else None,
                 zacisk_ref=zacisk,
             )
         )
@@ -290,13 +293,13 @@ def _naruszenia_stacji(
             ("to_bus_ref", ROLE_KONCA_DOCHODZACEGO),
             ("from_bus_ref", ROLE_KONCA_WYCHODZACEGO),
         ):
-            szyna = _napis(galaz.get(koniec))
+            szyna = napis_lub_none(galaz.get(koniec))
             if szyna and szyna in szyny_glowne and szyna in pola_szyny:
                 pole = _wolne_pole(pola_szyny[szyna], role, elementy_na_szynach, zajete_zaciski)
                 zapisz(galaz, "odcinek", szyna, pole)
     # N2: strona górna transformatora na szynie głównej stacji z polem TR.
     for transformator in transformatory:
-        szyna = _napis(transformator.get("hv_bus_ref"))
+        szyna = napis_lub_none(transformator.get("hv_bus_ref"))
         if not szyna or szyna not in szyny_glowne or szyna not in pola_szyny:
             continue
         pola_tr = [
@@ -368,7 +371,7 @@ def _aparaty_pol_nn_stacji(
     poziom = poziom if poziom is not None else poziom_pol(enm)
     aparaty_pol: set[str] = set()
     for rekord in pola_stacji(enm, station_ref):
-        if _napis(_atrybut(rekord, "ref_id")) and czy_pole_nn(enm, rekord, poziom):
+        if napis_lub_none(_atrybut(rekord, "ref_id")) and czy_pole_nn(enm, rekord, poziom):
             aparaty_pol.update(str(r) for r in (_atrybut(rekord, "equipment_refs") or []))
     if not aparaty_pol:
         return []
@@ -409,12 +412,12 @@ def szyny_stacji(
     _wymagaj_modelu_i_stacji(enm, stacja)
     station_ref = _atrybut(stacja, "ref_id")
     dane_poziomu = poziom if poziom is not None else poziom_pol(enm)
-    wynik = {s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)}
+    wynik = {s for s in (_atrybut(stacja, "bus_refs") or []) if napis_lub_none(s)}
     for pola in _pola_z_zaciskiem_wg_szyny(enm, station_ref, dane_poziomu).values():
         wynik.update(str(zacisk_pola(spec)) for spec in pola)
     for aparat in _aparaty_pol_nn_stacji(enm, station_ref, dane_poziomu):
         for koniec in ("from_bus_ref", "to_bus_ref"):
-            szyna = _napis(_atrybut(aparat, koniec))
+            szyna = napis_lub_none(_atrybut(aparat, koniec))
             if szyna:
                 wynik.add(szyna)
     return frozenset(wynik)
@@ -430,7 +433,7 @@ def szyna_glowna_stacji(
     wyłącznika). `None` — szyna nie należy do stacji."""
     _wymagaj_modelu_i_stacji(enm, stacja)
     station_ref = _atrybut(stacja, "ref_id")
-    glowne = [s for s in (_atrybut(stacja, "bus_refs") or []) if _napis(s)]
+    glowne = [s for s in (_atrybut(stacja, "bus_refs") or []) if napis_lub_none(s)]
     if szyna_ref in glowne:
         return szyna_ref
     for szyna_pola, pola in _pola_z_zaciskiem_wg_szyny(enm, station_ref).items():
@@ -467,7 +470,7 @@ def wezel_elektryczny(enm: Mapping[str, Any], szyna_ref: str) -> frozenset[str]:
             continue
         if galaz.get("status", "closed") != "closed":
             continue
-        a, b = _napis(galaz.get("from_bus_ref")), _napis(galaz.get("to_bus_ref"))
+        a, b = napis_lub_none(galaz.get("from_bus_ref")), napis_lub_none(galaz.get("to_bus_ref"))
         if a and b:
             sasiedzi.setdefault(a, set()).add(b)
             sasiedzi.setdefault(b, set()).add(a)

@@ -22,6 +22,7 @@ import type {
   CanonicalGpzProps,
   RolaPolaGpz,
 } from '../../../v2/canvas/canonicalGpzModel';
+import { PLAKIETKI_GPZ } from '../../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView } from '../../../v2/model/widokPolStacji';
 import { uzwojeniaZGrupyPolaczen } from '../../symbols/uzwojenia';
 import {
@@ -108,6 +109,7 @@ const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>
   COUPLER: 'sprzeglo',
   MEASUREMENT: 'pomiarowe',
   SOURCE: 'zrodlowe',
+  CAPACITOR_BANK: 'kompensacyjne',
 };
 
 function lineBay(ref: string, overrides: Partial<CanonicalGpzBay> = {}): CanonicalGpzBay {
@@ -1408,7 +1410,8 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
 
 describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
   it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
-    expect(ROLE_POL_GPZ).toHaveLength(6);
+    // 7. rola: „kompensacyjne" — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
+    expect(ROLE_POL_GPZ).toHaveLength(7);
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 
@@ -1518,7 +1521,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   // = min z wariantów wykonalnych; w karcie jednowierszowej wartości nie zachodzą na
   // opis pola; karty rozłączne i w obrysie tabeli; legenda nie zachodzi na tytuł
   // ani na karty.
-  const polaTabeli = (n: number, plakietki: readonly ('SPZ' | 'SCO')[]): PoleTabeliGpzWejscie[] =>
+  const polaTabeli = (n: number, plakietki: readonly (typeof PLAKIETKI_GPZ)[number][]): PoleTabeliGpzWejscie[] =>
     Array.from({ length: n }, (_, i) => ({
       bayRef: `b-${i}`,
       oznaczenie: `Pole liniowe ${i + 1}`,
@@ -1530,7 +1533,8 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
     return ulozWariantTabeliGpz(pola, 0, 0, 0, true).karty[0].rect.width;
   };
   for (const n of [1, 4, 9]) {
-    for (const plakietki of [[], ['SPZ', 'SCO']] as const) {
+    // Pięć plakietek — pole Z.11.1 niesie SPZ, LRW, NZ i OWG (rozszerzenie 5 karty UX-04).
+    for (const plakietki of [[], ['SPZ', 'SCO'], PLAKIETKI_GPZ] as const) {
       const pola = polaTabeli(n, plakietki);
       const prog = progJednowierszowy(pola);
       for (const [nazwa, szerokosc] of [['wąska', prog - GRID], ['próg jednowierszowy', prog], ['szeroka', 100000]] as const) {
@@ -1581,14 +1585,15 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   });
 });
 
-describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', () => {
-  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji, OWG — każdy z uzasadnieniem', () => {
+describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA', () => {
+  // Plakietka OWG opuściła kontrakt negatywny (rozszerzenie 5 karty UX-04): OWG ma wpis
+  // słownika funkcji EAZ z podstawą i kod w zestawie funkcji pola Z.11.1/Z.11.
+  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji — każdy z uzasadnieniem', () => {
     expect(Object.keys(KONTRAKT_NEGATYWNY_GPZ).sort()).toEqual([
       'gpz.header.address',
       'gpz.header.control',
       'gpz.header.reset_signals',
       'gpz.header.transmission',
-      'gpz.status_flags.OWG',
     ]);
     for (const uzasadnienie of Object.values(KONTRAKT_NEGATYWNY_GPZ)) {
       expect(uzasadnienie).toMatch(/reguła phantom|Brak podstawy/);
@@ -1596,11 +1601,11 @@ describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', 
   });
 
   for (const [opis, props] of [['minimalny', baseProps()], ['pełny', pelnyGpz()], ['bez nazwy', pelnyGpz({ name: null })]] as const) {
-    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu SPZ/SCO`, () => {
+    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu plakietek`, () => {
       const c = composeGpz(props, ORIGIN);
       for (const klucz of Object.keys(KONTRAKT_NEGATYWNY_GPZ)) expect(c.parityKeys.has(klucz), klucz).toBe(false);
       const plakietki = c.adnotacje!.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.flaga));
-      expect(plakietki.every((f) => f === 'SPZ' || f === 'SCO')).toBe(true);
+      expect(plakietki.every((f) => (PLAKIETKI_GPZ as readonly string[]).includes(f))).toBe(true);
     });
   }
 });

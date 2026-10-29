@@ -40,6 +40,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   close_switch: 'Zamknięcie łącznika',
   set_bay_equipment: 'Zapis wyposażenia pola SN',
   set_object_state: 'Zmiana stanu obiektu (pole SN albo łącznik)',
+  set_bay_apparatus_position: 'Zmiana położenia łącznika pola',
   przepnij_element_na_pole: 'Przepięcie elementu na pole stacji',
   add_transformer_sn_nn: 'Dodanie transformatora',
   assign_catalog_to_element: 'Przypisanie typu katalogowego',

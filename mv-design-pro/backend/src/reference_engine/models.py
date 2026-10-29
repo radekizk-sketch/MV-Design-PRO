@@ -32,6 +32,8 @@ ApparatusKind = Literal[
     "THREE_POSITION_SWITCH",
     "VOLTAGE_INDICATOR",
     "CORE_BALANCE_CT",
+    "UNBALANCE_CT",
+    "PHASE_TO_PHASE_VT",
     "GENERATOR_PV",
     "GENERATOR_BESS",
     "GENERATOR_FW",

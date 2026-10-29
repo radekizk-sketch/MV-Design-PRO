@@ -122,7 +122,7 @@ import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import { resolveTransformerRefForOwnerRef } from '../../shared/daneElementuKanwy';
 import { kontekstDostepnosciAkcji } from '../../shared/akcjeElementu';
 import { useKontekstElementuKanwy } from '../../shared/kontekstElementuKanwy';
-import { useSldActionExecutor } from '../../shared/sldActionExecutor';
+import { useSldActionExecutor, wykonawcaAkcjiMenu } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
 // kontenera v2 bez odpowiednika v3 — patrz sekcja montażu na dole pliku dla
 // szczegółowego mapowania na punkty F12-B 1-6.
@@ -265,7 +265,7 @@ import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
 // `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
 import { renderToStaticMarkup } from 'react-dom/server';
-import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
+import { FRAME_MARGIN, LegendStateTile, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
 import { atrybucjaSymboliSceny, computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sheetSizeFor } from '../sheet/outline';
@@ -843,6 +843,10 @@ function SldV3LegendPanel(props: {
             >
               {entry.kind === 'symbol' ? (
                 <LegendPanelGlyph id={entry.id as SymbolId} />
+              ) : entry.kind === 'stan' ? (
+                <svg width={24} height={16} viewBox="0 0 24 16" aria-hidden="true" className="shrink-0">
+                  <LegendStateTile id={entry.id} y={2} />
+                </svg>
               ) : entry.kind === 'line' ? (
                 <LegendPanelLineSample id={entry.id} />
               ) : (
@@ -1692,6 +1696,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           elementKind: meta?.elementKind,
           derKind: meta?.derKind,
           busRef: meta?.busRef,
+          deviceRef: meta?.deviceRef,
         },
         modelIndex,
       );
@@ -1731,11 +1736,32 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
       const cel = kind === 'background' ? null : celMenuRef.current;
       celMenuRef.current = null;
-      if (cel) klikElementuRef.current?.(cel.testId, cel.meta);
-      handleAction(actionId, kind, elementId);
+      if (cel) {
+        // Zaznaczany jest OBIEKT AKCJI. Menu symbolu aparatu ma za temat POLE (kotwica modelu)
+        // z refem wskazanego aparatu: akcja stanu łącznika działa na aparacie, więc zaznacza
+        // aparat (ścieżka lewego kliku w symbol); każda inna akcja (okno pola, wyposażenie,
+        // ochrona przepięciowa, pomiary) dotyczy pola i zaznacza POLE — inspektor i okno pola
+        // mówią o tym samym obiekcie (pomiar 2026-10-29: „Otwórz okno pola" z menu wyłącznika
+        // zostawiało w inspektorze aparat `…::dev::1`). „Akcja stanu łącznika" rozstrzyga TEN
+        // SAM klasyfikator, którym wykonawca wybiera ścieżkę akcji (`wykonawcaAkcjiMenu`).
+        const zaznaczPole = contextSubject?.deviceRef !== undefined
+          && elementId !== null
+          && wykonawcaAkcjiMenu(actionId, kind) !== 'stan-lacznika';
+        const metaCelu: SldElementClickMeta | undefined = zaznaczPole
+          ? {
+              ownerRef: elementId,
+              elementKind: cel.meta?.elementKind,
+              klasa: cel.meta?.klasa,
+            }
+          : cel.meta;
+        klikElementuRef.current?.(cel.testId, metaCelu);
+      }
+      // Akcje stanu łącznika działają na aparacie wskazanym symbolem (temat menu niesie jego
+      // ref — `canvasMenuSubject.ts`), nie na jedynym łączniku pola.
+      handleAction(actionId, kind, elementId, undefined, contextSubject?.deviceRef);
       closeContextMenu();
     },
-    [handleAction, closeContextMenu],
+    [handleAction, closeContextMenu, contextSubject],
   );
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
@@ -2373,6 +2399,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               elementKind: meta.elementKind,
               derKind: meta.derKind,
               busRef: meta.busRef,
+              deviceRef: meta.deviceRef,
             },
             modelIndex,
           )
@@ -2411,6 +2438,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             elementKind: meta.elementKind,
             derKind: meta.derKind,
             busRef: meta.busRef,
+            deviceRef: meta.deviceRef,
           },
           modelIndex,
         );

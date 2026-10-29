@@ -140,11 +140,43 @@ export interface StationBandHeights {
   /** B6: korytarz lateralu pionowego pod stacją; 0 gdy stacja bez
    *  odgałęzienia schodzącego w dół (patrz DECYZJA w nagłówku pliku). */
   readonly lateralCorridorHeight?: number;
+  /** B4 (strefa zejść): liczba POZIOMÓW ODEJŚCIA odgałęzień z pól tej stacji —
+   *  liczba pól odgałęźnych (`findLineBayIndices(...).branchIndices.length`,
+   *  `layout/measure.ts`), co najmniej 1. Patrz `departureStripExtraHeight`. */
+  readonly departureLevelCount?: number;
 }
 
 export interface BandsResult {
   readonly bands: Readonly<Record<BandId, { readonly y: number; readonly height: number }>>;
   readonly totalHeight: number;
+  /** Liczba poziomów odejścia odgałęzień wiersza = max po stacjach (≥ 1) — JEDNA
+   *  prawda dla rezerwacji wysokości B4 (tu) i dla korytarza międzystacyjnego
+   *  (`trunkCorridorYOf`, `scene/buildScene.ts`), który leży POD wszystkimi. */
+  readonly departureLevels: number;
+}
+
+/** Prześwit pod najniższym sub-poziomem strefy zejść (przejście pod stacją,
+ *  `trunkCorridorYOf + GRID`, `scene/buildScene.ts`) do stropu pasma nazw B5. */
+export const DEPARTURE_STRIP_BOTTOM_CLEARANCE = 2 * GRID;
+
+/**
+ * ODEJŚCIA-ZAGNIEŻDŻONE (znalezisko „2. odgałęzienie tej samej stacji krzyżuje się",
+ * `buildScene.p1Recenzja.test.ts`): stacja z `n` polami odgałęźnymi wyprowadza `n`
+ * kabli w TĘ SAMĄ szczelinę na prawo od bloku. Na jednym poziomie poziome odcinki
+ * odejść nakładały się współliniowo (dwa obwody na jednej kresce), a pion pola
+ * bliższego szczelinie przecinał poziom pola dalszego. Każde pole odgałęźne
+ * dostaje WŁASNY sub-poziom strefy zejść (krok `GRID`), zagnieżdżony: pole najbliżej
+ * szczeliny (najwyższy indeks) najwyżej, na `stripTopY` — kanały rosną w prawo w tej
+ * samej kolejności (`computeLateralChannelX`), więc odejścia się nie przecinają.
+ * Pod poziomami odejść leżą korytarz międzystacyjny i przejście pod stacją (po
+ * jednym sub-poziomie), a pod nimi prześwit `DEPARTURE_STRIP_BOTTOM_CLEARANCE` do B5.
+ * Strefa (`DESCENT_STRIP_HEIGHT`, 6×GRID — po zdjęciu akcentu rozgałęzienia w F13.2
+ * jej dolna część jest pusta) mieści do dwóch poziomów odejścia bez przyrostu; dopiero
+ * trzeci i kolejny dokłada po `GRID`. Funkcja zwraca ten przyrost wysokości B4.
+ */
+export function departureStripExtraHeight(departureLevels: number): number {
+  const potrzebna = (Math.max(1, departureLevels) + 2) * GRID + DEPARTURE_STRIP_BOTTOM_CLEARANCE;
+  return Math.max(0, potrzebna - DESCENT_STRIP_HEIGHT);
 }
 
 function maxOf(values: readonly number[], fallback: number): number {
@@ -172,6 +204,7 @@ export function computeBands(
 ): BandsResult {
   const hasAnySegment = stations.some((s) => normalizeSegmentText(s.incomingSegmentLabelText) != null);
   const effectiveRowCount = hasAnySegment ? Math.max(segmentLabelRowCount, 1) : 0;
+  const departureLevels = maxOf(stations.map((s) => s.departureLevelCount ?? 1), 1);
   const rawHeights: Record<BandId, number> = {
     B1: SEGMENT_LABEL_ROW_HEIGHT * effectiveRowCount,
     B2: BUS_AXIS_BAND_HEIGHT + maxOf(stations.map((s) => s.portCaptionHeight ?? 0), 0),
@@ -181,7 +214,7 @@ export function computeBands(
     // niezmienione) i wnętrze kompozycji stacji (`compose/station.ts`,
     // nieświadome tej strefy) są nietknięte; tylko start B5 (`nameSlot.y`)
     // przesuwa się niżej o tę wysokość.
-    B4: maxOf(stations.map((s) => s.stationBlockHeight), 0) + DESCENT_STRIP_HEIGHT,
+    B4: maxOf(stations.map((s) => s.stationBlockHeight), 0) + DESCENT_STRIP_HEIGHT + departureStripExtraHeight(departureLevels),
     B5: maxOf(stations.map((s) => s.nameBandHeight), 0),
     B6: maxOf(stations.map((s) => s.lateralCorridorHeight ?? 0), 0),
   };
@@ -193,7 +226,7 @@ export function computeBands(
     bands[id] = { y: cursor, height };
     cursor += height;
   }
-  return { bands, totalHeight: cursor };
+  return { bands, totalHeight: cursor, departureLevels };
 }
 
 /** Wyrocznia pomocnicza (testy/consumers): żadna para pasm z wyniku

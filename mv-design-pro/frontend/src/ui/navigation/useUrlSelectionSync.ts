@@ -105,6 +105,19 @@ export function oknoOtwarteZSelekcji(
   return powierzchnia?.routeState.payload?.source === 'url_selection';
 }
 
+/**
+ * Formularz operacji (kreator) w toku — powierzchnia edycji otwarta przez użytkownika, której
+ * synchronizacja selekcji NIGDY nie zastępuje ani nie zamyka, w żadnej gałęzi (nieudana
+ * kanonikalizacja — K9-A; selekcja kanonikalizowana; selekcja już kanoniczna i jej zdjęcie —
+ * `oknoZSelekcji` rusza wyłącznie okno otwarte przez selekcję). JEDNO źródło tej reguły.
+ * Pomiar 2026-10-29 (UX-04, e2e Z.10): pozycja menu kanwy „Wyprowadź ciąg główny SN" zaznacza
+ * GPZ (selekcja niekanoniczna: nazwa = ref) i otwiera kreator magistrali; efekt kanonikalizacji
+ * otwierał zaraz potem okno techniczne GPZ w miejsce kreatora — kreator znikał bez śladu.
+ */
+function formularzOperacjiWToku(): boolean {
+  return useNetworkBuildStore.getState().activeSurface?.routeState.payload?.delegate === 'operation_form';
+}
+
 /** Okno techniczne prawego panelu otwarte PRZEZ synchronizację selekcji (nie przez użytkownika). */
 function oknoZSelekcji(): { entityRef: string | null } | null {
   const aktywna = useNetworkBuildStore.getState().activeSurface;
@@ -240,9 +253,7 @@ export function useUrlSelectionSync(): void {
       // powierzchnią „dla tej selekcji" — składanie stosu zamykało kreator zaraz po
       // zapisie (wskazanie niekanoniczne), więc podsumowanie po zapisie nigdy nie
       // było widoczne w żywej aplikacji.
-      const aktywnyDelegat = useNetworkBuildStore.getState().activeSurface?.routeState.payload
-        ?.delegate;
-      if (aktywnyDelegat !== 'operation_form') {
+      if (!formularzOperacjiWToku()) {
         clearRouteManagedSurface();
         collapseSurfaceStackTo(null);
       }
@@ -255,6 +266,7 @@ export function useUrlSelectionSync(): void {
 
     selectElement(canonicalSelection);
     updateUrlWithSelection(canonicalSelection);
+    if (formularzOperacjiWToku()) return;
     if (surfaceTargetForSelection(canonicalSelection)) {
       openTechnicalSurfaceForSelection(canonicalSelection, openRouteSurface);
     } else {

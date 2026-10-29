@@ -428,27 +428,6 @@ def spadek_procentowy_przy_innym_napieciu(
     return spadek_procent * (napiecie_kv**2) / (napiecie_nowe_kv**2)
 
 
-def susceptancja_z_mocy_biernej_s(moc_bierna_mvar: float, napiecie_kv: float) -> float:
-    """Susceptancja baterii kondensatorów: B = Q/U² [S] (Q[Mvar], U[kV]; Mvar/kV² = S).
-
-    Karta C4: eksport CGMES baterii (`infrastructure/cgmes/cgmes_exporter._emit_shunt`,
-    ``LinearShuntCompensator.bPerSection``). Postać `Q/U²` (dwa zaokrąglenia) jest
-    dokładniejsza niż `1/(U²/Q)` (trzy) — pomiar karty: na siatce 11 × 9 (Q × U)
-    niepoprawnie zaokrąglonych 13 wobec 28, identycznych na 10 cyfrach eksportu.
-    Odwrotność: ``moc_bierna_z_susceptancji_mvar``.
-    """
-    return moc_bierna_mvar / (napiecie_kv**2)
-
-
-def moc_bierna_z_susceptancji_mvar(susceptancja_s: float, napiecie_kv: float) -> float:
-    """Moc bierna baterii z susceptancji: Q = B·U² [Mvar] (B[S], U[kV]).
-
-    Para ``susceptancja_z_mocy_biernej_s`` — import CGMES baterii
-    (`infrastructure/cgmes/cgmes_importer._importuj_kondensatory`).
-    """
-    return susceptancja_s * (napiecie_kv**2)
-
-
 # =============================================================================
 # Rodzina H — susceptancja z pojemności, B = 2πf·C (karta W3-F §0.6)
 # =============================================================================

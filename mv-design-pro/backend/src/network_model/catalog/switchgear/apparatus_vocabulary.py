@@ -58,6 +58,8 @@ FAMILY_APPARATUS_FOR_ENM_KIND: dict[str, str] = {
     "THREE_POSITION_SWITCH": "switch_disconnector",
     "CORE_BALANCE_CT": "current_transformer",
     "VOLTAGE_INDICATOR": "voltage_indicator",
+    "UNBALANCE_CT": "current_transformer",
+    "PHASE_TO_PHASE_VT": "voltage_transformer",
 }
 
 #: Kanoniczna tożsamość aparatu dla KAŻDEGO rodzaju z `BayDeviceTemplate.kind`
@@ -79,18 +81,24 @@ APPARATUS_KIND_FOR_TEMPLATE_KIND: dict[str, ApparatusKind] = {
     "THREE_POSITION_SWITCH": "three_position_switch",
     "VOLTAGE_INDICATOR": "voltage_indicator",
     "CORE_BALANCE_CT": "core_balance_ct",
+    "UNBALANCE_CT": "unbalance_current_transformer",
+    "PHASE_TO_PHASE_VT": "phase_to_phase_voltage_transformer",
 }
 
 #: Zgrubienie tożsamości aparatu do słownika rodziny (rodzina deklaruje
 #: `switch_disconnector`, nie rozróżniając odłącznika szynowego od liniowego;
 #: łącznik trójpołożeniowy jest w słowniku rodziny łącznikiem odłączającym, przekładnik
-#: Ferrantiego — przekładnikiem prądowym).
+#: Ferrantiego i przekładnik niezrównoważenia baterii — przekładnikiem prądowym, przekładnik
+#: międzyfazowy — przekładnikiem napięciowym; karty UX-04/POLE-LINIOWE-WZORZEC
+#: i UX-04/POLE-BKR-MODEL).
 _ZGRUBIENIE_DO_SLOWNIKA_RODZINY: dict[ApparatusKind, str] = {
     "disconnector_busbar": "switch_disconnector",
     "disconnector_line": "switch_disconnector",
     "disconnector_branch": "switch_disconnector",
     "three_position_switch": "switch_disconnector",
     "core_balance_ct": "current_transformer",
+    "unbalance_current_transformer": "current_transformer",
+    "phase_to_phase_voltage_transformer": "voltage_transformer",
 }
 
 #: Aparaty leżące POZA celką rozdzielnicy — nie podlegają słownikowi rodziny.

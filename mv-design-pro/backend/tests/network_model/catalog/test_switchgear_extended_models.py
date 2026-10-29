@@ -307,6 +307,11 @@ class TestSlownikAparatow:
             "THREE_POSITION_SWITCH": "switch_disconnector",
             "CORE_BALANCE_CT": "current_transformer",
             "VOLTAGE_INDICATOR": "voltage_indicator",
+            # Karta UX-04/POLE-BKR-MODEL: przekładnik niezrównoważenia baterii
+            # i przekładnik napięciowy międzyfazowy mają własne tożsamości aparatu,
+            # ale dla słownika rodziny to przekładnik prądowy i napięciowy.
+            "UNBALANCE_CT": "current_transformer",
+            "PHASE_TO_PHASE_VT": "voltage_transformer",
         }
 
     def test_transformator_pola_lezy_poza_slownikiem_rodziny(self):

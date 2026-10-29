@@ -76,7 +76,7 @@ describe('snapToGrid', () => {
 });
 
 describe('getDeviceStyle', () => {
-  it('closed → green fill + class', () => {
+  it('closed → kafel zamknięty (czerwony, STATE_COLOR) + class', () => {
     const s = getDeviceStyle('closed');
     expect(s.fill).toBe(COLOR_DEVICE_CLOSED);
     expect(s.stroke).toBe(COLOR_DEVICE_CLOSED_BORDER);
@@ -84,7 +84,7 @@ describe('getDeviceStyle', () => {
     expect(s.strokeWidth).toBe(1.5);
   });
 
-  it('open → panel-raised fill, red border', () => {
+  it('open → panel-raised fill, obwódka otwarta (zielona, STATE_COLOR)', () => {
     const s = getDeviceStyle('open');
     expect(s.fill).toBe(COLOR_PANEL_RAISED);
     expect(s.stroke).toBe(COLOR_DEVICE_OPEN_BORDER);
@@ -107,7 +107,7 @@ describe('getDeviceStyle', () => {
     expect(s.className).toBe('sld-v2-device-fault');
   });
 
-  it('selected → green fill + selection border + thickest stroke', () => {
+  it('selected → wypełnienie zamknięte + selection border + thickest stroke', () => {
     const s = getDeviceStyle('selected');
     expect(s.fill).toBe(COLOR_DEVICE_CLOSED);
     expect(s.stroke).toBe(COLOR_SELECTION);

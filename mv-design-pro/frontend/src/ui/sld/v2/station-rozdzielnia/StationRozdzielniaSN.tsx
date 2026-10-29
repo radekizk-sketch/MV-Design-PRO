@@ -21,10 +21,13 @@
  */
 
 import {
+  COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
+  COLOR_DEVICE_FAULT,
   COLOR_DEVICE_OPEN,
   COLOR_DEVICE_OPEN_BORDER,
   COLOR_DEVICE_UNKNOWN,
+  COLOR_LIVE,
   COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_SELECTION,
   COLOR_TEXT_MUTED,
@@ -307,8 +310,8 @@ function ProtectionChips(props: { field: StationFieldDescriptor; cx: number; top
     <g data-testid={`sr-protection-${field.fieldId}`} pointerEvents="none">
       {enabled.map((fn, i) => {
         const y = topY + i * (chipH + gap);
-        const active = fn.tripped ? COLOR_DEVICE_OPEN : fn.pickedUp ? '#FFB020' : '#0A1018';
-        const border = fn.enabled ? COLOR_DEVICE_CLOSED_BORDER : COLOR_TEXT_MUTED;
+        const active = fn.tripped ? COLOR_DEVICE_FAULT : fn.pickedUp ? '#FFB020' : '#0A1018';
+        const border = fn.enabled ? COLOR_LIVE : COLOR_TEXT_MUTED;
         return (
           <g key={fn.code} data-protection-code={fn.code} data-enabled={fn.enabled ? 'true' : 'false'}>
             <rect x={colX} y={y} width={chipW} height={chipH} rx={2} ry={2} fill={active} stroke={border} strokeWidth={0.9} />
@@ -455,7 +458,7 @@ function FieldColumn(props: {
         const rep = representativeApparatus(field);
         const shape = rep ? canonicalShapeForKind(rep.kind) : null;
         const cy = geom.busY + 15;
-        const fillColor = isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : '#0A8D43';
+        const fillColor = isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : COLOR_DEVICE_CLOSED;
         const strokeColor = stateColor(state);
         const sw = isOpen ? 1.8 : 1.4;
         const common = {
@@ -606,7 +609,7 @@ function NNFeederColumn(props: {
       {/* Feeder drop. */}
       <line data-routing="orthogonal" x1={x} y1={geom.busY} x2={x} y2={geom.bottomY} stroke={nnBusColor} strokeWidth={1.8} />
       {/* nN feeder switch (LV breaker square). */}
-      <rect x={x - 4} y={geom.busY + 8} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+      <rect x={x - 4} y={geom.busY + 8} width={8} height={8} rx={1} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1} />
       {/* Terminator: PV = inverter node; load = arrowhead. */}
       {isPv ? (
         <g data-testid={`sr-nn-pv-${feeder.feederId}`}>
@@ -683,7 +686,7 @@ function NNTier(props: {
       />
       {/* nN main breaker between transformer and nN busbar. */}
       <line data-routing="orthogonal" x1={nn.spineX} y1={nn.transformerY + 9} x2={nn.spineX} y2={nn.busbar.y} stroke={nnBusColor} strokeWidth={1.8} />
-      <rect x={nn.spineX - 4} y={nn.mainBreakerY - 4} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+      <rect x={nn.spineX - 4} y={nn.mainBreakerY - 4} width={8} height={8} rx={1} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1} />
       {detail === 'close' && (
         <text x={nn.spineX + 9} y={nn.mainBreakerY + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={600}>
           Q0 nN
@@ -768,7 +771,7 @@ function NNTier(props: {
 function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; open: boolean }): JSX.Element {
   const { cx, cy, h, open } = props;
   const color = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
-  const fill = open ? 'none' : '#0A8D43';
+  const fill = open ? 'none' : COLOR_DEVICE_CLOSED;
   return (
     <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={open ? 'open' : 'closed'}>
       <polygon
@@ -925,7 +928,7 @@ function BusbarShortCircuitPanel(props: {
         );
       })}
       {/* Icw verification verdict. */}
-      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
+      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_LIVE : COLOR_DEVICE_FAULT} strokeWidth={1} />
       <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
         {`Ik"max ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} Icw ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
       </text>

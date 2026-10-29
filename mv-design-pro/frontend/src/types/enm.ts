@@ -1203,6 +1203,15 @@ export interface OgranicznikPrzepiecPola {
  * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
  */
 /**
+ * Rola pola w modelu (`Bay.bay_role`) — lustro JEDNEJ listy ról backendu
+ * `enm.rola_pola_sn.ROLE_POLA_MODELU` (parytet: `backend/tests/enm/test_rola_pola_bkr.py`).
+ * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
+ * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
+ */
+export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'BKR'] as const;
+export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
+
+/**
  * Stan obiektu pola i instancji aparatu pola — lustro `network_model.catalog.gazy_fluorowane
  * .StanObiektu`: `ISTNIEJACY` (obiekt zastany w sieci — ustawia go wyłącznie operacja
  * `set_object_state` albo import istniejącej sieci niosący stan) albo `PROJEKTOWANY` (każda
@@ -1218,7 +1227,7 @@ export interface Bay extends ENMElement {
    *  odbiorcze, mieszane, dedykowane wytwórcy. `null` = nieustalona. Jedno źródło trybu
    *  „linia/generacja" pola: generacja ⇔ klasa mieszana albo dedykowana wytwórcy. */
   klasa_pola?: KlasaPolaLiniowego | null;
-  bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+  bay_role: BayModelRole;
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
   /** Punkt rozgałęzienia właściciela (pole rozdzielnicy odgałęźnej ZKSN); `null` dla pola stacji. */
@@ -1302,7 +1311,8 @@ export type BayCanonicalRole =
   | 'POMIAROWE'
   | 'PV_SN'
   | 'BESS_SN'
-  | 'FW_SN';
+  | 'FW_SN'
+  | 'BATERIA_KONDENSATOROW';
 
 export type BayDeviceState =
   | 'zamkniety'
@@ -1368,7 +1378,11 @@ export type BayPrimaryDeviceKind =
   // trójpołożeniowy, przekładnik Ferrantiego na kablu, pojemnościowy wskaźnik napięcia.
   | 'THREE_POSITION_SWITCH'
   | 'CORE_BALANCE_CT'
-  | 'VOLTAGE_INDICATOR';
+  | 'VOLTAGE_INDICATOR'
+  // UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): aparaty pola baterii kondensatorów —
+  // porty w jednej liście portów aparatów pola (`ui/sld/v3/compose/rodzajeAparatuPola.ts`).
+  | 'UNBALANCE_CT'
+  | 'PHASE_TO_PHASE_VT';
 
 /** Port aparatu pola — lustro `backend/src/enm/models.py::PortAparatuPola` (karta
  *  UX-04/POLE-LINIOWE-WZORZEC). `wezel` — węzeł wewnętrzny pola (`szyna`, `w1`…, `kabel`);
@@ -1422,6 +1436,9 @@ export interface BayPrimaryDevice {
   rdzenie?: RdzenPrzekladnikaPradowego[];
   /** Uzwojenia przekładnika napięciowego aparatu kind='VT' (lustro `BayPrimaryDevice.uzwojenia`). */
   uzwojenia?: UzwojeniePrzekladnikaNapieciowego[];
+  /** Przekładnia przekładnika Ferrantiego aparatu kind='CORE_BALANCE_CT' zapisana jak na
+   *  rysunku standardu (np. '1/100'); lustro `BayPrimaryDevice.przekladnia`. */
+  przekladnia?: string | null;
   /** Odgałęzienie toru, w którym leży aparat (np. 'pn' — odgałęzienie przekładnika napięciowego
    *  Z.11.1/Z.11); lustro `BayPrimaryDevice.odgalezienie`. `null`/brak = aparat toru głównego. */
   odgalezienie?: string | null;
@@ -1934,6 +1951,19 @@ export interface ConnectionNode {
  * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
  * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
  */
+/**
+ * Układ połączeń baterii kondensatorów — lustro `backend/src/network_model/core/
+ * bateria_kondensatorow.py::UkladPolaczenBaterii` (równość przypina
+ * `backend/tests/enm/test_bateria_kondensatorow_model.py`; karta UX-04/POLE-BKR-MODEL).
+ */
+export const UKLADY_POLACZEN_BATERII = [
+  'PODWOJNA_GWIAZDA_IZOLOWANA',
+  'GWIAZDA_IZOLOWANA',
+  'GWIAZDA_UZIEMIONA',
+  'TROJKAT',
+] as const;
+export type UkladPolaczenBaterii = (typeof UKLADY_POLACZEN_BATERII)[number];
+
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
@@ -1945,6 +1975,18 @@ export interface ShuntCapacitor extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Wartości projektanta (pierwszeństwo przed typem; `null` = z typu albo wartość robocza). */
+  uklad_polaczen?: UkladPolaczenBaterii | null;
+  liczba_stopni?: number | null;
+  /** Stan każdego stopnia (`true` = załączony); `null` = wszystkie załączone. */
+  stopnie_zalaczone?: boolean[] | null;
+  tolerancja_pojemnosci_min_proc?: number | null;
+  tolerancja_pojemnosci_max_proc?: number | null;
+  dlawik_ograniczajacy?: boolean | null;
+  dlawik_indukcyjnosc_mh?: number | null;
+  rezystory_rozladowcze_wewnetrzne?: boolean | null;
+  /** Transformatory, których wyłączenie wyłącza baterię (IRiESD II.4.5.4.4.2). */
+  wylaczenie_od_transformatorow?: string[];
 }
 
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */

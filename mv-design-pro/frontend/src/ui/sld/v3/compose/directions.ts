@@ -103,6 +103,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
     case FIELD_ROLE.DER_UNKNOWN:
       return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
+    case FIELD_ROLE.CAPACITOR_BANK:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
     default:
       return 'pole';
   }
@@ -138,7 +140,7 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  *
  * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
  * transformatorowe · `FS1`… sprzęgła · `FP1`… pomiarowe · `FG1`… źródłowe
- * (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * (DER) · `FK1`… baterii kondensatorów (kompensacyjne). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
  * jednej klasy nie przenumerowuje pozostałych.
  */
 export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
@@ -152,7 +154,9 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
           : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
             || role === FIELD_ROLE.DER_UNKNOWN
             ? 'FG'
-            : 'F';
+            : role === FIELD_ROLE.CAPACITOR_BANK
+              ? 'FK'
+              : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
@@ -273,8 +277,9 @@ export interface StationDirectionContext {
   readonly nextNodeCode: string | null;
   /** Kody pierwszych stacji odgałęzień zaczynających się w TEJ stacji, w
    *  kolejności `lineRuns` (deterministyczne — bez sortowania dodatkowego,
-   *  wejście już ma ustaloną kolejność). Index-aligned do KOLEJNYCH pól
-   *  odgałęźnych tej stacji (patrz `stationBayCaptions`), NIE do `snBays`. */
+   *  wejście już ma ustaloną kolejność). Przypisanie do pól stacji idzie po
+   *  tożsamości pola startowego (`branchBayRefs`, `przypiszOdgalezieniaPolom`),
+   *  NIE po kolejności; to NIE jest tablica index-aligned do `snBays`. */
   readonly branchNodeCodes: readonly string[];
   /** F10.2 (spec §19.2, D2): `LineRunV1.name` ciągu niosącego poprzednika/
    *  następnika TEJ stacji (ten sam ciąg dla obu — stacja jest NA nim) —
@@ -285,6 +290,13 @@ export interface StationDirectionContext {
   /** F10.2 (spec §19.2): nazwy ciągów odgałęźnych, index-aligned do
    *  `branchNodeCodes` (jak wyżej). */
   readonly branchRunNames: readonly (string | null)[];
+  /** UX-04/POLE-LINIOWE-WZORZEC (klasa „kolejność zamiast tożsamości"): `LineRunV1.
+   *  starting_bay_ref` ciągu odgałęźnego, index-aligned do `branchNodeCodes` — pole stacji,
+   *  z którego ciąg wychodzi. `stationBayCaptions` przypisuje podpis odgałęzienia polu
+   *  o TYM `bayRef`, a nie kolejnemu polu odgałęźnemu w kolejności `lineRuns`; `null`, gdy
+   *  ciąg nie niesie pola startowego (pusty ref). Pominięte (`undefined`) = brak danych pola
+   *  startowego dla wszystkich gałęzi (kontekst budowany ręcznie). */
+  readonly branchBayRefs?: readonly (string | null)[];
 }
 
 export interface ResolveStationDirectionContextInput {
@@ -346,13 +358,17 @@ export function resolveStationDirectionContext(
       .map((r) => {
         const first = [...r.stations].sort((a, b) => a.order - b.order)[0];
         const code = first ? stationCodeOf(first.substation_ref) : null;
-        return { code, name: r.name?.trim() || null };
+        return { code, name: r.name?.trim() || null, bayRef: r.starting_bay_ref || null };
       })
-      .filter((entry): entry is { code: string; name: string | null } => entry.code != null);
+      .filter(
+        (entry): entry is { code: string; name: string | null; bayRef: string | null } =>
+          entry.code != null,
+      );
     const branchNodeCodes = branchEntries.map((e) => e.code);
     const branchRunNames = branchEntries.map((e) => e.name);
+    const branchBayRefs = branchEntries.map((e) => e.bayRef);
 
-    return { previousNodeCode, nextNodeCode, branchNodeCodes, runName, branchRunNames };
+    return { previousNodeCode, nextNodeCode, branchNodeCodes, runName, branchRunNames, branchBayRefs };
   }
 
   return {
@@ -361,6 +377,7 @@ export function resolveStationDirectionContext(
     branchNodeCodes: [],
     runName: null,
     branchRunNames: [],
+    branchBayRefs: [],
   };
 }
 
@@ -419,6 +436,45 @@ export function bayDirectionCaption(args: BayDirectionCaptionArgs): string | nul
 }
 
 /**
+ * UX-04/POLE-LINIOWE-WZORZEC (klasa „kolejność zamiast tożsamości", ta sama co pozycja
+ * odejścia na rysunku — `scene/buildScene.ts collapsedBranchPortX`/`resolveBranchOrigin`):
+ * indeks gałęzi kontekstu (`branchNodeCodes`) dla każdego pola stacji, `-1` dla pól bez
+ * kierunku odgałęzienia. Pole odgałęźne dostaje gałąź, której `starting_bay_ref` jest JEGO
+ * `bayRef` — nazwa i kod odgałęzienia należą do ciągu wychodzącego z tego pola, a nie do
+ * ciągu, który akurat stoi na tej samej pozycji w `lineRuns` (przemianowanie ciągów nie może
+ * przenieść podpisu na sąsiednie pole). Gałęzie, których pola startowego nie ma wśród pól
+ * odgałęźnych stacji (ref pusty albo wskazujący pole innej klasyfikacji), dostają pozostałe
+ * pola odgałęźne w kolejności `lineRuns` — reguła spec §9 dla danych bez pola startowego.
+ */
+function przypiszOdgalezieniaPolom(
+  snBays: readonly MiniBlockBayDescriptor[],
+  directions: readonly (LineBayDirection | null)[],
+  context: StationDirectionContext,
+): readonly number[] {
+  const wynik = snBays.map(() => -1);
+  const refy = context.branchBayRefs ?? [];
+  const polaOdgalezne = snBays.flatMap((_, index) => (directions[index] === 'branch' ? [index] : []));
+  const zajete = new Set<number>();
+  const wolnePola: number[] = [];
+  for (const indeksPola of polaOdgalezne) {
+    const galaz = refy.findIndex((ref, i) => ref === snBays[indeksPola].bayRef && !zajete.has(i));
+    if (galaz < 0) {
+      wolnePola.push(indeksPola);
+      continue;
+    }
+    wynik[indeksPola] = galaz;
+    zajete.add(galaz);
+  }
+  const wolneGalezie = context.branchNodeCodes.map((_, i) => i).filter((i) => !zajete.has(i));
+  wolnePola.forEach((indeksPola, k) => {
+    // Pole odgałęźne bez własnej gałęzi i bez gałęzi wolnej dostaje indeks poza tablicą:
+    // `bayDirectionCaption` degraduje je do `designation` (jak dotąd), bez kodu z domysłu.
+    wynik[indeksPola] = wolneGalezie[k] ?? context.branchNodeCodes.length;
+  });
+  return wynik;
+}
+
+/**
  * Podpisy kierunku WSZYSTKICH pól stacji, index-aligned do `snBays` (spec
  * §4/§5.1/§9) — gotowe wejście dla `measure.ts` (`StationMeasureInput.
  * bayDirectionCaptions`) i `labels.ts` (`PortCaptionOwnerInput.text`).
@@ -432,12 +488,14 @@ export function stationBayCaptions(
     if (czyPoleToru(bay)) lineBayIndices.push(index);
   });
 
-  let branchIndex = 0;
-  return snBays.map((bay, index) => {
-    const lineBayPosition = lineBayIndices.indexOf(index);
+  const directions = snBays.map((bay, index) =>
     // Pole wolne/rezerwowe nie ma odpływu, więc nie ma kierunku (i nie zabiera numeru odgałęzienia).
-    const direction = czyPoleToru(bay) ? classifyLineBayDirection(bay.fieldRole, lineBayPosition) : null;
-    const thisBranchIndex = direction === 'branch' ? branchIndex++ : -1;
+    czyPoleToru(bay) ? classifyLineBayDirection(bay.fieldRole, lineBayIndices.indexOf(index)) : null,
+  );
+  const branchIndexOfBay = przypiszOdgalezieniaPolom(snBays, directions, context);
+  return snBays.map((bay, index) => {
+    const direction = directions[index];
+    const thisBranchIndex = branchIndexOfBay[index];
     const podpis = bayDirectionCaption({
       direction,
       context,

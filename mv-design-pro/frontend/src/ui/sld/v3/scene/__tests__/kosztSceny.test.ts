@@ -598,11 +598,22 @@ interface OdciskiLod {
  * sieci referencyjnej i 342 podwojonej, (2) notatki braku portów opisane wyżej (171/342),
  * (3) koniec przedłużenia szyny 240 → 232. L0 obu sieci identyczne z bazą; kod bazy na
  * nowej fiksturze daje odciski bazy (pole jest dla niego nieznane).
+ *
+ * TA SAMA KARTA, rozszerzenie 5 (2026-10-29, kafle stanu wg referencji HMI) — 6 odcisków
+ * SCENY: L0/L1/L2 obu sieci; cały declutter i wszystkie plany etykiet bez zmian (zielone).
+ * Punkt normalnie otwarty (`noPoint`) niesie położenie swojej gałęzi (`galezNop`, ta sama
+ * reguła co łącznik pola) i dostaje kafel stanu, więc symbol ma pole `state: 'open'`. Pomiar
+ * sondą (`buildSceneV3` przez vite-node, kod bazy `e4b778d35` z drzewa roboczego bazy wobec
+ * drzewa karty po scaleniu z kartą UX-04/POLE-BKR-MODEL, ta sama fikstura, porównanie liść
+ * po liściu): różnica to WYŁĄCZNIE `symbols[].state` na 9 symbolach `noPoint` (1 na scenę sieci
+ * referencyjnej, 2 na scenę podwojonej). Zrzut sześciu scen z zdjętym tym polem jest CO DO
+ * BAJTU identyczny z bazą (sha256 `936a9d0b6edf5165caee4eb43d59decea38980505603288e802a26342a511f47`
+ * w obu fazach); geometria bez zmian.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '4e6dbcc8571e568de22a96dab483d012',
+      scena: '8e090057f6695ada129159f69517efae',
       declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
       plany: [
         '3073b65d61f123c6da6d042c95f705b4',
@@ -615,7 +626,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'a6fbf9b4df309e1eb0eff468da3eca3e',
+      scena: '04a7561db346f689bb61973104fd95a5',
       declutter: '40b7251b852fc542752fe1ba1f29338e',
       plany: [
         '06752775d45bbab5bd2330a0c33ea6b7',
@@ -628,7 +639,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'e6bdd2058c3d09c3e8021d6c2dadab77',
+      scena: '5cd691db568dafaffb980eb3ddb3b584',
       declutter: '3ac69d221753e008d7ac680e0531d8d4',
       plany: [
         '67205bf8127c4c224ade425c47dd2246',
@@ -643,7 +654,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
   ],
   podwojona: [
     {
-      scena: '8417ad34b7f98bff9a043d8fa5156142',
+      scena: '0056a451233997ceffc36dce4ddfba37',
       declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
       plany: [
         'b8eea41ccf515f1acc228cd82b6436dd',
@@ -656,7 +667,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'f9606cdf9b029e9356734d8fec829881',
+      scena: 'd28b090591f78279dad5e51d97be5bb4',
       declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
       plany: [
         'bb96bce423fc0946291bdd36d49ed8c2',
@@ -669,7 +680,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'b615d671cd8f8028ea951b5d374fb4ed',
+      scena: '9395eb34f0b10c721e30c88cf4260a85',
       declutter: 'fd2ac4acf96701c6273059192dddd93f',
       plany: [
         '28965374c394c62b1d414eddfdd5e98a',

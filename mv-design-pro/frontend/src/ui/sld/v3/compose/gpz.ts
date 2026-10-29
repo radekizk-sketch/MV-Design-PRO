@@ -46,7 +46,7 @@ import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/tex
 import { SYMBOL_DEFS, czySymbolQet, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
-import type { SwitchState } from '../symbols/glyphs';
+import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
@@ -93,7 +93,6 @@ import {
   type BrakPrzylaczaAparatu,
   type BrakPrzylaczaPolaSn,
 } from './apparatusSequence';
-import { czyLacznikPola } from './rodzajeAparatuPola';
 import { FIELD_ROLE } from '../../v2/domain/apparatusContracts';
 import type { RolaPolaZrodlowego } from '../../v2/model/polaZModelu';
 import {
@@ -146,8 +145,7 @@ export interface GpzElementMeta {
    *  `null` = nieustalony, brak klucza = pozycja bez rekordu aparatu. */
   readonly stanObiektu?: StanObiektu | null;
   /** UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM pozycji stosu (`BayPrimaryDevice.kind`)
-   *  — z niego glif QET wie, że rysuje ŁĄCZNIK pola (ramka stanu SCADA,
-   *  `rodzajeAparatuPola.czyLacznikPola`, lustro backendu). `undefined` = pozycja bez rekordu. */
+   *  (audytor DOM `data-apparatus-kind`). `undefined` = pozycja bez rekordu. */
   readonly apparatusKind?: BayPrimaryDeviceKind;
   /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola, w którym
    *  stoi aparat (`GalazPlanu`); `undefined` = tor główny. Dno toru pola i wyrocznia aparatów
@@ -212,6 +210,9 @@ export interface ComposedGpzSymbolInstance {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
    *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE dla symbolu
+   *  `capacitorBank`; przechodzą przez scenę do glifu (układ połączeń, przekładnik). */
+  readonly bateria?: GlifBaterii;
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
    *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
    *  budowany Z rekordów (`specyfikacjaPolaGpz`, GEOMETRIA-STACJI §0 pkt 4), więc każda
@@ -400,6 +401,11 @@ interface FieldApparatusSpec {
    *  (`rekordyToruPola`): numer odgałęzienia i pozycja (w `spec`) aparatu toru głównego, za
    *  którym odchodzi (`-1` = od węzła szyny). `undefined` = tor główny. */
   readonly odgalezienie?: { readonly numer: number; readonly zaPozycja: number };
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE pozycja `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
+  /** Rozszerzenie 5 karty UX-04: numer dyspozytorski pola (`Bay.bay_number`) — przedrostek
+   *  oznaczenia aparatu na rysunku (`oznaczenieZPrzedrostkiemPola`). `null` = brak numeru. */
+  readonly numerPola?: string | null;
 }
 
 /** Odgałęzienia toru w specyfikacji stosu pola GPZ (pozycje w `spec`, kolejność numerów). */
@@ -512,11 +518,11 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
       // Odłącznik odgałęzienia nie jest odłącznikiem szynowym ani liniowym toru pola.
       const parityKeys =
         rodzajSymbolu(symbolId) === 'disconnector' ? ['gpz.apparatus.ds.branch', 'gpz.apparatus.ds'] : kluczeParytetuAparatu(symbolId, 1);
-      return { symbolId, parityKeys, device, odgalezienie };
+      return { symbolId, parityKeys, device, odgalezienie, numerPola: bay?.bayNumber ?? null };
     }
     const parityKeys = kluczeParytetuAparatu(symbolId, odlaczniki);
     if (rodzajSymbolu(symbolId) === 'disconnector') odlaczniki += 1;
-    return { symbolId, parityKeys, device };
+    return { symbolId, parityKeys, device, numerPola: bay?.bayNumber ?? null };
   });
   const stos: FieldApparatusSpec[] = aparaty.length > 0 ? aparaty : [BRAK_DANYCH_WYPOSAZENIA];
   if (bay?.fieldRole === 'SOURCE') {
@@ -525,6 +531,19 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
     stos.push({
       symbolId: glifZrodlaPolaGpz(bay.rolaZrodla ?? FIELD_ROLE.DER_UNKNOWN),
       parityKeys: ['gpz.bay.source_kind'],
+    });
+  }
+  if (bay?.bateria) {
+    // UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola — element
+    // modelu zamykający stos (jak w stacjach `elementyModeluPola`); układ połączeń i rekord
+    // przekładnika niezrównoważenia z modelu (`v2/model/bateriaPola.ts`).
+    stos.push({
+      symbolId: 'capacitorBank',
+      parityKeys: ['gpz.bay.capacitor_bank'],
+      bateria: {
+        uklad: bay.bateria.uklad,
+        przekladnikNiezrownowazenia: bay.bateria.przekladnikNiezrownowazenia,
+      },
     });
   }
   if (rezerwa) stos.push(ZAKONCZENIE_REZERWY);
@@ -692,6 +711,7 @@ function buildFieldStack(
       x,
       y,
       ...daneRekordu(spec),
+      ...(spec.bateria ? { bateria: spec.bateria } : {}),
       ports,
       meta: metaPozycji(spec, index),
     };
@@ -867,47 +887,57 @@ interface SectionLayout {
   readonly pasSprzegla: { readonly lewo: number; readonly prawo: number } | null;
 }
 
-/** UX-04/POLE-LINIOWE-WZORZEC (karta §0 pkt 7): dopisek etykiety łącznika w stanie
- *  nieznanym — symbol zostaje (bez ramki stanu SCADA), stan mówi etykieta. */
-export const STAN_NIEZNANY_PL = 'stan nieznany';
+/** Klasa pisma oznaczenia aparatu pola GPZ — JEDNA dla rezerwacji szerokości i rysunku.
+ *  Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29): oznaczenie
+ *  stoi przy kaflu stanu pismem pogrubionym `t3` (dawniej `t4`); stanu NIE powtarza —
+ *  położenie niesie kafel i geometria styku (dawny dopisek „stan nieznany" usunięty: kafel
+ *  nieustalony z „?" jest silniejszym nośnikiem niż podpis, a podpis dublował treść). */
+export const KLASA_ETYKIETY_APARATU_GPZ = 't3';
 
 interface TekstEtykietyAparatuGpz {
   /** Tekst rysowany (`null` = aparat bez etykiety w tym stanie). */
   readonly tekst: string | null;
-  /** Najdłuższy wariant tekstu tego aparatu (dla łącznika — z dopiskiem stanu nieznanego):
-   *  rezerwacja szerokości NIE zależy od stanu, więc zmiana położenia łącznika nie przesuwa
-   *  układu pola (determinizm geometrii). */
+  /** Tekst rezerwacji szerokości — ten sam co rysowany: oznaczenie nie zależy od stanu,
+   *  więc zmiana położenia łącznika nie przesuwa układu pola (determinizm geometrii). */
   readonly najdluzszy: string | null;
-  readonly stanNieznany: boolean;
 }
 
 /**
  * Etykiety aparatów pola GPZ rysowanego symbolami QET (wzorzec pola liniowego ENEA Z.10,
  * karta UX-04/POLE-LINIOWE-WZORZEC): oznaczenie aparatu z rekordu (`designation`, np. Q1, Q0,
- * T1, P1, GK, T2), inaczej identyfikator konwencji §19.1; łącznik pola (`czyLacznikPola`)
- * w stanie nieznanym dostaje dopisek „stan nieznany". Pole bez symboli QET — bez etykiet
+ * T1, P1, GK, T2), inaczej identyfikator konwencji §19.1. Stan łącznika NIE wchodzi do
+ * podpisu (kafel stanu, rozszerzenie 5). Pole bez symboli QET — bez etykiet
  * (tożsamość pola niesie oznacznik pola, jak dotąd). Index-aligned do `spec`.
  */
 function tekstyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): readonly TekstEtykietyAparatuGpz[] {
-  const brak: TekstEtykietyAparatuGpz = { tekst: null, najdluzszy: null, stanNieznany: false };
+  const brak: TekstEtykietyAparatuGpz = { tekst: null, najdluzszy: null };
   if (!spec.some((pozycja) => czySymbolQet(pozycja.symbolId))) return spec.map(() => brak);
   const identyfikatory = apparatusIdentifiers(
     spec.map((pozycja) => pozycja.symbolId),
     spec.map((pozycja) => pozycja.device?.designation),
   );
-  const zDopiskiem = (baza: string | null): string => (baza ? `${baza} · ${STAN_NIEZNANY_PL}` : STAN_NIEZNANY_PL);
   return spec.map((pozycja, i) => {
     const device = pozycja.device;
     if (!device) return brak;
     const baza = device.designation?.trim() || identyfikatory[i] || null;
-    const lacznik = czyLacznikPola(device.kind);
-    const stanNieznany = lacznik && (device.switchState === undefined || device.switchState === 'unknown');
-    return {
-      tekst: stanNieznany ? zDopiskiem(baza) : baza,
-      najdluzszy: lacznik ? zDopiskiem(baza) : baza,
-      stanNieznany,
-    };
+    const tekst = baza === null ? null : oznaczenieZPrzedrostkiemPola(pozycja.numerPola ?? null, baza);
+    return { tekst, najdluzszy: tekst };
   });
+}
+
+/**
+ * Oznaczenie aparatu na rysunku pola GPZ: numer pola + oznaczenie aparatu w polu (6 + Q0 =
+ * „6Q0") — złożenie oznaczenia referencyjnego obiektu nadrzędnego i podrzędnego wg
+ * IEC 81346-1, ten sam zapis co sterownik polowy referencji HMI (2026-10-29: 6Q2, 6Q3).
+ * Oznaczenie, które już zaczyna się numerem pola przed literą klasy (projektant wpisał
+ * „6Q2"), zostaje bez zmian; pole bez numeru — samo oznaczenie. Dana modelu (`designation`)
+ * się nie zmienia: przedrostek jest wyłącznie zapisem rysunku.
+ */
+export function oznaczenieZPrzedrostkiemPola(numerPola: string | null, oznaczenie: string): string {
+  const numer = numerPola?.trim() ?? '';
+  if (numer.length === 0) return oznaczenie;
+  const zPrzedrostkiem = oznaczenie.startsWith(numer) && /^[A-Za-z]/.test(oznaczenie.slice(numer.length));
+  return zPrzedrostkiem ? oznaczenie : `${numer}${oznaczenie}`;
 }
 
 /** Rezerwacje etykiet aparatów pola GPZ: kolumna PO LEWEJ toru głównego i pas PO PRAWEJ
@@ -921,7 +951,7 @@ function rezerwyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): { reado
     const najdluzszy = teksty[i].najdluzszy;
     // Podpisy odgałęzienia toru mieszczą się w jego pasie (`planPolaGpz`).
     if (!najdluzszy || pozycja.odgalezienie) return;
-    const szerokosc = measureLabelWidth(najdluzszy, 't4');
+    const szerokosc = measureLabelWidth(najdluzszy, KLASA_ETYKIETY_APARATU_GPZ);
     if (jestAparatemBocznymPolaGpz(pozycja.symbolId)) prawa = Math.max(prawa, szerokosc);
     else lewa = Math.max(lewa, szerokosc);
   });
@@ -970,7 +1000,7 @@ function planPolaGpz(spec: readonly FieldApparatusSpec[]) {
     const szerokosci = pozycje
       .map((i) => teksty[i].najdluzszy)
       .filter((t): t is string => t != null)
-      .map((t) => measureLabelWidth(t, 't4'));
+      .map((t) => measureLabelWidth(t, KLASA_ETYKIETY_APARATU_GPZ));
     return szerokosci.length > 0 ? snapUp(GRID + Math.max(...szerokosci)) : 0;
   };
   const galezie = galezieSpecyfikacji(spec);
@@ -1010,11 +1040,21 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
  *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
  *  fallback = deterministyczny licznik per klasa roli w kolejności
  *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
- *  pomiarowe) — pole bez ŻADNEGO oznacznika w danych przestaje być
+ *  pomiarowe, FK1… baterii kondensatorów — klasa jak w stacjach,
+ *  `directions.ts`) — pole bez ŻADNEGO oznacznika w danych przestaje być
  *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
  *  i geometrię fixtury referencyjnej 1:1. */
 function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, number>): string {
-  const cls = role === 'TRANSFORMER' ? 'FT' : role === 'COUPLER' ? 'FS' : role === 'MEASUREMENT' ? 'FP' : 'F';
+  const cls =
+    role === 'TRANSFORMER'
+      ? 'FT'
+      : role === 'COUPLER'
+        ? 'FS'
+        : role === 'MEASUREMENT'
+          ? 'FP'
+          : role === 'CAPACITOR_BANK'
+            ? 'FK'
+            : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
@@ -1998,27 +2038,46 @@ export function composeGpz(
           meta: powerPathMeta,
         });
       }
-      // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET (oznaczenie + „stan nieznany").
+      // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET — samo oznaczenie (położenie niesie kafel).
       const tekstyEtykiet = tekstyEtykietAparatowGpz(spec);
       const lewaTorX = snapToGrid(field.centerX - footprint.mainStack.width / 2);
+      // Podpisy odgałęzienia toru stoją w JEGO pasie podpisów — na prawo od CAŁEGO
+      // podstosu odgałęzienia (kolumna + jej aparaty boczne), tam gdzie plan rezerwuje pas
+      // (`GalazPlanu.rezerwaEtykiet`, doliczany za `sub.width`). Rezerwa i kotwica z jednej
+      // geometrii (predykaty parami): dawniej podpis aparatu KOLUMNY stał tuż za jego
+      // symbolem, czyli w kolumnie aparatów bocznych odgałęzienia — podpis „Q5" Z.11 kończył
+      // się 1 px nad uziemnikiem Q51 i wchodził na jego kafel stanu (pomiar 2026-10-29:
+      // podpis y 568–583, kafel y 582–599,6).
+      const prawaKrawedzOdgalezienia = new Map<number, number>();
+      for (const pozycja of stack.pozycje) {
+        if (pozycja.odgalezienie == null) continue;
+        const prawa = pozycja.instance.x + SYMBOL_DEFS[pozycja.instance.symbolId].width;
+        prawaKrawedzOdgalezienia.set(
+          pozycja.odgalezienie,
+          Math.max(prawaKrawedzOdgalezienia.get(pozycja.odgalezienie) ?? prawa, prawa),
+        );
+      }
       stack.pozycje.forEach((pozycja) => {
         const indeks = spec.indexOf(pozycja.spec);
         const etykieta = tekstyEtykiet[indeks];
         if (!etykieta?.tekst) return;
         const def = SYMBOL_DEFS[pozycja.instance.symbolId];
         const srodekY = pozycja.instance.y + def.height / 2;
+        // Aparat odgałęzienia — pas podpisów odgałęzienia; aparat boczny toru głównego — po
+        // prawej własnego symbolu; aparat toru głównego — kolumna podpisów po lewej toru.
+        const anchor =
+          pozycja.odgalezienie != null
+            ? { x: prawaKrawedzOdgalezienia.get(pozycja.odgalezienie)!, y: srodekY }
+            : pozycja.boczny
+              ? { x: pozycja.instance.x + def.width, y: srodekY }
+              : { x: lewaTorX, y: srodekY };
         fieldDesignations.push({
           ownerRef: `${field.bay.bayRef}#etykieta-aparatu-${pozycja.spec.device?.deviceRef ?? indeks}`,
           ownerKind: 'apparatus',
           text: etykieta.tekst,
-          labelClass: 't4',
-          // Aparat boczny i aparat odgałęzienia toru — podpis po prawej własnego symbolu.
-          anchor:
-            pozycja.boczny || pozycja.odgalezienie != null
-              ? { x: pozycja.instance.x + def.width, y: srodekY }
-              : { x: lewaTorX, y: srodekY },
+          labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+          anchor,
           placement: pozycja.boczny || pozycja.odgalezienie != null ? 'right' : 'left',
-          ...(etykieta.stanNieznany ? { unresolved: true } : {}),
         });
       });
 

@@ -15,7 +15,7 @@
  *   `PROJEKTOWANY`) widzi wyłącznie pozycje z `dopuszczony_do_nowych_pol === true`; brak pola
  *   nie jest dopuszczeniem (brak potwierdzenia ≠ brak gazu — ta sama zasada co w backendzie);
  * - pozycja już przypisana obiektowi zostaje na liście (rekord niezmieniony nie znika z widoku;
- *   jego ocenę niesie walidator modelu W045, nie picker).
+ *   jego ocenę niesie walidator modelu W049, nie picker).
  *
  * Każdy konsument katalogu aparatów/łączników SN z wyborem pozycji importuje ten moduł —
  * przypina to `backend/tests/ci/test_pickery_aparatow_bez_gazu_fluorowanego.py`.

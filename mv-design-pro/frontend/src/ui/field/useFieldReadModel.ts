@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../app-state/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import type { ObwodyWtornePola, StatusWeryfikacjiWzorca } from '../catalog/api';
 import type {
   BayCanonicalModel,
   BayProjectResults,
@@ -60,12 +61,12 @@ export interface NiezgodnoscPolaLiniowego {
   kod: string;
   bay_ref: string;
   komunikat_pl: string;
-  /** Akcja naprawcza — ta sama, którą walidator podaje w gotowości (W049–W053). */
+  /** Akcja naprawcza — ta sama, którą walidator podaje w gotowości (W053–W057). */
   akcja_pl: string;
 }
 
 /** Ocena pola liniowego GPZ wg klasy pola — lustro `enm.pole_liniowe_gpz.OcenaPolaLiniowego`
- *  (to samo źródło co walidator W049–W053). Krotki backendu jako tablice. */
+ *  (to samo źródło co walidator W053–W057). Krotki backendu jako tablice. */
 export interface OcenaPolaLiniowego {
   bay_ref: string;
   klasa_zadeklarowana: KlasaPolaLiniowego | null;
@@ -82,6 +83,37 @@ export interface OcenaPolaLiniowego {
   ajee_przyczyna: string;
   oceny_funkcji: OcenaFunkcjiPola[];
   niezgodnosci: NiezgodnoscPolaLiniowego[];
+  /** Obwody wtórne wzorca pola (sygnały rysunku); `null` — pole bez szablonu z rysunkiem. */
+  obwody_wtorne?: ObwodyWtornePola | null;
+  /** Obwody funkcji EAZ rozwiązane na aparatach pola (`enm.pole_liniowe_gpz.ObwodFunkcjiPola`). */
+  obwody_funkcji?: ObwodFunkcjiPola[];
+  /** Napięcie zwrotne (wzorzec z blokadą NZ); `null` — wzorzec bez pomiaru napięcia linii. */
+  napiecie_zwrotne?: NapiecieZwrotnePola | null;
+}
+
+/** Obwód wtórny funkcji EAZ pola — lustro `enm.pole_liniowe_gpz.ObwodFunkcjiPola`. */
+export interface ObwodFunkcjiPola {
+  kod: string;
+  funkcja_pl: string;
+  /** `false` — funkcja wzorca, której zestaw funkcji pola nie ma. */
+  obecna: boolean;
+  /** `null` — rysunek wzorca nie rysuje tej funkcji. */
+  blok_rysunku: string | null;
+  wejscia_pl: string[];
+  wyjscia_pl: string;
+  weryfikacja: StatusWeryfikacjiWzorca;
+  uwaga: string | null;
+}
+
+/** Napięcie zwrotne pola — lustro `enm.pole_liniowe_gpz.NapiecieZwrotnePola`. */
+export interface NapiecieZwrotnePola {
+  pomiar_pl: string;
+  blokada_nz: boolean;
+  zrodla_za_polem: number;
+  mozliwe: boolean;
+  wyjasnienie_pl: string;
+  stan_pomiaru: 'POD_NAPIECIEM' | 'BEZ_NAPIECIA' | 'NIEUSTALONY';
+  stan_pomiaru_pl: string;
 }
 
 export interface FieldReadModelItem {

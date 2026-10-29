@@ -274,8 +274,10 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ZakresModulu("enm/operacje_lacznikow.py"),
     ZakresModulu("enm/wyposazenie_pola.py"),
     # Karta UX-04/POLE-LINIOWE-WZORZEC: operacja stanu obiektu i odmowy zakazu gazów
-    # fluorowanych (komunikat odmowy `pole.gaz_fluorowany` i kwestia walidatora W045).
+    # fluorowanych (komunikat odmowy `pole.gaz_fluorowany` i kwestia walidatora W049).
     ZakresModulu("enm/stan_obiektu_pola.py"),
+    # Rozszerzenie 5 tej karty: położenie łącznika pola bez gałęzi (`set_bay_apparatus_position`).
+    ZakresModulu("enm/polozenie_aparatu_pola.py"),
     ZakresModulu("enm/gaz_fluorowany_pola.py"),
     ZakresModulu("network_model/catalog/gazy_fluorowane.py"),
     ZakresModulu(

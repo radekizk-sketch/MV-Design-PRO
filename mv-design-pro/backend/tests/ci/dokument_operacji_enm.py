@@ -379,6 +379,11 @@ def _segment_o_nazwie(k: Kontekst, nazwa: str) -> str:
     return str(k.galaz(lambda g: g.get("name") == nazwa)["ref_id"])
 
 
+def _aparat_pola(k: Kontekst, bay_ref: str, oznaczenie: str) -> dict[str, Any]:
+    pole = next(b for b in k.enm["bays"] if b["ref_id"] == bay_ref)
+    return next(a for a in pole["primary_devices"] if a.get("designation") == oznaczenie)
+
+
 def _stacja_b(k: Kontekst) -> dict[str, Any]:
     return k.stacja(lambda s: s.get("name") == "Stacja S01")
 
@@ -656,6 +661,16 @@ KROKI: tuple[Krok, ...] = (
             "bay_ref": k.wskazany("pole_sn"),
             "mode": "szablon",
             "bay_template_ref": "bay_template_line_out",
+        },
+    ),
+    Krok(
+        "polozenie_lacznika",
+        "set_bay_apparatus_position",
+        "otwarcie odłącznika liniowego Q9 nowego pola (łącznik pola bez własnej gałęzi)",
+        lambda k: {
+            "bay_ref": k.wskazany("pole_sn"),
+            "device_ref": _aparat_pola(k, k.wskazany("pole_sn"), "Q9")["device_ref"],
+            "actual_state": "otwarty",
         },
     ),
     Krok(

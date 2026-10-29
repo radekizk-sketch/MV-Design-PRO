@@ -153,6 +153,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -182,6 +183,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -211,6 +213,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -246,6 +249,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -256,7 +260,7 @@
           },
           {
             "catalog_ref": null,
-            "designation": "Q9",
+            "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::4",
             "earthing_role": "field_earth",
             "is_controllable": false,
@@ -271,6 +275,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -300,6 +305,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -325,6 +331,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -420,6 +427,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -449,6 +457,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -478,6 +487,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -513,6 +523,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -523,7 +534,7 @@
           },
           {
             "catalog_ref": null,
-            "designation": "Q9",
+            "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::4",
             "earthing_role": "field_earth",
             "is_controllable": false,
@@ -538,6 +549,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -567,6 +579,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -592,6 +605,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -687,6 +701,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -727,6 +742,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -756,6 +772,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -791,6 +808,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -820,6 +838,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -845,6 +864,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -940,6 +960,7 @@
                 "wezel": "w1"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -980,6 +1001,7 @@
                 "wezel": "w2"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1009,6 +1031,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [
               {
                 "fs": null,
@@ -1044,6 +1067,7 @@
                 "wezel": "w3"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1073,6 +1097,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": null,
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
@@ -1098,6 +1123,7 @@
                 "wezel": "kabel"
               }
             ],
+            "przekladnia": "1/100",
             "rdzenie": [],
             "render_variant": "qet_en60617",
             "section_side": null,
