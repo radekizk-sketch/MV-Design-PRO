@@ -60,6 +60,7 @@ const FUNKCJE_POLA: readonly BayKind[] = [
   'napowietrzne',
   'nop_lacznikowe',
   'bateria_kondensatorow',
+  'zespol_uziemiajacy',
 ];
 
 const RODZINA_MODULOWA: SwitchgearFamily = {
@@ -361,6 +362,7 @@ describe('odwzorowanie funkcji pola na rolę operacji (dwustronne)', () => {
     // Pole baterii kondensatorów powstaje operacją pola SN rozdzielni GPZ (rola `BKR`),
     // nie wpisem pól stacji SN/nN — jawny brak roli stacji (karta UX-04/POLE-BKR-MODEL).
     expect(ROLA_Z_FUNKCJI_POLA.bateria_kondensatorow).toBeNull();
+    expect(ROLA_Z_FUNKCJI_POLA.zespol_uziemiajacy).toBeNull();
   });
 });
 

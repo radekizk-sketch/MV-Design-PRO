@@ -1434,6 +1434,8 @@ DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "TR_CREATED",
     "UPS_CREATED",
     "VT_CREATED",
+    "ZESPOL_UZIEMIAJACY_CREATED",
+    "ZESPOL_UZIEMIAJACY_UPDATED",
 )
 """Rejestr typów zdarzeń domenowych — DOKŁADNIE typy emitowane przez operacje (W5-C).
 

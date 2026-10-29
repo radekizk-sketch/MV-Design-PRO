@@ -3,7 +3,7 @@
 Test kompletności: uruchamia solver FROZEN (`V126AcademicSolver`) dla
 WSZYSTKICH rodzajów PREZENTOWANYCH V12.6 (`PARAMETRY_SCENY_AKADEMICKIE`,
 `scripts/eksport_fixtur_harnessu.py` — TE SAME parametry, którymi żywi się
-scena harnessu „akademickie"), na sieci złotej, konstrukcją WEJŚCIA
+scena harnessu „akademickie"), na sieci tej sceny, konstrukcją WEJŚCIA
 IDENTYCZNĄ z trasą `POST …/runs/v126/{rodzaj}` (`uzupelnij_parametry_z_modelu`
 + `build_v126_input_from_enm` + `_with_parameter_payloads`, reużyte wprost —
 zero drugiego źródła prawdy o budowie wejścia), zbiera zmierzony zbiór
@@ -30,8 +30,7 @@ from application.analyses.v126_wzory import REJESTR_WZOROW_V126, wzbogac_kroki_l
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import V126AnalysisType, build_v126_input_from_enm
 
-from scripts.eksport_fixtur_harnessu import PARAMETRY_SCENY_AKADEMICKIE
-from tests.cgmes.golden_enm import build_golden_enm
+from scripts.eksport_fixtur_harnessu import PARAMETRY_SCENY_AKADEMICKIE, _enm_sceny_akademickiej
 
 #: Rodzaje PREZENTOWANI katalogu (§0: „wszystkie prezentowane rodzaje") — z
 #: KATALOGU, nie z listy przepisanej ręcznie (parytet z jedynym źródłem
@@ -40,17 +39,21 @@ _RODZAJE_PREZENTOWANE = {karta.kod for karta in KATALOG_ANALIZ_V126 if karta.pre
 
 
 def _uruchom(rodzaj: str) -> list[dict[str, Any]]:
-    """Kroki śladu WHITE BOX solvera FROZEN dla jednego rodzaju, na złotej
-    sieci, z parametrami sceny „akademickie" — konstrukcja wejścia TA SAMA co
+    """Kroki śladu WHITE BOX solvera FROZEN dla jednego rodzaju, na sieci sceny
+    „akademickie" (sieć złota + farma PV toru DER-SN + zespół uziemiający z dławikiem na
+    szynie SN GPZ — karta UX-04/POLE-ZU: sposób uziemienia z modelu), z parametrami tej
+    sceny — konstrukcja wejścia TA SAMA co
     `api/v126_academic.py::run_v126_analysis` (gotowość pominięta celowo: ten
     test mierzy ślad, nie bramkę 422 — gotowość ma WŁASNY test klasy w
     `tests/application/analyses/test_v126_gotowosc.py`)."""
-    enm = build_golden_enm()
+    enm = _enm_sceny_akademickiej()
     analysis_type = V126AnalysisType(rodzaj)
     parametry_uzytkownika = PARAMETRY_SCENY_AKADEMICKIE.get(rodzaj, {})
     parametry = uzupelnij_parametry_z_modelu(enm, analysis_type, parametry_uzytkownika)
     model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry), parametry
+        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
+        parametry,
+        enm,
     )
     envelope = V126AcademicSolver().run(analysis_type, model)
     return list(envelope["white_box_trace"])
@@ -97,7 +100,12 @@ def test_komplet_kluczy_sladu_ma_wpis_w_rejestrze_latex() -> None:
     # Zapadka tylko w dół: spadek liczby kluczy jest dozwolony (np. rodzaj
     # przestał emitować gałąź), wzrost bez podniesienia pinu jest czerwony —
     # nowy klucz musi dostać wpis w rejestrze W TEJ SAMEJ karcie.
-    assert len(zmierzone_klucze) == 12, sorted(zmierzone_klucze)
+    # Pomiar 2026-10-28 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): scena akademicka z zespołem
+    # uziemiającym (dławik) — projekt uziemienia liczy się w pełni zamiast gałęzi braku C0:
+    # dochodzą `neutral_earthing_scheme_from_model`, `neutral_earthing_capacitive_current`,
+    # `petersen_resonance_tuning`, `petersen_residual_current`; odpada gałąź braku C0
+    # (12 − 1 + 4 = 15 kluczy, wszystkie z wpisem w rejestrze).
+    assert len(zmierzone_klucze) == 15, sorted(zmierzone_klucze)
 
 
 def test_wzbogac_kroki_latex_nie_mutuje_oryginalu_i_dokladakada_formule() -> None:

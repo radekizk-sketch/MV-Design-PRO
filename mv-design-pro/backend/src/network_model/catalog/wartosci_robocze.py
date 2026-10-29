@@ -1248,6 +1248,134 @@ POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
     ("x0_ohm_per_km", "X′0"),
 )
 
+# Odcinek MODELU bez składowej zerowej (zasada nr 4): linia albo kabel, którego R′0/X′0 nie ma
+# ani w modelu, ani z pozycji katalogu (odcinek z importu, z parametrów ręcznych). Brak danej
+# urządzenia nie blokuje zwarć doziemnych ani rozpływu niesymetrycznego — obliczenie przyjmuje
+# wartość roboczą tą samą regułą wyprowadzenia co pozycje katalogu, z opisem źródła odcinka.
+ZALOZENIE_ODCINKA_R0_TRZY_R1 = (
+    "R′0 = 3·R′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_X0_TRZY_X1 = (
+    "X′0 = 3·X′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + R′ żyły powrotnej — wartość robocza odcinka bez składowej zerowej w modelu "
+    "(założenie inżynierskie: prąd składowej zerowej wraca wyłącznie żyłą powrotną, ekranem, "
+    "bez udziału ziemi)"
+)
+
+# Kabel nN bez składowej zerowej: żyła powrotna PE/PEN jest WSPÓLNA dla trzech faz (kabel
+# wielożyłowy), więc niesie prąd 3·I0 — w odróżnieniu od ekranów kabla SN (każda żyła fazowa ma
+# własny ekran, ekrany równolegle, każdy niesie I0). Ta sama impedancja pętli co analiza pętli
+# zwarcia nN (IEC 60364-4-41, ``fault_loop``): Z_pętli = Z_L + Z_PE ⇔ (2·Z1 + Z0)/3 przy
+# Z1 = Z_L, stąd Z0 = Z_L + 3·Z_PE. Reguła 3·R′1 dla kabla nN zaniżałaby R′0 (kabel 4-żyłowy
+# o równym przekroju: R′0 = 4·R′1) i zawyżała prąd zwarcia doziemnego — niebezpiecznie dla
+# sprawdzenia samoczynnego wyłączenia, więc bez danych żyły powrotnej wartości roboczej nie ma.
+ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + 3·R′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
+    "X′0 = X′1 + 3·X′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+
+#: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
+#: nie „wartością z katalogu” (``dana_przyjeta_z0``).
+ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
+    {
+        ZALOZENIE_ODCINKA_R0_TRZY_R1,
+        ZALOZENIE_ODCINKA_X0_TRZY_X1,
+        ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+    }
+)
+
+
+def wyprowadz_skladowa_zerowa_kabla_nn(
+    *,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    x_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 kabla nN do przyjęcia wartością roboczą: R′0 = R′1 + 3·R′PE,
+    X′0 = X′1 + 3·X′PE (wyłącznie pola, których brak). Pusta krotka, gdy R′1 albo X′1
+    nieznane albo niedodatnie albo żyła powrotna bez rezystancji (dodatniej) i reaktancji
+    (nieujemnej) — reguły 3·R′1 dla kabla nN nie ma (zaniżone R′0, zawyżony prąd doziemny)."""
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    if r_zyly_powrotnej is None or r_zyly_powrotnej <= 0:
+        return ()
+    if x_zyly_powrotnej is None or x_zyly_powrotnej < 0:
+        return ()
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        wynik.append(
+            (
+                "r0_ohm_per_km",
+                round(r1 + 3.0 * r_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+            )
+        )
+    if brak_x0:
+        wynik.append(
+            (
+                "x0_ohm_per_km",
+                round(x1 + 3.0 * x_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+            )
+        )
+    return tuple(wynik)
+
+
+def wyprowadz_skladowa_zerowa(
+    *,
+    kabel: bool,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+    z_katalogu: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 do przyjęcia wartością roboczą: krotki (pole, wartość [Ω/km], założenie).
+
+    JEDNA reguła wyprowadzenia dla pozycji katalogu (``mv_cable_line_catalog``) i dla odcinka
+    modelu bez składowej zerowej (``enm.skladowa_zerowa_odcinka``): R′0 = 3·R′1 (kabel ze
+    znaną żyłą powrotną: R′0 = R′1 + R′ żyły powrotnej), X′0 = 3·X′1 — wyłącznie pola, których
+    brak (``brak_r0`` / ``brak_x0``). ``z_katalogu`` wybiera opis źródła założenia. Pusta krotka, gdy R′1 albo
+    X′1 nieznane albo niedodatnie — wartości roboczej nie da się przyjąć (stosunek typowy
+    dotyczy przewodu o niezerowej impedancji zgodnej).
+    """
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    trzy_r1, trzy_x1, zyla = (
+        (ZALOZENIE_R0_TRZY_R1, ZALOZENIE_X0_TRZY_X1, ZALOZENIE_R0_ZYLA_POWROTNA)
+        if z_katalogu
+        else (
+            ZALOZENIE_ODCINKA_R0_TRZY_R1,
+            ZALOZENIE_ODCINKA_X0_TRZY_X1,
+            ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        )
+    )
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        if kabel and r_zyly_powrotnej is not None and r_zyly_powrotnej > 0:
+            wynik.append(("r0_ohm_per_km", round(r1 + r_zyly_powrotnej, 6), zyla))
+        else:
+            wynik.append(("r0_ohm_per_km", round(3.0 * r1, 6), trzy_r1))
+    if brak_x0:
+        wynik.append(("x0_ohm_per_km", round(3.0 * x1, 6), trzy_x1))
+    return tuple(wynik)
+
 
 def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
     """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
@@ -1302,9 +1430,11 @@ def pola_z0_robocze(
 def dana_przyjeta_z0(
     *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
-    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4)."""
+    zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
-        nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
+        nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "

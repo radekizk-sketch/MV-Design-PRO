@@ -2669,6 +2669,39 @@ describe('rodzaj źródła pola OZE z przyłączonych wytwórców (GPZ-PARYTET c
 });
 
 /**
+ * UX-04/POLE-ZU-SKLADOWA-ZEROWA: rola pola stacji z roli modelu i roli kanonicznej. Pole ZU
+ * spadało w `?? FIELD_ROLE.LINE_BRANCH` — rysowane jako pole odgałęźne. Iloczyn: nośnik roli
+ * {`bay_role`, `field_role` kanoniczne} × rola {ZU, BKR} → rola pola i oznaczenie rysunkowe.
+ */
+describe('rola pola stacji: zespół uziemiający i bateria kondensatorów (bez zamiany na odgałęźne)', () => {
+  function poleStacji(bayRole: string, fieldRole?: string) {
+    const snap = makeStationOnlySnapshot('ST-POLE');
+    snap.bays = [
+      {
+        id: 'p', ref_id: 'pole-1', name: 'Pole', tags: [], meta: {}, bay_role: bayRole,
+        substation_ref: 'ST-POLE', bus_ref: 'bus-sn', equipment_refs: [],
+        ...(fieldRole ? { field_role: fieldRole } : {}),
+      } as never,
+    ];
+    return buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-POLE')?.snBays?.[0];
+  }
+  const PRZYPADKI: ReadonlyArray<readonly [string, string | undefined, string, string]> = [
+    ['ZU', undefined, FIELD_ROLE.EARTHING_UNIT, 'ZU'],
+    ['ZU', 'ZESPOL_UZIEMIAJACY', FIELD_ROLE.EARTHING_UNIT, 'ZU'],
+    ['BKR', undefined, FIELD_ROLE.CAPACITOR_BANK, 'BK'],
+    ['BKR', 'BATERIA_KONDENSATOROW', FIELD_ROLE.CAPACITOR_BANK, 'BK'],
+  ];
+  for (const [bayRole, fieldRole, oczekiwana, oznaczenie] of PRZYPADKI) {
+    it(`bay_role=${bayRole}${fieldRole ? `, field_role=${fieldRole}` : ''} → ${oczekiwana} („${oznaczenie}")`, () => {
+      const pole = poleStacji(bayRole, fieldRole);
+      expect(pole?.fieldRole).toBe(oczekiwana);
+      expect(pole?.fieldRole).not.toBe(FIELD_ROLE.LINE_BRANCH);
+      expect(pole?.designation).toBe(oznaczenie);
+    });
+  }
+});
+
+/**
  * K2b §0.4 — RODZAJ KAŻDEGO ODCINKA z ENM (`Branch.type`): kabel → `cable_sn`, linia
  * napowietrzna → `overhead_line_sn`, per odcinek (ciąg mieszany nie dziedziczy rodzaju
  * pierwszego odcinka). Iloczyn: każdy odcinek każdego ciągu sieci referencyjnej 52 stacji

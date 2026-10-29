@@ -72,6 +72,8 @@ describe('polaSnModel — nazewnictwo (kod backendu vs polska etykieta)', () => 
     expect([...role].sort()).toEqual([...BAY_MODEL_ROLES].sort());
     expect(rolaLabel('BKR')).toBe(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
     expect(bayKindZRoli('BKR')).toBe('bateria_kondensatorow');
+    expect(rolaLabel('ZU')).toBe(FIELD_ROLE_LABEL_PL.ZESPOL_UZIEMIAJACY);
+    expect(bayKindZRoli('ZU')).toBe('zespol_uziemiajacy');
   });
 });
 

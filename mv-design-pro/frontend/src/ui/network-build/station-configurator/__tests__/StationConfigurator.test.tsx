@@ -3,6 +3,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { StationConfigBasicCard } from '../cards/StationConfigBasicCard';
@@ -22,7 +23,6 @@ const minimalProps = {
     snVoltageKv: 15,
     nnVoltageLevels: [0.4],
     completeness: 'complete' as const,
-    mvNeutralGroundings: [],
   },
   topology: {
     externalPorts: [],
@@ -142,7 +142,6 @@ describe('StationConfigBasicCard', () => {
         snVoltageKv={15}
         nnVoltageLevels={[0.4, 0.69, 6.0]}
         completeness="partial"
-        mvNeutralGroundings={[]}
       />,
     );
     expect(screen.getByTestId('station-topological-type')).toHaveTextContent('przelotowa');
@@ -151,21 +150,46 @@ describe('StationConfigBasicCard', () => {
     expect(screen.getByText(/multi-voltage/)).toBeInTheDocument();
   });
 
-  it('zmiana nazwy wywołuje onChange', () => {
-    const onChange = vi.fn();
-    render(
+  // Karta UX-04/POLE-ZU: karta danych podstawowych pokazuje FAKTY MODELU — bez kontrolek,
+  // których konfigurator nie zapisywał (widma), i bez wyboru uziemienia SN (druga prawda).
+  it('fakty modelu bez kontrolek edycji; brak danych nazwany, nie domyślony', () => {
+    const { container } = render(
       <StationConfigBasicCard
         stationName="ST-01"
+        designation={null}
         topologicalType="końcowa"
+        constructionType={null}
         snVoltageKv={15}
         nnVoltageLevels={[0.4]}
         completeness="complete"
-        mvNeutralGroundings={[]}
-        onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByTestId('station-name-input'), { target: { value: 'ST-02' } });
-    expect(onChange).toHaveBeenCalledWith({ stationName: 'ST-02' });
+    expect(screen.getByTestId('station-name')).toHaveTextContent('ST-01');
+    expect(screen.getByTestId('station-designation')).toHaveTextContent('nie podano w modelu');
+    expect(screen.getByTestId('station-construction-type')).toHaveTextContent('nie podano w modelu');
+    expect(container.querySelectorAll('input, select, textarea')).toHaveLength(0);
+    expect(screen.queryByText(/uziemienie neutralne/i)).toBeNull();
+    // Bez stacji w modelu nie ma czego edytować — brak przycisku, nie martwy klik.
+    expect(screen.queryByTestId('station-edit-data')).toBeNull();
+  });
+
+  it('natywny klik „Zmień dane stacji w modelu” otwiera formularz operacji modelu', async () => {
+    const onEditStation = vi.fn();
+    render(
+      <StationConfigBasicCard
+        stationName="ST-01"
+        designation="S-7"
+        topologicalType="końcowa"
+        constructionType="wnetrzowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        completeness="complete"
+        onEditStation={onEditStation}
+      />,
+    );
+    expect(screen.getByTestId('station-designation')).toHaveTextContent('S-7');
+    await userEvent.click(screen.getByTestId('station-edit-data'));
+    expect(onEditStation).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -140,21 +140,13 @@ describe('Karta K-Q → FAB-J — katalogi urządzeń mirrorowane z frontu USUNI
 // Naprawa B — projektant SN
 // =============================================================================
 
-// USUNIĘTE (karta FAB-L, 2026-09-05) — „Naprawa B.1 — uziemienie neutralne (4 typy)"
-// (w tym pin klasy „KARTA K-O": żadna pozycja nie niesie zgadywanego I_k1/cudzej
-// praktyki/liczbowego I_k1 w etykiecie). `MV_NEUTRAL_GROUNDING_CATALOG` USUNIĘTY
-// z `catalogs.ts` jako bloк statyczny — front czyta go dziś WYŁĄCZNIE ze snapshotu
-// audytu 2 (`useAudit2CatalogSnapshot`), więc katalog nie ma już frontowej kopii,
-// której zawartość dałoby się tu przypiąć. Cała intencja (rozmiar/typy, zero
-// zgadywanego I_k1, zero cudzej praktyki operatorów, zero liczbowego I_k1 w
-// etykiecie) PRZENIESIONA na backend — jedyne miejsce, gdzie dane te dziś żyją:
-// `backend/tests/network_model/test_audit2_katalogi_parytet.py`
-// (`test_pole_bez_proweniencji_nie_wraca_do_zadnej_z_warstw`,
-// `test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2` — rozszerzony o PGE/PSE,
-// `test_zadna_pozycja_uziemienia_sn_nie_podaje_liczbowego_ik1_w_etykiecie_ani_opisie`
-// — nowy). Selektor `getMvNeutralGrounding` skasowany przy odbiorze FAB-L: zero
-// konsumentów produktu (karta czyta uziemienie wprost z listy snapshotu w
-// `StationConfigBasicCard`), a test bez produktu to dług (L4), nie pokrycie.
+// USUNIĘTE (karta FAB-L, 2026-09-05; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — „Naprawa
+// B.1 — uziemienie neutralne (4 typy)". Katalog wariantów uziemienia SN audytu 2 był
+// DRUGĄ prawdą obok modelu i został skasowany na amen razem z wyborem w konfiguratorze
+// stacji: sposób uziemienia punktu neutralnego sieci SN wynika wyłącznie z zespołu
+// uziemiającego sekcji (`backend/src/enm/uziemienie_sekcji.py`, testy
+// `backend/tests/enm/test_skladowa_zerowa_zu.py`). Wskrzeszenie nazw pilnuje
+// `scripts/grep_zero_guard.py` (grupa `zu_`).
 
 /**
  * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `CONNECTION_VARIANT_CATALOG`

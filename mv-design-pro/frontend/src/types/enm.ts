@@ -1197,7 +1197,7 @@ export interface OgranicznikPrzepiecPola {
  * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
  * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
  */
-export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'BKR'] as const;
+export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'ZU', 'BKR'] as const;
 export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
 
 export interface Bay extends ENMElement {
@@ -1286,6 +1286,7 @@ export type BayCanonicalRole =
   | 'PV_SN'
   | 'BESS_SN'
   | 'FW_SN'
+  | 'ZESPOL_UZIEMIAJACY'
   | 'BATERIA_KONDENSATOROW';
 
 export type BayDeviceState =
@@ -1923,6 +1924,71 @@ export interface ShuntCapacitor extends ENMElement {
   wylaczenie_od_transformatorow?: string[];
 }
 
+/** Stan odłącznika gałęzi punktu neutralnego zespołu uziemiającego (Z.14: każda gałąź). */
+export type StanLacznikaPunktuNeutralnego = 'zamkniety' | 'otwarty';
+
+/** Rezystor wymuszający składową czynną AWSC (Z.13) — lustro `RezystorWymuszajacyAwsc`. */
+export interface RezystorWymuszajacyAwsc {
+  /** Prąd czynny po stronie PIERWOTNEJ [A] (ENEA Zeszyt 1 §16: 20–40 A). */
+  i_wymuszany_a?: number | null;
+  strona?: 'wtorna' | 'pierwotna' | null;
+  czas_zwloki_s?: number | null;
+  czas_zalaczenia_s?: number | null;
+}
+
+/** Dławik gaszący w punkcie neutralnym transformatora uziemiającego — lustro `DlawikGaszacy`. */
+export interface DlawikGaszacy {
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  materialized_params?: Record<string, unknown> | null;
+  i_min_a?: number | null;
+  i_max_a?: number | null;
+  regulacja?: 'ciagla' | 'zaczepy' | null;
+  liczba_zaczepow?: number | null;
+  /** Nastawa (stan dostrojenia) [A]; brak = wartość robocza środka zakresu (zasada nr 4). */
+  i_nastawy_a?: number | null;
+  stan_odlacznika?: StanLacznikaPunktuNeutralnego;
+  awsc?: RezystorWymuszajacyAwsc | null;
+}
+
+/** Rezystor uziemiający punkt neutralny (Z.14, Z.15) — lustro `RezystorUziemiajacy`. */
+export interface RezystorUziemiajacy {
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  materialized_params?: Record<string, unknown> | null;
+  r_ohm?: number | null;
+  i_n_a?: number | null;
+  t_s?: number | null;
+  stan_odlacznika?: StanLacznikaPunktuNeutralnego;
+}
+
+/**
+ * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15) — lustro `enm.models.ZespolUziemiajacy`.
+ * JEDYNY nośnik uziemienia punktu neutralnego sieci SN obok punktu neutralnego uzwojenia
+ * transformatora; wariant i Z_N wyprowadza backend (`enm.uziemienie_sekcji`), front ich nie liczy.
+ */
+export interface ZespolUziemiajacy extends ENMElement {
+  bus_ref: string;
+  bay_ref?: string | null;
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  parameter_source?: 'CATALOG' | 'OVERRIDE' | null;
+  materialized_params?: Record<string, unknown> | null;
+  grupa_polaczen?: 'ZNyn11' | 'ZNyn5' | 'ZNy11' | 'ZNy5' | 'ZN' | null;
+  u_n_kv?: number | null;
+  s_n_kva?: number | null;
+  r0_ohm?: number | null;
+  x0_ohm?: number | null;
+  s_pw_kva?: number | null;
+  u_pw_kv?: number | null;
+  odbior_pw_ref?: string | null;
+  dlawik?: DlawikGaszacy | null;
+  rezystor?: RezystorUziemiajacy | null;
+  uziemienie_bezposrednie?: boolean;
+  spz?: boolean;
+  wylaczenie_od_transformatorow_refs?: string[];
+}
+
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */
 export interface LineDropCompensation {
   enabled: boolean;
@@ -1951,6 +2017,8 @@ export interface EnergyNetworkModel {
    * rzutowanie, a to droga do zgadnietych nazw pol (V12K-226).
    */
   shunt_capacitors?: ShuntCapacitor[];
+  /** Zespoły uziemiające sieci SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). */
+  zespoly_uziemiajace?: ZespolUziemiajacy[];
   connection_nodes?: ConnectionNode[];
   /** Opcjonalne widoki logiczne Snapshota (kanoniczne wejście segmentacji SLD). */
   logical_views?: LogicalViewsV1;
@@ -2119,7 +2187,7 @@ export interface V2SwitchingStateSnapshot {
 
 export interface V2ZeroSequenceConfig {
   element_ref: string;
-  element_kind: 'branch' | 'source' | 'transformer';
+  element_kind: 'branch' | 'source' | 'transformer' | 'zespol_uziemiajacy';
   r0: number | null;
   x0: number | null;
   b0: number | null;

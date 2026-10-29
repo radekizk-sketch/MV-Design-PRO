@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "941931c269d1c89de493df54adb70d8f2e7c7f386383974734ac399f888dac59",
+  "projection_hash": "8e58560a33143184575f67d115ee81c372a8db7f602f54ad3681a8e923308a16",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -1351,36 +1351,6 @@
         "title": "Legenda wyników"
       },
       "warnings": [
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel FU-21” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-01” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-02” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-03” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W002",
-          "element_ref": null,
-          "message": "Źródło zasilania „GPZ” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
         {
           "code": "W010",
           "element_ref": null,

@@ -11,7 +11,7 @@ from uuid import UUID
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
-from application.field_read_model import build_field_read_model
+from application.field_read_model import droga_doziemna_pola
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from domain.canonical_operations import resolve_operation_name
 from domain.der_protection_functions import (
@@ -857,8 +857,9 @@ def _fakty_pola_wytworcy(
     """Zloz fakty o polu wytworcy z modelu — bez ani jednej wartosci domyslnej.
 
     Sciezka zwarcia doziemnego pochodzi z KANONICZNEGO odczytu pola
-    (`build_field_read_model`), a nie z rownoleglego wyprowadzenia — dwa opisy tego
-    samego pola rozjezdzalyby sie (precedens V12K-243).
+    (`application.field_read_model.droga_doziemna_pola` — ta sama funkcja co read-model
+    pól), a nie z rownoleglego wyprowadzenia — dwa opisy tego samego pola rozjezdzalyby
+    sie (precedens V12K-243).
     """
 
     zmaterializowane = generator.get("materialized_params") or {}
@@ -905,16 +906,15 @@ def _fakty_pola_wytworcy(
 
 
 def _sciezka_zwarcia_dla_pola(
-    case_id: str, enm: EnergyNetworkModel, bay_ref: str | None
+    enm: EnergyNetworkModel, bay_ref: str | None
 ) -> dict[str, Any] | None:
     if not bay_ref:
         return None
-    model_pol = build_field_read_model(case_id, enm)
-    for pozycja in model_pol.get("items", []):
-        if pozycja.get("bay_ref") == bay_ref:
-            wyniki = pozycja.get("project_results") or {}
-            return wyniki.get("earth_fault_path")
-    return None
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: droga doziemna jest daną MODELU — czytana wprost
+    # (`droga_doziemna_pola`), a nie z sekcji wyników read-modelu pól (istniejącej tylko po
+    # biegu, czytanej dawniej pod nieistniejącym kluczem `items` — fakty zawsze puste).
+    droga = droga_doziemna_pola(enm, bay_ref)
+    return droga.model_dump(mode="json") if droga is not None else None
 
 
 def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | None, str]:
@@ -971,7 +971,7 @@ def get_der_protection_functions(
     # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
     bay_ref = ref_pola_wytworcy(generator)
 
-    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
+    sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka)
     dobor = dobierz_funkcje(fakty)
 
@@ -1112,7 +1112,7 @@ def get_der_instrument_transformers(
     )
     # Relacja wytwórcy z polem — jedno źródło `enm.pola.ref_pola_wytworcy` (karta W5-B).
     bay_ref = ref_pola_wytworcy(generator)
-    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref) or {}
+    sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref) or {}
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)

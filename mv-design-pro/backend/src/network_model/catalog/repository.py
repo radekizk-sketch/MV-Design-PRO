@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import Any
 
 from dziedziny.karta_widmowa import KartaWidmowa
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
@@ -14,12 +15,14 @@ from .mv_benchmark_catalog import jest_rekordem_benchmarku
 from .rodzaje_aparatury import RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA
 from .types import (
     POLA_KARTY_PROJEKCJI,
+    ArcSuppressionCoilType,
     BESSBatteryType,
     BESSInverterType,
     CableType,
     ConverterKind,
     ConverterType,
     CTType,
+    EarthingTransformerType,
     LineType,
     LoadType,
     LVApparatusType,
@@ -28,6 +31,7 @@ from .types import (
     LVFuseLinkType,
     LVRcdType,
     MVApparatusType,
+    NeutralEarthingResistorType,
     OverheadConductorType,
     ProtectionCurve,
     ProtectionDeviceType,
@@ -315,6 +319,12 @@ class CatalogRepository:
     bess_battery_types: dict[str, BESSBatteryType] = field(default_factory=dict)
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
     shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego SN.
+    earthing_transformer_types: dict[str, EarthingTransformerType] = field(default_factory=dict)
+    arc_suppression_coil_types: dict[str, ArcSuppressionCoilType] = field(default_factory=dict)
+    neutral_earthing_resistor_types: dict[str, NeutralEarthingResistorType] = field(
+        default_factory=dict
+    )
     #: CV-4.3 K1: generatory synchroniczne SN/WN (GENERATOR_SN) — patrz
     #: `network_model/catalog/types.py::SynchronousGeneratorType`.
     synchronous_generator_types: dict[str, SynchronousGeneratorType] = field(default_factory=dict)
@@ -357,6 +367,9 @@ class CatalogRepository:
         bess_battery_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
         shunt_capacitor_types: Iterable[dict] | None = None,
+        earthing_transformer_types: Iterable[dict] | None = None,
+        arc_suppression_coil_types: Iterable[dict] | None = None,
+        neutral_earthing_resistor_types: Iterable[dict] | None = None,
         synchronous_generator_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
         karty_widmowe: Iterable[dict] | None = None,
@@ -482,6 +495,14 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return ShuntCapacitorType.from_dict(data)
 
+        def _build_typ(klasa: Any) -> Callable[[dict], Any]:
+            def _zbuduj(record: dict) -> Any:
+                data = {"id": record.get("id"), "name": record.get("name")}
+                data.update(record.get("params") or {})
+                return klasa.from_dict(data)
+
+            return _zbuduj
+
         def _build_synchronous_generator_type(record: dict) -> SynchronousGeneratorType:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
@@ -579,6 +600,25 @@ class CatalogRepository:
             shunt_capacitor_types={
                 str(item.id): item
                 for item in map(_build_shunt_capacitor_type, list(shunt_capacitor_types or []))
+            },
+            earthing_transformer_types={
+                str(item.id): item
+                for item in map(
+                    _build_typ(EarthingTransformerType), list(earthing_transformer_types or [])
+                )
+            },
+            arc_suppression_coil_types={
+                str(item.id): item
+                for item in map(
+                    _build_typ(ArcSuppressionCoilType), list(arc_suppression_coil_types or [])
+                )
+            },
+            neutral_earthing_resistor_types={
+                str(item.id): item
+                for item in map(
+                    _build_typ(NeutralEarthingResistorType),
+                    list(neutral_earthing_resistor_types or []),
+                )
             },
             synchronous_generator_types={
                 str(item.id): item
@@ -754,6 +794,26 @@ class CatalogRepository:
     def get_shunt_capacitor_type(self, type_id: str) -> ShuntCapacitorType | None:
         return self.shunt_capacitor_types.get(str(type_id))
 
+    def list_earthing_transformer_types(self) -> list[EarthingTransformerType]:
+        return self._sorted(self.earthing_transformer_types.values())
+
+    def get_earthing_transformer_type(self, type_id: str) -> EarthingTransformerType | None:
+        return self.earthing_transformer_types.get(str(type_id))
+
+    def list_arc_suppression_coil_types(self) -> list[ArcSuppressionCoilType]:
+        return self._sorted(self.arc_suppression_coil_types.values())
+
+    def get_arc_suppression_coil_type(self, type_id: str) -> ArcSuppressionCoilType | None:
+        return self.arc_suppression_coil_types.get(str(type_id))
+
+    def list_neutral_earthing_resistor_types(self) -> list[NeutralEarthingResistorType]:
+        return self._sorted(self.neutral_earthing_resistor_types.values())
+
+    def get_neutral_earthing_resistor_type(
+        self, type_id: str
+    ) -> NeutralEarthingResistorType | None:
+        return self.neutral_earthing_resistor_types.get(str(type_id))
+
     def list_synchronous_generator_types(self) -> list[SynchronousGeneratorType]:
         return self._sorted(self._bez_benchmarkow(self.synchronous_generator_types.values()))
 
@@ -877,6 +937,11 @@ def get_default_mv_catalog() -> CatalogRepository:
     from .mv_surge_arrester_catalog import get_all_surge_arrester_types
     from .mv_switch_catalog import get_all_switch_equipment_types
     from .mv_transformer_catalog import get_all_transformer_types
+    from .mv_zespol_uziemiajacy_catalog import (
+        get_all_arc_suppression_coil_records,
+        get_all_earthing_transformer_records,
+        get_all_neutral_earthing_resistor_records,
+    )
 
     return CatalogRepository.from_records(
         # CV-4.3 K1: benchmarki IEEE/CIGRE/MATPOWER/pandapower/IEC 60909 wchodza
@@ -904,6 +969,9 @@ def get_default_mv_catalog() -> CatalogRepository:
         surge_arrester_types=get_all_surge_arrester_types(),
         shunt_capacitor_types=get_all_shunt_capacitor_records()
         + get_all_benchmark_shunt_capacitor_records(),
+        earthing_transformer_types=get_all_earthing_transformer_records(),
+        arc_suppression_coil_types=get_all_arc_suppression_coil_records(),
+        neutral_earthing_resistor_types=get_all_neutral_earthing_resistor_records(),
         synchronous_generator_types=get_all_benchmark_synchronous_generator_records(),
         ptpiree_generator_certificates=get_all_ptpiree_generator_certificates(),
         karty_widmowe=wczytaj_karty_statyczne(),

@@ -63,6 +63,7 @@ from domain.project_archive import (
 from enm.canonical_analysis import odtworz_bieg_z_archiwum
 from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego, kompiluj_graf
 from enm.models import EnergyNetworkModel
+from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.store import (
     ZrodloZmiany,
     get_enm,
@@ -71,6 +72,7 @@ from enm.store import (
     restore_enm,
     set_enm,
 )
+from enm.uziemienie_sekcji import czesci_zespolu_bez_katalogu
 from infrastructure.persistence.repositories.canonical_run_repository import (
     CanonicalRunRepository,
 )
@@ -848,7 +850,14 @@ class ProjectArchiveService:
                 ) as blad:
                     # Odmowa nazwana — projekt/przypadki/biegi ZOSTAJĄ przywrócone,
                     # projekt zostaje bez modelu (zero cichego pomijania, §0.2).
-                    warnings.append(f"Model sieci z archiwum 2.x nie został odtworzony: {blad}")
+                    # Błąd kształtu modelu (pydantic) po polsku z jednego mapowania — surowy
+                    # tekst biblioteki nie trafia do ostrzeżeń importu.
+                    przyczyna = (
+                        opis_bledu_walidacji(blad) if isinstance(blad, ValidationError) else blad
+                    )
+                    warnings.append(
+                        f"Model sieci z archiwum 2.x nie został odtworzony: {przyczyna}"
+                    )
                 else:
                     set_enm(
                         klucz_projektu_docelowy,
@@ -1148,6 +1157,11 @@ def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str
         poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
         if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             elements_no_catalog.append(source.ref_id)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający — ten sam predykat części co E009.
+    poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").import_
+    for zu in model.zespoly_uziemiajace:
+        if czesci_zespolu_bez_katalogu(zu, poziom_zespolu):
+            elements_no_catalog.append(zu.ref_id)
     return elements_no_catalog
 
 

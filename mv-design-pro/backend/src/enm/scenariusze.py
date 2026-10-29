@@ -87,6 +87,7 @@ from uuid import NAMESPACE_URL, uuid5
 from domain.fault_scenario import FaultMode, FaultScenario
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -1427,6 +1428,14 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
                 )
             }
             if spec.fault_mode == FaultMode.IMPEDANCE
+            else {}
+        ),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC scenariusza (Z.13) — Z_N zespołu
+        # uziemiającego w biegu. Klucz WYŁĄCZNIE przy AWSC załączonej: payload i `input_hash`
+        # scenariuszy w stanie normalnym pozostają bajtowo te same.
+        **(
+            {KLUCZ_OPCJI_STANU_AWSC: spec.config.stan_awsc}
+            if spec.config.stan_awsc != "spoczynek"
             else {}
         ),
     }

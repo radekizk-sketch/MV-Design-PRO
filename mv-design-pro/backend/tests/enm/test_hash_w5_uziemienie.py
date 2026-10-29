@@ -98,6 +98,10 @@ def _postac_sprzed_karty(model: EnergyNetworkModel) -> dict:
         for element in dane.get(klucz, []):
             element.pop("id", None)
     dane.pop("katalog_projektu", None)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (późniejsza niż W5-A): kolekcja zespołów
+    # uziemiających nie istniała — pusta jest poza odciskiem (`_KOLEKCJE_ADDYTYWNE_POZA_HASHEM_\
+    # GDY_PUSTE`), więc model bez zespołu haszuje bajtowo jak przed kartą.
+    dane.pop("zespoly_uziemiajace", None)
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (późniejsza niż W5-A): przed nią źródło niosło pola
     # `c_max`/`c_min` (zawsze `null` w zapisanych migawkach — fantom bez konsumenta), a pole
     # `lv_voltage_tolerance` nie istniało. Postać sprzed W5-A ma więc te pola w tamtym kształcie.
@@ -115,6 +119,11 @@ def test_pelny_odcisk_bez_danych_uziemienia_rowny_postaci_sprzed_karty():
     oczekiwany = _canonical_sha256(copy.deepcopy(_postac_sprzed_karty(model)))
     assert compute_enm_hash(model) == oczekiwany
     assert hash_migawki_enm(model.model_dump(mode="json")) == oczekiwany
+    # Migawka zapisana przed kartą zespołu uziemiającego (bez klucza kolekcji) i migawka
+    # z pustą kolekcją — ten sam odcisk.
+    migawka = model.model_dump(mode="json")
+    assert migawka.pop("zespoly_uziemiajace") == []
+    assert hash_migawki_enm(migawka) == oczekiwany
 
 
 def test_odcisk_semantyczny_niesie_grounding_szyny_jako_null_jak_przed_karta():

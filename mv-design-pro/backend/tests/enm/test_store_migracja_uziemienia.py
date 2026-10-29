@@ -1,6 +1,14 @@
 """W5-A: magazyn wczytuje zastany zapis, migruje przez walidator modelu i NAZYWA skutek
 w dzienniku zmian (nowa rewizja z opisem; utrata `Bus.grounding` bez źródła — w opisie
 i w logu), a po zapisie migracja nie biegnie drugi raz (idempotencja przez nośnik).
+
+Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 1 i 3): `Bus.grounding` szyny spoza pasma SN
+(sieć 110 kV za granicą modelu) przechodzi na `Source.neutral_grounding` źródła na tej
+szynie; `Bus.grounding` szyny SN jest utratą NAZWANĄ zawsze — także przy źródle na tej
+szynie — bo uziemienie punktu neutralnego sieci SN opisuje wyłącznie zespół uziemiający
+albo punkt neutralny uzwojenia transformatora. Intencja testu (migracja nazwana w dzienniku,
+jedna rewizja, idempotencja) zostaje; zmienia się wyłącznie zbiór szyn, z których wolno
+przenieść opis uziemienia na źródło.
 """
 
 from __future__ import annotations
@@ -13,10 +21,18 @@ from enm.dziennik_zmian import wpis_rewizji
 from enm.store import _case_path, get_enm, reset_enm_store
 
 
-def _zastany_snapshot(z_zrodlem: bool) -> dict:
+def _zastany_snapshot(z_zrodlem: bool, szyna_zrodla: str = "b_sn") -> dict:
+    """Zastany zapis: szyna 110 kV uziemiona bezpośrednio, szyna SN kompensowana dławikiem
+    (dawny `Bus.grounding`), źródło (opcjonalnie) na wskazanej szynie."""
     return {
         "header": {"name": "zastany", "revision": 3, "hash_sha256": "x" * 64},
         "buses": [
+            {
+                "ref_id": "b_wn",
+                "name": "WN",
+                "voltage_kv": 110.0,
+                "grounding": {"type": "directly_grounded"},
+            },
             {
                 "ref_id": "b_sn",
                 "name": "SN",
@@ -30,7 +46,7 @@ def _zastany_snapshot(z_zrodlem: bool) -> dict:
                 {
                     "ref_id": "src",
                     "name": "GPZ",
-                    "bus_ref": "b_sn",
+                    "bus_ref": szyna_zrodla,
                     "model": "short_circuit_power",
                     "sk3_mva": 250.0,
                 }
@@ -82,10 +98,12 @@ def _zapisz_zastany(klucz: str, snapshot: dict) -> None:
 
 
 def test_wczytanie_migruje_i_pisze_rewizje_z_nazwanym_opisem():
-    _zapisz_zastany("w5-a", _zastany_snapshot(z_zrodlem=True))
+    """Źródło na szynie 110 kV przejmuje jej opis uziemienia; uziemienie szyny SN (bez
+    zespołu w zapisie) jest utratą nazwaną w tej samej, jednej rewizji migracji."""
+    _zapisz_zastany("w5-a", _zastany_snapshot(z_zrodlem=True, szyna_zrodla="b_wn"))
     enm = get_enm("w5-a")
     assert enm.sources[0].neutral_grounding is not None
-    assert enm.sources[0].neutral_grounding.type == "petersen_coil"
+    assert enm.sources[0].neutral_grounding.type == "directly_grounded"
     assert enm.transformers[0].lv_earthing_system == "TN-C-S"
     assert enm.substations[0].meta == {}
     assert enm.header.revision == 4
@@ -93,12 +111,26 @@ def test_wczytanie_migruje_i_pisze_rewizje_z_nazwanym_opisem():
     assert wpis is not None and wpis.operacja is None
     assert "Migracja uziemienia" in wpis.opis_pl
     assert "src" in wpis.opis_pl and "TN-C-S" in wpis.opis_pl
-    assert "UTRACONE" not in wpis.opis_pl
+    assert "UTRACONE" in wpis.opis_pl and "b_sn" in wpis.opis_pl
+    assert "zespół uziemiający" in wpis.opis_pl
     # Drugi odczyt (nowy proces symulowany resetem pamięci) nie migruje już niczego.
     reset_enm_store(remove_persisted=False)
     ponownie = get_enm("w5-a")
     assert ponownie.header.revision == 4
     assert wpis_rewizji("w5-a", 5) is None
+
+
+def test_uziemienie_szyny_sn_nie_przechodzi_na_zrodlo_na_tej_szynie():
+    """Źródło stoi NA szynie SN z dawnym `Bus.grounding`: opis nie przechodzi na źródło
+    (źródło SN nie jest nośnikiem uziemienia sieci SN) — utrata nazwana z akcją
+    „zamodeluj zespół uziemiający"."""
+    _zapisz_zastany("w5-c", _zastany_snapshot(z_zrodlem=True, szyna_zrodla="b_sn"))
+    enm = get_enm("w5-c")
+    assert enm.sources[0].neutral_grounding is None
+    assert enm.zespoly_uziemiajace == []
+    wpis = wpis_rewizji("w5-c", enm.header.revision)
+    assert wpis is not None and "UTRACONE" in wpis.opis_pl and "b_sn" in wpis.opis_pl
+    assert "zamodeluj zespół uziemiający" in wpis.opis_pl
 
 
 def test_utrata_bez_zrodla_jest_w_dzienniku_i_w_logu(caplog):

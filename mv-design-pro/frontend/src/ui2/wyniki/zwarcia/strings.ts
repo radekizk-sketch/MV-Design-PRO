@@ -7,6 +7,7 @@
  * (Determinism Rule) — przecinek dziesiętny zgodnie z konwencją PL.
  */
 
+import { TRACE_VALUE_CODES } from '../../../ui/results-inspector/types';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 export const ZWARCIA_STRINGS = {
@@ -169,6 +170,18 @@ export const ZWARCIA_STRINGS = {
   sladRozplywuBladOpis:
     'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
 
+  // Sekcja „Sieć składowej zerowej" — ślad WHITE BOX budowy macierzy Y0 biegu 1F/2F+G.
+  sladZerowejTytul: 'Sieć składowej zerowej — ślad obliczeń',
+  sladZerowejOpis:
+    'Budowa macierzy admitancyjnej składowej zerowej po elementach sieci: impedancja zerowa '
+    + 'źródeł, impedancja zerowa i pojemność doziemna linii i kabli, połączenie transformatorów '
+    + 'w składowej zerowej wg grupy połączeń i uziemienia punktów neutralnych, droga zerowa '
+    + 'baterii kondensatorów. Z tej macierzy pochodzi impedancja Z0 w miejscu zwarcia. '
+    + 'Wyłącznie odczyt jawnego śladu obliczeń, zero obliczeń w interfejsie.',
+  sladZerowejNiedostepny: 'Bieg nie niesie śladu sieci składowej zerowej.',
+  sladZerowejNiedostepnyOpis:
+    'Starszy wynik nie ma tego pola. Uruchom ponownie obliczenie zwarciowe, aby go uzyskać.',
+
   // Sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7) — ślad WHITE BOX wyprowadzenia
   // impedancji zastępczej źródeł sieciowych biegu (IEC 60909-0:2016 §6.2.1 eq. 6).
   zrodlaTytul: 'Źródła sieciowe (Z_Q)',
@@ -285,18 +298,16 @@ export const ZWARCIA_STRINGS = {
 } as const;
 
 /**
- * Słownik polskich nazw rodzajów zwarcia. Klucze = wartości `fault_type`
- * (`short_circuit_type`) z kontraktu wyników: „3F", „2F", „2F+Z", „1F"
- * (execution_runs.py:149-155). Dodatkowo akceptowane warianty `SC_3F`/`sc_3f`
- * (fault_scenarios.py:84, analysisRunContract.ts:138-142). Normalizacja: wielkie
+ * Słownik polskich nazw rodzajów zwarcia — JEDNO źródło z opisami kodów śladu
+ * (`TRACE_VALUE_CODES.short_circuit_type`): klucze = wartości `fault_type`
+ * (`short_circuit_type`) kontraktu wiersza wyniku, czyli kody `ShortCircuitType`
+ * backendu „3F", „2F", „2F+G", „1F" (równość przypina
+ * `backend/tests/enm/test_slad_sieci_zerowej_w_wyniku.py`). Do tej poprawki słownik był
+ * osobną kopią z kluczem „2F+Z", którego wiersz wyniku nie niesie — bieg 2F+G pokazywał
+ * „rodzaj nieznany". Dodatkowo akceptowane warianty `SC_3F`/`sc_3f`. Normalizacja: wielkie
  * litery, usunięcie prefiksu `SC_`.
  */
-const RODZAJ_ZWARCIA_PL: Record<string, string> = {
-  '3F': 'zwarcie trójfazowe',
-  '2F': 'zwarcie dwufazowe',
-  '2F+Z': 'zwarcie dwufazowe z ziemią',
-  '1F': 'zwarcie jednofazowe (doziemne)',
-};
+const RODZAJ_ZWARCIA_PL: Readonly<Record<string, string>> = TRACE_VALUE_CODES.short_circuit_type;
 
 /** Mapuje `fault_type` na polską nazwę rodzaju zwarcia (read-only, bez fizyki). */
 export function rodzajZwarciaPL(faultType: string | null): string {

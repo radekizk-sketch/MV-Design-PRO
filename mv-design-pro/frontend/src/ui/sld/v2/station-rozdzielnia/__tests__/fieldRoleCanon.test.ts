@@ -36,9 +36,10 @@ const ALIASY_MODELU = Object.keys(MODEL_BAY_ROLE_TO_CANONICAL);
 
 describe('kanon nazw ról pól SN', () => {
   it('dziesięć ról kanonu, każda nazwa „Pole …”, nazwy różne i bez kodów ról', () => {
-    // 10. rola: BATERIA_KONDENSATOROW — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
+    // 10. rola: ZESPOL_UZIEMIAJACY (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA); 11. rola:
+    // BATERIA_KONDENSATOROW — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
     expect([...ROLE_KANONU].sort()).toEqual(
-      ['BATERIA_KONDENSATOROW', 'BESS_SN', 'FW_SN', 'LINIA_IN', 'LINIA_ODG', 'LINIA_OUT', 'POMIAROWE', 'PV_SN', 'SPRZEGLO', 'TRANSFORMATOROWE'],
+      ['BATERIA_KONDENSATOROW', 'BESS_SN', 'FW_SN', 'LINIA_IN', 'LINIA_ODG', 'LINIA_OUT', 'POMIAROWE', 'PV_SN', 'SPRZEGLO', 'TRANSFORMATOROWE', 'ZESPOL_UZIEMIAJACY'],
     );
     const nazwy = [...Object.values(FIELD_ROLE_LABEL_PL), FIELD_SOURCE_LABEL_PL, FIELD_GENERIC_LABEL_PL];
     expect(new Set(nazwy).size).toBe(nazwy.length);
@@ -49,7 +50,7 @@ describe('kanon nazw ról pól SN', () => {
   });
 
   it('mapa aliasów modelu prowadzi wyłącznie na role kanonu i nie zasłania ról kanonu', () => {
-    expect([...ALIASY_MODELU].sort()).toEqual(['BKR', 'COUPLER', 'FEEDER', 'IN', 'MEASUREMENT', 'OUT', 'TR']);
+    expect([...ALIASY_MODELU].sort()).toEqual(['BKR', 'COUPLER', 'FEEDER', 'IN', 'MEASUREMENT', 'OUT', 'TR', 'ZU']);
     for (const alias of ALIASY_MODELU) {
       expect(ROLE_KANONU).toContain(MODEL_BAY_ROLE_TO_CANONICAL[alias]);
       expect(ROLE_KANONU).not.toContain(alias);

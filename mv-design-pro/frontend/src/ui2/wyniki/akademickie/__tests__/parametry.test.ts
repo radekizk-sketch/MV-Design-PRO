@@ -100,6 +100,9 @@ describe('zbudujParametry — obiekt uziomu', () => {
 
 describe('zbudujParametry — metody detekcji i listy złożone', () => {
   it('zaznaczone metody trafiają jako lista; brak zaznaczeń = brak klucza', () => {
+    // Sposób uziemienia punktu neutralnego nie jest polem formularza (karta UX-04/POLE-ZU
+    // §0 pkt 4: solver czyta go z zespołu uziemiającego modelu) — wartość pozostała w stanie
+    // formularza NIE trafia do parametrów biegu, nie nadpisuje modelu.
     const zZaznaczeniem = zbudujParametry({
       rodzaj: 'earth_fault_detection',
       pola: { neutral_grounding: 'isolated' },
@@ -108,7 +111,6 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       wiersze: [],
     });
     expect(zZaznaczeniem).toEqual({
-      neutral_grounding: 'isolated',
       relay_methods: ['wattmetric', 'admittance'],
     });
 

@@ -27,6 +27,9 @@ import {
   CASE_ID,
   GOTOWOSC,
   KATALOG,
+  ODPOWIEDZI,
+  REF_GPZ_SZYNA,
+  REF_STACJA_SZYNA,
   RUN_ID,
   migawkaSieciZlotej,
   ustawFetchV126,
@@ -463,6 +466,88 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
     await uruchom();
     expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-ranking-n1-metoda')).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * Projekt uziemienia modelu z KILKU galwanicznie połączonych sieci SN (dwie sekcje GPZ przy
+ * otwartym sprzęgle, każda z własnym zespołem uziemiającym): backend zwraca wynik KAŻDEJ
+ * sieci w `sieci` (`_zestawienie_sieci`, solver V12.6). Wiersz sieci = realna odpowiedź
+ * solvera dla jednej sieci (fixtura) z odniesieniem szyny i nazwą sieci.
+ * ILOCZYN: liczba sieci {1, 2} × statusy składowe {wszystkie dostrojone, jedna rozstrojona,
+ * jedna ze statusem spoza mapy} — werdykt całości z wyników składowych, tabela tylko przy
+ * kilku sieciach.
+ */
+describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN osobno', () => {
+  const jednaSiec = ODPOWIEDZI.neutral_earthing_design;
+  const wiersz = (szyna: string, nadpisanie: Record<string, unknown> = {}) => ({
+    szyna_ref: szyna,
+    nazwa_pl: `Sieć SN 15 kV — ${nazwaZMigawki(szyna)}`,
+    ...jednaSiec,
+    ...nadpisanie,
+  });
+  const dwieSieci = (drugaNadpisanie: Record<string, unknown> = {}) => ({
+    neutral_earthing_type: 'petersen_coil',
+    network_count: 2,
+    sieci: [wiersz(REF_GPZ_SZYNA), wiersz(REF_STACJA_SZYNA, drugaNadpisanie)],
+    sanity: { status: 'zweryfikowany', violations: [], checks_total: 8, checks_passed: 8 },
+  });
+
+  it('jedna sieć: werdykt z wyniku wprost, bez tabeli sieci', async () => {
+    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], wynik: jednaSiec });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent('dławik dostrojony');
+    expect(screen.queryByTestId('mvd-akad-obiekty-sieci')).not.toBeInTheDocument();
+  });
+
+  it('dwie sieci dostrojone: werdykt zbiorczy 2 z 2 i wiersz każdej sieci z jej prądem', async () => {
+    ustawFetchV126({
+      potwierdzone: ['neutral_earthing_design'],
+      wynik: dwieSieci({ capacitive_earth_fault_current_a: 3.1177 }),
+    });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(
+      S.werdyktZbiorczy(2, 2, 'sieci SN'),
+    );
+    const tabela = screen.getByTestId('mvd-akad-obiekty-sieci');
+    const wiersze = within(tabela).getAllByRole('row').slice(1);
+    expect(wiersze).toHaveLength(2);
+    expect(wiersze[0]).toHaveTextContent(nazwaZMigawki(REF_GPZ_SZYNA));
+    expect(wiersze[1]).toHaveTextContent(nazwaZMigawki(REF_STACJA_SZYNA));
+    // Każda sieć ze SWOIM prądem pojemnościowym (nie suma modelu).
+    expect(wiersze[0]).toHaveTextContent('12');
+    expect(wiersze[1]).toHaveTextContent('3,1');
+    expect(within(tabela).getAllByText('dławik dostrojony — prąd resztkowy w granicy')).toHaveLength(2);
+  });
+
+  it('dwie sieci, jedna rozstrojona: werdykt 1 z 2, istotność błędu, wiersz rozstrojony nazwany', async () => {
+    ustawFetchV126({
+      potwierdzone: ['neutral_earthing_design'],
+      wynik: dwieSieci({ tuning_status: 'rozstrojony_poza_10pct' }),
+    });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    const chip = screen.getByTestId('mvd-akad-werdykt-chip');
+    expect(chip).toHaveTextContent(S.werdyktZbiorczy(1, 2, 'sieci SN'));
+    const tabela = screen.getByTestId('mvd-akad-obiekty-sieci');
+    expect(within(tabela).getByText('prąd resztkowy powyżej 10 % prądu pojemnościowego')).toBeInTheDocument();
+  });
+
+  it('dwie sieci, status składowej spoza mapy: brak oceny całości (okno nie zgaduje)', async () => {
+    ustawFetchV126({
+      potwierdzone: ['neutral_earthing_design'],
+      wynik: dwieSieci({ tuning_status: undefined, thermal_check: { status: 'zgodny' } }),
+    });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(S.werdyktBrak);
+    expect(screen.getByTestId('mvd-akad-obiekty-sieci')).toBeInTheDocument();
   });
 });
 

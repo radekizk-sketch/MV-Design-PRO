@@ -24,7 +24,7 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
@@ -38,7 +38,11 @@ from enm.bateria_kondensatorow import (
     zalozenia_baterii_rozplywu,
     zalozenia_baterii_zwarcia,
 )
-from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE, zalozenia_z0_galezi
+from enm.dane_przyjete_galezi import (
+    KOD_Z0_ROBOCZE,
+    zalozenia_z0_galezi,
+    zalozenia_zespolow_uziemiajacych,
+)
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
     jest_odbiorem_zip,
@@ -46,10 +50,11 @@ from enm.load_zip_model import (
     opis_odmowy_agregatu_zip,
 )
 from enm.mapping import (
+    BrakWynikuZerowego,
     build_grid_source_trace,
-    build_zero_sequence_zbus,
     map_enm_to_network_graph,
     skladowe_sieci_zerowej,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     FAZY_ODBIORU_JEDNOFAZOWEGO,
@@ -67,10 +72,15 @@ from enm.nazwy_elementow import (
     zbuduj_indeks_nazw,
 )
 from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
-from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+from enm.zero_sequence_transformer import (
+    NAZWY_POLACZEN_ZEROWYCH_PL,
+    ZeroSeqConnection,
+    build_transformer_zero_seq_model,
+)
 from network_model.catalog.wartosci_robocze import zalozenia_parametrow_maszyn
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
@@ -84,6 +94,7 @@ from network_model.core.impedancja_przejscia import (
 )
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC, StanAwsc, stan_awsc_z_danych
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.core.ybus import S_BASE_MVA
 from network_model.nazwy import opis_rodzaju_i_nazwy
@@ -642,6 +653,19 @@ class WejscieZwarcia:
     #: — wyłącznie dla zwarć doziemnych z założeniem ``branch.z0_wartosc_robocza``; ``None`` =
     #: Z0 nie wchodzi do biegu albo żadna gałąź nie ma R′0/X′0 z wartości roboczej.
     skladowe_zerowe: Mapping[str, int] | None = None
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC przypadku (opcja ``stan_awsc``
+    #: scenariusza; brak = ``spoczynek``) — Z_N zespołów uziemiających w ``z0_bus``.
+    stan_awsc: StanAwsc = "spoczynek"
+    #: Nazwane przyczyny braku wyniku zerowego per węzeł ``solve_graph``
+    #: (``enm.mapping.zbuduj_siec_zerowa``): zwarcie doziemne w takim węźle NIE jest liczone
+    #: rdzeniem — wiersz niesie przyczynę (``brak_drogi`` / ``poza_zakresem_iec60909`` /
+    #: ``brak_danych``). Pusty = zwarcie bez Z0 albo każdy węzeł ma drogę przez małą impedancję.
+    brak_wyniku_zerowego: Mapping[str, BrakWynikuZerowego] = field(default_factory=dict)
+    #: Ślad WHITE BOX budowy sieci składowej zerowej biegu doziemnego (1F, 2F+G) — rozbicie
+    #: macierzy Y0 po elementach (``enm.mapping.zbuduj_siec_zerowa``: ta sama macierz co
+    #: ``z0_bus``, graf solvera, scenariusz i stan AWSC biegu; zespoły uziemiające z OBOMA
+    #: stanami AWSC). Pusta krotka = bieg bez Z0.
+    siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
 
 
 def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
@@ -1188,12 +1212,20 @@ def zloz_wejscie_zwarcia(
 
     # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
-    # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
-    z0_bus = (
-        build_zero_sequence_zbus(enm, solve_graph, scenario=scenario_c)
-        if _short_circuit_requires_z0(short_circuit_type)
-        else None
-    )
+    # pływających macierz jest tożsama z liczoną dotąd z ``graph``. Karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA: Z_N zespołów uziemiających w stanie AWSC przypadku,
+    # przyczyny braku wyniku zerowego per węzeł (wiersz bez rdzenia). Ślad WHITE BOX budowy
+    # sieci składowej zerowej (rozbicie po elementach, decyzja grupy połączeń transformatora,
+    # droga zerowa baterii, bocznik zespołu) z TEJ SAMEJ macierzy Y0 co ``z0_bus``.
+    stan_awsc = stan_awsc_z_danych(options.get(KLUCZ_OPCJI_STANU_AWSC))
+    z0_bus = None
+    brak_wyniku_zerowego: dict[str, BrakWynikuZerowego] = {}
+    siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
+    if _short_circuit_requires_z0(short_circuit_type):
+        siec_zerowa = zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc)
+        z0_bus = siec_zerowa.z0_bus
+        brak_wyniku_zerowego = siec_zerowa.przyczyny
+        siec_zerowa_trace = siec_zerowa.slad
 
     reportable_fault_node_ids = [
         node_id
@@ -1248,8 +1280,12 @@ def zloz_wejscie_zwarcia(
             )
         else:
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: bocznik zespołu uziemiającego z wartości
+    # roboczej (stan AWSC przypadku) — ten sam mechanizm i ten sam predykat składowej sieci
+    # zerowej co R′0/X′0 gałęzi z założenia katalogu.
     zalozenia_z0 = (
         zalozenia_z0_galezi(enm, scenario_c)
+        + zalozenia_zespolow_uziemiajacych(enm, scenario_c, stan_awsc)
         if _short_circuit_requires_z0(short_circuit_type)
         else ()
     )
@@ -1335,6 +1371,9 @@ def zloz_wejscie_zwarcia(
         k_sc_znaczniki=k_sc_znaczniki,
         impedancja_zwarcia=impedancja_zwarcia,
         skladowe_zerowe=skladowe_zerowe,
+        stan_awsc=stan_awsc,
+        brak_wyniku_zerowego=brak_wyniku_zerowego,
+        siec_zerowa_trace=siec_zerowa_trace,
     )
 
 
@@ -1626,12 +1665,15 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
     # Z0 jest potrzebne WYŁĄCZNIE krawędziom z realnym I0 (droga odbioru faza–N do
     # punktu zamknięcia) — gałąź, którą I0 nie płynie, nie wnosi Z0 do równań.
     bez_z0: list[str] = []
+    napiecia = napiecia_szyn_kv(enm)
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
         if galaz.ref_id not in droga_zerowa.z_realnym_i0:
             continue
-        if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+        # R′0/X′0 z modelu albo wartość robocza (zasada nr 4) — ten sam predykat co sieć
+        # zerowa zwarć i założenia biegu (``enm.skladowa_zerowa_galezi``).
+        if not skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).znana:
             bez_z0.append(galaz.ref_id)
     transformatory_wysp = [
         trafo
@@ -1697,7 +1739,8 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
             OdmowaNiesymetrii(
                 KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                 tuple(bez_z0),
-                "gałęzie bez składowej zerowej R0/X0 (bez podstawiania Z0 = Z1)",
+                "gałęzie bez składowej zerowej R0/X0 i bez podstawy wartości roboczej (R′1 "
+                "albo X′1 nieznane albo niedodatnie; bez podstawiania Z0 = Z1)",
             )
         )
     if bez_grupy:
@@ -1926,6 +1969,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     base_mva, tolerance, max_iterations = _opcje_rozplywu_niesymetrycznego(options)
 
     galaz_enm = {_graph_id_from_ref(g.ref_id): g for g in enm.branches}
+    napiecia_galezi = napiecia_szyn_kv(enm)
     trafo_enm = {_graph_id_from_ref(t.ref_id): t for t in enm.transformers}
     napiecia_kv = {node_id: float(node.voltage_level) for node_id, node in graph.nodes.items()}
     tracer = WhiteBoxTracer()
@@ -1984,17 +2028,26 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 tory = liczba_torow(galaz)
                 z1_ohm = complex(branch.r_ohm_per_km, branch.x_ohm_per_km) * branch.length_km
                 z0_ohm: complex | None
+                skladowa_z0 = skladowa_zerowa_galezi(galaz, napiecia_galezi.get(galaz.from_bus_ref))
                 if galaz.ref_id in droga_zerowa.z_realnym_i0:
-                    if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+                    if skladowa_z0.r0_ohm_per_km is None or skladowa_z0.x0_ohm_per_km is None:
                         raise OdmowaWejsciaRozplywu(
                             KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                             READINESS_CODES[KOD_NIESYMETRIA_BRAK_Z0_GALEZI].message_pl,
                             elementy=(galaz.ref_id,),
                         )
                     z0_ohm = (
-                        complex(galaz.r0_ohm_per_km, galaz.x0_ohm_per_km) * galaz.length_km / tory
+                        complex(skladowa_z0.r0_ohm_per_km, skladowa_z0.x0_ohm_per_km)
+                        * galaz.length_km
+                        / tory
                     )
-                    zrodlo_z0_galezi = "ENM r0_ohm_per_km/x0_ohm_per_km × length_km / n_parallel"
+                    zrodlo_z0_galezi = (
+                        "R0, X0 gałęzi (wartość robocza: "
+                        + "; ".join(zalozenie for _, _, zalozenie, _ in skladowa_z0.robocze)
+                        + ") × długość ÷ liczba torów"
+                        if skladowa_z0.robocze
+                        else "R0, X0 gałęzi z modelu × długość ÷ liczba torów"
+                    )
                 else:
                     z0_ohm = None
                     zrodlo_z0_galezi = "Z0 nieużywane (krawędź bez realnego I0)"
@@ -2015,8 +2068,18 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         dane={
                             "r_ohm_per_km": branch.r_ohm_per_km,
                             "x_ohm_per_km": branch.x_ohm_per_km,
-                            "r0_ohm_per_km": galaz.r0_ohm_per_km,
-                            "x0_ohm_per_km": galaz.x0_ohm_per_km,
+                            # Dane krawędzi z realnym I0 — wartości użyte w Z0 (także
+                            # robocze); krawędź bez I0 — pola modelu (Z0 nieużywane).
+                            "r0_ohm_per_km": (
+                                skladowa_z0.r0_ohm_per_km
+                                if z0_ohm is not None
+                                else galaz.r0_ohm_per_km
+                            ),
+                            "x0_ohm_per_km": (
+                                skladowa_z0.x0_ohm_per_km
+                                if z0_ohm is not None
+                                else galaz.x0_ohm_per_km
+                            ),
                             "length_km": galaz.length_km,
                             "n_parallel": tory,
                         },
@@ -2039,7 +2102,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 if trafo.ref_id not in droga_zerowa.z_realnym_i0:
                     z0_ohm_tr = None
                     zrodlo_z0 = (
-                        f"Z0 nieużywane (połączenie {model_z0.connection.value}; "
+                        f"Z0 nieużywane ({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}; "
                         "transformator poza drogą realnego I0)"
                     )
                 elif model_z0.z0_pu is None:
@@ -2055,7 +2118,8 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         model_z0.z0_pu, base_kv_ll, S_BASE_MVA
                     )
                     zrodlo_z0 = (
-                        f"enm/zero_sequence_transformer ({model_z0.connection.value}, "
+                        f"model składowej zerowej transformatora "
+                        f"({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}, "
                         f"Z0 = {_fmt_z(model_z0.z0_pu)} pu @ {S_BASE_MVA:g} MVA)"
                     )
                 branch_specs.append(

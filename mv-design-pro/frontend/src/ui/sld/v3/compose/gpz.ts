@@ -769,7 +769,7 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
  *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
  *  fallback = deterministyczny licznik per klasa roli w kolejności
  *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
- *  pomiarowe, FK1… baterii kondensatorów — klasa jak w stacjach,
+ *  pomiarowe, FK1… baterii kondensatorów, FZ1… zespołów uziemiających — klasa jak w stacjach,
  *  `directions.ts`) — pole bez ŻADNEGO oznacznika w danych przestaje być
  *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
  *  i geometrię fixtury referencyjnej 1:1. */
@@ -783,7 +783,9 @@ function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, nu
           ? 'FP'
           : role === 'CAPACITOR_BANK'
             ? 'FK'
-            : 'F';
+            : role === 'EARTHING_UNIT'
+              ? 'FZ'
+              : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
@@ -2832,9 +2834,11 @@ function neutralEarthingLabelPl(
       : 'Punkt neutralny: rezystor';
   }
   if (e.kind === 'coil') {
+    // Zespół Z.14: dławik gaszący z rezystorem równoległym — opis niesie oba aparaty.
+    const rezystor = e.rOhm != null ? ` ‖ rezystor ${liczbaPl(e.rOhm)} Ω` : '';
     return e.xOhm != null
-      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω`
-      : 'Punkt neutralny: dławik gaszący';
+      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω${rezystor}`
+      : `Punkt neutralny: dławik gaszący${rezystor}`;
   }
   if (e.kind === 'direct') return 'Punkt neutralny: uziemiony bezpośrednio';
   return 'Punkt neutralny: izolowany';

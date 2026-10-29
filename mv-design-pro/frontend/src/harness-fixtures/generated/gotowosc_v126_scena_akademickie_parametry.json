@@ -1,6 +1,6 @@
 {
   "case_id": "case-demo",
-  "model_hash": "02e101b5af54ab4305f7de8789ecf934f0fc8b90acbd4d1cef8df1e937f4503b",
+  "model_hash": "58004f8d217723cc75620090437c130a464f52a7fa01ec06c46d420924a2aef4",
   "przedmiot": {
     "liczba_szyn": 8,
     "liczba_galezi": 6,
@@ -54,21 +54,19 @@
       }
     },
     "earth_fault_detection": {
-      "neutral_grounding": "petersen_tuned",
       "relay_methods": [
         "wattmetric",
         "admittance"
       ]
     },
     "neutral_earthing_design": {
-      "neutral_earthing_type": "petersen_coil"
+      "petersen_detuning": 0.05
     },
     "transient_trv": {
       "breaker_rated_voltage_kv": 17.5,
       "trv_natural_frequency_hz": 12000,
       "trv_tau_s": 0.00018,
-      "inrush_multiple_in": 8,
-      "neutral_grounding": "petersen_tuned"
+      "inrush_multiple_in": 8
     },
     "motor_starting": {
       "motors": [
@@ -369,12 +367,12 @@
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
+          "klucz_parametru": null
         },
         {
           "kod": "parametr.relay_methods",
@@ -428,6 +426,11 @@
           "elementy": []
         },
         {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "elementy": []
+        },
+        {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
           "wartosc_pl": "1",
           "elementy": [
@@ -452,7 +455,7 @@
         },
         {
           "kod": "galezie.b0",
-          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 3",
+          "opis_pl": "Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): 1 z 3",
           "spelniony": true,
           "elementy": [
             "cab_main_b"
@@ -462,19 +465,19 @@
         },
         {
           "kod": "model.napiecie_sieci",
-          "opis_pl": "Napięcie znamionowe sieci znane (najwyższe napięcie szyny modelu)",
+          "opis_pl": "Napięcie znamionowe sieci SN znane (15 kV)",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_earthing_type",
-          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
-          "klucz_parametru": "neutral_earthing_type"
+          "klucz_parametru": null
         },
         {
           "kod": "galezie.bez_b0",
@@ -543,6 +546,20 @@
           "elementy": []
         },
         {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Sieć SN 15 kV — Szyna SN (napięcie znamionowe, linie i kable)",
+          "wartosc_pl": "15 kV, 3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+          ]
+        },
+        {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
           "wartosc_pl": "1",
           "elementy": [
@@ -590,12 +607,12 @@
           "klucz_parametru": "inrush_multiple_in"
         },
         {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "spelniony": true,
           "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
+          "blokujacy": false,
+          "klucz_parametru": null
         }
       ],
       "braki": [],
@@ -638,6 +655,11 @@
         {
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "elementy": []
         },
         {

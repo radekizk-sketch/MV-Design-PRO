@@ -121,6 +121,10 @@ RODZINY_MIERNIKA: dict[str, str] = {
     "spectral-card": "karty_widmowe",
     # Karta LINIA-110: przewody linii napowietrznych 110 kV (dane wyrobu PN-EN 50182).
     "overhead-conductor": "overhead_conductor_types",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego SN (ENEA §16).
+    "earthing-transformer": "earthing_transformer_types",
+    "arc-suppression-coil": "arc_suppression_coil_types",
+    "neutral-earthing-resistor": "neutral_earthing_resistor_types",
 }
 
 #: Rodziny, które w żywym katalogu legalnie NIE MAJĄ pozycji — z powodem (pomiar, nie

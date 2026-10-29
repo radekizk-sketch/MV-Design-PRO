@@ -74,21 +74,30 @@ import {
   normalizujSekcje,
   opisUziemienia,
   pasujeRodzajAparatu,
+  punktNeutralnySnTransformatora,
   scalDanePoczatkowe,
+  sekcjaMaTransformator,
+  sekcjeZZespolem,
   transformatoryWModelu,
   trybParametruZwarciowego,
-  typyUziemieniaDozwolone,
   walidujFormularz,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
   zbudujPayloadZrodla,
   zbudujZadaniePodgladu,
+  zrodloOpisujeSiec110kV,
   znajdzPozycjeKatalogu,
   type BladPolaZrodla,
   type GpzLineFieldApparatusKind,
   type GridSourceFormData,
 } from './zrodloModel';
 import { ZRODLO_STRINGS as T } from './strings';
+import {
+  PolaElementowZespolu,
+  PolaUkladuZespolu,
+  useKatalogiZespolu,
+} from '../zespol-uziemiajacy/PolaZespolu';
+import type { ZespolFormData } from '../zespol-uziemiajacy/zespolModel';
 import { WykresSztywnosci } from './WykresSztywnosci';
 import { toSamoNapiecieZnamionowe, wPasmieWn } from '../../model/pasmaNapieciowe';
 
@@ -393,21 +402,15 @@ export function KreatorZrodloZasilania() {
     wybierzTransformator(pierwszy?.id ?? null);
   }, [transformatory.length, filtrowaneTransformatory, dane.transformer_catalog_ref, wybierzTransformator]);
 
-  // Karta GPZ-MODEL: przy równoważniku 110 kV punkt neutralny SN wynika z grupy
-  // połączeń transformatora 110/SN — kreator opisuje go zgodnie z modelem, zamiast
-  // pozwolić na opis, którego zwarcie 1F nie przeczyta (backend: E-W5-01).
-  const dozwoloneUziemienia = useMemo(() => typyUziemieniaDozwolone(dane), [dane]);
-  useEffect(() => {
-    if (dozwoloneUziemienia === null || dozwoloneUziemienia.length !== 1) return;
-    const [jedyny] = dozwoloneUziemienia;
-    setDane((p) => (p.grounding_type === jedyny ? p : { ...p, grounding_type: jedyny }));
-  }, [dozwoloneUziemienia]);
-  const opcjeUziemienia = useMemo(
-    () => (dozwoloneUziemienia === null
-      ? T.typyUziemienia
-      : T.typyUziemienia.filter((o) => dozwoloneUziemienia.includes(o.id as TypPunktuNeutralnego))),
-    [dozwoloneUziemienia],
-  );
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: opis punktu neutralnego i Z0 źródła
+  // dotyczą wyłącznie sieci 110 kV (`zrodloOpisujeSiec110kV`); uziemienie sieci SN niosą
+  // zespoły uziemiające sekcji (ten sam formularz i model co kreator zespołu) albo
+  // uzwojenie transformatora 110/SN (informacja z grupy połączeń, bez wyboru).
+  const opisSieci110kV = zrodloOpisujeSiec110kV(dane);
+  const katalogiZespolu = useKatalogiZespolu();
+  const punktNeutralnySnTr = transformatoryWModelu(dane)
+    ? punktNeutralnySnTransformatora(dane.transformer_vector_group)
+    : null;
 
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
@@ -447,6 +450,11 @@ export function KreatorZrodloZasilania() {
       sections_count: n,
       sekcje: normalizujSekcje(p.sekcje, n, p.line_fields_per_section),
     }));
+  }, []);
+
+  const zmienZespol = useCallback(<K extends keyof ZespolFormData>(pole: K, wartosc: ZespolFormData[K]) => {
+    setDane((p) => ({ ...p, zespol: { ...p.zespol, [pole]: wartosc } }));
+    setDotkniete((p) => new Set(p).add('zespol'));
   }, []);
 
   const zmienSekcje = useCallback((index: number, patch: Partial<GridSourceFormData['sekcje'][number]>) => {
@@ -517,6 +525,10 @@ export function KreatorZrodloZasilania() {
     if (!dotkniete.has(pole) && bledy.length === 0) return undefined;
     return bledy.find((b) => b.field === pole)?.message;
   };
+  // Błędy formularza zespołu (pola `zespol.*`) w kształcie wspólnych pól zespołu.
+  const bledyZespolu = bledy
+    .filter((b) => b.field.startsWith('zespol.'))
+    .map((b) => ({ pole: b.field.slice('zespol.'.length), komunikat: b.message }));
 
   const oznaczenie = useMemo(() => zbudujOznaczenieGpz(dane.source_name), [dane.source_name]);
   const wybranaPozycja = useMemo(() => znajdzPozycjeKatalogu(katalog, dane.catalog_ref), [katalog, dane.catalog_ref]);
@@ -529,7 +541,11 @@ export function KreatorZrodloZasilania() {
   const impedancja = trybParametruZwarciowego(dane) === 'IMPEDANCE';
   const zTransformatorami = transformatoryWModelu(dane);
 
-  const etykietaIk1 = statusPodgladu === 'loading'
+  // Równoważnik na szynach SN nie niesie Z0 — prąd 1F sieci SN wynika z zespołu
+  // uziemiającego sekcji i liczy go bieg zwarć na modelu, nie podgląd równoważnika.
+  const etykietaIk1 = !opisSieci110kV
+    ? T.podsumIk1ZespolSn
+    : statusPodgladu === 'loading'
     ? 'obliczanie…'
     : statusPodgladu === 'ready' && podglad?.ik1_ka === null
       ? 'brak składowej zerowej'
@@ -539,7 +555,9 @@ export function KreatorZrodloZasilania() {
   // podał Sk″min/Ik″min (backend liczy go DRUGIM wywołaniem tego samego solvera
   // podglądu); brak = nie renderujemy nic (zero fabrykacji, R2 karty K7-FE).
   const scenariuszMin = podglad?.scenariusz_min ?? null;
-  const etykietaIk1Min = statusPodgladu === 'loading'
+  const etykietaIk1Min = !opisSieci110kV
+    ? T.podsumIk1ZespolSn
+    : statusPodgladu === 'loading'
     ? 'obliczanie…'
     : scenariuszMin?.ik1_ka === null
       ? 'brak składowej zerowej'
@@ -556,23 +574,23 @@ export function KreatorZrodloZasilania() {
       >
         <RzadWartosci etykieta={T.podsumSk} wartosc={formatujMva(podglad?.sk_mva)} />
         <RzadWartosci etykieta={T.podsumIk3} wartosc={formatujKa(podglad?.ik3_ka)} />
-        <RzadWartosci etykieta={T.podsumIk1} wartosc={etykietaIk1} ton={statusPodgladu === 'ready' && podglad?.ik1_ka !== null ? 'ok' : 'warn'} />
+        <RzadWartosci etykieta={T.podsumIk1} wartosc={etykietaIk1} ton={opisSieci110kV && statusPodgladu === 'ready' && podglad?.ik1_ka !== null ? 'ok' : 'warn'} />
         <RzadWartosci etykieta={T.podsumKappa} wartosc={formatujLiczbe(podglad?.kappa, 3)} />
         <RzadWartosci etykieta={T.podsumIp} wartosc={formatujKa(podglad?.ip_ka)} />
         <RzadWartosci etykieta={T.podsumIth} wartosc={formatujKa(podglad?.ith_ka)} />
         <RzadWartosci etykieta={T.podsumZ1} wartosc={formatujZespolona(podglad?.z1_ohm)} />
-        <RzadWartosci etykieta={T.podsumZ0} wartosc={formatujZespolona(podglad?.z0_ohm)} />
+        {opisSieci110kV ? <RzadWartosci etykieta={T.podsumZ0} wartosc={formatujZespolona(podglad?.z0_ohm)} /> : null}
         <RzadWartosci etykieta={T.podsumZrodlo} wartosc={podglad ? T.podsumZrodloWartosc : T.podsumBrak} />
         {scenariuszMin ? (
           <>
             <RzadWartosci etykieta={T.podsumSkMin} wartosc={formatujMva(scenariuszMin.sk_mva)} testid="mvd-kreator-zrodlo-podsum-sk-min" />
             <RzadWartosci etykieta={T.podsumIk3Min} wartosc={formatujKa(scenariuszMin.ik3_ka)} testid="mvd-kreator-zrodlo-podsum-ik3-min" />
-            <RzadWartosci etykieta={T.podsumIk1Min} wartosc={etykietaIk1Min} ton={scenariuszMin.ik1_ka !== null ? 'ok' : 'warn'} />
+            <RzadWartosci etykieta={T.podsumIk1Min} wartosc={etykietaIk1Min} ton={opisSieci110kV && scenariuszMin.ik1_ka !== null ? 'ok' : 'warn'} />
             <RzadWartosci etykieta={T.podsumKappaMin} wartosc={formatujLiczbe(scenariuszMin.kappa, 3)} />
             <RzadWartosci etykieta={T.podsumIpMin} wartosc={formatujKa(scenariuszMin.ip_ka)} />
             <RzadWartosci etykieta={T.podsumIthMin} wartosc={formatujKa(scenariuszMin.ith_ka)} />
             <RzadWartosci etykieta={T.podsumZ1Min} wartosc={formatujZespolona(scenariuszMin.z1_ohm)} />
-            <RzadWartosci etykieta={T.podsumZ0Min} wartosc={formatujZespolona(scenariuszMin.z0_ohm)} />
+            {opisSieci110kV ? <RzadWartosci etykieta={T.podsumZ0Min} wartosc={formatujZespolona(scenariuszMin.z0_ohm)} /> : null}
           </>
         ) : null}
       </KreatorPodsumowanie>
@@ -806,6 +824,7 @@ export function KreatorZrodloZasilania() {
             </KreatorSekcja>
           )}
 
+          {opisSieci110kV ? (
           <KreatorSekcja tytul={T.zeroTytul} testid="mvd-kreator-zrodlo-zero">
             <PolePrzelacznikBinarny
               etykieta={T.zeroToggle}
@@ -819,6 +838,7 @@ export function KreatorZrodloZasilania() {
               <PoleLiczbowe etykieta={T.z0z1} wartosc={dane.z0_z1_ratio} onZmiana={(v) => zmien('z0_z1_ratio', v)} krok={0.1} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('z0_z1_ratio')} />
             </KreatorSiatka>
           </KreatorSekcja>
+          ) : null}
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}
@@ -960,22 +980,19 @@ export function KreatorZrodloZasilania() {
               blad={bladDlaPola('sections_count')}
               testid="mvd-kreator-zrodlo-liczba-sekcji"
             />
-            <PoleWyboru
-              etykieta={T.uziemienie}
-              wartosc={dane.grounding_type}
-              onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
-              opcje={opcjeUziemienia}
-              pomoc={opisUziemienia(dane.grounding_type)}
-              blad={bladDlaPola('grounding_type')}
-              testid="mvd-kreator-zrodlo-uziemienie"
-            />
+            {opisSieci110kV ? (
+              <PoleWyboru
+                etykieta={T.uziemienie}
+                wartosc={dane.grounding_type}
+                onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
+                opcje={T.typyUziemienia}
+                pomoc={opisUziemienia(dane.grounding_type)}
+                blad={bladDlaPola('grounding_type')}
+                testid="mvd-kreator-zrodlo-uziemienie"
+              />
+            ) : null}
           </KreatorSiatka>
-          {dozwoloneUziemienia !== null ? (
-            <KreatorInfo testid="mvd-kreator-zrodlo-uziemienie-z-transformatora">
-              {T.uziemienieZTransformatora(dane.transformer_vector_group)}
-            </KreatorInfo>
-          ) : null}
-          {(dane.grounding_type === 'resistor_grounded' || dane.grounding_type === 'petersen_coil') ? (
+          {opisSieci110kV && (dane.grounding_type === 'resistor_grounded' || dane.grounding_type === 'petersen_coil') ? (
             <PoleLiczbowe
               etykieta={dane.grounding_type === 'petersen_coil' ? T.uziemienieX : T.uziemienieR}
               jednostka="Ω"
@@ -985,6 +1002,60 @@ export function KreatorZrodloZasilania() {
               testid="mvd-kreator-zrodlo-uziemienie-ohm"
             />
           ) : null}
+          <KreatorSekcja tytul={T.uziemienieSnTytul} testid="mvd-kreator-zrodlo-uziemienie-sn">
+            <KreatorInfo>{T.uziemienieSnOpis}</KreatorInfo>
+            {zTransformatorami ? (
+              <KreatorInfo testid="mvd-kreator-zrodlo-uziemienie-z-transformatora">
+                {T.uziemienieZTransformatora(
+                  dane.transformer_vector_group,
+                  punktNeutralnySnTr === null ? null : punktNeutralnySnTr !== 'isolated',
+                )}
+              </KreatorInfo>
+            ) : null}
+            {dane.sekcje.map((sekcja, index) => (
+              <PolePrzelacznikBinarny
+                key={`zu-${index}`}
+                etykieta={T.sekcjaZespol(sekcja.nazwa)}
+                wlaczone={Boolean(sekcja.zespolUziemiajacy)}
+                onZmiana={(v) => zmienSekcje(index, { zespolUziemiajacy: v })}
+                testid={`mvd-kreator-zrodlo-sekcja-${index + 1}-zu`}
+              />
+            ))}
+            {sekcjeZZespolem(dane).length > 0 ? (
+              <>
+                {dane.sekcje.length > 1 ? <KreatorInfo>{T.zespolWspolny}</KreatorInfo> : null}
+                <PolaUkladuZespolu
+                  dane={dane.zespol}
+                  zmien={zmienZespol}
+                  katalogi={katalogiZespolu}
+                  bledy={bledyZespolu}
+                  prefiks="mvd-kreator-zrodlo-zu"
+                />
+                <PolaElementowZespolu
+                  dane={dane.zespol}
+                  zmien={zmienZespol}
+                  katalogi={katalogiZespolu}
+                  bledy={bledyZespolu}
+                  prefiks="mvd-kreator-zrodlo-zu"
+                />
+                <PolePrzelacznikBinarny
+                  etykieta={T.zespolSpz}
+                  wlaczone={dane.zespol.spz}
+                  onZmiana={(v) => zmienZespol('spz', v)}
+                  testid="mvd-kreator-zrodlo-zu-spz"
+                />
+                {sekcjeZZespolem(dane).some((n) => sekcjaMaTransformator(dane, n)) ? (
+                  <PolePrzelacznikBinarny
+                    etykieta={T.zespolWylaczenieOdTr}
+                    wlaczone={dane.zespol_wylaczenie_od_tr}
+                    onZmiana={(v) => zmien('zespol_wylaczenie_od_tr', v)}
+                    opis={T.zespolWylaczenieOdTrOpis}
+                    testid="mvd-kreator-zrodlo-zu-wylaczenie-tr"
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </KreatorSekcja>
           <KreatorInfo>{T.sprzegloNota}</KreatorInfo>
         </KreatorSekcja>
       ) : null}

@@ -13,6 +13,8 @@ from typing import Any
 
 from enm.load_zip_model import zip_odbioru_z_parametrow_materializacji
 from enm.nazwy_elementow import nazwa_elementu
+from enm.skladowa_zerowa_galezi import SkladowaZerowaOdcinka, skladowa_zerowa_odcinka
+from enm.uziemienie_sekcji import impedancja_zerowa_zrodla_dozwolona
 from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
 from network_model.nazwy import jest_nazwa
 
@@ -264,16 +266,66 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
     return StepState(step_id="K6", status=status, completion_percent=completion, issues=issues)
 
 
+def _zrodla_z_impedancja_zerowa(enm: dict[str, Any]) -> list[dict[str, Any]]:
+    """Źródła, od których obliczenia czytają Z0 — poza pasmem SN (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3; ten sam predykat co walidator W002/W-W5-02
+    i mapowanie składowej zerowej). Drogę zerową sieci SN niesie zespół uziemiający sekcji
+    albo punkt neutralny uzwojenia transformatora, nie źródło na szynach SN."""
+    napiecia = {b.get("ref_id"): b.get("voltage_kv") for b in enm.get("buses", [])}
+    wynik = []
+    for zrodlo in enm.get("sources", []):
+        napiecie = napiecia.get(zrodlo.get("bus_ref"))
+        if isinstance(napiecie, int | float) and not impedancja_zerowa_zrodla_dozwolona(napiecie):
+            continue
+        wynik.append(zrodlo)
+    return wynik
+
+
+def _liczba(wartosc: Any) -> float | None:
+    return float(wartosc) if isinstance(wartosc, int | float) else None
+
+
+def _napiecia_szyn(enm: dict[str, Any]) -> dict[str, float | None]:
+    return {
+        str(szyna.get("ref_id")): _liczba(szyna.get("voltage_kv"))
+        for szyna in enm.get("buses", [])
+        if isinstance(szyna, dict)
+    }
+
+
+def _skladowa_zerowa_linii(
+    line: dict[str, Any], napiecia: dict[str, float | None]
+) -> SkladowaZerowaOdcinka:
+    """Składowa zerowa odcinka rekordu kreatora — ta sama reguła wartości roboczej co sieć
+    zerowa zwarć (``enm.skladowa_zerowa_galezi``), pasmo z napięcia szyny początku odcinka."""
+    return skladowa_zerowa_odcinka(
+        kabel=line.get("type") == "cable",
+        napiecie_kv=napiecia.get(str(line.get("from_bus_ref"))),
+        r1=_liczba(line.get("r_ohm_per_km")),
+        x1=_liczba(line.get("x_ohm_per_km")),
+        r0=_liczba(line.get("r0_ohm_per_km")),
+        x0=_liczba(line.get("x0_ohm_per_km")),
+        r_zyly_powrotnej=_liczba(line.get("return_conductor_r_ohm_per_km_20c")),
+        x_zyly_powrotnej=_liczba(line.get("return_conductor_x_ohm_per_km")),
+    )
+
+
 def _eval_k7(enm: dict[str, Any]) -> StepState:
     """K7: Uziemienia i składowe zerowe."""
     issues: list[WizardIssue] = []
     branches = enm.get("branches", [])
-    sources = enm.get("sources", [])
+    sources = _zrodla_z_impedancja_zerowa(enm)
     lines = [b for b in branches if b.get("type") in ("line_overhead", "cable")]
+    # Odcinek bez R′0/X′0 w modelu (choćby jednej składowej) — dana modelu niekompletna;
+    # obliczenie przyjmuje wartość roboczą (zasada nr 4), chyba że nie ma do niej podstawy.
     lines_no_z0 = [
         line
         for line in lines
-        if line.get("r0_ohm_per_km") is None and line.get("x0_ohm_per_km") is None
+        if line.get("r0_ohm_per_km") is None or line.get("x0_ohm_per_km") is None
+    ]
+    napiecia = _napiecia_szyn(enm)
+    lines_bez_podstawy = [
+        line for line in lines_no_z0 if not _skladowa_zerowa_linii(line, napiecia).znana
     ]
     src_no_z0 = [
         s
@@ -287,7 +339,18 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
             WizardIssue(
                 code="K7_LINES_NO_Z0",
                 severity=IssueSeverity.INFO,
-                message_pl=f"{len(lines_no_z0)} gałęzi bez impedancji zerowej Z0",
+                message_pl=(
+                    f"{len(lines_no_z0)} gałęzi bez impedancji zerowej Z0 w modelu — "
+                    "obliczenia przyjmują wartość roboczą (SN: R′0 = 3·R′1, X′0 = 3·X′1; kabel "
+                    "nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE); wpisz R′0/X′0 odcinka z karty "
+                    "producenta albo z pomiaru"
+                    + (
+                        f" ({len(lines_bez_podstawy)} bez podstawy wartości roboczej — zwarcia "
+                        "doziemne niedostępne)"
+                        if lines_bez_podstawy
+                        else ""
+                    )
+                ),
                 wizard_step_hint="K7",
             )
         )
@@ -334,29 +397,16 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
 
     # SC 1F
     lines = [b for b in branches if b.get("type") in ("line_overhead", "cable")]
-    all_lines_z0 = (
-        all(
-            line.get("r0_ohm_per_km") is not None or line.get("x0_ohm_per_km") is not None
-            for line in lines
-        )
-        if lines
-        else True
-    )
-    all_src_z0 = (
-        all(
-            dane_zerowe(
-                r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
-            )
-            for s in sources
-        )
-        if sources
-        else True
-    )
+    # Ten sam predykat co walidator ENM (``_compute_availability``): blokuje wyłącznie odcinek
+    # bez składowej zerowej i bez podstawy wartości roboczej. Brak Z0 źródła nie odbiera
+    # zdolności zwarcia doziemnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: węzły sieci
+    # zerowej źródła dostają w wyniku nazwaną przyczynę ``brak_danych``) — K7 zgłasza go jako
+    # informację (``K7_SRC_NO_Z0``).
+    napiecia = _napiecia_szyn(enm)
+    all_lines_z0 = all(_skladowa_zerowa_linii(line, napiecia).znana for line in lines)
     sc1f_missing = list(sc3f_missing)
     if not all_lines_z0:
-        sc1f_missing.append("Brak Z0 w gałęziach")
-    if not all_src_z0:
-        sc1f_missing.append("Brak Z0 w źródłach")
+        sc1f_missing.append("Brak Z0 w gałęziach bez podstawy wartości roboczej")
 
     # Load flow
     lf_missing: list[str] = []

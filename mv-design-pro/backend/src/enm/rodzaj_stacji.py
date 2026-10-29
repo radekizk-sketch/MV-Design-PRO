@@ -106,6 +106,11 @@ KATEGORIA_ROLI_POLA: dict[str, str] = {
     "FW": KATEGORIA_INNE,
     "FARMA_WIATROWA": KATEGORIA_INNE,
     "OZE": KATEGORIA_INNE,
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: pole zespołu uziemiającego (rola modelu ``ZU``,
+    # kanoniczna ``ZESPOL_UZIEMIAJACY``) — nie jest polem liniowym ani sprzęgłem.
+    "ZU": KATEGORIA_INNE,
+    "ZESPOL_UZIEMIAJACY": KATEGORIA_INNE,
+    "EARTHING_UNIT": KATEGORIA_INNE,
     # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): pole odbiorcze rozdzielni, nie
     # wyprowadzenie linii — nie liczy się do pól liniowych rodzaju stacji. Bez tych wpisów
     # walidator meldował pole BKR jako pole o roli nierozpoznanej (W044).

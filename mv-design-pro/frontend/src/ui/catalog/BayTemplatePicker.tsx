@@ -38,7 +38,8 @@ export type BayKind =
   | 'kablowe'
   | 'napowietrzne'
   | 'nop_lacznikowe'
-  | 'bateria_kondensatorow';
+  | 'bateria_kondensatorow'
+  | 'zespol_uziemiajacy';
 
 export type BayTemplateSourceStatus =
   | 'official_catalog'
@@ -251,6 +252,7 @@ const OPIS_RODZAJU_POLA: Readonly<Record<BayKind, OpisRodzajuPola>> = {
   napowietrzne: { nazwaBezRoli: 'Pole napowietrzne' },
   nop_lacznikowe: { nazwaBezRoli: 'Pole łącznikowe NOP' },
   bateria_kondensatorow: { rola: 'BATERIA_KONDENSATOROW' },
+  zespol_uziemiajacy: { rola: 'ZESPOL_UZIEMIAJACY' },
 };
 
 /** Nazwa rodzaju pola katalogu — z kanonu ról pól, a dla rodzaju bez roli — jego własna. */

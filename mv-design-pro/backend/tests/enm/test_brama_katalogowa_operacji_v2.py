@@ -446,6 +446,21 @@ def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+REF_TU = "TU_ZNYN11_15KV_PW160"
+REF_DLAWIK = "DL_40_400A_15KV_CIAGLY"
+REF_REZYSTOR = "REZ_200A_15KV"
+
+
+def _payload_zespol_uziemiajacy(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół Z.14 (dławik ‖ rezystor) na szynie SN."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "catalog_ref": REF_TU,
+        "dlawik": {"catalog_ref": REF_DLAWIK},
+        "rezystor": {"catalog_ref": REF_REZYSTOR},
+    }
+
+
 def _payload_odbior_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
     """CV-4.3 K1: `add_load_sn` — odbiór wprost na szynie SN (bez feeder_ref)."""
     return {
@@ -778,6 +793,53 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         _payload_kompensator,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KOMPENSATOR + LITEROWKA}),
         oczekiwany_kod="shunt.catalog_not_found",
+    ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego — każdy
+    # wskazany w swojej przestrzeni i każdy bramkowany (iloczyn element × wskazanie).
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update({"catalog_ref": REF_TU + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "dlawik.catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p["dlawik"].update({"catalog_ref": REF_DLAWIK + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "rezystor.catalog_ref",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p["rezystor"].update({"catalog_ref": REF_REZYSTOR + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {
+                "catalog_ref": None,
+                "catalog_binding": {"catalog_item_id": REF_TU + LITEROWKA},
+            }
+        ),
+    ),
+    PrzypadekIniekcji(
+        "dlawik.catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {"dlawik": {"catalog_binding": {"catalog_item_id": REF_DLAWIK + LITEROWKA}}}
+        ),
+    ),
+    PrzypadekIniekcji(
+        "rezystor.catalog_binding",
+        "add_zespol_uziemiajacy_sn",
+        _payload_zespol_uziemiajacy,
+        lambda p: p.update(
+            {"rezystor": {"catalog_binding": {"catalog_item_id": REF_REZYSTOR + LITEROWKA}}}
+        ),
     ),
     # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, bez feeder_ref) — ta
     # sama brama katalogowa co `add_nn_load` (opcjonalny, ale wskazana pozycja

@@ -314,7 +314,6 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
     {
       data: {
-        mv_neutral_grounding_ref: null,
         tap_changer_refs: [],
         der_specs: [],
         bay_device_withstand: {

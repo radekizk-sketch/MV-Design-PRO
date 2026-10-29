@@ -12,7 +12,9 @@ from solver_input.v126_contracts import (
     V126HarmonicSourceInput,
     V126InsulationInput,
     V126MotorInput,
+    V126SiecSnInput,
     V126TransformerInput,
+    V126UziemienieSnInput,
 )
 
 _VALID_STATUSES = {"zweryfikowany", "poza zakresem wiarygodności", "dane niekompletne"}
@@ -59,6 +61,25 @@ def _input() -> V126AcademicInput:
                 p0_kw=18.0,
             )
         ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: sposób uziemienia sieci SN z modelu
+        # (zespół uziemiający z dławikiem o regulacji nadążnej) — nie parametr biegu.
+        uziemienie_sn=V126UziemienieSnInput(
+            wariant="dlawik",
+            wariant_awsc_zalaczony="dlawik",
+            regulacja_nadazna=True,
+            opis_pl="sieć skompensowana — dławik gaszący (Z.13).",
+            sieci=[
+                V126SiecSnInput(
+                    szyna_ref="B1",
+                    nazwa_pl="Sieć SN szyny B1",
+                    wariant="dlawik",
+                    opis_pl="sieć skompensowana — dławik gaszący (Z.13).",
+                    napiecie_kv=15.0,
+                    szyny=["B1", "B2"],
+                    galezie_sieci=["K1"],
+                )
+            ],
+        ),
     )
 
 
@@ -243,7 +264,13 @@ class TestV126SanityWithRealInputs:
 
     def test_insulation_with_arrester_verified(self) -> None:
         model = _input().model_copy(
-            update={"insulation": [V126InsulationInput(location_bus_ref="B2", u_m_kv=17.5)]}
+            update={
+                "insulation": [
+                    V126InsulationInput(
+                        location_bus_ref="B2", u_m_kv=17.5, network_neutral="isolated"
+                    )
+                ]
+            }
         )
         res = _run_model(V126AnalysisType.INSULATION_COORDINATION, model)
         assert res["sanity"]["status"] == "zweryfikowany"

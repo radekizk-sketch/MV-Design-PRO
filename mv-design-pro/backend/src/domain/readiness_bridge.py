@@ -126,6 +126,17 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
     # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zrodlo SN z danymi uziemienia (pominiete) i reguly
+    # zespolu uziemiajacego — jeden walidator, jeden kanon.
+    "W-W5-02": "source.sn_neutral_data_ignored",
+    "E-ZU-01": "earthing.zespol_bus_invalid",
+    "E-ZU-02": "earthing.zespol_neutral_undefined",
+    "W-ZU-01": "earthing.zespol_spz_without_resistor",
+    "W-ZU-02": "earthing.zespol_transformer_trip_missing",
+    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
+    "W-ZU-04": "earthing.network_grounding_warning",
+    "W-ZU-05": "earthing.zespol_direct_earthing",
+    "W-ZU-06": "earthing.zespol_voltage_mismatch",
 }
 
 # ---------------------------------------------------------------------------

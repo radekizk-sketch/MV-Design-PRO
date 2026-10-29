@@ -139,7 +139,7 @@ describe('typZwarciaNaAnalysisType — mapowanie typu zwarcia biegu na rodzaj an
     ['3F', 'SC_3F'],
     ['1F', 'SC_1F'],
     ['2F', 'SC_2F'],
-    ['2F+Z', 'SC_2F_G'],
+    ['2F+G', 'SC_2F_G'],
   ] as const)('%s -> %s', (typ, oczekiwany) => {
     expect(typZwarciaNaAnalysisType(typ)).toBe(oczekiwany);
   });

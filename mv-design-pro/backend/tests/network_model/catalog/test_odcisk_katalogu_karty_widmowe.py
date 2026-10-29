@@ -176,6 +176,22 @@ ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
 #: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
 ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
 _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
+#: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
+#: uziemiające). Dowód w teście niżej: zrzut BEZ tych przestrzeni daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna przestrzeń ani liść się nie
+#: zmieniły. Pełny odcisk katalogu domyślnego po karcie:
+#: e1626d8f87c56d793b33657338b5116084618b76e37989896fcec8c0274ce961.
+#: Po scaleniu z kartą UX-04/POLE-BKR-MODEL ogniwo stoi NA ``ODCISK_PO_BATERII_BKR`` (wycięcie
+#: trzech przestrzeni zespołu daje dokładnie odcisk po baterii BKR). Pełny odcisk katalogu
+#: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
+#: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
+ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
+PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
+    "earthing_transformer_types": 2,
+    "arc_suppression_coil_types": 3,
+    "neutral_earthing_resistor_types": 4,
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -253,6 +269,9 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
+    for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
+        assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
     assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110

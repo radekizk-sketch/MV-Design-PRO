@@ -66,6 +66,7 @@ def siec(
     fazy: str | None = "A",
     oczko: bool = False,
     z0: bool = True,
+    r1: float = 0.253,
     vector_group: str | None = "Dyn11",
     zaczep: int | None = None,
     tap_changer: TapChanger | None = None,
@@ -111,7 +112,7 @@ def siec(
             from_bus_ref="b_gpz",
             to_bus_ref="b_sn",
             length_km=2.0,
-            r_ohm_per_km=0.253,
+            r_ohm_per_km=r1,
             x_ohm_per_km=0.1,
             b_siemens_per_km=b_siemens,
             r0_ohm_per_km=0.759 if z0 else None,
@@ -415,8 +416,15 @@ def _gen_cosphi() -> Generator:
 
 PRZYPADKI_ODMOW: list[tuple[str, dict[str, Any], str, tuple[str, ...]]] = [
     ("oczko", {"oczko": True}, KOD_NIESYMETRIA_NIERADIALNA, ("cab1", "sw_rown", "tr1")),
-    # Brak Z0 kabla blokuje TYLKO gdy kabel niesie realny I0 (odbiór faza–N na SN).
-    ("brak_z0", {"z0": False, "szyna_odbioru": "b_sn"}, KOD_NIESYMETRIA_BRAK_Z0_GALEZI, ("cab1",)),
+    # Brak Z0 kabla blokuje TYLKO gdy kabel niesie realny I0 (odbiór faza–N na SN) i nie ma
+    # podstawy wartości roboczej (R′1 = 0) — przy dodatnich R′1, X′1 bieg przyjmuje
+    # R′0 = 3·R′1, X′0 = 3·X′1 (zasada nr 4, ``tests/enm/test_z0_wartosc_robocza_odcinka.py``).
+    (
+        "brak_z0",
+        {"z0": False, "r1": 0.0, "szyna_odbioru": "b_sn"},
+        KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
+        ("cab1",),
+    ),
     ("brak_grupy", {"vector_group": None}, KOD_NIESYMETRIA_BRAK_GRUPY_TR, ("tr1",)),
     ("odbior_ab", {"fazy": "AB"}, KOD_NIESYMETRIA_FAZY_ODBIORU, ("ld1",)),
     ("yy_1f", {"vector_group": "Yy0"}, KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ, ("tr1",)),

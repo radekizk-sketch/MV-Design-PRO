@@ -109,6 +109,10 @@ export function referenceProfileIdForFieldRole(role: FieldRole): string | null {
     // `reference_engine.registry.profile_id_for_bay` (rola `BKR` → `capacitor_bank`).
     case FIELD_ROLE.CAPACITOR_BANK:
       return 'capacitor_bank';
+    // Pole zespołu uziemiającego (ENEA Zeszyt 1 Zał. 13–15): lustro backendu (rola `ZU` →
+    // `earthing_unit`).
+    case FIELD_ROLE.EARTHING_UNIT:
+      return 'earthing_unit';
     default:
       return null;
   }

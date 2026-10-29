@@ -67,7 +67,17 @@ _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
 #: Przestrzenie repozytorium DODANE PO ZAMROŻENIU odcisków, pomijane w zrzucie, gdy są
 #: puste (karta AB-H0 §0.7: `karty_widmowe` — katalog statyczny nie ma dziś ani jednej
 #: karty; pierwsza karta z dokumentem zmieni odcisk, bo zmienia katalog).
-_PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(("karty_widmowe",))
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy przestrzenie elementów zespołu uziemiającego —
+#: repozytorium bez nich (np. złożone z rekordów w teście) ma odcisk sprzed karty; katalog
+#: domyślny z pozycjami typowymi §16 ma odcisk nowy (zmiana danych katalogu).
+_PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(
+    (
+        "karty_widmowe",
+        "earthing_transformer_types",
+        "arc_suppression_coil_types",
+        "neutral_earthing_resistor_types",
+    )
+)
 
 
 def _kanon(wartosc: Any) -> Any:

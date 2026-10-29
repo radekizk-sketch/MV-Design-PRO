@@ -639,6 +639,17 @@ describe('GPZ — punkt neutralny sieci SN (V12K-219)', () => {
     expect(bez.symbols.filter((s) => s.symbolId === 'neutralEarthing')).toHaveLength(0);
   });
 
+  it('opis legendy nazywa aparat z modelu, a zespół Z.14 — dławik i rezystor', () => {
+    const opis = (e: NonNullable<CanonicalGpzProps['snNeutralEarthing']>) =>
+      composeGpz({ ...buildCanonicalGpzProps(fullFixture(), 'gpz-1'), snNeutralEarthing: e }, { x: 0, y: 0 })
+        .neutralEarthingNotePl;
+    expect(opis({ kind: 'resistor', rOhm: 43.3 })).toBe('Punkt neutralny: rezystor 43,3 Ω');
+    expect(opis({ kind: 'coil' })).toBe('Punkt neutralny: dławik gaszący');
+    expect(opis({ kind: 'coil', rOhm: 50 })).toBe('Punkt neutralny: dławik gaszący ‖ rezystor 50 Ω');
+    expect(opis({ kind: 'coil', xOhm: 86.6 })).toBe('Punkt neutralny: dławik 86,6 Ω');
+    expect(opis({ kind: 'direct' })).toBe('Punkt neutralny: uziemiony bezpośrednio');
+  });
+
   it('aparat jest połączony z szyną SN, nie wisi w powietrzu', () => {
     const c = zPunktem('resistor');
     const symbol = c.symbols.find((s) => s.symbolId === 'neutralEarthing')!;

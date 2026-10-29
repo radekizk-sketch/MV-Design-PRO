@@ -747,8 +747,11 @@ def enumerate_canonical_configurations() -> list[dict[str, Any]]:
 # Typy pól z uwagi 9 (RECENZJA_MACIERZ_WYPOSAZENIA), które NIE mają szablonu w
 # katalogu — jawny rejestr braków (zero fabrykacji: nie wymyślamy szablonu,
 # którego katalog nie niesie). Bateria kondensatorów i generator synchroniczny
-# (odróżniony od źródła OZE inwerterowego) czekają na decyzję danych/domeny.
+# (odróżniony od źródła OZE inwerterowego) czekają na decyzję danych/domeny; pole zespołu
+# uziemiającego (ENEA Zeszyt 1 Zał. 13–15) powstaje operacją pola SN z wyłącznikiem, a karty
+# celki ZU żaden pakiet producenta nie niesie.
 FIELD_TYPES_WITHOUT_TEMPLATE: list[str] = [
     "bateria_kondensatorow",
     "generator_synchroniczny",
+    "zespol_uziemiajacy",
 ]

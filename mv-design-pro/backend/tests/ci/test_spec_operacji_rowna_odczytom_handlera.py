@@ -97,6 +97,10 @@ OBIEKTY_BEZ_KSZTALTU: dict[str, str] = {
     "update_element_parameters.parameters": "handler odmawia kluczy spoza listy",
     # Sekcja GPZ: handler odmawia kluczy spoza listy (`gpz_section.update.disallowed_keys`).
     "update_gpz_section.updates": "handler odmawia kluczy spoza listy",
+    # Zespół uziemiający sekcji GPZ: każdy wpis (poza numerem sekcji i nazwą pola) jest
+    # ładunkiem `add_zespol_uziemiajacy_sn` — ten sam handler i jego kształt (karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+    "add_grid_source_sn.zespoly_uziemiajace": "wpis = ładunek operacji zespołu uziemiającego",
 }
 
 

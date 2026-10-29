@@ -9,13 +9,20 @@ from itertools import combinations
 from typing import Any
 
 import numpy as np
+from network_model.core.uziemienie import ETYKIETA_PL_WARIANTU_UZIEMIENIA
 from network_model.odmowa_danych import (
     RODZAJ_ELEMENT,
     OdmowaWejsciaRdzenia,
     OdwolanieElementu,
     RekordOdmowy,
 )
-from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
+from solver_input.v126_contracts import (
+    PROJEKT_UZIEMIENIA_WARIANTU,
+    V126AcademicInput,
+    V126AnalysisType,
+    V126SiecSnInput,
+    brak_uziemienia_sn,
+)
 
 JsonDict = dict[str, Any]
 
@@ -45,6 +52,14 @@ POLA_KARTY_ZCONV: tuple[tuple[str, str], ...] = (
 # podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
 # rodzajów zmieniają się RAZ, razem z wersją.
 V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
+
+
+#: Typ projektu uziemienia punktu neutralnego (słownik `PROJEKT_UZIEMIENIA_WARIANTU`) po polsku —
+#: tekst podstawienia śladu White Box (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+_PROJEKT_UZIEMIENIA_PL: dict[str, str] = {
+    "petersen_coil": "projekt dławika gaszącego",
+    "resistor_grounded": "projekt rezystora uziemiającego",
+}
 
 
 def _brakujace_pola_karty_zconv(converter: Any) -> list[str]:
@@ -85,6 +100,87 @@ def _round(value: float, digits: int = 6) -> float:
 
 def _status(ok: bool) -> str:
     return "zgodny" if ok else "niezgodny"
+
+
+def _metoda_detekcji_wariantu(wariant: str, *, nadazna: bool) -> str:
+    """Kategoria sieci dla wyboru metody detekcji doziemień z wariantu uziemienia sekcji SN
+    (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4).
+
+    Sieć skompensowana z regulacją nadążną dławika (strojenie do rezonansu) → „petersen_tuned";
+    dławik bez regulacji nadążnej → „petersen_detuned"; rezystor i dławik‖rezystor (Z.14 —
+    składowa czynna prądu doziemienia) → „resistor"; punkt neutralny bez impedancji → „solid".
+    """
+    if wariant == "izolowany":
+        return "isolated"
+    if wariant in {"dlawik", "dlawik_awsc"}:
+        return "petersen_tuned" if nadazna else "petersen_detuned"
+    if wariant in {"rezystor", "dlawik_rezystor"}:
+        return "resistor"
+    return "solid"
+
+
+def _odmowa_uziemienia_sn(trace: TraceBuilder, krok: str, powod: str) -> JsonDict:
+    trace.add(
+        krok,
+        "Analiza wymaga sposobu uziemienia punktu neutralnego sieci SN z modelu",
+        {"uziemienie_sn": None},
+        powod,
+        {"status": "dane niekompletne"},
+        "Brak opisu modelu — wartości zastępczej się nie podstawia.",
+        result_pl="Brak sposobu uziemienia sieci SN w modelu",
+    )
+    return {
+        "status": "dane niekompletne",
+        "message_pl": powod,
+        "missing_fields": ["uziemienie_sn"],
+        "sanity": _sanity_block([], has_inputs=False),
+    }
+
+
+def _zestawienie_sieci(
+    scheme: str, sieci: list[V126SiecSnInput], wyniki: list[JsonDict]
+) -> JsonDict:
+    """Wynik projektu uziemienia modelu z KILKU galwanicznie połączonych sieci SN.
+
+    Każda sieć ma własny wiersz z pełnym wynikiem (`sieci`) — agregat nie zastępuje wyników
+    składowych (kontrakt werdyktu wyjaśnialnego). Blok wiarygodności: naruszenie w którejkolwiek
+    sieci → „poza zakresem wiarygodności"; sieć bez danych → „dane niekompletne"; inaczej
+    „zweryfikowany". Status całości „dane niekompletne" WYŁĄCZNIE, gdy żadnej sieci nie
+    policzono — wynik policzony dla jednej sieci nie znika za brakiem danych drugiej."""
+    wiersze: list[JsonDict] = [
+        {"szyna_ref": siec.szyna_ref, "nazwa_pl": siec.nazwa_pl, **wynik}
+        for siec, wynik in zip(sieci, wyniki, strict=True)
+    ]
+    bloki = [w["sanity"] for w in wyniki]
+    naruszenia = [
+        {**n, "detail_pl": f"{siec.nazwa_pl}: {n['detail_pl']}"}
+        for siec, blok in zip(sieci, bloki, strict=True)
+        for n in blok["violations"]
+    ]
+    niekompletne = [b for b in bloki if b["status"] == "dane niekompletne"]
+    sanity: JsonDict = {
+        "status": (
+            "poza zakresem wiarygodności"
+            if naruszenia
+            else ("dane niekompletne" if niekompletne else "zweryfikowany")
+        ),
+        "violations": naruszenia,
+        "checks_total": sum(b["checks_total"] for b in bloki),
+        "checks_passed": sum(b["checks_passed"] for b in bloki),
+    }
+    wynik: JsonDict = {
+        "neutral_earthing_type": scheme,
+        "network_count": len(sieci),
+        "sieci": wiersze,
+        "sanity": sanity,
+    }
+    if len(niekompletne) == len(bloki):
+        wynik["status"] = "dane niekompletne"
+        wynik["message_pl"] = " ".join(str(w.get("message_pl", "")) for w in wyniki).strip()
+    kompletnosci = [w.get("kompletnosc_dowodu") for w in wyniki if "kompletnosc_dowodu" in w]
+    if kompletnosci:
+        wynik["kompletnosc_dowodu"] = "NIEPELNY" if "NIEPELNY" in kompletnosci else "PELNY"
+    return wynik
 
 
 # D-14 (K-08): jednolita warstwa sanity-bounds dla analiz V12.6. Status wg §6.1:
@@ -1318,22 +1414,73 @@ class V126AcademicSolver:
     #   - NER: R = U_f / I_ef; sprawdzenie cieplne I_ef²·R·t ≤ E_rating.
     def _neutral_earthing_design(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         omega = 2.0 * math.pi * model.base_frequency_hz
-        params = model.parameters
-        # Typ uziemienia: jawny parametr; fallback do GroundingConfig.type z modelu.
-        scheme = str(
-            params.get("neutral_earthing_type")
-            or params.get("neutral_grounding")
-            or "petersen_coil"
+        # Typ uziemienia WYŁĄCZNIE z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4):
+        # zespół uziemiający sekcji SN wyznacza wariant (dławik → projekt dławika, rezystor
+        # albo dławik‖rezystor → projekt rezystora). Parametr biegu go nie nadpisuje, a brak
+        # zespołu jest nazwanym brakiem MODELU — nie domyślnym „petersen_coil".
+        powod = brak_uziemienia_sn(model.uziemienie_sn, projekt_zespolu=True)
+        if powod is not None:
+            return _odmowa_uziemienia_sn(trace, "neutral_earthing_no_grounding_model", powod)
+        assert model.uziemienie_sn is not None and model.uziemienie_sn.wariant is not None
+        scheme = PROJEKT_UZIEMIENIA_WARIANTU[model.uziemienie_sn.wariant]
+        trace.add(
+            "neutral_earthing_scheme_from_model",
+            "Typ projektu = f(wariant zespołu uziemiającego sekcji SN z modelu)",
+            {
+                "wariant": model.uziemienie_sn.wariant,
+                "wariant_awsc_zalaczony": model.uziemienie_sn.wariant_awsc_zalaczony,
+            },
+            (
+                f"{ETYKIETA_PL_WARIANTU_UZIEMIENIA[model.uziemienie_sn.wariant]} → "
+                f"{_PROJEKT_UZIEMIENIA_PL[scheme]}"
+            ),
+            {"neutral_earthing_type": scheme},
+            "Wybór projektu jest decyzją logiczną — bez jednostek fizycznych.",
+            result_pl=f"Uziemienie sieci z modelu: {model.uziemienie_sn.opis_pl}",
         )
 
+        # Każda galwanicznie połączona sieć SN osobno (IEC 60909-0 / PN-EN 50522:
+        # I_C = √3·ω·C_0·U_n sieci połączonej galwanicznie): dwie sekcje GPZ przy otwartym
+        # sprzęgle mają własną pojemność doziemną i własny zespół — suma po całym modelu
+        # zawyżałaby I_C każdej z nich i fałszowała dobór dławika albo rezystora.
+        sieci = model.uziemienie_sn.sieci
+        wiele = len(sieci) > 1
+        wyniki = [
+            self._projekt_uziemienia_sieci(model, trace, siec, scheme, omega, wiele=wiele)
+            for siec in sieci
+        ]
+        if not wiele:
+            return wyniki[0]
+        return _zestawienie_sieci(scheme, sieci, wyniki)
+
+    def _projekt_uziemienia_sieci(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        siec: V126SiecSnInput,
+        scheme: str,
+        omega: float,
+        *,
+        wiele: bool,
+    ) -> JsonDict:
+        """Projekt uziemienia punktu neutralnego JEDNEJ galwanicznie połączonej sieci SN."""
+        # Kroki śladu niosą sieć, gdy model ma ich kilka (ślad czytelny sieć po sieci).
+        dopisek = {"siec_sn": siec.nazwa_pl} if wiele else {}
+        przedrostek = f"{siec.nazwa_pl}: " if wiele else ""
         # --- Krok 1: zsumuj pojemność doziemną C0 sieci galwanicznie połączonej. ---
         # Tylko linie/kable z jawnym b0 (zero-sequence / line-to-earth). Element bez
         # b0 → "dane niekompletne" (zakaz fabrykacji C0). Łączniki otwarte pomijane.
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01): wyłącznie gałęzie TEJ sieci SN z jedynej
+        # prawdy (`galezie_sieci` składowej galwanicznej przy stanach łączników); linie
+        # 110 kV, kable nN i gałęzie drugiej sekcji przy otwartym sprzęgle do niej nie należą.
+        galezie_sieci = frozenset(siec.galezie_sieci)
         b0_total_s = 0.0
         contributing: list[JsonDict] = []
         missing_b0: list[str] = []
         for branch in model.branches:
             if branch.kind not in {"line_overhead", "cable"}:
+                continue
+            if branch.ref not in galezie_sieci:
                 continue
             if getattr(branch, "is_open", False):
                 continue
@@ -1358,11 +1505,16 @@ class V126AcademicSolver:
         # B0 = B (Y0 = Y1, policzona w moście wejścia z pierwszych zasad) dokłada się do
         # pojemności doziemnej sieci tak samo jak B0 linii; gwiazda izolowana, podwójna
         # gwiazda izolowana i trójkąt nie mają drogi zerowej (B0 = 0) i nie wnoszą prądu
-        # pojemnościowego. Bateria otwarta pomijana jak łącznik otwarty.
+        # pojemnościowego. Bateria otwarta pomijana jak łącznik otwarty. Wyłącznie baterie TEJ
+        # sieci (`baterie_sieci` z `enm.uziemienie_sekcji.baterie_sieci_sn` — ten sam
+        # predykat, z którego jedyna prawda dokłada B0 baterii): bateria drugiej sekcji przy
+        # otwartym sprzęgle nie wnosi prądu do tej sieci.
+        baterie_w_sieci = frozenset(siec.baterie_sieci)
         banks_contributing: list[JsonDict] = []
         banks_without_zero_path: list[str] = []
         b0_banks_s = 0.0
-        for bank in model.shunt_capacitors:
+        baterie_sieci = [b for b in model.shunt_capacitors if b.ref in baterie_w_sieci]
+        for bank in baterie_sieci:
             if bank.is_open:
                 continue
             if not bank.wnosi_pojemnosc_doziemna:
@@ -1378,7 +1530,7 @@ class V126AcademicSolver:
                     "b0_total_siemens": _round(bank.b0_siemens, 12),
                 }
             )
-        if model.shunt_capacitors:
+        if baterie_sieci:
             trace.add(
                 "neutral_earthing_shunt_capacitors",
                 "B0_bat = B_bat (gwiazda uziemiona, Y0 = Y1); B0_bat = 0 (gwiazda izolowana, "
@@ -1386,6 +1538,7 @@ class V126AcademicSolver:
                 {
                     "banks_contributing": banks_contributing,
                     "banks_without_zero_path": banks_without_zero_path,
+                    **dopisek,
                 },
                 "Σ B0_bat = "
                 + (
@@ -1402,13 +1555,14 @@ class V126AcademicSolver:
                 ),
             )
 
-        # Napięcie sieci (linia–linia) z najwyższego węzła SN modelu.
-        u_line_kv = max((bus.nominal_kv for bus in model.buses), default=0.0)
-        u_line_v = u_line_kv * 1000.0
-        u_phase_v = u_line_v / math.sqrt(3.0)
+        # Napięcie sieci (linia–linia) SN z jedynej prawdy o uziemieniu sieci (karta
+        # UX-04/POLE-ZU-SKLADOWA-ZEROWA, B-01): dawniej najwyższe napięcie szyny MODELU —
+        # w modelu GPZ 110 kV, co zawyżało I_C sieci SN 110/15 = 7,3 raza.
+        # Brak napięcia sieci to nazwana odmowa niżej — bez podstawionej liczby.
+        u_line_kv = siec.napiecie_kv
 
         # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
-        if b0_total_s <= 0.0 or u_line_kv <= 0.0:
+        if b0_total_s <= 0.0 or u_line_kv is None or u_line_kv <= 0.0:
             reason = (
                 "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
                 "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
@@ -1422,8 +1576,9 @@ class V126AcademicSolver:
                     "branches_with_b0": len(contributing),
                     "branches_missing_b0": missing_b0,
                     "u_line_kv": u_line_kv,
+                    **dopisek,
                 },
-                reason,
+                przedrostek + reason,
                 {"status": "dane niekompletne"},
                 "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
                 result_pl=("Brak danych do wyznaczenia prądu pojemnościowego doziemienia"),
@@ -1431,12 +1586,14 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "neutral_earthing_type": scheme,
-                "message_pl": reason,
+                "message_pl": przedrostek + reason,
                 "missing_fields": (["b0_siemens_per_km"] if b0_total_s <= 0.0 else ["nominal_kv"]),
                 "branches_missing_b0": missing_b0,
                 "sanity": _sanity_block([], has_inputs=False),
             }
 
+        u_line_v = u_line_kv * 1000.0
+        u_phase_v = u_line_v / math.sqrt(3.0)
         # C0 [F] z sumy susceptancji doziemnych: B0 = ω·C0 ⇒ C0 = B0/ω.
         c0_farad = b0_total_s / omega
         # Prąd pojemniczy doziemienia (1-fazowe doziemienie metaliczne): Ic = √3·ω·C0·U_l.
@@ -1446,6 +1603,12 @@ class V126AcademicSolver:
             "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
             {
                 "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+                "zakres_sieci_pl": (
+                    "linie, kable i baterie w gwieździe uziemionej sieci SN połączonej "
+                    "galwanicznie przy stanach łączników modelu (sekcje rozdzielone otwartym "
+                    "sprzęgłem liczone osobno); napięcie sieci SN z modelu"
+                ),
+                **dopisek,
                 "omega_rad_s": _round(omega, 6),
                 "b0_total_siemens": _round(b0_total_s, 12),
                 "u_line_kv": u_line_kv,
@@ -1456,11 +1619,11 @@ class V126AcademicSolver:
             f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
             {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
             "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
-            result_pl=(f"Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
+            result_pl=(f"{przedrostek}Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
         )
 
         if scheme == "resistor_grounded" or scheme == "resistor":
-            result = self._ner_design(model, trace, ic_a, u_phase_v)
+            result = self._ner_design(model, trace, siec, ic_a, u_phase_v, wiele=wiele)
         else:
             result = self._petersen_design(model, trace, c0_farad, ic_a, omega)
         result["neutral_earthing_type"] = scheme
@@ -1469,7 +1632,7 @@ class V126AcademicSolver:
         result["network_line_voltage_kv"] = u_line_kv
         result["branches_missing_b0"] = missing_b0
         result["branches_contributing"] = contributing
-        if model.shunt_capacitors:
+        if baterie_sieci:
             result["shunt_capacitors_contributing"] = banks_contributing
             result["shunt_capacitors_without_zero_path"] = banks_without_zero_path
         return result
@@ -1586,117 +1749,166 @@ class V126AcademicSolver:
         self,
         model: V126AcademicInput,
         trace: TraceBuilder,
+        siec: V126SiecSnInput,
         ic_a: float,
         u_phase_v: float,
+        *,
+        wiele: bool,
     ) -> JsonDict:
-        params = model.parameters
-        # Docelowy prąd doziemienia I_ef — jawny parametr projektowy (NIE stała).
-        target_raw = params.get("ner_target_earth_fault_current_a")
-        if target_raw is None:
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4 (B-01): sprawdzenie REZYSTORA MODELU.
+        # Dawne parametry biegu „docelowy prąd doziemienia" (R = U_f/I_ef) i „energia
+        # znamionowa rezystora" opisywały inny rezystor niż ten w zespole uziemiającym —
+        # nadpisywały model. R, I_n i t_n idą z zespołu (albo z uzwojenia TR uziemionego przez
+        # rezystor); wartość robocza urządzenia jest daną przyjętą ESTIMATED (zasada nr 4).
+        uziemienie = siec
+        dopisek = {"siec_sn": siec.nazwa_pl} if wiele else {}
+        przedrostek = f"{siec.nazwa_pl}: " if wiele else ""
+        dane_przyjete = [d.model_dump(mode="json") for d in uziemienie.dane_przyjete]
+        kompletnosc = "NIEPELNY" if dane_przyjete else "PELNY"
+        rezystory = sorted(uziemienie.rezystory, key=lambda r: r.ref)
+        kompensacja = uziemienie.wariant == "dlawik_rezystor"
+        brak = (
+            ["uziemienie_sn.sieci.rezystory"]
+            if not rezystory
+            else (
+                ["uziemienie_sn.sieci.prad_dlawikow_a"]
+                if kompensacja and uziemienie.prad_dlawikow_a is None
+                else []
+            )
+        )
+        if brak:
             reason = (
-                "Dobór rezystora NER wymaga docelowego prądu doziemienia I_ef "
-                "(ner_target_earth_fault_current_a) — parametr projektowy nie podany."
+                "Sieć SN uziemiona przez rezystor, ale wejście nie niesie danych rezystora "
+                "punktu neutralnego (R, I_n, t_n) — sprawdzenia rezystora nie wykonano."
+                if not rezystory
+                else "Układ dławik ‖ rezystor (Z.14) bez prądu dławika w ruchu — składowej "
+                "biernej prądu doziemienia nie da się wyznaczyć."
             )
             trace.add(
-                "ner_no_target",
-                "R ≈ U_f / I_ef",
-                {"u_phase_v": _round(u_phase_v, 4)},
-                reason,
+                "ner_no_resistor",
+                "R_N = R_{zespołu};  I_ef = √(I_R² + (I_C − I_L)²)",
+                {"missing": brak, **dopisek},
+                przedrostek + reason,
                 {"status": "dane niekompletne"},
-                "Brak parametru projektowego I_ef — brak wartości zgadywanej.",
-                result_pl=("Brak zadanego prądu zwarcia doziemnego — rezystancji nie dobrano"),
+                "Brak danych urządzenia punktu neutralnego — bez wartości zgadywanej.",
+                result_pl="Brak danych rezystora punktu neutralnego — sprawdzenia nie wykonano",
             )
             return {
                 "status": "dane niekompletne",
                 "design_mode": "resistor_grounded",
-                "message_pl": reason,
-                "missing_fields": ["ner_target_earth_fault_current_a"],
+                "message_pl": przedrostek + reason,
+                "missing_fields": brak,
                 "sanity": _sanity_block([], has_inputs=False),
             }
-        i_ef_target_a = float(target_raw)
 
-        # R = U_f / I_ef (rezystancja punktu neutralnego dominuje impedancję zerową).
-        r_ohm = u_phase_v / i_ef_target_a
-        # Wypadkowy prąd doziemienia: składowa rezystancyjna przez R w fazie z napięciem
-        # i składowa pojemnościowa Ic w kwadraturze: I_ef = √(I_R² + Ic²), I_R = U_f/R.
+        # R_N rezystorów w ruchu równolegle; I_R = U_f/R_N (rezystancja punktu neutralnego
+        # dominuje impedancję zerową sieci — Z_0,TU i impedancja zgodna pominięte, jak dotąd).
+        r_ohm = 1.0 / sum(1.0 / r.r_ohm for r in rezystory)
         i_resistive_a = u_phase_v / r_ohm
-        i_ef_a = math.sqrt(i_resistive_a**2 + ic_a**2)
+        # Składowa bierna: pojemnościowa I_C w kwadraturze; w układzie Z.14 dławik w ruchu
+        # kompensuje ją prądem I_L (nastawa albo wartość robocza z danych przyjętych).
+        # Bez dławika w ruchu (Z.15) składowej kompensacji fizycznie nie ma: I_L = 0. Układ
+        # Z.14 bez prądu dławika jest nazwaną odmową wyżej (`brak`).
+        i_coil_a = 0.0
+        if kompensacja:
+            assert uziemienie.prad_dlawikow_a is not None
+            i_coil_a = float(uziemienie.prad_dlawikow_a)
+        i_reactive_a = ic_a - i_coil_a
+        i_ef_a = math.sqrt(i_resistive_a**2 + i_reactive_a**2)
         trace.add(
             "ner_resistance_sizing",
-            "R = U_f / I_ef;  I_ef_wyp = √((U_f/R)² + Ic²)",
+            "R_N = (Σ 1/R_k)⁻¹;  I_R = U_f/R_N;  I_ef = √(I_R² + (I_C − I_L)²)",
             {
-                "ref": "Resistance-earthed neutral; IEC 60364 / VDE practice",
+                "ref": "Resistance-earthed neutral; ENEA Zeszyt 1 §16 (Z.14, Z.15)",
                 "u_phase_v": _round(u_phase_v, 4),
-                "i_ef_target_a": i_ef_target_a,
+                "resistors": [
+                    {"ref": r.ref, "nazwa_pl": r.nazwa_pl, "r_ohm": r.r_ohm} for r in rezystory
+                ],
                 "ic_a": _round(ic_a, 4),
+                "i_coil_a": _round(i_coil_a, 4),
+                **dopisek,
             },
-            f"R={_round(u_phase_v, 4)}/{i_ef_target_a}; "
-            f"I_ef=√(({_round(u_phase_v, 4)}/{_round(r_ohm, 4)})²+{_round(ic_a, 4)}²)",
-            {"r_ohm": _round(r_ohm, 4), "i_ef_resultant_a": _round(i_ef_a, 4)},
+            f"R_N={_round(r_ohm, 4)}; I_R={_round(u_phase_v, 4)}/{_round(r_ohm, 4)}; "
+            f"I_ef=√({_round(i_resistive_a, 4)}²+({_round(ic_a, 4)}−{_round(i_coil_a, 4)})²)",
+            {
+                "r_ohm": _round(r_ohm, 4),
+                "i_resistive_a": _round(i_resistive_a, 4),
+                "i_ef_resultant_a": _round(i_ef_a, 4),
+            },
             "V/A=Ω; √(A²+A²)=A.",
             result_pl=(
-                f"Rezystancja uziemiająca: {_round(r_ohm, 4)} \u03a9; wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
+                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} \u03a9; "
+                f"wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
             ),
         )
 
-        # Sprawdzenie cieplne: energia I_ef²·R·t_clear ≤ znamionowa energia rezystora.
-        # t_clear: jawny czas wyłączenia (z nastaw/parametru). Brak → "dane niekompletne".
-        t_clear_raw = params.get("ner_clearing_time_s")
-        rating_raw = params.get("ner_energy_rating_j")
+        # Sprawdzenie cieplne KAŻDEGO rezystora: przez rezystor płynie wyłącznie jego prąd
+        # I_R,k = U_f/R_k (składowa pojemnościowa zamyka się przez pojemności doziemne faz
+        # zdrowych, nie przez punkt neutralny) — E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k
+        # (energia przy prądzie znamionowym w dopuszczalnym czasie jego przepływu).
+        # t_wył: czas wyłączenia zwarcia doziemnego — jawny parametr zabezpieczeń.
+        t_clear_raw = model.parameters.get("ner_clearing_time_s")
         thermal: JsonDict
-        if t_clear_raw is None or rating_raw is None:
-            missing = [
-                name
-                for name, value in (
-                    ("ner_clearing_time_s", t_clear_raw),
-                    ("ner_energy_rating_j", rating_raw),
-                )
-                if value is None
-            ]
+        if t_clear_raw is None:
             trace.add(
                 "ner_thermal_incomplete",
-                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
-                {"missing": missing},
-                "Brak czasu wyłączenia lub znamionowej energii rezystora.",
+                "E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k",
+                {"missing": ["ner_clearing_time_s"]},
+                "Brak czasu wyłączenia zwarcia doziemnego.",
                 {"status": "dane niekompletne"},
-                "Sprawdzenie cieplne wymaga t_clear i E_rating — bez zgadywania.",
-                result_pl=("Sprawdzenia cieplnego nie wykonano — brak danych"),
+                "Sprawdzenie cieplne wymaga t_wył — bez zgadywania.",
+                result_pl=("Sprawdzenia cieplnego nie wykonano — brak czasu wyłączenia"),
             )
-            thermal = {
-                "status": "dane niekompletne",
-                "missing_fields": missing,
-            }
+            thermal = {"status": "dane niekompletne", "missing_fields": ["ner_clearing_time_s"]}
         else:
             t_clear_s = float(t_clear_raw)
-            e_rating_j = float(rating_raw)
-            e_dissipated_j = i_ef_a**2 * r_ohm * t_clear_s
-            thermal_ok = e_dissipated_j <= e_rating_j
+            wiersze: list[JsonDict] = []
+            for rez in rezystory:
+                i_k = u_phase_v / rez.r_ohm
+                e_k = i_k**2 * rez.r_ohm * t_clear_s
+                e_n = rez.i_n_a**2 * rez.r_ohm * rez.t_n_s
+                wiersze.append(
+                    {
+                        "ref": rez.ref,
+                        "nazwa_pl": rez.nazwa_pl,
+                        "r_ohm": rez.r_ohm,
+                        "i_resistor_a": _round(i_k, 4),
+                        "i_n_a": rez.i_n_a,
+                        "t_n_s": rez.t_n_s,
+                        "energy_dissipated_j": _round(e_k, 4),
+                        "energy_rating_j": _round(e_n, 4),
+                        "thermal_ok": e_k <= e_n,
+                    }
+                )
+            # Rozstrzyga rezystor o najmniejszym zapasie (największy stosunek E_k/E_n,k).
+            rozstrzygajacy = max(
+                wiersze, key=lambda w: (w["energy_dissipated_j"] / w["energy_rating_j"], w["ref"])
+            )
+            thermal_ok = all(w["thermal_ok"] for w in wiersze)
             trace.add(
                 "ner_thermal_withstand",
-                "E_dissipated = I_ef²·R·t_clear ≤ E_rating",
-                {
-                    "i_ef_a": _round(i_ef_a, 4),
-                    "r_ohm": _round(r_ohm, 4),
-                    "t_clear_s": t_clear_s,
-                    "e_rating_j": e_rating_j,
-                },
-                f"E={_round(i_ef_a, 4)}²·{_round(r_ohm, 4)}·{t_clear_s}",
-                {
-                    "e_dissipated_j": _round(e_dissipated_j, 4),
-                    "thermal_ok": thermal_ok,
-                },
+                "E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k",
+                {"t_clear_s": t_clear_s, "resistors": wiersze, **dopisek},
+                "; ".join(
+                    f"{w['nazwa_pl']}: E={w['i_resistor_a']}²·{w['r_ohm']}·{t_clear_s} ≤ "
+                    f"{w['i_n_a']}²·{w['r_ohm']}·{w['t_n_s']}"
+                    for w in wiersze
+                ),
+                {"thermal_ok": thermal_ok},
                 "A²·Ω·s = W·s = J ≤ J.",
                 result_pl=(
-                    f"Energia wydzielona w rezystorze: {_round(e_dissipated_j, 4)} J "
-                    f"(znamionowa: {e_rating_j} J)"
+                    f"{przedrostek}Energia wydzielona w rezystorze: "
+                    f"{rozstrzygajacy['energy_dissipated_j']} J "
+                    f"(znamionowa: {rozstrzygajacy['energy_rating_j']} J)"
                 ),
             )
             thermal = {
                 "status": "zgodny" if thermal_ok else "niezgodny",
-                "energy_dissipated_j": _round(e_dissipated_j, 4),
-                "energy_rating_j": e_rating_j,
+                "energy_dissipated_j": rozstrzygajacy["energy_dissipated_j"],
+                "energy_rating_j": rozstrzygajacy["energy_rating_j"],
                 "clearing_time_s": t_clear_s,
                 "thermal_ok": thermal_ok,
+                "resistors": wiersze,
             }
 
         # K-08: sanity-bounds — R i I_ef skończone i dodatnie.
@@ -1715,10 +1927,13 @@ class V126AcademicSolver:
             "sanity": sanity,
             "design_mode": "resistor_grounded",
             "resistor_ohm": _round(r_ohm, 4),
-            "target_earth_fault_current_a": i_ef_target_a,
             "resultant_earth_fault_current_a": _round(i_ef_a, 4),
             "resistive_component_a": _round(i_resistive_a, 4),
+            "coil_current_a": _round(i_coil_a, 4) if kompensacja else None,
+            "reactive_component_a": _round(i_reactive_a, 4),
             "thermal_check": thermal,
+            "dane_przyjete": dane_przyjete,
+            "kompletnosc_dowodu": kompletnosc,
         }
 
     def _insulation(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
@@ -1801,7 +2016,15 @@ class V126AcademicSolver:
         return {"arresters": rows, "sanity": sanity}
 
     def _earth_fault_detection(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        neutral = str(model.parameters.get("neutral_grounding", "petersen_tuned"))
+        # Sposób uziemienia WYŁĄCZNIE z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4)
+        # — dawny domyślny „petersen_tuned" zgadywał sieć, której model nie opisał.
+        powod = brak_uziemienia_sn(model.uziemienie_sn)
+        if powod is not None:
+            return _odmowa_uziemienia_sn(trace, "earth_fault_no_grounding_model", powod)
+        assert model.uziemienie_sn is not None and model.uziemienie_sn.wariant is not None
+        neutral = _metoda_detekcji_wariantu(
+            model.uziemienie_sn.wariant, nadazna=model.uziemienie_sn.regulacja_nadazna
+        )
         relay_methods = set(
             model.parameters.get(
                 "relay_methods",
@@ -1820,7 +2043,11 @@ class V126AcademicSolver:
         trace.add(
             "earth_fault_method_selection",
             "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
-            {"neutral_grounding": neutral, "relay_methods": sorted(relay_methods)},
+            {
+                "neutral_grounding": neutral,
+                "wariant_uziemienia_sn": model.uziemienie_sn.wariant,
+                "relay_methods": sorted(relay_methods),
+            },
             f"{neutral} -> {recommended}",
             {"recommended_method": recommended, "available": available},
             "Wybór metody jest decyzją logiczną — bez jednostek fizycznych.",
@@ -1886,15 +2113,40 @@ class V126AcademicSolver:
         # Pary (B, ℓ) wyłącznie gałęzi z daną o susceptancji — ta sama kolejność i te same
         # mnożenia co przed decyzją B-01 partii integracji 9 (zawężenie typu `float | None`
         # wprost w parze, nie w drugim przebiegu po liście).
-        b_i_dlugosc = [
-            (b, branch.length_km)
-            for branch in model.branches
-            if (b := branch.b_siemens_per_km) is not None
+        # Punkt neutralny sieci WYŁĄCZNIE z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0
+        # pkt 4) — dawny domyślny „isolated" zgadywał sieć, której model nie opisał.
+        powod_uziemienia = brak_uziemienia_sn(model.uziemienie_sn)
+        # Pojemność doczepna SIECI SN (ta sama prawda co punkt neutralny): gałęzie spoza sieci
+        # SN (linie 110 kV, kable nN) nie należą do obwodu ferrorezonansowego sieci SN, a każda
+        # galwanicznie połączona sieć SN (sekcje rozdzielone otwartym sprzęgłem) jest osobnym
+        # obwodem — ryzyko rozstrzyga sieć o największej pojemności, nie suma po modelu.
+        sieci_sn = (
+            model.uziemienie_sn.sieci
+            if powod_uziemienia is None and model.uziemienie_sn is not None
+            else []
+        )
+        b_i_dlugosc_sieci = [
+            [
+                (b, branch.length_km)
+                for branch in model.branches
+                if (b := branch.b_siemens_per_km) is not None and branch.ref in galezie
+            ]
+            for galezie in (frozenset(siec.galezie_sieci) for siec in sieci_sn)
         ]
-        suma_b_l = sum(b * length_km for b, length_km in b_i_dlugosc)
-        siec_izolowana = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
-        ferro_ocenialne = bool(b_i_dlugosc) or not siec_izolowana
-        ferro_risk = siec_izolowana and suma_b_l > 1e-5
+        b_i_dlugosc = [para for pary in b_i_dlugosc_sieci for para in pary]
+        suma_b_l = max(
+            (sum(b * length_km for b, length_km in pary) for pary in b_i_dlugosc_sieci),
+            default=0.0,
+        )
+        siec_izolowana = (
+            powod_uziemienia is None
+            and model.uziemienie_sn is not None
+            and model.uziemienie_sn.wariant == "izolowany"
+        )
+        ferro_ocenialne = powod_uziemienia is None and (bool(b_i_dlugosc) or not siec_izolowana)
+        ferro_risk: bool | None = (
+            None if powod_uziemienia is not None else siec_izolowana and suma_b_l > 1e-5
+        )
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
@@ -1938,16 +2190,25 @@ class V126AcademicSolver:
                     "zastosować rezystor tłumiący w obwodzie otwartego trójkąta "
                     "przekładników napięciowych"
                     if ferro_risk
-                    else "brak przesłanek do ferrorezonansu"
+                    else (
+                        "ryzyka nie oceniono — sposób uziemienia sieci nieustalony"
+                        if powod_uziemienia is not None
+                        else "brak przesłanek do ferrorezonansu"
+                    )
                 ),
                 **(
                     {}
                     if ferro_ocenialne
                     else {
                         "brak_danych": (
-                            "Sieć z punktem neutralnym izolowanym, a żaden element nie niesie "
-                            "susceptancji doziemnej — pojemności doczepnej nie zsumowano, więc "
-                            "ocena „brak przesłanek” wynika z braku danych, nie z pomiaru."
+                            powod_uziemienia
+                            if powod_uziemienia is not None
+                            else (
+                                "Sieć z punktem neutralnym izolowanym, a żaden element nie "
+                                "niesie susceptancji doziemnej — pojemności doczepnej nie "
+                                "zsumowano, więc ocena „brak przesłanek” wynika z braku danych, "
+                                "nie z pomiaru."
+                            )
                         )
                     }
                 ),

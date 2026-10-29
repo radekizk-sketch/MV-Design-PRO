@@ -19,6 +19,7 @@ import type {
   ExportArtifact,
 } from '../shared/analysisCaseContext';
 import type { ResultStatus as _ResultStatus } from '../types';
+import { ETYKIETA_PL_PUNKTU_NEUTRALNEGO } from '../../types/uziemienie';
 
 // =============================================================================
 // Run Header
@@ -538,6 +539,15 @@ export interface ShortCircuitResults {
    * projektant MUSI widzieć, że bieg MIN liczył z danych MAX.
    */
   zalozenia?: ZalozenieBieguSlad[];
+  /**
+   * Ślad WHITE BOX budowy sieci składowej zerowej biegu 1F/2F+G (`raw_result.siec_zerowa`,
+   * `enm/mapping.py::build_zero_sequence_zbus_with_trace`): Z0 źródeł, Z0 i B0 linii i kabli,
+   * decyzja grupy połączeń transformatora, droga zerowa baterii, odniesienie numeryczne
+   * węzłów bez drogi prądu zerowego — z TEJ SAMEJ macierzy Y0, którą solver dostał jako
+   * Z0-bus. Addytywne: obecne WYŁĄCZNIE w biegu zwarcia doziemnego z niepustym śladem;
+   * bieg 3F/2F i starszy wynik → pole nieobecne.
+   */
+  siec_zerowa?: TraceStep[];
 }
 
 // =============================================================================
@@ -566,7 +576,7 @@ export interface TraceStep {
   /** LaTeX formula for the calculation */
   formula_latex?: string;
   /** Input values with units */
-  inputs?: Record<string, TraceValue>;
+  inputs?: Record<string, WartoscSladuSurowa>;
   /** Substitution string (formula with values) — human/audit copy, NOT
    *  guaranteed to be valid LaTeX (some solvers write Polish prose here). */
   substitution?: string;
@@ -575,7 +585,7 @@ export interface TraceStep {
    *  solver/registry has no clean LaTeX substitution for this step. */
   substitution_latex?: string;
   /** Result values with units */
-  result?: Record<string, TraceValue>;
+  result?: Record<string, WartoscSladuSurowa>;
   /** Additional notes or references */
   notes?: string;
   /** Domain element id used for catalog context mapping */
@@ -623,6 +633,24 @@ export interface TraceStep {
  * dodane addytywnie (oba opcjonalne), zeby nie zlamac istniejacych
  * konsumentow skalara `value`.
  */
+/**
+ * Wartość pola `inputs`/`result` kroku śladu w kształcie, w jakim wysyła ją backend
+ * (`WhiteBoxTracer` + `json_bezpieczny`): surowy skalar (`'delta'`, `0.1`, `true`), `null`,
+ * liczba zespolona `{re, im}`, opakowanie `TraceValue` z jednostką, lista albo zagnieżdżony
+ * słownik (np. `tb_zrodlo: {wartosc_s, …}`). Każdy konsument rozpakowuje ją wspólną funkcją
+ * `traceValue.ts::rozpakujWartoscSladu(unknown)`. Dawny typ `Record<string, TraceValue>`
+ * udawał, że każda wartość jest opakowaniem — dane backendu nie dawały się wtedy zapisać
+ * w teście bez obejścia przez `JSON.parse`.
+ */
+export type WartoscSladuSurowa =
+  | TraceValue
+  | string
+  | number
+  | boolean
+  | null
+  | readonly WartoscSladuSurowa[]
+  | { readonly [klucz: string]: WartoscSladuSurowa };
+
 export interface TraceValue {
   value?: number | string | boolean | null;
   unit?: string;
@@ -780,6 +808,38 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   kod: 'Kod odmowy',
   ith_a: 'Prąd zastępczy cieplny Ith',
   tk_s: 'Czas trwania zwarcia tk',
+  // Ślad budowy sieci składowej zerowej (`siec_zerowa` biegu 1F/2F+G,
+  // `enm/mapping.py::_assemble_zero_sequence_y0`, `enm/zero_sequence_transformer.py`).
+  r0_ohm_per_km: 'Rezystancja zerowa jednostkowa R′0',
+  x0_ohm_per_km: 'Reaktancja zerowa jednostkowa X′0',
+  b0_siemens_per_km: 'Susceptancja doziemna jednostkowa B′0',
+  length_km: 'Długość',
+  z_base_ohm: 'Impedancja bazowa Zb',
+  y0_shunt_per_end_pu: 'Admitancja doziemna na każdym końcu Y0',
+  vector_group: 'Grupa połączeń',
+  hv_neutral: 'Punkt neutralny strony górnej',
+  lv_neutral: 'Punkt neutralny strony dolnej',
+  hv_winding: 'Uzwojenie strony górnej w składowej zerowej',
+  lv_winding: 'Uzwojenie strony dolnej w składowej zerowej',
+  zn_hv_ohm: 'Impedancja uziemienia punktu neutralnego strony górnej ZN',
+  zn_lv_ohm: 'Impedancja uziemienia punktu neutralnego strony dolnej ZN',
+  uk_percent: 'Napięcie zwarcia uk',
+  pk_kw: 'Straty obciążeniowe Pk',
+  sn_mva: 'Moc znamionowa transformatora SrT',
+  s_base_mva: 'Moc bazowa Sb',
+  z_t0_pu_sn: 'Impedancja zerowa transformatora ZT0 (na SrT)',
+  z_t0_pu_base: 'Impedancja zerowa transformatora ZT0 (na Sb)',
+  zn_hv_3_pu: '3·ZN strony górnej',
+  zn_lv_3_pu: '3·ZN strony dolnej',
+  connection: 'Połączenie w sieci składowej zerowej',
+  z0_pu: 'Impedancja zerowa Z0',
+  uklad_polaczen: 'Układ połączeń baterii',
+  q_n_mvar: 'Moc znamionowa baterii Qn',
+  u_n_kv: 'Napięcie znamionowe baterii Un',
+  udzial_stopni: 'Udział załączonych stopni',
+  y0_pu: 'Admitancja zerowa Y0',
+  wezly: 'Węzły z odniesieniem numerycznym',
+  liczba_wezlow: 'Liczba węzłów',
 };
 
 /**
@@ -825,6 +885,26 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ubytek_a: 'A',
   f_hz: 'Hz',
   sk_mva: 'MVA',
+  r0_ohm_per_km: 'Ω/km',
+  x0_ohm_per_km: 'Ω/km',
+  b0_siemens_per_km: 'S/km',
+  length_km: 'km',
+  z_base_ohm: 'Ω',
+  y0_shunt_per_end_pu: 'j.w.',
+  zn_hv_ohm: 'Ω',
+  zn_lv_ohm: 'Ω',
+  uk_percent: '%',
+  pk_kw: 'kW',
+  sn_mva: 'MVA',
+  s_base_mva: 'MVA',
+  z_t0_pu_sn: 'j.w.',
+  z_t0_pu_base: 'j.w.',
+  zn_hv_3_pu: 'j.w.',
+  zn_lv_3_pu: 'j.w.',
+  z0_pu: 'j.w.',
+  q_n_mvar: 'Mvar',
+  u_n_kv: 'kV',
+  y0_pu: 'j.w.',
 };
 
 /**
@@ -838,6 +918,14 @@ export const TRACE_ELEMENT_KEYS: ReadonlySet<string> = new Set([
   'from_node_id',
   'to_node_id',
 ]);
+
+/** Klasyfikacja uzwojenia transformatora w składowej zerowej (kody `WindingZeroSeq`). */
+const UZWOJENIA_ZEROWE_PL: Readonly<Record<string, string>> = {
+  grounded_wye: 'gwiazda z uziemionym punktem neutralnym',
+  delta: 'trójkąt',
+  grounded_zigzag: 'zygzak z uziemionym punktem neutralnym',
+  open: 'uzwojenie bez drogi do ziemi',
+};
 
 /**
  * Wartości wyliczeniowe śladu → polskie opisy (klucz śladu → kod → opis). Kod spoza
@@ -855,6 +943,28 @@ export const TRACE_VALUE_CODES: Readonly<Record<string, Readonly<Record<string, 
     '2F': 'zwarcie dwufazowe',
     '2F+G': 'zwarcie dwufazowe z ziemią',
     '1F': 'zwarcie jednofazowe (doziemne)',
+  },
+  // Ślad sieci składowej zerowej — lustra map backendu (równość przypina
+  // `backend/tests/enm/test_slad_sieci_zerowej_w_wyniku.py`):
+  // `enm/zero_sequence_transformer.py::NAZWY_POLACZEN_ZEROWYCH_PL`,
+  connection: {
+    series_through: 'połączenie szeregowe GN↔DN',
+    hv_shunt_ground: 'bocznik do ziemi po stronie GN',
+    lv_shunt_ground: 'bocznik do ziemi po stronie DN',
+    open: 'brak drogi prądu zerowego',
+  },
+  // `enm/zero_sequence_transformer.py::NAZWY_UZWOJEN_ZEROWYCH_PL`,
+  hv_winding: UZWOJENIA_ZEROWE_PL,
+  lv_winding: UZWOJENIA_ZEROWE_PL,
+  // `network_model/core/uziemienie.py::ETYKIETA_PL_PUNKTU_NEUTRALNEGO`,
+  hv_neutral: ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+  lv_neutral: ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+  // `network_model/core/bateria_kondensatorow.py::NAZWY_UKLADOW_POLACZEN_BATERII_PL`.
+  uklad_polaczen: {
+    PODWOJNA_GWIAZDA_IZOLOWANA: 'podwójna gwiazda z izolowanymi punktami gwiazd',
+    GWIAZDA_IZOLOWANA: 'gwiazda z izolowanym punktem gwiazdy',
+    GWIAZDA_UZIEMIONA: 'gwiazda z uziemionym punktem gwiazdy',
+    TROJKAT: 'trójkąt',
   },
 };
 

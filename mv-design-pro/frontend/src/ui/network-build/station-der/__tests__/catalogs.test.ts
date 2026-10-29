@@ -33,7 +33,8 @@ import klasyTransformatora from './klasy_transformatora_przelacznika.json';
 //   - Baterie BESS: backend `GET /api/catalog/bess-battery-types`
 //     (`network_model/catalog/mv_bess_battery_catalog.py` + `test_bess_battery_catalog.py`).
 //
-// USUNIĘTE (karta FAB-L, 2026-09-05) — `MV_NEUTRAL_GROUNDING_CATALOG`,
+// USUNIĘTE (karta FAB-L, 2026-09-05) — katalog wariantów uziemienia SN (karta
+// UX-04/POLE-ZU: skasowany na amen, pilnuje `grep_zero_guard` grupa `zu_`),
 // `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG` (→ snapshot audytu 2,
 // selektory poniżej przyjmują katalog jako parametr), `DER_FAULT_CURRENT_DATA_
 // CATALOG` + `computeKappa` + `getFaultCurrentDataForDevice` (fizyka bez
@@ -62,7 +63,6 @@ describe('Katalogi usunięte z frontu (karty FAB-J/K/L)', () => {
     expect(modul.selectPvInvertersForVoltage).toBeUndefined();
     expect(modul.selectBessPcsForVoltage).toBeUndefined();
     // FAB-L: mirrory backendu → snapshot audytu 2
-    expect(modul.MV_NEUTRAL_GROUNDING_CATALOG).toBeUndefined();
     expect(modul.BESS_OPERATION_MODE_CATALOG).toBeUndefined();
     expect(modul.TAP_CHANGER_CATALOG).toBeUndefined();
     // FAB-L: fizyka bez konsumenta solvera

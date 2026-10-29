@@ -31,6 +31,7 @@ from enm.models import (
     ENMHeader,
     Source,
     Transformer,
+    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
@@ -38,6 +39,7 @@ from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 _SK_Q_MVA = 250.0
 _UN_HV_KV = 15.0
@@ -153,9 +155,18 @@ def _build_mv_lv_enm(
                     voltage_kv=_UN_HV_KV,
                     sk3_mva=_SK_Q_MVA,
                     rx_ratio=_RX_SOURCE,
-                    extra={"r0_ohm": _R0_SOURCE_OHM, "x0_ohm": _X0_SOURCE_OHM},
                 )
             ),
+        ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: droga zerowa sieci SN niesiona przez zespół
+        # uziemiający na szynie GPZ (ten sam bocznik Z0, który dawniej udawał Z0 równoważnika
+        # SN — liczby 1F bez zmian).
+        zespoly_uziemiajace=[
+            ZespolUziemiajacy.model_validate(
+                zespol_o_impedancji_zerowej(
+                    "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
+                )
+            )
         ],
     )
 

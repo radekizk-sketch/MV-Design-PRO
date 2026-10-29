@@ -41,9 +41,9 @@ def test_audit2_extensions_can_be_populated():
     from solver_input.eligibility import EligibilityResult
 
     extensions = {
-        "sc_iec60909_extensions": {"mv_neutral_grounding": {"grounding_type": "petersen_coil"}},
+        "sc_iec60909_extensions": {"block_transformers": []},
         "power_flow_extensions": {"tap_changers": []},
-        "protection_extensions": {"grounding_type": "petersen_coil"},
+        "protection_extensions": {"frequency_protection_curves": []},
     }
     env = SolverInputEnvelope(
         solver_input_version="2.0.0",
@@ -54,10 +54,7 @@ def test_audit2_extensions_can_be_populated():
         audit2_extensions=extensions,
     )
     assert env.audit2_extensions is not None
-    assert (
-        env.audit2_extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"]
-        == "petersen_coil"
-    )
+    assert env.audit2_extensions["sc_iec60909_extensions"] == {"block_transformers": []}
 
 
 def test_audit2_extensions_deterministic():
@@ -69,7 +66,6 @@ def test_audit2_extensions_deterministic():
 
     payload_kwargs = {
         "station_id": "station_X",
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": ["tc_oltc_110sn_19_125"],
         "der_specs": [
             {

@@ -13,8 +13,12 @@
  *   dostępny przez `GET /analysis-runs/{id}/results/trace` (`ExtendedTrace`).
  *   Kontrakt to_dict solvera NIE niesie z1/z2/z0 poza śladem (GAP — patrz raport P-3).
  * - Uziemienie punktu neutralnego: ZAMROŻONA wersja układu przebiegu
- *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): `Bus.grounding`
- *   oraz `Transformer.hv_neutral`/`lv_neutral` (types/enm.ts:117,232-233).
+ *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): zespoły uziemiające sieci SN
+ *   (`zespoly_uziemiajace`, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — jedyny nośnik uziemienia
+ *   sieci SN obok uzwojenia transformatora), `Source.neutral_grounding` (wyłącznie sieć
+ *   110 kV za granicą modelu) oraz `Transformer.hv_neutral`/`lv_neutral`. Ekran WYPISUJE
+ *   zainstalowane aparaty; wariantu pracy sieci (stany odłączników, AWSC) ani Z_N nie liczy
+ *   — robi to backend (`enm.uziemienie_sekcji`, dane przyjęte wiersza i ślad White Box).
  *
  * ROZPOZNANIE LICZBY ZESPOLONEJ (karta WB-2, KLASA NIE INSTANCJA — czwarte
  * miejsce znalezione przy inwentarzu klasy): `naZespolona` woła WSPÓLNE
@@ -23,7 +27,7 @@
  * własnej, osobnej kopii sprawdzenia kształtu.
  */
 
-import type { EnergyNetworkModel, GroundingConfig } from '../../../types/enm';
+import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
 import type {
   ExtendedTrace,
   ShortCircuitRow,
@@ -292,9 +296,38 @@ function wpisUziemienia(
 }
 
 /**
- * Uziemienie punktu neutralnego sieci SN zasilanej ze ŹRÓDŁA stojącego na szynie
- * wybranego punktu (W5-A: `Source.neutral_grounding` — `Bus.grounding` skasowane;
- * dopasowanie po ref_id/element_id szyny).
+ * Opis zespołu uziemiającego z ZAINSTALOWANYCH elementów punktu neutralnego (dane modelu,
+ * bez wyprowadzania wariantu pracy): uziemienie bezpośrednie, dławik gaszący (z rezystorem
+ * wymuszającym AWSC), rezystor uziemiający; zespół bez elementu — nazwany brak.
+ */
+function opisZespolu(zespol: ZespolUziemiajacy): string {
+  const elementy: string[] = [];
+  if (zespol.uziemienie_bezposrednie) elementy.push(T.zespolBezposrednie);
+  if (zespol.dlawik) elementy.push(zespol.dlawik.awsc ? T.zespolDlawikAwsc : T.zespolDlawik);
+  if (zespol.rezystor) elementy.push(T.zespolRezystor);
+  return elementy.length > 0 ? elementy.join(' ‖ ') : T.zespolBezElementu;
+}
+
+function wpisZespolu(zespol: ZespolUziemiajacy): UziemienieWpis {
+  return {
+    element: zespol.name || zespol.ref_id,
+    strona: T.uziemienieZespol,
+    opis: opisZespolu(zespol),
+    rOhm: zespol.rezystor?.r_ohm ?? null,
+    xOhm: null,
+  };
+}
+
+function zespolySieci(snapshot: EnergyNetworkModel): ZespolUziemiajacy[] {
+  return [...(snapshot.zespoly_uziemiajace ?? [])].sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+}
+
+/**
+ * Uziemienie punktu neutralnego NA SZYNIE wybranego punktu (dopasowanie po ref_id/element_id
+ * szyny): zespół uziemiający na tej szynie (sieć SN, karta UX-04/POLE-ZU), a bez niego
+ * opis punktu neutralnego sieci 110 kV za granicą modelu (`Source.neutral_grounding` źródła
+ * na tej szynie). Uziemienie sieci SN z innej szyny tej samej sieci (sekcje sprzęgnięte)
+ * pokazuje lista sieci niżej i dane przyjęte wiersza zwarcia z backendu.
  */
 export function uziemieniePunktu(
   snapshot: EnergyNetworkModel | null,
@@ -303,15 +336,18 @@ export function uziemieniePunktu(
   if (!snapshot || !elementId) return null;
   const szyna = snapshot.buses.find((bus) => bus.ref_id === elementId || bus.id === elementId);
   if (!szyna) return null;
+  const zespol = zespolySieci(snapshot).find((z) => z.bus_ref === szyna.ref_id);
+  if (zespol) return wpisZespolu(zespol);
   const zrodlo = snapshot.sources.find((s) => s.bus_ref === szyna.ref_id && s.neutral_grounding);
   if (!zrodlo?.neutral_grounding) return null;
   return wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding);
 }
 
 /**
- * Wszystkie jawne konfiguracje punktu neutralnego w zamrożonej wersji układu:
- * źródła z `neutral_grounding` oraz strony GN/DN transformatorów. Pusta lista =
- * model bez jawnego uziemienia (uczciwy komunikat z akcją naprawczą).
+ * Wszystkie jawne konfiguracje punktu neutralnego w zamrożonej wersji układu: źródła
+ * z `neutral_grounding` (sieć 110 kV za granicą modelu), zespoły uziemiające sieci SN oraz
+ * strony GN/DN transformatorów. Pusta lista = model bez jawnego uziemienia (uczciwy
+ * komunikat z akcją naprawczą).
  */
 export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): UziemienieWpis[] {
   if (!snapshot) return [];
@@ -321,6 +357,7 @@ export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): Uziemienie
       wpisy.push(wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding));
     }
   }
+  for (const zespol of zespolySieci(snapshot)) wpisy.push(wpisZespolu(zespol));
   for (const trafo of snapshot.transformers) {
     if (trafo.hv_neutral) {
       wpisy.push(wpisUziemienia(trafo.name || trafo.ref_id, T.uziemienieStronaGN, trafo.hv_neutral));

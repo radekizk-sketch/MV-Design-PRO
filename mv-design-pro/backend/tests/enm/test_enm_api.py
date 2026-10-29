@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
 from tests.utils.biegi import wykonaj_bieg
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 
 def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
@@ -121,8 +122,16 @@ def _valid_enm_payload(name: str) -> dict:
 
 
 def _valid_enm_payload_with_z0(name: str) -> dict:
+    """Sieć z drogą składowej zerowej. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie sieci
+    SN niesie zespół uziemiający na szynie (równoważnik SN nie opisuje Z0) — ten sam bocznik
+    0,16 + j1,6 Ω, który dawniej niósł równoważnik."""
     payload = _valid_enm_payload(name)
-    payload["sources"][0].update({"r0_ohm": 0.16, "x0_ohm": 1.6})
+    payload["zespoly_uziemiajace"] = [
+        {
+            "id": "00000000-0000-0000-0000-000000000009",
+            **zespol_o_impedancji_zerowej("zu-1", "b1", r0_ohm=0.16, x0_ohm=1.6),
+        }
+    ]
     return payload
 
 

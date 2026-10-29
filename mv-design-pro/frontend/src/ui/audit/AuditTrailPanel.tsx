@@ -52,6 +52,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_nn_outgoing_field: 'Dodanie pola odpływowego nN',
   add_shunt_compensator_sn: 'Dodanie kompensatora bocznikowego SN',
   add_surge_arrester_sn: 'Dodanie ogranicznika przepięć SN',
+  add_zespol_uziemiajacy_sn: 'Dodanie zespołu uziemiającego SN',
   add_nn_cable_segment: 'Dodanie odcinka kablowego nN',
   add_nn_distribution_board: 'Dodanie rozdzielnicy nN',
   add_nn_switch_device: 'Dodanie aparatu łączeniowego nN',

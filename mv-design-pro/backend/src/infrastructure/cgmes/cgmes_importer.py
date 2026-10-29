@@ -51,6 +51,7 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
+from enm.uziemienie_sekcji import czesci_zespolu_bez_katalogu
 from enm.validator import ENMValidator, ValidationResult
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.pochodne import (
@@ -1140,4 +1141,9 @@ def _elements_without_catalog(enm: EnergyNetworkModel) -> list[str]:
         poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
         if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             missing.append(source.ref_id)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający — ten sam predykat części co E009.
+    poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").import_
+    for zu in enm.zespoly_uziemiajace:
+        if czesci_zespolu_bez_katalogu(zu, poziom_zespolu):
+            missing.append(zu.ref_id)
     return sorted(set(missing))

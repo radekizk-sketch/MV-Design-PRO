@@ -1,47 +1,45 @@
 /**
  * Karta 1 — Dane podstawowe (PR-8a, brief 2 §8 karta 1).
  *
- * Pakiet H: wybór typu uziemienia neutralnego SN z katalogu audytu 2
- * (Naprawa B.1 — wymagane do walidacji 67N i SC1F oraz VT voltage_factor eng.20).
+ * FAKTY MODELU, NIE DRUGI EDYTOR (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Karta pokazuje
+ * nazwę, oznaczenie, rodzaj, typ konstrukcyjny i napięcia stacji z modelu sieci; zmiana
+ * danych stacji idzie JEDNĄ drogą produktu — formularzem operacji
+ * `update_element_parameters` (ta sama, którą otwiera karta stacji w drzewie).
  *
- * Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`mvNeutralGroundings`
- * prop, dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
- * modułowego (`MV_NEUTRAL_GROUNDING_CATALOG` usunięty z `catalogs.ts`).
+ * Usunięte na amen:
+ *  - wybór „uziemienia neutralnego SN z katalogu audytu 2” — był drugą prawdą obok modelu:
+ *    sposób uziemienia punktu neutralnego sieci SN niesie zespół uziemiający sekcji
+ *    (`enm.uziemienie_sekcji`), a zgodność przekładników czyta go z backendu
+ *    (`WalidacjaVtPolaSekcja`);
+ *  - pola edycyjne nazwy, oznaczenia, typu konstrukcyjnego, operatora i lokalizacji —
+ *    konfigurator nigdy nie zapisywał ich zmian (kontrolki-widma); operatora i lokalizacji
+ *    model stacji nie ma wcale;
+ *  - domyślny typ konstrukcyjny „kontenerowa” — brak w modelu to „nie podano”, nie domysł.
  */
 
-import type { MvNeutralGroundingItem } from '../../station-der/audit2-api';
 import type { CompletenessStatus } from '../../../inspector/v2/InspectorStickyHeader';
+import { atrybutRoliAkcji, klasaAkcji } from '../../../shared/akcjeStanow';
 
 export type StationTopologicalType = 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
 export type StationConstructionType = 'wnetrzowa' | 'kontenerowa' | 'slupowa' | 'prefabrykowana' | 'inna';
 
 export interface StationConfigBasicCardProps {
   readonly stationName: string;
-  readonly designation?: string;
+  /** Oznaczenie stacji na dokumentacji z modelu (`Substation.designation`). */
+  readonly designation?: string | null;
   /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`); `null` — stacji nie
    *  ma w migawce modelu (rodzaj nieustalony, bez domysłu). */
   readonly topologicalType: StationTopologicalType | null;
   /** Przyczyna rodzaju w słowach projektanta (liczba pól liniowych, sprzęgło). */
   readonly topologicalReasonPl?: string | null;
+  /** Typ konstrukcyjny z modelu (`Substation.construction_type`); brak = „nie podano”. */
   readonly constructionType?: StationConstructionType | null;
   /** Napięcie szyny SN stacji z modelu; `null` — model go nie podaje (bez domysłu). */
   readonly snVoltageKv: number | null;
   readonly nnVoltageLevels: readonly number[];
-  readonly owner?: string;
-  readonly location?: string;
   readonly completeness: CompletenessStatus;
-  /** Pakiet H: catalog_ref do typu uziemienia neutralnego SN. */
-  readonly mvNeutralGroundingRef?: string | null;
-  /** Karta FAB-L: katalog wariantów uziemienia — ze snapshotu audytu 2. */
-  readonly mvNeutralGroundings: readonly MvNeutralGroundingItem[];
-  readonly onChange?: (changes: Partial<{
-    stationName: string;
-    designation: string;
-    constructionType: StationConstructionType;
-    owner: string;
-    location: string;
-    mvNeutralGroundingRef: string | null;
-  }>) => void;
+  /** Otwiera formularz operacji zmiany danych stacji w modelu; brak = stacji nie ma w modelu. */
+  readonly onEditStation?: () => void;
 }
 
 const CONSTRUCTION_LABEL_PL: Record<StationConstructionType, string> = {
@@ -55,7 +53,7 @@ const CONSTRUCTION_LABEL_PL: Record<StationConstructionType, string> = {
 export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.Element {
   const {
     stationName, designation, topologicalType, topologicalReasonPl, constructionType,
-    snVoltageKv, nnVoltageLevels, owner, location, mvNeutralGroundingRef, mvNeutralGroundings, onChange,
+    snVoltageKv, nnVoltageLevels, onEditStation,
   } = props;
 
   return (
@@ -64,24 +62,16 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
         Dane podstawowe
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Nazwa stacji</span>
-          <input
-            data-testid="station-name-input"
-            value={stationName}
-            onChange={(e) => onChange?.({ stationName: e.target.value })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          />
-        </label>
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Oznaczenie ruchowe</span>
-          <input
-            data-testid="station-designation-input"
-            value={designation ?? ''}
-            onChange={(e) => onChange?.({ designation: e.target.value })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          />
-        </label>
+        <div>
+          <span className="text-scada-muted">Nazwa stacji: </span>
+          <span data-testid="station-name" className="text-scada-text">{stationName}</span>
+        </div>
+        <div>
+          <span className="text-scada-muted">Oznaczenie: </span>
+          <span data-testid="station-designation" className="text-scada-text">
+            {designation ?? 'nie podano w modelu'}
+          </span>
+        </div>
         <div>
           <span className="text-scada-muted">Rodzaj stacji: </span>
           <span data-testid="station-topological-type" className="text-scada-text">
@@ -93,54 +83,16 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
             </span>
           ) : null}
         </div>
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Typ konstrukcyjny</span>
-          <select
-            data-testid="station-construction-type"
-            value={constructionType ?? ''}
-            onChange={(e) => onChange?.({ constructionType: e.target.value as StationConstructionType })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          >
-            <option value="">— wybierz —</option>
-            {(Object.keys(CONSTRUCTION_LABEL_PL) as StationConstructionType[]).map((t) => (
-              <option key={t} value={t}>{CONSTRUCTION_LABEL_PL[t]}</option>
-            ))}
-          </select>
-        </label>
+        <div>
+          <span className="text-scada-muted">Typ konstrukcyjny: </span>
+          <span data-testid="station-construction-type" className="text-scada-text">
+            {constructionType ? CONSTRUCTION_LABEL_PL[constructionType] : 'nie podano w modelu'}
+          </span>
+        </div>
         <div>
           <span className="text-scada-muted">Napięcie SN: </span>
           <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv !== null ? `${snVoltageKv} kV` : 'brak danych'}</span>
         </div>
-        {/* Pakiet H: typ uziemienia neutralnego SN (z katalogu). */}
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Uziemienie neutralne SN (z katalogu)</span>
-          <select
-            data-testid="station-mv-neutral-grounding"
-            value={mvNeutralGroundingRef ?? ''}
-            onChange={(e) =>
-              onChange?.({ mvNeutralGroundingRef: e.target.value || null })
-            }
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          >
-            <option value="">— wybierz —</option>
-            {mvNeutralGroundings.map((g) => (
-              <option key={g.id} value={g.id}>{g.label_pl}</option>
-            ))}
-          </select>
-          {mvNeutralGroundingRef && (() => {
-            const g = mvNeutralGroundings.find((x) => x.id === mvNeutralGroundingRef);
-            if (!g) return null;
-            const requires67N = g.grounding_type === 'isolated' || g.grounding_type === 'petersen_coil';
-            // Karta K-O: nie pokazujemy „typowego" zakresu I_k1 z tabeli — ta liczba
-            // nie miała źródła, a prąd zwarcia doziemnego tej sieci liczy solver SC1F
-            // z impedancji Z₀ modelu.
-            return (
-              <div className="mt-1 rounded bg-scada-panel-raised px-2 py-1 text-[10px] text-scada-text">
-                Typ: {g.grounding_type} · Wymagane 67N: {requires67N ? 'tak' : 'nie'}
-              </div>
-            );
-          })()}
-        </label>
         <div>
           <span className="text-scada-muted">Poziomy nN: </span>
           {nnVoltageLevels.length > 0 ? (
@@ -156,22 +108,17 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
             </span>
           )}
         </div>
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Operator / obszar</span>
-          <input
-            value={owner ?? ''}
-            onChange={(e) => onChange?.({ owner: e.target.value })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          />
-        </label>
-        <label className="flex flex-col">
-          <span className="text-scada-muted">Lokalizacja</span>
-          <input
-            value={location ?? ''}
-            onChange={(e) => onChange?.({ location: e.target.value })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          />
-        </label>
+        {onEditStation && (
+          <button
+            type="button"
+            data-testid="station-edit-data"
+            onClick={onEditStation}
+            {...atrybutRoliAkcji('drugorzedna')}
+            className={`self-start ${klasaAkcji('drugorzedna')}`}
+          >
+            Zmień dane stacji w modelu
+          </button>
+        )}
       </div>
     </div>
   );

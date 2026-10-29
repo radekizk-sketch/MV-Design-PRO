@@ -21,10 +21,11 @@ def _arrester_params(item_id: str) -> dict:
     raise AssertionError(f"Brak rekordu katalogu ogranicznika: {item_id}")
 
 
-#: W5-D p. 12: most NIE podstawia kategorii punktu neutralnego — model testowy niesie
-#: uziemienie (sieć skompensowana), chyba że test JAWNIE przekaże `bus_grounding=None`
-#: (przypadek „model milczy" → brak wiersza + szyna nazwana).
-_UZIEMIENIE_TESTU: dict = {"type": "petersen_coil", "x_ohm": 120.0}
+#: W5-D p. 12 + karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: kategorię TOV szyny SN wyznacza
+#: JEDNA prawda o uziemieniu sieci (`enm.uziemienie_sekcji`) — zespół uziemiający na szynie.
+#: Domyślnie model niesie zespół z dławikiem (sieć skompensowana); `uziemienie=None` = sieć
+#: bez punktu uziemienia (izolowana z modelu); `"bez_elementu"` = zespół bez elementu w punkcie
+#: neutralnym (brak MODELU → brak wiersza + szyna nazwana).
 _BRAK = object()
 
 
@@ -32,29 +33,37 @@ def _model(
     *,
     devices: list[dict],
     bus_voltage_kv: float = 20.0,
-    bus_grounding: dict | None | object = _BRAK,
+    uziemienie: str | None | object = _BRAK,
 ) -> EnergyNetworkModel:
     bus: dict = {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": bus_voltage_kv}
-    # W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie
-    # (`Source.neutral_grounding`), nie szyna — `Bus.grounding` skasowane.
-    # W5-D p. 12: domyślnie model NIESIE uziemienie; `bus_grounding=None` = model milczy.
-    uziemienie = _UZIEMIENIE_TESTU if bus_grounding is _BRAK else bus_grounding
+    wariant = "dlawik" if uziemienie is _BRAK else uziemienie
+    zespoly: list[dict] = []
     sources: list[dict] = []
-    if uziemienie is not None:
+    if bus_voltage_kv >= 110.0:
+        # Szyna WN: punkt neutralny sieci 110 kV za granicą modelu opisuje źródło na tej szynie
+        # (§0 pkt 3 — `Source.neutral_grounding` wyłącznie po stronie 110 kV).
         sources.append(
             {
-                "ref_id": "SRC_SN",
-                "name": "Zasilanie SN",
+                "ref_id": "SRC_WN",
+                "name": "Sieć 110 kV",
                 "bus_ref": "BUS_SN",
                 "model": "short_circuit_power",
-                "neutral_grounding": uziemienie,
+                "neutral_grounding": {"type": "directly_grounded"},
             }
         )
+    elif wariant is not None:
+        zespol: dict = {"ref_id": "ZU1", "name": "Zespół uziemiający", "bus_ref": "BUS_SN"}
+        if wariant == "dlawik":
+            zespol["dlawik"] = {"i_min_a": 40.0, "i_max_a": 400.0, "i_nastawy_a": 100.0}
+        elif wariant == "rezystor":
+            zespol["rezystor"] = {"r_ohm": 40.0}
+        zespoly.append(zespol)
     return EnergyNetworkModel.model_validate(
         {
             "header": ENMHeader(name="test-insulation").model_dump(),
             "buses": [bus],
             "sources": sources,
+            "zespoly_uziemiajace": zespoly,
             "substations": [
                 {
                     "ref_id": "ST1",
@@ -105,29 +114,31 @@ def test_arrester_with_catalog_ref_maps_all_card_params() -> None:
     assert row.predicted_energy_kj_per_kv == params["energy_absorption_kj_per_kv"]
 
 
-def test_network_neutral_from_source_grounding_petersen_is_isolated() -> None:
-    model = _model(
-        devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        bus_grounding={"type": "petersen_coil", "x_ohm": 120.0},
-    )
+def test_network_neutral_from_zespol_dlawik_is_isolated() -> None:
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie="dlawik")
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "isolated"
 
 
-def test_network_neutral_from_source_grounding_resistor_is_earthed() -> None:
-    model = _model(
-        devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        bus_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
-    )
+def test_network_neutral_from_zespol_rezystor_is_earthed() -> None:
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie="rezystor")
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "earthed"
 
 
-def test_no_grounding_data_emits_no_row_and_names_the_bus() -> None:
-    """Karta W5-D p. 12 (OD-24): do W5-D most podstawiał `"isolated"` za brak
-    uziemienia w modelu (fabrykacja kategorii TOV); teraz wiersz nie powstaje,
-    a szyna jest nazwana w `ograniczniki_bez_uziemienia_sieci` (gotowość blokuje)."""
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], bus_grounding=None)
+def test_siec_bez_punktu_uziemienia_jest_izolowana_z_modelu() -> None:
+    """Sieć SN bez zespołu i bez uziemionego uzwojenia nie ma drogi prądu zerowego — kategoria
+    „isolated" wyprowadzona z modelu (ta sama prawda co składowa zerowa), nie domysł."""
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie=None)
+    assert [r.network_neutral for r in build_v126_insulation_from_enm(model)] == ["isolated"]
+    assert ograniczniki_bez_uziemienia_sieci(model) == ()
+
+
+def test_zespol_bez_elementu_emits_no_row_and_names_the_bus() -> None:
+    """Karta W5-D p. 12 (OD-24): kategorii, której model nie wyznacza, most nie podstawia —
+    zespół uziemiający bez elementu w punkcie neutralnym (E-ZU-02) nie daje wiersza, a szyna
+    jest nazwana w `ograniczniki_bez_uziemienia_sieci` (gotowość blokuje)."""
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie="bez_elementu")
     assert build_v126_insulation_from_enm(model) == []
     assert ograniczniki_bez_uziemienia_sieci(model) == ("BUS_SN",)
 

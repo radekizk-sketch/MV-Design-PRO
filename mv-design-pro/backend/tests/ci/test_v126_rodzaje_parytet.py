@@ -247,7 +247,8 @@ def test_parser_zestawow_frontu_cos_widzi() -> None:
     assert set(zestawy) == {item.value for item in V126AnalysisType}
     assert zestawy["motor_starting"]["listy"] == {"motors"}
     assert zestawy["earthing_safety"]["uziom"] is True
-    assert "neutral_grounding" in zestawy["earth_fault_detection"]["pola"]
+    assert "trv_tau_s" in zestawy["transient_trv"]["pola"]
+    assert zestawy["earth_fault_detection"]["metody"] is True
 
 
 def test_zadna_kontrolka_okna_nie_jest_fantomem() -> None:

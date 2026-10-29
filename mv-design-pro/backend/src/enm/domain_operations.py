@@ -396,8 +396,8 @@ def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
     sieci; na modelu 100 stacji (607 szyn) był to najdroższy przebieg w budowie
     odpowiedzi operacji domenowej (pomiar: 525 wywołań na jedno `apply`).
 
-    ŹRÓDŁA ODWOŁAŃ SĄ TE SAME, CO DOTĄD, w tej samej kolejności: końce gałęzi,
-    strony transformatora, `bus_ref` źródeł/odbiorów/wytwórców, `bus_ref` oraz
+    ŹRÓDŁA ODWOŁAŃ: końce gałęzi, strony transformatora, `bus_ref` źródeł/odbiorów/
+    wytwórców/baterii kondensatorów/zespołów uziemiających, `bus_ref` oraz
     `bus_refs` stacji, `bus_ref` i porty punktów odgałęźnych.
 
     Jedyny predykat, którego potrzebuje wołający, to „zero odwołań", więc ZBIÓR
@@ -416,7 +416,10 @@ def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
     for transformer in enm.get("transformers", []):
         dodaj(transformer.get("hv_bus_ref"))
         dodaj(transformer.get("lv_bus_ref"))
-    for collection in ("sources", "loads", "generators"):
+    # Każdy element stojący na szynie trzyma ją przy życiu — także bateria kondensatorów
+    # i zespół uziemiający (zacisk pola ZU jest szyną pomocniczą): bez nich usunięcie szyny
+    # pomocniczej zostawiało element z odwołaniem do szyny, której nie ma.
+    for collection in ("sources", "loads", "generators", "shunt_capacitors", "zespoly_uziemiajace"):
         for item in enm.get(collection, []):
             dodaj(item.get("bus_ref"))
     for substation in enm.get("substations", []):
@@ -1123,6 +1126,7 @@ KOLEKCJE_WYSZUKIWANIA_ELEMENTU: tuple[str, ...] = (
     "loads",
     "generators",
     "shunt_capacitors",
+    "zespoly_uziemiajace",
     "substations",
     "bays",
     "junctions",
@@ -3514,6 +3518,9 @@ def _element_requires_catalog(collection: str, element: dict[str, Any]) -> bool:
         # Bateria kondensatorów jest katalog-first: Qn/Un pochodzą WYŁĄCZNIE z pozycji
         # katalogu (`add_shunt_compensator_sn`), bez trybu ręcznego.
         "shunt_capacitors",
+        # Zespół uziemiający SN: transformator uziemiający, dławik i rezystor wyłącznie
+        # z pozycji katalogu (`add_zespol_uziemiajacy_sn`).
+        "zespoly_uziemiajace",
     }:
         return True
 
@@ -4257,10 +4264,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     "source.already_exists",
                 )
 
-    # W5-A (jedna reprezentacja uziemienia): opis punktu neutralnego sieci SN
-    # zasilanej z równoważnika trafia WYŁĄCZNIE na `Source.neutral_grounding`
-    # (nie na szyny, nie do meta stacji). Słownik typów i predykat spójności
-    # (rezystor bez R_N, dławik bez X_N) są TE SAME, które czyta walidator
+    # W5-A (jedna reprezentacja uziemienia) i karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3):
+    # opis punktu neutralnego sieci 110 kV za granicą modelu (równoważnik po stronie 110 kV)
+    # trafia WYŁĄCZNIE na `Source.neutral_grounding` (nie na szyny, nie do meta stacji);
+    # równoważnik na szynach SN go nie niesie (odmowa niżej). Słownik typów i predykat
+    # spójności (rezystor bez R_N, dławik bez X_N) są TE SAME, które czyta walidator
     # (E-W5-01) i model składowej zerowej — odmowa nazwana na wejściu.
     grounding_payload = payload.get("grounding")
     grounding_config: dict[str, Any] | None = None
@@ -4380,7 +4388,76 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     granica = _granica_zasilania_gpz(payload, strona_rownowaznika)
     if isinstance(granica, dict):
         return granica
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): opis punktu neutralnego i Z0 źródła
+    # dotyczą WYŁĄCZNIE sieci 110 kV za granicą modelu (równoważnik po stronie 110 kV).
+    # Równoważnik na szynach SN nie opisuje uziemienia sieci SN — robi to zespół
+    # uziemiający sekcji (`zespoly_uziemiajace` niżej, `add_zespol_uziemiajacy_sn`) albo
+    # punkt neutralny uzwojenia transformatora. Odmowa nazwana zamiast danej, którą
+    # obliczenia pominęłyby (`enm.uziemienie_sekcji.impedancja_zerowa_zrodla_dozwolona`).
+    if strona_rownowaznika != "HV_110":
+        z0_rownowaznika = any(
+            materialized_params.get(klucz) is not None
+            for klucz in ("r0_ohm", "x0_ohm", "z0_z1_ratio")
+        )
+        if grounding_config is not None or z0_rownowaznika:
+            return _error_response(
+                "Równoważnik sieci na szynach SN nie opisuje uziemienia punktu neutralnego "
+                "sieci SN — usuń typ uziemienia i impedancję zerową źródła, a uziemienie "
+                "sieci SN zamodeluj zespołem uziemiającym sekcji (dławik gaszący, rezystor "
+                "albo oba równolegle — ENEA Zeszyt 1 §16) albo uziemieniem punktu "
+                "neutralnego uzwojenia SN transformatora. Opis punktu neutralnego i Z0 "
+                "podaje się dla równoważnika po stronie 110 kV.",
+                "source.sn_neutral_not_on_source",
+            )
+    zespoly_gpz = payload.get("zespoly_uziemiajace")
+    if zespoly_gpz is not None:
+        if not isinstance(zespoly_gpz, list) or not all(isinstance(z, dict) for z in zespoly_gpz):
+            return _error_response(
+                "Zespoły uziemiające GPZ mają nieprawidłowy format — oczekiwano listy zespołów "
+                "z numerem sekcji.",
+                "zu.payload_invalid",
+            )
+        numery_sekcji = [z.get("sekcja") for z in zespoly_gpz]
+        if any(
+            isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= sections_count
+            for n in numery_sekcji
+        ) or len(set(numery_sekcji)) != len(numery_sekcji):
+            return _error_response(
+                f"Zespół uziemiający GPZ wskazuje sekcję spoza 1–{sections_count} albo dwa "
+                "zespoły w tej samej sekcji — wskaż jedną sekcję szyn dla każdego zespołu.",
+                "zu.section_invalid",
+            )
     transformer_count = granica
+    # Wyłączenie zespołu od transformatora zasilającego sekcję (IRiESD II.4.5.4.3: przy
+    # rezystorze wyłączenie TR wyłącza ZU). Transformatory WN/SN powstają w TEJ operacji,
+    # więc ładunek nie zna ich identyfikatorów — wskazuje je deklaracją projektanta
+    # `wylaczenie_od_transformatora_sekcji`, rozwiązaną niżej na transformatory, których
+    # strona SN jest szyną sekcji (ten sam przydział TR → sekcja co budowa niżej:
+    # transformator i-ty zasila sekcję i mod liczba sekcji). Odmowa nazwana przed zmianą
+    # modelu: deklaracja nie-logiczna, sprzeczna z jawną listą albo bez transformatora sekcji.
+    for wpis in zespoly_gpz or ():
+        deklaracja = wpis.get("wylaczenie_od_transformatora_sekcji")
+        if deklaracja is None:
+            continue
+        if not isinstance(deklaracja, bool):
+            return _error_response(
+                "Wyłączenie zespołu uziemiającego od transformatora sekcji to wybór tak/nie.",
+                "zu.payload_invalid",
+            )
+        if deklaracja and wpis.get("wylaczenie_od_transformatorow_refs"):
+            return _error_response(
+                "Zespół uziemiający GPZ: podaj albo wyłączenie od transformatora sekcji, albo "
+                "jawną listę transformatorów — nie oba naraz.",
+                "zu.payload_invalid",
+            )
+        if deklaracja and int(wpis["sekcja"]) > transformer_count:
+            return _error_response(
+                f"Sekcja {int(wpis['sekcja'])} GPZ nie ma transformatora WN/SN w modelu "
+                f"(transformatorów: {transformer_count}) — wyłączenie od transformatora "
+                "sekcji nie ma czego wskazać. Transformatory WN/SN są w modelu tylko przy "
+                "równoważniku po stronie 110 kV.",
+                "zu.transformer_not_found",
+            )
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
     if line_field_apparatus is not None:
         # BRAMA KATALOGOWA aparatu pola liniowego stacji zasilającej (dług 7
@@ -4711,11 +4788,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         },
     }
     if grounding_config is not None:
-        # Karta GPZ-MODEL: Z0 równoważnika NIE jest wyprowadzane z transformatora WN/SN —
-        # przy równoważniku na szynach SN transformatora nie ma w modelu (Z0 widziane z szyn
-        # SN jest daną równoważnika, `zero_sequence`), a przy równoważniku 110 kV punkt
-        # neutralny SN opisuje transformator modelu (uzwojenie i jego uziemienie,
-        # `enm/zero_sequence_transformer.py`). Brak Z0 przy punkcie uziemionym = E-W5-01.
+        # Karta GPZ-MODEL i UX-04/POLE-ZU-SKLADOWA-ZEROWA: tu wyłącznie równoważnik 110 kV
+        # (strona SN odmówiona wyżej) — opis punktu neutralnego sieci 110 kV i jej Z0. Punkt
+        # neutralny sieci SN opisuje zespół uziemiający sekcji albo uzwojenie transformatora
+        # modelu (`enm/uziemienie_sekcji.py`). Brak Z0 przy punkcie uziemionym = E-W5-01.
         source_data["neutral_grounding"] = grounding_config
     if binding_payload is not None:
         _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
@@ -5087,6 +5163,66 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         starting_bay_ref=first_line_field.get("ref_id") if first_line_field else None,
         starting_port_ref=zacisk_pola(first_line_field) if first_line_field else None,
     )
+
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie punktu neutralnego sekcji SN GPZ —
+    # pole ZU sekcji (wyłącznik pola, `add_sn_bay` rola ``ZU``) i zespół uziemiający na jego
+    # zacisku (`add_zespol_uziemiajacy_sn`). Ci sami pisarze co ścieżka atomowa — jedna
+    # prawda o polu i zespole; odmowa któregokolwiek = odmowa całej operacji (model bez
+    # zmian). Import w miejscu: moduł operacji V2 importuje ten moduł.
+    if zespoly_gpz:
+        from .domain_operations_v2 import add_sn_bay, add_zespol_uziemiajacy_sn
+
+        for wpis in sorted(zespoly_gpz, key=lambda z: int(z["sekcja"])):
+            szyna_sekcji = gpz_section_bus_refs[int(wpis["sekcja"]) - 1]
+            wynik_pola = add_sn_bay(
+                new_enm,
+                {
+                    "station_ref": substation_ref,
+                    "bus_ref": szyna_sekcji,
+                    "bay_role": "ZU",
+                    "apparatus_kind": "BREAKER",
+                    **(
+                        {"field_name": nazwa}
+                        if (nazwa := nazwa_nadana(wpis.get("field_name")))
+                        else {}
+                    ),
+                },
+            )
+            if wynik_pola.get("error"):
+                return wynik_pola
+            new_enm = wynik_pola["snapshot"]
+            pole_zu_ref = (wynik_pola.get("selection_hint") or {}).get("element_id")
+            ladunek_zespolu = {
+                k: v
+                for k, v in wpis.items()
+                if k
+                not in ("sekcja", "field_name", "bus_ref", "wylaczenie_od_transformatora_sekcji")
+            }
+            # Zespół bez nazwy nadanej dostaje nazwę sekcji, w której pracuje — założenia
+            # biegu, wyjaśnienia i raporty mówią „Zespół uziemiający sekcji 2", nie „bez nazwy".
+            ladunek_zespolu["name"] = (
+                nazwa_nadana(wpis.get("name")) or f"Zespół uziemiający sekcji {int(wpis['sekcja'])}"
+            )
+            if wpis.get("wylaczenie_od_transformatora_sekcji") is True:
+                ladunek_zespolu["wylaczenie_od_transformatorow_refs"] = sorted(
+                    t["ref_id"]
+                    for t in new_enm.get("transformers", [])
+                    if t.get("ref_id") in gpz_transformer_refs
+                    and t.get("lv_bus_ref") == szyna_sekcji
+                )
+            wynik_zespolu = add_zespol_uziemiajacy_sn(
+                new_enm, {**ladunek_zespolu, "bay_ref": pole_zu_ref}
+            )
+            if wynik_zespolu.get("error"):
+                return wynik_zespolu
+            new_enm = wynik_zespolu["snapshot"]
+            # Zdarzenia kroków przechodzą z typem nadanym przez pisarza (pole SN, zespół
+            # uziemiający) — z numeracją ciągłą w obrębie operacji GPZ, bez typu ogólnego.
+            for wynik_kroku in (wynik_pola, wynik_zespolu):
+                created.extend((wynik_kroku.get("changes") or {}).get("created_element_ids") or [])
+                for zdarzenie in wynik_kroku.get("domain_events") or []:
+                    ev_seq += 1
+                    events.append({**zdarzenie, "event_seq": ev_seq})
 
     return _response(
         new_enm,
@@ -10250,9 +10386,12 @@ def _zmien_parametry_pola(
     try:
         zmien_pole(new_enm, field_ref, **zmiany)
     except BladPola as blad:
+        # Treść dla projektanta wyłącznie z ``przyczyna_pl`` (polskie nazwy pól z jednego
+        # mapowania); odmowa bez niej to błąd programu wołającego — bez tekstu technicznego.
+        przyczyna = f" ({blad.przyczyna_pl})" if blad.przyczyna_pl else ""
         return _error_response(
-            f"{_nazwa_pola_w_modelu(enm, field_ref)}: parametry niezgodne z kontraktem pola "
-            f"({blad}).",
+            f"{_nazwa_pola_w_modelu(enm, field_ref)}: parametry niezgodne z kontraktem pola"
+            f"{przyczyna}.",
             "params.invalid_value",
         )
     return _response(
@@ -10323,6 +10462,9 @@ KOLEKCJE_Z_KONTRAKTEM_POL: tuple[str, ...] = (
     "loads",
     "junctions",
     "corridors",
+    # Karta UX-04/POLE-ZU: zespół uziemiający sekcji SN (dławik, rezystor, transformator
+    # uziemiający) — korekta nastawy dławika i rezystora idzie tą samą bramką kontraktu.
+    "zespoly_uziemiajace",
 )
 
 
@@ -10973,6 +11115,8 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             ("generators", ("bus_ref",)),
             # Bateria na usuwanej szynie zostawała z odwołaniem do szyny, której nie ma.
             ("shunt_capacitors", ("bus_ref",)),
+            # Zespół uziemiający na usuwanej szynie (zacisku pola ZU) — ta sama klasa.
+            ("zespoly_uziemiajace", ("bus_ref",)),
         ]
         for dep_collection, dep_fields in dependent_collections:
             refs_to_delete: list[str] = []

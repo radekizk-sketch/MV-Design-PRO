@@ -116,6 +116,24 @@ class TransformerZeroSeqModel:
 #: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
 _STRONA_PL = {"HV": "górne", "LV": "dolne"}
 
+#: Jedno mapowanie klasyfikacji uzwojenia na tekst śladu WHITE BOX. Ślad składowej zerowej
+#: trafia do wyniku zwarcia 1F/2FG (`raw_result.siec_zerowa`), więc podstawienia i uwagi
+#: nazywają uzwojenie po polsku; kod maszynowy zostaje w `result` kroku.
+NAZWY_UZWOJEN_ZEROWYCH_PL: dict[WindingZeroSeq, str] = {
+    WindingZeroSeq.GROUNDED_WYE: "gwiazda z uziemionym punktem neutralnym",
+    WindingZeroSeq.DELTA: "trójkąt",
+    WindingZeroSeq.GROUNDED_ZIGZAG: "zygzak z uziemionym punktem neutralnym",
+    WindingZeroSeq.OPEN: "uzwojenie bez drogi do ziemi",
+}
+
+#: Jedno mapowanie połączenia sekwencji zerowej na tekst śladu i opisu źródła Z0.
+NAZWY_POLACZEN_ZEROWYCH_PL: dict[ZeroSeqConnection, str] = {
+    ZeroSeqConnection.SERIES_THROUGH: "połączenie szeregowe GN↔DN",
+    ZeroSeqConnection.HV_SHUNT_GROUND: "bocznik do ziemi po stronie GN",
+    ZeroSeqConnection.LV_SHUNT_GROUND: "bocznik do ziemi po stronie DN",
+    ZeroSeqConnection.OPEN: "brak drogi prądu zerowego",
+}
+
 
 def _neutral_grounded_and_zn(
     grounding: GroundingConfig | None,
@@ -215,13 +233,14 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         tracer.add(
             key=f"tr_z0_open[{trafo.ref_id}]",
             title=f"Transformator {nazwa}: brak grupy wektorowej",
-            formula_latex=r"\text{brak vector\_group} \Rightarrow Z_0\ \text{otwarte}",
+            formula_latex=r"\text{brak grupy połączeń} \Rightarrow Z_0\ \text{otwarte}",
             inputs={"ref_id": trafo.ref_id, "vector_group": None},
-            substitution="brak danych grupy → brak ścieżki I0",
+            substitution="brak grupy połączeń → brak drogi prądu zerowego I0",
             result={"connection": ZeroSeqConnection.OPEN.value},
             notes=(
-                "Uczciwy brak: transformator bez grupy wektorowej nie wnosi wkładu "
-                "do sieci składowej zerowej (zachowanie sprzed SM-3)."
+                "Transformator bez grupy połączeń nie wnosi wkładu do sieci składowej "
+                "zerowej; uzupełnienie grupy połączeń w modelu uwzględni jego drogę prądu "
+                "zerowego."
             ),
         )
         return TransformerZeroSeqModel(
@@ -251,7 +270,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
     tracer.add(
         key=f"tr_z0_parse[{trafo.ref_id}]",
         title=f"Transformator {nazwa}: klasyfikacja uzwojeń (składowa zerowa)",
-        formula_latex=r"\text{vector\_group} \rightarrow (\text{HV}, \text{LV})",
+        formula_latex=r"\text{grupa połączeń} \rightarrow (\text{GN}, \text{DN})",
         inputs={
             "ref_id": trafo.ref_id,
             "vector_group": trafo.vector_group,
@@ -259,10 +278,10 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "lv_neutral": trafo.lv_neutral.type if trafo.lv_neutral else None,
         },
         substitution=(
-            f"HV={hv_type}{'N' if hv_n_letter else ''} → {hv_winding.value}"
-            f" (uziem={hv_grounded}); "
-            f"LV={lv_type.lower()}{'n' if lv_n_letter else ''} → {lv_winding.value}"
-            f" (uziem={lv_grounded})"
+            f"GN: {hv_type}{'N' if hv_n_letter else ''} → "
+            f"{NAZWY_UZWOJEN_ZEROWYCH_PL[hv_winding]}; "
+            f"DN: {lv_type.lower()}{'n' if lv_n_letter else ''} → "
+            f"{NAZWY_UZWOJEN_ZEROWYCH_PL[lv_winding]}"
         ),
         result={
             "hv_winding": hv_winding.value,
@@ -293,7 +312,8 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "s_base_mva": S_BASE_MVA,
         },
         substitution=(
-            f"Z_T0(pu@Sn) = {_fmt_c(z_t_pu_sn)}; " f"Z_T0(pu@Sbase) = {_fmt_c(z_t_pu_base)}"
+            f"Z_T0 = {_fmt_c(z_t_pu_sn)} pu (na S_rT = {trafo.sn_mva:g} MVA); "
+            f"Z_T0 = {_fmt_c(z_t_pu_base)} pu (na S_base = {S_BASE_MVA:g} MVA)"
         ),
         result={"z_t0_pu_sn": z_t_pu_sn, "z_t0_pu_base": z_t_pu_base},
     )
@@ -304,7 +324,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         key=f"tr_z0_conn[{trafo.ref_id}]",
         title=f"Transformator {nazwa}: połączenie sekwencji zerowej",
         formula_latex=(
-            r"(\text{HV},\text{LV}) \rightarrow \text{połączenie},\ " r"Z_0 = Z_{T0} + 3Z_{N}"
+            r"(\text{GN},\text{DN}) \rightarrow \text{połączenie},\ " r"Z_0 = Z_{T0} + 3Z_{N}"
         ),
         inputs={
             "hv_winding": hv_winding.value,
@@ -314,17 +334,17 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "zn_lv_3_pu": zn_lv_pu,
         },
         substitution=(
-            f"{connection.value}: Z0(pu) = "
-            f"{_fmt_c(z0_pu) if z0_pu is not None else '— (otwarte)'}"
+            f"{NAZWY_POLACZEN_ZEROWYCH_PL[connection]}: Z0 = "
+            f"{f'{_fmt_c(z0_pu)} pu' if z0_pu is not None else '— (otwarte)'}"
         ),
         result={
             "connection": connection.value,
             "z0_pu": z0_pu,
         },
         notes=(
-            "SERIES_THROUGH: droga HV↔LV (Z=Z_T0+3Z_N,HV+3Z_N,LV). "
-            "HV/LV_SHUNT_GROUND: bocznik zacisku do ziemi (Z=Z_T0+3Z_N). "
-            "OPEN: brak ścieżki prądu zerowego (trójkąt/gwiazda nieuziemiona)."
+            "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. "
+            "Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. "
+            "Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         ),
     )
 

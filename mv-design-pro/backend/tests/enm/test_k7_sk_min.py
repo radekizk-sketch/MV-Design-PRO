@@ -396,8 +396,12 @@ def test_walidator_niespojnosc_sk_min_ik_min_u() -> None:
 def test_walidator_e008_i_w002_przez_predykat() -> None:
     assert "sources.no_short_circuit_params" not in _kody(_enm(15.0, ik3_ka=9.6))
     assert "sources.no_short_circuit_params" in _kody(_enm(15.0))
-    assert "W002" in _kody(_enm(15.0, sk3_mva=250.0))
-    assert "W002" not in _kody(_enm(15.0, sk3_mva=250.0, z0_z1_ratio=1.5))
+    # W002 (brak Z0 źródła) dotyczy źródła spoza pasma SN — równoważnik 110 kV na granicy
+    # modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3). Źródło SN nie opisuje sieci
+    # zerowej SN (to zespół uziemiający sekcji albo uzwojenie TR), więc W002 go nie dotyczy.
+    assert "W002" in _kody(_enm(110.0, sk3_mva=3000.0))
+    assert "W002" not in _kody(_enm(110.0, sk3_mva=3000.0, z0_z1_ratio=1.5))
+    assert "W002" not in _kody(_enm(15.0, sk3_mva=250.0))
 
 
 def test_gotowosc_nazywa_brak_danych_min_bez_obnizania_statusu() -> None:

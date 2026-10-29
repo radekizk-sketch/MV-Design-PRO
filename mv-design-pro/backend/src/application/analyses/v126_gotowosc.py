@@ -18,9 +18,11 @@ projektant nie podał, jest BRAKIEM — nawet jeśli solver FROZEN ma dla niej
 wartość domyślną (uziom 60×40 m, TRV 12 kHz, wyposażenie przekaźnika = wszystkie
 metody). Domyślną solvera jest wyłącznie parametr metody (rozstrojenie dławika,
 tłumienie prądu resztkowego). Wartości WYPROWADZALNE z modelu (najwyższe Un jako
-napięcie łącznika, sposób uziemienia punktu neutralnego z uziemienia szyny albo
-transformatora) są PROPONOWANE z nazwanym źródłem — projektant je potwierdza
-w formularzu, a do biegu trafiają jawnie.
+napięcie łącznika) są PROPONOWANE z nazwanym źródłem — projektant je potwierdza
+w formularzu, a do biegu trafiają jawnie. Sposób uziemienia punktu neutralnego sieci SN
+NIE jest parametrem (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4): solver czyta go
+z modelu (`V126AcademicInput.uziemienie_sn` z `enm.uziemienie_sekcji`), a gotowość
+sprawdza go TYM SAMYM predykatem co solver (`brak_uziemienia_sn`).
 
 ZERO fizyki: moduł sprawdza OBECNOŚĆ danych na wejściu solvera zbudowanym tą
 samą funkcją, którą buduje je uruchomienie (`build_v126_input_from_enm`), nie
@@ -36,11 +38,12 @@ from application.analyses.v126_katalog import karta_analizy, nazwa_parametru_pl
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
-from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
+    PROJEKT_UZIEMIENIA_WARIANTU,
     V126AcademicInput,
     V126AnalysisType,
+    brak_uziemienia_sn,
     braki_poziomu_izolacji,
     build_v126_input_from_enm,
     generatory_przeksztaltnikowe_v126,
@@ -62,27 +65,6 @@ BRAK_WEZLOW_PL = (
 _KOD_Q = "generator.q_missing"
 _KOD_KARTA = "generator.converter_card_missing"
 _KOD_WIDMO = "generator.harmonic_spectrum_missing"
-
-#: Kody uziemienia punktu neutralnego modelu (`GroundingConfig.type`) → wartości
-#: parametrów solvera. Dławik w modelu proponujemy jako DOSTROJONY (solver rozróżnia
-#: dostrojony/rozstrojony wyłącznie parametrem, model tego nie niesie) — projektant
-#: potwierdza albo zmienia w formularzu; źródło propozycji jest nazwane.
-_NEUTRAL_GROUNDING_Z_MODELU: dict[str, str] = {
-    "isolated": "isolated",
-    "petersen_coil": "petersen_tuned",
-    "resistor_grounded": "resistor",
-    "directly_grounded": "solid",
-}
-_NEUTRAL_EARTHING_TYPE_Z_MODELU: dict[str, str] = {
-    "petersen_coil": "petersen_coil",
-    "resistor_grounded": "resistor_grounded",
-}
-_OPIS_UZIEMIENIA_PL: dict[str, str] = {
-    "isolated": "sieć izolowana",
-    "petersen_coil": "dławik gaszący",
-    "resistor_grounded": "rezystor uziemiający",
-    "directly_grounded": "uziemienie bezpośrednie",
-}
 
 _KLUCZE_UZIOMU_WYMAGANE: tuple[str, ...] = (
     "rho1_ohm_m",
@@ -264,31 +246,6 @@ def przedmiot_modelu(enm: EnergyNetworkModel) -> dict[str, Any]:
 # --- Pomocnicze --------------------------------------------------------------
 
 
-def _uziemienie_z_modelu(enm: EnergyNetworkModel) -> tuple[str, str] | None:
-    """(typ uziemienia modelu, źródło PL) dla sieci SN — opis punktu neutralnego
-    sieci SN na źródle (GPZ), potem punkt neutralny transformatora po stronie SN.
-    `None` = model milczy. W5-A: `Bus.grounding` skasowane."""
-    for source in enm.sources:
-        if source.neutral_grounding is not None:
-            return (
-                source.neutral_grounding.type,
-                f"punkt neutralny sieci SN zasilanej ze źródła {source.name} "
-                f"({_OPIS_UZIEMIENIA_PL[source.neutral_grounding.type]})",
-            )
-    for tr in enm.transformers:
-        for strona, konfiguracja, napiecie in (
-            ("SN", tr.lv_neutral, tr.ulv_kv),
-            ("SN", tr.hv_neutral, tr.uhv_kv),
-        ):
-            if konfiguracja is not None and pasmo_napieciowe(napiecie) == "SN":
-                return (
-                    konfiguracja.type,
-                    f"punkt neutralny transformatora „{tr.name}” po stronie {strona} "
-                    f"({_OPIS_UZIEMIENIA_PL[konfiguracja.type]})",
-                )
-    return None
-
-
 def _liczba(wartosc: Any) -> bool:
     return isinstance(wartosc, int | float) and not isinstance(wartosc, bool)
 
@@ -324,24 +281,6 @@ def _propozycje_z_modelu(
 ) -> dict[str, Proponowana]:
     """Wartości parametrów wyprowadzalne z modelu (nazwane źródło)."""
     propozycje: dict[str, Proponowana] = {}
-    uziemienie = _uziemienie_z_modelu(enm)
-    if rodzaj in (V126AnalysisType.EARTH_FAULT_DETECTION, V126AnalysisType.TRANSIENT_TRV):
-        if uziemienie is not None:
-            typ, zrodlo = uziemienie
-            propozycje["neutral_grounding"] = Proponowana(
-                _NEUTRAL_GROUNDING_Z_MODELU[typ],
-                zrodlo
-                + (
-                    " — przyjęto dławik dostrojony; zmień, jeśli rozstrojony"
-                    if typ == "petersen_coil"
-                    else ""
-                ),
-            )
-    if rodzaj == V126AnalysisType.NEUTRAL_EARTHING_DESIGN and uziemienie is not None:
-        typ, zrodlo = uziemienie
-        schemat = _NEUTRAL_EARTHING_TYPE_Z_MODELU.get(typ)
-        if schemat is not None:
-            propozycje["neutral_earthing_type"] = Proponowana(schemat, zrodlo)
     if rodzaj == V126AnalysisType.TRANSIENT_TRV and enm.buses:
         najwyzsze = max(float(b.voltage_kv) for b in enm.buses)
         propozycje["breaker_rated_voltage_kv"] = Proponowana(
@@ -742,8 +681,9 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
             Warunek(
                 kod="ograniczniki.uziemienie_sieci_nieznane",
                 opis_pl=(
-                    f"{len(bez_uziemienia)} miejsc z ogranicznikiem bez uziemienia punktu "
-                    "neutralnego sieci w modelu (szyna ani transformator nie deklarują) — "
+                    f"{len(bez_uziemienia)} miejsc z ogranicznikiem bez ustalonego uziemienia "
+                    "punktu neutralnego sieci w modelu (zespół uziemiający sekcji bez elementu "
+                    "w punkcie neutralnym, a poza SN — źródło ani transformator nie deklarują) — "
                     "kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie"
                 ),
                 spelniony=False,
@@ -753,17 +693,30 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
     return warunki
 
 
-def _warunki_detekcji(
-    parametry: dict[str, Any], proponowane: dict[str, Proponowana]
-) -> list[Warunek]:
+def _warunek_uziemienia_sn(
+    model: V126AcademicInput, *, projekt_zespolu: bool = False, blokujacy: bool = True
+) -> Warunek:
+    """Sposób uziemienia punktu neutralnego sieci SN z MODELU — ten sam predykat, którym
+    solver odmawia (`brak_uziemienia_sn`, predykaty parami)."""
+    powod = brak_uziemienia_sn(model.uziemienie_sn, projekt_zespolu=projekt_zespolu)
+    opis = (
+        "Sposób uziemienia punktu neutralnego sieci SN z modelu: "
+        + (model.uziemienie_sn.opis_pl if model.uziemienie_sn is not None else "")
+        if powod is None
+        else powod
+    )
+    return Warunek(
+        kod="model.uziemienie_sn",
+        opis_pl=opis,
+        spelniony=powod is None,
+        blokujacy=blokujacy,
+    )
+
+
+def _warunki_detekcji(model: V126AcademicInput, parametry: dict[str, Any]) -> list[Warunek]:
     metody = parametry.get("relay_methods")
     return [
-        _warunek_parametru(
-            parametry,
-            "neutral_grounding",
-            "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-            proponowane=proponowane,
-        ),
+        _warunek_uziemienia_sn(model),
         Warunek(
             kod="parametr.relay_methods",
             opis_pl=(
@@ -796,12 +749,10 @@ def _warunki_trv(
             "Krotność prądu załączania transformatora",
             proponowane=proponowane,
         ),
-        _warunek_parametru(
-            parametry,
-            "neutral_grounding",
-            "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-            proponowane=proponowane,
-        ),
+        # Ferrorezonans (część analizy) czyta sposób uziemienia z modelu; bez niego ryzyko
+        # nie jest oceniane (solver: „brak_danych"), a napięcie powrotne i prąd załączania
+        # liczą się dalej — warunek NIEBLOKUJĄCY.
+        _warunek_uziemienia_sn(model, blokujacy=False),
     ]
     z_susceptancja = [b.ref for b in model.branches if b.b_siemens_per_km is not None]
     if not z_susceptancja:
@@ -898,33 +849,65 @@ def _warunki_niepewnosci(model: V126AcademicInput) -> list[Warunek]:
 
 
 def _warunki_punktu_neutralnego(
-    model: V126AcademicInput, parametry: dict[str, Any], proponowane: dict[str, Proponowana]
+    model: V126AcademicInput, parametry: dict[str, Any]
 ) -> list[Warunek]:
-    zamkniete = [
-        b for b in model.branches if b.kind in {"line_overhead", "cable"} and not b.is_open
+    # Zakres sieci i napięcie z TEJ SAMEJ prawdy co solver (`uziemienie_sn.sieci[*]` — każda
+    # galwanicznie połączona sieć SN osobno, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, predykaty
+    # parami): gałęzie 110 kV i nN nie należą do sieci SN, sekcja za otwartym sprzęgłem jest
+    # osobną siecią, a napięciem sieci nie jest najwyższe napięcie szyny modelu (w GPZ 110 kV).
+    uziemienie = model.uziemienie_sn
+    sieci = uziemienie.sieci if uziemienie is not None else []
+    napiecia = [siec.napiecie_kv for siec in sieci]
+    napiecie_kv = napiecia[0] if napiecia and all(napiecia) else None
+    zamkniete_sieci = [
+        [
+            b
+            for b in model.branches
+            if b.kind in {"line_overhead", "cable"}
+            and not b.is_open
+            and b.ref in frozenset(siec.galezie_sieci)
+        ]
+        for siec in sieci
     ]
+    zamkniete = [b for galezie in zamkniete_sieci for b in galezie]
     z_b0 = [b.ref for b in zamkniete if b.b0_siemens_per_km is not None]
     bez_b0 = tuple(b.ref for b in zamkniete if b.b0_siemens_per_km is None)
     # Baterie kondensatorów w gwieździe uziemionej też niosą pojemność doziemną (karta
-    # UX-04/POLE-BKR-MODEL) — ten sam predykat co suma C0 solvera (`wnosi_pojemnosc_doziemna`),
-    # inaczej gotowość odmawiałaby biegu, który solver liczy (albo odwrotnie).
-    baterie = [b.ref for b in model.shunt_capacitors if b.wnosi_pojemnosc_doziemna]
+    # UX-04/POLE-BKR-MODEL) — ten sam predykat co suma C0 solvera (`wnosi_pojemnosc_doziemna`
+    # i bateria w `baterie_sieci` tej sieci), inaczej gotowość odmawiałaby biegu, który
+    # solver liczy (albo odwrotnie).
+    baterie_sieci = [
+        [
+            b.ref
+            for b in model.shunt_capacitors
+            if b.wnosi_pojemnosc_doziemna and b.ref in frozenset(siec.baterie_sieci)
+        ]
+        for siec in sieci
+    ]
+    baterie = [ref for refs in baterie_sieci for ref in refs]
     zrodla_c0 = (*z_b0, *baterie)
+    # Sieć bez żadnego źródła pojemności doziemnej solver melduje jako „dane niekompletne"
+    # (tylko ją); blokuje bieg dopiero brak pojemności we WSZYSTKICH sieciach.
+    sieci_bez_c0 = tuple(
+        siec.szyna_ref
+        for siec, galezie, refs in zip(sieci, zamkniete_sieci, baterie_sieci, strict=True)
+        if not any(b.b0_siemens_per_km is not None for b in galezie) and not refs
+    )
     warunki = [
         Warunek(
             kod="galezie.b0",
             opis_pl=(
-                f"Linie i kable z susceptancją zerową (pojemność doziemna): {len(z_b0)} z "
-                f"{len(zamkniete)}"
+                f"Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): "
+                f"{len(z_b0)} z {len(zamkniete)}"
                 + (
                     f"; baterie kondensatorów w gwieździe uziemionej: {len(baterie)}"
                     if baterie
                     else ""
                 )
                 if zrodla_c0
-                else "Żadna linia ani kabel nie niesie susceptancji zerowej ani żadna bateria "
-                "kondensatorów nie jest w gwieździe uziemionej — pojemności doziemnej sieci nie "
-                "da się wyznaczyć"
+                else "Żadna linia ani kabel sieci SN nie niesie susceptancji zerowej ani żadna "
+                "bateria kondensatorów sieci SN nie jest w gwieździe uziemionej — pojemności "
+                "doziemnej sieci nie da się wyznaczyć"
             ),
             spelniony=bool(zrodla_c0),
             elementy=zrodla_c0,
@@ -932,19 +915,28 @@ def _warunki_punktu_neutralnego(
         Warunek(
             kod="model.napiecie_sieci",
             opis_pl=(
-                "Napięcie znamionowe sieci znane (najwyższe napięcie szyny modelu)"
-                if any(b.nominal_kv > 0 for b in model.buses)
-                else "Brak napięcia znamionowego szyn"
+                f"Napięcie znamionowe sieci SN znane ({napiecie_kv:g} kV)"
+                if napiecie_kv
+                else "Brak napięcia znamionowego sieci SN"
             ),
-            spelniony=any(b.nominal_kv > 0 for b in model.buses),
+            spelniony=bool(napiecie_kv),
         ),
-        _warunek_parametru(
-            parametry,
-            "neutral_earthing_type",
-            "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
-            proponowane=proponowane,
-        ),
+        _warunek_uziemienia_sn(model, projekt_zespolu=True),
     ]
+    if sieci_bez_c0 and zrodla_c0:
+        warunki.append(
+            Warunek(
+                kod="galezie.siec_bez_c0",
+                opis_pl=(
+                    f"Sieci SN bez pojemności doziemnej (linii, kabli ani baterii w gwieździe "
+                    f"uziemionej z susceptancją zerową): {len(sieci_bez_c0)} z {len(sieci)} — "
+                    "projekt uziemienia tych sieci niewykonany"
+                ),
+                spelniony=False,
+                elementy=sieci_bez_c0,
+                blokujacy=False,
+            )
+        )
     if bez_b0 and zrodla_c0:
         warunki.append(
             Warunek(
@@ -958,25 +950,23 @@ def _warunki_punktu_neutralnego(
                 blokujacy=False,
             )
         )
-    schemat = parametry.get("neutral_earthing_type") or (
-        proponowane["neutral_earthing_type"].wartosc
-        if "neutral_earthing_type" in proponowane
-        else None
-    )
-    if schemat in ("resistor_grounded", "resistor"):
-        for klucz, opis in (
-            ("ner_target_earth_fault_current_a", "Docelowy prąd doziemienia (rezystor)"),
-            ("ner_clearing_time_s", "Czas wyłączenia (sprawdzenie cieplne rezystora)"),
-            ("ner_energy_rating_j", "Energia znamionowa rezystora (sprawdzenie cieplne)"),
-        ):
-            warunki.append(
-                Warunek(
-                    kod=f"parametr.{klucz}",
-                    opis_pl=opis,
-                    spelniony=_liczba(parametry.get(klucz)),
-                    klucz_parametru=klucz,
-                )
+    wariant = uziemienie.wariant if uziemienie is not None else None
+    if PROJEKT_UZIEMIENIA_WARIANTU.get(wariant or "") == "resistor_grounded":
+        # Rezystor (R, I_n, t_n) jest daną MODELU (zespół uziemiający) — parametrem biegu
+        # zostaje wyłącznie czas wyłączenia zwarcia doziemnego (dana zabezpieczeń).
+        klucz = "ner_clearing_time_s"
+        warunki.append(
+            Warunek(
+                kod=f"parametr.{klucz}",
+                opis_pl=(
+                    "Czas wyłączenia zwarcia doziemnego — bez niego sprawdzenie cieplne "
+                    "rezystora nie jest wykonywane"
+                ),
+                spelniony=_liczba(parametry.get(klucz)),
+                klucz_parametru=klucz,
+                blokujacy=False,
             )
+        )
     return warunki
 
 
@@ -1026,6 +1016,31 @@ def _dane_z_modelu(
                 tuple(z.source_ref for z in model.harmonic_sources),
             )
         )
+    if model.uziemienie_sn is not None and model.uziemienie_sn.przyczyna_braku_pl is None:
+        dane.append(
+            DanaZModeluWartosc(
+                "Uziemienie punktu neutralnego sieci SN", model.uziemienie_sn.opis_pl
+            )
+        )
+    if rodzaj == V126AnalysisType.NEUTRAL_EARTHING_DESIGN and model.uziemienie_sn is not None:
+        for siec in model.uziemienie_sn.sieci:
+            if siec.napiecie_kv:
+                dane.append(
+                    DanaZModeluWartosc(
+                        f"{siec.nazwa_pl} (napięcie znamionowe, linie i kable)",
+                        f"{siec.napiecie_kv:g} kV, {len(siec.galezie_sieci)}",
+                        tuple(siec.galezie_sieci),
+                    )
+                )
+            for rezystor in siec.rezystory:
+                dane.append(
+                    DanaZModeluWartosc(
+                        f"Rezystor punktu neutralnego ({rezystor.nazwa_pl})",
+                        f"R = {rezystor.r_ohm:g} Ω, I_n = {rezystor.i_n_a:g} A, "
+                        f"t_n = {rezystor.t_n_s:g} s",
+                        (rezystor.ref,),
+                    )
+                )
     if rodzaj == V126AnalysisType.INSULATION_COORDINATION:
         dane.append(
             DanaZModeluWartosc(
@@ -1080,7 +1095,7 @@ def ocen_gotowosc_v126(
         return GotowoscAnalizy(
             kod=rodzaj.value, gotowosc=GOTOWOSC_NIEPOTWIERDZONA, warunki=tuple(warunki)
         )
-    model = build_v126_input_from_enm(enm, parameters=parametry)
+    model = build_v126_input_from_enm(enm, parameters=parametry, analysis_type=rodzaj)
     proponowane = _propozycje_z_modelu(enm, rodzaj)
 
     if rodzaj == V126AnalysisType.POWER_QUALITY_HARMONICS:
@@ -1094,7 +1109,7 @@ def ocen_gotowosc_v126(
     elif rodzaj == V126AnalysisType.INSULATION_COORDINATION:
         warunki += _warunki_izolacji(enm, model)
     elif rodzaj == V126AnalysisType.EARTH_FAULT_DETECTION:
-        warunki += _warunki_detekcji(parametry, proponowane)
+        warunki += _warunki_detekcji(model, parametry)
     elif rodzaj == V126AnalysisType.TRANSIENT_TRV:
         warunki += _warunki_trv(model, parametry, proponowane)
     elif rodzaj == V126AnalysisType.MOTOR_STARTING:
@@ -1102,7 +1117,7 @@ def ocen_gotowosc_v126(
     elif rodzaj == V126AnalysisType.UNCERTAINTY_SENSITIVITY:
         warunki += _warunki_niepewnosci(model)
     elif rodzaj == V126AnalysisType.NEUTRAL_EARTHING_DESIGN:
-        warunki += _warunki_punktu_neutralnego(model, parametry, proponowane)
+        warunki += _warunki_punktu_neutralnego(model, parametry)
     # voltage_stability / benchmark_validation (nieprezentowane, ale uruchamialne dla
     # odtwarzalności) — wyłącznie warunek wspólny.
 

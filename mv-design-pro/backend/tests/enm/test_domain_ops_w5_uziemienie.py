@@ -1,8 +1,8 @@
 """W5-A: operacje domenowe jednej reprezentacji uziemienia.
 
-Kreator źródła GPZ: `Source.neutral_grounding` + Z0 wyłącznie jawne (karta GPZ-MODEL: przy
-równoważniku na szynach SN transformatora 110/SN nie ma w modelu, więc nie ma z czego
-wyprowadzać Z_T0 — punkt uziemiony bez Z0 blokuje E-W5-01) albo odmowa nazwana; kreator stacji: `Transformer.lv_earthing_system` + `lv_neutral` z
+Kreator źródła GPZ: `Source.neutral_grounding` + Z0 wyłącznie po stronie 110 kV i wyłącznie
+jawne (punkt uziemiony bez Z0 blokuje E-W5-01); równoważnik na szynach SN nie opisuje
+uziemienia sieci SN — odmowa nazwana (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3); kreator stacji: `Transformer.lv_earthing_system` + `lv_neutral` z
 właściwym kluczem R/X i odmową predykatu; ekran kabla we WSZYSTKICH operacjach tworzących
 kabel (magistrala, odgałęzienie, pierścień, kabel nN) + podział odcinka; rola uziemnika
 w kreatorze pola; allowlista `update_element_parameters`.
@@ -23,6 +23,7 @@ CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 CATALOG_KABEL_SN = "cable-tfk-yakxs-3x120"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
+CATALOG_TRAFO_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 
 
 def _empty_enm() -> dict[str, Any]:
@@ -42,6 +43,7 @@ def _ok(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _gpz(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
+    """Równoważnik na szynach SN (katalog źródeł GPZ)."""
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "catalog_ref": CATALOG_ZRODLO_SN,
@@ -52,11 +54,82 @@ def _gpz(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
     return _op(_empty_enm(), "add_grid_source_sn", payload)
 
 
+def _gpz_wn(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
+    """Równoważnik sieci 110 kV z transformatorem 110/SN w modelu — jedyna strona, na której
+    źródło opisuje punkt neutralny i Z0 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3)."""
+    payload: dict[str, Any] = {
+        "voltage_kv": 15.0,
+        "manual_equivalent": {
+            "short_circuit_input_side": "HV_110",
+            "hv_voltage_kv": 110.0,
+            "sk3_hv_mva": 3000.0,
+            "rx_ratio": 0.1,
+        },
+        "transformer_count": 1,
+        "transformer_catalog_ref": CATALOG_TRAFO_WN_SN,
+    }
+    if grounding is not None:
+        payload["grounding"] = grounding
+    payload.update(extra)
+    return _op(_empty_enm(), "add_grid_source_sn", payload)
+
+
+_OPISY_UZIEMIENIA = [
+    {"type": "resistor_grounded", "r_ohm": 12.0},
+    {"type": "petersen_coil", "x_ohm": 150.0},
+    {"type": "directly_grounded"},
+    {"type": "isolated"},
+]
+
+
 class TestKreatorZrodla:
-    def test_opis_na_zrodle_a_nie_na_szynach_ani_w_meta(self):
-        snap = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
+    @pytest.mark.parametrize("grounding", _OPISY_UZIEMIENIA)
+    def test_rownowaznik_sn_z_opisem_uziemienia_odmawia_nazwanie(self, grounding):
+        """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: równoważnik na szynach SN nie
+        opisuje uziemienia punktu neutralnego sieci SN (także „izolowany” — to wniosek
+        z modelu, nie deklaracja źródła). Odmowa nazwana, model bez zmian."""
+        result = _gpz(grounding)
+        assert result["error_code"] == "source.sn_neutral_not_on_source"
+        assert "zespołem uziemiającym" in result["error"]
+        assert result.get("snapshot") is None
+
+    @pytest.mark.parametrize(
+        "zero_sequence",
+        [
+            {"enabled": True, "z0_z1_ratio": 3.2},
+            {"enabled": True, "r0_ohm": 0.4, "x0_ohm": 1.8},
+        ],
+    )
+    def test_rownowaznik_sn_z_impedancja_zerowa_odmawia_nazwanie(self, zero_sequence):
+        result = _gpz(None, zero_sequence=zero_sequence)
+        assert result["error_code"] == "source.sn_neutral_not_on_source"
+        assert result.get("snapshot") is None
+
+    def test_rownowaznik_sn_bez_opisu_daje_siec_izolowana_z_modelu(self):
+        snap = _ok(_gpz(None))
         source = snap["sources"][0]
-        assert source["neutral_grounding"] == {"type": "resistor_grounded", "r_ohm": 12.0}
+        assert source.get("neutral_grounding") is None
+        assert source.get("r0_ohm") is None and source.get("z0_z1_ratio") is None
+        assert all("grounding" not in b for b in snap["buses"])
+        meta = snap["substations"][0]["meta"]
+        assert "grounding" not in meta and "zero_sequence" not in meta
+        wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
+        assert not [i for i in wynik.issues if i.code in ("E-W5-01", "W-W5-02", "W002")]
+        from enm.uziemienie_sekcji import uziemienie_sieci
+
+        (sekcja,) = uziemienie_sieci(EnergyNetworkModel.model_validate(snap))
+        assert sekcja.wariant() == "izolowany"
+
+    def test_opis_na_zrodle_wn_a_nie_na_szynach_ani_w_meta(self):
+        snap = _ok(
+            _gpz_wn(
+                {"type": "directly_grounded"},
+                zero_sequence={"enabled": True, "z0_z1_ratio": 3.2},
+            )
+        )
+        source = snap["sources"][0]
+        assert source["neutral_grounding"] == {"type": "directly_grounded"}
+        assert source["z0_z1_ratio"] == 3.2
         assert all("grounding" not in b for b in snap["buses"])
         meta = snap["substations"][0]["meta"]
         assert "grounding" not in meta and "zero_sequence" not in meta
@@ -69,14 +142,11 @@ class TestKreatorZrodla:
             {"type": "directly_grounded"},
         ],
     )
-    def test_uziemiony_bez_jawnego_z0_nie_wyprowadza_i_blokuje_e_w5_01(self, grounding):
-        """Karta GPZ-MODEL: równoważnik na szynach SN — transformatorów 110/SN nie ma
-        w modelu, Z0 widziane z szyn SN jest daną równoważnika. Brak tej danej przy
-        punkcie uziemionym nie jest uzupełniany żadną liczbą (ani wyprowadzeniem z
-        transformatora spoza modelu) — walidator blokuje bieg kodem E-W5-01."""
-        snap = _ok(_gpz(grounding))
+    def test_uziemiony_wn_bez_jawnego_z0_nie_wyprowadza_i_blokuje_e_w5_01(self, grounding):
+        """Sieć 110 kV opisana jako uziemiona bez Z0 nie dostaje żadnej liczby (ani
+        wyprowadzenia z transformatora) — walidator blokuje bieg kodem E-W5-01."""
+        snap = _ok(_gpz_wn(grounding))
         source = snap["sources"][0]
-        assert snap["transformers"] == []
         assert source.get("r0_ohm") is None and source.get("x0_ohm") is None
         assert source.get("z0_z1_ratio") is None
         assert "zero_sequence_provenance" not in source["materialized_params"]
@@ -84,26 +154,23 @@ class TestKreatorZrodla:
         blokery = [i for i in wynik.issues if i.code == "E-W5-01"]
         assert [i.element_refs for i in blokery] == [[source["ref_id"]]]
         assert "impedancji zerowej" in blokery[0].message_pl
-        assert "110 kV" in (blokery[0].suggested_fix or "")
 
-    def test_jawne_liczby_z0_przechodza_walidacje(self):
+    def test_jawne_liczby_z0_wn_przechodza_walidacje(self):
         snap = _ok(
-            _gpz(
-                {"type": "resistor_grounded", "r_ohm": 12.0},
+            _gpz_wn(
+                {"type": "directly_grounded"},
                 zero_sequence={"enabled": True, "z0_z1_ratio": 3.2},
             )
         )
         source = snap["sources"][0]
-        assert source["z0_z1_ratio"] == 3.2
         assert "zero_sequence_provenance" not in source["materialized_params"]
         assert source.get("r0_ohm") is None
         wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
         assert not [i for i in wynik.issues if i.code == "E-W5-01"]
 
-    def test_izolowany_bez_z0_i_bez_blokady(self):
-        snap = _ok(_gpz({"type": "isolated"}))
+    def test_izolowany_wn_bez_z0_i_bez_blokady(self):
+        snap = _ok(_gpz_wn({"type": "isolated"}))
         assert snap["sources"][0].get("r0_ohm") is None
-        assert "zero_sequence_provenance" not in snap["sources"][0]["materialized_params"]
         wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
         assert not [i for i in wynik.issues if i.code == "E-W5-01"]
 
@@ -118,13 +185,13 @@ class TestKreatorZrodla:
         ],
     )
     def test_odmowa_nazwana_dla_typu_spoza_slownika_i_braku_skladowej_dominujacej(self, grounding):
-        result = _gpz(grounding)
+        result = _gpz_wn(grounding)
         assert result["error_code"] == "source.invalid_grounding"
         assert result.get("snapshot") is None
 
     def test_seed_identyfikatorow_bez_zmian_wzgledem_ladunku(self):
-        a = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
-        b = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
+        a = _ok(_gpz_wn({"type": "resistor_grounded", "r_ohm": 12.0}))
+        b = _ok(_gpz_wn({"type": "resistor_grounded", "r_ohm": 12.0}))
         assert [s["ref_id"] for s in a["sources"]] == [s["ref_id"] for s in b["sources"]]
         assert {k: v for k, v in a.items() if k != "header"} == {
             k: v for k, v in b.items() if k != "header"

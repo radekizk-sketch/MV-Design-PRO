@@ -70,6 +70,7 @@ KOLEKCJE_URZADZEN: tuple[str, ...] = (
     "branches",
     "loads",
     "shunt_capacitors",
+    "zespoly_uziemiajace",
 )
 #: Status weryfikacji danych elementu bez typu katalogowego (dane inżyniera).
 STATUS_ELEMENTU_BEZ_TYPU: StatusWeryfikacjiRekordu = "NIEWERYFIKOWANY"

@@ -340,6 +340,9 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: '#9AA4AF',
   pomiarowe: '#3FBFA8',
   zrodlowe: '#7CC85A',
+  // Pole zespołu uziemiającego (karta UX-04/POLE-ZU): oliwkowa żółć — odrębna od zasilającego
+  // (bursztyn) i źródłowego (zieleń).
+  uziemiajace: '#C9C24A',
   // Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): odcień purpurowo-różowy,
   // wolny od pozostałych ról (bursztyn, błękit, fiolet, szarość, morski, zieleń).
   kompensacyjne: '#E07AA8',

@@ -92,6 +92,19 @@ export interface WerdyktPojedynczy {
   readonly rodzaj: 'pojedynczy';
   readonly sciezki: readonly string[];
   readonly mapa: MapaWerdyktu;
+  /**
+   * Wynik złożony z WYNIKÓW SKŁADOWYCH (np. projekt uziemienia modelu z kilkoma
+   * galwanicznie połączonymi sieciami SN — każda z własnym punktem neutralnym): gdy
+   * ładunek niesie tę tablicę, okno czyta status pod `sciezki` w KAŻDYM elemencie i
+   * zlicza elementy z wpisem istotności „ok" w `mapa` (jak werdykt zbiorczy). Element
+   * ze statusem spoza mapy → brak oceny całości (okno nie zgaduje). Agregat nie zastępuje
+   * wyników składowych — niesie je tabela tej samej tablicy.
+   */
+  readonly skladowe?: {
+    readonly sciezkaTablicy: string;
+    /** Rzeczownik obiektów w dopełniaczu mnogim, np. „sieci SN". */
+    readonly obiektyDopelniacz: string;
+  };
 }
 
 /**
@@ -165,6 +178,12 @@ export interface TabelaObiektow {
    * parametru — inaczej ranking pokazuje ścieżkę klucza, czyli kod produkcyjny.
    */
   readonly refZParametrem?: boolean;
+  /**
+   * Tabela renderowana WYŁĄCZNIE, gdy ładunek niesie tablicę pod `sciezka` — dla wyników,
+   * które ją mają tylko w części przypadków (projekt uziemienia: tablica sieci SN tylko przy
+   * kilku sieciach; jedna sieć niesie swoje wielkości wprost w wielkościach głównych).
+   */
+  readonly tylkoGdyObecna?: boolean;
 }
 
 /**
@@ -274,6 +293,17 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
  * (`prezentowane + nieprezentowane = komplet`) pilnuje
  * `backend/tests/ci/test_v126_rodzaje_parytet.py`.
  */
+/** Mapa statusów doboru uziemienia punktu neutralnego — JEDNA dla werdyktu całości
+ *  i dla kolumny dostrojenia w tabeli sieci SN (te same wartości `tuning_status`). */
+const MAPA_DOBORU_UZIEMIENIA: MapaWerdyktu = {
+  dostrojony: { tekst: 'dławik dostrojony — prąd resztkowy w granicy', istotnosc: 'ok' },
+  rozstrojony_poza_10pct: {
+    tekst: 'prąd resztkowy powyżej 10 % prądu pojemnościowego',
+    istotnosc: 'err',
+  },
+  'dane niekompletne': { tekst: 'dane niekompletne — dobór niewykonany', istotnosc: 'warn' },
+};
+
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
@@ -681,14 +711,8 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['tuning_status', 'thermal_check.status', 'status'],
-      mapa: {
-        dostrojony: { tekst: 'dławik dostrojony — prąd resztkowy w granicy', istotnosc: 'ok' },
-        rozstrojony_poza_10pct: {
-          tekst: 'prąd resztkowy powyżej 10 % prądu pojemnościowego',
-          istotnosc: 'err',
-        },
-        'dane niekompletne': { tekst: 'dane niekompletne — dobór niewykonany', istotnosc: 'warn' },
-      },
+      mapa: MAPA_DOBORU_UZIEMIENIA,
+      skladowe: { sciezkaTablicy: 'sieci', obiektyDopelniacz: 'sieci SN' },
     },
     wielkosciGlowne: [
       { sciezka: 'neutral_earthing_type', etykieta: 'Sposób uziemienia punktu neutralnego' },
@@ -714,6 +738,16 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       },
       { sciezka: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca punktu neutralnego', jednostka: 'Ω' },
       {
+        sciezka: 'resistive_component_a',
+        etykieta: 'Składowa czynna prądu doziemienia (prąd rezystora)',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'coil_current_a',
+        etykieta: 'Prąd dławika w układzie dławik ‖ rezystor',
+        jednostka: 'A',
+      },
+      {
         sciezka: 'resultant_earth_fault_current_a',
         etykieta: 'Wynikowy prąd zwarcia doziemnego',
         jednostka: 'A',
@@ -726,10 +760,42 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         odniesienieEtykieta: 'znamionowa',
       },
     ],
-    tabele: [],
+    tabele: [
+      {
+        // Model z kilkoma galwanicznie połączonymi sieciami SN (np. dwie sekcje GPZ przy
+        // otwartym sprzęgle): prąd pojemnościowy i dobór KAŻDEJ sieci osobno — z gałęzi
+        // i baterii tej sieci, nie z całego modelu.
+        sciezka: 'sieci',
+        tytul: 'Sieci SN połączone galwanicznie — dobór dla każdej sieci',
+        kluczRef: 'szyna_ref',
+        etykietaRef: 'Sieć SN (szyna punktu neutralnego)',
+        tylkoGdyObecna: true,
+        kolumny: [
+          {
+            klucz: 'capacitive_earth_fault_current_a',
+            etykieta: 'Prąd pojemnościowy doziemienia',
+            jednostka: 'A',
+          },
+          { klucz: 'coil_current_rating_a', etykieta: 'Prąd znamionowy dławika', jednostka: 'A' },
+          {
+            klucz: 'residual_current_at_detuning_a',
+            etykieta: 'Prąd resztkowy przy rozstrojeniu',
+            jednostka: 'A',
+          },
+          { klucz: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca', jednostka: 'Ω' },
+          {
+            klucz: 'resultant_earth_fault_current_a',
+            etykieta: 'Wynikowy prąd zwarcia doziemnego',
+            jednostka: 'A',
+          },
+          { klucz: 'tuning_status', etykieta: 'Dostrojenie dławika', mapaStatusu: MAPA_DOBORU_UZIEMIENIA },
+        ],
+      },
+    ],
     nastepnyKrok:
-      'Po doborze wprowadź dławik albo rezystor do modelu punktu neutralnego GPZ '
-      + 'i przelicz analizę „Detekcja doziemień" — metoda detekcji zależy od tego doboru.',
+      'Gdy dobór różni się od zespołu uziemiającego w modelu, zmień dławik albo rezystor '
+      + 'zespołu w polu ZU stacji i przelicz analizę „Detekcja doziemień" — metoda detekcji '
+      + 'zależy od sposobu uziemienia.',
   },
 };
 
@@ -810,7 +876,8 @@ export const NAZWY_BRAKUJACYCH_POL: Readonly<Record<string, string>> = {
   b0_siemens_per_km: 'susceptancja doziemna gałęzi (b₀)',
   nominal_kv: 'napięcie znamionowe sieci',
   ner_clearing_time_s: 'czas wyłączenia zwarcia doziemnego',
-  ner_energy_rating_j: 'energia znamionowa rezystora uziemiającego',
+  'uziemienie_sn.sieci.rezystory': 'rezystor punktu neutralnego zespołu uziemiającego (R, I_n, t_n)',
+  'uziemienie_sn.sieci.prad_dlawikow_a': 'prąd dławika gaszącego w układzie dławik ‖ rezystor',
   converter_control_bandwidth_hz: 'pasmo pętli regulacji prądu przekształtnika',
   converter_ref: 'przekształtnik do zbadania',
   benchmark_references: 'wartości referencyjne sieci odniesienia',

@@ -61,21 +61,6 @@ export interface DefinicjaPola {
   readonly opcje?: readonly OpcjaPola[];
 }
 
-/** Sposób uziemienia punktu neutralnego — lista ZAMKNIĘTA tabelą decyzyjną solvera. */
-const OPCJE_UZIEMIENIA: readonly OpcjaPola[] = [
-  { wartosc: 'isolated', etykieta: 'sieć izolowana' },
-  { wartosc: 'petersen_tuned', etykieta: 'dławik gaszący dostrojony' },
-  { wartosc: 'petersen_detuned', etykieta: 'dławik gaszący rozstrojony' },
-  { wartosc: 'resistor', etykieta: 'rezystor uziemiający' },
-  { wartosc: 'solid', etykieta: 'uziemienie bezpośrednie' },
-];
-
-/** Schemat doboru uziemienia punktu neutralnego (rozgałęzienie `_neutral_earthing_design`). */
-const OPCJE_SCHEMATU_NEUTRALNEGO: readonly OpcjaPola[] = [
-  { wartosc: 'petersen_coil', etykieta: 'dławik gaszący (Petersen)' },
-  { wartosc: 'resistor_grounded', etykieta: 'rezystor uziemiający (NER)' },
-];
-
 /** Metody detekcji doziemienia dostępne w przekaźniku (`relay_methods`). */
 export const METODY_DETEKCJI: readonly OpcjaPola[] = [
   { wartosc: 'wattmetric', etykieta: 'wattmetryczna' },
@@ -240,23 +225,18 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   // Ograniczniki pochodzą z aparatów pierwotnych modelu (most ENM) — bez formularza.
   insulation_coordination: PUSTY,
 
-  // `_earth_fault_detection`: parameters["neutral_grounding"], parameters["relay_methods"].
+  // `_earth_fault_detection`: parameters["relay_methods"]. Sposób uziemienia punktu
+  // neutralnego sieci SN NIE jest polem formularza — solver czyta go z zespołu
+  // uziemiającego modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4).
   earth_fault_detection: {
-    pola: [
-      {
-        klucz: 'neutral_grounding',
-        etykieta: 'Sposób uziemienia punktu neutralnego',
-        rodzaj: 'wybor',
-        opcje: OPCJE_UZIEMIENIA,
-      },
-    ],
+    pola: [],
     uziom: false,
     lista: null,
     metodyDetekcji: true,
   },
 
   // `_transient`: breaker_rated_voltage_kv, trv_natural_frequency_hz, trv_tau_s,
-  // inrush_multiple_in, neutral_grounding.
+  // inrush_multiple_in (uziemienie sieci do oceny ferrorezonansu — z modelu).
   transient_trv: {
     pola: [
       {
@@ -277,12 +257,6 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
         klucz: 'inrush_multiple_in',
         etykieta: 'Krotność prądu załączania transformatora',
         rodzaj: 'liczba',
-      },
-      {
-        klucz: 'neutral_grounding',
-        etykieta: 'Sposób uziemienia punktu neutralnego',
-        rodzaj: 'wybor',
-        opcje: OPCJE_UZIEMIENIA,
       },
     ],
     uziom: false,
@@ -337,15 +311,12 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
 
   uncertainty_sensitivity: PUSTY,
 
-  // `_neutral_earthing_design` + `_petersen_design` + `_ner_design`.
+  // `_neutral_earthing_design` + `_petersen_design` + `_ner_design`. Schemat (dławik albo
+  // rezystor) wynika z wariantu zespołu uziemiającego modelu, nie z formularza; rezystor
+  // (R, prąd znamionowy, dopuszczalny czas przepływu) jest daną zespołu w modelu — dawne pola
+  // „docelowy prąd doziemienia" i „wytrzymałość cieplna rezystora" nadpisywały model.
   neutral_earthing_design: {
     pola: [
-      {
-        klucz: 'neutral_earthing_type',
-        etykieta: 'Schemat uziemienia punktu neutralnego',
-        rodzaj: 'wybor',
-        opcje: OPCJE_SCHEMATU_NEUTRALNEGO,
-      },
       { klucz: 'petersen_detuning', etykieta: 'Stopień rozstrojenia dławika', rodzaj: 'liczba' },
       {
         klucz: 'petersen_residual_damping',
@@ -353,22 +324,10 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
         rodzaj: 'liczba',
       },
       {
-        klucz: 'ner_target_earth_fault_current_a',
-        etykieta: 'Docelowy prąd doziemienia (rezystor)',
-        rodzaj: 'liczba',
-        jednostka: 'A',
-      },
-      {
         klucz: 'ner_clearing_time_s',
-        etykieta: 'Czas wyłączenia (rezystor)',
+        etykieta: 'Czas wyłączenia zwarcia doziemnego (rezystor)',
         rodzaj: 'liczba',
         jednostka: 's',
-      },
-      {
-        klucz: 'ner_energy_rating_j',
-        etykieta: 'Wytrzymałość cieplna rezystora',
-        rodzaj: 'liczba',
-        jednostka: 'J',
       },
     ],
     uziom: false,

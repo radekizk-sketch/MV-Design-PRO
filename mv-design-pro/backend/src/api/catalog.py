@@ -355,6 +355,28 @@ def list_shunt_capacitor_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_shunt_capacitor_types()]
 
 
+@router.get("/earthing-transformer-types")
+def list_earthing_transformer_types() -> list[dict[str, Any]]:
+    """Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji
+    `add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_earthing_transformer_types()]
+
+
+@router.get("/arc-suppression-coil-types")
+def list_arc_suppression_coil_types() -> list[dict[str, Any]]:
+    """Dławiki gaszące (DLAWIK_GASZACY) — katalog operacji `add_zespol_uziemiajacy_sn`."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_arc_suppression_coil_types()]
+
+
+@router.get("/neutral-earthing-resistor-types")
+def list_neutral_earthing_resistor_types() -> list[dict[str, Any]]:
+    """Rezystory uziemiające (REZYSTOR_UZIEMIAJACY) — katalog operacji
+    `add_zespol_uziemiajacy_sn`."""
+    return [
+        item.to_dict() for item in get_default_mv_catalog().list_neutral_earthing_resistor_types()
+    ]
+
+
 @router.get("/synchronous-generator-types")
 def list_synchronous_generator_types() -> list[dict[str, Any]]:
     """List synchronous generator types (GENERATOR_SN) — catalog of `add_generator_sn`."""

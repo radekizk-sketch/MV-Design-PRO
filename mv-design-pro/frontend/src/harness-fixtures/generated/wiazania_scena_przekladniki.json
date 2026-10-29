@@ -7,7 +7,7 @@
     "ik_ka": 9.03989982704,
     "ip_ka": 19.5665606525,
     "run_ref_zwarciowy": "run-sc-scena-pole-oze",
-    "tryb_uziemienia": null,
+    "tryb_uziemienia": "isolated",
     "zrodlo_napiecia_zerowego": "brak",
     "zrodlo_wejsc_urzadzenia": "szereg_preferowany_IEC_60255_1"
   },

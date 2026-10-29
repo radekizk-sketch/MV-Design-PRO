@@ -17,6 +17,11 @@ Grupy konfiguracji (katalog `config/`), każda z trzema plikami
   `"load_profile_ref": null` w `meta` (residualny klucz nieużywanego dict-a — SLD
   determinism CI-critical, edycja treści fixtur poza zakresem tej karty, uzasadnienie
   w pliku allowlisty).
+* ``"zu_"`` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — bramka wskrzeszenia DRUGIEJ prawdy
+  o uziemieniu punktu neutralnego SN: kolumna ORM konfiguracji audytu 2 stacji z wyborem
+  wariantu uziemienia, katalog wariantów audytu 2, końcówka katalogu, pole kontraktu zapisu
+  i konfigurator we froncie. Sposób uziemienia sekcji SN wynika wyłącznie z elementów
+  modelu (`enm/uziemienie_sekcji.py`); allowlista to tylko ten guard i jego self-test.
 
 Self-test z czerwoną iniekcją: `scripts/test_grep_zero_guard.py`.
 """
@@ -32,7 +37,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
-GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_")
+GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_", "zu_")
 TEXT_SUFFIXES = {
     ".css",
     ".html",
@@ -46,6 +51,7 @@ TEXT_SUFFIXES = {
     ".ts",
     ".tsx",
     ".txt",
+    ".sql",
     ".yaml",
     ".yml",
 }

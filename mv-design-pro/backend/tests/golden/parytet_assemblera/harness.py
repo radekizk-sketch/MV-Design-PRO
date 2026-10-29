@@ -150,10 +150,15 @@ def _bieg(
 #: sformatowane w napisach (podstawienia) — ta sama klasa co ``white_box_trace``; same
 #: wkłady źródeł (``wklady_zrodel``) to wielkości kontraktu (prąd, kąt, udział) i podlegają
 #: porównaniu z tolerancją jak ``contributions``.
+#: Ślad budowy sieci składowej zerowej (``siec_zerowa`` — biegi 1F/2FG, kroki Y0 po
+#: elementach z decyzją grupy połączeń transformatora) to ta sama klasa: kroki White Box
+#: z liczbami sformatowanymi w podstawieniach; macierz Z0, którą opisują, wchodzi do
+#: porównania przez wielkości kontraktu wierszy (``z0_ohm``, ``ikss_a``).
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
     {
         "branch_contributions",
         "branch_flow_trace",
+        "siec_zerowa",
         "white_box_trace",
         "wklady_zrodel_slad",
     }

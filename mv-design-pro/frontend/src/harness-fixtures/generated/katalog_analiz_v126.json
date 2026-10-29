@@ -510,18 +510,11 @@
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-            "elementy_pl": "szyny SN, transformatory"
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+            "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
           }
         ],
         "od_uzytkownika": [
-          {
-            "klucz": "neutral_grounding",
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
-            "jednostka": "-",
-            "wymagane": true,
-            "opis_pl": "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego."
-          },
           {
             "klucz": "relay_methods",
             "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
@@ -546,7 +539,7 @@
         "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
       },
       "pytanie_pl": "Jak uziemić punkt neutralny sieci i jaki dobrać dławik gaszący albo rezystor, żeby ograniczyć prąd zwarcia doziemnego?",
-      "zakres_pl": "Galwanicznie połączona sieć SN: pojemność doziemna z susceptancji zerowej linii i kabli (łączniki otwarte pominięte; element bez susceptancji zerowej jest pomijany i wymieniony); napięcie sieci = najwyższe napięcie znamionowe szyny modelu; dobór dławika gaszącego (Petersen) albo rezystora uziemiającego.",
+      "zakres_pl": "Galwanicznie połączona sieć SN wszystkich sekcji (dobór zespołu na pracę jednego zespołu na sieć — ENEA Zeszyt 1 §16): pojemność doziemna z susceptancji zerowej linii i kabli tej sieci (łączniki otwarte pominięte; element bez susceptancji zerowej jest pomijany i wymieniony; linie 110 kV i kable nN nie należą do sieci SN); napięcie sieci = napięcie znamionowe sieci SN; dobór dławika gaszącego (Petersen) albo sprawdzenie rezystora uziemiającego zespołu z modelu.",
       "wielkosci_glowne": [
         {
           "symbol": "I_C",
@@ -602,13 +595,13 @@
           "wielkosc_pl": "Energia w rezystorze (sieć uziemiona przez rezystor)",
           "symbol": "E",
           "jednostka": "J",
-          "warunek_pl": "E = I_ef²·R·t_wył ≤ E_n rezystora",
+          "warunek_pl": "E = I_R²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora",
           "wartosc_graniczna": "E ≤ E_n",
-          "zrodlo_pl": "IEC 60364 / praktyka sieci uziemionych przez rezystor",
+          "zrodlo_pl": "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
           "symbol_latex": "E",
           "warunek_latex": "E \\leq E_n",
-          "wzor_latex": "E = I_{\\mathrm{ef}}^2 \\cdot R \\cdot t_{\\text{wył}}",
-          "wzor_opis_pl": "I_ef — wynikowy prąd doziemienia [A]; R — rezystancja uziemiająca punktu neutralnego [Ω]; t_wył — czas wyłączenia zwarcia [s]; E_n — energia znamionowa rezystora [J]."
+          "wzor_latex": "E = I_R^2 \\cdot R \\cdot t_{\\text{wył}} \\leq E_n = I_n^2 \\cdot R \\cdot t_n",
+          "wzor_opis_pl": "I_R = U_f/R — prąd rezystora przy doziemieniu metalicznym [A] (składowa pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez rezystor); R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy rezystora i dopuszczalny czas jego przepływu [A, s]."
         }
       ],
       "bez_podstawy_pl": null,
@@ -616,45 +609,28 @@
         "z_modelu": [
           {
             "nazwa_pl": "Susceptancja zerowa (doziemna) i długość gałęzi",
-            "elementy_pl": "linie, kable"
+            "elementy_pl": "linie, kable sieci SN"
           },
           {
-            "nazwa_pl": "Napięcie znamionowe sieci",
-            "elementy_pl": "szyny"
+            "nazwa_pl": "Napięcie znamionowe sieci SN",
+            "elementy_pl": "sieć SN zespołu uziemiającego"
           },
           {
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-            "elementy_pl": "szyny SN, transformatory"
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+            "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
+          },
+          {
+            "nazwa_pl": "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu) i prąd dławika w układzie dławik ‖ rezystor",
+            "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
           }
         ],
         "od_uzytkownika": [
           {
-            "klucz": "neutral_earthing_type",
-            "nazwa_pl": "Schemat uziemienia punktu neutralnego",
-            "jednostka": "-",
-            "wymagane": true,
-            "opis_pl": "Dławik gaszący albo rezystor; proponowany z modelu."
-          },
-          {
-            "klucz": "ner_target_earth_fault_current_a",
-            "nazwa_pl": "Docelowy prąd doziemienia (rezystor)",
-            "jednostka": "A",
-            "wymagane": true,
-            "opis_pl": "Wymagany dla schematu rezystorowego."
-          },
-          {
             "klucz": "ner_clearing_time_s",
-            "nazwa_pl": "Czas wyłączenia (rezystor)",
+            "nazwa_pl": "Czas wyłączenia zwarcia doziemnego (rezystor)",
             "jednostka": "s",
-            "wymagane": true,
-            "opis_pl": "Wymagany dla sprawdzenia cieplnego rezystora."
-          },
-          {
-            "klucz": "ner_energy_rating_j",
-            "nazwa_pl": "Energia znamionowa rezystora",
-            "jednostka": "J",
-            "wymagane": true,
-            "opis_pl": "Wymagana dla sprawdzenia cieplnego rezystora."
+            "wymagane": false,
+            "opis_pl": "Dla sieci z rezystorem w punkcie neutralnym; bez wpisu sprawdzenie cieplne rezystora nie jest wykonywane."
           },
           {
             "klucz": "petersen_detuning",
@@ -763,8 +739,8 @@
             "elementy_pl": "linie, kable"
           },
           {
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-            "elementy_pl": "szyny SN, transformatory"
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+            "elementy_pl": "zespoły uziemiające sekcji SN, transformatory"
           }
         ],
         "od_uzytkownika": [
@@ -795,13 +771,6 @@
             "jednostka": "× I_n",
             "wymagane": true,
             "opis_pl": "Właściwość transformatora — model jej nie niesie."
-          },
-          {
-            "klucz": "neutral_grounding",
-            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
-            "jednostka": "-",
-            "wymagane": true,
-            "opis_pl": "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego."
           }
         ],
         "domyslne_solvera": []

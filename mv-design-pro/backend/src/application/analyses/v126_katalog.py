@@ -751,18 +751,11 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         ),
         dane_z_modelu=(
             DanaZModelu(
-                "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-                "szyny SN, transformatory",
+                "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+                "zespoły uziemiające sekcji SN, transformatory",
             ),
         ),
         od_uzytkownika=(
-            ParametrUzytkownika(
-                "neutral_grounding",
-                "Sposób uziemienia punktu neutralnego",
-                "-",
-                True,
-                "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego.",
-            ),
             ParametrUzytkownika(
                 "relay_methods",
                 "Metody detekcji dostępne w przekaźniku",
@@ -826,8 +819,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             DanaZModelu("Najwyższe napięcie znamionowe szyn (proponowane U_r)", "szyny"),
             DanaZModelu("Susceptancje doziemne gałęzi (ferrorezonans)", "linie, kable"),
             DanaZModelu(
-                "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-                "szyny SN, transformatory",
+                "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+                "zespoły uziemiające sekcji SN, transformatory",
             ),
         ),
         od_uzytkownika=(
@@ -854,13 +847,6 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "× I_n",
                 True,
                 "Właściwość transformatora — model jej nie niesie.",
-            ),
-            ParametrUzytkownika(
-                "neutral_grounding",
-                "Sposób uziemienia punktu neutralnego",
-                "-",
-                True,
-                "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego.",
             ),
         ),
     ),
@@ -1011,10 +997,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             "żeby ograniczyć prąd zwarcia doziemnego?"
         ),
         zakres_pl=(
-            "Galwanicznie połączona sieć SN: pojemność doziemna z susceptancji zerowej linii "
-            "i kabli (łączniki otwarte pominięte; element bez susceptancji zerowej jest "
-            "pomijany i wymieniony); napięcie sieci = najwyższe napięcie znamionowe szyny "
-            "modelu; dobór dławika gaszącego (Petersen) albo rezystora uziemiającego."
+            "Galwanicznie połączona sieć SN wszystkich sekcji (dobór zespołu na pracę jednego "
+            "zespołu na sieć — ENEA Zeszyt 1 §16): pojemność doziemna z susceptancji zerowej "
+            "linii i kabli tej sieci (łączniki otwarte pominięte; element bez susceptancji "
+            "zerowej jest pomijany i wymieniony; linie 110 kV i kable nN nie należą do sieci "
+            "SN); napięcie sieci = napięcie znamionowe sieci SN; dobór dławika gaszącego "
+            "(Petersen) albo sprawdzenie rezystora uziemiającego zespołu z modelu."
         ),
         wielkosci_glowne=(
             WielkoscGlowna("I_C", "Prąd pojemnościowy doziemienia sieci", "A", r"I_C"),
@@ -1039,55 +1027,49 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Energia w rezystorze (sieć uziemiona przez rezystor)",
                 "E",
                 "J",
-                "E = I_ef²·R·t_wył ≤ E_n rezystora",
+                "E = I_R²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora",
                 "E ≤ E_n",
-                "IEC 60364 / praktyka sieci uziemionych przez rezystor",
+                "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
                 symbol_latex=r"E",
                 warunek_latex=r"E \leq E_n",
-                wzor_latex=r"E = I_{\mathrm{ef}}^2 \cdot R \cdot t_{\text{wył}}",
+                wzor_latex=(
+                    r"E = I_R^2 \cdot R \cdot t_{\text{wył}} \leq E_n = I_n^2 \cdot R \cdot t_n"
+                ),
                 wzor_opis_pl=(
-                    "I_ef — wynikowy prąd doziemienia [A]; R — rezystancja uziemiająca "
-                    "punktu neutralnego [Ω]; t_wył — czas wyłączenia zwarcia [s]; "
-                    "E_n — energia znamionowa rezystora [J]."
+                    "I_R = U_f/R — prąd rezystora przy doziemieniu metalicznym [A] (składowa "
+                    "pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez "
+                    "rezystor); R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — "
+                    "czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy "
+                    "rezystora i dopuszczalny czas jego przepływu [A, s]."
                 ),
             ),
         ),
         dane_z_modelu=(
-            DanaZModelu("Susceptancja zerowa (doziemna) i długość gałęzi", "linie, kable"),
-            DanaZModelu("Napięcie znamionowe sieci", "szyny"),
+            DanaZModelu("Susceptancja zerowa (doziemna) i długość gałęzi", "linie, kable sieci SN"),
+            DanaZModelu("Napięcie znamionowe sieci SN", "sieć SN zespołu uziemiającego"),
             DanaZModelu(
-                "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
-                "szyny SN, transformatory",
+                "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
+                "zespoły uziemiające sekcji SN, transformatory",
+            ),
+            DanaZModelu(
+                "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu) "
+                "i prąd dławika w układzie dławik ‖ rezystor",
+                "zespoły uziemiające sekcji SN, transformatory",
             ),
         ),
         od_uzytkownika=(
-            ParametrUzytkownika(
-                "neutral_earthing_type",
-                "Schemat uziemienia punktu neutralnego",
-                "-",
-                True,
-                "Dławik gaszący albo rezystor; proponowany z modelu.",
-            ),
-            ParametrUzytkownika(
-                "ner_target_earth_fault_current_a",
-                "Docelowy prąd doziemienia (rezystor)",
-                "A",
-                True,
-                "Wymagany dla schematu rezystorowego.",
-            ),
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: rezystor (R, I_n, t_n) jest daną
+            # MODELU — dawne parametry „docelowy prąd doziemienia" i „energia znamionowa
+            # rezystora" nadpisywały model i zostały skasowane. Czas wyłączenia to dana
+            # zabezpieczeń: bez niego analiza liczy R i I_ef, a sprawdzenia cieplnego nie
+            # wykonuje (nazwany brak w wyniku) — nie blokuje biegu.
             ParametrUzytkownika(
                 "ner_clearing_time_s",
-                "Czas wyłączenia (rezystor)",
+                "Czas wyłączenia zwarcia doziemnego (rezystor)",
                 "s",
-                True,
-                "Wymagany dla sprawdzenia cieplnego rezystora.",
-            ),
-            ParametrUzytkownika(
-                "ner_energy_rating_j",
-                "Energia znamionowa rezystora",
-                "J",
-                True,
-                "Wymagana dla sprawdzenia cieplnego rezystora.",
+                False,
+                "Dla sieci z rezystorem w punkcie neutralnym; bez wpisu sprawdzenie cieplne "
+                "rezystora nie jest wykonywane.",
             ),
             # Karta B-02 (parytet katalog ↔ kontrolki): oba parametry dławika solver
             # CZYTA z `parameters` (nadpisanie wartości domyślnej), więc karta musi je

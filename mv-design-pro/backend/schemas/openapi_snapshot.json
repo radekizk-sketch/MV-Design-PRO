@@ -14020,6 +14020,16 @@
       "title": "Scenariusz",
       "type": "string"
      },
+     "stan_awsc": {
+      "default": "spoczynek",
+      "description": "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym przypadku: spoczynek — dławik gaszący sam (Z_N = jX_L), zalaczony — rezystor wymuszający równolegle z dławikiem (Z_N = R‖jX_L); ENEA Zeszyt 1 §16, rys. Z.13",
+      "enum": [
+       "spoczynek",
+       "zalaczony"
+      ],
+      "title": "Stan Awsc",
+      "type": "string"
+     },
      "thermal_time_seconds": {
       "default": 1.0,
       "description": "Czas trwania zwarcia t_k [s]",
@@ -14712,17 +14722,6 @@
       "title": "Der Specs",
       "type": "array"
      },
-     "mv_neutral_grounding_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Mv Neutral Grounding Ref"
-     },
      "station_id": {
       "title": "Station Id",
       "type": "string"
@@ -14777,17 +14776,6 @@
       },
       "title": "Der Specs",
       "type": "array"
-     },
-     "mv_neutral_grounding_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Mv Neutral Grounding Ref"
      },
      "tap_changer_refs": {
       "items": {
@@ -15745,6 +15733,20 @@
      }
     },
     "title": "UpdateStudyCaseRequest",
+    "type": "object"
+   },
+   "UziemieniePolRequest": {
+    "description": "Oznaczenia pól stacji (reguła konfiguratora: numer → skrót odpływu → nazwa).",
+    "properties": {
+     "pola": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Pola",
+      "type": "array"
+     }
+    },
+    "title": "UziemieniePolRequest",
     "type": "object"
    },
    "V126AnalizaWycofanaResponse": {
@@ -21593,6 +21595,33 @@
     ]
    }
   },
+  "/api/catalog/arc-suppression-coil-types": {
+   "get": {
+    "description": "Dławiki gaszące (DLAWIK_GASZACY) — katalog operacji `add_zespol_uziemiajacy_sn`.",
+    "operationId": "list_arc_suppression_coil_types_api_catalog_arc_suppression_coil_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Arc Suppression Coil Types Api Catalog Arc Suppression Coil Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Arc Suppression Coil Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/bay-apparatus-kinds": {
    "get": {
     "description": "Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (readout).\n\nJedno źródło prawdy: `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE` — ta sama tablica,\nktórą operacje domenowe stosują przy budowie pola. Końcówka istnieje\ndokładnie z tego powodu, co bliźniacza `/bay-protection-codes`: kreator\nstacji ma zawęzić picker aparatu do rozwiązań, które w danym polu REALNIE\nwystępują, BEZ kopiowania tablicy do frontendu (zero równoległej definicji,\nzero listy wariantów zaszytej w UI).\n\nWartości to `device_kind` pozycji katalogu APARAT_SN, więc konsument filtruje\nlistę katalogową wprost — nie tłumaczy nazw.",
@@ -21962,6 +21991,33 @@
      }
     },
     "summary": "List Der Dynamic Profiles",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/earthing-transformer-types": {
+   "get": {
+    "description": "Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).",
+    "operationId": "list_earthing_transformer_types_api_catalog_earthing_transformer_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Earthing Transformer Types Api Catalog Earthing Transformer Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Earthing Transformer Types",
     "tags": [
      "Type Catalog"
     ]
@@ -22441,6 +22497,33 @@
      }
     },
     "summary": "Get Mv Protection Device Curves",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/neutral-earthing-resistor-types": {
+   "get": {
+    "description": "Rezystory uziemiające (REZYSTOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn`.",
+    "operationId": "list_neutral_earthing_resistor_types_api_catalog_neutral_earthing_resistor_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Neutral Earthing Resistor Types Api Catalog Neutral Earthing Resistor Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Neutral Earthing Resistor Types",
     "tags": [
      "Type Catalog"
     ]
@@ -32671,7 +32754,7 @@
   },
   "/api/v1/catalog/audit2/build-station-payload": {
    "post": {
-    "description": "Naprawy Phase 3: buduje deterministyczny payload audytu 2 dla stacji + DERs.\nZwraca rozwiniete katalogi (BESS modes, block-trafo, P(f), tap-changer, grounding)\n+ ekstraktor dla solverow (SC/PF/Protection).",
+    "description": "Naprawy Phase 3: buduje deterministyczny payload audytu 2 dla stacji + DERs.\nZwraca rozwiniete katalogi (BESS modes, block-trafo, P(f), tap-changer)\n+ ekstraktor dla solverow (SC/PF/Protection).",
     "operationId": "build_station_audit2_payload_endpoint_api_v1_catalog_audit2_build_station_payload_post",
     "requestBody": {
      "content": {
@@ -32806,33 +32889,6 @@
      }
     },
     "summary": "List Hv Fuses",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/mv-neutral-groundings": {
-   "get": {
-    "description": "Typy uziemienia neutralnego SN (B.1): isolated / petersen / R-grounded / directly.",
-    "operationId": "list_mv_neutral_groundings_api_v1_catalog_audit2_mv_neutral_groundings_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response List Mv Neutral Groundings Api V1 Catalog Audit2 Mv Neutral Groundings Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "summary": "List Mv Neutral Groundings",
     "tags": [
      "Audit2 Catalogs"
     ]
@@ -33355,6 +33411,71 @@
      }
     },
     "summary": "Apply Audit2 To Network Model Endpoint",
+    "tags": [
+     "Audit2 Station Config"
+    ]
+   }
+  },
+  "/api/v1/projects/{project_id}/audit2-station-config/{station_id}/_uziemienie-sn": {
+   "post": {
+    "description": "Sposób uziemienia punktu neutralnego sieci SN pól stacji — z MODELU sieci projektu.\n\nKarta UX-04/POLE-ZU-SKLADOWA-ZEROWA: jedyną prawdą o uziemieniu sieci SN jest zespół\nuziemiający sekcji (albo uziemiony punkt neutralny uzwojenia transformatora) —\n``enm.uziemienie_sekcji``. Konfigurator stacji nie trzyma już własnego wyboru\nuziemienia; zgodność przekładników napięciowych sprawdza z typem stąd. Pole bez\nustalonego typu niesie nazwaną przyczynę (stacja spoza modelu, brak szyn SN, odmowa\nsekcji, pole w sekcjach różnie uziemionych); ``sekcje`` — opis każdej sieci SN stacji\n(wariant, punkty uziemienia, prąd pojemnościowy, rozstrojenie, odmowy, kompletność).\nOdczyt — nie zmienia modelu.",
+    "operationId": "uziemienie_sn_pol_stacji_api_v1_projects__project_id__audit2_station_config__station_id___uziemienie_sn_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "station_id",
+      "required": true,
+      "schema": {
+       "title": "Station Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UziemieniePolRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Uziemienie Sn Pol Stacji Api V1 Projects  Project Id  Audit2 Station Config  Station Id   Uziemienie Sn Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Uziemienie Sn Pol Stacji",
     "tags": [
      "Audit2 Station Config"
     ]

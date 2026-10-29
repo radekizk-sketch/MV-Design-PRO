@@ -46,6 +46,9 @@ POLE_REPOZYTORIUM = {
     "LINIA_SN": "line_types",
     "KABEL_NN": "lv_cable_types",
     "BATERIA_BESS": "bess_battery_types",
+    "TRANSFORMATOR_UZIEMIAJACY": "earthing_transformer_types",
+    "DLAWIK_GASZACY": "arc_suppression_coil_types",
+    "REZYSTOR_UZIEMIAJACY": "neutral_earthing_resistor_types",
 }
 TYP_REFERENCYJNY = "conv-pv-card-huawei-sun2000-215ktl"
 

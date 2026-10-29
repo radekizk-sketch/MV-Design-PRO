@@ -1,18 +1,27 @@
 """Karta W5-D p. 12 (OD-24): wejście V12.6 koordynacji izolacji ZAWSZE niesie kategorię
-punktu neutralnego Z MODELU (`solver_input/v126_contracts._resolve_network_neutral`),
-nigdy podstawionej — solver FROZEN `v126_academic.py` (własne fallbacki, B-01) nietknięty.
+punktu neutralnego Z MODELU, nigdy podstawionej.
+
+Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: kategoria szyny SN pochodzi z JEDNEJ prawdy
+o uziemieniu sieci (`enm.uziemienie_sekcji` przez `v126_contracts._kategoria_tov_szyny`) —
+punkt neutralny uzwojenia transformatora z drogą prądu zerowego po stronie SN albo zespół
+uziemiający. Intencja W5-D zostaje: kategorii, której model nie wyznacza, NIE podstawia się.
+Zmienia się tylko to, co znaczy „model nie wyznacza": sieć SN bez żadnego punktu uziemienia
+(uzwojenia SN w trójkącie, brak zespołu) jest siecią IZOLOWANĄ wyprowadzoną z modelu (ta sama
+odpowiedź co składowa zerowa — brak drogi), a brakiem jest zespół uziemiający bez elementu
+w punkcie neutralnym (nazwana odmowa E-ZU-02).
 
 Iloczyn cech: {źródło danej: punkt neutralny transformatora po stronie LV, po stronie
 HV} × {directly_grounded, resistor_grounded → "earthed"; petersen_coil, isolated →
-"isolated"} + {brak danej → brak wiersza, szyna nazwana, gotowość koordynacji izolacji
-z warunkiem blokującym `ograniczniki.uziemienie_sieci_nieznane`}.
+"isolated"} + {uzwojenie SN w trójkącie → sieć izolowana z modelu} + {zespół bez elementu →
+brak wiersza, szyna nazwana, gotowość koordynacji izolacji z warunkiem blokującym
+`ograniczniki.uziemienie_sieci_nieznane`}.
 """
 
 from __future__ import annotations
 
 import pytest
 from application.analyses.v126_gotowosc import ocen_gotowosc_v126
-from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig
+from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig, ZespolUziemiajacy
 from solver_input.v126_contracts import (
     V126AnalysisType,
     build_v126_input_from_enm,
@@ -23,7 +32,13 @@ from solver_input.v126_contracts import (
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
 
 
-def _model(*, strona: str, uziemienie: GroundingConfig | None) -> EnergyNetworkModel:
+def _model(
+    *,
+    strona: str,
+    uziemienie: GroundingConfig | None,
+    grupa: str = "YNyn0",
+    zespoly: list[ZespolUziemiajacy] | None = None,
+) -> EnergyNetworkModel:
     """Ogranicznik na szynie SN 15 kV; punkt neutralny deklaruje transformator 110/15
     (`strona="lv"`) albo transformator 15/0,4 (`strona="hv"`) — obie drogi
     `_resolve_network_neutral` (szyna sama nie niesie uziemienia)."""
@@ -39,7 +54,7 @@ def _model(*, strona: str, uziemienie: GroundingConfig | None) -> EnergyNetworkM
             "ulv_kv": 15.0,
             "uk_percent": 12.0,
             "pk_kw": 120.0,
-            "vector_group": "YNyn0",
+            "vector_group": grupa,
             "lv_neutral": neutral,
         }
     else:
@@ -53,7 +68,7 @@ def _model(*, strona: str, uziemienie: GroundingConfig | None) -> EnergyNetworkM
             "ulv_kv": 0.4,
             "uk_percent": 4.5,
             "pk_kw": 6.5,
-            "vector_group": "YNyn0",
+            "vector_group": grupa,
             "hv_neutral": neutral,
         }
     return EnergyNetworkModel.model_validate(
@@ -65,6 +80,7 @@ def _model(*, strona: str, uziemienie: GroundingConfig | None) -> EnergyNetworkM
                 {"ref_id": "BUS_NN", "name": "Szyna nN", "voltage_kv": 0.4},
             ],
             "transformers": [trafo],
+            "zespoly_uziemiajace": [z.model_dump(mode="json") for z in zespoly or []],
             "substations": [
                 {"ref_id": "ST1", "name": "Stacja", "station_type": "mv_lv", "bus_refs": ["BUS_SN"]}
             ],
@@ -112,9 +128,21 @@ def test_kategoria_punktu_neutralnego_zawsze_z_modelu(
     assert build_v126_input_from_enm(model).insulation[0].network_neutral == oczekiwane
 
 
-@pytest.mark.parametrize("strona", ["lv", "hv"])
-def test_brak_uziemienia_w_modelu_nie_fabrykuje_isolated(strona: str) -> None:
-    model = _model(strona=strona, uziemienie=None)
+@pytest.mark.parametrize(("strona", "grupa"), [("lv", "YNd11"), ("hv", "Dyn11")])
+def test_siec_sn_bez_punktu_uziemienia_jest_izolowana_z_modelu(strona: str, grupa: str) -> None:
+    """Uzwojenie po stronie SN w trójkącie, brak zespołu: sieć SN nie ma drogi prądu
+    zerowego — kategoria „isolated" WYPROWADZONA z modelu (ta sama prawda co Ik1: brak
+    drogi), nie podstawiona domyślnie."""
+    model = _model(strona=strona, uziemienie=None, grupa=grupa)
+    rows = build_v126_insulation_from_enm(model)
+    assert [(r.location_bus_ref, r.network_neutral) for r in rows] == [("BUS_SN", "isolated")]
+    assert ograniczniki_bez_uziemienia_sieci(model) == ()
+
+
+@pytest.mark.parametrize(("strona", "grupa"), [("lv", "YNd11"), ("hv", "Dyn11")])
+def test_zespol_bez_elementu_nie_fabrykuje_kategorii(strona: str, grupa: str) -> None:
+    zespol = ZespolUziemiajacy(ref_id="ZU1", name="ZU 1", bus_ref="BUS_SN")
+    model = _model(strona=strona, uziemienie=None, grupa=grupa, zespoly=[zespol])
     assert build_v126_insulation_from_enm(model) == []
     assert ograniczniki_bez_uziemienia_sieci(model) == ("BUS_SN",)
     gotowosc = ocen_gotowosc_v126(model, V126AnalysisType.INSULATION_COORDINATION)

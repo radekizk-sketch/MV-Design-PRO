@@ -1,18 +1,16 @@
 /**
- * W5-A (jedna reprezentacja uziemienia) × karta GPZ-MODEL (granica zasilania): kreator
- * źródła GPZ na REALNYM backendzie.
+ * Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 1, 3) × GPZ-MODEL (granica zasilania): kreator
+ * źródła GPZ na REALNYM backendzie — uziemienie sieci SN to zespół uziemiający sekcji.
  *
- * Ścieżka natywna projektanta: nazwa → pozycja katalogowa równoważnika na szynach SN →
- * składowa zerowa WYŁĄCZONA (brak jawnych liczb Z0) → krok Transformatory (transformatory
- * 110/SN są w równoważniku, poza modelem) → punkt neutralny sieci SN „uziemiony przez
- * rezystor" z R_N → zapis. Dowód przez API:
- *  - `Source.neutral_grounding` niesie opis punktu neutralnego (JEDYNY nośnik),
- *  - model NIE ma transformatorów 110/SN, a Z0 równoważnika NIE jest wyprowadzane
- *    z transformatora spoza modelu (karta GPZ-MODEL skasowała to wyprowadzenie: grupa
- *    Yd11 nie daje drogi składowej zerowej po stronie SN) — `r0_ohm`/`x0_ohm` puste,
- *  - walidator (`GET /enm/validate`) zgłasza blokadę E-W5-01 „uziemiony bez Z0" z
- *    podpowiedzią, skąd wziąć Z0 (dane operatora / transformator uziemiający albo
- *    równoważnik 110 kV z transformatorami w modelu),
+ * Ścieżka natywna projektanta: nazwa → pozycja katalogowa równoważnika na szynach SN (bez
+ * sekcji składowej zerowej — równoważnik SN nie niesie Z0) → krok Transformatory
+ * (transformatory 110/SN są w równoważniku, poza modelem) → Rozdzielnia SN: bez wyboru
+ * punktu neutralnego źródła, zespół uziemiający w sekcji 1 (Z.15: transformator ZNyn11
+ * z rezystorem) z katalogu → zapis. Dowód przez API:
+ *  - źródło NIE niesie `neutral_grounding` ani Z0 (opis tylko dla sieci 110 kV),
+ *  - model ma pole ZU sekcji 1 i zespół uziemiający z rezystorem na zacisku tego pola,
+ *  - walidator (`GET /enm/validate`) nie zgłasza E-W5-01 ani W-W5-02 dla źródła,
+ *  - odczyt uziemienia stacji (`/_uziemienie-sn`) — sekcja 1 „rezystor”, sekcja 2 izolowana,
  *  - szyny GPZ nie niosą `grounding`, meta stacji nie niesie `grounding`/`zero_sequence`.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
@@ -22,6 +20,8 @@ const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 
 type Snapshot = {
   buses?: Array<Record<string, unknown> & { ref_id: string }>;
+  bays?: Array<{ ref_id: string; bay_role?: string; bus_ref?: string; terminal_bus_ref?: string | null }>;
+  zespoly_uziemiajace?: Array<{ ref_id: string; bus_ref: string; bay_ref?: string | null; rezystor?: Record<string, unknown> | null; dlawik?: Record<string, unknown> | null }>;
   sources?: Array<{
     ref_id: string;
     bus_ref: string;
@@ -72,7 +72,10 @@ async function createProjectAndCase(request: APIRequestContext) {
   return { projectId: project.id, projectName, caseId: studyCase.id, caseName };
 }
 
-async function otworzAplikacje(page: Page, request: APIRequestContext): Promise<{ caseId: string }> {
+async function otworzAplikacje(
+  page: Page,
+  request: APIRequestContext,
+): Promise<{ caseId: string; projectId: string }> {
   const { projectId, projectName, caseId, caseName } = await createProjectAndCase(request);
   await page.addInitScript((seed) => {
     localStorage.setItem(
@@ -98,7 +101,7 @@ async function otworzAplikacje(page: Page, request: APIRequestContext): Promise<
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  return { caseId };
+  return { caseId, projectId };
 }
 
 async function otworzKreatorZrodla(page: Page): Promise<void> {
@@ -115,36 +118,42 @@ async function przejdzDoKroku(page: Page, tytul: string): Promise<void> {
   await page.getByRole('button', { name: tytul, exact: false }).first().click();
 }
 
-test('W5-A × GPZ-MODEL: kreator zrodla — punkt neutralny → Source.neutral_grounding, uziemiony bez Z0 = blokada E-W5-01', async ({
+test('ZU × GPZ-MODEL: kreator źródła — uziemienie sieci SN zespołem uziemiającym sekcji, źródło SN bez punktu neutralnego i Z0', async ({
   page,
   request,
 }) => {
   test.setTimeout(240000);
-  const { caseId } = await otworzAplikacje(page, request);
+  const { caseId, projectId } = await otworzAplikacje(page, request);
   await otworzKreatorZrodla(page);
 
   // Krok 1: identyfikacja.
-  await page.getByTestId('mvd-kreator-zrodlo-nazwa').fill('GPZ W5-A');
+  await page.getByTestId('mvd-kreator-zrodlo-nazwa').fill('GPZ ZU');
 
-  // Krok 2: równoważnik z katalogu (napięcie SN spływa z pozycji), składowa zerowa WYŁĄCZONA.
+  // Krok 2: równoważnik z katalogu (napięcie SN spływa z pozycji). Równoważnik na szynach SN
+  // nie opisuje Z0 — sekcji składowej zerowej nie ma.
   await przejdzDoKroku(page, 'Źródło i strona WN');
   const katalog = page.getByTestId('mvd-kreator-zrodlo-katalog-select');
   await expect(katalog.locator(`option[value="${SOURCE_ID}"]`)).toHaveCount(1, { timeout: 20000 });
   await katalog.selectOption(SOURCE_ID);
-  const zero = page.getByTestId('mvd-kreator-zrodlo-zero-toggle');
-  if (await zero.isChecked()) await zero.click();
-  await expect(zero).not.toBeChecked();
+  await expect(page.getByTestId('mvd-kreator-zrodlo-zero')).toHaveCount(0);
 
-  // Krok 3: transformatory 110/SN są zawarte w równoważniku na szynach SN — kreator
-  // nie oferuje ich liczby ani typu (granica zasilania SN).
+  // Krok 3: transformatory 110/SN są zawarte w równoważniku na szynach SN.
   await przejdzDoKroku(page, 'Transformatory');
   await expect(page.getByTestId('mvd-kreator-zrodlo-transformatory-poza-modelem')).toBeVisible();
   await expect(page.getByTestId('mvd-kreator-zrodlo-transformator-katalog')).toHaveCount(0);
 
-  // Krok 4: rozdzielnia SN — punkt neutralny uziemiony przez rezystor 12 Ω (natywnie).
+  // Krok 4: rozdzielnia SN — bez wyboru punktu neutralnego źródła; zespół Z.15 w sekcji 1.
   await przejdzDoKroku(page, 'Rozdzielnia SN');
-  await page.getByTestId('mvd-kreator-zrodlo-uziemienie').selectOption('resistor_grounded');
-  await page.getByTestId('mvd-kreator-zrodlo-uziemienie-ohm').fill('12');
+  await expect(page.getByTestId('mvd-kreator-zrodlo-uziemienie')).toHaveCount(0);
+  await page.getByTestId('mvd-kreator-zrodlo-sekcja-1-zu').click();
+  await page.getByTestId('mvd-kreator-zrodlo-zu-wariant-rezystor').click();
+  const tu = page.getByTestId('mvd-kreator-zrodlo-zu-transformator');
+  await expect(tu.locator('option[value="TU_ZNYN11_15KV_PW160"]')).toHaveCount(1, { timeout: 20000 });
+  await tu.selectOption('TU_ZNYN11_15KV_PW160');
+  const rezystor = page.getByTestId('mvd-kreator-zrodlo-zu-rezystor');
+  await expect(rezystor.locator('option[value="REZ_200A_15KV"]')).toHaveCount(1, { timeout: 20000 });
+  await rezystor.selectOption('REZ_200A_15KV');
+  await expect(page.getByTestId('mvd-kreator-zrodlo-zu-wylaczenie-tr')).toHaveCount(0);
 
   // Zapis: jedna operacja domenowa `add_grid_source_sn`.
   await przejdzDoKroku(page, 'Podsumowanie i zapis');
@@ -157,31 +166,31 @@ test('W5-A × GPZ-MODEL: kreator zrodla — punkt neutralny → Source.neutral_g
   const enm = await pobierzEnm(request, caseId);
   const zrodlo = (enm.sources ?? [])[0];
   expect(zrodlo, 'źródło powstało w modelu').toBeTruthy();
-  // Odpowiedź `/enm` serializuje pełny kontrakt `GroundingConfig` (składowa nieużywana = null).
-  expect(zrodlo.neutral_grounding).toMatchObject({ type: 'resistor_grounded', r_ohm: 12 });
-  expect(zrodlo.neutral_grounding?.x_ohm ?? null).toBeNull();
-
-  // Granica zasilania SN: brak transformatorów 110/SN w modelu i brak Z0 wyprowadzonego
-  // z transformatora spoza modelu.
+  expect(zrodlo.neutral_grounding ?? null).toBeNull();
   expect(zrodlo.source_side ?? 'SN').toBe('SN');
   expect(enm.transformers ?? []).toHaveLength(0);
   expect(zrodlo.r0_ohm ?? null).toBeNull();
   expect(zrodlo.x0_ohm ?? null).toBeNull();
   expect(zrodlo.z0_z1_ratio ?? null).toBeNull();
-  expect((zrodlo.materialized_params ?? {}) as Record<string, unknown>).not.toHaveProperty(
-    'zero_sequence_provenance',
-  );
 
-  // Uziemiony bez Z0 = blokada nazwana walidatora, z podpowiedzią źródła danych Z0.
+  // Zespół uziemiający na zacisku pola ZU sekcji 1.
+  const zespoly = enm.zespoly_uziemiajace ?? [];
+  expect(zespoly).toHaveLength(1);
+  const pole = (enm.bays ?? []).find((b) => b.ref_id === zespoly[0].bay_ref);
+  expect(pole?.bay_role).toBe('ZU');
+  expect(zespoly[0].bus_ref).toBe(pole?.terminal_bus_ref);
+  expect(zespoly[0].rezystor).toBeTruthy();
+  expect(zespoly[0].dlawik ?? null).toBeNull();
+
+  // Walidator: źródło SN bez opisu punktu neutralnego i Z0 — ani blokady E-W5-01, ani W-W5-02.
   const walidacja = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm/validate`, { timeout: 30000 });
   expect(walidacja.ok()).toBeTruthy();
   const { issues } = (await walidacja.json()) as {
-    issues: Array<{ code: string; element_refs: string[]; message_pl: string; suggested_fix?: string | null }>;
+    issues: Array<{ code: string; element_refs: string[]; message_pl: string }>;
   };
-  const blokada = issues.filter((i) => i.code === 'E-W5-01' && i.element_refs.includes(zrodlo.ref_id));
-  expect(blokada).toHaveLength(1);
-  expect(blokada[0].message_pl).toContain('nie ma impedancji zerowej');
-  expect(blokada[0].suggested_fix ?? '').toContain('równoważnik sieci po stronie 110 kV');
+  expect(
+    issues.filter((i) => ['E-W5-01', 'W-W5-02'].includes(i.code) && i.element_refs.includes(zrodlo.ref_id)),
+  ).toEqual([]);
 
   // Kasacje: szyny bez `grounding`, meta stacji GPZ bez `grounding`/`zero_sequence`.
   for (const szyna of enm.buses ?? []) expect(szyna).not.toHaveProperty('grounding');
@@ -189,4 +198,14 @@ test('W5-A × GPZ-MODEL: kreator zrodla — punkt neutralny → Source.neutral_g
   expect(gpz, 'stacja GPZ w modelu').toBeTruthy();
   expect(gpz?.meta ?? {}).not.toHaveProperty('grounding');
   expect(gpz?.meta ?? {}).not.toHaveProperty('zero_sequence');
+
+  // Odczyt uziemienia stacji — ta sama funkcja, którą czyta konfigurator stacji.
+  const odczyt = await request.post(
+    `${BACKEND_BASE}/api/v1/projects/${projectId}/audit2-station-config/${gpz?.ref_id}/_uziemienie-sn`,
+    { data: { pola: [] }, timeout: 30000 },
+  );
+  expect(odczyt.ok()).toBeTruthy();
+  const { sekcje } = (await odczyt.json()) as { sekcje: Array<{ szyny: string[]; wariant: string }> };
+  const sekcjaZespolu = sekcje.find((s) => s.szyny.includes(pole?.bus_ref ?? ''));
+  expect(sekcjaZespolu?.wariant).toBe('rezystor');
 });

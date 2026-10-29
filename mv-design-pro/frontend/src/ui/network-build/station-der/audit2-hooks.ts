@@ -16,6 +16,7 @@ import type { RunStatus } from '../../study-cases/types';
 import {
   deleteStationAudit2Config,
   fetchAudit2CatalogSnapshot,
+  fetchUziemienieSnStacji,
   generateAudit2Report,
   generateProjectAudit2ProofPack,
   listStationAudit2Configs,
@@ -26,6 +27,7 @@ import {
   type Audit2ReportResponse,
   type StationAudit2ConfigBody,
   type StationAudit2ConfigResponse,
+  type UziemienieSnStacjiResponse,
 } from './audit2-api';
 
 // =============================================================================
@@ -67,6 +69,23 @@ export function useStationAudit2ConfigList(
     queryKey: audit2QueryKeys.stationConfigList(projectId ?? ''),
     queryFn: () => listStationAudit2Configs(projectId!),
     enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Uziemienie punktu neutralnego sieci SN stacji — z MODELU (karta UX-04/POLE-ZU,
+ * `enm.uziemienie_sekcji`). Rewizja modelu w kluczu: zmiana modelu = nowy odczyt.
+ */
+export function useUziemienieSnStacji(
+  projectId: string | null,
+  stationId: string | null,
+  rewizja: number | null,
+): UseQueryResult<UziemienieSnStacjiResponse, Error> {
+  return useQuery({
+    queryKey: audit2QueryKeys.uziemienieSn(projectId ?? '', stationId ?? '', rewizja),
+    queryFn: () => fetchUziemienieSnStacji({ projectId: projectId!, stationId: stationId!, pola: [] }),
+    enabled: Boolean(projectId && stationId),
     staleTime: 30_000,
   });
 }

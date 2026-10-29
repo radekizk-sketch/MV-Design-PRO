@@ -14,10 +14,13 @@ import type {
   Generator,
   Measurement,
   ProtectionAssignment,
+  Source,
   Substation,
   Transformer,
+  ZespolUziemiajacy,
 } from '../../../../../types/enm';
 import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
+import { czyPoleKabloweGpz } from '../canonicalGpzModel';
 import { pole } from '../../../../../test/pola';
 import { BAY_MODEL_ROLES } from '../../../../../types/enm';
 
@@ -38,6 +41,8 @@ type EnmFragment = Pick<
   // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
   // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
   | 'sources'
+  // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN z zespołów uziemiających stacji.
+  | 'zespoly_uziemiajace'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -1094,6 +1099,7 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     COUPLER: 'sprzeglo',
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
+    ZU: 'uziemiajace',
     BKR: 'kompensacyjne',
   } as const;
 
@@ -1108,6 +1114,34 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
       };
       const props = buildCanonicalGpzProps(enm, 'g');
       expect(props.sections[0].bays[0].rolaPola).toBe(OCZEKIWANA[rola]);
+    });
+  }
+
+  // Rola stosu pola i predykat pola kablowego (wybór pola magistrali i feederów sieci) — iloczyn
+  // po WSZYSTKICH rolach modelu. Pole ZU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) i pole BKR
+  // spadały dawniej w `default: LINE_OUT` — kandydat na pole magistrali sieci.
+  const ROLA_STOSU = {
+    IN: ['LINE_IN', true],
+    OUT: ['LINE_OUT', true],
+    FEEDER: ['LINE_BRANCH', true],
+    TR: ['TRANSFORMER', false],
+    COUPLER: ['COUPLER', false],
+    MEASUREMENT: ['MEASUREMENT', false],
+    OZE: ['SOURCE', true],
+    ZU: ['EARTHING_UNIT', false],
+    BKR: ['CAPACITOR_BANK', false],
+  } as const;
+  for (const rola of ROLE_ENM) {
+    it(`bay_role=${rola} → rola stosu ${ROLA_STOSU[rola][0]}, pole kablowe: ${ROLA_STOSU[rola][1]}`, () => {
+      const enm: EnmFragment = {
+        ...emptyEnm(),
+        substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+        bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1' })],
+        buses: [bus('bus-15', 15)],
+      };
+      const [pole] = buildCanonicalGpzProps(enm, 'g').sections[0].bays;
+      expect(pole.fieldRole).toBe(ROLA_STOSU[rola][0]);
+      expect(czyPoleKabloweGpz(pole.fieldRole)).toBe(ROLA_STOSU[rola][1]);
     });
   }
 
@@ -1152,5 +1186,85 @@ describe('buildCanonicalGpzProps — napięcie sekcji bez wartości domyślnej',
       buses: [bus('bus-15', 15)],
     };
     expect(buildCanonicalGpzProps(enm, 'g').sections[0].busVoltageKv).toBeNull();
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: aparat punktu neutralnego sieci SN na schemacie
+   GPZ — WYŁĄCZNIE zainstalowany element zespołu uziemiającego na szynie SN stacji albo
+   punkt neutralny uzwojenia SN transformatora. Iloczyn cech: element zespołu {dławik,
+   rezystor, dławik ‖ rezystor, bezpośrednie, bez elementu} × nośnik {zespół na szynie
+   stacji, zespół na szynie innej stacji, uzwojenie SN TR, źródło 110 kV z opisem
+   punktu neutralnego}.
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — aparat punktu neutralnego sieci SN z modelu', () => {
+  function zespol(busRef: string, elementy: Partial<ZespolUziemiajacy>): ZespolUziemiajacy {
+    return { id: 'zu-1', ref_id: 'zu-1', name: 'ZU 1', tags: [], meta: {}, bus_ref: busRef, ...elementy } as ZespolUziemiajacy;
+  }
+  function siec(over: Partial<EnmFragment>): EnmFragment {
+    return {
+      ...emptyEnm(),
+      substations: [
+        gpz('g', {
+          bus_refs: ['bus-110', 'bus-15'],
+          transformer_refs: ['tr-1'],
+          gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+        }),
+      ],
+      buses: [bus('bus-110', 110), bus('bus-15', 15), bus('bus-obca', 15)],
+      transformers: [transformer('tr-1')],
+      ...over,
+    };
+  }
+
+  const ZESPOLY: ReadonlyArray<readonly [string, Partial<ZespolUziemiajacy>, unknown]> = [
+    ['dławik (Z.13)', { dlawik: { i_min_a: 40, i_max_a: 400 } }, { kind: 'coil' }],
+    ['rezystor (Z.15)', { rezystor: { r_ohm: 43.3 } }, { kind: 'resistor', rOhm: 43.3 }],
+    ['dławik ‖ rezystor (Z.14)', { dlawik: {}, rezystor: { r_ohm: 50 } }, { kind: 'coil', rOhm: 50 }],
+    ['uziemienie bezpośrednie', { uziemienie_bezposrednie: true }, { kind: 'direct' }],
+    ['bez elementu', {}, null],
+  ];
+  for (const [nazwa, elementy, oczekiwane] of ZESPOLY) {
+    it(`zespół na szynie SN stacji: ${nazwa}`, () => {
+      const props = buildCanonicalGpzProps(siec({ zespoly_uziemiajace: [zespol('bus-15', elementy)] }), 'g');
+      expect(props.snNeutralEarthing).toEqual(oczekiwane);
+    });
+  }
+
+  it('zespół na szynie SN innej stacji nie jest aparatem tej stacji', () => {
+    const props = buildCanonicalGpzProps(
+      siec({ zespoly_uziemiajace: [zespol('bus-obca', { rezystor: { r_ohm: 43.3 } })] }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toBeNull();
+  });
+
+  it('punkt neutralny uzwojenia SN transformatora stacji uziemiony przez rezystor', () => {
+    const props = buildCanonicalGpzProps(
+      siec({ transformers: [transformer('tr-1', { lv_neutral: { type: 'resistor_grounded', r_ohm: 43.3 } })] }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toEqual({ kind: 'resistor', rOhm: 43.3, xOhm: undefined });
+  });
+
+  it('opis punktu neutralnego sieci 110 kV na źródle GPZ NIE jest punktem neutralnym sieci SN', () => {
+    const zrodlo = {
+      id: 'src', ref_id: 'src', name: 'Sieć 110 kV', tags: [], meta: {}, bus_ref: 'bus-110',
+      substation_ref: 'g', model: 'short_circuit_power', neutral_grounding: { type: 'directly_grounded' },
+    } as unknown as Source;
+    const props = buildCanonicalGpzProps(siec({ sources: [zrodlo] }), 'g');
+    expect(props.snNeutralEarthing).toBeNull();
+  });
+
+  it('zespół ma pierwszeństwo przed uzwojeniem transformatora', () => {
+    const props = buildCanonicalGpzProps(
+      siec({
+        transformers: [transformer('tr-1', { lv_neutral: { type: 'directly_grounded' } })],
+        zespoly_uziemiajace: [zespol('bus-15', { dlawik: {} })],
+      }),
+      'g',
+    );
+    expect(props.snNeutralEarthing).toEqual({ kind: 'coil' });
   });
 });

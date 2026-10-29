@@ -40,7 +40,7 @@ from enm.bateria_kondensatorow import (
     admitancja_baterii,
 )
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
-from enm.mapping import build_zero_sequence_trace, map_enm_to_network_graph
+from enm.mapping import build_zero_sequence_zbus_with_trace, map_enm_to_network_graph
 from enm.models import (
     Bus,
     Cable,
@@ -49,6 +49,7 @@ from enm.models import (
     Load,
     ShuntCapacitor,
     Source,
+    ZespolUziemiajacy,
 )
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, opcje_biegu_ze_scenariusza
 from enm.store import reset_enm_store, set_enm
@@ -66,6 +67,7 @@ from tests.reference_networks.scena_pola_bkr import (
     zbuduj_gpz_z_bkr,
 )
 from tests.reference_networks.sceny_zajetosci_pol import ok, op
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
 
 Q_N_MVAR = 1.2
 U_N_KV = 15.0
@@ -388,14 +390,47 @@ def test_zwarcie_1f_droga_zerowa_wylacznie_gwiazdy_uziemionej(
         assert {d["jakosc"] for d in robocze[0]["dane_przyjete"]} == {"ESTIMATED"}
     # Ślad budowy macierzy Y0: wpis baterii z decyzją o drodze zerowej.
     enm = _siec_zwarcia(bat, 1.0)
-    slad = {w["key"]: w for w in build_zero_sequence_trace(enm, map_enm_to_network_graph(enm))}
+    slad = {
+        w["key"]: w
+        for w in build_zero_sequence_zbus_with_trace(enm, map_enm_to_network_graph(enm))[1]
+    }
     wpis = slad["z0_shunt_capacitor[BAT]"]
     assert (wpis["result"]["y0_pu"] == 0) is not uziemiona
+    # Ten sam krok trafia do wyniku biegu 1F (`raw_result.siec_zerowa`) — decyzja o drodze
+    # zerowej baterii jest audytowalna w wyniku, nie tylko w funkcji budującej macierz.
+    [wpis_biegu] = [w for w in raw["siec_zerowa"] if w["key"] == "z0_shunt_capacitor[BAT]"]
+    assert wpis_biegu["title"] == wpis["title"]
+    assert wpis_biegu["substitution"] == wpis["substitution"]
+    assert (_zespolona(wpis_biegu["result"]["y0_pu"]) == 0) is not uziemiona
 
 
 # ---------------------------------------------------------------------------
 # Prąd pojemnościowy doziemienia (projekt uziemienia punktu neutralnego)
 # ---------------------------------------------------------------------------
+
+
+def _siec_kompensowana(bat: ShuntCapacitor | None) -> EnergyNetworkModel:
+    """Sieć zwarciowa z punktem neutralnym uziemionym przez dławik gaszący (Z.13): projekt
+    uziemienia punktu neutralnego czyta sposób uziemienia WYŁĄCZNIE z zespołu uziemiającego
+    sekcji (jedyna prawda `enm.uziemienie_sekcji`; parametr biegu go nie nadpisuje)."""
+    enm = _siec_zwarcia(bat, 1.0)
+    [zespol] = enm.zespoly_uziemiajace
+    return enm.model_copy(
+        update={
+            "zespoly_uziemiajace": [
+                ZespolUziemiajacy.model_validate(
+                    zespol_uziemiajacy_rekord(zespol.ref_id, zespol.bus_ref, wariant="dlawik")
+                )
+            ]
+        }
+    )
+
+
+def _wejscie_projektu_uziemienia(enm: EnergyNetworkModel) -> Any:
+    """Wejście projektu uziemienia z modelu — ścieżka produktu (`execute_v126_run` buduje je
+    z rodzajem analizy, który dokłada uziemienie sieci SN z jedynej prawdy
+    `enm.uziemienie_sekcji`; bez niego solver odmawia: „dane niekompletne")."""
+    return build_v126_input_from_enm(enm, analysis_type=V126AnalysisType.NEUTRAL_EARTHING_DESIGN)
 
 
 @pytest.mark.parametrize("dlawik_mh", DLAWIKI, ids=["bez_dlawika", "z_dlawikiem"])
@@ -404,7 +439,7 @@ def test_zwarcie_1f_droga_zerowa_wylacznie_gwiazdy_uziemionej(
 def test_prad_pojemnosciowy_tylko_gwiazdy_uziemionej(
     uklad: str, stopnie: str, dlawik_mh: float | None
 ) -> None:
-    enm = _siec_zwarcia(None, 1.0)
+    enm = _siec_kompensowana(None)
     # Kable z jawną pojemnością doziemną — ten sam przypadek zawsze ma C0 sieci.
     b0_kabli = 1e-4
     enm = enm.model_copy(
@@ -416,12 +451,12 @@ def test_prad_pojemnosciowy_tylko_gwiazdy_uziemionej(
         }
     )
     odniesienie = V126AcademicSolver().run(
-        V126AnalysisType.NEUTRAL_EARTHING_DESIGN, build_v126_input_from_enm(enm)
+        V126AnalysisType.NEUTRAL_EARTHING_DESIGN, _wejscie_projektu_uziemienia(enm)
     )["result"]
     z_baterii = enm.model_copy(
         update={"shunt_capacitors": [_bateria(uklad, stopnie, dlawik_mh, bus_ref=N1)]}
     )
-    wejscie = build_v126_input_from_enm(z_baterii)
+    wejscie = _wejscie_projektu_uziemienia(z_baterii)
     wynik = V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, wejscie)["result"]
     i_c, i_c_odniesienia = (
         wynik["capacitive_earth_fault_current_a"],
@@ -448,22 +483,18 @@ def test_prad_pojemnosciowy_bateria_jedynym_zrodlem_c0_gotowosc_i_solver_zgodne(
     from application.analyses.v126_gotowosc import ocen_gotowosc_v126
 
     for uklad, oczekiwana in (("GWIAZDA_UZIEMIONA", True), ("PODWOJNA_GWIAZDA_IZOLOWANA", False)):
-        enm = _siec_zwarcia(_bateria(uklad, "jeden_stopien", None, bus_ref=N1), 1.0)
-        gotowosc = ocen_gotowosc_v126(
-            enm,
-            V126AnalysisType.NEUTRAL_EARTHING_DESIGN,
-            {"neutral_earthing_type": "petersen_coil"},
-        )
+        enm = _siec_kompensowana(_bateria(uklad, "jeden_stopien", None, bus_ref=N1))
+        gotowosc = ocen_gotowosc_v126(enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
         [warunek] = [w for w in gotowosc.warunki if w.kod == "galezie.b0"]
         assert warunek.spelniony is oczekiwana, uklad
         wynik = V126AcademicSolver().run(
-            V126AnalysisType.NEUTRAL_EARTHING_DESIGN, build_v126_input_from_enm(enm)
+            V126AnalysisType.NEUTRAL_EARTHING_DESIGN, _wejscie_projektu_uziemienia(enm)
         )["result"]
         assert ("capacitive_earth_fault_current_a" in wynik) is oczekiwana
         if oczekiwana:
-            assert wynik["branches_missing_b0"] == ["C_NN", "C_SN"] or sorted(
-                wynik["branches_missing_b0"]
-            ) == ["C_NN", "C_SN"]
+            # Wyłącznie gałęzie sieci SN galwanicznie połączonej z punktem neutralnym — kabel nN
+            # (za transformatorem SN/nN, inna sieć galwaniczna) nie wnosi C0 do I_C sieci SN.
+            assert wynik["branches_missing_b0"] == ["C_SN"]
             [pominiete] = [w for w in gotowosc.warunki if w.kod == "galezie.bez_b0"]
             assert pominiete.spelniony is False and pominiete.blokujacy is False
 

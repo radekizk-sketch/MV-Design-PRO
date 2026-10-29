@@ -170,7 +170,6 @@ def test_solver_input_endpoint_audit2_params_documented(app_client):
         pid,
         "station-X",
         {
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
@@ -197,7 +196,6 @@ def test_audit2_config_persists_after_session(app_client):
         pid,
         "station-Y",
         {
-            "mv_neutral_grounding_ref": "mng_isolated",
             "tap_changer_refs": [],
             "der_specs": [],
         },
@@ -206,7 +204,7 @@ def test_audit2_config_persists_after_session(app_client):
     for _ in range(3):
         res = app_client.get(f"/api/v1/projects/{pid}/audit2-station-config/station-Y")
         assert res.status_code == 200
-        assert res.json()["mv_neutral_grounding_ref"] == "mng_isolated"
+        assert res.json()["station_id"] == "station-Y"
 
 
 def test_audit2_per_transformer_persistence_round_trip(app_client):
@@ -217,7 +215,6 @@ def test_audit2_per_transformer_persistence_round_trip(app_client):
         pid,
         "station-Z",
         {
-            "mv_neutral_grounding_ref": None,
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {
@@ -250,7 +247,6 @@ def test_audit2_power_flow_run_uses_config_from_db(app_client):
         pid,
         "station-pf",
         {
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
@@ -315,7 +311,6 @@ def test_audit2_power_flow_run_full_apply_trail(app_client):
         pid,
         "station-trail",
         {
-            "mv_neutral_grounding_ref": "mng_isolated",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {},
@@ -365,7 +360,6 @@ def test_get_solver_input_with_audit2_query_params_populates_extensions(app_clie
         pid,
         "station-real-test",
         {
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
@@ -389,9 +383,10 @@ def test_get_solver_input_with_audit2_query_params_populates_extensions(app_clie
     assert (
         "tr_001" in body["audit2_extensions"]["power_flow_extensions"]["transformer_to_tap_changer"]
     )
-    # Grounding type.
-    grounding = body["audit2_extensions"]["sc_iec60909_extensions"]["mv_neutral_grounding"]
-    assert grounding["grounding_type"] == "petersen_coil"
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: rozszerzenia nie niosą sposobu uziemienia SN —
+    # solver czyta go z modelu (zespoły uziemiające), nie z konfiguracji stacji.
+    assert body["audit2_extensions"]["sc_iec60909_extensions"] == {}
+    assert "grounding_type" not in body["audit2_extensions"]["protection_extensions"]
 
 
 def test_get_solver_input_without_audit2_params_returns_none(app_client):
@@ -424,7 +419,6 @@ def test_apply_to_network_model_endpoint_full_pipeline(app_client):
         pid,
         "station-apply",
         {
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {
@@ -462,7 +456,6 @@ def test_der_spec_nominal_power_persists(app_client):
         pid,
         "station-power",
         {
-            "mv_neutral_grounding_ref": None,
             "tap_changer_refs": [],
             "der_specs": [
                 {
@@ -514,7 +507,6 @@ def test_audit2_short_circuit_run_reads_config_with_request_uow(app_client):
         pid,
         "station-sc",
         {
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
         },

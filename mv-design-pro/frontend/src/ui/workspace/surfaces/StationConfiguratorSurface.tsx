@@ -5,7 +5,7 @@
  * przyłączeniowe przypięte do tej stacji oraz otwiera właściwe powierzchnie
  * konfiguracji z zachowaniem kontekstu stacji.
  *
- * Punkt 3 Phase 4: konfiguracja audytu 2 (mvNeutralGroundingRef etc.)
+ * Punkt 3 Phase 4: konfiguracja audytu 2 (zaczepy, wkładki, przekładniki itd.)
  * pull-from-backend przez `useStationAudit2Config` + UPSERT przez
  * `useUpdateStationAudit2Config` (React Query, optimistic updates).
  */
@@ -33,6 +33,7 @@ import {
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
+  useUziemienieSnStacji,
   selectDersOfStation,
   type StationDerConnection,
 } from '../../network-build/station-der';
@@ -80,33 +81,20 @@ interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
 }
 
-/**
- * Konfiguracja stacji audytu 2 — projekcja na potrzeby Surface.
- *
- * Punkt 3: dane plyną przez React Query z backendu (`station_audit2_configs`).
- * Optimistic updates przez `useUpdateStationAudit2Config`.
- */
-interface StationLocalConfig {
-  readonly mvNeutralGroundingRef: string | null;
-}
-
 /** Minimalne propsy konfiguratora — używane gdy brak danych snapshot. */
-function buildBaseStationProps(stationName: string, localConfig: StationLocalConfig) {
+function buildBaseStationProps(stationName: string) {
   return {
     basic: {
       stationName,
       // Brak danych stacji w migawce = rodzaj nieustalony (bez domysłu „końcowa”).
       topologicalType: null,
       topologicalReasonPl: null,
-      constructionType: 'kontenerowa' as const,
+      // Brak typu konstrukcyjnego w migawce = „nie podano” (bez domysłu „kontenerowa”).
+      constructionType: null,
       // Brak danych stacji = napięcia nieznane (bez domysłu 15 / 0,4 kV).
       snVoltageKv: null,
       nnVoltageLevels: [],
       completeness: 'missing' as const,
-      mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
-      // Karta FAB-L: nadpisane niżej danymi ze snapshotu audytu 2 — pusta
-      // lista jest stanem PRZED pobraniem, nie brakiem katalogu.
-      mvNeutralGroundings: [],
     },
     topology: {
       externalPorts: [],
@@ -131,24 +119,10 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
     // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
     transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
     protection: {
-      // Pakiet G: typ uziemienia synchronizowany z karty 1 (basic).
-      mvNeutralGroundingType: mapGroundingRefToType(localConfig.mvNeutralGroundingRef),
       deviceWithstandRows: [],
     },
     readiness: { items: [] },
   };
-}
-
-/** Mapowanie catalog_ref do typu uziemienia (dla ProtectionCard validation). */
-function mapGroundingRefToType(
-  ref: string | null,
-): 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded' | undefined {
-  if (!ref) return undefined;
-  if (ref === 'mng_isolated') return 'isolated';
-  if (ref === 'mng_petersen') return 'petersen_coil';
-  if (ref.startsWith('mng_resistor')) return 'resistor_grounded';
-  if (ref === 'mng_directly') return 'directly_grounded';
-  return undefined;
 }
 
 /** Mapowanie rodzaju DER → screenCode konfiguratora. */
@@ -629,12 +603,13 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
   // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
   // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
-  // Karta FAB-L: TEN SAM snapshot niesie też `mv_neutral_groundings`/
-  // `tap_changers` — zero drugiego zapytania sieciowego dla katalogów, które
-  // konfigurator już potrzebuje (Karta 1/Uziemienie, Karta 5 transformatora).
+  // Karta FAB-L: TEN SAM snapshot niesie też `tap_changers` — zero drugiego
+  // zapytania sieciowego dla katalogów, które konfigurator już potrzebuje (Karta 5
+  // transformatora). Uziemienie punktu neutralnego SN nie jest pozycją katalogu
+  // audytu 2 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): niesie je zespół uziemiający
+  // sekcji w modelu, a karta zabezpieczeń czyta je z backendu.
   const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
   const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
-  const mvNeutralGroundings = audit2CatalogSnapshotQuery.data?.mv_neutral_groundings ?? [];
   const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
   // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
   // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
@@ -694,12 +669,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
   const audit2Config = useStationAudit2Config(projectId, stationRef);
   const updateAudit2Config = useUpdateStationAudit2Config();
-  const localConfig: StationLocalConfig = useMemo(
-    () => ({
-      mvNeutralGroundingRef: audit2Config.data?.mv_neutral_grounding_ref ?? null,
-    }),
-    [audit2Config.data?.mv_neutral_grounding_ref],
-  );
+  // Karta UX-04/POLE-ZU: uziemienie punktu neutralnego sieci SN stacji czytane z MODELU
+  // (backend, `enm.uziemienie_sekcji`); rewizja modelu w kluczu — zmiana modelu = odczyt.
+  const rewizjaModelu = snapshot?.header?.revision ?? null;
+  const uziemienieSn = useUziemienieSnStacji(projectId, stationRef, rewizjaModelu);
 
   // Punkt 3 Phase 5: sync der_specs -> backend gdy DERs zmieniaja sie w lokalnym
   // Zustand store. Zustand pozostaje dla SLD rendering (kompatybilnosc z istniejacym
@@ -731,7 +704,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       projectId,
       stationId: stationRef,
       body: {
-        mv_neutral_grounding_ref: audit2Config.data.mv_neutral_grounding_ref,
         tap_changer_refs: audit2Config.data.tap_changer_refs,
         der_specs: targetDerSpecs,
       },
@@ -1092,7 +1064,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Phase 8: helper do mutacji audit2 config (centralizuje budowe body).
   const mutateAudit2 = useCallback(
     (patch: Partial<{
-      mv_neutral_grounding_ref: string | null;
       tap_changer_refs: readonly string[];
       transformer_tap_changers: Record<string, string>;
       bay_hv_fuses: Record<string, string>;
@@ -1107,10 +1078,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         projectId,
         stationId: stationRef,
         body: {
-          mv_neutral_grounding_ref:
-            patch.mv_neutral_grounding_ref !== undefined
-              ? patch.mv_neutral_grounding_ref
-              : current?.mv_neutral_grounding_ref ?? null,
           tap_changer_refs: [...(patch.tap_changer_refs ?? current?.tap_changer_refs ?? [])],
           der_specs: current?.der_specs ?? [],
           transformer_tap_changers: {
@@ -1138,7 +1105,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   );
 
   const configuratorProps = useMemo(() => {
-    const base = buildBaseStationProps(stationName, localConfig);
+    const base = buildBaseStationProps(stationName);
     const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
     // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
     const transformerTapChangers = audit2Config.data?.transformer_tap_changers ?? {};
@@ -1155,15 +1122,42 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         topologicalReasonPl: rodzajKonfiguratora?.przyczynaPl ?? null,
         snVoltageKv: stationSnVoltageKv,
         nnVoltageLevels: stationLvVoltages,
+        designation: station?.designation ?? null,
+        constructionType: station?.construction_type ?? null,
         completeness:
           stationBays.length > 0 && stationTransformers.length > 0
             ? 'complete' as const
             : 'partial' as const,
-        mvNeutralGroundings,
-        onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
-          if ('mvNeutralGroundingRef' in changes) {
-            mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
-          }
+        // Zmiana danych stacji — JEDNA droga produktu: formularz operacji modelu.
+        onEditStation: station
+          ? () =>
+              openOperationForm('update_element_parameters', {
+                element_ref: station.ref_id,
+                element_type: 'substation',
+              })
+          : undefined,
+      },
+      earthing: {
+        stan: !projectId || !stationRef
+          ? ('brak_kontekstu' as const)
+          : uziemienieSn.isError
+            ? ('blad' as const)
+            : uziemienieSn.data
+              ? ('gotowe' as const)
+              : ('ladowanie' as const),
+        sekcje: uziemienieSn.data?.sekcje ?? [],
+        przyczynaBraku: uziemienieSn.data?.przyczyna_braku ?? null,
+        bladPl: uziemienieSn.error?.message ?? null,
+        onDodajZespol: (szyny: readonly string[]) => {
+          // Szyna sekcji należąca do TEJ stacji (sieć galwaniczna obejmuje też inne stacje).
+          const szynyStacji = new Set(station?.bus_refs ?? []);
+          const busRef = szyny.find((ref) => szynyStacji.has(ref)) ?? szyny[0];
+          if (!busRef) return;
+          const bus = snapshot?.buses?.find((b) => b.ref_id === busRef);
+          openOperationForm('add_zespol_uziemiajacy_sn', {
+            bus_ref: busRef,
+            bus_name: bus?.name ?? undefined,
+          });
         },
       },
       topology: {
@@ -1236,6 +1230,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       },
       protection: {
         ...base.protection,
+        // Karta UX-04/POLE-ZU: sposób uziemienia SN do zgodności przekładników czyta
+        // karta zabezpieczeń z modelu (backend), w kontekście tej stacji projektu.
+        kontekstUziemienia:
+          projectId && stationRef
+            ? { projectId, stationId: stationRef, rewizja: rewizjaModelu }
+            : null,
         // Phase 8: VT per-bay z audit2Config.bay_vts.
         relays: stationRelays.map((r) => ({
           ...r,
@@ -1303,13 +1303,19 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     handleAddTransformer,
     handleAssignTransformerCatalog,
     requestDetach,
-    localConfig,
     audit2Config.data,
+    uziemienieSn.data,
+    uziemienieSn.error,
+    uziemienieSn.isError,
+    rewizjaModelu,
+    openOperationForm,
+    projectId,
+    station,
+    snapshot?.buses,
     mutateAudit2,
     transformerCatalogError,
     transformerCatalogLoading,
     blockTransformers,
-    mvNeutralGroundings,
     tapChangers,
     hvFuses,
     ncRfgOperators,

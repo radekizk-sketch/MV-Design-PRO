@@ -45,8 +45,15 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
                 {"order": 0, "name": "Sekcja A", "line_field_name": "Pole liniowe A"},
                 {"order": 1, "name": "Sekcja B", "line_field_name": "Pole liniowe B"},
             ],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
-            "zero_sequence": {"enabled": True, "r0_ohm": 0.4, "x0_ohm": 1.8, "z0_z1_ratio": 1.3},
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie sieci SN to zespół uziemiający
+            # sekcji (pole ZU + zespół), nie opis na równoważniku SN.
+            "zespoly_uziemiajace": [
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "rezystor": {"catalog_ref": "REZ_500A_15KV"},
+                }
+            ],
         },
     )
 
@@ -57,7 +64,8 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert len(snapshot["sources"]) == 1
     assert len(snapshot["substations"]) == 1
     # Pola liniowe sekcji GPZ są rekordami `bays` stacji (po jednym na sekcję).
-    assert len(snapshot["bays"]) == 2
+    # Plus pole zespołu uziemiającego sekcji 1 (rola ``ZU``).
+    assert sorted(b["bay_role"] for b in snapshot["bays"]) == ["FEEDER", "FEEDER", "ZU"]
     assert {b["substation_ref"] for b in snapshot["bays"]} == {snapshot["substations"][0]["ref_id"]}
     # Karta GPZ-MODEL: równoważnik z katalogu źródeł stoi na szynach SN — granicą modelu
     # są szyny SN, transformatory 110/SN nie są elementami modelu obliczeniowego.
@@ -74,11 +82,18 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert substation["meta"]["gpz_section_count"] == 2
     assert substation["meta"]["wn_sn_transformer_count"] == 0
     assert substation["meta"]["gpz_hv_bus_refs"] == []
-    # W5-A: opis punktu neutralnego sieci SN WYŁĄCZNIE na źródle (`neutral_grounding`);
-    # meta stacji nie niesie kopii `grounding`/`zero_sequence`.
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: równoważnik na szynach SN nie opisuje
+    # uziemienia sieci SN ani Z0 — meta stacji też nie (bez kopii `grounding`).
     assert "grounding" not in substation["meta"]
     assert "zero_sequence" not in substation["meta"]
-    assert source["neutral_grounding"] == {"type": "resistor_grounded", "r_ohm": 12.0}
+    assert source.get("neutral_grounding") is None
+    (zespol,) = snapshot["zespoly_uziemiajace"]
+    assert zespol["rezystor"]["catalog_ref"] == "REZ_500A_15KV"
+    pole_zu = next(b for b in snapshot["bays"] if b["ref_id"] == zespol["bay_ref"])
+    assert pole_zu["bay_role"] == "ZU"
+    # Zespół stoi na zacisku toru pola ZU (za wyłącznikiem pola), pole na szynie sekcji 1.
+    assert zespol["bus_ref"] == pole_zu["terminal_bus_ref"]
+    assert pole_zu["gpz_section_id"] == sections[0]["section_id"]
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
 
     assert sections[0]["name"] == "Sekcja A"
@@ -91,18 +106,16 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert source["bus_ref"] == sections[0]["bus_ref"]
     assert source["gpz_section_id"] == sections[0]["section_id"]
     assert source["model"] == "short_circuit_power"
-    assert source["r0_ohm"] == 0.4
-    assert source["x0_ohm"] == 1.8
-    assert source["z0_z1_ratio"] == 1.3
+    assert source.get("r0_ohm") is None
+    assert source.get("x0_ohm") is None
 
     buses = {bus["ref_id"]: bus for bus in snapshot["buses"]}
     # W5-A: szyny sekcji NIE niosą uziemienia (`Bus.grounding` skasowane).
     assert "grounding" not in buses[sections[0]["bus_ref"]]
     assert "grounding" not in buses[sections[1]["bus_ref"]]
-    # Jawne liczby Z0 z payloadu (DEKLARACJA) — bez wyprowadzania z opisu punktu neutralnego.
     assert "zero_sequence_provenance" not in source["materialized_params"]
 
-    pola_gpz = pola_stacji(snapshot, substation["ref_id"])
+    pola_gpz = [p for p in pola_stacji(snapshot, substation["ref_id"]) if p["bay_role"] != "ZU"]
     field_by_section = {field["gpz_section_id"]: field for field in pola_gpz}
     assert field_by_section[sections[0]["section_id"]]["name"] == "Pole liniowe A"
     assert field_by_section[sections[1]["section_id"]]["name"] == "Pole liniowe B"
@@ -132,8 +145,6 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
                 {"order": 0, "name": "Sekcja 1", "line_field_name": "Pole sekcji 1"},
                 {"order": 1, "name": "Sekcja 2", "line_field_name": "Pole sekcji 2"},
             ],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
-            "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -259,8 +270,6 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
             "catalog_ref": CATALOG_ZRODLO_SN,
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"}],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
-            "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
         },
     )
     snapshot = created["snapshot"]
@@ -344,7 +353,6 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
                     ],
                 },
             ],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
         },
     )
 
@@ -388,7 +396,6 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
             "catalog_ref": CATALOG_ZRODLO_SN,
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
         },
     )
     assert result.get("error") in (None, "")

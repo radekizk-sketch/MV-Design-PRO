@@ -920,10 +920,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # obciazalnosc 630 A KAZDEGO aparatu oraz `r_ohm/x_ohm or 0.001` kasujace
     # JAWNE 0,0 Ω aparatu — patrz `reads_contract_field`.
     "solver_input/v126_contracts.py": {
-        # Czestotliwosc bazowa sieci: brak -> 50 Hz. DLUG NAZWANY — wartosc
-        # znamionowa systemu, ale nadal podstawienie; do zamiany na wymog danej.
-        "A:or:enm.frequency_hz": 1,
-        "B:ifexp:enm.frequency_hz": 1,
+        # "A:or:enm.frequency_hz" i "B:ifexp:enm.frequency_hz" USUNIETE z zapadki (karta
+        # UX-04/POLE-ZU-SKLADOWA-ZEROWA, 2026-10-29): dawne `enm.buses[0].frequency_hz or 50.0
+        # if enm.buses else 50.0` zastapione czestotliwoscia sieci z naglowka modelu
+        # (`enm.header.defaults.frequency_hz`) — tej samej, z ktorej mapowanie skladowej
+        # zerowej i jedyna prawda uziemienia licza B0 baterii; zero podstawienia.
         # "A:or:generator.q_mvar" USUNIETE z zapadki (FAB-H, H2): dawny odczyt
         # `generator.q_mvar or 0.0` zastapiony wspolnym zrodlem prawdy
         # `solver_input/moc_bierna_wytworcy.py::moc_bierna_wytworcy`; Q nieznane

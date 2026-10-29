@@ -479,10 +479,82 @@
       }
     },
     {
+      "area": "STATIONS",
+      "code": "earthing.network_grounding_warning",
+      "fix_navigation": {
+        "focus": "dlawik",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "SOURCES",
       "code": "earthing.neutral_grounding_inconsistent",
       "fix_navigation": {
         "focus": "neutral_grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "earthing.zespol_auxiliary_load_missing",
+      "fix_navigation": {
+        "focus": "odbior_pw_ref",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "earthing.zespol_bus_invalid",
+      "fix_navigation": {
+        "focus": "bus_ref",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "earthing.zespol_direct_earthing",
+      "fix_navigation": {
+        "focus": "uziemienie_bezposrednie",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "earthing.zespol_neutral_undefined",
+      "fix_navigation": {
+        "focus": "dlawik",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "PROTECTION",
+      "code": "earthing.zespol_spz_without_resistor",
+      "fix_navigation": {
+        "focus": "spz",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "PROTECTION",
+      "code": "earthing.zespol_transformer_trip_missing",
+      "fix_navigation": {
+        "focus": "wylaczenie_od_transformatorow_refs",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "earthing.zespol_voltage_mismatch",
+      "fix_navigation": {
+        "focus": "catalog_ref",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1151,6 +1223,15 @@
     },
     {
       "area": "SOURCES",
+      "code": "source.sn_neutral_data_ignored",
+      "fix_navigation": {
+        "focus": "zero_sequence",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "SOURCES",
       "code": "source.u_set_pu_out_of_range",
       "fix_navigation": {
         "focus": "u_set_pu",
@@ -1482,9 +1563,18 @@
         "panel": "katalog",
         "tab": "vt"
       }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "zespol_uziemiajacy.wartosc_robocza",
+      "fix_navigation": {
+        "focus": "dlawik",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     }
   ],
-  "count": 174,
+  "count": 184,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1594,6 +1684,11 @@
     {
       "action_type": "SELECT_CATALOG",
       "modal_type": null,
+      "panel": null
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": null,
       "panel": "catalog"
     },
     {
@@ -1611,6 +1706,8 @@
     "E-W5-01": "earthing.neutral_grounding_inconsistent",
     "E-W5-02": "transformer.vector_group_invalid",
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    "E-ZU-01": "earthing.zespol_bus_invalid",
+    "E-ZU-02": "earthing.zespol_neutral_undefined",
     "E001": "source.grid_supply_missing",
     "E009": "catalog.binding_missing",
     "E011": "catalog.wartosc_projektanta_niedopuszczalna",
@@ -1622,6 +1719,13 @@
     "I004": "trunk.segment_missing",
     "I005": "ring.nop_required",
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
+    "W-W5-02": "source.sn_neutral_data_ignored",
+    "W-ZU-01": "earthing.zespol_spz_without_resistor",
+    "W-ZU-02": "earthing.zespol_transformer_trip_missing",
+    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
+    "W-ZU-04": "earthing.network_grounding_warning",
+    "W-ZU-05": "earthing.zespol_direct_earthing",
+    "W-ZU-06": "earthing.zespol_voltage_mismatch",
     "W001": "branch.zero_sequence_missing",
     "W010": "inverter.k_sc_missing",
     "W023": "transformer.winding_voltage_off_nominal",

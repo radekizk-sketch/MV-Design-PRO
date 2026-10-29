@@ -49,6 +49,7 @@ import type {
   Substation,
   SwitchBranch,
   Transformer,
+  ZespolUziemiajacy,
 } from '../../types/enm';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
@@ -86,6 +87,7 @@ const KOLEKCJE: ReadonlyArray<{
   { klucz: 'loads', typ: 'odbior', typEtykieta: 'Odbiór' },
   { klucz: 'generators', typ: 'generator', typEtykieta: 'Generator' },
   { klucz: 'shunt_capacitors', typ: 'bateria_kondensatorow', typEtykieta: 'Bateria kondensatorów' },
+  { klucz: 'zespoly_uziemiajace', typ: 'zespol_uziemiajacy', typEtykieta: 'Zespół uziemiający' },
   { klucz: 'substations', typ: 'stacja', typEtykieta: 'Stacja' },
   { klucz: 'bays', typ: 'pole', typEtykieta: 'Pole' },
   { klucz: 'junctions', typ: 'wezel', typEtykieta: 'Węzeł' },
@@ -378,6 +380,30 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   ]);
 }
 
+/**
+ * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15): dane urządzeń punktu neutralnego
+ * z modelu — transformator uziemiający, dławik gaszący, rezystor. Wariant uziemienia i Z_N
+ * wyprowadza backend (`enm.uziemienie_sekcji`); tu wyłącznie odczyt pól elementu.
+ */
+function wlasciwosciZespolu(el: ZespolUziemiajacy): WierszWlasciwosci[] {
+  const dlawik = el.dlawik ?? null;
+  const rezystor = el.rezystor ?? null;
+  return bezNulli([
+    w('Grupa połączeń', el.grupa_polaczen ?? null),
+    w('Napięcie znamionowe', el.u_n_kv ?? null, 'kV'),
+    w('Moc znamionowa', el.s_n_kva ?? null, 'kVA'),
+    w('Rezystancja zerowa R0', el.r0_ohm ?? null, 'Ω'),
+    w('Reaktancja zerowa X0', el.x0_ohm ?? null, 'Ω'),
+    w('Dławik: prąd minimalny', dlawik?.i_min_a ?? null, 'A'),
+    w('Dławik: prąd maksymalny', dlawik?.i_max_a ?? null, 'A'),
+    w('Dławik: nastawa', dlawik?.i_nastawy_a ?? null, 'A'),
+    w('Rezystor: rezystancja', rezystor?.r_ohm ?? null, 'Ω'),
+    w('Rezystor: prąd znamionowy', rezystor?.i_n_a ?? null, 'A'),
+    w('Rezystor: czas przepływu prądu', rezystor?.t_s ?? null, 's'),
+    w('Uziemienie bezpośrednie', el.uziemienie_bezposrednie ? 'tak' : null),
+  ]);
+}
+
 /** Funkcja stacji z deklaracji (GPZ, rozdzielnica nN, rozdzielcza, odbiorcza) — to NIE jest rodzaj
  *  topologiczny; ten pochodzi z jednej reguły produktu (`ui/shared/rodzajStacji.ts`). */
 const ETYKIETA_FUNKCJI_STACJI: Readonly<Record<string, string>> = {
@@ -530,7 +556,7 @@ function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
 
 /**
  * Rozdzielacz WŁAŚCIWOŚCI KATALOGOWYCH wg typu (`typ` z `znajdzElement`) —
- * ZAMKNIĘTA lista (16 kolekcji `EnergyNetworkModel` × 7 podtypów gałęzi dla
+ * ZAMKNIĘTA lista (17 kolekcji `EnergyNetworkModel` × 7 podtypów gałęzi dla
  * „odcinka" = pełny inwentarz klasy „typ elementu ENM"). Test parytetu
  * (`__tests__/inspectorAdapter.test.ts`) iloczynem cech {typ} × {element
  * fixture z KOMPLETEM pól} sprawdza, że KAŻDY typ zwraca >= 1 wiersz —
@@ -562,6 +588,8 @@ function wlasciwosciKatalogoweWgTypu(
       return wlasciwosciGeneratora(element as unknown as Generator);
     case 'bateria_kondensatorow':
       return wlasciwosciBaterii(element as unknown as ShuntCapacitor);
+    case 'zespol_uziemiajacy':
+      return wlasciwosciZespolu(element as unknown as ZespolUziemiajacy);
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':

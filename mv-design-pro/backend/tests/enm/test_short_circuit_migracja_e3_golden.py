@@ -36,10 +36,12 @@ from enm.models import (
     ENMHeader,
     Source,
     Transformer,
+    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 N0 = "N0_GPZ_SN"
 N1 = "N1_SZYNA_SN"
@@ -149,9 +151,17 @@ def _build_golden_enm(name: str) -> EnergyNetworkModel:
                     voltage_kv=_UN_SN_KV,
                     sk3_mva=_SK3_MVA,
                     rx_ratio=_RX_SOURCE,
-                    extra={"r0_ohm": _R0_SOURCE_OHM, "x0_ohm": _X0_SOURCE_OHM},
                 )
             ),
+        ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół uziemiający
+        # na szynie GPZ (równoważnik SN nie opisuje Z0) — ten sam bocznik R0 + jX0.
+        zespoly_uziemiajace=[
+            ZespolUziemiajacy.model_validate(
+                zespol_o_impedancji_zerowej(
+                    "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
+                )
+            )
         ],
     )
 
@@ -401,19 +411,21 @@ def test_golden_sc1f_z_kompletna_skladowa_zerowa_konczy_sie_finished() -> None:
 
 
 def test_golden_sc1f_bez_skladowej_zerowej_jest_jawna_odmowa() -> None:
-    """SC_1F bez Z0 -> jawny `ValueError` nazywajacy brak (byl
-    `test_golden_sc_1f_without_z0_raises` / `test_sc_1f_failure_marks_run_failed`
-    z dawnego E3 — tu ODMOWA JEST WCZESNIEJSZA: `create_run` odrzuca bieg
-    PRZED wykonaniem, bo `ENMValidator` juz wie, ze zwarcie 1F wymaga Z0)."""
-    klucz = "golden-1f-bez-z0"
-    set_enm(klucz, _build_golden_enm_bez_z0("Golden 1F bez Z0"))
-    with pytest.raises(ValueError, match="Z0|skladowej zerowej"):
-        create_run(
-            case_id=klucz,
-            klucz_twin=klucz,
-            analysis_type="short_circuit_sn",
-            options={"fault_type": "1F", **_lokalizacja(N1)},
-        )
+    """SC_1F bez ŻADNEJ danej składowej zerowej -> jawna odmowa nazwana, nie liczba (był
+    `test_golden_sc_1f_without_z0_raises` / `test_sc_1f_failure_marks_run_failed` z dawnego E3).
+
+    Kanon zasady nr 4: brak R′0/X′0 kabla SN nie blokuje biegu — kabel dostaje wartość roboczą
+    (R′0 = 3·R′1, X′0 = 3·X′1, ``enm.skladowa_zerowa_galezi``), więc ``create_run`` przyjmuje
+    bieg (dawniej odrzucał go W001). Sieć SN bez zespołu uziemiającego nie ma jednak drogi prądu
+    zerowego (równoważnik SN nie opisuje Z0 — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3):
+    wiersz bez prądu, z nazwaną przyczyną ``brak_drogi`` — zero fabrykacji liczby."""
+    run = _bieg("golden-1f-bez-z0", _build_golden_enm_bez_z0("Golden 1F bez Z0"), fault_type="1F")
+    assert run.status == "FINISHED", run.error_message
+    wiersz = _wiersz(run)
+    assert wiersz["ikss_a"] is None
+    brak = wiersz["brak_wyniku_zerowego"]
+    assert brak["przyczyna"] == "brak_drogi"
+    assert "zwarcie doziemne nie płynie" in brak["wyjasnienie"]["zdanie_pl"]
 
 
 def test_golden_3f_wieksze_niz_2f() -> None:

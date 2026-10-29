@@ -20,6 +20,8 @@ from application.analyses.v126_gotowosc import (
     GOTOWOSC_NIEPOTWIERDZONA,
     GOTOWOSC_POTWIERDZONA,
     GOTOWOSC_WYCOFANA,
+    GotowoscAnalizy,
+    Warunek,
     czestotliwosc_modelu,
     gotowosc_wszystkich,
     ocen_gotowosc_v126,
@@ -27,7 +29,13 @@ from application.analyses.v126_gotowosc import (
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import KATALOG_ANALIZ_V126, nazwa_parametru_pl
-from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig
+from enm.models import (
+    DlawikGaszacy,
+    EnergyNetworkModel,
+    ENMHeader,
+    RezystorUziemiajacy,
+    ZespolUziemiajacy,
+)
 from solver_input.v126_contracts import V126AnalysisType, build_v126_input_from_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
@@ -43,21 +51,24 @@ _WZORZEC_IDENTYFIKATORA_Z_PODKRESLENIEM = re.compile(r"\b[a-z]{2,}_[a-z][a-z0-9_
 # ---------------------------------------------------------------------------
 
 
-def _zlota_siec_uziemiona_petersen() -> EnergyNetworkModel:
-    """Kopia złotej sieci z jawnym uziemieniem szyny SN (dławik gaszący).
+def _zlota_siec_z_zespolem(wariant: str = "dlawik") -> EnergyNetworkModel:
+    """Kopia złotej sieci z zespołem uziemiającym na szynie SN GPZ (`bus_sn_main`).
 
-    Złota sieć bazowa NIE niesie uziemienia szyny SN (tylko szyna nN, poniżej
-    progu 1–60 kV `_uziemienie_z_modelu`) — te testy potrzebują wariantu, w
-    którym model NAPRAWDĘ proponuje `neutral_grounding`/`neutral_earthing_type`,
-    żeby sprawdzić warunek „jeśli szyna SN niesie uziemienie" (iloczyn cech:
-    obecność uziemienia w modelu × rodzaj analizy), nie tylko przypadek pusty.
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: uziemienie sieci SN opisuje WYŁĄCZNIE zespół
+    uziemiający albo punkt neutralny uzwojenia transformatora. Dawny wariant tej funkcji
+    deklarował dławik na źródle `src_gpz` stojącym na szynie 110 kV — opis sieci WN udawał
+    uziemienie sieci SN (właśnie ten defekt kasuje karta). ``wariant``: ``dlawik``,
+    ``rezystor`` albo ``bez_elementu`` (zespół bez elementu w punkcie neutralnym — brak MODELU).
     """
     enm = build_golden_enm().model_copy(deep=True)
-    # W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO (GPZ), nie szyna; dławik
-    # gaszący wymaga X_N (predykat `blad_konfiguracji_uziemienia`).
-    for source in enm.sources:
-        if source.ref_id == "src_gpz":
-            source.neutral_grounding = GroundingConfig(type="petersen_coil", x_ohm=120.0)
+    zespol = ZespolUziemiajacy(
+        ref_id="zu_gpz", name="Zespół uziemiający GPZ", bus_ref="bus_sn_main"
+    )
+    if wariant == "dlawik":
+        zespol.dlawik = DlawikGaszacy(i_min_a=40.0, i_max_a=400.0, i_nastawy_a=100.0)
+    elif wariant == "rezystor":
+        zespol.rezystor = RezystorUziemiajacy(r_ohm=43.3)
+    enm.zespoly_uziemiajace = [zespol]
     return enm
 
 
@@ -487,25 +498,51 @@ def test_izolacja_zlota_siec_bez_ogranicznikow_jest_niepotwierdzona() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_detekcja_zlota_siec_bez_uziemienia_sn_nie_proponuje_neutral_grounding() -> None:
-    """Złota sieć bazowa nie niesie uziemienia szyny SN (tylko szyna nN, poniżej
-    progu 1-60 kV) -> `_propozycje_z_modelu` NIE proponuje `neutral_grounding`."""
-    enm = build_golden_enm()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.EARTH_FAULT_DETECTION, {})
+def _warunek_uziemienia(wynik: GotowoscAnalizy) -> Warunek:
+    return next(w for w in wynik.warunki if w.kod == "model.uziemienie_sn")
+
+
+def test_detekcja_zlota_siec_bez_zespolu_to_siec_izolowana_z_modelu() -> None:
+    """Złota sieć: transformator 110/15 kV YNd11 (uzwojenie SN w trójkącie), brak zespołu
+    uziemiającego — sieć SN izolowana WYPROWADZONA z modelu (ta sama prawda co składowa
+    zerowa). Sposób uziemienia nie jest ani parametrem, ani propozycją."""
+    wynik = ocen_gotowosc_v126(build_golden_enm(), V126AnalysisType.EARTH_FAULT_DETECTION, {})
     assert "neutral_grounding" not in wynik.proponowane
-    warunek = next(w for w in wynik.warunki if w.kod == "parametr.neutral_grounding")
-    assert warunek.spelniony is False
-
-
-def test_detekcja_siec_z_uziemieniem_sn_proponuje_neutral_grounding_z_nazwanym_zrodlem() -> None:
-    enm = _zlota_siec_uziemiona_petersen()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.EARTH_FAULT_DETECTION, {})
-    propozycja = wynik.proponowane["neutral_grounding"]
-    assert propozycja.wartosc == "petersen_tuned"
-    assert "punkt neutralny sieci SN" in propozycja.zrodlo_pl
-    # Propozycja liczy się jako "obecna" -> warunek spełniony bez jawnego wejścia.
-    warunek = next(w for w in wynik.warunki if w.kod == "parametr.neutral_grounding")
+    warunek = _warunek_uziemienia(wynik)
     assert warunek.spelniony is True
+    assert "izolowan" in warunek.opis_pl
+    assert not any(w.kod == "parametr.neutral_grounding" for w in wynik.warunki)
+
+
+@pytest.mark.parametrize(("wariant", "fraza"), [("dlawik", "dławik"), ("rezystor", "rezystor")])
+def test_detekcja_siec_z_zespolem_czyta_wariant_z_modelu(wariant: str, fraza: str) -> None:
+    wynik = ocen_gotowosc_v126(
+        _zlota_siec_z_zespolem(wariant), V126AnalysisType.EARTH_FAULT_DETECTION, {}
+    )
+    warunek = _warunek_uziemienia(wynik)
+    assert warunek.spelniony is True and fraza in warunek.opis_pl
+    dane = {d.nazwa_pl: d.wartosc_pl for d in wynik.dane_z_modelu}
+    assert fraza in dane["Uziemienie punktu neutralnego sieci SN"]
+
+
+@pytest.mark.parametrize(
+    ("rodzaj", "blokujacy"),
+    [
+        (V126AnalysisType.EARTH_FAULT_DETECTION, True),
+        (V126AnalysisType.NEUTRAL_EARTHING_DESIGN, True),
+        # Napięcie powrotne i prąd załączania liczą się bez uziemienia — ferrorezonans
+        # zostaje nieoceniony (solver: `brak_danych`), więc warunek NIEBLOKUJĄCY.
+        (V126AnalysisType.TRANSIENT_TRV, False),
+    ],
+)
+def test_zespol_bez_elementu_to_nazwany_brak_modelu(
+    rodzaj: V126AnalysisType, blokujacy: bool
+) -> None:
+    wynik = ocen_gotowosc_v126(_zlota_siec_z_zespolem("bez_elementu"), rodzaj, {})
+    warunek = _warunek_uziemienia(wynik)
+    assert warunek.spelniony is False
+    assert warunek.blokujacy is blokujacy
+    assert "Zespół uziemiający GPZ" in warunek.opis_pl
 
 
 def test_trv_proponuje_breaker_rated_voltage_kv_jako_najwyzsze_napiecie_modelu() -> None:
@@ -516,37 +553,62 @@ def test_trv_proponuje_breaker_rated_voltage_kv_jako_najwyzsze_napiecie_modelu()
     assert "110" in propozycja.zrodlo_pl
 
 
-def test_neutral_earthing_design_siec_z_uziemieniem_sn_proponuje_schemat() -> None:
-    enm = _zlota_siec_uziemiona_petersen()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
-    propozycja = wynik.proponowane["neutral_earthing_type"]
-    assert propozycja.wartosc == "petersen_coil"
+def test_neutral_earthing_design_bez_zespolu_to_brak_modelu_nie_propozycja() -> None:
+    """§0 pkt 4: brak zespołu uziemiającego w sekcji jest brakiem MODELU, a nie wartością
+    proponowaną — projekt dławika/rezystora dotyczy zespołu."""
+    wynik = ocen_gotowosc_v126(build_golden_enm(), V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
+    assert "neutral_earthing_type" not in wynik.proponowane
+    warunek = _warunek_uziemienia(wynik)
+    assert warunek.spelniony is False and warunek.blokujacy is True
+    assert "zamodeluj zespół uziemiający" in warunek.opis_pl
+    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
+
+
+def test_neutral_earthing_design_z_dlawikiem_potwierdzona_bez_parametrow_rezystora() -> None:
+    wynik = ocen_gotowosc_v126(
+        _zlota_siec_z_zespolem("dlawik"), V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {}
+    )
+    assert _warunek_uziemienia(wynik).spelniony is True
+    assert not any(w.kod.startswith("parametr.ner_") for w in wynik.warunki)
     assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
+
+
+def test_neutral_earthing_design_z_rezystorem_czyta_rezystor_modelu() -> None:
+    """Schemat rezystorowy z WARIANTU MODELU — ten sam predykat co solver
+    (`PROJEKT_UZIEMIENIA_WARIANTU`). Rezystor (R, I_n, t_n) jest daną zespołu w modelu, więc
+    gotowość nie żąda „docelowego prądu doziemienia" ani „energii znamionowej" (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4); czas wyłączenia jest uwagą, nie blokadą."""
+    enm = _zlota_siec_z_zespolem("rezystor")
+    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
+    kody = {w.kod: w for w in wynik.warunki}
+    assert {k for k in kody if k.startswith("parametr.")} == {"parametr.ner_clearing_time_s"}
+    czas = kody["parametr.ner_clearing_time_s"]
+    assert czas.spelniony is False and czas.blokujacy is False
+    rezystory = [d for d in wynik.dane_z_modelu if d.nazwa_pl.startswith("Rezystor punktu")]
+    assert len(rezystory) == 1 and "R = " in rezystory[0].wartosc_pl
+    pelne = ocen_gotowosc_v126(
+        enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {"ner_clearing_time_s": 1.0}
+    )
+    assert {w.kod: w.spelniony for w in pelne.warunki}["parametr.ner_clearing_time_s"] is True
+    # Czas wyłączenia nie zmienia gotowości (uwaga, nie blokada) — ta sama lista braków.
+    assert pelne.gotowosc == wynik.gotowosc
+    assert {w.kod for w in pelne.braki} == {w.kod for w in wynik.braki}
 
 
 def test_uzupelnij_parametry_wstawia_propozycje_tylko_gdy_brak_wejscia_projektanta() -> None:
     """`uzupelnij_parametry_z_modelu` — iloczyn cech: {obecność propozycji w
-    modelu} x {parametr projektanta nieobecny / jawny / pusty string / zero}.
-    `_obecna` traktuje `0`/`False` jako WARTOŚĆ OBECNĄ (projektant wygrywa),
-    a pusty string jak BRAK (propozycja z modelu wygrywa) — testujemy dokładnie
-    tę granicę, nie zakładamy jej."""
-    enm = _zlota_siec_uziemiona_petersen()
+    modelu} x {parametr projektanta nieobecny / jawny / zero}. `_obecna` traktuje
+    `0`/`False` jako WARTOŚĆ OBECNĄ (projektant wygrywa). Sposób uziemienia sieci SN nie
+    jest propozycją w ŻADNYM wariancie modelu (karta UX-04/POLE-ZU §0 pkt 4)."""
+    for enm in (build_golden_enm(), _zlota_siec_z_zespolem("dlawik")):
+        for rodzaj in V126AnalysisType:
+            scalone = uzupelnij_parametry_z_modelu(enm, rodzaj, {})
+            assert "neutral_grounding" not in scalone
+            assert "neutral_earthing_type" not in scalone
 
-    # Brak wejścia projektanta -> propozycja modelu wchodzi do wyniku.
-    scalone = uzupelnij_parametry_z_modelu(enm, V126AnalysisType.EARTH_FAULT_DETECTION, {})
-    assert scalone["neutral_grounding"] == "petersen_tuned"
-
-    # Projektant podał jawną, INNĄ wartość -> jego wartość wygrywa.
-    scalone = uzupelnij_parametry_z_modelu(
-        enm, V126AnalysisType.EARTH_FAULT_DETECTION, {"neutral_grounding": "isolated"}
-    )
-    assert scalone["neutral_grounding"] == "isolated"
-
-    # Projektant podał pusty string -> traktowany jak brak, propozycja wygrywa.
-    scalone = uzupelnij_parametry_z_modelu(
-        enm, V126AnalysisType.EARTH_FAULT_DETECTION, {"neutral_grounding": ""}
-    )
-    assert scalone["neutral_grounding"] == "petersen_tuned"
+    enm = build_golden_enm()
+    scalone = uzupelnij_parametry_z_modelu(enm, V126AnalysisType.TRANSIENT_TRV, {})
+    assert scalone["breaker_rated_voltage_kv"] == 110.0
 
     # Projektant podał 0 (liczbowo "fałszywe", ale OBECNE wg `_obecna`) na polu
     # opcjonalnym (TRV) -> 0 WYGRYWA z propozycją modelu (110.0).
@@ -554,13 +616,6 @@ def test_uzupelnij_parametry_wstawia_propozycje_tylko_gdy_brak_wejscia_projektan
         enm, V126AnalysisType.TRANSIENT_TRV, {"breaker_rated_voltage_kv": 0}
     )
     assert scalone["breaker_rated_voltage_kv"] == 0
-
-    # Model bez propozycji (złota sieć bazowa, brak uziemienia SN) -> klucz
-    # w ogóle nie trafia do wyniku (nic do scalenia).
-    scalone = uzupelnij_parametry_z_modelu(
-        build_golden_enm(), V126AnalysisType.EARTH_FAULT_DETECTION, {}
-    )
-    assert "neutral_grounding" not in scalone
 
 
 # ---------------------------------------------------------------------------
@@ -812,8 +867,8 @@ def test_gotowosc_wszystkich_jest_deterministyczna() -> None:
 
 @pytest.mark.parametrize(
     "enm_budowniczy",
-    [build_golden_enm, _zlota_siec_uziemiona_petersen],
-    ids=["zlota_siec", "zlota_siec_uziemiona_petersen"],
+    [build_golden_enm, _zlota_siec_z_zespolem],
+    ids=["zlota_siec", "zlota_siec_z_zespolem_uziemiajacym"],
 )
 def test_lista_wszystkich_rodzajow_jest_zgodna_z_wynikiem_scalania_per_rodzaj(
     enm_budowniczy,
@@ -822,8 +877,7 @@ def test_lista_wszystkich_rodzajow_jest_zgodna_z_wynikiem_scalania_per_rodzaj(
     jawnego scalania per rodzaj) musi dawać DOKŁADNIE to samo, co scalanie
     (`uzupelnij_parametry_z_modelu`) + ocena pojedynczego rodzaju — czyli
     dokładnie to, co robi GET z `analysis_type` i POST. Sprawdzone na sieci BEZ
-    i Z propozycją modelu (uziemienie SN) — bez tego druga gałąź nigdy by się
-    nie wykonała i test niczego by nie dowodził."""
+    i Z zespołem uziemiającym SN (warunek `model.uziemienie_sn` z obu stron)."""
     enm = enm_budowniczy()
     bez_scalania = gotowosc_wszystkich(enm, {})
     ze_scalaniem = [

@@ -21,14 +21,21 @@ from __future__ import annotations
 
 from typing import Literal, get_args
 
-#: Rola pola w modelu (`Bay.bay_role`) — JEDNA lista ról modelu (karta UX-04/POLE-BKR-MODEL).
-#: Do tej karty ten sam literał żył w pięciu kopiach (`enm.models.Bay.bay_role`,
+#: Rola pola w MODELU (`Bay.bay_role`) — JEDNA lista ról dla modelu ENM, szablonów pól
+#: (`network_model.catalog.bay_templates.BayTemplate`, `CompleteMvBayTemplate`), ładunku
+#: `add_sn_bay` i normalizacji roli w operacjach (karty UX-04/POLE-ZU-SKLADOWA-ZEROWA
+#: i UX-04/POLE-BKR-MODEL: dawniej pięć kopii literałów — `enm.models.Bay.bay_role`,
 #: `catalog.bay_templates.BayTemplate.bay_role`, `catalog.switchgear.complete_mv_bay_template`,
-#: `enm.domain_ops_models` i zbiór w `domain_operations_v2._normalize_sn_bay_role`); teraz
-#: każda z nich czyta ten typ. `BKR` — pole baterii kondensatorów równoległych SN (ENEA
-#: Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
-RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "BKR"]
+#: `enm.domain_ops_models` i zbiór w `domain_operations_v2._normalize_sn_bay_role`).
+#: ``ZU`` — pole zespołu uziemiającego (ENEA Zeszyt 1 §16, rys. Z.13/Z.14/Z.15): tor pola
+#: kończy się transformatorem uziemiającym (port ``transformator_uziemiajacy``; element
+#: fizyczny ``EnergyNetworkModel.zespoly_uziemiajace``). ``BKR`` — pole baterii kondensatorów
+#: równoległych SN (ENEA Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "ZU", "BKR"]
 ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
+
+#: Port końca toru pola zespołu uziemiającego — element fizyczny wskazywany przez szablon pola.
+PORT_TRANSFORMATORA_UZIEMIAJACEGO = "transformator_uziemiajacy"
 
 #: Rola KANONICZNA pola SN (read-model pola `BayBaseModel.bay_role`, `field_role`) — klucze
 #: `NAZWA_ROLI_POLA_SN_PL` (równość przypina test `tests/enm/test_rola_pola_bkr.py`).
@@ -42,6 +49,7 @@ RolaKanonicznaPolaSn = Literal[
     "PV_SN",
     "BESS_SN",
     "FW_SN",
+    "ZESPOL_UZIEMIAJACY",
     "BATERIA_KONDENSATOROW",
 ]
 ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
@@ -59,6 +67,7 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    "ZU": "ZESPOL_UZIEMIAJACY",
     "BKR": "BATERIA_KONDENSATOROW",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
@@ -66,6 +75,7 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+    "ZESPOL_UZIEMIAJACY": "ZESPOL_UZIEMIAJACY",
     "BATERIA_KONDENSATOROW": "BATERIA_KONDENSATOROW",
 }
 
@@ -79,6 +89,7 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "TRANSFORMATOROWE": "Pole transformatorowe",
     "SPRZEGLO": "Pole sprzęgła",
     "POMIAROWE": "Pole pomiarowe",
+    "ZESPOL_UZIEMIAJACY": "Pole zespołu uziemiającego",
     "PV_SN": "Pole źródłowe PV",
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",

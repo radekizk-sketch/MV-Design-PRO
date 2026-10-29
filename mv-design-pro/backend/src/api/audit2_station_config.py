@@ -2,7 +2,6 @@
 FastAPI router dla persystencji audit2 station config (Punkt 3 Phase 2).
 
 Persystencja per (project_id, station_id) konfiguracji audytu 2:
-  - mv_neutral_grounding_ref (B.1)
   - tap_changer_refs (eng.13, lista per transformator)
   - der_specs (lista DER z polami audit2: BESS modes, block-trafo, P(f))
 
@@ -11,6 +10,8 @@ Endpointy (UPSERT pattern):
   GET  /api/v1/projects/{project_id}/audit2-station-config/{station_id}
   PUT  /api/v1/projects/{project_id}/audit2-station-config/{station_id}
   DELETE /api/v1/projects/{project_id}/audit2-station-config/{station_id}
+  POST /api/v1/projects/{project_id}/audit2-station-config/{station_id}/_uziemienie-sn
+       (odczyt sposobu uziemienia sieci SN pól stacji z modelu — karta UX-04/POLE-ZU)
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from uuid import UUID
 from api.dependencies import get_uow_factory
 from application.proof_engine.packs.audit2_skladanie import (
     StationAudit2ConfigBody,
+    uziemienie_sn_stacji,
     zloz_pakiety_projektu,
 )
 from application.twin_key import klucz_twin_dla_projektu
@@ -30,6 +32,7 @@ from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from pydantic import BaseModel, Field
 
 router = APIRouter(
     prefix="/api/v1/projects/{project_id}/audit2-station-config",
@@ -54,7 +57,6 @@ def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
         "id": str(orm.id),
         "project_id": str(orm.project_id),
         "station_id": orm.station_id,
-        "mv_neutral_grounding_ref": orm.mv_neutral_grounding_ref,
         "tap_changer_refs": list(orm.tap_changer_refs or []),
         "der_specs": list(orm.der_specs or []),
         "transformer_tap_changers": dict(orm.transformer_tap_changers or {}),
@@ -114,7 +116,6 @@ def upsert_station_audit2_config(
         row = uow.audit2_station_configs.upsert(
             project_id,
             station_id,
-            mv_neutral_grounding_ref=body.mv_neutral_grounding_ref,
             tap_changer_refs=list(body.tap_changer_refs),
             der_specs=[spec.model_dump() for spec in body.der_specs],
             transformer_tap_changers=dict(body.transformer_tap_changers),
@@ -136,6 +137,36 @@ def delete_station_audit2_config(
         if not uow.audit2_station_configs.delete(project_id, station_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brak konfiguracji")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class UziemieniePolRequest(BaseModel):
+    """Oznaczenia pól stacji (reguła konfiguratora: numer → skrót odpływu → nazwa)."""
+
+    pola: list[str] = Field(default_factory=list)
+
+
+@router.post("/{station_id:path}/_uziemienie-sn")
+def uziemienie_sn_pol_stacji(
+    project_id: UUID,
+    station_id: str,
+    body: UziemieniePolRequest,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Sposób uziemienia punktu neutralnego sieci SN pól stacji — z MODELU sieci projektu.
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: jedyną prawdą o uziemieniu sieci SN jest zespół
+    uziemiający sekcji (albo uziemiony punkt neutralny uzwojenia transformatora) —
+    ``enm.uziemienie_sekcji``. Konfigurator stacji nie trzyma już własnego wyboru
+    uziemienia; zgodność przekładników napięciowych sprawdza z typem stąd. Pole bez
+    ustalonego typu niesie nazwaną przyczynę (stacja spoza modelu, brak szyn SN, odmowa
+    sekcji, pole w sekcjach różnie uziemionych); ``sekcje`` — opis każdej sieci SN stacji
+    (wariant, punkty uziemienia, prąd pojemnościowy, rozstrojenie, odmowy, kompletność).
+    Odczyt — nie zmienia modelu.
+    """
+    return {
+        "station_id": station_id,
+        **uziemienie_sn_stacji(_model_projektu(project_id, uow_factory), station_id, body.pola),
+    }
 
 
 @router.post("/{station_id:path}/_apply-to-network-model")

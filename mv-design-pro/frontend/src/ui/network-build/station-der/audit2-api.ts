@@ -4,11 +4,13 @@
  * Pobiera katalogi z backendu (`/api/v1/catalog/audit2/*`) zamiast uzywac
  * frontendowych staticow.
  *
- * Karta FAB-L: `bess_operation_modes`/`tap_changers`/`mv_neutral_groundings`
- * dopisane jako typy 1:1 z backendem (dotad `ReadonlyArray<unknown>`) — front
- * czyta je WYLACZNIE stad, statyczne mirrory (`BESS_OPERATION_MODE_CATALOG`,
- * `TAP_CHANGER_CATALOG`, `MV_NEUTRAL_GROUNDING_CATALOG`) skasowane z
- * `catalogs.ts`. Zero fallbacku lokalnego — backend jest jedynym zrodlem;
+ * Karta FAB-L: `bess_operation_modes`/`tap_changers` dopisane jako typy 1:1
+ * z backendem (dotad `ReadonlyArray<unknown>`) — front czyta je WYLACZNIE stad,
+ * statyczne mirrory (`BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG`)
+ * skasowane z `catalogs.ts`. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: katalog
+ * „wariantow uziemienia punktu neutralnego SN" skasowany na amen — sposob
+ * uziemienia niesie zespol uziemiajacy sekcji w modelu, a konfigurator czyta go
+ * z backendu (`fetchUziemienieSnStacji`). Zero fallbacku lokalnego — backend jest jedynym zrodlem;
  * niedostepnosc backendu jest stanem bledu/ladowania widocznym w UI, nie
  * cichym podstawieniem drugiej kopii danych.
  *
@@ -20,6 +22,8 @@
  * stanem bledu/ladowania widocznym w UI, nie cichym podstawieniem drugiej
  * kopii danych.
  */
+
+import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
 
 /**
  * Krzywa P(f) (eng.9, NC RfG art. 13/15) — kształt 1:1 z backendu
@@ -116,23 +120,6 @@ export interface TapChangerItem {
 }
 
 /**
- * Wariant uziemienia punktu neutralnego SN — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::MvNeutralGroundingItem.to_dict`).
- * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
- * (`MV_NEUTRAL_GROUNDING_CATALOG` usunięty z `catalogs.ts`).
- */
-export interface MvNeutralGroundingItem {
-  readonly id: string;
-  readonly catalog_namespace: string;
-  readonly catalog_version: string;
-  readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
-  readonly label_pl: string;
-  readonly description_pl: string;
-  readonly r_ohm: number | null;
-  readonly x_ohm: number | null;
-}
-
-/**
  * Pasmo czasowo-prądowe wkładki SN — kształt 1:1 z backendu
  * (`network_model/catalog/audit2_catalogs.py::HvFusePasmoTcc.to_dict`).
  */
@@ -169,7 +156,7 @@ export interface HvFuseItem {
  * `device_withstand` NIE typowane tu: ma już konsumenta typowanego osobno
  * (`DeviceWithstandCatalogItem` niżej, przez `fetchDeviceWithstandCatalog`, nie
  * przez snapshot). Karty FAB-L/FAB-M: `bess_operation_modes`/`tap_changers`/
- * `mv_neutral_groundings`/`hv_fuses` typowane 1:1 z backendem — ZERO `unknown`
+ * `hv_fuses` typowane 1:1 z backendem — ZERO `unknown`
  * tam, gdzie front te dane konsumuje.
  */
 export interface AuditCatalogSnapshot {
@@ -179,7 +166,6 @@ export interface AuditCatalogSnapshot {
   readonly device_withstand: ReadonlyArray<unknown>;
   readonly pf_curves: readonly PfCurveItem[];
   readonly block_transformers: readonly BlockTransformerItem[];
-  readonly mv_neutral_groundings: readonly MvNeutralGroundingItem[];
 }
 
 const BASE = '/api/v1/catalog/audit2';
@@ -204,7 +190,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/** Pobiera snapshot wszystkich 7 katalogow audytu 2. */
+/** Pobiera snapshot wszystkich 6 katalogow audytu 2. */
 export async function fetchAudit2CatalogSnapshot(): Promise<AuditCatalogSnapshot> {
   return getJson<AuditCatalogSnapshot>(`${BASE}/snapshot`);
 }
@@ -309,7 +295,6 @@ export interface BayDeviceWithstandSpec {
 }
 
 export interface StationAudit2ConfigBody {
-  readonly mv_neutral_grounding_ref: string | null;
   readonly tap_changer_refs: readonly string[];
   readonly der_specs: readonly DerAudit2SpecBody[];
   readonly transformer_tap_changers?: Readonly<Record<string, string>>;
@@ -372,6 +357,65 @@ export async function putStationAudit2Config(args: {
     throw new Error(`PUT station config failed: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<StationAudit2ConfigResponse>;
+}
+
+/** Typ punktu neutralnego sieci SN pola stacji — z modelu albo z nazwaną przyczyną braku. */
+export interface UziemieniePolaSn {
+  readonly oznaczenie: string;
+  readonly typ_punktu_neutralnego: TypPunktuNeutralnego | null;
+  readonly przyczyna_braku: string | null;
+}
+
+/** Punkt uziemienia sieci SN (zespół uziemiający albo uzwojenie transformatora). */
+export interface PunktUziemieniaSn {
+  readonly rodzaj: 'zespol_uziemiajacy' | 'uzwojenie_transformatora';
+  readonly element_ref: string;
+  readonly bus_ref: string;
+  readonly nazwa_pl: string;
+  readonly wariant: string;
+  readonly odmowa_pl: string | null;
+}
+
+/** Sieć SN stacji — kształt 1:1 z `enm.uziemienie_sekcji.UziemienieSekcji.to_dict`. */
+export interface UziemienieSekcjiSn {
+  readonly szyny: readonly string[];
+  readonly napiecie_kv: number;
+  readonly wariant: string;
+  readonly wariant_awsc_zalaczony: string;
+  readonly typ_punktu_neutralnego: TypPunktuNeutralnego;
+  readonly punkty: readonly PunktUziemieniaSn[];
+  readonly b0_s: number;
+  readonly galezie_bez_b0: readonly string[];
+  readonly prad_pojemnosciowy_a: number | null;
+  readonly prad_dlawikow_a: number | null;
+  readonly rozstrojenie: number | null;
+  readonly ostrzezenia: readonly string[];
+  readonly odmowy: readonly string[];
+  readonly kompletnosc: 'PELNY' | 'NIEPELNY';
+  readonly opis_pl: string;
+}
+
+export interface UziemienieSnStacjiResponse {
+  readonly station_id: string;
+  readonly sekcje: readonly UziemienieSekcjiSn[];
+  readonly przyczyna_braku: string | null;
+  readonly pola: readonly UziemieniePolaSn[];
+}
+
+/**
+ * Sposób uziemienia punktu neutralnego sieci SN stacji — z MODELU sieci projektu
+ * (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, `enm.uziemienie_sekcji`). Konfigurator nie
+ * wybiera uziemienia; `pola` — typ dla oznaczeń pól (zgodność przekładników).
+ */
+export async function fetchUziemienieSnStacji(args: {
+  readonly projectId: string;
+  readonly stationId: string;
+  readonly pola: readonly string[];
+}): Promise<UziemienieSnStacjiResponse> {
+  return postJson<UziemienieSnStacjiResponse>(
+    `${stationAudit2ConfigUrl(args.projectId, args.stationId)}/_uziemienie-sn`,
+    { pola: args.pola },
+  );
 }
 
 export async function deleteStationAudit2Config(args: {

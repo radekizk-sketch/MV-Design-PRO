@@ -120,6 +120,7 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   PV_SN: 'Pole źródłowe PV',
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
+  ZESPOL_UZIEMIAJACY: 'Pole zespołu uziemiającego',
   BATERIA_KONDENSATOROW: 'Pole baterii kondensatorów',
 };
 
@@ -141,6 +142,7 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   TR: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
+  ZU: 'ZESPOL_UZIEMIAJACY',
   BKR: 'BATERIA_KONDENSATOROW',
 };
 

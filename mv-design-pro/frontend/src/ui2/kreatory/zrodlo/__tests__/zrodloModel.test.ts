@@ -11,14 +11,17 @@ import { kluczeSpozaKontraktu } from '../../../../test/kontraktLadunkuOperacji';
 
 import {
   DANE_DOMYSLNE,
+  buildZespolySekcji,
   punktNeutralnySnTransformatora,
   scalDanePoczatkowe,
+  sekcjaMaTransformator,
   transformatoryWModelu,
   trybParametruZwarciowego,
-  typyUziemieniaDozwolone,
   walidujFormularz,
   wierszTransformatorow,
+  wierszUziemieniaSn,
   wierszeGotowosci,
+  zrodloOpisujeSiec110kV,
   zbudujOznaczenieGpz,
   zbudujPayloadZrodla,
   zbudujZadaniePodgladu,
@@ -50,10 +53,6 @@ function dane110kV(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFormDat
     transformer_sn_mva: 25,
     transformer_uk_percent: 12.5,
     transformer_vector_group: 'YNd11',
-    // YNd11: uzwojenie SN w trójkąt — punkt neutralny SN w modelu jest izolowany, a opis
-    // sieci SN musi być z nim zgodny (`typyUziemieniaDozwolone`, backend E-W5-01).
-    grounding_type: 'isolated',
-    grounding_r_ohm: null,
     ...nadpisz,
   });
 }
@@ -179,25 +178,70 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.manual_equivalent).toMatchObject({ short_circuit_input_side: 'HV_110', sk3_hv_mva: 2500 });
   });
 
-  it('uziemienie bezpośrednie: literał kontraktu directly_grounded 1:1, bez R/X (W5-A)', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'directly_grounded' }));
+  it('sieć 110 kV, uziemienie bezpośrednie: literał kontraktu directly_grounded 1:1, bez R/X (W5-A)', () => {
+    const payload = zbudujPayloadZrodla(dane110kV({ grounding_type: 'directly_grounded' }));
     expect(payload.grounding).toEqual({ type: 'directly_grounded' });
   });
 
-  it('cewka Petersena niesie x_ohm (składowa dominująca dławika), rezystor r_ohm', () => {
-    const cewka = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'petersen_coil', grounding_x_ohm: 150 }));
+  it('sieć 110 kV: cewka Petersena niesie x_ohm (składowa dominująca dławika), rezystor r_ohm', () => {
+    const cewka = zbudujPayloadZrodla(dane110kV({ grounding_type: 'petersen_coil', grounding_x_ohm: 150 }));
     expect(cewka.grounding).toEqual({ type: 'petersen_coil', x_ohm: 150 });
-    const rezystor = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'resistor_grounded', grounding_r_ohm: 12 }));
+    const rezystor = zbudujPayloadZrodla(dane110kV({ grounding_type: 'resistor_grounded', grounding_r_ohm: 12 }));
     expect(rezystor.grounding).toEqual({ type: 'resistor_grounded', r_ohm: 12 });
   });
 
-  it('niesie parametry zwarciowe SN (sk3_mva + rx_ratio) i składową zerową', () => {
+  it('niesie parametry zwarciowe SN (sk3_mva + rx_ratio); sieć 110 kV — także Z0', () => {
     const payload = zbudujPayloadZrodla(daneKompletne({ sk3_mva: 310, rx_ratio: 0.12 }));
     expect(payload.sk3_mva).toBe(310);
     expect(payload.rx_ratio).toBe(0.12);
-    expect(payload.zero_sequence).toMatchObject({ enabled: true, z0_z1_ratio: 3.2 });
     expect(payload.short_circuit_input_side).toBe('SN');
     expect(payload.short_circuit_mode).toBe('SHORT_CIRCUIT_POWER');
+    expect(zbudujPayloadZrodla(dane110kV()).zero_sequence).toMatchObject({ enabled: true, z0_z1_ratio: 3.2 });
+  });
+
+  /* Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3 — opis punktu neutralnego i Z0 źródła tylko
+     dla sieci 110 kV. Iloczyn cech: granica {katalog SN, ręczny SN moc, ręczny SN impedancja,
+     110 kV} × typ punktu neutralnego (każdy) × Z0 {włączone, wyłączone}. Żadna kombinacja
+     po stronie SN nie niesie `grounding`, `zero_sequence` ani r0/x0 w `manual_equivalent`
+     (backend odmawia `source.sn_neutral_not_on_source`). */
+  const GRANICE_SN: Array<[string, Partial<GridSourceFormData>]> = [
+    ['katalog SN', {}],
+    ['ręczny SN moc', { manual_mode: true, catalog_ref: null }],
+    ['ręczny SN impedancja', { manual_mode: true, catalog_ref: null, short_circuit_mode: 'IMPEDANCE', r_ohm: 0.1, x_ohm: 0.8 }],
+  ];
+  const TYPY = ['directly_grounded', 'resistor_grounded', 'petersen_coil', 'isolated'] as const;
+  for (const [granica, nadpisz] of GRANICE_SN) {
+    for (const typ of TYPY) {
+      for (const zero of [true, false]) {
+        it(`${granica} × ${typ} × Z0 ${zero ? 'wł.' : 'wył.'}: bez opisu punktu neutralnego i Z0`, () => {
+          const dane = daneKompletne({
+            ...nadpisz,
+            grounding_type: typ,
+            grounding_r_ohm: 12,
+            grounding_x_ohm: 150,
+            zero_sequence_enabled: zero,
+            r0_ohm: 0.4,
+            x0_ohm: 1.8,
+          });
+          expect(zrodloOpisujeSiec110kV(dane)).toBe(false);
+          const payload = zbudujPayloadZrodla(dane);
+          expect(payload).not.toHaveProperty('grounding');
+          expect(payload).not.toHaveProperty('zero_sequence');
+          const rownowaznik = (payload.manual_equivalent ?? {}) as Record<string, unknown>;
+          for (const klucz of ['r0_ohm', 'x0_ohm', 'z0_z1_ratio']) expect(rownowaznik).not.toHaveProperty(klucz);
+          expect(walidujFormularz({ ...dane, grounding_r_ohm: null, grounding_x_ohm: null })
+            .filter((b) => b.field.startsWith('grounding'))).toEqual([]);
+          const podglad = zbudujZadaniePodgladu(dane);
+          if (podglad) expect(podglad.zero_sequence_enabled).toBe(false);
+          expect(wierszeGotowosci(dane).map((w) => w.etykieta)).not.toContain('Składowa zerowa sieci 110 kV');
+        });
+      }
+    }
+  }
+
+  it('sieć 110 kV: brak R uziemienia rezystorowego jest błędem pola, poza 110 kV nie', () => {
+    const bledy = walidujFormularz(dane110kV({ grounding_type: 'resistor_grounded', grounding_r_ohm: null }));
+    expect(bledy.some((b) => b.field === 'grounding_r_ohm')).toBe(true);
   });
 
   it('ogranicza liczbę transformatorów do zakresu 1-4 (równoważnik 110 kV)', () => {
@@ -690,8 +734,8 @@ describe('walidujFormularz', () => {
     expect(walidujFormularz(daneKompletne({ sections_count: 0 })).some((b) => b.field === 'sections_count')).toBe(true);
   });
 
-  it('uziemienie rezystorowe wymaga dodatniej rezystancji', () => {
-    const bledy = walidujFormularz(daneKompletne({ grounding_type: 'resistor_grounded', grounding_r_ohm: null }));
+  it('uziemienie rezystorowe sieci 110 kV wymaga dodatniej rezystancji', () => {
+    const bledy = walidujFormularz(dane110kV({ grounding_type: 'resistor_grounded', grounding_r_ohm: null }));
     expect(bledy.some((b) => b.field === 'grounding_r_ohm')).toBe(true);
   });
 });
@@ -715,9 +759,9 @@ describe('wierszeGotowosci', () => {
     expect(wiersze.find((w) => w.etykieta === 'Identyfikacja')?.stan).toBe('brak');
   });
 
-  it('składowa zerowa wyłączona → ostrzeżenie', () => {
-    const wiersze = wierszeGotowosci(daneKompletne({ zero_sequence_enabled: false }));
-    expect(wiersze.find((w) => w.etykieta === 'Składowa zerowa')?.stan).toBe('ostrzezenie');
+  it('sieć 110 kV: składowa zerowa wyłączona → ostrzeżenie', () => {
+    const wiersze = wierszeGotowosci(dane110kV({ zero_sequence_enabled: false }));
+    expect(wiersze.find((w) => w.etykieta === 'Składowa zerowa sieci 110 kV')?.stan).toBe('ostrzezenie');
   });
 });
 
@@ -759,24 +803,84 @@ describe('punkt neutralny SN z grupy transformatora 110/SN (karta GPZ-MODEL)', (
     expect(punktNeutralnySnTransformatora(null)).toBeNull();
   });
 
-  it('równoważnik na szynach SN ⇒ dowolny opis punktu neutralnego (Z0 podaje projektant)', () => {
-    expect(typyUziemieniaDozwolone(daneKompletne({ transformer_vector_group: 'Yd11' }))).toBeNull();
-    expect(walidujFormularz(daneKompletne()).filter((b) => b.field === 'grounding_type')).toEqual([]);
+  it('opis punktu neutralnego sieci 110 kV jest niezależny od grupy transformatora (bez wymuszenia)', () => {
+    for (const grupa of ['YNd11', 'Dyn11', null]) {
+      for (const typ of ['directly_grounded', 'isolated'] as const) {
+        expect(walidujFormularz(dane110kV({ transformer_vector_group: grupa, grounding_type: typ }))
+          .filter((b) => b.field === 'grounding_type')).toEqual([]);
+      }
+    }
+  });
+});
+
+/* Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — zespoły uziemiające sekcji GPZ (`zespoly_uziemiajace`).
+   Iloczyn cech: granica {SN, 110 kV} × sekcje z zespołem {brak, 1, obie} × liczba
+   transformatorów {1, 2} × wariant {Z.13 dławik, Z.14, Z.15, bezpośrednie} × deklaracja
+   wyłączenia od TR {wł., wył.}. Wpis = ładunek `add_zespol_uziemiajacy_sn` (wspólny model)
+   bez miejsca, nazwy i listy transformatorów; deklaracja tylko dla sekcji z transformatorem. */
+describe('zespoły uziemiające sekcji GPZ', () => {
+  const ZESPOL = {
+    ...DANE_DOMYSLNE.zespol,
+    catalog_ref: 'TU_ZNYN11_15KV_PW160',
+    dlawik_catalog_ref: 'DL_40_400A_15KV_CIAGLY',
+    rezystor_catalog_ref: 'REZ_200A_15KV',
+  };
+  const sekcje = (zaznaczone: number[]) =>
+    [1, 2].map((n) => ({ nazwa: `Sekcja ${n}`, liczbaPol: 2, zespolUziemiajacy: zaznaczone.includes(n) }));
+
+  for (const [granica, baza] of [['SN', daneKompletne], ['110 kV', dane110kV]] as const) {
+    for (const zaznaczone of [[], [1], [1, 2]]) {
+      for (const liczbaTr of [1, 2]) {
+        for (const wariant of ['dlawik', 'dlawik_rezystor', 'rezystor', 'bezposrednie'] as const) {
+          for (const wylaczenie of [true, false]) {
+            it(`${granica} × sekcje ${JSON.stringify(zaznaczone)} × TR ${liczbaTr} × ${wariant} × wyłączenie ${wylaczenie}`, () => {
+              const dane = baza({
+                sections_count: 2,
+                sekcje: sekcje(zaznaczone),
+                transformer_count: liczbaTr,
+                zespol: { ...ZESPOL, wariant },
+                zespol_wylaczenie_od_tr: wylaczenie,
+              });
+              const payload = zbudujPayloadZrodla(dane);
+              expect(kluczeSpozaKontraktu('add_grid_source_sn', payload)).toEqual([]);
+              if (zaznaczone.length === 0) {
+                expect(payload).not.toHaveProperty('zespoly_uziemiajace');
+                expect(wierszUziemieniaSn(dane).stan).toBe('ostrzezenie');
+                return;
+              }
+              const wpisy = payload.zespoly_uziemiajace as Array<Record<string, unknown>>;
+              expect(wpisy).toEqual(buildZespolySekcji(dane));
+              expect(wpisy.map((w) => w.sekcja)).toEqual(zaznaczone);
+              for (const wpis of wpisy) {
+                for (const klucz of ['bus_ref', 'bay_ref', 'name', 'wylaczenie_od_transformatorow_refs']) {
+                  expect(wpis).not.toHaveProperty(klucz);
+                }
+                const n = wpis.sekcja as number;
+                const deklaracja = wylaczenie && granica === '110 kV' && n <= liczbaTr;
+                expect(sekcjaMaTransformator(dane, n)).toBe(granica === '110 kV' && n <= liczbaTr);
+                expect(wpis.wylaczenie_od_transformatora_sekcji === true).toBe(deklaracja);
+                expect('dlawik' in wpis).toBe(wariant === 'dlawik' || wariant === 'dlawik_rezystor');
+                expect('rezystor' in wpis).toBe(wariant === 'rezystor' || wariant === 'dlawik_rezystor');
+                expect(wpis.uziemienie_bezposrednie).toBe(wariant === 'bezposrednie');
+              }
+              expect(walidujFormularz(dane).filter((b) => b.field.startsWith('zespol.'))).toEqual([]);
+              expect(wierszUziemieniaSn(dane).stan).toBe('kompletne');
+            });
+          }
+        }
+      }
+    }
+  }
+
+  it('zespół zaznaczony bez pozycji katalogu: błędy pól `zespol.*` i wiersz gotowości „brak”', () => {
+    const dane = daneKompletne({ sections_count: 2, sekcje: sekcje([2]), zespol: { ...DANE_DOMYSLNE.zespol, wariant: 'rezystor' } });
+    expect(walidujFormularz(dane).filter((b) => b.field.startsWith('zespol.')).map((b) => b.field))
+      .toEqual(['zespol.catalog_ref', 'zespol.rezystor.catalog_ref']);
+    expect(wierszUziemieniaSn(dane).stan).toBe('brak');
   });
 
-  it('równoważnik 110 kV ⇒ dokładnie punkt neutralny z grupy; sprzeczny opis jest błędem pola', () => {
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: 'Yd11' }))).toEqual(['isolated']);
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: 'Dyn11' }))).toEqual(['directly_grounded']);
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: null }))).toEqual([]);
-
-    expect(walidujFormularz(dane110kV()).filter((b) => b.field === 'grounding_type')).toEqual([]);
-    const sprzeczny = walidujFormularz(dane110kV({ grounding_type: 'resistor_grounded', grounding_r_ohm: 12 }))
-      .filter((b) => b.field === 'grounding_type');
-    expect(sprzeczny).toHaveLength(1);
-    expect(sprzeczny[0].message).toContain('YNd11');
-    expect(sprzeczny[0].message).toContain('izolowany');
-    const bezTransformatora = walidujFormularz(dane110kV({ transformer_vector_group: null }))
-      .filter((b) => b.field === 'grounding_type');
-    expect(bezTransformatora).toHaveLength(1);
+  it('normalizacja sekcji zachowuje zaznaczenie zespołu, nowa sekcja go nie ma', () => {
+    const dane = scalDanePoczatkowe({ sections_count: 3, sekcje: sekcje([2]) });
+    expect(dane.sekcje.map((s) => s.zespolUziemiajacy)).toEqual([false, true, false]);
   });
 });

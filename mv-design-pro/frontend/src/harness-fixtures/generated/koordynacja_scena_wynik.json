@@ -662,7 +662,7 @@
   "overload_checks": [
     {
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
-      "i_operating_a": 45.8744680169,
+      "i_operating_a": 45.8744680322,
       "i_pickup_a": 240.0,
       "margin_percent": 423.17,
       "notes_pl": "Próg 240 A (I> (51)) wobec prądu roboczego wyłącznika 45,9 A — iloraz przeciążalności 5,23; wymagany co najmniej 1,2.",
@@ -671,7 +671,7 @@
     },
     {
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-      "i_operating_a": 34.4853586301,
+      "i_operating_a": 34.4853586514,
       "i_pickup_a": 180.0,
       "margin_percent": 421.96,
       "notes_pl": "Próg 180 A (I> (51)) wobec prądu roboczego wyłącznika 34,5 A — iloraz przeciążalności 5,22; wymagany co najmniej 1,2.",
@@ -1468,11 +1468,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie pola liniowego GPZ",
       "inputs": {
         "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-        "prad_roboczy_a": 45.8744680169,
+        "prad_roboczy_a": 45.8744680322,
         "prog_pierwotny_a": 240.0
       },
       "outputs": {
-        "iloraz": 5.23166829775,
+        "iloraz": 5.231668296,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"
@@ -1481,11 +1481,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie odejścia S01",
       "inputs": {
         "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-        "prad_roboczy_a": 34.4853586301,
+        "prad_roboczy_a": 34.4853586514,
         "prog_pierwotny_a": 180.0
       },
       "outputs": {
-        "iloraz": 5.21960644024,
+        "iloraz": 5.21960643703,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"
