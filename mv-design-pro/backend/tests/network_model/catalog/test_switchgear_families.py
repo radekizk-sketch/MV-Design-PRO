@@ -55,9 +55,15 @@ class TestSwitchgearFamilyRegistry:
         # VCB, RELF, RELF 2S, RXD), ABB (SafePlus, UniSec), Schneider (RM6,
         # RM AirSeT). Intencja testu bez zmian: rejestr zawiera DOKŁADNIE
         # znane rodziny ze źródłami — żadna nie wchodzi bocznymi drzwiami.
-        assert len(SWITCHGEAR_FAMILY_REGISTRY) == 18
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: +3 rodziny typu ogólnego wg standardu OSD (ENEA
+        # Zeszyt 1 §13) — po jednej na medium dopuszczone w polu projektowanym (powietrze,
+        # izolacja stało-powietrzna, gaz bez fluoru).
+        assert len(SWITCHGEAR_FAMILY_REGISTRY) == 21
         refs = set(SWITCHGEAR_FAMILY_REGISTRY.keys())
         assert refs == {
+            "TYP_OGOLNY_OSD__GPZ_AIS",
+            "TYP_OGOLNY_OSD__GPZ_SSIS",
+            "TYP_OGOLNY_OSD__GPZ_GAZ_BEZ_F",
             "ZPUE_WLOSZCZOWA__ROTOBLOK",
             "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR",
             "ZPUE_WLOSZCZOWA__ROTOBLOK_VCB",
@@ -87,9 +93,15 @@ class TestSwitchgearFamilyRegistry:
         prądowych/zwarciowych (ABB UniSec). To nie jest rozluźnienie reguły —
         zapadka niżej pilnuje, że taka rodzina nie wchodzi do oferty.
         """
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: trzeci status `standard_osd` — rodzina TYPU
+        # OGÓLNEGO, której klasy znamionowe są wymaganiami standardu operatora (nie kartą
+        # wyrobu); wyłącznie dla wpisu bez producenta (`TYP_OGOLNY_OSD`).
         for family in SWITCHGEAR_FAMILY_REGISTRY.values():
-            assert family.status in {"repo_verified", "requires_catalog"}
+            assert family.status in {"repo_verified", "requires_catalog", "standard_osd"}
             assert family.verified_at is None  # brak oficjalnej weryfikacji
+            assert (family.status == "standard_osd") is (
+                family.manufacturer_ref == "TYP_OGOLNY_OSD"
+            ), family.switchgear_family_ref
 
     def test_family_requiring_catalog_is_not_offered(self):
         """Zapadka polityki danych: rodzina bez potwierdzonych klas istnieje w
@@ -150,6 +162,15 @@ class TestSwitchgearFamilyRegistry:
 
     def test_all_families_have_source_refs(self):
         for family in SWITCHGEAR_FAMILY_REGISTRY.values():
+            if family.status == "standard_osd":
+                # Typ ogólny: źródłem jest standard operatora (dokument z wydaniem), nie
+                # publiczna strona wyrobu — brak adresu jest jawny, nie fabrykowany.
+                assert family.source_refs == [], family.switchgear_family_ref
+                assert family.source_version, family.switchgear_family_ref
+                assert all(
+                    "Zeszyt 1" in dokument for dokument in family.source_document_refs
+                ), family.switchgear_family_ref
+                continue
             assert len(family.source_refs) > 0, f"{family.switchgear_family_ref} brak source_refs"
             # Każdy source_ref musi być URL-em publicznym.
             for ref in family.source_refs:
@@ -435,3 +456,29 @@ class TestTorKonfiguracji:
         payload = ZPUE_WLOSZCZOWA__TPM_AIR.model_dump(mode="json")
         assert payload["tor_konfiguracji"] == "BLOK_RMU"
         assert payload["construction_type"] == "RMU"
+
+
+@pytest.mark.parametrize(
+    "family_ref", sorted(f.switchgear_family_ref for f in list_switchgear_families())
+)
+def test_slownik_aparatow_rodzin_zgrubiony(family_ref):
+    """Słownik aparatów rodziny = obraz zgrubienia (`FAMILY_APPARATUS_FOR_ENM_KIND`,
+    `FAMILY_APPARATUS_FOR_TEMPLATE_KIND`). Identyfikator spoza obrazu (np. drobnoziarnisty
+    `disconnector_busbar`) sprawia, że filtr szablonów rodziny po cichu zdejmuje aparat,
+    a tryb katalogu `set_bay_equipment` odmawia aparatu, który rodzina ma (karta UX-04)."""
+    from network_model.catalog.bay_templates import BAY_TEMPLATES_GPZ_LINE
+    from network_model.catalog.switchgear.apparatus_vocabulary import (
+        FAMILY_APPARATUS_FOR_ENM_KIND,
+        FAMILY_APPARATUS_FOR_TEMPLATE_KIND,
+    )
+    from network_model.catalog.switchgear.canonical_fallback import _family_filtered_base
+
+    slownik = set(FAMILY_APPARATUS_FOR_ENM_KIND.values()) | set(
+        FAMILY_APPARATUS_FOR_TEMPLATE_KIND.values()
+    )
+    rodzina = next(f for f in list_switchgear_families() if f.switchgear_family_ref == family_ref)
+    assert set(rodzina.allowed_apparatus_kinds) <= slownik
+    if rodzina.manufacturer_ref == "TYP_OGOLNY_OSD":
+        # Rodzina typu ogólnego GPZ niesie KAŻDY aparat dziewięciu szablonów pola liniowego.
+        for szablon in BAY_TEMPLATES_GPZ_LINE:
+            assert _family_filtered_base(szablon, rodzina) is szablon, szablon.template_id

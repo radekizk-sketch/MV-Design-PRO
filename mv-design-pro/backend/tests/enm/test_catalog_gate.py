@@ -20,7 +20,7 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 CATALOG_KABEL_SN = "cable-tfk-yakxs-3x120"
 CATALOG_LINIA_SN = "line-base-al-st-50"
 CATALOG_TRAFO_SN_NN = "tr-sn-nn-15-04-630kva-dyn11"
-CATALOG_APARAT_SN = "sw-ls-schneider-rm6-17kv-400a"
+CATALOG_APARAT_SN = "sw-ls-ogolny-prozniowy-24kv-630a"
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 #: Punkty rozgałęzienia mają własny katalog obiektów (`mv_branch_points`).
 CATALOG_SLUP_ROZGALEZNY = "SLUP-ODG-12"

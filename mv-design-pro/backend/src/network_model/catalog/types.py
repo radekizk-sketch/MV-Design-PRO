@@ -33,6 +33,13 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.przekladniki import (
+    RdzenPrzekladnikaPradowego,
+    UzwojeniePrzekladnikaNapieciowego,
+    alf_ct_z_klasy,
+    rdzen_ct_z_klasy,
+    rodzaj_vt_z_klasy,
+)
 from network_model.catalog.rodzaje_aparatury import (
     WIELKOSCI_ZWARCIOWE_APARATU_SN,
     WIELKOSCI_ZWARCIOWE_LACZNIKA,
@@ -3250,6 +3257,12 @@ class MVApparatusType:
     #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
     #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
+    #: Medium gaszenia łuku aparatu (``VACUUM``/``SF6``/``AIR``…) — kopia ``medium`` rekordu
+    #: łącznika, z którego pozycja powstaje (`repository._derive_mv_apparatus_records`).
+    #: Rozstrzyga zakaz gazów fluorowanych w aparatach pól projektowanych
+    #: (`gazy_fluorowane.czy_medium_z_gazem_fluorowanym`). ``None`` = karta nie podaje medium
+    #: (aparat bez komory gaszeniowej: odłącznik, uziemnik, bezpiecznik).
+    medium: str | None = None
     #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
     #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
     #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
@@ -3296,6 +3309,7 @@ class MVApparatusType:
             "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
+            "medium": self.medium,
             **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -3335,6 +3349,7 @@ class MVApparatusType:
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
             ),
+            medium=(str(data["medium"]) if data.get("medium") is not None else None),
             card_field_status=(
                 {str(k): dict(v) for k, v in data["card_field_status"].items()}
                 if data.get("card_field_status")
@@ -3856,45 +3871,6 @@ class LVRcdType:
 # =============================================================================
 
 
-def rdzen_ct_z_klasy(accuracy_class: str | None) -> str | None:
-    """Rodzaj rdzenia przekładnika WYPROWADZONY z klasy dokładności (IEC 61869-2).
-
-    Podział jest DEFINICYJNY, nie umowny: klasy z literą ``P`` opisują rdzenie
-    ZABEZPIECZENIOWE — błąd zdefiniowany przy wielokrotności prądu znamionowego
-    (IEC 61869-2 § 5.6.2) — a klasy liczbowe (0,1 / 0,2 / 0,5 / 1 / 3 / 5) rdzenie
-    POMIAROWE, gdzie błąd definiuje się przy prądzie znamionowym. Dlatego z klasy wolno
-    wyprowadzić tę wartość: jest własnością NAZWANEJ rzeczy, nie założeniem o rzeczy
-    (ta sama klasa derywacji, co stałe IEC 60949 z materiału żyły — V12K-224).
-
-    ``dual`` NIE JEST tu nigdy zwracane. Rdzeń podwójny to cecha KONSTRUKCYJNA
-    przekładnika (dwa niezależne rdzenie: zabezpieczeniowy + pomiarowy), której nie da
-    się wywnioskować z jednej klasy — wymaga danej producenta. Klasa złożona
-    (np. „5P10/0,5") opisywałaby dwa rdzenie, ale katalog referencyjny takiego wpisu nie
-    ma (pomiar V12K-239: 12 typów, zero zapisów złożonych).
-
-    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da się ustalić", nie
-    „przyjmijmy pomiarowy".
-    """
-    if not accuracy_class:
-        return None
-    znormalizowana = accuracy_class.strip().upper()
-    if not znormalizowana:
-        return None
-    if "/" in znormalizowana:
-        # Zapis złożony opisuje DWA rdzenie — konstrukcja, nie jedna klasa. Bez danej
-        # producenta o rdzeniach nie zgadujemy (patrz wyżej).
-        return None
-    if "P" in znormalizowana:
-        return "protection"
-    # Klasa pomiarowa jest liczbą (0.2 / 0.5 / 1.0 / 3 / 5) — cokolwiek innego zostaje
-    # nierozpoznane, zamiast wpadać do „pomiarowy" jako gałąź domyślna.
-    try:
-        float(znormalizowana.replace(",", "."))
-    except ValueError:
-        return None
-    return "metering"
-
-
 #: Znormalizowany stosunek pradu dynamicznego do cieplnego (IEC 61869-2).
 #:
 #: Norma ustala, ze prad dynamiczny (szczytowy, wytrzymywany elektrodynamicznie) rowna
@@ -3919,27 +3895,6 @@ def idyn_ct_z_ith(ith_ka_1s: float | None) -> float | None:
     if ith_ka_1s is None or ith_ka_1s <= 0:
         return None
     return round(ith_ka_1s * WSPOLCZYNNIK_IDYN_DO_ITH, 3)
-
-
-def alf_ct_z_klasy(accuracy_class: str | None) -> float | None:
-    """Znamionowa graniczna liczba dokładności (ALF) rdzenia ZABEZPIECZENIOWEGO.
-
-    Dla klas ``⟨błąd⟩P⟨ALF⟩`` liczba po literze ``P`` JEST znamionową graniczną liczbą
-    dokładności (IEC 61869-2 § 3.4.201): 5P10 ⇒ ALF 10, 10P20 ⇒ ALF 20. To odczyt
-    oznaczenia, nie oszacowanie — dlatego wolno go wyprowadzić.
-
-    Rdzeń pomiarowy ALF nie ma (ma współczynnik bezpieczeństwa przyrządowego F_s, który
-    jest osobną daną znamionową producenta i NIE wynika z klasy) — dla klas liczbowych
-    zwracane jest ``None``.
-    """
-    if rdzen_ct_z_klasy(accuracy_class) != "protection":
-        return None
-    assert accuracy_class is not None  # gwarantowane przez `rdzen_ct_z_klasy`
-    _, _, po_p = accuracy_class.strip().upper().partition("P")
-    try:
-        return float(po_p.replace(",", "."))
-    except ValueError:
-        return None
 
 
 @dataclass(frozen=True)
@@ -3977,16 +3932,43 @@ class CTType:
     #: normowego. `None` znaczy „karta producenta jeszcze nie wczytana"; kryterium
     #: nasycenia liczy sie wtedy z obciazalnosci znamionowej (VA), nie z rezystancji.
     rct_ohm: float | None = None
+    #: Rdzenie przekładnika wielordzeniowego (`przekladniki.RdzenPrzekladnikaPradowego`) —
+    #: tabliczka producenta. Pusta krotka = typ jednordzeniowy opisany polami skalarnymi
+    #: (klasa, moc, FS); `lista_rdzeni` daje wtedy ten jeden rdzeń. Liczba rdzeni jest
+    #: wyprowadzana z listy, nie przechowywana.
+    rdzenie: tuple[RdzenPrzekladnikaPradowego, ...] = ()
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
+    def lista_rdzeni(self) -> tuple[RdzenPrzekladnikaPradowego, ...]:
+        """Rdzenie typu: jawna lista producenta albo — dla typu jednordzeniowego opisanego
+        polami skalarnymi — ten jeden rdzeń (klasa, moc, FS z tabliczki). Brak klasy albo mocy
+        = pusta lista (rdzeń nieopisany; brak danej nie zamienia się w wartość)."""
+        if self.rdzenie:
+            return self.rdzenie
+        rodzaj = rdzen_ct_z_klasy(self.accuracy_class)
+        if rodzaj is None or self.accuracy_class is None or not self.burden_va:
+            return ()
+        return (
+            RdzenPrzekladnikaPradowego(
+                przekladnia=f"{self.ratio_primary_a:g}/{self.ratio_secondary_a:g}",
+                moc_va=self.burden_va,
+                klasa=self.accuracy_class,
+                fs=self.fs_safety_factor if rodzaj == "metering" else None,
+                przeznaczenie=("ZABEZPIECZENIA",) if rodzaj == "protection" else ("POMIAR",),
+            ),
+        )
+
     def to_dict(self) -> dict[str, Any]:
+        rdzenie = self.lista_rdzeni()
         return {
             "id": self.id,
             "name": self.name,
+            "rdzenie": [r.model_dump(mode="json") for r in rdzenie],
+            "liczba_rdzeni": len(rdzenie),
             "ratio_primary_a": self.ratio_primary_a,
             "ratio_secondary_a": self.ratio_secondary_a,
             "accuracy_class": self.accuracy_class,
@@ -4038,6 +4020,9 @@ class CTType:
                 else None
             ),
             rct_ohm=(float(data["rct_ohm"]) if data.get("rct_ohm") is not None else None),
+            rdzenie=tuple(
+                RdzenPrzekladnikaPradowego.model_validate(r) for r in data.get("rdzenie") or ()
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog CT MV-DESIGN-PRO / dane referencyjne",
@@ -4066,35 +4051,6 @@ WSPOLCZYNNIK_NAPIECIOWY_SIEC_UZIEMIONA: float = 1.5
 WSPOLCZYNNIK_NAPIECIOWY_SIEC_MALOPRADOWA: float = 1.9
 CZAS_WSPOLCZYNNIKA_KROTKI_S: float = 30.0
 CZAS_WSPOLCZYNNIKA_DLUGI_S: float = 8 * 3600.0
-
-
-def rodzaj_vt_z_klasy(accuracy_class: str | None) -> str | None:
-    """Rodzaj uzwojenia VT WYPROWADZONY z klasy dokladnosci (IEC 61869-3).
-
-    Podzial jest DEFINICYJNY, tak samo jak dla przekladnikow pradowych (V12K-239):
-    klasy z litera ``P`` (3P, 6P) opisuja uzwojenia ZABEZPIECZENIOWE — blad zdefiniowany
-    w calym zakresie od 5% U_n do F_v·U_n (IEC 61869-3 § 5.6.202) — a klasy liczbowe
-    (0,1 / 0,2 / 0,5 / 1,0 / 3,0) uzwojenia POMIAROWE, gdzie blad definiuje sie w waskim
-    otoczeniu napiecia znamionowego. Dlatego z klasy wolno wyprowadzic te wartosc.
-
-    Zapis zlozony (np. „0,5/3P") opisywalby DWA uzwojenia — nie da sie go rozstrzygnac
-    na jeden rodzaj, wiec rekordy dwuuzwojeniowe niosa klase uzwojenia zabezpieczeniowego
-    w ``accuracy_class`` i klase uzwojenia pomiarowego w ``accuracy_class_metering``.
-
-    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da sie ustalic".
-    """
-    if not accuracy_class:
-        return None
-    znormalizowana = accuracy_class.strip().upper()
-    if not znormalizowana or "/" in znormalizowana:
-        return None
-    if "P" in znormalizowana:
-        return "protection"
-    try:
-        float(znormalizowana.replace(",", "."))
-    except ValueError:
-        return None
-    return "metering"
 
 
 @dataclass(frozen=True)
@@ -4131,16 +4087,49 @@ class VTType:
     #: Dana KONSTRUKCYJNA — nie wyprowadza sie jej z klasy ani z przekladni. `None`
     #: znaczy „karta producenta jeszcze nie wczytana", `False` — brak takiego uzwojenia.
     has_residual_winding: bool | None = None
+    #: Uzwojenia przekładnika wielouzwojeniowego
+    #: (`przekladniki.UzwojeniePrzekladnikaNapieciowego`) — tabliczka producenta. Pusta krotka
+    #: = typ opisany polami skalarnymi; `lista_uzwojen` daje wtedy uzwojenia z tych pól.
+    uzwojenia: tuple[UzwojeniePrzekladnikaNapieciowego, ...] = ()
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog VT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
+    def lista_uzwojen(self) -> tuple[UzwojeniePrzekladnikaNapieciowego, ...]:
+        """Uzwojenia typu: jawna lista producenta albo uzwojenia z pól skalarnych — uzwojenie
+        klasy `accuracy_class` i (w typie dwuuzwojeniowym) uzwojenie pomiarowe
+        `accuracy_class_metering`, oba z mocą `burden_va`. Uzwojenie resztkowe
+        (`has_residual_winding`) bez klasy z tabliczki NIE jest dopisywane (klasa nieznana);
+        brak mocy = pusta lista."""
+        if self.uzwojenia:
+            return self.uzwojenia
+        if not self.burden_va:
+            return ()
+        przekladnia = f"{self.ratio_primary_v:g}/{self.ratio_secondary_v:g} V"
+        wynik: list[UzwojeniePrzekladnikaNapieciowego] = []
+        for klasa in (self.accuracy_class, self.accuracy_class_metering):
+            rodzaj = rodzaj_vt_z_klasy(klasa)
+            if rodzaj is None or klasa is None:
+                continue
+            wynik.append(
+                UzwojeniePrzekladnikaNapieciowego(
+                    przekladnia=przekladnia,
+                    moc_va=self.burden_va,
+                    klasa=klasa,
+                    przeznaczenie=("ZABEZPIECZENIA",) if rodzaj == "protection" else ("POMIAR",),
+                )
+            )
+        return tuple(wynik)
+
     def to_dict(self) -> dict[str, Any]:
+        uzwojenia = self.lista_uzwojen()
         return {
             "id": self.id,
             "name": self.name,
+            "uzwojenia": [u.model_dump(mode="json") for u in uzwojenia],
+            "liczba_uzwojen": len(uzwojenia),
             "ratio_primary_v": self.ratio_primary_v,
             "ratio_secondary_v": self.ratio_secondary_v,
             "accuracy_class": self.accuracy_class,
@@ -4190,6 +4179,10 @@ class VTType:
                 bool(data["has_residual_winding"])
                 if data.get("has_residual_winding") is not None
                 else None
+            ),
+            uzwojenia=tuple(
+                UzwojeniePrzekladnikaNapieciowego.model_validate(u)
+                for u in data.get("uzwojenia") or ()
             ),
             **_catalog_metadata_kwargs(
                 data,

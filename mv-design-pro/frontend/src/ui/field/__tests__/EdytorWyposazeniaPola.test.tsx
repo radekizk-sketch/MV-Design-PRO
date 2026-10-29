@@ -9,7 +9,7 @@
  * wyłącznie z gałęzi TEGO pola, zmiana rodzaju czyści pola nowego rodzaju, katalog
  * odpytywany dopiero po otwarciu edycji.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,6 +22,7 @@ const katalogApi = vi.hoisted(() => ({
   fetchVtTypes: vi.fn(),
   fetchSurgeArresterTypes: vi.fn(),
   fetchCompleteBayTemplates: vi.fn(),
+  fetchSzablonyPolaKanoniczne: vi.fn(),
 }));
 
 vi.mock('../../catalog/api', () => ({
@@ -70,11 +71,11 @@ function odpowiedz(stan: 'MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH'): DomainOpRespon
 
 beforeEach(() => {
   katalogApi.fetchMvApparatusTypes.mockResolvedValue([
-    { id: 'wyl-1', name: 'Wyłącznik 630 A', device_kind: 'WYLACZNIK', u_n_kv: 24, i_n_a: 630 },
-    { id: 'rek-1', name: 'Reklozer', device_kind: 'REKLOZER', u_n_kv: 24, i_n_a: 630 },
-    { id: 'roz-1', name: 'Rozłącznik', device_kind: 'ROZLACZNIK', u_n_kv: 24, i_n_a: 630 },
-    { id: 'odl-1', name: 'Odłącznik', device_kind: 'ODLACZNIK', u_n_kv: 24, i_n_a: 630 },
-    { id: 'uz-1', name: 'Uziemnik', device_kind: 'UZIEMNIK', u_n_kv: 24, i_n_a: 630 },
+    { id: 'wyl-1', name: 'Wyłącznik 630 A', device_kind: 'WYLACZNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
+    { id: 'rek-1', name: 'Reklozer', device_kind: 'REKLOZER', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
+    { id: 'roz-1', name: 'Rozłącznik', device_kind: 'ROZLACZNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
+    { id: 'odl-1', name: 'Odłącznik', device_kind: 'ODLACZNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
+    { id: 'uz-1', name: 'Uziemnik', device_kind: 'UZIEMNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
   ]);
   katalogApi.fetchCtTypes.mockResolvedValue([{ id: 'ct-1', name: 'Przekładnik 200/5' }]);
   katalogApi.fetchVtTypes.mockResolvedValue([{ id: 'vt-1', name: 'Przekładnik 15/0,1' }]);
@@ -82,6 +83,7 @@ beforeEach(() => {
   katalogApi.fetchCompleteBayTemplates.mockResolvedValue(
     ROLE.map((rola) => ({ template_ref: `szablon-${rola}`, template_name_pl: `Szablon ${rola}`, bay_role: rola })),
   );
+  katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -183,6 +185,90 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
     await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'wyczysc');
     await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
     expect(await screen.findByTestId('wyposazenie-pola-blad')).toHaveTextContent('Serwer niedostępny');
+  });
+});
+
+/**
+ * Zakaz gazów fluorowanych w aparatach projektowanych — iloczyn cech: stan pola {PROJEKTOWANY,
+ * ISTNIEJACY} × stan wiersza {bez zmian/nowy, ISTNIEJACY (inwentaryzacja)} × pozycja wiersza
+ * {brak, już przypisana z SF₆}. Wiersz wybierany dla aparatu projektowanego widzi wyłącznie
+ * pozycje dopuszczone backendem; inwentaryzacja aparatu zastanego widzi cały katalog; pozycja już
+ * przypisana zostaje widoczna. Selektor stanu wiersza istnieje wyłącznie w polu istniejącym.
+ */
+describe('EdytorWyposazeniaPola — aparaty z gazem fluorowanym', () => {
+  const POWOD = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+  beforeEach(() => {
+    katalogApi.fetchMvApparatusTypes.mockResolvedValue([
+      { id: 'wyl-sf6', name: 'Wyłącznik SF6', device_kind: 'WYLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: POWOD, u_n_kv: 24, i_n_a: 630 },
+      { id: 'wyl-1', name: 'Wyłącznik 630 A', device_kind: 'WYLACZNIK', medium: 'VACUUM', dopuszczony_do_nowych_pol: true, u_n_kv: 24, i_n_a: 630 },
+    ]);
+  });
+
+  async function opcjeWiersza(): Promise<string[]> {
+    let opcje: string[] = [];
+    await waitFor(() => {
+      opcje = Array.from((screen.getByTestId('wyposazenie-pola-aparat-0-katalog') as HTMLSelectElement).options).map((o) => o.value);
+      expect(opcje).toContain('wyl-1');
+    });
+    return opcje;
+  }
+
+  it.each([
+    ['PROJEKTOWANY', '', ['', 'wyl-1'], true],
+    ['ISTNIEJACY', '', ['', 'wyl-1'], true],
+    ['ISTNIEJACY', 'ISTNIEJACY', ['', 'wyl-sf6', 'wyl-1'], false],
+  ] as const)('pole %s × wiersz „%s" → pozycje %j, nota %s', async (stanPola, stanWiersza, oczekiwane, nota) => {
+    const user = userEvent.setup();
+    renderuj({ ...polePola('OUT'), stan_obiektu: stanPola } as Bay, vi.fn());
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CB');
+    if (stanPola === 'ISTNIEJACY') {
+      await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-stan'), stanWiersza);
+    } else {
+      expect(screen.queryByTestId('wyposazenie-pola-aparat-0-stan')).toBeNull();
+    }
+    expect(await opcjeWiersza()).toEqual(oczekiwane);
+    expect(screen.getByTestId('wyposazenie-pola-aparat-0-katalog').textContent).toContain('próżnia');
+    const elNota = screen.queryByTestId('wyposazenie-pola-nota-ukrytych');
+    if (nota) {
+      expect(elNota?.textContent).toBe(`Ukryto pozycje niedopuszczone do obiektu projektowanego: 1. Przykład: ${POWOD}`);
+    } else {
+      expect(elNota).toBeNull();
+    }
+  });
+
+  it('inwentaryzacja aparatu zastanego z SF₆ trafia do operacji ze stanem ISTNIEJACY', async () => {
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('MODEL'));
+    renderuj({ ...polePola('OUT'), stan_obiektu: 'ISTNIEJACY' } as Bay, wykonaj);
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CB');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-umiejscowienie'), 'MIDSTREAM');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-stan'), 'ISTNIEJACY');
+    await opcjeWiersza();
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-katalog'), 'wyl-sf6');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-lacznik'), 'q1');
+    expect(screen.getByTestId('wyposazenie-pola-zapisz')).toBeEnabled();
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    expect(wykonaj).toHaveBeenCalledWith(
+      'case-1',
+      'set_bay_equipment',
+      expect.objectContaining({
+        devices: [expect.objectContaining({ kind: 'CB', catalog_ref: 'wyl-sf6', stan_obiektu: 'ISTNIEJACY' })],
+      }),
+    );
+  });
+
+  it('aparat już przypisany z SF₆ zostaje widoczny w wierszu pola projektowanego (inne SF₆ — nie)', async () => {
+    const user = userEvent.setup();
+    renderuj(
+      polePola('OUT', [
+        { device_ref: 'd1', symbol_ref: 's', kind: 'CB', placement: 'MIDSTREAM', catalog_ref: 'wyl-sf6', linked_ref: 'q1' },
+      ] as never),
+      vi.fn(),
+    );
+    await otworz(user);
+    expect(await opcjeWiersza()).toEqual(['', 'wyl-sf6', 'wyl-1']);
   });
 });
 
@@ -323,5 +409,144 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
     renderuj(polePola('OUT'), vi.fn());
     await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
     expect(await screen.findByTestId('wyposazenie-pola-blad-katalogu')).toHaveTextContent('Katalog niedostępny');
+  });
+});
+
+/** Szablon kanoniczny z oceną backendu (kształt `GET /api/catalog/bay-templates`). */
+function kanoniczny(ref: string, dopuszczony: boolean, wykonanie: string | null = 'Z10') {
+  return {
+    template_ref: ref,
+    template_name_pl: `Szablon ${ref}`,
+    bay_role: 'OUT',
+    podstawa: 'ENEA Zeszyt 1, Z.10 (s.89)',
+    wykonanie_pola: wykonanie,
+    wykonanie_pola_pl: wykonanie ? 'pole linii odpływowej SN (ENEA Z.10)' : null,
+    wykonanie_lacznikow: 'TROJPOLOZENIOWY',
+    wykonanie_lacznikow_pl: 'łącznik trójpołożeniowy przy szynie',
+    tylko_gpz: true,
+    funkcje_eaz: ['51', '50', '67N'],
+    funkcje_eaz_pl: ['I> (51) — nadprądowe zwłoczne', 'I>> (50) — nadprądowe zwarciowe', 'I0> (67N) — ziemnozwarciowe kierunkowe'],
+    dopuszczony,
+    odmowy: dopuszczony ? [] : [{ kod: 'pole.szablon_tylko_gpz', komunikat_pl: `Powód odmowy ${ref}.` }],
+  };
+}
+
+describe('EdytorWyposazeniaPola — szablony kanoniczne z oceną backendu i klasa pola liniowego', () => {
+  const polaGpz = (klasa: Bay['klasa_pola'] = null, rodzina: string | null = 'rodzina-x') =>
+    pole({
+      ref_id: 'pole-gpz',
+      bay_role: 'OUT',
+      bus_ref: 'szyna-sn',
+      gpz_section_id: 'sekcja-1',
+      switchgear_family_ref: rodzina,
+      klasa_pola: klasa,
+      equipment_refs: ['q1'],
+      primary_devices: [],
+    });
+
+  it('cechy pola idą do backendu; dopuszczony szablon jest opcją, odrzucony — powodem pod listą', async () => {
+    const user = userEvent.setup();
+    katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([kanoniczny('z10-a', true), kanoniczny('z10-b', false)]);
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('PROPOZYCJA'));
+    renderuj(polaGpz('ODBIORCZE'), wykonaj);
+    await otworz(user);
+    expect(katalogApi.fetchSzablonyPolaKanoniczne).toHaveBeenCalledWith({
+      bayRole: 'OUT',
+      poleGpz: true,
+      switchgearFamilyRef: 'rodzina-x',
+      klasaPola: 'ODBIORCZE',
+    });
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'szablon');
+    await waitFor(() =>
+      expect(
+        Array.from((screen.getByTestId('wyposazenie-pola-szablon') as HTMLSelectElement).options).map((o) => o.value),
+      ).toEqual(['', 'szablon-OUT', 'z10-a']),
+    );
+    expect(screen.getByTestId('wyposazenie-pola-szablon-niedostepny-z10-b')).toHaveTextContent('Powód odmowy z10-b.');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-szablon'), 'z10-a');
+    expect(screen.getByTestId('wyposazenie-pola-szablon-opis')).toHaveTextContent('Funkcje zabezpieczeniowe pola:');
+    // Nazwy funkcji ze słownika EAZ backendu, w kolejności kodów zestawu (bez kopii słownika).
+    const funkcje = within(screen.getByTestId('wyposazenie-pola-szablon-funkcje-eaz')).getAllByRole('listitem');
+    expect(funkcje.map((li) => [li.getAttribute('data-kod'), li.textContent])).toEqual([
+      ['51', 'I> (51) — nadprądowe zwłoczne'],
+      ['50', 'I>> (50) — nadprądowe zwarciowe'],
+      ['67N', 'I0> (67N) — ziemnozwarciowe kierunkowe'],
+    ]);
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    expect(wykonaj).toHaveBeenCalledWith('case-1', 'set_bay_equipment', {
+      bay_ref: 'pole-gpz',
+      mode: 'szablon',
+      bay_template_ref: 'z10-a',
+    });
+  });
+
+  // Iloczyn: tryb {katalog, szablon, wyczysc} × zmiana klasy {bez zmiany, ustawiona, wyczyszczona}.
+  const przypadkiKlasy: Array<[string, 'katalog' | 'szablon' | 'wyczysc', 'bez' | 'ustaw' | 'wyczysc']> = [];
+  for (const tryb of ['katalog', 'szablon', 'wyczysc'] as const) {
+    for (const zmiana of ['bez', 'ustaw', 'wyczysc'] as const) przypadkiKlasy.push([`${tryb} × ${zmiana}`, tryb, zmiana]);
+  }
+  it.each(przypadkiKlasy)('%s: klasa pola w ładunku wyłącznie po zmianie', async (_opis, tryb, zmiana) => {
+    const user = userEvent.setup();
+    katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([kanoniczny('z11-a', true, 'Z11')]);
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('PROPOZYCJA'));
+    renderuj(polaGpz('ODBIORCZE'), wykonaj);
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), tryb);
+    const klasa = await screen.findByTestId('wyposazenie-pola-klasa');
+    expect((klasa as HTMLSelectElement).value).toBe('ODBIORCZE');
+    if (zmiana === 'ustaw') await user.selectOptions(klasa, 'MIESZANE');
+    if (zmiana === 'wyczysc') await user.selectOptions(klasa, '');
+    if (zmiana === 'ustaw') {
+      // Ocena szablonów przeliczona dla klasy PO zapisie (ta sama reguła co strażnik operacji).
+      await waitFor(() =>
+        expect(katalogApi.fetchSzablonyPolaKanoniczne).toHaveBeenLastCalledWith(
+          expect.objectContaining({ klasaPola: 'MIESZANE' }),
+        ),
+      );
+    }
+    if (tryb === 'katalog') {
+      await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CABLE_HEAD');
+      await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-umiejscowienie'), 'DOWNSTREAM');
+    }
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    const ladunek = wykonaj.mock.calls[0][2] as Record<string, unknown>;
+    if (zmiana === 'bez') expect('klasa_pola' in ladunek).toBe(false);
+    if (zmiana === 'ustaw') expect(ladunek.klasa_pola).toBe('MIESZANE');
+    if (zmiana === 'wyczysc') expect(ladunek.klasa_pola).toBeNull();
+    expect(ladunek.mode).toBe(tryb);
+  });
+
+  it('pole spoza GPZ albo funkcji bez szablonu pola liniowego nie ma wyboru klasy', async () => {
+    const user = userEvent.setup();
+    katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([kanoniczny('inny', true, null)]);
+    renderuj(polaGpz(null), vi.fn());
+    await otworz(user);
+    await waitFor(() => expect(katalogApi.fetchSzablonyPolaKanoniczne).toHaveBeenCalled());
+    expect(screen.queryByTestId('wyposazenie-pola-klasa')).toBeNull();
+    cleanup();
+    katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([kanoniczny('z10-a', true)]);
+    renderuj(polePola('OUT'), vi.fn());
+    await otworz(user);
+    expect(katalogApi.fetchSzablonyPolaKanoniczne).toHaveBeenLastCalledWith(expect.objectContaining({ poleGpz: false }));
+    expect(screen.queryByTestId('wyposazenie-pola-klasa')).toBeNull();
+  });
+
+  it('odgałęzienie toru aparatu wraca do operacji (ponowny zapis odtwarza porty odgałęzienia)', async () => {
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('MODEL'));
+    renderuj(
+      polePola('OUT', [
+        { device_ref: 'd1', symbol_ref: 's', kind: 'CB', placement: 'MIDSTREAM', catalog_ref: 'wyl-1', linked_ref: 'q1' },
+        { device_ref: 'd2', symbol_ref: 's', kind: 'CABLE_HEAD', placement: 'DOWNSTREAM', odgalezienie: 'pn' },
+        { device_ref: 'd3', symbol_ref: 's', kind: 'VT', placement: 'DOWNSTREAM', catalog_ref: 'vt-1', odgalezienie: 'pn' },
+      ] as never),
+      wykonaj,
+    );
+    await otworz(user);
+    expect((screen.getByTestId('wyposazenie-pola-aparat-0-odgalezienie') as HTMLInputElement).value).toBe('');
+    expect((screen.getByTestId('wyposazenie-pola-aparat-1-odgalezienie') as HTMLInputElement).value).toBe('pn');
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
+    expect(urzadzenia.map((d) => d.odgalezienie ?? null)).toEqual([null, 'pn', 'pn']);
   });
 });

@@ -42,6 +42,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'close_switch',
   // W5-C: wyposażenie pola SN (tryb katalog / szablon / wyczyść) — karta pola E-11.
   'set_bay_equipment',
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (istniejący / projektowany) — karta pola E-11.
+  'set_object_state',
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
   'update_element_parameters',

@@ -13,6 +13,16 @@ from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
 from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
+from network_model.catalog.gazy_fluorowane import StanObiektu
+from network_model.catalog.przekladniki import (
+    RdzenPrzekladnikaPradowego,
+    UzwojeniePrzekladnikaNapieciowego,
+)
+from network_model.catalog.rodzaje_aparatury import (
+    PORTY_APARATU_POLA,
+    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
+    STAN_UZIEMIONY,
+)
 from network_model.core.uziemienie import (
     RolaUziemnika,
     TypPunktuNeutralnego,
@@ -24,6 +34,7 @@ from pydantic import BaseModel, Field, model_validator
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
+from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
 from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
 
@@ -448,6 +459,15 @@ class SwitchBranch(BranchBase):
     r_ohm: float | None = None
     x_ohm: float | None = None
     normal_state: Literal["closed", "open"] | None = None
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-28): stan obiektu INSTANCJI
+    # łącznika — ISTNIEJACY albo PROJEKTOWANY. Operacja tworząca łącznik poza polem (rozłącznik
+    # sekcyjny w ciągu, sprzęgło, łącznik portu odgałęźnego) nadaje PROJEKTOWANY jawnie; wymiana
+    # pozycji katalogu łącznika nadaje PROJEKTOWANY (nowa instancja); ISTNIEJACY ustawia
+    # `set_object_state` (`switch_ref` albo całe pole). Łącznik opisany aparatem pola
+    # (`BayPrimaryDevice.linked_ref`) nie ma własnego stanu (niesie go aparat), łącznik pola bez
+    # własnego stanu dziedziczy stan pola — `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`
+    # (jedno źródło). `None` = gałąź sprzed atrybutu. Rozstrzyga zakaz gazów fluorowanych.
+    stan_obiektu: StanObiektu | None = None
 
 
 class FuseBranch(BranchBase):
@@ -929,15 +949,17 @@ class Measurement(ENMElement):
     # vs gwiazda. WYŁĄCZNIE dla measurement_type=='VT'; None = dana
     # niedostarczona (dotychczasowe uproszczenie §20.2 pozostaje w mocy).
     vt_arrangement: Literal["open_delta", "star"] | None = None
-    # CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (rdzeń =
-    # osobne uzwojenie wtórne, każdy o własnej klasie/mocy — np. rdzeń pomiarowy
-    # 0,2S + rdzeń zabezpieczeniowy 5P10). Dane PRODUCENTA (tabliczka CT wg
-    # IEC 61869-2); WYŁĄCZNIE dla measurement_type=='CT'. `gt=0` = liczba
-    # rdzeni musi być dodatnia. None = dana niedostarczona przez producenta
-    # (uczciwy brak, ZERO fabrykacji — konsument NIE zgaduje). Oś ODRĘBNA od
-    # `ct_arrangement` (3×CT vs Ferranti opisuje układ dla I0, `ct_cores`
-    # opisuje liczbę uzwojeń wtórnych każdego przekładnika).
-    ct_cores: int | None = Field(default=None, gt=0)
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4 pkt 3): RDZENIE przekładnika prądowego
+    # jako lista (`przekladniki.RdzenPrzekladnikaPradowego`: przekładnia, moc VA, klasa, FS,
+    # przeznaczenie; ALF z klasy) — dawna liczba `ct_cores` skasowana, liczbę rdzeni
+    # wyprowadza się z listy. WYŁĄCZNIE dla measurement_type=='CT'. None = tabliczka
+    # niedostarczona (uczciwy brak — konsument NIE zgaduje). Oś ODRĘBNA od `ct_arrangement`.
+    rdzenie: list[RdzenPrzekladnikaPradowego] | None = None
+    # Ta sama karta: UZWOJENIA przekładnika napięciowego jako lista
+    # (`przekladniki.UzwojeniePrzekladnikaNapieciowego`: przekładnia, moc VA, klasa,
+    # przeznaczenie, otwarty trójkąt). WYŁĄCZNIE dla measurement_type=='VT'. None = tabliczka
+    # niedostarczona.
+    uzwojenia: list[UzwojeniePrzekladnikaNapieciowego] | None = None
     # CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego — szynowy
     # (`bus`, VT na szynach zbiorczych) vs kablowy (`cable`, VT w polu
     # kablowym/na głowicy). Dane PRODUCENTA/projektowe rozdzielni; WYŁĄCZNIE
@@ -976,13 +998,22 @@ class Measurement(ENMElement):
 
     @model_validator(mode="after")
     def _validate_ctvt_variant_matches_measurement_type(self) -> Measurement:
-        """CTVT-MODEL/W3-B: `ct_cores`/`vt_mounting`/`vt_uzwojenie` to dane
-        WYŁĄCZNIE dla odpowiadającego `measurement_type` — CT nie ma montażu
-        VT ani uzwojenia VT, a VT nie ma rdzeni CT (spójność osi, WHITE BOX,
-        `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
-        przez `Field(gt=0)`."""
-        if self.ct_cores is not None and self.measurement_type != "CT":
-            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+        """CTVT-MODEL/W3-B: `rdzenie`/`uzwojenia`/`vt_mounting`/`vt_uzwojenie` to dane
+        WYŁĄCZNIE dla odpowiadającego `measurement_type` — CT nie ma montażu VT ani uzwojeń VT,
+        a VT nie ma rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`). Lista
+        podana jest niepusta (pusta lista nie opisuje przekładnika — brak danej to `None`)."""
+        if self.rdzenie is not None and self.measurement_type != "CT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': rdzenie wymagają measurement_type='CT'."
+            )
+        if self.uzwojenia is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': uzwojenia wymagają measurement_type='VT'."
+            )
+        if self.rdzenie == [] or self.uzwojenia == []:
+            raise ValueError(
+                f"Measurement '{self.ref_id}': pusta lista rdzeni/uzwojeń — brak tabliczki to None."
+            )
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
@@ -1310,7 +1341,7 @@ class Bay(ENMElement):
     odmawia dubli.
     """
 
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
+    bay_role: RolaPolaModelu
     # Właściciel pola: stacja (pole SN/nN) ALBO punkt rozgałęzienia ZKSN — dokładnie jedno.
     substation_ref: str | None = None
     branch_point_ref: str | None = None
@@ -1379,6 +1410,21 @@ class Bay(ENMElement):
     # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
     # (ścieżka konwencji rysunku, zero domysłu).
     primary_devices: list[BayPrimaryDevice] = []
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-28): stan obiektu pola —
+    # ISTNIEJACY (zastany w sieci) albo PROJEKTOWANY (nowy). Każda droga budowy pola nadaje go
+    # JAWNIE (`enm.pola.zbuduj_pole`, argument obowiązkowy); ISTNIEJACY ustawia wyłącznie
+    # operacja „oznacz jako istniejący" (`set_object_state`) albo import istniejącej sieci.
+    # `None` = rekord sprzed atrybutu (stan nieustalony — dla zakazu gazów fluorowanych NIE jest
+    # stanem istniejącym). Rozstrzyga zakaz gazów fluorowanych (`enm.gaz_fluorowany_pola`).
+    stan_obiektu: StanObiektu | None = None
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): klasa pola liniowego SN wg IRiESD ENEA
+    # Operator II.4.5.4.2.1–2.3 — ODBIORCZE / MIESZANE / DEDYKOWANE_WYTWORCY
+    # (`network_model.catalog.bay_templates.KLASY_POLA_LINIOWEGO`). Deklaracja projektanta
+    # (`set_bay_equipment`), jedyne źródło trybu „linia SN z generacją"; zestaw funkcji EAZ pola
+    # wyprowadza z niej `funkcje_eaz_pola_liniowego`, a zgodność z siecią za polem ocenia
+    # `enm.pole_liniowe_gpz`. `None` = klasa nieustalona (pole sprzed atrybutu albo bez
+    # deklaracji) — poza odciskiem.
+    klasa_pola: Literal["ODBIORCZE", "MIESZANE", "DEDYKOWANE_WYTWORCY"] | None = None
 
     @model_validator(mode="after")
     def _wlasciciel_pola(self) -> Bay:
@@ -1404,9 +1450,13 @@ class Bay(ENMElement):
 
 
 class BaySwitchState(BaseModel):
+    # `uziemiony` — WYŁĄCZNIE położenie łącznika trójpołożeniowego (ENEA Zeszyt 1 §13, Z.10;
+    # `network_model.catalog.rodzaje_aparatury.STANY_LACZNIKA_TROJPOLOZENIOWEGO`); rekord
+    # aparatu innego rodzaju z tym stanem odrzuca `BayPrimaryDevice`.
     actual_state: Literal[
         "zamkniety",
         "otwarty",
+        "uziemiony",
         "zamkniety_naped_rozbrojony",
         "otwarty_naped_rozbrojony",
         "nieznany",
@@ -1434,6 +1484,23 @@ class BayOperatingState(BaseModel):
     discrepancy_alarm: bool = False
 
 
+class PortAparatuPola(BaseModel):
+    """Port aparatu pola (karta UX-04/POLE-LINIOWE-WZORZEC) — JAWNY zacisk aparatu.
+
+    ``port_id`` — identyfikator portu z kompletu rodzaju aparatu
+    (``rodzaje_aparatury.PORTY_APARATU_POLA``: ``we``/``wy`` w torze, ``przylacze``
+    odgałęzienia, ``obwod`` przekładnika Ferrantiego). ``wezel`` — węzeł wewnętrzny pola,
+    do którego port jest przyłączony (``szyna`` — szyna sekcji pola, ``kabel`` — odejście
+    kablowe, ``w1``… — węzły toru między aparatami). Porty o tym samym węźle są połączone
+    przewodem; ``None`` = przyłączenie niepodane (jawny brak danych na schemacie, nigdy
+    przewód z domysłu). ``linked_ref`` aparatu NIE zastępuje portu — wskazuje gałąź modelu,
+    nie zacisk.
+    """
+
+    port_id: str
+    wezel: str | None = None
+
+
 class BayPrimaryDevice(BaseModel):
     device_ref: str
     linked_ref: str | None = None
@@ -1457,6 +1524,12 @@ class BayPrimaryDevice(BaseModel):
         # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
         # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
         "SURGE_ARRESTER",
+        # UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.10 s.89, §13): łącznik
+        # trójpołożeniowy (zamknięty/otwarty/uziemiony), przekładnik Ferrantiego na kablu
+        # (bez przerwy toru) i pojemnościowy wskaźnik napięcia (odgałęzienie jednoportowe).
+        "THREE_POSITION_SWITCH",
+        "CORE_BALANCE_CT",
+        "VOLTAGE_INDICATOR",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -1478,6 +1551,63 @@ class BayPrimaryDevice(BaseModel):
     # W5-A: jeden słownik ról (`network_model/core/uziemienie.py::RolaUziemnika`) —
     # ten sam czyta pisarz w `add_sn_bay` (payload `earthing_role`) i front.
     earthing_role: RolaUziemnika | None = None
+    # UX-04/POLE-LINIOWE-WZORZEC: jawne porty aparatu z węzłami pola (`PortAparatuPola`).
+    # Pusta lista = porty niepodane (rekord sprzed karty albo wyposażenie z katalogu bez
+    # przyłączeń) — schemat zgłasza brak przyłączenia, nie dorysowuje przewodu.
+    ports: list[PortAparatuPola] = []
+    # Stan obiektu INSTANCJI aparatu (korekta właściciela 2026-10-28): aparat dziedziczy stan
+    # pola przy utworzeniu (`enm.pola.zbuduj_pole`), aparat wymieniony w istniejącym polu jest
+    # nową instancją — PROJEKTOWANY (`enm.wyposazenie_pola`). `None` = rekord sprzed atrybutu.
+    stan_obiektu: StanObiektu | None = None
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4 pkt 3): rdzenie przekładnika prądowego
+    # pola (WYŁĄCZNIE `kind == "CT"`) i uzwojenia przekładnika napięciowego pola (WYŁĄCZNIE
+    # `kind == "VT"`) — z szablonu pola (`BayDeviceTemplate.rdzenie/uzwojenia`, np. Z.11:
+    # 3 rdzenie) albo z pozycji katalogu (`CTType.lista_rdzeni`). Pusta lista = tabliczka
+    # nieopisana (rekord sprzed karty albo aparat bez danych).
+    rdzenie: list[RdzenPrzekladnikaPradowego] = []
+    uzwojenia: list[UzwojeniePrzekladnikaNapieciowego] = []
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4 pkt 1): ODGAŁĘZIENIE toru, w którym leży
+    # aparat (np. „pn" — odgałęzienie przekładnika napięciowego od strony linii Z.11.1/Z.11).
+    # Dana projektowa, z której pisarz rekordu wyprowadza porty (`rodzaje_aparatury.
+    # porty_toru_pola`, klucz `KLUCZ_ODGALEZIENIA`) — zachowana w rekordzie, żeby ponowny zapis
+    # wyposażenia (formularz pola) odtworzył TE SAME porty. `None` = aparat toru głównego.
+    odgalezienie: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]+$")
+
+    @model_validator(mode="after")
+    def _porty_i_polozenie(self) -> BayPrimaryDevice:
+        """Porty tylko z kompletu rodzaju (bez powtórzeń); położenie „uziemiony" tylko dla
+        łącznika trójpołożeniowego. Brak portu z kompletu jest dozwolony (jawny brak danych
+        przyłączenia), port spoza kompletu — nie (port, którego aparat nie ma)."""
+        komplet = PORTY_APARATU_POLA.get(self.kind, ())
+        widziane: set[str] = set()
+        for port in self.ports:
+            if port.port_id not in komplet:
+                raise ValueError(
+                    f"aparat {self.device_ref!r} ({self.kind}) nie ma portu {port.port_id!r} — "
+                    f"porty rodzaju: {', '.join(komplet) or 'brak'}"
+                )
+            if port.port_id in widziane:
+                raise ValueError(f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}")
+            widziane.add(port.port_id)
+        if (
+            self.switch_state is not None
+            and self.switch_state.actual_state == STAN_UZIEMIONY
+            and self.kind != RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO
+        ):
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): położenie „uziemiony” ma wyłącznie "
+                "łącznik trójpołożeniowy"
+            )
+        if self.rdzenie and self.kind != "CT":
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): rdzenie ma wyłącznie przekładnik prądowy"
+            )
+        if self.uzwojenia and self.kind != "VT":
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): uzwojenia ma wyłącznie przekładnik "
+                "napięciowy"
+            )
+        return self
 
 
 class BayMeasurements(BaseModel):
@@ -1705,17 +1835,7 @@ class BaySourceEndpoint(BaseModel):
 
 class BayBaseModel(BaseModel):
     bay_ref: str
-    bay_role: Literal[
-        "LINIA_IN",
-        "LINIA_OUT",
-        "TRANSFORMATOROWE",
-        "LINIA_ODG",
-        "SPRZEGLO",
-        "POMIAROWE",
-        "PV_SN",
-        "BESS_SN",
-        "FW_SN",
-    ]
+    bay_role: RolaKanonicznaPolaSn
     specialization: Literal["BRAK", "POTRZEBY_WLASNE"] = "BRAK"
     substation_ref: str
     gpz_section_id: str | None = None
@@ -1751,6 +1871,9 @@ class BayBaseModel(BaseModel):
     # (exclude_none). Nie wypełniać na istniejących fixture'ach.
     bay_template_ref: str | None = None
     switchgear_family_ref: str | None = None
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (`Bay.stan_obiektu`) — karta pola
+    # i picker rodziny czytają go z odczytu (pole istniejące dopuszcza gaz fluorowany).
+    stan_obiektu: StanObiektu | None = None
     # W5-C: stan danych wyposażenia pola — z REKORDU `Bay.primary_devices` (nie z aparatów
     # wyprowadzonych z gałęzi pola, którymi odczyt uzupełnia rysunek pola bez rekordu):
     # MODEL (każdy aparat z pozycją katalogową), PROPOZYCJA (wartość robocza — z szablonu

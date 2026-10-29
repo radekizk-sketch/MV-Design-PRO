@@ -73,6 +73,13 @@ const RODZINA_MODULOWA: SwitchgearFamily = {
   rated_current_options: [630],
   short_time_current_options: [16],
   insulation_type: 'air',
+  medium_lacznikow: 'PROZNIA',
+  // Pola WYLICZANE backendu (status × zakaz gazów fluorowanych) — przychodzą z każdą odpowiedzią.
+  gaz_fluorowany: false,
+  dopuszczona_do_budowania: true,
+  powod_blokady_pl: null,
+  dopuszczona_do_nowych_pol: true,
+  powod_blokady_nowych_pol_pl: null,
   construction_type: 'wnetrzowa',
   tor_konfiguracji: 'MODULARNY',
   status: 'repo_verified',
@@ -101,7 +108,6 @@ const RODZINA_BEZ_KONSTRUKCJI: SwitchgearFamily = {
   um_classes_kv: [],
   rated_current_options: [],
   short_time_current_options: [],
-  insulation_type: 'unknown',
   construction_type: 'unknown',
   tor_konfiguracji: null,
 };
@@ -215,12 +221,20 @@ describe('oferta rodzin producenta', () => {
     um_classes_kv: [24],
     status: 'requires_catalog',
     source_refs: [],
+    dopuszczona_do_budowania: false,
+    powod_blokady_pl: 'Wymaga karty katalogowej producenta.',
+    dopuszczona_do_nowych_pol: false,
+    powod_blokady_nowych_pol_pl: 'Wymaga karty katalogowej producenta.',
   };
   const WYCOFANA: SwitchgearFamily = {
     ...RODZINA_MODULOWA,
     switchgear_family_ref: 'ZPUE__STARA',
     family_name: 'Seria wycofana',
     status: 'deprecated',
+    dopuszczona_do_budowania: false,
+    powod_blokady_pl: 'Rodzina wycofana z oferty.',
+    dopuszczona_do_nowych_pol: false,
+    powod_blokady_nowych_pol_pl: 'Rodzina wycofana z oferty.',
   };
   /**
    * Rodzina o klasie NIŻSZEJ niż szyna — jedyny przypadek, w którym klasa
@@ -242,6 +256,17 @@ describe('oferta rodzin producenta', () => {
     network_voltages_kv: [],
     um_classes_kv: [24],
   };
+  /** Rodzina z SF₆: status pozwala budować (pole istniejące), nowa stacja — nie. */
+  const Z_GAZEM: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'ZPUE__SF6',
+    family_name: 'Seria SF6',
+    insulation_type: 'sf6',
+    medium_lacznikow: 'SF6',
+    gaz_fluorowany: true,
+    dopuszczona_do_nowych_pol: false,
+    powod_blokady_nowych_pol_pl: 'Rozdzielnica Seria SF6 wykorzystuje gaz fluorowany (SF₆).',
+  };
   const OBCY_PRODUCENT: SwitchgearFamily = {
     ...RODZINA_MODULOWA,
     switchgear_family_ref: 'SIEMENS__8DJH',
@@ -256,13 +281,14 @@ describe('oferta rodzin producenta', () => {
     WYCOFANA,
     INNA_KLASA,
     WYZSZA_KLASA,
+    Z_GAZEM,
     OBCY_PRODUCENT,
   ];
 
   it('pokazuje CAŁE portfolio producenta, nie tylko rodziny gotowe do użycia', () => {
     const oferta = ofertaRodzinProducenta(KATALOG, 'ZPUE_WLOSZCZOWA', 15);
-    // Sześć rodzin producenta; rodzina innego producenta poza listą.
-    expect(oferta).toHaveLength(6);
+    // Siedem rodzin producenta; rodzina innego producenta poza listą.
+    expect(oferta).toHaveLength(7);
     expect(oferta.map((p) => p.rodzina.switchgear_family_ref)).not.toContain('SIEMENS__8DJH');
   });
 
@@ -277,6 +303,8 @@ describe('oferta rodzin producenta', () => {
     expect(wgRefu['ZPUE__NA_6KV']).toBe('INNA_KLASA_NAPIECIOWA');
     // Klasa wyższa POKRYWA napięcie szyny — zostaje do wyboru.
     expect(wgRefu['ZPUE__NA_24KV']).toBeNull();
+    // Rodzina z SF₆ w nowej stacji (obiekt projektowany) — widoczna z powodem.
+    expect(wgRefu['ZPUE__SF6']).toBe('GAZ_FLUOROWANY');
   });
 
   it('status potwierdzony BEZ źródeł to nadal brak karty (polityka proweniencji)', () => {
@@ -363,7 +391,8 @@ describe('słowniki nazw PL (komplet kontraktu)', () => {
 
   it('nazywa KAŻDĄ izolację i KAŻDY tor konfiguracji', () => {
     expect(Object.keys(NAZWY_IZOLACJI_PL).sort()).toEqual(
-      ['air', 'mixed', 'sf6', 'unknown', 'vacuum'].sort(),
+      // Lustro `InsulationType` backendu (parytet: `tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`).
+      ['air', 'gaz_bez_f', 'sf6', 'ssis', 'unknown'].sort(),
     );
     expect(Object.keys(NAZWY_TORU_PL).sort()).toEqual(['BLOK_RMU', 'MODULARNY']);
   });
@@ -600,7 +629,7 @@ describe('nagłówek rodziny', () => {
     expect(wgEtykiety['Napięcia katalogowe']).toBe('urządzenie 24 kV');
     expect(wgEtykiety['Prąd znamionowy szyn']).toBe('630 A');
     expect(wgEtykiety['Prąd zwarciowy 1 s']).toBe('20 kA');
-    expect(wgEtykiety.Izolacja).toBe('powietrzna');
+    expect(wgEtykiety.Izolacja).toBe('powietrzna (AIS)');
     expect(wgEtykiety.Konstrukcja).toBe('RMU');
     expect(wgEtykiety['Tor konfiguracji']).toContain('blokowy');
   });

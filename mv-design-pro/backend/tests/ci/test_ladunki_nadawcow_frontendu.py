@@ -44,6 +44,10 @@ PLIKI_BEZ_LADUNKU: dict[str, str] = {
     # Makieta odpowiedzi + formularze otwierane hakiem `__mvdpOpenOperationForm`
     # (kontekst formularza, nie ładunek).
     "e2e/ux-feedback-loop.spec.ts": "makieta odpowiedzi i kontekst formularza",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: nasłuch żądań (`page.on('request')`) — spec liczy
+    # operacje łączeniowe wysłane przez UI (klik = wybór, zero `open_switch`/`close_switch`),
+    # sam nie wysyła ładunku; sieć buduje wyłącznie kanwa i kreatory.
+    "e2e/ux04-pole-liniowe-zrzuty-screenshot.spec.ts": "nasłuch żądań domain-ops UI",
 }
 
 

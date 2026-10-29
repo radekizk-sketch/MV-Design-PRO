@@ -21819,7 +21819,7 @@
   },
   "/api/catalog/bay-protection-codes": {
    "get": {
-    "description": "Kanoniczne funkcje zabezpieczeniowe wymagane dla ról pól SN (readout).\n\nJedno źródło prawdy: `BAY_PROTECTION_CODES_BY_ROLE` (PTPiREE/IRiESD +\nIEC 60255) — to samo, z którego korzystają operacje domenowe budujące pola.\nEndpoint istnieje po to, by kreator stacji pokazywał kody BEZ kopiowania\ntablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę\npustą — uczciwy brak funkcji wyzwalających, nie luka danych.",
+    "description": "Funkcje EAZ pól SN tworzonych wg roli (readout).\n\nJedno źródło prawdy: funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI` →\n`BayTemplate.funkcje_eaz`) — to samo, z którego korzystają operacje domenowe budujące pola\nbez wskazanego szablonu. Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ\nkopiowania tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę\npustą — uczciwy brak funkcji wyzwalających, nie luka danych.",
     "operationId": "list_bay_protection_codes_api_catalog_bay_protection_codes_get",
     "responses": {
      "200": {
@@ -21841,6 +21841,103 @@
      }
     },
     "summary": "List Bay Protection Codes",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/bay-templates": {
+   "get": {
+    "description": "Szablony kanoniczne pól SN (`bay_templates.BAY_TEMPLATE_REGISTRY`) z oceną dopuszczalności\nw polu o podanych cechach — filtr pickera szablonu z backendu (karta UX-04/POLE-LINIOWE-\nWZORZEC, rozszerzenie 3).\n\nCechy pola: rola modelu (`bay_role` — szablon innej funkcji pominięty, jak w operacji\n`set_bay_equipment`), pole sekcji GPZ (`pole_gpz`), rodzina rozdzielnicy pola (izolacja —\njedno źródło medium) i klasa pola liniowego. Ocena: TA SAMA reguła co strażnik operacji\ni walidator (`enm.zgodnosc_szablonu_pola.odmowy_szablonu_dla_pola`) — szablon odrzucony niesie\nlistę odmów (kod + zdanie z podstawą i akcją), więc picker pokazuje, DLACZEGO wykonanie jest\nniedostępne, zamiast je przemilczać. Kolejność rejestru (deterministyczna).",
+    "operationId": "list_bay_templates_endpoint_api_catalog_bay_templates_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "bay_role",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Bay Role"
+      }
+     },
+     {
+      "in": "query",
+      "name": "pole_gpz",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Pole Gpz",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "switchgear_family_ref",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Switchgear Family Ref"
+      }
+     },
+     {
+      "in": "query",
+      "name": "klasa_pola",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Klasa Pola"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Bay Templates Endpoint Api Catalog Bay Templates Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Bay Templates Endpoint",
     "tags": [
      "Type Catalog"
     ]
@@ -22544,7 +22641,7 @@
   },
   "/api/catalog/mv-apparatus-types": {
    "get": {
-    "description": "Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.\n\n``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni\nparametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja\nkatalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.",
+    "description": "Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.\n\n``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni\nparametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja\nkatalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.\n\nFiltr pickerów (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych w obiektach\nprojektowanych): ``gaz_fluorowany`` (medium pozycji z gazem fluorowanym),\n``dopuszczony_do_nowych_pol`` i ``powod_blokady_nowych_pol_pl`` — TA SAMA reguła co strażnik\noperacji (`network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl` dla obiektu\nprojektowanego). Picker aparatu pola projektowanego pokazuje wyłącznie pozycje dopuszczone;\npola istniejącego — wszystkie, z medium na widoku.",
     "operationId": "list_mv_apparatus_types_api_catalog_mv_apparatus_types_get",
     "responses": {
      "200": {
@@ -23432,7 +23529,7 @@
   },
   "/api/catalog/switch-equipment-types": {
    "get": {
-    "description": "List all switch equipment types from the canonical MV catalog.",
+    "description": "Pozycje katalogu łączników SN (picker typu łącznika w siatce właściwości) z polami\nfiltru pickerów — te same co w ``/mv-apparatus-types`` (`_dopuszczenie_do_nowych_pol`).",
     "operationId": "list_switch_equipment_types_api_catalog_switch_equipment_types_get",
     "responses": {
      "200": {

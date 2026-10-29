@@ -38,6 +38,7 @@ import copy
 from typing import Any
 
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.catalog.bay_templates import szablon_pola_liniowego_gpz
 
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, TRAFO, _gpz, odcinek, ok, op
 
@@ -207,4 +208,72 @@ def zbuduj_gpz_110kv() -> dict[str, Any]:
                 "gpz_line_field_apparatus": {"catalog_ref": APARAT},
             },
         )
+    )
+
+
+def _pola_liniowe_sekcji(model: dict[str, Any], sekcja: str) -> list[str]:
+    return sorted(
+        b["ref_id"]
+        for b in model["bays"]
+        if b.get("gpz_section_id") == sekcja and "gpz_line_field" in (b.get("tags") or [])
+    )
+
+
+def zbuduj_gpz_pola_liniowe(
+    wykonania_sekcji: dict[int, tuple[str, str, str | None]],
+) -> dict[str, Any]:
+    """GPZ ``gpz_110kv`` (dwie sekcje SN, po dwa pola liniowe na sekcję), w którym pola liniowe
+    sekcji ``n`` (1 albo 2) z ``wykonania_sekcji`` dostają wykonanie (wykonanie pola ENEA,
+    wykonanie łączników, klasa pola) ścieżką użytkownika — operacją `set_bay_equipment`
+    w trybie szablonu; pola sekcji spoza słownika zostają przy wzorcu domyślnym (Z.10
+    z łącznikiem trójpołożeniowym). Pierwsze pole liniowe każdej sekcji jest zajęte kablem
+    odejścia (`continue_trunk_segment_sn` z pola), drugie zostaje wolne."""
+    enm = zbuduj_gpz_110kv()
+    sekcje = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})
+    for numer, (wykonanie_pola, wykonanie_lacznikow, klasa) in sorted(wykonania_sekcji.items()):
+        for pole_ref in _pola_liniowe_sekcji(enm, sekcje[numer - 1]):
+            zadanie: dict[str, Any] = {
+                "bay_ref": pole_ref,
+                "mode": "szablon",
+                "bay_template_ref": szablon_pola_liniowego_gpz(
+                    wykonanie_pola, wykonanie_lacznikow
+                ).template_id,
+            }
+            if klasa is not None:
+                zadanie["klasa_pola"] = klasa
+            enm = ok(op(enm, "set_bay_equipment", zadanie))
+    for numer, sekcja in enumerate(sekcje, start=1):
+        enm = ok(
+            op(
+                enm,
+                "continue_trunk_segment_sn",
+                {
+                    "field_ref": _pola_liniowe_sekcji(enm, sekcja)[0],
+                    "segment": odcinek(400, f"Odejście sekcji {numer}"),
+                },
+            )
+        )
+    return enm
+
+
+def zbuduj_gpz_pole_liniowe_z10(sekcja_staly: int) -> dict[str, Any]:
+    """Karta UX-04/POLE-LINIOWE-WZORZEC: pola liniowe sekcji ``sekcja_staly`` (1 albo 2) w wykonaniu
+    z wyłącznikiem stałym i odłącznikiem szynowym (izolacja powietrzna, §13), drugiej sekcji —
+    wzorzec domyślny (Z.10 z łącznikiem trójpołożeniowym). Dwie fikstury (wariant w sekcji 1 / 2)
+    dają iloczyn {łącznik trójpołożeniowy / wyłącznik stały} × {sekcja 1 / 2} × {pole zajęte /
+    wolne} (`zbuduj_gpz_pola_liniowe`)."""
+    return zbuduj_gpz_pola_liniowe({sekcja_staly: ("Z10", "STALY_Z_ODLACZNIKIEM", None)})
+
+
+def zbuduj_gpz_pole_liniowe_z11() -> dict[str, Any]:
+    """Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenia 1, 2, 4): pola liniowe z ODGAŁĘZIENIEM
+    przekładnika napięciowego od strony linii — sekcja 1: Z.11.1 z łącznikiem trójpołożeniowym,
+    klasa mieszana (odbiór i generacja); sekcja 2: Z.11 z wyłącznikiem stałym i odłącznikiem
+    szynowym, klasa dedykowana wytwórcy. Iloczyn {Z.11.1 / Z.11} × {łącznik trójpołożeniowy /
+    wyłącznik stały z odłącznikiem odgałęzienia i uziemnikiem} × {pole zajęte / wolne}."""
+    return zbuduj_gpz_pola_liniowe(
+        {
+            1: ("Z11_1", "TROJPOLOZENIOWY", "MIESZANE"),
+            2: ("Z11", "STALY_Z_ODLACZNIKIEM", "DEDYKOWANE_WYTWORCY"),
+        }
     )

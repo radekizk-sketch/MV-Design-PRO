@@ -671,16 +671,16 @@ describe('TypeLibraryBrowser', () => {
     });
   });
 
-  it('calls onSelectType with the active category', async () => {
+  it('wybór wiersza pokazuje szczegóły pozycji (przeglądarka nie przypisuje typu)', async () => {
     const user = userEvent.setup();
-    const onSelectType = vi.fn();
-    render(<TypeLibraryBrowser initialTab="PROTECTION_DEVICE" onSelectType={onSelectType} />);
+    render(<TypeLibraryBrowser initialTab="PROTECTION_DEVICE" />);
 
     expect(await screen.findByText('Przekaźnik pola liniowego')).toBeInTheDocument();
+    expect(screen.getByText('Wybierz typ z listy, aby zobaczyć szczegóły')).toBeInTheDocument();
 
     await user.click(screen.getByText('Przekaźnik pola liniowego'));
 
-    expect(onSelectType).toHaveBeenCalledWith('prot-001', 'PROTECTION_DEVICE');
+    expect(screen.queryByText('Wybierz typ z listy, aby zobaczyć szczegóły')).not.toBeInTheDocument();
   });
 
   it('shows loading state', async () => {

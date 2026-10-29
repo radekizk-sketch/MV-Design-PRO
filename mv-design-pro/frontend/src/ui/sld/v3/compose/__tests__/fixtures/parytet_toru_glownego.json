@@ -1,0 +1,1827 @@
+[
+  {
+    "aparaty": [
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z10_staly_z_odlacznikiem",
+    "poza_torem_glownym": []
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "Q1",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
+    "poza_torem_glownym": []
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z10_wysuwny",
+    "poza_torem_glownym": []
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "Q51",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_1_wysuwny",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "Q51",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "Q51",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_trojpolozeniowy",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_line_enea_z11_wysuwny",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "Q51",
+      "T3"
+    ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0B",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "iniekcja_dwie_drogi_do_konca_toru",
+    "poza_torem_glownym": []
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w99"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "iniekcja_brak_drogi_do_konca_toru",
+    "poza_torem_glownym": []
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "PF0",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "szyna"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q1",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q0",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q5",
+        "kind": "DS",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q51",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "pn1"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T3",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn2"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "CT",
+        "placement": "MIDSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w2"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "Q9",
+        "kind": "ES",
+        "placement": "GROUND_BRANCH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "w3"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK",
+        "kind": "CABLE_HEAD",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "w3"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T2",
+        "kind": "CORE_BALANCE_CT",
+        "placement": "DOWNSTREAM",
+        "ports": [
+          {
+            "port_id": "obwod",
+            "wezel": "kabel"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "iniekcja_odgalezienie_od_szyny",
+    "poza_torem_glownym": [
+      "GK1",
+      "Q5",
+      "Q51",
+      "T3"
+    ]
+  }
+]

@@ -17,12 +17,15 @@ from enm.interlock_rules import (
     device_state,
     device_state_record,
     earthing_interlock_violation,
+    porty_aparatu,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
 from enm.pola import czy_pole_nn, pola_sn_stacji, poziom_pol
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
 from enm.tor_pola import szyny_stacji
+from network_model.catalog.bay_templates import odlaczenie_wysunieciem_wylacznika
+from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym
 from network_model.catalog.switchgear import (
     SwitchgearFamily,
     czy_rodzina_obsluguje_napiecie,
@@ -134,8 +137,17 @@ def _profile_checks_for_bay(
     bay: Bay, profile: ReferenceFieldProfile, pack_id: str
 ) -> list[ComplianceCheck]:
     devices: list[BayPrimaryDevice] = list(bay.primary_devices or [])
-    kinds = [d.kind for d in devices]
-    present = set(kinds)
+    # Odgałęzienie toru (Z.11.1/Z.11: łącznik, uziemnik, głowica i przekładnik napięciowy za
+    # wyłącznikiem) leży poza torem głównym — TA SAMA reguła z portów co blokady i zasilenie
+    # (`aparaty_poza_torem_glownym`). Odłącznik odgałęzienia nie odłącza pola od szyny, a jego
+    # głowica nie jest głowicą linii: skład i kolejność toru ocenia się bez odgałęzienia;
+    # zakaz aparatu dotyczy całego pola. Pole bez portów — zbiór pusty (zero domysłu).
+    poza_torem = aparaty_poza_torem_glownym(
+        [(d.device_ref, d.kind, porty_aparatu(d)) for d in devices]
+    )
+    devices_toru = [d for d in devices if d.device_ref not in poza_torem]
+    present = {d.kind for d in devices_toru}
+    present_all = {d.kind for d in devices}
     checks: list[ComplianceCheck] = []
 
     def add(rule_code: str, ok: bool, message_pl: str) -> None:
@@ -161,21 +173,31 @@ def _profile_checks_for_bay(
             ),
         )
 
+    wysuwne = odlaczenie_wysunieciem_wylacznika(bay.bay_template_ref) and "CB" in present
     for group in profile.one_of_groups:
-        ok = any(kind in present for kind in group)
+        aparatem = any(kind in present for kind in group)
+        wysunieciem = not aparatem and wysuwne and group in profile.grupy_spelniane_wysunieciem
+        ok = aparatem or wysunieciem
         names = " / ".join(_kind_pl(k) for k in group)
         add(
             "profile.one_of." + "|".join(group),
             ok,
             (
                 f"Funkcja łączeniowa toru obecna ({names})."
-                if ok
-                else f"Brak funkcji łączeniowej toru: wymagany jeden z aparatów {names} "
-                f"(profil „{profile.name_pl}”)."
+                if aparatem
+                else (
+                    (
+                        f"Funkcja odłączenia od szyny ({names}): wysunięcie wyłącznika poziomo "
+                        "wysuwnego (ENEA Zeszyt 1 §13)."
+                    )
+                    if wysunieciem
+                    else f"Brak funkcji łączeniowej toru: wymagany jeden z aparatów {names} "
+                    f"(profil „{profile.name_pl}”)."
+                )
             ),
         )
 
-    forbidden_found = sorted(present.intersection(profile.forbidden))
+    forbidden_found = sorted(present_all.intersection(profile.forbidden))
     add(
         "profile.forbidden",
         not forbidden_found,
@@ -191,7 +213,9 @@ def _profile_checks_for_bay(
     )
 
     lateral = set(profile.lateral_only)
-    main_kinds = [k for k in kinds if k not in lateral and _kind_is_field_apparatus(k)]
+    main_kinds = [
+        d.kind for d in devices_toru if d.kind not in lateral and _kind_is_field_apparatus(d.kind)
+    ]
     canonical_main = [k for k in profile.canonical_order if k not in lateral]
     order_ok = _is_subsequence(main_kinds, canonical_main)
     add(
@@ -250,7 +274,7 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
         + ", ".join(_aparat_pl(d) for d in closed_main)
         + ")."
         if violated
-        else "Blokada uziemnik ↔ łącznik toru głównego zachowana."
+        else "Blokada uziemnik ↔ skojarzony łącznik toru zachowana."
     )
     return [
         ComplianceCheck(

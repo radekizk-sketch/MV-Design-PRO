@@ -76,7 +76,9 @@ export function PropertyGridContainer({
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
 
-  // Determine explicit catalog category and current type_ref based on element data.
+  // Kategoria pickera i bieżąca pozycja katalogu z rekordu ENM (`catalog_ref` — jedyne pole
+  // wiązania katalogowego gałęzi i transformatora; dawne `type_ref` / `equipment_type_ref` nie
+  // istniały w modelu, więc pozycja przypisana nie była rozpoznawana przez picker).
   const getTypeCategoryAndRef = (): { category: TypeCategory | null; currentTypeRef: string | null } => {
     const explicitNamespace =
       typeof elementData.catalog_namespace === 'string'
@@ -87,18 +89,18 @@ export function PropertyGridContainer({
 
     switch (elementType) {
       case 'LineBranch': {
-        const currentTypeRef = elementData.type_ref as string | null;
+        const currentTypeRef = elementData.catalog_ref as string | null;
         return {
           category: explicitNamespace ? NAMESPACE_TO_PICKER_CATEGORY[explicitNamespace] ?? null : null,
           currentTypeRef,
         };
       }
       case 'TransformerBranch': {
-        const currentTypeRef = elementData.type_ref as string | null;
+        const currentTypeRef = elementData.catalog_ref as string | null;
         return { category: 'TRANSFORMER', currentTypeRef };
       }
       case 'Switch': {
-        const currentTypeRef = elementData.equipment_type_ref as string | null;
+        const currentTypeRef = elementData.catalog_ref as string | null;
         return { category: 'SWITCH_EQUIPMENT', currentTypeRef };
       }
       default:

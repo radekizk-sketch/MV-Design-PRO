@@ -37,12 +37,12 @@ const THEMES = ['light', 'dark'] as const;
  * konfigurację, więc widoczny na zrzucie werdykt nic nie znaczy.
  */
 const REKLOZER = 'sw-rec-abb-rec615-17kv-630a';
-const ROZLACZNIK = 'sw-ls-schneider-rm6-17kv-400a';
+const ROZLACZNIK = 'sw-ls-ogolny-prozniowy-24kv-630a';
 const WYLACZNIK = 'sw-cb-abb-vd4-17kv-630a';
 const ROZLACZNIK_BEZPIECZNIKOWY = 'sw-fuse-eti-vv-17kv-63a';
 
 /** Rodziny kanonu (refy 1:1 z `switchgear/families.py`). */
-const RODZINA_MODULOWA = 'ZPUE_WLOSZCZOWA__ROTOBLOK';
+const RODZINA_MODULOWA = 'ZPUE_WLOSZCZOWA__ROTOBLOK_AIR';
 const RODZINA_RMU = 'ZPUE_WLOSZCZOWA__TPM_AIR';
 const BLOK_RMU = 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT';
 
@@ -133,11 +133,13 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       // (karta S3), a karta rodziny deklaruje sieć 20 kV, więc na szynie 15 kV tej
       // sceny TPM jest widoczna i NIEWYBIERALNA („inna klasa napięciowa") — spec
       // czekał na wybór, którego katalog słusznie zabrania. Rodziną BEZ ANI JEDNEGO
-      // bloku jest ABB SafePlus (0 konfiguracji w katalogu), a jej klasy Um
-      // 12/17,5/24 kV obejmują 15 kV. Producent zmienia się razem z rodziną, bo
-      // SafePlus jest wyrobem ABB — wskazanie go pod ZPUE byłoby fałszywą ofertą.
-      await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ABB');
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ABB__SAFEPLUS');
+      // bloku była ABB SafePlus, ale ma izolację SF₆ — dla stacji projektowanej jest dziś
+      // niewybieralna (zakaz gazów fluorowanych w nowych polach, dyrektywa 2026-10-28). Rodziną
+      // RMU bez gazów fluorowanych i bez transkrybowanych bloków (0 konfiguracji w katalogu) jest
+      // Schneider Electric RM AirSeT, a jej klasy Um 12/24 kV obejmują 15 kV. Producent zmienia
+      // się razem z rodziną — wskazanie wyrobu pod innym producentem byłoby fałszywą ofertą.
+      await page.getByTestId('mvd-kreator-stacja-producent').selectOption('SCHNEIDER_ELECTRIC');
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('SCHNEIDER__RM_AIRSET');
       await expect(page.getByTestId('mvd-kreator-stacja-tor-blok')).toBeVisible();
       await expect(page.getByTestId('mvd-kreator-stacja-blok-brak')).toBeVisible();
       // Uczciwy stan zerowy = BRAK oferty, nie „oferta pusta obok listy wyboru":

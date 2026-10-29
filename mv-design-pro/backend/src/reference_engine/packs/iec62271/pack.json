@@ -2,7 +2,7 @@
   "pack_id": "iec62271",
   "kind": "norm",
   "name_pl": "IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "status": "repo_verified",
   "source_document_refs": [
     "IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)",
@@ -13,13 +13,14 @@
     {
       "profile_id": "line_breaker",
       "name_pl": "Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)",
-      "required": ["DS", "CB", "CT", "ES", "CABLE_HEAD"],
-      "one_of_groups": [],
-      "optional": ["VT", "SURGE_ARRESTER"],
+      "required": ["CB", "CT", "CABLE_HEAD"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"], ["THREE_POSITION_SWITCH", "ES"]],
+      "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR", "CORE_BALANCE_CT"],
       "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "CB", "CT", "DS", "CABLE_HEAD"],
-      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
-      "notes_pl": "Odłącznik szynowy → wyłącznik → przekładnik prądowy → odłącznik liniowy → (uziemnik bocznie) → głowica kablowa."
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "DS", "CABLE_HEAD", "CORE_BALANCE_CT"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "Odłączenie od szyny: łącznik trójpołożeniowy (izolacja gazowa bez gazów fluorowanych albo stało-powietrzna, ENEA Zeszyt 1 Z.10 s.89 i §13) albo odłącznik szynowy (izolacja powietrzna, §13) albo wysunięcie wyłącznika poziomo wysuwnego (§13) → wyłącznik → przekładnik prądowy → (wskaźnik napięcia bocznie) → głowica kablowa → przekładnik Ferrantiego na kablu. Odgałęzienie przekładnika napięciowego za wyłącznikiem (Z.11.1/Z.11: łącznik odgałęzienia, głowica, przekładnik) leży poza torem głównym (porty aparatów) i nie podlega kolejności toru. Uziemienie pola: łącznik trójpołożeniowy (uziemienie kabla przez zamknięty wyłącznik, §13 druk s.24) albo uziemnik stały wyprowadzenia (bocznie). Odłącznik liniowy dopuszczony w kolejności dla rozdzielnic wyłącznikowych spoza Z.10 (Z.10 go nie rysuje)."
     },
     {
       "profile_id": "rmu_line",
@@ -124,7 +125,7 @@
   "connection_rules": [
     {
       "rule_id": "iec62271.interlock.es_vs_main",
-      "description_pl": "Blokada uziemnika: uziemnik ZAMKNIĘTY przy jednocześnie zamkniętym łączniku toru głównego tego samego pola = niedozwolona kombinacja stanów (uziemienie toru pod napięciem).",
+      "description_pl": "Blokada uziemnika: uziemnik ZAMKNIĘTY przy jednocześnie zamkniętym łączniku z nim skojarzonym = niedozwolona kombinacja stanów (uziemienie pod napięciem). Skojarzone są łączniki od węzła uziemnika w stronę szyny do pierwszego łącznika odłączającego włącznie (z portów aparatów pola): uziemnik wyprowadzenia wiąże wyłącznik i odłącznik szynowy, uziemnik odgałęzienia przekładnika napięciowego (ENEA Zeszyt 1, Z.11/Z.11.1) — odłącznik odgałęzienia. Pole bez portów — każdy łącznik toru głównego.",
       "implemented": true
     },
     {

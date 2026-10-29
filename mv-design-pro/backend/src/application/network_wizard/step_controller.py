@@ -21,8 +21,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from enm.assembler import czestotliwosc_studium_hz
+from enm.gaz_fluorowany_pola import (
+    RODZAJE_GALEZI_LACZENIOWYCH,
+    nowe_naruszenia_gazu_fluorowanego,
+)
+from enm.katalog_projektu import kontekst_katalogu
 from enm.kopia_graniczna import kopia_graniczna_enm
 from enm.load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
+from enm.zgodnosc_szablonu_pola import AKCJA_NAPRAWCZA_SZABLONU_PL, nowe_niezgodnosci_szablonu
+from network_model.catalog.gazy_fluorowane import (
+    AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL,
+    KOD_ODMOWY_GAZU_FLUOROWANEGO,
+)
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaNazwana
 
@@ -339,12 +349,25 @@ def _apply_k4(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     branches = list(enm.get("branches", []))
     for br in data.get("add_branches", []):
         if not any(b.get("ref_id") == br.get("ref_id") for b in branches):
-            branches.append(br)
+            nowa = dict(br)
+            if nowa.get("type") in RODZAJE_GALEZI_LACZENIOWYCH:
+                # Łącznik utworzony krokiem kreatora jest obiektem PROJEKTOWANYM — ta sama reguła
+                # co jedyny pisarz gałęzi operacji (`enm.topology_ops.create_branch`).
+                nowa["stan_obiektu"] = "PROJEKTOWANY"
+            branches.append(nowa)
     for upd in data.get("update_branches", []):
         ref = upd.get("ref_id")
         idx = next((i for i, b in enumerate(branches) if b.get("ref_id") == ref), None)
         if idx is not None:
-            branches[idx] = {**branches[idx], **upd}
+            nowa = {**branches[idx], **upd}
+            if nowa.get("type") in RODZAJE_GALEZI_LACZENIOWYCH and nowa.get(
+                "catalog_ref"
+            ) != branches[idx].get("catalog_ref"):
+                # Nowa pozycja katalogu łącznika = WYMIANA aparatu — nowa instancja,
+                # PROJEKTOWANY (ta sama reguła co `assign_catalog_to_element`
+                # i `enm.pola.aparaty_po_wymianie`).
+                nowa["stan_obiektu"] = "PROJEKTOWANY"
+            branches[idx] = nowa
     remove_refs = set(data.get("remove_branch_refs", []))
     if remove_refs:
         branches = [b for b in branches if b.get("ref_id") not in remove_refs]
@@ -474,6 +497,78 @@ def postconditions(step_id: str, enm: dict[str, Any]) -> list[WizardIssue]:
     return _postconditions_generic(step_id, enm)
 
 
+#: Kolekcje ładunku kroku kreatora niosące rekordy modelu (krok K4 — gałęzie).
+_KOLEKCJE_LADUNKU_KREATORA = ("add_branches", "update_branches", "add_buses")
+
+
+def _stany_istniejace(enm: dict[str, Any]) -> set[tuple[str, str]]:
+    return {
+        (kolekcja, str(rekord.get("ref_id")))
+        for kolekcja in ("branches", "bays")
+        for rekord in enm.get(kolekcja) or []
+        if isinstance(rekord, dict) and rekord.get("stan_obiektu") == "ISTNIEJACY"
+    }
+
+
+def _odmowy_stanu_obiektu_i_gazu(
+    przed: dict[str, Any], po: dict[str, Any], step_id: str, data: dict[str, Any]
+) -> list[WizardIssue]:
+    """Kreator sieci jest drugą drogą zapisu modelu — obowiązują go te same reguły co operacje
+    domenowe (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych): stan obiektu
+    „istniejący" nadaje wyłącznie operacja `set_object_state` albo import (ładunek kroku nie
+    niesie stanu, a krok nie tworzy obiektu istniejącego), a model po kroku nie może mieć
+    nowego nośnika gazu fluorowanego w obiekcie nieistniejącym
+    (`enm.gaz_fluorowany_pola.nowe_naruszenia_gazu_fluorowanego` — ta sama reguła) ani nowego
+    niezgodności szablonu pola (`enm.zgodnosc_szablonu_pola.nowe_niezgodnosci_szablonu`:
+    wykonanie łączników × izolacja, szablon GPZ poza GPZ, klasa pola × wykonanie)."""
+    wynik: list[WizardIssue] = []
+    refy_ze_stanem = [
+        str(rekord.get("ref_id"))
+        for kolekcja in _KOLEKCJE_LADUNKU_KREATORA
+        for rekord in data.get(kolekcja) or []
+        if isinstance(rekord, dict) and "stan_obiektu" in rekord
+    ]
+    nowe_istniejace = sorted(_stany_istniejace(po) - _stany_istniejace(przed))
+    for ref in [*refy_ze_stanem, *(ref for _, ref in nowe_istniejace)]:
+        wynik.append(
+            WizardIssue(
+                code="WIZARD_OBJECT_STATE_READONLY",
+                severity=IssueSeverity.BLOCKER,
+                message_pl=(
+                    "Krok kreatora nie nadaje stanu obiektu (istniejący / projektowany) — "
+                    "oznacz stan na karcie pola albo łącznika."
+                ),
+                element_ref=ref,
+                wizard_step_hint=step_id,
+            )
+        )
+    for niezgodnosc in nowe_niezgodnosci_szablonu(przed, po):
+        wynik.append(
+            WizardIssue(
+                code=niezgodnosc.kod,
+                severity=IssueSeverity.BLOCKER,
+                message_pl=niezgodnosc.komunikat_pl,
+                element_ref=niezgodnosc.bay_ref,
+                wizard_step_hint=step_id,
+                suggested_fix=AKCJA_NAPRAWCZA_SZABLONU_PL[niezgodnosc.kod],
+            )
+        )
+    with kontekst_katalogu(po):
+        nowe = nowe_naruszenia_gazu_fluorowanego(przed, po)
+    for naruszenie in nowe:
+        wynik.append(
+            WizardIssue(
+                code=KOD_ODMOWY_GAZU_FLUOROWANEGO,
+                severity=IssueSeverity.BLOCKER,
+                message_pl=naruszenie.komunikat_pl,
+                element_ref=naruszenie.element_ref,
+                wizard_step_hint=step_id,
+                suggested_fix=AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL,
+            )
+        )
+    return wynik
+
+
 def apply_step(
     enm: dict[str, Any],
     step_id: str,
@@ -517,7 +612,9 @@ def apply_step(
     mutated_enm = apply_fn(enm_copy, data)
 
     # 3. Postconditions
-    post_issues = postconditions(step_id, mutated_enm)
+    post_issues = postconditions(step_id, mutated_enm) + _odmowy_stanu_obiektu_i_gazu(
+        enm, mutated_enm, step_id, data
+    )
     has_post_blockers = any(i.severity == IssueSeverity.BLOCKER for i in post_issues)
 
     if has_post_blockers:

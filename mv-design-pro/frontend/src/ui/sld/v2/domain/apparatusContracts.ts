@@ -8,10 +8,15 @@
  *
  * Reguła Acceptance Invariant nr 2: każdy element wizualny aparatu ma
  * `domain_ref` i `apparatus_kind` jest zwrotne do ENM `BayPrimaryDevice`.
+ *
+ * UX-04/POLE-LINIOWE-WZORZEC: dawna sekcja „ApparatusKind V2" (12 typów, etykiety,
+ * mapowanie z `BayPrimaryDeviceKind`, `ApparatusInstance`) skasowana — miała wyłącznie
+ * konsumentów testowych, a była drugą tablicą rodzajów aparatu, którą każdy nowy rodzaj
+ * ENM musiałby rozszerzać bez skutku dla rysunku. Rodzaj aparatu na schemacie wyznacza
+ * `v3/compose/apparatusSequence.ts symbolIdForPrimaryDeviceKind`.
  */
 
-import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
-import { FIELD_ROLE_LABEL_PL } from '../station-rozdzielnia/contract';
+import type { BayPrimaryPlacement } from '../../../../types/enm';
 
 // =============================================================================
 // 0. Porządek fizyczny aparatów pola wg `placement` (jedno źródło prawdy)
@@ -56,83 +61,6 @@ export function orderByPrimaryPlacement<T extends { readonly placement: BayPrima
     })
     .map(({ device }) => device);
 }
-
-// =============================================================================
-// 1. ApparatusKind — kanoniczne 12 typów (V2)
-// =============================================================================
-
-/**
- * 12 typów aparatów rozpoznawanych przez SLD V2.
- *
- * Mirror `BayPrimaryDeviceKind` z ENM, plus `LV_BREAKER` i `SURGE_ARRESTER`
- * jawnie wydzielone (operator-grade — w V1 chowane były pod `LOAD_SWITCH`).
- *
- * Nie używaj kodów V1 (`LINE_IN`, `TRANSFORMATOROWE`); używaj `BayCanonicalRole`
- * z ENM dla ról pól. Ten enum dotyczy aparatów, nie pól.
- */
-export const APPARATUS_KIND = {
-  CIRCUIT_BREAKER: 'circuit_breaker',
-  SWITCH_DISCONNECTOR: 'switch_disconnector',
-  DISCONNECTOR: 'disconnector',
-  EARTHING_SWITCH: 'earthing_switch',
-  FUSE: 'fuse',
-  CT: 'ct',
-  VT: 'vt',
-  SURGE_ARRESTER: 'surge_arrester',
-  TRANSFORMER: 'transformer',
-  LV_BREAKER: 'lv_breaker',
-  CABLE_HEAD: 'cable_head',
-  METERING_CUBICLE: 'metering_cubicle',
-} as const;
-
-export type ApparatusKind = (typeof APPARATUS_KIND)[keyof typeof APPARATUS_KIND];
-
-export const ALL_APPARATUS_KINDS: readonly ApparatusKind[] = Object.values(APPARATUS_KIND);
-
-/** Polskie etykiety aparatów dla UI (operator-grade). */
-export const APPARATUS_KIND_LABELS_PL: Readonly<Record<ApparatusKind, string>> = {
-  circuit_breaker: 'Wyłącznik',
-  switch_disconnector: 'Rozłącznik',
-  disconnector: 'Odłącznik',
-  earthing_switch: 'Uziemnik',
-  fuse: 'Bezpiecznik',
-  ct: 'Przekładnik prądowy',
-  vt: 'Przekładnik napięciowy',
-  surge_arrester: 'Ogranicznik przepięć',
-  transformer: 'Transformator',
-  lv_breaker: 'Wyłącznik nN',
-  cable_head: 'Głowica kablowa',
-  metering_cubicle: FIELD_ROLE_LABEL_PL.POMIAROWE,
-};
-
-/**
- * Mapowanie ENM `BayPrimaryDeviceKind` → V2 `ApparatusKind`.
- *
- * Nie wszystkie ENM kindy mapują się 1:1 (np. `GENERATOR_PV/BESS/FW` to
- * DER, nie aparat pola; mapują się na `null` — źródło rysuje glif źródła
- * z `v3/compose/sourceKind.ts`, nie symbol aparatu pola).
- */
-export const BAY_PRIMARY_DEVICE_TO_APPARATUS: Readonly<
-  Record<BayPrimaryDeviceKind, ApparatusKind | null>
-> = {
-  CB: APPARATUS_KIND.CIRCUIT_BREAKER,
-  LOAD_SWITCH: APPARATUS_KIND.SWITCH_DISCONNECTOR,
-  DS: APPARATUS_KIND.DISCONNECTOR,
-  ES: APPARATUS_KIND.EARTHING_SWITCH,
-  CT: APPARATUS_KIND.CT,
-  VT: APPARATUS_KIND.VT,
-  CABLE_HEAD: APPARATUS_KIND.CABLE_HEAD,
-  TRANSFORMER_DEVICE: APPARATUS_KIND.TRANSFORMER,
-  FUSE: APPARATUS_KIND.FUSE,
-  // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): SA rysowany WYŁĄCZNIE z danych.
-  SURGE_ARRESTER: APPARATUS_KIND.SURGE_ARRESTER,
-  // Rodzaje DER: glif źródła (`v3/compose/sourceKind.ts`), nie symbol aparatu pola.
-  GENERATOR_PV: null,
-  GENERATOR_BESS: null,
-  GENERATOR_FW: null,
-  PCS: null,
-  BATTERY: null,
-};
 
 // =============================================================================
 // 2. FieldRole — kanoniczne role pól (mirror ENM)
@@ -185,29 +113,4 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.DER_FW ||
     role === FIELD_ROLE.DER_UNKNOWN
   );
-}
-
-// =============================================================================
-// 3. ApparatusInstance — instancja aparatu na potrzeby renderingu
-// =============================================================================
-
-/**
- * Instancja aparatu w polu (operator-grade opis aparatu pola).
- *
- * Wszystkie pola są deterministyczne i `domain_ref` traceable — zgodnie z
- * Cardinal Rule planu (zasada nadrzędna).
- */
-export interface ApparatusInstance {
-  /** Stabilne ID (ENM `BayPrimaryDevice.device_ref`). */
-  readonly id: string;
-  /** Typ aparatu (12 kanonicznych). */
-  readonly kind: ApparatusKind;
-  /** Domain ref do aparatu w ENM (najczęściej == `id`). */
-  readonly domainRef: string;
-  /** Optional catalog ref (V2 wymusza catalog binding w produkcji). */
-  readonly catalogRef: string | null;
-  /** Etykieta inżynierska, np. "Q0", "Q1", "Q9", "T1" (Q-numeracja). */
-  readonly designation: string;
-  /** Czy aparat jest sterowalny (CB, DS, ES — `is_controllable`). */
-  readonly isControllable: boolean;
 }

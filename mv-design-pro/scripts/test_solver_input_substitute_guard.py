@@ -2022,7 +2022,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Scalenie galezi UI/UX z programem (2026-10-28, baza scalenia `8f20bdd3c`): POMIAR guardem
     # na drzewie scalonym = 4387 = 4314 (UI/UX) + 4357 (program) − 4284 (baza) — zmiany obu
     # stron rozlaczne, zero nazw wspolnych ani skasowanych przez obie. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4387." in wyjscie, wyjscie
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 4387 -> 4418 — POMIAR `contract_fields()`
+    # na drzewie bazy karty `f44e042f6` (4387, pin zgodny) i na drzewie karty (4418). Roznica
+    # zbiorow +32, -1. Plus: ocena pola liniowego GPZ (`enm/pole_liniowe_gpz.py`: `klasa_oceny`,
+    # `klasa_przyjeta`, `klasa_z_sieci`, `klasa_zadeklarowana`, `moduly`, `niezgodnosci`,
+    # `oceny_funkcji`, `obecna`, `wymog`, `funkcja_pl`, `co_oceniono`, `akcja_pl`,
+    # `linia_napowietrzna`, `ajee_wymagany`, `ajee_rdzen_obecny`, `ajee_przyczyna`), klasa i stan
+    # obiektu pola (`klasa_pola`, `stan_obiektu`), tabliczki przekladnikow (`rdzenie`,
+    # `uzwojenia`, `fs`, `otwarty_trojkat`), szablony pol (`funkcje_eaz`, `wykonanie_pola`,
+    # `wykonanie_lacznikow`, `medium_lacznikow`, `odgalezienie`, `oznaczenie_pl`, `tylko_gpz`,
+    # `nosnik`), slownik etykiet werdyktu (`kompletnosc` z `werdykt/etykiety.py`, decyzja „do
+    # mapy" w `CONTRACT_SOURCES`) i opcjonalne kolumny arkusza szyn importu XLSX
+    # (`BUS_OPTIONAL_COLUMNS` — stan obiektu szyny). Minus: `ct_cores` (liczba rdzeni zastapiona
+    # lista `rdzenie` z tabliczki). PASS niezmieniony (zero podstawien; podstawienie pozycji
+    # `zestaw.index(...) + 1 if ... else 0` w `bay_templates.funkcje_eaz_pola_liniowego` wykryte
+    # guardem i przepisane na jawne galezie).
+    assert "Pol kontraktow wejsciowych: 4418." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2324,7 +2339,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
         # Scalenie galezi UI/UX z programem (2026-10-28): 588 (UI/UX) + 590 (program) − 580
         # (baza `8f20bdd3c`) = 598. POMIAR guardem na drzewie scalonym.
-        "Przeskanowano 598 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 598 -> 605 (+7 nowych plikow:
+        # `enm/{gaz_fluorowany_pola,pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`,
+        # `network_model/catalog/{funkcje_eaz,gazy_fluorowane,przekladniki}.py`; zero plikow
+        # skasowanych). Dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2529,7 +2548,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
         # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
         # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
-        "  network_model: pliki_skanowane=191, dlug=10 plikow/suma 67, "
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: 191 -> 194 (+3 `catalog/{funkcje_eaz,gazy_fluorowane,
+        # przekladniki}.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=194, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2613,7 +2634,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
         # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=75, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: enm 75 -> 79 (+4 `enm/{gaz_fluorowany_pola,
+        # pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`); dlug 7/64 BEZ ZMIAN.
+        # POMIAR guardem.
+        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

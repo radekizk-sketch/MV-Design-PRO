@@ -16,6 +16,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "c1c1ea71-581f-5aec-bca9-7a2b36121487",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "field_status": "READY_FOR_TRUNK",
@@ -34,6 +35,7 @@
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -61,6 +63,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "886d0420-5016-506c-9d2b-52a440b443d9",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "apparatus_kind": "BREAKER",
@@ -90,12 +93,26 @@
           "is_controllable": true,
           "kind": "DS",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:ds"
+          "symbol_ref": "symbol:ds",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -105,12 +122,26 @@
           "is_controllable": true,
           "kind": "CB",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -120,12 +151,26 @@
           "is_controllable": false,
           "kind": "CT",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -135,12 +180,22 @@
           "is_controllable": false,
           "kind": "VT",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:vt"
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -150,12 +205,26 @@
           "is_controllable": true,
           "kind": "DS",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:ds"
+          "symbol_ref": "symbol:ds",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -165,12 +234,22 @@
           "is_controllable": false,
           "kind": "ES",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:es"
+          "symbol_ref": "symbol:es",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -180,12 +259,22 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:surge_arrester"
+          "symbol_ref": "symbol:surge_arrester",
+          "uzwojenia": []
         },
         {
           "catalog_ref": null,
@@ -195,12 +284,26 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "linked_ref": null,
+          "odgalezienie": null,
           "operating_state": null,
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "rdzenie": [],
           "render_variant": "kanoniczny",
           "section_side": null,
+          "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
-          "symbol_ref": "symbol:cable_head"
+          "symbol_ref": "symbol:cable_head",
+          "uzwojenia": []
         }
       ],
       "protection_codes": [
@@ -210,13 +313,14 @@
         "59",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "anti-islanding"
       ],
       "protection_ref": null,
       "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -260,6 +364,7 @@
       "r_ohm": 0.0,
       "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
       "source_mode": "KATALOG",
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [
         "gpz_field_device",
@@ -560,7 +665,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cad7b6e6b15f675d0076b512875b3a94a0a2c8d295fa13f38db4b69efc98fa17",
+    "hash_sha256": "ca810e639a670e18331583490cc026940bf1cd9ccdb42e278b1443588cd76bda",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

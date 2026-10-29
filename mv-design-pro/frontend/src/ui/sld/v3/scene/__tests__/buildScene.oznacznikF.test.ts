@@ -89,26 +89,15 @@ describe('ogranicznik przepięć — oznacznik rodziny F (V12K-335 pkt 3)', () =
     expect(saLabels).toHaveLength(1);
     expect(saLabels[0].text).toBe('F2');
     expect(saLabels[0].designationSource).toBe('dane');
-    // Wyrocznia na fixturze w1: DOKŁADNIE jedna luka PRE-EXISTING, niezwiązana
-    // z F — etykieta „T2" przekładnika lateralnego wariantu `linia-ct-vt`
-    // przegrywa w declutterze SCENY z symbolem ES stojącym bezpośrednio pod
-    // nim (kolizja meldowana uczciwie w `meta.stopNotes`: `label.declutter …
-    // #apparatus-id-voltageTransformer-lateral-0`). To dług geometrii kolumny
-    // lateralnej (laterale RÓŻNYCH kotwic w tej samej kolumnie X stykają się
-    // pionowo i nie zostawiają pasa na etykietę górnego) — nazwany w rejestrze
-    // przy wierszu S9-12 (pomiar na czystym HEAD 683745a4: ta sama luka bez
-    // zmian F). Pin liczbowy celowo DOSŁOWNY: regres etykiet F zmienia
-    // różnicę licznika i test robi się czerwony. GEOMETRIA-STACJI (§0 pkt 4): 405/406 →
-    // 243/244 — pola fikstury bez rekordów aparatów nie rysują już stosu z konwencji
-    // (sylwetka braku danych nie jest aparatem uprawnionym do oznacznika); różnica 1
-    // (ta sama luka T2) bez zmian.
-    expect(apparatusIdentifierGaps(scene)).toEqual([
-      {
-        ownerRef: undefined,
-        symbolId: 'apparatus-label',
-        reason: 'liczba etykiet identyfikatora (243) != liczba aparatów uprawnionych (244)',
-      },
-    ]);
+    // Wyrocznia na fixturze w1: ZERO luk. Dawniej DOKŁADNIE jedna luka (pin 243/244): etykieta
+    // „T2" przekładnika lateralnego wariantu `linia-ct-vt` przegrywała w declutterze z symbolem
+    // ES stojącym pod nim — laterale RÓŻNYCH kotwic lądowały w tej samej kolumnie X bez pasa na
+    // podpis górnego (dług S9-12-DLUG-LATERAL-ETYKIETA, `REJESTR_KONFLIKTOW.md` wiersz S9-12).
+    // Domknięty kartą UX-04/POLE-LINIOWE-WZORZEC: `przesunieciaOdgalezien`
+    // (`compose/apparatusSequence.ts`) — jedna reguła planu, stacji i GPZ: odgałęzienie z podpisem
+    // nachodzące na pas niższego odsuwa się w prawo (pomiar: 244/244, luka zniknęła bez zmiany
+    // etykiet F — pin dalej łapie regres F, bo każda brakująca etykieta daje niepustą listę).
+    expect(apparatusIdentifierGaps(scene)).toEqual([]);
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {

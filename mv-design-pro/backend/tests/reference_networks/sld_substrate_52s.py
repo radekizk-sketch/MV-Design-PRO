@@ -110,8 +110,8 @@ _FW_NAMESPACE = "CONVERTER"
 # P-A power-flow tor: nN station loads + a normally-open sectionaliser (NOP).
 # Loads near the GPZ make those feeders net-consuming (flow GPZ→stacja), while DER
 # tips net-generate (flow reverses upstream) → genuine BIDIRECTIONAL active-power
-# flow that the frozen solver computes. The NOP (open SN sectionaliser, real RM6
-# load switch) sits on a lateral whose tip is ring-tied to an adjacent feeder
+# flow that the frozen solver computes. The NOP (open SN sectionaliser, generic vacuum
+# load switch without fluorinated gas — new switches must be F-gas free, EU 2024/573 art. 13(9)) sits on a lateral whose tip is ring-tied to an adjacent feeder
 # (see builder step 5d) — the switch itself carries zero current (open), but
 # the fragment beyond it stays energised from the ring, exactly like a real
 # normally-open reserve tie (SUB-52s par. 2; a topologically stranded fragment
@@ -119,7 +119,7 @@ _FW_NAMESPACE = "CONVERTER"
 # are catalog-bound domain ops (no fictional entities); the schematic == the
 # ENM == what the solver computes.
 _LOAD_NAMESPACE = "OBCIAZENIE"
-_NOP_SWITCH_REF = "sw-ls-schneider-rm6-17kv-400a"  # Schneider RM6 SN load switch
+_NOP_SWITCH_REF = "sw-ls-ogolny-prozniowy-24kv-630a"  # generic vacuum SN load switch (no F-gas)
 _NOP_SWITCH_NAMESPACE = "APARAT_SN"
 
 
@@ -691,7 +691,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     # -----------------------------------------------------------------------
     # 5c. Normally-open point (NOP) — realistic reserve tie left open
     # -----------------------------------------------------------------------
-    # An open SN sectionaliser (real Schneider RM6 load switch) on a deep lateral
+    # An open SN sectionaliser (generic vacuum load switch, no F-gas) on a deep lateral
     # segment. set_normal_open_point records it on the corridor too. Opening the
     # switch alone would strand everything downstream of it (ENMValidator E003 —
     # a component with no path to source is a defect, not a feature: SUB-52s

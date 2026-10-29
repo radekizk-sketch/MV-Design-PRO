@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any, Literal
 
 from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
-from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
+from enm.interlock_rules import (
+    blokady_zamkniecia,
+    is_closed,
+    is_open,
+    porty_aparatu,
+    runtime_state_record,
+)
 from enm.models import (
     TRYBY_PRACY_ZRODLA,
     Bay,
@@ -44,9 +51,11 @@ from enm.nastawy_zabezpieczen import (
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
+from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
 from network_model.core.uziemienie import TypPunktuNeutralnego
+from pydantic import BaseModel
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
 #: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
@@ -119,6 +128,12 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
 }
 
 
+def _slownik_json(pary: list[tuple[str, Any]]) -> dict[str, Any]:
+    """`dict_factory` dla `dataclasses.asdict` — rekord kontraktu werdyktu (pydantic: etykieta,
+    wyjaśnienie) zagnieżdżony w dataclass oceny trafia do odpowiedzi jako słownik JSON."""
+    return {k: v.model_dump(mode="json") if isinstance(v, BaseModel) else v for k, v in pary}
+
+
 def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     branches = {branch.ref_id: branch for branch in enm.branches}
     # Karta W5-B: pola stacji czytane WPROST z rekordów `bays` (jedyny nośnik pól) — bez
@@ -149,6 +164,18 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
         None,
     )
     latest_pf_run = next((run for run in finished_runs if run.analysis_type == "PF"), None)
+
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): ocena pól liniowych GPZ wg klasy pola —
+    # funkcje EAZ, sieć za polem, typ modułów, pomiar AJEE (`enm.pole_liniowe_gpz`, jedno źródło
+    # dla walidatora W049–W053 i karty pola).
+    oceny_pol = (
+        {
+            ocena.bay_ref: asdict(ocena, dict_factory=_slownik_json)
+            for ocena in oceny_pol_liniowych(enm.model_dump(mode="json"))
+        }
+        if any(bay.gpz_section_id for bay in enm.bays)
+        else {}
+    )
 
     items: list[dict[str, Any]] = []
     migrated_count = 0
@@ -211,6 +238,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
             switchgear_family_ref=bay.switchgear_family_ref,
+            stan_obiektu=bay.stan_obiektu,
             equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
             equipment_assumed_data=dane_przyjete_wyposazenia(
                 [device.model_dump(mode="json") for device in bay.primary_devices]
@@ -260,6 +288,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
                 "project_results": (
                     project_results.model_dump(mode="json") if project_results is not None else None
                 ),
+                "ocena_pola_liniowego": oceny_pol.get(bay.ref_id),
             }
         )
 
@@ -573,6 +602,7 @@ def _zloz_stan_ruchowy(
                 device.device_ref,
                 device.kind,
                 stany[device.device_ref].actual_state if device.device_ref in stany else None,
+                porty_aparatu(device),
             )
             for device in devices
         ]
@@ -609,14 +639,12 @@ def _build_operating_state(
     """Położenie normalne = pozycja normalna łącznika w modelu (``normal_state``); bieżące =
     stan aparatu (źródło albo ``status`` w modelu);
     alarm niezgodności = znane bieżące różne od normalnego (porównanie, nie telemetria)."""
+    # Klasyfikacja położenia z JEDNEGO źródła reguł blokad (`interlock_rules.is_closed` /
+    # `is_open`): „uziemiony" łącznika trójpołożeniowego to tor otwarty, nie stan nieznany.
     current_position: Literal["zamkniety", "otwarty", "nieznany"] = (
         "zamkniety"
-        if switch_state.actual_state in {"zamkniety", "zamkniety_naped_rozbrojony"}
-        else (
-            "otwarty"
-            if switch_state.actual_state in {"otwarty", "otwarty_naped_rozbrojony"}
-            else "nieznany"
-        )
+        if is_closed(switch_state.actual_state)
+        else ("otwarty" if is_open(switch_state.actual_state) else "nieznany")
     )
     return BayOperatingState(
         normal_position=normal_position,

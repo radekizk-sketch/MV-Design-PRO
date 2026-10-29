@@ -58,6 +58,7 @@
  */
 import {
   DARK_SCADA_SLD_PALETTE,
+  RAMKA_SCADA_COLOR,
   STATE_COLOR,
   type HighlightKey,
   type SldPalette,
@@ -137,6 +138,11 @@ const EXPORT_ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   zrodlowe: '#3C6E1E',
 };
 
+/** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA w druku — TE SAME wartości co na
+ *  ekranie (konwencja dyspozytorska czerwony = zamknięty, zielony = otwarty nie zależy od
+ *  palety; ekran i dokument mówią to samo). */
+const EXPORT_RAMKA_SCADA_COLOR: Readonly<Record<'zamkniety' | 'otwarty', string>> = RAMKA_SCADA_COLOR;
+
 /** Tabela jasna eksponowana dla testów/dokumentacji (parytet kluczy z
  *  `colorTokens.ts` — pomiar w `__tests__/exportPalette.test.ts`). */
 export const LIGHT_TECHNICAL_V3 = {
@@ -146,6 +152,7 @@ export const LIGHT_TECHNICAL_V3 = {
   state: EXPORT_STATE_COLOR,
   highlight: EXPORT_HIGHLIGHT_COLOR,
   rolaPola: EXPORT_ROLA_POLA_COLOR,
+  ramkaScada: EXPORT_RAMKA_SCADA_COLOR,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -188,6 +195,8 @@ function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string
     ...(Object.keys(EXPORT_ROLA_POLA_COLOR) as RolaPolaGpz[]).map(
       (rola) => [source.rolaPola[rola], EXPORT_ROLA_POLA_COLOR[rola]] as const,
     ),
+    [source.ramkaScada.zamkniety, EXPORT_RAMKA_SCADA_COLOR.zamkniety],
+    [source.ramkaScada.otwarty, EXPORT_RAMKA_SCADA_COLOR.otwarty],
   ];
   const map = new Map<string, string>();
   for (const [screen, doc] of pairs) {

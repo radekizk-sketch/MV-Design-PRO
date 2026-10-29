@@ -39,6 +39,11 @@ aparatury) z wynikiem liczbowym i limitem; ocena „na wejściu" byłaby werdykt
 wyjaśnienia. Operacja NIE ustawia stanu łącznika — stan żyje na gałęzi
 (``status``/``normal_state``, operacje ``open_switch``/``close_switch``/
 ``set_normal_open_point``), a aparat pola wskazuje ją ``linked_ref``.
+
+PORTY (karta UX-04/POLE-LINIOWE-WZORZEC). Kolejność ``devices`` w trybie ``katalog`` jest
+kolejnością fizyczną od szyny: porty aparatów (``BayPrimaryDevice.ports``) wyprowadza z niej
+pisarz rekordu pola (``enm.pola.zmien_pole`` → ``rodzaje_aparatury.porty_toru_pola``) — tą samą
+regułą, co szablon pola i BOM katalogowego pola rodziny.
 """
 
 from __future__ import annotations
@@ -46,17 +51,34 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal, get_args
 
-from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
+from network_model.catalog.bay_templates import (
+    _SWITCHABLE_PRIMARY_KINDS,
+    BAY_TEMPLATE_REGISTRY,
+    KLASY_POLA_LINIOWEGO,
+    NAZWY_KLASY_POLA_PL,
+)
+from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU
+from network_model.catalog.rodzaje_aparatury import (
+    KLUCZ_ODGALEZIENIA,
+    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
+    RODZAJ_PRZEKLADNIKA_FERRANTIEGO,
+    RODZAJ_WSKAZNIKA_NAPIECIA,
+)
 from network_model.catalog.switchgear.apparatus_vocabulary import FAMILY_APPARATUS_FOR_ENM_KIND
 from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
 from werdykt.kontrakt import DanaPrzyjeta
 from werdykt.proweniencja import FieldQuality
 
-from .domain_operations import _error_response, _konfiguracja_pola, _response
+from .domain_operations import (
+    _error_response,
+    _konfiguracja_pola,
+    _powiaz_aparaty_pola_z_galezia,
+    _response,
+)
 from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
 from .models import BayPrimaryDevice
-from .pola import czy_pole_nn, poziom_pol, zmien_pole
+from .pola import aparaty_po_wymianie, czy_pole_nn, poziom_pol, zmien_pole
 from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
@@ -88,15 +110,27 @@ RODZAJE_KATALOGOWE_APARATU: dict[str, frozenset[str]] = {
 
 #: Rodzaje aparatu pola SN bez katalogu SN w repozytorium — przyjmowane wyłącznie jako
 #: wartość robocza (``PROPOZYCJA``), nigdy z ``catalog_ref``.
-RODZAJE_BEZ_KATALOGU_SN: frozenset[str] = frozenset({"FUSE", "CABLE_HEAD", "TRANSFORMER_DEVICE"})
+#: Łącznik trójpołożeniowy, wskaźnik napięcia i przekładnik Ferrantiego (karta
+#: UX-04/POLE-LINIOWE-WZORZEC, ENEA Zeszyt 1 Z.10) nie mają przestrzeni katalogu SN — są
+#: wartością roboczą z `dane_przyjete` (jakość ESTIMATED), nigdy daną producenta.
+RODZAJE_BEZ_KATALOGU_SN: frozenset[str] = frozenset(
+    {
+        "FUSE",
+        "CABLE_HEAD",
+        "TRANSFORMER_DEVICE",
+        RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
+        RODZAJ_WSKAZNIKA_NAPIECIA,
+        RODZAJ_PRZEKLADNIKA_FERRANTIEGO,
+    }
+)
 
 #: Rodzaje aparatu wskazujące gałąź łącznikową modelu (``linked_ref``) — ich stan
 #: (otwarty/zamknięty) jest stanem tej gałęzi.
 RODZAJE_Z_GALEZIA: frozenset[str] = frozenset({"CB", "LOAD_SWITCH", "DS", "FUSE"})
 #: Rodzaje z rolą uziemienia (``earthing_role``).
 RODZAJE_Z_ROLA_UZIEMIENIA: frozenset[str] = frozenset({"ES", "SURGE_ARRESTER"})
-#: Aparaty łączeniowe toru (sterowalne) — ta sama reguła, co szablony pola.
-RODZAJE_STEROWALNE: frozenset[str] = frozenset({"CB", "LOAD_SWITCH", "DS"})
+#: Aparaty łączeniowe toru (sterowalne) — TEN SAM zbiór, co szablony pola.
+RODZAJE_STEROWALNE: frozenset[str] = _SWITCHABLE_PRIMARY_KINDS
 
 _UMIEJSCOWIENIA: frozenset[str] = frozenset(
     get_args(BayPrimaryDevice.model_fields["placement"].annotation)
@@ -114,6 +148,9 @@ NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
     "FUSE": "bezpieczniki",
     "CABLE_HEAD": "głowica kablowa",
     "TRANSFORMER_DEVICE": "transformator pola",
+    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
+    RODZAJ_WSKAZNIKA_NAPIECIA: "wskaźnik napięcia",
+    RODZAJ_PRZEKLADNIKA_FERRANTIEGO: "przekładnik Ferrantiego",
 }
 
 
@@ -221,6 +258,19 @@ def _aparaty_z_szablonu(
         bay_template_ref=ref,
         switchgear_family_ref=rekord.get("switchgear_family_ref"),
     )
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: aparat główny szablonu WSKAZUJE łącznik modelu tego
+    # pola (`Bay.equipment_refs`) — ta sama reguła co budowa pola liniowego GPZ
+    # (`_powiaz_aparaty_pola_z_galezia`); bez tego rysunek pokazywał wyłącznik bez stanu przy
+    # zamkniętej gałęzi aparatu. Stanu łączników operacja nie ustawia (`z_polozeniem=False`).
+    galezie_pola = [
+        g
+        for g in enm.get("branches", [])
+        if isinstance(g, dict)
+        and g.get("type") in TYPY_LACZNIKOW_ENM
+        and g.get("ref_id") in (rekord.get("equipment_refs") or [])
+    ]
+    if len(galezie_pola) == 1:
+        aparaty = _powiaz_aparaty_pola_z_galezia(aparaty, galezie_pola[0], z_polozeniem=False)
     return aparaty, ref
 
 
@@ -314,6 +364,14 @@ def _sprawdz_aparat(
                     "bay_equipment.catalog_kind_mismatch",
                 )
 
+    stan_obiektu = wpis.get("stan_obiektu")
+    if stan_obiektu is not None and stan_obiektu not in STANY_OBIEKTU:
+        return _error_response(
+            f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) ma "
+            "stan obiektu spoza słownika — istniejący albo projektowany (puste: aparat "
+            "niezmieniony zachowuje stan, nowy jest projektowany).",
+            "bay_equipment.object_state_invalid",
+        )
     rola_uziemienia = wpis.get("earthing_role")
     if rola_uziemienia is not None and rodzaj not in RODZAJE_Z_ROLA_UZIEMIENIA:
         return _error_response(
@@ -341,6 +399,16 @@ def _sprawdz_aparat(
                 "z wyposażenia tego pola.",
                 "bay_equipment.linked_ref_other_bay",
             )
+    odgalezienie = wpis.get("odgalezienie")
+    if odgalezienie is not None and (
+        not isinstance(odgalezienie, str) or not odgalezienie.strip().isalnum()
+    ):
+        return _error_response(
+            f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) ma "
+            "oznaczenie odgałęzienia toru, które nie jest krótkim identyfikatorem (litery "
+            "i cyfry, np. „pn” — odgałęzienie przekładnika napięciowego).",
+            "bay_equipment.branch_invalid",
+        )
     aparat: dict[str, Any] = {
         "device_ref": f"{bay_ref}::dev::{indeks}",
         "symbol_ref": f"symbol:{str(rodzaj).lower()}",
@@ -354,9 +422,26 @@ def _sprawdz_aparat(
         ("designation", wpis.get("designation")),
         ("earthing_role", rola_uziemienia),
         ("linked_ref", linked_ref),
+        ("stan_obiektu", stan_obiektu),
+        # Odgałęzienie toru (`rodzaje_aparatury.KLUCZ_ODGALEZIENIA`): porty aparatu wyprowadza
+        # z niego pisarz rekordu (`porty_toru_pola`) — ta sama reguła co szablon pola Z.11.1/Z.11.
+        (KLUCZ_ODGALEZIENIA, odgalezienie.strip() if isinstance(odgalezienie, str) else None),
     ):
         if wartosc is not None:
             aparat[klucz] = wartosc
+    # Tabliczka przekładnika z POZYCJI KATALOGU (jedno źródło): rdzenie typu CT, uzwojenia typu
+    # VT (`CTType.lista_rdzeni`, `VTType.lista_uzwojen`) — ta sama lista, którą niesie szablon
+    # pola wskazujący tę pozycję.
+    if rodzaj == "CT" and isinstance(catalog_ref, str):
+        typ_ct = katalog_biezacy().ct_types.get(catalog_ref)
+        rdzenie = typ_ct.lista_rdzeni() if typ_ct is not None else ()
+        if rdzenie:
+            aparat["rdzenie"] = [r.model_dump(mode="json") for r in rdzenie]
+    if rodzaj == "VT" and isinstance(catalog_ref, str):
+        typ_vt = katalog_biezacy().vt_types.get(catalog_ref)
+        uzwojenia = typ_vt.lista_uzwojen() if typ_vt is not None else ()
+        if uzwojenia:
+            aparat["uzwojenia"] = [u.model_dump(mode="json") for u in uzwojenia]
     return aparat
 
 
@@ -390,6 +475,18 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         )
 
     zmiany: dict[str, Any] = {}
+    # Klasa pola liniowego (IRiESD II.4.5.4.2.1–2.3): klucz obecny w ładunku ustawia ją
+    # (`null` — klasa nieustalona), nieobecny zostawia klasę rekordu.
+    if "klasa_pola" in payload:
+        klasa = payload.get("klasa_pola")
+        if klasa is not None and klasa not in KLASY_POLA_LINIOWEGO:
+            return _error_response(
+                f"Pole {pole('klasa_pola', 'set_bay_equipment')}: klasa spoza słownika — "
+                f"{lista_pl(NAZWY_KLASY_POLA_PL[k] for k in KLASY_POLA_LINIOWEGO)} "
+                "(puste: klasa nieustalona).",
+                "bay_equipment.line_class_invalid",
+            )
+        zmiany["klasa_pola"] = klasa
     if tryb == "wyczysc":
         aparaty: list[dict[str, Any]] = []
     elif tryb == "szablon":
@@ -429,5 +526,29 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 wskazane_galezie.add(str(linked))
             aparaty.append(aparat)
 
+    # Funkcje EAZ pola z jego szablonu i klasy — TEN SAM resolver co każda operacja tworząca
+    # pole (`_resolve_bay_template_protection_codes`: producent → szablon → rola). Zmiana
+    # szablonu albo klasy przelicza zestaw; tryb bez zmiany żadnej z nich zestawu nie dotyka.
+    szablon_po = zmiany.get("bay_template_ref", rekord.get("bay_template_ref"))
+    klasa_po = zmiany.get("klasa_pola", rekord.get("klasa_pola"))
+    if szablon_po and (
+        szablon_po != rekord.get("bay_template_ref") or klasa_po != rekord.get("klasa_pola")
+    ):
+        from .domain_operations_v2 import _resolve_bay_template_protection_codes
+
+        zmiany["protection_codes"] = _resolve_bay_template_protection_codes(
+            rekord.get("manufacturer_ref"), szablon_po, str(rekord.get("bay_role")), klasa_po
+        )
+    # Stan obiektu instancji (korekta właściciela 2026-10-28): aparat niezmieniony zachowuje
+    # stan, aparat wymieniony albo dodany jest nową instancją — projektowaną.
+    aparaty = aparaty_po_wymianie(rekord.get("primary_devices") or [], aparaty)
     zmien_pole(nowy, bay_ref, primary_devices=aparaty, **zmiany)
+    # Gałąź łącznika wskazana aparatem pola (`linked_ref`) to TEN SAM fizyczny aparat — jej stan
+    # obiektu jest stanem aparatu (jedno źródło: `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
+    stany_galezi = {
+        str(a["linked_ref"]): a.get("stan_obiektu") for a in aparaty if a.get("linked_ref")
+    }
+    for galaz in nowy.get("branches") or []:
+        if isinstance(galaz, dict) and galaz.get("ref_id") in stany_galezi:
+            galaz["stan_obiektu"] = stany_galezi[galaz["ref_id"]]
     return _odpowiedz(nowy, bay_ref, aparaty)

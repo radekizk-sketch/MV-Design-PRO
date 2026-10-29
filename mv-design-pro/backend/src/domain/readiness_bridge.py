@@ -60,6 +60,17 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W043": "station.kind_mismatch",
     # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
     "W044": "station.field_role_unknown",
+    # „Gaz fluorowany w polu, które nie jest istniejące" == ten sam warunek (jedna reguła
+    # `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`, karta UX-04).
+    "W045": "bay.fluorinated_gas_not_existing",
+    "W046": "bay.switching_execution_insulation_mismatch",
+    "W047": "bay.gpz_template_outside_gpz",
+    "W048": "bay.line_class_execution_mismatch",
+    "W049": "bay.generation_fed_from_load_bay",
+    "W050": "bay.loads_behind_dedicated_generation_bay",
+    "W051": "bay.ufls_in_bay_with_generation",
+    "W052": "bay.reclosing_in_dedicated_generation_bay",
+    "W053": "bay.settlement_core_missing",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",

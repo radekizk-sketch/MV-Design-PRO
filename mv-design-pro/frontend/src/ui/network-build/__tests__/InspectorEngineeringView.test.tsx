@@ -891,8 +891,10 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
     expect(screen.getByText('Wkłady źródeł w zwarciu')).toBeInTheDocument();
     expect(screen.getByText('Wywód pola')).toBeInTheDocument();
-    expect(screen.getByText('Schemat Kanoniczny')).toBeInTheDocument();
-    expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
+    // UX-04/POLE-LINIOWE-WZORZEC: schemat pola = wycinek rysunku kanwy z migawki; migawka tego
+    // testu nie niesie aparatów ani gałęzi aparatu pola — jawny stan „brak rysunku".
+    expect(screen.getByText('Schemat pola')).toBeInTheDocument();
+    expect(screen.getByTestId('schemat-pola-sn-brak')).toBeInTheDocument();
   });
 
   // Karta #135 — stan ruchowy pola bez fabrykacji: model odczytu pola bez źródła runtime ma

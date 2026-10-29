@@ -29,12 +29,6 @@ export {
   fetchTransformerTypes,
   fetchSwitchEquipmentTypes,
   fetchTypesByCategory,
-  assignTypeToBranch,
-  assignTypeToTransformer,
-  assignEquipmentTypeToSwitch,
-  clearTypeFromBranch,
-  clearTypeFromTransformer,
-  clearEquipmentTypeFromSwitch,
 } from './catalog';
 export type {
   LineType,

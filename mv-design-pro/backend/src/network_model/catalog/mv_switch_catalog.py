@@ -977,13 +977,91 @@ SWITCH_HV_110KV: list[dict[str, Any]] = [
 
 
 # =============================================================================
+# ROZLACZNIKI SN TYPU OGOLNEGO BEZ GAZOW FLUOROWANYCH (karta UX-04/POLE-LINIOWE-WZORZEC)
+# =============================================================================
+#
+# Dyrektywa właściciela 2026-10-28: pole projektowane nie może zawierać gazu fluorowanego
+# (rozporządzenie (UE) 2024/573, art. 13 ust. 9). Wszystkie rozłączniki producentów w katalogu
+# mają komory SF₆, więc tryb katalogowy wyposażenia pola projektowanego nie miałby żadnej
+# pozycji rozłącznika. Typ ogólny rozłącznika z komorą próżniową (bez producenta) niesie
+# wartości robocze (ESTIMATED, ZASADA NR 4) z szeregów norm wyrobu; projektant podmienia go
+# na wyrób, gdy wybierze producenta.
+
+_ZRODLO_ROZLACZNIKA_OGOLNEGO = (
+    "PN-EN 62271-103 (rozłącznik wysokiego napięcia ogólnego przeznaczenia); wartości "
+    "znamionowe z szeregu R10 wg PN-EN 62271-1"
+)
+_ZALOZENIE_ROZLACZNIKA_OGOLNEGO = (
+    "założenie: typ ogólny rozłącznika z komorą próżniową bez producenta (dyrektywa właściciela "
+    "2026-10-28 — pole projektowane bez gazów fluorowanych); wartość z szeregu normy wyrobu, "
+    "nie z karty wyrobu"
+)
+
+
+def _status_pola_rozlacznika(pole: str) -> dict[str, Any]:
+    """Wpis ``card_field_status`` pola wartości roboczej rozłącznika typu ogólnego."""
+    return {
+        "field_name": pole,
+        "quality": "ESTIMATED",
+        "source_ref": _ZRODLO_ROZLACZNIKA_OGOLNEGO,
+        "note": _ZALOZENIE_ROZLACZNIKA_OGOLNEGO,
+    }
+
+
+def _rozlacznik_proznowy_ogolny(item_id: str, name: str, *, un_kv: float) -> dict[str, Any]:
+    return {
+        "id": item_id,
+        "name": name,
+        "params": {
+            "equipment_kind": "LOAD_SWITCH",
+            "manufacturer": None,
+            "un_kv": un_kv,
+            "in_a": 630.0,
+            # KAT-T-050: rozłącznik nie ma zdolności wyłączania zwarć — `ik_ka`/`i_cu_ka` None.
+            "ik_ka": None,
+            "icw_ka": 16.0,
+            "medium": "VACUUM",
+            "u_m_kv": un_kv,
+            "i_cu_ka": None,
+            "card_field_status": {
+                pole: _status_pola_rozlacznika(pole)
+                for pole in ("un_kv", "u_m_kv", "in_a", "icw_ka")
+            },
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": _ZRODLO_ROZLACZNIKA_OGOLNEGO,
+            "verification_note": (
+                "Typ ogólny rozłącznika SN z komorą próżniową bez producenta: napięcie, prąd "
+                "znamionowy i prąd krótkotrwały wytrzymywany jako wartości robocze (ESTIMATED)."
+            ),
+            "contract_version": "2.0",
+        },
+    }
+
+
+SWITCH_LOAD_SWITCHES_BEZ_GAZU_F: list[dict[str, Any]] = [
+    _rozlacznik_proznowy_ogolny(
+        "sw-ls-ogolny-prozniowy-12kv-630a",
+        "Rozłącznik próżniowy 12 kV 630 A (typ ogólny, bez gazów fluorowanych)",
+        un_kv=12.0,
+    ),
+    _rozlacznik_proznowy_ogolny(
+        "sw-ls-ogolny-prozniowy-24kv-630a",
+        "Rozłącznik próżniowy 24 kV 630 A (typ ogólny, bez gazów fluorowanych)",
+        un_kv=24.0,
+    ),
+]
+
+
+# =============================================================================
 # FUNKCJE DOSTEPU
 # =============================================================================
 
 
 def get_all_switch_equipment_types() -> list[dict[str, Any]]:
-    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (50 rekordow: 48 SN po K30-22
-    + 2 minimalne laczniki 110 kV karty KATALOG-APARATURA-WN)."""
+    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (52 rekordy: 48 SN po K30-22
+    + 2 minimalne laczniki 110 kV karty KATALOG-APARATURA-WN + 2 rozlaczniki prozniowe typu
+    ogolnego karty UX-04/POLE-LINIOWE-WZORZEC)."""
     return (
         SWITCH_CIRCUIT_BREAKERS
         + SWITCH_LOAD_SWITCHES
@@ -993,6 +1071,7 @@ def get_all_switch_equipment_types() -> list[dict[str, Any]]:
         + SWITCH_EARTH_SWITCHES
         + SWITCH_POLISH_PTPIRE  # K30-22 Polish ZPUE + Elektrometal expansion
         + SWITCH_HV_110KV  # karta KATALOG-APARATURA-WN
+        + SWITCH_LOAD_SWITCHES_BEZ_GAZU_F  # karta UX-04/POLE-LINIOWE-WZORZEC
     )
 
 

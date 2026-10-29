@@ -243,7 +243,7 @@ class TestGN03SNRingNOP:
                 {
                     "segment_id": branches[1]["ref_id"],
                     "insert_at": {"mode": "RATIO", "value": 0.5},
-                    "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                    "catalog_ref": "sw-ls-ogolny-prozniowy-24kv-630a",
                 },
             )
             enm = r["snapshot"]

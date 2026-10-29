@@ -239,6 +239,9 @@ def rekord_z_wpisu(
         bay_number=_napis(scalany.get("bay_number")),
         feeder_short_name=_napis(scalany.get("feeder_short_name")),
         outgoing_destination_ref=_napis(scalany.get("outgoing_destination_ref")),
+        # Migracja zastanego zapisu (dawne słowniki pól w `meta`): stan obiektu nieznany —
+        # jawnie nieustalony, bez domysłu.
+        stan_obiektu=None,
     )
 
 
@@ -374,6 +377,8 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
                 branch_point_ref=str(punkt.get("ref_id")),
                 bus_ref=str(punkt.get("bus_ref")),
                 branch_ports_count=liczba,
+                # Odtworzenie pól zastanego zapisu: stan obiektu nieznany — jawnie nieustalony.
+                stan_obiektu=None,
             )
         )
 

@@ -10,6 +10,15 @@
  * czytała punkt podziału z kopii przy magistrali i „przełączała" łącznik korektą
  * parametrów (`toggle_status`), której backend nie zna — zapis był fantomem.
  *
+ * Stan obiektu (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych w obiektach
+ * projektowanych — rozporządzenie (UE) 2024/573, art. 13 ust. 9): łącznik poza polem (rozłącznik
+ * sekcyjny w ciągu, sprzęgło, łącznik pola bez lustra w wyposażeniu) ma własny stan
+ * `SwitchBranch.stan_obiektu` i karta zmienia go operacją `set_object_state` ze `switch_ref`.
+ * Łącznik opisany aparatem pola (`linked_ref` aparatu) dzieli stan z tym aparatem — karta
+ * pokazuje stan i wskazuje kartę pola zamiast akcji (backend odmawia `switch_ref` na takim
+ * łączniku: `object_state.switch_has_bay_device`). Zero reguły gazu w UI: odmowę zapisu
+ * (np. projektowany łącznik z SF₆ — `pole.gaz_fluorowany`) zwraca backend.
+ *
  * BINDING: 100% PL etykiety.
  */
 
@@ -19,7 +28,9 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
-import type { SwitchBranch, FuseBranch } from '../../../types/enm';
+import type { SwitchBranch, FuseBranch, StanObiektu } from '../../../types/enm';
+import { isSwitchBranch } from '../../../types/enm';
+import { nazwaStanuObiektuPl } from '../../shared/stanObiektu';
 import {
   czyLacznikZPozycjaNormalna,
   czyPunktPodzialu,
@@ -133,6 +144,19 @@ export function SwitchCard({ elementId }: { elementId: string }) {
     [snapshot, elementId],
   );
 
+  // Aparat pola opisujący ten łącznik (`linked_ref`) — wtedy stan obiektu jest wspólny z aparatem
+  // i zmienia się na karcie pola (jedno źródło: `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
+  const aparatPola = useMemo(() => {
+    for (const bay of snapshot?.bays ?? []) {
+      const aparat = (bay.primary_devices ?? []).find((a) => a.linked_ref === elementId);
+      if (aparat) return { bay, aparat };
+    }
+    return null;
+  }, [snapshot, elementId]);
+  // Stan obiektu niesie gałąź łączeniowa (bezpiecznik — bez komory gaszeniowej z gazem — nie).
+  const zStanemObiektu = branch !== null && isSwitchBranch(branch);
+  const stanWlasny = zStanemObiektu ? ((branch as SwitchBranch).stan_obiektu ?? null) : null;
+
   const parentStation = useMemo(
     () =>
       parentBay
@@ -243,6 +267,19 @@ export function SwitchCard({ elementId }: { elementId: string }) {
               },
             ]
           : []),
+        ...(zStanemObiektu
+          ? [
+              {
+                key: 'stan_obiektu',
+                label: 'Stan obiektu',
+                value: aparatPola
+                  ? `${nazwaStanuObiektuPl(aparatPola.aparat.stan_obiektu ?? null)} — wspólny z aparatem pola ${aparatPola.bay.name}`
+                  : stanWlasny === null && parentBay
+                    ? `${nazwaStanuObiektuPl(parentBay.stan_obiektu ?? null)} — stan pola ${parentBay.name}`
+                    : nazwaStanuObiektuPl(stanWlasny),
+              },
+            ]
+          : []),
       ],
     };
 
@@ -284,7 +321,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
     }
 
     return result;
-  }, [branch, fromBus, toBus, isNop, parentBay, parentStation, activeMode]);
+  }, [branch, fromBus, toBus, isNop, parentBay, parentStation, activeMode, aparatPola, stanWlasny, zStanemObiektu]);
 
   const handleToggleState = useCallback(() => {
     if (!branch) return;
@@ -301,6 +338,24 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       }
     });
   }, [activeCaseId, branch, elementId, executeDomainOperation]);
+
+  const handleSetObjectState = useCallback(
+    (stan: StanObiektu) => {
+      if (!activeCaseId) {
+        notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+        return;
+      }
+      void executeDomainOperation(activeCaseId, 'set_object_state', {
+        switch_ref: elementId,
+        stan_obiektu: stan,
+      }).then((odpowiedz) => {
+        if (!odpowiedz || odpowiedz.error) {
+          notify(odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Nie zapisano stanu obiektu.', 'error');
+        }
+      });
+    },
+    [activeCaseId, elementId, executeDomainOperation],
+  );
 
   const handleAssignCatalog = useCallback(() => {
     openOperationForm('assign_catalog_to_element', {
@@ -341,8 +396,29 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       });
     }
 
+    // Stan obiektu łącznika poza polem: jedna akcja — przeciwna do stanu bieżącego (stan
+    // nieustalony: obie). Łącznik opisany aparatem pola — bez akcji (stan na karcie pola).
+    if (zStanemObiektu && !aparatPola) {
+      if (stanWlasny !== 'ISTNIEJACY') {
+        acts.push({
+          id: 'stan_obiektu_istniejacy',
+          label: 'Oznacz jako istniejący',
+          variant: 'secondary',
+          onClick: () => handleSetObjectState('ISTNIEJACY'),
+        });
+      }
+      if (stanWlasny !== 'PROJEKTOWANY') {
+        acts.push({
+          id: 'stan_obiektu_projektowany',
+          label: 'Oznacz jako projektowany',
+          variant: 'secondary',
+          onClick: () => handleSetObjectState('PROJEKTOWANY'),
+        });
+      }
+    }
+
     return acts;
-  }, [branch, handleToggleState, handleAssignCatalog, handleSetNop, isNop]);
+  }, [branch, handleToggleState, handleAssignCatalog, handleSetNop, handleSetObjectState, isNop, aparatPola, stanWlasny, zStanemObiektu]);
 
   if (!branch) return null;
 

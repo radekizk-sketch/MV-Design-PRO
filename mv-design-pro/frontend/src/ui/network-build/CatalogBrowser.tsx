@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { fetchTypesByCategory } from '../catalog';
 import type { CatalogListItem } from '../catalog/api';
@@ -160,13 +160,19 @@ function normalizeCatalogTypeEntry(raw: CatalogListItem): CatalogTypeEntry {
   return { id, name, manufacturer, parameters };
 }
 
+/**
+ * Przeglądarka katalogów — WYŁĄCZNIE przegląd pozycji (pokazuje też pozycje niedopuszczone do
+ * obiektów projektowanych, np. aparaty z SF₆ dla inwentaryzacji sieci zastanej). Przypisanie typu
+ * do elementu prowadzi picker typu (`ui/catalog/TypePicker`, filtr `dopuszczenieNowychPol`)
+ * albo kreator przypisania katalogu. Dawny przycisk „Przypisz do elementu" bez dostawcy
+ * (jedyny montaż nie przekazywał wywołania zwrotnego) był martwym kliknięciem — usunięty.
+ */
 export interface CatalogBrowserProps {
   className?: string;
-  onSelectType?: (typeId: string, namespace: CatalogNamespace) => void;
   onClose?: () => void;
 }
 
-export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrowserProps) {
+export function CatalogBrowser({ className, onClose }: CatalogBrowserProps) {
   const [activeNamespace, setActiveNamespace] = useState<CatalogNamespace>('KABEL_SN');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
@@ -226,12 +232,6 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
     () => NAMESPACE_PARAM_LABELS[activeNamespace] ?? {},
     [activeNamespace],
   );
-
-  const handleAssign = useCallback(() => {
-    if (selectedTypeId && onSelectType) {
-      onSelectType(selectedTypeId, activeNamespace);
-    }
-  }, [activeNamespace, onSelectType, selectedTypeId]);
 
   return (
     <div className={clsx('flex h-full flex-col bg-white', className)} data-testid="catalog-browser">
@@ -349,13 +349,6 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
                     {selectedType.manufacturer ? ` • ${selectedType.manufacturer}` : ''}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAssign}
-                  className="rounded bg-blue-600 px-3 py-1 text-[10px] font-medium text-white hover:bg-blue-700"
-                >
-                  Przypisz do elementu
-                </button>
               </div>
             </div>
           ) : null}

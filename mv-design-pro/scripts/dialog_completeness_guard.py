@@ -106,6 +106,11 @@ KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
         "Wyposażenie pola edytuje się w miejscu na karcie pola (E-11) — lista aparatów pola "
         "z wyborem typu katalogowego.",
     ),
+    "set_object_state": BezOkna(
+        ("ui/field/EdytorStanuObiektuPola.tsx",),
+        "Stan obiektu pola (istniejący / projektowany) zmienia się w miejscu na karcie pola "
+        "(E-11) — przycisk przy polu i wybór stanu przy każdym aparacie.",
+    ),
     "update_protection_settings": BezOkna(
         ("ui2/kreatory/przekaznik/EdytorNastawZabezpieczenia.tsx",),
         "Nastawy zabezpieczenia edytuje się na karcie pola i na ekranie zabezpieczeń (E-27) — "

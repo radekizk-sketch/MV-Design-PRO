@@ -117,17 +117,19 @@ import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/gri
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
-import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import {
   classifyRouteNodes,
   type RouteGeometry,
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { WARIANT_RYSUNKU_QET, czyZakonczenieToruKablowego, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { RODZAJE_LACZNIKOW_POLA, RODZAJE_LACZNIKOW_TORU } from '../compose/rodzajeAparatuPola';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
+  bayStackCenterX,
   findLineBayIndices,
   stationBlockHeight,
   stationBusbarLabelHeight,
@@ -1438,14 +1440,6 @@ function classifyStationSegmentKind(
   return 'sn';
 }
 
-function findSegmentPointX(
-  segments: readonly { readonly ownerRef: string; readonly points: readonly RouteVertex[] }[],
-  ownerRef: string,
-  pointIndex: number,
-): number | null {
-  return segments.find((s) => s.ownerRef === ownerRef)?.points[pointIndex]?.x ?? null;
-}
-
 /**
  * GEOMETRIA-STACJI (§0 pkt 1): rola toru pól liniowych w sylwetce rodzaju stacji.
  *  · przelotowa / końcowa: poprzednik i następnik ciągu = tor główny;
@@ -1586,6 +1580,15 @@ function composeRowStation(
       );
     }
   }
+  // UX-04/POLE-LINIOWE-WZORZEC: braki przyłączeń aparatów pól SN stacji (porty ENM) — przyczyna
+  // pełnym zdaniem, ta sama postać co w polu GPZ.
+  for (const brak of composition.brakiPrzylaczy) {
+    stopNotes.push(
+      brak.deviceRef
+        ? `Stacja „${measureInput.id}": pole „${brak.bayRef}", aparat „${brak.deviceRef}" — ${brak.przyczyna}; przewód do aparatu nie jest rysowany.`
+        : `Stacja „${measureInput.id}": pole „${brak.bayRef}" — ${brak.przyczyna}.`,
+    );
+  }
   if (composition.missingData.includes('station.transformer.refMissing')) {
     stopNotes.push(
       `Stacja „${measureInput.id}": model deklaruje transformator SN/nN, ale migawka nie niesie ` +
@@ -1656,12 +1659,11 @@ function composeRowStation(
   }
 
   const { previousIndex, nextIndex, branchIndices } = findLineBayIndices(measureInput.snBays);
-  const tapXOfBay = (index: number | null): number | null => {
-    if (index == null) return null;
-    const bayRef = measureInput.snBays[index]?.bayRef;
-    if (!bayRef) return null;
-    return findSegmentPointX(composition.segments, `${bayRef}#descent`, 0);
-  };
+  // UX-04/POLE-LINIOWE-WZORZEC: oś STOSU pola (port kabla u dołu toru) z JEDNEGO źródła
+  // (`bayStackCenterX`, ta sama funkcja co kompozycja stacji i rezerwacja slotu przęsła
+  // `layout/segments.ts`) — nie z zejścia, które stoi w osi portu szynowego (łącznik
+  // trójpołożeniowy QET ma zacisk szynowy obok osi toru).
+  const tapXOfBay = (index: number | null): number | null => bayStackCenterX(measureInput, index, column.x);
 
   if (previousIndex == null) {
     stopNotes.push(
@@ -1670,8 +1672,7 @@ function composeRowStation(
   }
   // F9.3 (FIX-1): port POŁĄCZENIA kabla = dolny port głowicy tego pola
   // (`y = blockTopY + footprint.height`, wzorzec `branchPort` niżej) — X
-  // NIEZMIENIONE (`tapXOfBay`, centerX stosu, ta sama wartość co punkt 0 i 1
-  // zejścia, bo `#descent` jest odcinkiem WYŁĄCZNIE pionowym). Fallback (brak
+  // = oś stosu (`tapXOfBay` → `bayStackCenterX`). Fallback (brak
   // pola liniowego) wraca do starego zachowania — środek bloku NA OSI.
   const portOfBay = (index: number | null): { readonly x: number; readonly y: number } | null => {
     if (index == null) return null;
@@ -1742,7 +1743,12 @@ function composeRowStation(
       // GEOMETRIA-STACJI §0 pkt 4a/5: rekord aparatu, typ z modelu, rezerwa pola.
       apparatusOrigin: s.apparatusOrigin,
       apparatusTypeRef: s.apparatusTypeRef,
+      // Karta UX-04 (stan obiektu): stan rekordu aparatu — podpowiedź i `data-stan-obiektu`.
+      stanObiektu: s.stanObiektu,
       bayReserve: s.bayReserve,
+      // UX-04 (rozszerzenie 4): numer odgałęzienia toru pola — oś odgałęzienia dla wyroczni
+      // aparatów bocznych (`lateralApparatusGapsForKinds`).
+      odgalezienieToru: s.odgalezienieToru,
       trackRole: s.bayRef ? rolaToru.get(s.bayRef) : undefined,
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): `deviceRef` (WHITE BOX §12.1)
       // przepisany 1:1 z kompozycji — realny `BayPrimaryDevice.device_ref`
@@ -2785,7 +2791,9 @@ function gpzBayBottomPort(
   const bayInstances = gpz.symbols.filter(
     // GPZ-PARYTET cz. 3: ten sam predykat aparatu bocznego co budowa stosu pola GPZ (glif
     // rodzaju źródła pola OZE nie jest zakończeniem toru — kabel wychodzi z głowicy).
-    (s) => s.meta.bayRef === bayRef && !jestAparatemBocznymPolaGpz(s.symbolId),
+    // UX-04 (rozszerzenie 4): aparaty odgałęzienia toru (przekładnik napięciowy od strony
+    // linii) stoją w instancjach ZA torem głównym, ale nie są jego zakończeniem.
+    (s) => s.meta.bayRef === bayRef && !jestAparatemBocznymPolaGpz(s.symbolId) && s.meta.odgalezienieToru == null,
   );
   const last = bayInstances[bayInstances.length - 1];
   if (!last) return null;
@@ -3088,7 +3096,14 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // `bayNoEquipment` (`data-brak-wyposazenia`).
       apparatusOrigin: sym.meta.apparatusOrigin,
       apparatusTypeRef: sym.meta.apparatusTypeRef,
+      // Karta UX-04 (stan obiektu): stan rekordu aparatu — ta sama oś co aparaty stacji.
+      stanObiektu: sym.meta.stanObiektu,
       bayReserve: sym.meta.bayReserve,
+      // UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM — czwarta dana tej jawnej listy
+      // (lekcja V12K-217/219): bez niej glif QET nie wie, że rysuje łącznik (ramka SCADA).
+      apparatusKind: sym.meta.apparatusKind,
+      // UX-04 (rozszerzenie 4): numer odgałęzienia toru pola — piąta dana tej jawnej listy.
+      odgalezienieToru: sym.meta.odgalezienieToru,
     },
     // V12K-219: rodzaj uziemienia punktu neutralnego. Druga po `voltageClass`
     // dana, która wypadała w tej samej jawnej liście pól — glif rysowałby
@@ -3685,6 +3700,16 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
     // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
     gpzGeometry = gpzLayout;
+    // UX-04/POLE-LINIOWE-WZORZEC: braki przyłączeń aparatów pól SN (porty ENM) — przyczyna
+    // pełnym zdaniem w `stopNotes` (kod w `meta.missingData`), raz na scenę: kompozycja
+    // geometryczna jest prawdą świata na każdym LOD.
+    for (const brak of gpzLayout.brakiPrzylaczy) {
+      stopNotes.push(
+        brak.deviceRef
+          ? `GPZ: pole „${brak.bayRef}", aparat „${brak.deviceRef}" — ${brak.przyczyna}; przewód do aparatu nie jest rysowany.`
+          : `GPZ: pole „${brak.bayRef}" — ${brak.przyczyna}.`,
+      );
+    }
     // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
     // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
     // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
@@ -5358,7 +5383,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     lod === 2
       ? simpleAnchored
       : simpleAnchored.filter(
-          (owner) => !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-')),
+          (owner) =>
+            !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-'))
+            // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET pola GPZ — ta sama reguła
+            // poziomu szczegółu co identyfikatory aparatów stacji; etykieta stanu nieznanego
+            // (`unresolved`) zostaje na każdym LOD (stan łącznika nie znika z rysunku).
+            && !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#etykieta-aparatu-') && !owner.unresolved),
         );
   const resolvedLabels: readonly OwnedLabel[] = resolveLabels({
     segmentSpans,
@@ -5379,10 +5409,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // etykietami przęseł, które też są L2-only).
   const terminationLabels: OwnedLabel[] = [];
   if (lod === 2) {
-    const headDef = SYMBOL_DEFS.cableHead;
-    const south = headDef.ports.find((pt) => pt.dir === 'S');
-    const portDx = south?.x ?? headDef.width / 2;
-    const portDy = south?.y ?? headDef.height;
     const endpointSet = new Set<string>();
     allSegments.forEach((seg) => {
       const first = seg.points[0];
@@ -5396,7 +5422,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (!captionByOwnerPrefix.has(base)) captionByOwnerPrefix.set(base, pc.text);
     }
     for (const head of allSymbols) {
-      if (head.symbolId !== 'cableHead') continue;
+      // UX-04/POLE-LINIOWE-WZORZEC: koniec toru kablowego wg RODZAJU symbolu (głowica
+      // kanoniczna i QET, przekładnik Ferrantiego na kablu za głowicą) i z gabarytu
+      // TEGO symbolu — `czyZakonczenieToruKablowego`, jeden predykat z wyrocznią niżej.
+      if (!czyZakonczenieToruKablowego(head.symbolId)) continue;
+      const headDef = SYMBOL_DEFS[head.symbolId];
+      const south = headDef.ports.find((pt) => pt.dir === 'S');
+      const portDx = south?.x ?? headDef.width / 2;
+      const portDy = south?.y ?? headDef.height;
       if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
       // BLOK-LATERAL-WLASNOSC (reguła KLASA §5 „uczciwość w obrębie jednego
       // pliku"): dawny zapas `?? 'nieznane-pole'` FABRYKOWAŁ ref właściciela —
@@ -5726,12 +5759,13 @@ export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
  * `source_connectivity_probe`/§14.1, poza zakresem F9.3).
  */
 export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly PreviewSymbol[] {
-  const cableHeads = scene.symbols.filter((s) => s.symbolId === 'cableHead');
+  const cableHeads = scene.symbols.filter((s) => czyZakonczenieToruKablowego(s.symbolId));
   if (cableHeads.length === 0) return [];
-  const def = SYMBOL_DEFS.cableHead;
-  const southPort = def.ports.find((p) => p.dir === 'S');
-  const portDx = southPort?.x ?? def.width / 2;
-  const portDy = southPort?.y ?? def.height;
+  const portSouth = (head: PreviewSymbol): { readonly x: number; readonly y: number } => {
+    const def = SYMBOL_DEFS[head.symbolId];
+    const southPort = def.ports.find((p) => p.dir === 'S');
+    return { x: head.x + (southPort?.x ?? def.width / 2), y: head.y + (southPort?.y ?? def.height) };
+  };
   const endpoints = new Set<string>();
   scene.segments.forEach((seg) => {
     const first = seg.points[0];
@@ -5740,8 +5774,8 @@ export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly Pr
     if (last) endpoints.add(`${last.x},${last.y}`);
   });
   return cableHeads.filter((head) => {
-    const key = `${head.x + portDx},${head.y + portDy}`;
-    return !endpoints.has(key);
+    const port = portSouth(head);
+    return !endpoints.has(`${port.x},${port.y}`);
   });
 }
 
@@ -5816,14 +5850,21 @@ export interface LateralApparatusGap {
 function lateralApparatusGapsForKinds(scene: SceneV3, kinds: ReadonlySet<string>): LateralApparatusGap[] {
   const byOwner = new Map<string, { laterals: typeof scene.symbols[number][]; serialXs: number[] }>();
   for (const sym of scene.symbols) {
-    const ownerRef = sym.meta?.ownerRef;
+    // UX-04 (rozszerzenie 4): aparaty odgałęzienia toru pola mają WŁASNĄ oś (kolumna
+    // odgałęzienia) — aparat boczny odgałęzienia ocenia się względem niej, a aparaty kolumny
+    // nie przesuwają osi toru głównego.
+    const ownerRef =
+      sym.meta?.ownerRef && sym.meta.odgalezienieToru != null
+        ? `${sym.meta.ownerRef}#odgalezienie-${sym.meta.odgalezienieToru}`
+        : sym.meta?.ownerRef;
     if (!ownerRef) continue;
     if (!byOwner.has(ownerRef)) byOwner.set(ownerRef, { laterals: [], serialXs: [] });
     const bucket = byOwner.get(ownerRef)!;
     const def = SYMBOL_DEFS[sym.symbolId];
-    if (kinds.has(sym.symbolId)) {
+    // UX-04: rodzaj semantyczny — uziemnik QET jest uziemnikiem (sonda §18.1 obejmuje oba).
+    if (kinds.has(rodzajSymbolu(sym.symbolId))) {
       bucket.laterals.push(sym);
-    } else if (LATERAL_ORACLE_KINDS.has(sym.symbolId)) {
+    } else if (LATERAL_ORACLE_KINDS.has(rodzajSymbolu(sym.symbolId))) {
       // inny rodzaj lateralu — nie wlicza się do osi
     } else if (sym.meta?.elementKind === 'apparatus') {
       bucket.serialXs.push(sym.x + def.width / 2);
@@ -6038,26 +6079,26 @@ export function allBusbarLabelsValid(scene: SceneV3): boolean {
  *  dowodzona (dowiedziona konstrukcją modułu symboli, `symbols/__tests__/
  *  symbols.test.tsx`); ta sonda dowodzi jednoznaczności MAPOWANIA (a) i
  *  kompletności STANU (b), nie samej geometrii glifu. */
-const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
-  'breaker',
-  'disconnector',
-  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik — dedykowany
-  // glif (poprzeczka na nożu), własny wpis w zbiorze łączników.
-  'loadBreakSwitch',
-  'earthSwitch',
-  'fuseSwitch',
-]);
+// UX-04/POLE-LINIOWE-WZORZEC: oba zbiory WYPROWADZONE z rodzajów łączników pola (lustro
+// backendu `rodzajeAparatuPola.ts`) przez mapowanie rodzaj → symbol w OBU wariantach rysunku
+// (kanonicznym i QET) — zero drugiej, ręcznej listy symboli łączników.
+function symboleRodzajow(rodzaje: ReadonlySet<BayPrimaryDeviceKind>): ReadonlySet<SymbolId> {
+  const wynik = new Set<SymbolId>();
+  for (const rodzaj of rodzaje) {
+    for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
+      const symbol = symbolIdForPrimaryDeviceKind(rodzaj, wariant);
+      if (symbol) wynik.add(symbol);
+    }
+  }
+  return wynik;
+}
+const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_LACZNIKOW_POLA);
 
 /** Łączniki TORU GŁÓWNEGO (spec §18.5 b) — podzbiór `SWITCH_SYMBOLS` BEZ
  *  `earthSwitch`: F10.1 (§18.1, `LATERAL_APPARATUS_SYMBOLS`) uziemnik jest Z
  *  KONSTRUKCJI zawsze odgałęzieniem bocznym, nigdy elementem osi toru
  *  głównego — „łącznik toru głównego" nie obejmuje więc uziemnika. */
-const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
-  'breaker',
-  'disconnector',
-  'loadBreakSwitch',
-  'fuseSwitch',
-]);
+const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_LACZNIKOW_TORU);
 
 /** Wszystkie warianty `BayPrimaryDeviceKind` (ENM, `types/enm.ts`) —
  *  powtórzone tu jako LITERALNA lista (bez importu wartości enum — ENM niesie
@@ -6066,6 +6107,7 @@ const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
   'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE',
   'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+  'THREE_POSITION_SWITCH', 'CORE_BALANCE_CT', 'VOLTAGE_INDICATOR',
 ];
 
 /** Wieloznaczności UDOKUMENTOWANE (DECYZJA architekta, `apparatusSequence.ts`
@@ -6083,6 +6125,9 @@ const DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES: ReadonlyMap<SymbolId, ReadonlySet<Ba
  *  + `glyphs.tsx` trzeci wariant „nieznany") — jedyne legalne renderowane
  *  stany łącznika. */
 const VALID_RENDERED_SWITCH_STATES: ReadonlySet<string> = new Set(['closed', 'open', 'unknown']);
+/** UX-04/POLE-LINIOWE-WZORZEC: położenie „uziemiony" — legalne WYŁĄCZNIE dla łącznika
+ *  trójpołożeniowego (backend `BayPrimaryDevice` odrzuca je dla innych rodzajów). */
+const SYMBOLE_Z_POLOZENIEM_UZIEMIONYM: ReadonlySet<SymbolId> = new Set<SymbolId>(['qetThreePositionSwitch']);
 
 export interface SwitchSymbolUnambiguityGap {
   readonly reason:
@@ -6138,12 +6183,15 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
 
   // (a) mapowanie kind→symbolId jednoznaczne (poza wyjątkiem udokumentowanym).
   const kindsBySymbol = new Map<SymbolId, BayPrimaryDeviceKind[]>();
-  for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
-    const symbolId = symbolIdForPrimaryDeviceKind(kind);
-    if (symbolId == null || !SWITCH_SYMBOLS.has(symbolId)) continue;
-    const list = kindsBySymbol.get(symbolId) ?? [];
-    list.push(kind);
-    kindsBySymbol.set(symbolId, list);
+  // UX-04: jednoznaczność w OBU wariantach rysunku (kanonicznym i QET).
+  for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
+    for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
+      const symbolId = symbolIdForPrimaryDeviceKind(kind, wariant);
+      if (symbolId == null || !SWITCH_SYMBOLS.has(symbolId)) continue;
+      const list = kindsBySymbol.get(symbolId) ?? [];
+      if (!list.includes(kind)) list.push(kind);
+      kindsBySymbol.set(symbolId, list);
+    }
   }
   for (const [symbolId, kinds] of kindsBySymbol) {
     if (kinds.length <= 1) continue;
@@ -6164,7 +6212,10 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
   // patrz DECYZJA w docstringu wyżej).
   for (const s of scene.symbols) {
     if (!MAIN_PATH_SWITCH_SYMBOLS.has(s.symbolId)) continue;
-    if (s.state !== undefined && !VALID_RENDERED_SWITCH_STATES.has(s.state)) {
+    const legalny =
+      VALID_RENDERED_SWITCH_STATES.has(s.state ?? 'unknown')
+      || (s.state === 'earthed' && SYMBOLE_Z_POLOZENIEM_UZIEMIONYM.has(s.symbolId));
+    if (s.state !== undefined && !legalny) {
       gaps.push({
         reason: 'main-path-switch-invalid-state',
         symbolId: s.symbolId,
@@ -6239,6 +6290,8 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'transformer2W',
   'voltageTransformer',
   'surgeArrester',
+  // UX-04: łącznik trójpołożeniowy — grupa „Q" (`apparatusSequence.ts Q_IDENTIFIER_SYMBOLS`).
+  'qetThreePositionSwitch',
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
@@ -6288,7 +6341,7 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
   // autoryzacją F10.2 — własne oznaczniki `bayNumber`/`feederName` zostają
   // niezmienione, patrz raport F10.2, „WIEDZA NADZORCY O TERENIE").
   const eligible = scene.symbols.filter(
-    (s) => IDENTIFIER_ELIGIBLE_SYMBOLS.has(s.symbolId)
+    (s) => IDENTIFIER_ELIGIBLE_SYMBOLS.has(rodzajSymbolu(s.symbolId))
       && (s.meta?.elementKind === 'apparatus' || s.meta?.elementKind === 'transformer')
       && s.meta?.apparatusSource != null,
   );
@@ -8486,7 +8539,7 @@ export interface ProtectionMarkingGap {
 export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkingGap[] {
   const gaps: ProtectionMarkingGap[] = [];
   const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
-  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+  const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
 
   relaySymbols.forEach((s) => {
     const codes = s.meta?.protectionCodes ?? [];
@@ -8619,7 +8672,7 @@ export interface CtAnnotationGap {
 export function ctAnnotationGaps(scene: SceneV3): readonly CtAnnotationGap[] {
   const gaps: CtAnnotationGap[] = [];
   const ctSymbolOwners = new Set(
-    scene.symbols.filter((s) => s.symbolId === 'currentTransformer').map((s) => s.meta?.ownerRef),
+    scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'currentTransformer').map((s) => s.meta?.ownerRef),
   );
   scene.labels
     .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes('#ct-rating-'))
@@ -8676,8 +8729,8 @@ export interface SecondaryLinkDualityGap {
 export function secondaryLinkDualityGaps(scene: SceneV3): readonly SecondaryLinkDualityGap[] {
   const gaps: SecondaryLinkDualityGap[] = [];
   const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
-  const ctSymbols = scene.symbols.filter((s) => s.symbolId === 'currentTransformer');
-  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+  const ctSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'currentTransformer');
+  const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
   const measurementSegs = scene.segments.filter((s) => s.meta?.kind === 'measurementLink');
   const tripSegs = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip');
 

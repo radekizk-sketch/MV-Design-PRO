@@ -57,6 +57,12 @@ REQUIRED_CONTINUITY_APPARATUS = [
     # Łącznik/wyłącznik sekcyjny NA torze ciągu (glify z portami W/E).
     "lineSwitch",
     "lineBreaker",
+    # Rysunek QElectroTech EN 60617 łączników toru pola liniowego GPZ (karta UX-04).
+    "qetBreaker",
+    "qetDisconnector",
+    "qetLoadBreakSwitch",
+    "qetFuseSwitch",
+    "qetThreePositionSwitch",
 ]
 # Powody braków, które wyrocznia MUSI umieć zgłosić (i test — sprawdzić).
 REQUIRED_GAP_REASONS = [

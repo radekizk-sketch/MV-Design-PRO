@@ -2297,7 +2297,12 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('bay-2')).toBeUndefined();
   });
 
-  it('CTVT-RENDER (V12K-176): ctRatingAnnotations niesie cores z Measurement.ct_cores, undefined gdy dana niedostarczona', () => {
+  it('CTVT-RENDER (V12K-176): ctRatingAnnotations niesie cores = liczba Measurement.rdzenie, undefined gdy dana niedostarczona', () => {
+    // Rozszerzenie 4 karty UX-04: liczba rdzeni pochodzi z JEDNEGO źródła — listy rdzeni
+    // tabliczki (IEC 61869-2); dawne pole `ct_cores` usunięte z kontraktu.
+    const rdzen = (klasa: string, przeznaczenie: 'POMIAR' | 'ZABEZPIECZENIA') => ({
+      przekladnia: '300/5', moc_va: 10, klasa, przeznaczenie: [przeznaczenie],
+    });
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [
       {
@@ -2310,7 +2315,8 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
         id: 'm1', ref_id: 'ct-3rdz', name: 'CT1', tags: [], meta: {},
         measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
         rating: { ratio_primary: 300, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection', ct_cores: 3,
+        connection: 'star', purpose: 'protection',
+        rdzenie: [rdzen('0,5', 'POMIAR'), rdzen('5P20', 'ZABEZPIECZENIA'), rdzen('5P20', 'ZABEZPIECZENIA')],
       },
       {
         id: 'm2', ref_id: 'ct-brak', name: 'CT2', tags: [], meta: {},

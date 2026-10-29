@@ -32,6 +32,10 @@ from enm.der_sn_validation import (
     rated_current_a,
 )
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
+from network_model.catalog.gazy_fluorowane import (
+    czy_medium_z_gazem_fluorowanym,
+    odmowa_gazu_fluorowanego_pl,
+)
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
@@ -162,6 +166,7 @@ def kandydaci_kabli_sn() -> tuple[CableCandidate, ...]:
 def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
     """Aparatura SN katalogu z rodzajem, napięciem i prądem znamionowym.
 
+    Pozycje z gazem fluorowanym nie są kandydatami (pole źródłowe powstaje jako projektowane).
     Pozycje spoza pasma SN (łączniki topologii zasilania 110 kV, U_m 123 kV) nie są
     kandydatami aparatu pola SN: napięciowo „wystarczają”, ale aparat WN w polu SN nie
     jest propozycją doboru, tylko pomyłką klasy napięcia. ``ik_ka = None`` to brak danej
@@ -176,6 +181,20 @@ def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
         if kind is None or un_kv is None or in_a is None:
             continue
         if pasmo_napieciowe(float(un_kv)) != "SN":
+            continue
+        # Karta UX-04/POLE-LINIOWE-WZORZEC (zakaz gazów fluorowanych w obiektach projektowanych):
+        # dobór aparatu NOWEGO pola źródłowego SN nie proponuje pozycji z gazem fluorowanym —
+        # pole powstaje jako projektowane, więc taka propozycja kończyłaby się odmową strażnika
+        # operacji. Ta sama reguła co oferta pickerów (`api.catalog._dopuszczenie_do_nowych_pol`):
+        # `czy_medium_z_gazem_fluorowanym` → `odmowa_gazu_fluorowanego_pl` dla stanu projektowanego.
+        if (
+            odmowa_gazu_fluorowanego_pl(
+                str(record["id"]),
+                gaz_fluorowany=czy_medium_z_gazem_fluorowanym(params.get("medium")),
+                stan_obiektu="PROJEKTOWANY",
+            )
+            is not None
+        ):
             continue
         candidates.append(
             FieldApparatusCandidate(

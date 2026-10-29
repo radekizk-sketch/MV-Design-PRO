@@ -110,21 +110,31 @@ import {
 } from '../layout/labels';
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
+import type { StanObiektu } from '../../../../types/enm';
 import { fieldCaptionAt, isLineLikeRole } from './directions';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
   apparatusIdentifiers,
   apparatusIdentifierSources,
-  LATERAL_APPARATUS_SYMBOLS,
-  LATERAL_BRANCH_GAP,
   bayApparatusPlanFootprint,
-  czyGlowicaRezerwy,
+  brakiPrzylaczyPola,
+  czyAparatBoczny,
+  czyOdgalezienieNaWezleKotwicy,
+  czyPoleNiesiePorty,
+  czyTorOdSzyny,
+  czyZakonczenieToruKablowego,
   planBayApparatus,
   resolveBayApparatusSymbolIds,
   stackFootprint,
-  orderedSymbolPrimaryDevices,
-  symbolIdForPrimaryDeviceKind,
+  przewodyToruZPortow,
+  rekordyToruPola,
+  symbolAparatuPola,
+  ukladBocznyPola,
+  ukladGalezi,
+  type BayApparatusPlan,
+  type AparatSekwencjiPola,
   type BayApparatusSource,
+  type BrakPrzylaczaPolaSn,
 } from './apparatusSequence';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
@@ -168,6 +178,12 @@ interface StackItemSpec {
    *  gałąź łączeniowa z `Bay.equipment_refs`) i odwołanie katalogowe typu. */
   readonly origin?: 'rekord_pola' | 'galaz_pola';
   readonly typeRef?: string | null;
+  /** Karta UX-04 (stan obiektu): stan istniejący / projektowany rekordu aparatu
+   *  (`BayPrimaryDeviceView.stanObiektu`); `null` = nieustalony, `undefined` = bez rekordu. */
+  readonly stanObiektu?: StanObiektu | null;
+  /** UX-04: rekord aparatu (rodzaj + porty ENM) — przewody toru z portów. `undefined` dla
+   *  elementów bez rekordu aparatu (transformator pola z modelu, sylwetki). */
+  readonly device?: Pick<AparatSekwencjiPola, 'kind' | 'ports'>;
 }
 
 /**
@@ -183,18 +199,10 @@ function stackItemsForBay(
   bay: MiniBlockBayDescriptor,
 ): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
-  // TA SAMA sekwencja co `resolveBayApparatusSymbolIds` (porządek `placement` + filtr
-  // kind→symbol, `orderedSymbolPrimaryDevices` — niezależnie od kolejności w deskryptorze),
-  // głowica pola rezerwowego usunięta TYM SAMYM predykatem `czyGlowicaRezerwy` — rekordy
-  // dowiązują się 1:1 do początku sekwencji, za nimi stoją elementy modelu pola
-  // i zakończenie rezerwy.
-  const devices =
-    source === 'dane'
-      ? orderedSymbolPrimaryDevices(bay.primaryDevices).filter((d) => {
-          const id = symbolIdForPrimaryDeviceKind(d.kind);
-          return id != null && !czyGlowicaRezerwy(id, bay.reserve);
-        })
-      : [];
+  // TA SAMA sekwencja co `resolveBayApparatusSymbolIds` (`rekordyToruPola`: obchód portów
+  // z odgałęzieniami, głowica toru głównego pola rezerwowego usunięta) — rekordy dowiązują się
+  // 1:1 do początku sekwencji, za nimi stoją elementy modelu pola i zakończenie rezerwy.
+  const devices = source === 'dane' ? rekordyToruPola(bay.primaryDevices, bay.reserve).rekordy : [];
   const items: StackItemSpec[] = symbolIds.map((symbolId, index) => {
     const d = devices[index];
     return d
@@ -206,6 +214,8 @@ function stackItemsForBay(
           designation: d.designation,
           origin: d.pochodzenie,
           typeRef: d.typeRef ?? null,
+          stanObiektu: d.stanObiektu,
+          device: d,
         }
       : { symbolId };
   });
@@ -287,6 +297,9 @@ export interface ComposedSymbolInstance {
   readonly apparatusOrigin?: 'rekord_pola' | 'galaz_pola';
   /** Odwołanie katalogowe typu aparatu (`catalog_ref`) — `data-apparatus-type`. */
   readonly apparatusTypeRef?: string;
+  /** Karta UX-04 (stan obiektu): stan rekordu aparatu — `data-stan-obiektu` i podpowiedź
+   *  na symbolu; `null` = nieustalony, `undefined` = symbol bez rekordu aparatu. */
+  readonly stanObiektu?: StanObiektu | null;
   /** GEOMETRIA-STACJI §0 pkt 5: pole rezerwowe (`'rezerwowe'`, `bay_kind`) albo wolne
    *  (`'wolne'`, brak odejścia w modelu) — `data-bay-reserve`. */
   readonly bayReserve?: 'rezerwowe' | 'wolne';
@@ -346,6 +359,9 @@ export interface ComposedSymbolInstance {
    *  dla pozostałych symboli. Brak/nierozpoznana grupa = jawny stan glifu + wpis
    *  `missingData` (`station.transformer.vector_group.*`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola
+   *  (`GalazPlanu`, kolejność planu), w którym stoi aparat; `undefined` = tor główny. */
+  readonly odgalezienieToru?: number;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -419,6 +435,11 @@ export interface StationComposition {
    *  (`scene/buildScene.ts` `composeRowStation`) przenosi to do
    *  `scene.meta.stopNotes` — koniec cichego gubienia bez śladu. */
   readonly missingData: readonly string[];
+  /** UX-04/POLE-LINIOWE-WZORZEC: braki przyłączeń aparatów pól SN z portów ENM (ten sam obchód
+   *  i te same przyczyny co pole GPZ, `GpzComposition.brakiPrzylaczy`); kody
+   *  `station.bay.port.missing:<pole>:<aparat>` / `station.bay.ports.absent:<pole>`
+   *  w `missingData`, zdanie z przyczyną w `scene.meta.stopNotes`. */
+  readonly brakiPrzylaczy: readonly BrakPrzylaczaPolaSn[];
   /** F9.9 (spec §17.1): symbole warstwy adnotacji (przekaźnik/miernik) —
    *  ODDZIELNE od `symbols` (§17.1: „nie uczestniczy... w wyroczniach toru")
    *  — wołający (`scene/buildScene.ts`) projektuje je do `scene.symbols`
@@ -503,6 +524,12 @@ interface BayStack {
    *  (Q/QE/T, t4, `placement:'left'`) — jedna PER aparat z identyfikatorem
    *  (tor główny + laterale), gotowe wejście dla `composition.labels.apparatus`. */
   readonly identifierLabels: readonly SimpleAnchoredOwnerInput[];
+  /** UX-04 (§0 pkt 5): przewody port → port toru głównego (porty ENM na wspólnym węźle;
+   *  `przewodyToruZPortow` — ta sama reguła co pole GPZ). Puste dla pola bez portów. */
+  readonly wireSegments: readonly ComposedSegment[];
+  /** Tor z portów zaczyna się na węźle szyny (pole bez portów — zawsze). Fałsz = brak
+   *  zejścia z szyny (zgłoszony w braku przyłączeń). */
+  readonly torOdSzyny: boolean;
 }
 
 function portsInWorld(def: SymbolDef, x: number, y: number): Readonly<Record<string, RoutePort>> {
@@ -513,6 +540,22 @@ function portsInWorld(def: SymbolDef, x: number, y: number): Readonly<Record<str
   return out;
 }
 
+/** Zejście z szyny do portu N pierwszego aparatu pola — pion w osi PORTU (szyna jest
+ *  pozioma, odczep może leżeć w dowolnym punkcie jej rozpiętości w kolumnie pola). Karta
+ *  UX-04/POLE-LINIOWE-WZORZEC: zacisk szynowy łącznika trójpołożeniowego QET leży obok osi
+ *  toru (zestyk szynowy po lewej), więc oś zejścia ≠ oś stosu; oś stosu (port kabla na dole
+ *  toru) czytają konsumenci z `bayStackCenterX`, nie z zejścia. Jedna reguła pola stacji
+ *  i pola GPZ. */
+export function punktyZejsciaDoPortu(
+  szynaY: number,
+  port: { readonly x: number; readonly y: number },
+): readonly { x: number; y: number }[] {
+  return [
+    { x: port.x, y: szynaY },
+    { x: port.x, y: port.y },
+  ];
+}
+
 function buildBayStack(
   items: readonly StackItemSpec[],
   centerX: number,
@@ -520,13 +563,14 @@ function buildBayStack(
   bay: MiniBlockBayDescriptor,
   apparatusSource: BayApparatusSource,
   mainStackWidth: number,
+  plan: BayApparatusPlan,
 ): BayStack {
   // F10.1 (spec §18.1/§18.2, dyrektywa D2-5, V12K-033): podział na TOR
-  // GŁÓWNY (pionowy stos w osi) i APARATY BOCZNE (ES/VT/SA — odgałęzienie
+  // GŁÓWNY (pionowy stos w osi), APARATY BOCZNE (ES/VT/SA — odgałęzienie
   // poziome od portu S poprzedzającego aparatu szeregowego, „po stronie
-  // kablowej"). TEN SAM podział co `planBayApparatus` (measure↔compose,
-  // wzór F6b-1) — items mapują się 1:1 na symbolIds planu. Przypadek
-  // zdegenerowany (sekwencja z samych aparatów bocznych) = jak w planie:
+  // kablowej") i (UX-04, rozszerzenie 4) ODGAŁĘZIENIA TORU z portów — WPROST z planu
+  // `planBayApparatus` (measure↔compose, wzór F6b-1: items mapują się 1:1 na symbolIds
+  // planu). Przypadek zdegenerowany (sekwencja z samych aparatów bocznych) = jak w planie:
   // rysowana starym stosem pionowym (brak osi, od której można odgałęzić).
   //
   // F10.2 (spec §19.1, V12K-035): identyfikatory PER-APARAT liczone na
@@ -541,34 +585,19 @@ function buildBayStack(
   const identifierTexts = apparatusIdentifiers(items.map((item) => item.symbolId), itemDesignations);
   const identifierSources = apparatusIdentifierSources(items.map((item) => item.symbolId), itemDesignations);
 
-  const mainItems: StackItemSpec[] = [];
-  const mainIdentifiers: (string | null)[] = [];
-  const mainIdentifierSources: ('dane' | 'konwencja' | null)[] = [];
-  const lateralSpecs: {
-    readonly item: StackItemSpec;
-    readonly afterMainIndex: number;
-    readonly identifier: string | null;
-    readonly identifierSource: 'dane' | 'konwencja' | null;
-  }[] = [];
-  items.forEach((item, originalIndex) => {
-    if (LATERAL_APPARATUS_SYMBOLS.has(item.symbolId)) {
-      lateralSpecs.push({
-        item,
-        afterMainIndex: mainItems.length - 1,
-        identifier: identifierTexts[originalIndex],
-        identifierSource: identifierSources[originalIndex],
-      });
-    } else {
-      mainItems.push(item);
-      mainIdentifiers.push(identifierTexts[originalIndex]);
-      mainIdentifierSources.push(identifierSources[originalIndex]);
-    }
-  });
-  const degenerate = mainItems.length === 0 && lateralSpecs.length > 0;
-  const stackItems = degenerate ? items : mainItems;
-  const stackIdentifiers = degenerate ? identifierTexts : mainIdentifiers;
-  const stackIdentifierSources = degenerate ? identifierSources : mainIdentifierSources;
-  const laterals = degenerate ? [] : lateralSpecs;
+  const stackItems = plan.mainSequenceIndices.map((i) => items[i]);
+  const stackIdentifiers = plan.mainSequenceIndices.map((i) => identifierTexts[i]);
+  const stackIdentifierSources = plan.mainSequenceIndices.map((i) => identifierSources[i]);
+  const mainItems = stackItems;
+  const laterals = plan.laterals.map((lat) => ({
+    item: items[lat.sequenceIndex],
+    afterMainIndex: lat.afterMainIndex,
+    identifier: identifierTexts[lat.sequenceIndex],
+    identifierSource: identifierSources[lat.sequenceIndex],
+  }));
+  // UX-04/POLE-LINIOWE-WZORZEC: pole z portami ENM — przewody i odgałęzienia WYŁĄCZNIE tam,
+  // gdzie porty leżą na wspólnym węźle (ta sama reguła co `compose/gpz.ts::buildFieldStack`).
+  const zPortami = czyPoleNiesiePorty(items.map((item) => item.device ?? {}));
 
   // F10.2 (spec §19.1): lewa krawędź TORU GŁÓWNEGO — punkt zaczepienia
   // WSPÓLNY dla wszystkich etykiet identyfikatora tego pola (`placement:
@@ -601,6 +630,7 @@ function buildBayStack(
       apparatusSource,
       apparatusOrigin: item.origin,
       apparatusTypeRef: item.typeRef ?? undefined,
+      stanObiektu: item.stanObiektu,
       bayReserve: bay.reserve,
       // F10.6 (DOMAIN, V12K-035): źródło identyfikatora — `'dane'` gdy
       // `BayPrimaryDevice.designation` obecny dla tego aparatu, inaczej
@@ -655,11 +685,19 @@ function buildBayStack(
   // identyczna arytmetyka co `bayApparatusPlanFootprint`.
   const branchSegments: ComposedSegment[] = [];
   const lateralInstances: ComposedSymbolInstance[] = [];
+  const mainRightX = Math.max(...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width));
+  // Kotwica = port S aparatu `afterMainIndex` (dla -1: port N pierwszego) — ta sama kotwica
+  // co odcinek odgałęzienia niżej; odstęp poziomy z `ukladBocznyPola` (jedna reguła z planem).
+  const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => {
+    const inst = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
+    const d = SYMBOL_DEFS[inst.symbolId];
+    const port =
+      afterMainIndex >= 0 ? d.ports.find((p) => p.dir === 'S') ?? d.ports[0] : d.ports.find((p) => p.dir === 'N') ?? d.ports[0];
+    return { x: inst.x + port.x, y: inst.y + port.y };
+  };
+  const uklad = ukladBocznyPola(plan, (afterMainIndex) => kotwicaToru(afterMainIndex).y);
   if (laterals.length > 0) {
-    const mainRightX = Math.max(
-      ...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width),
-    );
-    const consumedAtAnchor = new Map<number, number>();
+    const odstepy = uklad.boczne;
     laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchorInstance =
@@ -674,9 +712,7 @@ function buildBayStack(
         y: anchorInstance.y + anchorPortDef.y,
         dir: anchorPortDef.dir,
       };
-      const used = consumedAtAnchor.get(afterMainIndex) ?? 0;
-      const x = mainRightX + LATERAL_BRANCH_GAP + used;
-      consumedAtAnchor.set(afterMainIndex, used + LATERAL_BRANCH_GAP + def.width);
+      const x = mainRightX + odstepy[lateralIndex];
       const lateralY = anchor.y;
       const ports = portsInWorld(def, x, lateralY);
       const instance: ComposedSymbolInstance = {
@@ -688,6 +724,7 @@ function buildBayStack(
         apparatusSource,
         apparatusOrigin: item.origin,
         apparatusTypeRef: item.typeRef ?? undefined,
+      stanObiektu: item.stanObiektu,
         bayReserve: bay.reserve,
         designationSource: identifierSource ?? undefined,
         uzwojenia: uzwojeniaSymbolu(item.symbolId, bay.transformerVectorGroup),
@@ -722,6 +759,11 @@ function buildBayStack(
         });
       }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
+      if (zPortami) {
+        const kotwica = afterMainIndex >= 0 ? mainItems[afterMainIndex]?.device : mainItems[0]?.device;
+        // Odgałęzienie poza węzłem kotwicy — symbol zostaje, przewodu z domysłu nie ma.
+        if (!czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, item.device)) return;
+      }
       branchSegments.push({
         ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`,
         points: [
@@ -732,7 +774,76 @@ function buildBayStack(
     });
   }
 
-  return { instances, topPort, bottomPort, branchSegments, lateralInstances, identifierLabels };
+  // UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): odgałęzienia toru z portów — kolumna na
+  // prawo od aparatów bocznych (`ukladGalezi`, ta sama reguła co pole GPZ). Podpisy aparatów
+  // kolumny PO PRAWEJ (pas `GalazPlanu.rezerwaEtykiet`), aparatów bocznych odgałęzienia — pod
+  // symbolem, jak aparaty boczne toru głównego.
+  plan.galezie.forEach((galaz, numer) => {
+    const kotwica = kotwicaToru(galaz.afterMainIndex);
+    const rysunek = ukladGalezi(
+      galaz,
+      kotwica,
+      mainRightX + uklad.galezie[numer],
+      (i) => items[i]?.device,
+      galaz.afterMainIndex >= 0 ? mainItems[galaz.afterMainIndex]?.device : undefined,
+    );
+    rysunek.pozycje.forEach((pozycja) => {
+      const item = items[pozycja.sequenceIndex];
+      const def = SYMBOL_DEFS[pozycja.symbolId];
+      const identifier = identifierTexts[pozycja.sequenceIndex];
+      const identifierSource = identifierSources[pozycja.sequenceIndex];
+      instances.push({
+        symbolId: pozycja.symbolId,
+        bayRef: bay.bayRef,
+        configId: bay.configId,
+        deviceRef: item.deviceRef,
+        linkedRef: item.linkedRef,
+        apparatusSource,
+        apparatusOrigin: item.origin,
+        apparatusTypeRef: item.typeRef ?? undefined,
+      stanObiektu: item.stanObiektu,
+        bayReserve: bay.reserve,
+        designationSource: identifierSource ?? undefined,
+        uzwojenia: uzwojeniaSymbolu(pozycja.symbolId, bay.transformerVectorGroup),
+        odgalezienieToru: numer,
+        x: pozycja.x,
+        y: pozycja.y,
+        state: item.state,
+        ports: portsInWorld(def, pozycja.x, pozycja.y),
+      });
+      if (!identifier) return;
+      identifierLabels.push({
+        ownerRef: `${bay.bayRef}#apparatus-id-${pozycja.symbolId}-odgalezienie-${numer}-${pozycja.sequenceIndex}`,
+        ownerKind: 'apparatus',
+        text: identifier,
+        labelClass: 't4',
+        ...(pozycja.boczny
+          ? { anchor: { x: pozycja.x + def.width / 2, y: pozycja.y + def.height }, placement: 'below' as const }
+          : { anchor: { x: pozycja.x + def.width, y: pozycja.y + def.height / 2 }, placement: 'right' as const }),
+        obrysKotwicy: { x: pozycja.x, y: pozycja.y, width: def.width, height: def.height },
+        designationSource: identifierSource ?? undefined,
+      });
+    });
+    if (rysunek.odczep) {
+      branchSegments.push({ ownerRef: `${bay.bayRef}#odgalezienie-${numer}`, points: rysunek.odczep });
+    }
+    rysunek.przewody.forEach((points, wi) => {
+      branchSegments.push({ ownerRef: `${bay.bayRef}#odgalezienie-${numer}-wire-${wi}`, points });
+    });
+  });
+
+  const wireSegments: ComposedSegment[] = zPortami
+    ? przewodyToruZPortow(
+        stackItems.map((item, i) => ({
+          symbolId: mainInstances[i].symbolId,
+          x: mainInstances[i].x,
+          y: mainInstances[i].y,
+          device: item.device,
+        })),
+      ).map((points, wi) => ({ ownerRef: `${bay.bayRef}#wire-${wi}`, points }))
+    : [];
+  const torOdSzyny = !zPortami || czyTorOdSzyny(stackItems[0]?.device);
+  return { instances, topPort, bottomPort, branchSegments, lateralInstances, identifierLabels, wireSegments, torOdSzyny };
 }
 
 // ---------------------------------------------------------------------------
@@ -1039,8 +1150,12 @@ export function composeStation(input: ComposeStationInput): StationComposition {
    *  schodzi pod NAJNIŻSZĄ z nich, nie tylko pod port LV. */
   const lvColumnBottoms: number[] = [];
   const busTapXs: number[] = [];
+  /** X zaczepu pola na szynie (indeks pola → oś zejścia) — wspólny dla szyny jedno-
+   *  i wielosekcyjnej. */
+  const zaczepPolaX = new Map<number, number>();
   // F9.4 (runda korekcyjna, F-2): patrz docstring `StationComposition.missingData`.
   const missingData: string[] = [];
+  const brakiPrzylaczy: BrakPrzylaczaPolaSn[] = [];
 
   const captionHeight = labelLineHeight('t3');
 
@@ -1160,9 +1275,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // (`layout/segments.ts`) musi znać ten X ZANIM cokolwiek zostanie
     // skomponowane (reguła KLASA §3 — predykaty parami z jednego źródła).
     const centerX = placement.centerX;
-    busTapXs.push(centerX);
 
-    const stack = buildBayStack(items, centerX, blockTopY, bay, source, footprint.width);
+    const stack = buildBayStack(items, centerX, blockTopY, bay, source, footprint.width, bayPlan);
+    // UX-04 (predykaty parami): zaczep pola na szynie = oś zejścia (`punktyZejsciaDoPortu`,
+    // port N pierwszego aparatu), nie oś stosu — zacisk szynowy łącznika trójpołożeniowego
+    // QET leży obok osi toru, więc szyna kończąca się na osi stosu skrajnego pola zostawiała
+    // zejście w powietrzu. Szyna (jedno- i wielosekcyjna) rozpina się na TYCH SAMYCH X.
+    busTapXs.push(stack.topPort.x);
+    zaczepPolaX.set(index, stack.topPort.x);
     symbols.push(...stack.instances);
     // F10.2 (spec §19.1): etykiety identyfikatorów per-aparat (Q/QE/T, t4,
     // PO LEWEJ stosu) — zbudowane WEWNĄTRZ `buildBayStack` (potrzebuje
@@ -1171,6 +1291,23 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // F10.1 (spec §18.1/§18.2): odcinki odgałęzień bocznych ES/VT/SA — NIE
     // należą do toru głównego (wyrocznia earth_switch_lateral_probe (b)).
     segments.push(...stack.branchSegments);
+    // UX-04 (§0 pkt 5): przewody port → port toru głównego.
+    segments.push(...stack.wireSegments);
+    // Braki przyłączeń — ta sama reguła i te same przyczyny co pole GPZ (`brakiPrzylaczyPola`):
+    // pole ze ścieżki danych bez portów oraz aparat bez kompletu portów / poza torem od szyny.
+    const zSymbolem = (bay.primaryDevices ?? []).filter((d) => symbolAparatuPola(d) != null);
+    if (source === 'dane' && zSymbolem.length > 0 && !czyPoleNiesiePorty(zSymbolem)) {
+      brakiPrzylaczy.push({
+        bayRef: bay.bayRef,
+        deviceRef: null,
+        przyczyna: 'aparaty pola nie niosą portów w modelu — kolejność wg umiejscowienia, bez przewodów między aparatami',
+      });
+      missingData.push(`station.bay.ports.absent:${bay.bayRef}`);
+    }
+    brakiPrzylaczyPola(bay.primaryDevices).forEach((brak) => {
+      brakiPrzylaczy.push({ bayRef: bay.bayRef, deviceRef: brak.deviceRef, przyczyna: brak.przyczyna });
+      missingData.push(`station.bay.port.missing:${bay.bayRef}:${brak.deviceRef}`);
+    });
     // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika — adnotacja
     // KONWENCYJNA realizowana w LEGENDZIE arkusza (`sheet/Frame.tsx`,
     // wpis `earthSwitch`), NIE per-symbol: tekst przy każdym ES (120×)
@@ -1178,14 +1315,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // zakończeń §18.6 (26 kolizji na fixturze) i powtarzał konwencję jako
     // szum — decyzja nadzorcy F10.1, spójna z DEC-1 („opis konwencyjny").
 
-    // Zejście z osi magistrali (B2) do górnego portu pierwszego aparatu.
-    segments.push({
-      ownerRef: `${bay.bayRef}#descent`,
-      points: [
-        { x: centerX, y: busAxisY },
-        { x: centerX, y: stack.topPort.y },
-      ],
-    });
+    // Zejście z osi magistrali (B2) do górnego portu pierwszego aparatu (`punktyZejsciaDoPortu`).
+    // Pole z portami, którego tor nie zaczyna się na węźle szyny, nie dostaje zejścia.
+    if (stack.torOdSzyny) {
+      segments.push({
+        ownerRef: `${bay.bayRef}#descent`,
+        points: punktyZejsciaDoPortu(busAxisY, stack.topPort),
+      });
+    }
 
     // F9.9 (spec §17.1-§17.4): warstwa adnotacji zabezpieczeń — WYŁĄCZNIE
     // gdy pole niesie dane (§17.2 „brak danych = brak oznaczenia") ORAZ
@@ -1635,6 +1772,16 @@ export function composeStation(input: ComposeStationInput): StationComposition {
    * wisi na osobnym odcinku kompozytu stacji `${station.id}#sn-bus` (bez wyniku, bez
    * sprzęgła) i jest zgłaszana jako brak danych — zero przypisania sekcji z domysłu.
    */
+  /** Zaczep kolumny na szynie: pole — oś zejścia (`zaczepPolaX`), transformator bez pola —
+   *  oś kolumny (jego zejście stoi w osi). */
+  function zaczepKolumny(p: (typeof columnPlan)[number]): number {
+    if (p.kind !== 'bay') return p.centerX;
+    const x = zaczepPolaX.get(p.bayIndex!);
+    // Każda kolumna pola jest skomponowana w pętli wyżej (albo kompozycja rzuca wyjątek).
+    if (x == null) throw new Error(`composeStation: pole nr ${p.bayIndex} bez zaczepu na szynie`);
+    return x;
+  }
+
   function composeSectionBuses(): void {
     const sections = station.snSections ?? [];
     const couplers = new Map((station.snCouplers ?? []).map((c) => [c.ref, c]));
@@ -1677,7 +1824,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         continue;
       }
       if (!p.sectionResolved || p.sectionBusRef == null) {
-        const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : p.kind === 'section-pad' ? undefined : p.centerX;
+        const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : p.kind === 'section-pad' ? undefined : zaczepKolumny(p);
         if (tap != null) unresolvedTaps.push(tap);
         missingData.push(`station.section.unresolved:${p.kind === 'bay' ? station.snBays[p.bayIndex!].bayRef : p.transformerRef ?? p.derSourceId ?? ''}`);
         continue;
@@ -1687,7 +1834,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         xsBySection.get(p.sectionBusRef)?.push(p.leftX, p.leftX + p.width);
         continue;
       }
-      const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : p.centerX;
+      const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : zaczepKolumny(p);
       if (tap != null) xsBySection.get(p.sectionBusRef)?.push(tap);
     }
     // Sprzęgło między sekcjami NIESĄSIEDNIMI w kolejności rekordu stacji nie ma miejsca
@@ -2070,6 +2217,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     },
     bbox: computeBbox(symbols, segments),
     missingData: [...missingData, ...brakiGrupyPolaczen(symbols)],
+    brakiPrzylaczy,
     protectionSymbols,
     protectionSegments,
     measurementSegments,
@@ -2166,7 +2314,7 @@ export function fieldStacksEndAtCableHead(
     // boczne ES/VT/SA nie należą do toru i nie liczą się jako „koniec pola"
     // (buildBayStack dokleja je NA KOŃCU listy instancji).
     const stackSymbols = composition.symbols.filter(
-      (s) => s.bayRef === bay.bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
+      (s) => s.bayRef === bay.bayRef && !czyAparatBoczny(s.symbolId),
     );
     const last = stackSymbols[stackSymbols.length - 1];
     // GEOMETRIA-STACJI (§0 pkt 4/5): pole bez rekordów aparatów kończy się jawną sylwetką
@@ -2176,7 +2324,8 @@ export function fieldStacksEndAtCableHead(
     // `CABLE_HEAD`.
     if (last?.symbolId === 'bayNoEquipment' || last?.symbolId === 'bayReserve') return true;
     if ((bay.primaryDevices ?? []).every((d) => d.pochodzenie === 'galaz_pola')) return true;
-    return last?.symbolId === 'cableHead';
+    // UX-04: koniec toru kablowego wg rodzaju (głowica kanoniczna/QET, Ferranti na kablu).
+    return last != null && czyZakonczenieToruKablowego(last.symbolId);
   });
 }
 

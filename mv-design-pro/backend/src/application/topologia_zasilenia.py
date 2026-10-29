@@ -32,7 +32,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from enm.interlock_rules import MAIN_SWITCH_KINDS, device_state_record, is_closed
+from enm.interlock_rules import (
+    MAIN_SWITCH_KINDS,
+    device_state_record,
+    is_closed,
+    porty_aparatu,
+)
 from enm.models import Bay, EnergyNetworkModel
 from enm.pola import KLUCZ_POLA_WYTWORCY, poziom_pol
 from enm.topology import (
@@ -44,6 +49,7 @@ from enm.topology import (
     punkty_podzialu,
 )
 from enm.tor_pola import szyny_stacji
+from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym
 from network_model.core.topologia import drogi_proste
 from pydantic import BaseModel, ConfigDict
 
@@ -374,7 +380,68 @@ def _nieustalone_laczniki(enm: EnergyNetworkModel) -> dict[str, _Nieustalony]:
                 kod=kod,
                 opis=opis,
             )
+        _nieustalone_przez_lacznik_bez_galezi(bay, laczniki, wynik)
     return dict(sorted(wynik.items()))
+
+
+def _nieustalone_przez_lacznik_bez_galezi(
+    bay: Bay, laczniki: dict[str, Any], wynik: dict[str, _Nieustalony]
+) -> None:
+    """Łącznik toru pola BEZ gałęzi modelu (łącznik trójpołożeniowy, odłącznik szynowy — karta
+    UX-04/POLE-LINIOWE-WZORZEC) z rekordem położenia innym niż „zamknięty" przy ZAMKNIĘTEJ
+    gałęzi toru tego pola: graf modelu przewodzi przez gałąź, a rekord mówi, że tor jest
+    przerwany (otwarty, uziemiony, nieznany, awaria) — model nie rozstrzyga, czy tor pola
+    łączy. Gałąź toru dostaje wpis łącznika nieustalonego (droga przez nią nie jest pewna).
+    Aparat bez rekordu położenia nie rozstrzyga niczego (zero domysłu). Łącznik ODGAŁĘZIENIA
+    toru (odłącznik przekładnika napięciowego Z.11.1/Z.11 — `aparaty_poza_torem_glownym`, ta
+    sama reguła co pary blokad) nie przerywa toru pola: jego otwarcie niczego nie podważa."""
+    poza_torem = aparaty_poza_torem_glownym(
+        [(a.device_ref, a.kind, porty_aparatu(a)) for a in bay.primary_devices]
+    )
+    galezie_pola = [
+        aparat
+        for aparat in bay.primary_devices
+        if aparat.linked_ref in laczniki and laczniki[aparat.linked_ref].status == "closed"
+    ]
+    if not galezie_pola:
+        return
+    for aparat in bay.primary_devices:
+        if (
+            aparat.kind not in MAIN_SWITCH_KINDS
+            or aparat.linked_ref in laczniki
+            or aparat.device_ref in poza_torem
+        ):
+            continue
+        rekord = device_state_record(bay, aparat)
+        if rekord is None or is_closed(rekord.actual_state):
+            continue
+        zgloszony = rekord.actual_state
+        if zgloszony == "nieznany":
+            kod = KOD_STAN_APARATU_NIEZNANY
+        elif zgloszony == "awaria":
+            kod = KOD_AWARIA_APARATU
+        else:
+            kod = KOD_ROZBIEZNOSC_STANU
+        oznaczenie = aparat.designation or aparat.device_ref
+        for aparat_galezi in galezie_pola:
+            ref = str(aparat_galezi.linked_ref)
+            if ref in wynik:
+                continue
+            galaz = laczniki[ref]
+            wynik[ref] = _Nieustalony(
+                ref_id=ref,
+                nazwa=galaz.name,
+                stan_w_modelu="zamkniety",
+                stan_zgloszony=zgloszony,
+                aparat_ref=aparat.device_ref,
+                pole_ref=bay.ref_id,
+                kod=kod,
+                opis=(
+                    f"Aparat {oznaczenie} pola {bay.ref_id} jest w położeniu „{zgloszony}”, a "
+                    f"łącznik toru {ref} tego pola jest w modelu zamknięty — model nie "
+                    "rozstrzyga, czy tor pola łączy."
+                ),
+            )
 
 
 def _wariant(enm: EnergyNetworkModel, laczniki: Iterable[str], status: str) -> dict[str, Any]:

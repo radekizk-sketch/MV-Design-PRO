@@ -146,6 +146,13 @@ export interface SldPalette {
    *  wypełnienie półprzezroczyste + obrys), próbka w tabeli „Pola GPZ" i legenda ról.
    *  Rola pochodzi z modelu (`Bay.bay_role`), kolor jest wyłącznie kodem roli. */
   readonly rolaPola: Readonly<Record<RolaPolaGpz, string>>;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu łącznika w konwencji SCADA (obrys bez
+   *  wypełnienia wokół CAŁEGO symbolu QET łącznika pola) — `zamkniety` czerwona,
+   *  `otwarty` zielona (położenie „uziemiony" łącznika trójpołożeniowego = tor otwarty,
+   *  ramka zielona). Wartości IDENTYCZNE w obu motywach i w eksporcie (konwencja
+   *  dyspozytorska, nie odcień motywu) — pilnuje `__tests__/palette.test.ts`. Stan
+   *  nieznany nie ma ramki (symbol zostaje, podpis „stan nieznany"). */
+  readonly ramkaScada: Readonly<Record<'zamkniety' | 'otwarty', string>>;
 }
 
 /**
@@ -342,6 +349,13 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   zrodlowe: '#7CC85A',
 };
 
+/** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA łącznika pola — patrz
+ *  `SldPalette.ramkaScada`. JEDNA para wartości dla motywu ciemnego, jasnego i eksportu. */
+export const RAMKA_SCADA_COLOR: Readonly<Record<'zamkniety' | 'otwarty', string>> = {
+  zamkniety: '#F05260',
+  otwarty: '#2CCF93',
+};
+
 export const DARK_SCADA_SLD_PALETTE: SldPalette = {
   canvasBackground: CANVAS_BACKGROUND,
   baseStroke: BASE_STROKE,
@@ -349,6 +363,7 @@ export const DARK_SCADA_SLD_PALETTE: SldPalette = {
   state: STATE_COLOR,
   highlight: HIGHLIGHT_COLOR,
   rolaPola: ROLA_POLA_COLOR,
+  ramkaScada: RAMKA_SCADA_COLOR,
 };
 
 // ---------------------------------------------------------------------------

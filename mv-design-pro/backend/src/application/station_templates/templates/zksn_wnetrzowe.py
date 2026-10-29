@@ -1,7 +1,8 @@
 """Stacje wnętrzowe ZKSN — 8 templates (1-2 transformatory, 2-8 pól).
 
-Stacje wnętrzowe z dedykowanymi pomieszczeniami, ZPUE Rotoblok/Elektrometal
-SafeRing/ABB UniGear ZS1 jako standardowe RMU/switchgear.
+Stacje wnętrzowe z dedykowanymi pomieszczeniami. Szablon tworzy stację PROJEKTOWANĄ, więc
+rozdzielnica i aparaty muszą być bez gazów fluorowanych (rozporządzenie (UE) 2024/573, art. 13
+ust. 9; karta UX-04/POLE-LINIOWE-WZORZEC) — etykieta szablonu nie wskazuje wyrobu z SF₆.
 """
 
 from __future__ import annotations
@@ -81,7 +82,7 @@ def _zksn(
 ZKSN_WNETRZOWE_TEMPLATES = (
     _zksn(
         "tpl_zksn_2pole_630kva",
-        "ZKSN 2-pole, 630 kVA, ZPUE Rotoblok",
+        "ZKSN 2-pole, 630 kVA, ZPUE Rotoblok VCB",
         "Podstawowa ZKSN: 2 pola liniowe + 1 pole TR 630 kVA.",
         bays=3,
         feeders=4,
@@ -96,7 +97,7 @@ ZKSN_WNETRZOWE_TEMPLATES = (
     ),
     _zksn(
         "tpl_zksn_4pole_1600kva",
-        "ZKSN 4-pole, 1600 kVA, ABB SafeRing",
+        "ZKSN 4-pole, 1600 kVA, ABB",
         "Duża ZKSN: 4 pola SN + TR 1600 kVA, ABB switchgear.",
         bays=5,
         feeders=6,

@@ -36,6 +36,8 @@ WARTOSCI: dict[str, Any] = {
     "wybor_bloku": {"factory_configuration_ref": "blok", "factory_unit_index": 1},
     "metadane_pochodzenia": {"bay_kind": "liniowe_doplywowe"},
     "surge_arresters": [{"device_ref": "ogr"}],
+    "stan_obiektu": "ISTNIEJACY",
+    "klasa_pola": "MIESZANE",
 }
 
 

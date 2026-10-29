@@ -17,6 +17,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
         "id": "d31902c7-6b3e-54c1-b1fc-15393a93a5a2",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "field_status": "READY_FOR_TRUNK",
@@ -35,6 +36,7 @@
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -215,7 +217,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "29714d2d4f6dcd1d7b90d6d042bbe145a242981c7bce071ff5e6ed6577b805ec",
+      "hash_sha256": "0e7a7a3b50b3f118b56c72241b0716785a822c4a84e39df16d16d1d95a54d85b",
       "name": "Otwarty koniec magistrali",
       "revision": 3,
       "updated_at": "2026-09-25T00:00:00Z"

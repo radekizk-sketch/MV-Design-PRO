@@ -245,7 +245,8 @@ Jedynym zrodlem listy jest `DOMAIN_EVENT_TYPES` w `backend/src/enm/domain_ops_mo
 kierunkach pilnowany skanem AST w `backend/tests/enm/test_rejestr_zdarzen_domenowych.py`.
 Dawna lista w tym miejscu (21 typow) i martwa kopia `enm/domain_event_types.py` rozjechaly sie
 z kodem — nie sa przepisywane tutaj ponownie. Typy stanu laczeniowego: `SWITCH_OPENED`,
-`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`.
+`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`; stan obiektu
+(istniejacy / projektowany) pola, aparatu pola albo lacznika: `OBJECT_STATE_SET`.
 
 ---
 
@@ -487,12 +488,48 @@ kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja
 |------|-----|----------|------|
 | `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`) |
 | `mode` | `"katalog" \| "szablon" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
-| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola) |
+| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola), `odgalezienie` (krotki identyfikator odgalezienia toru, np. `pn` --- odgalezienie przekladnika napieciowego Z.11 / Z.11.1; odmowa `bay_equipment.branch_invalid`), `stan_obiektu` (`ISTNIEJACY` / `PROJEKTOWANY`; puste: aparat niezmieniony zachowuje stan, nowy jest projektowany; odmowa `bay_equipment.object_state_invalid`) |
 | `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
+| `klasa_pola` | `"ODBIORCZE" \| "MIESZANE" \| "DEDYKOWANE_WYTWORCY" \| null` | NIE | Klasa pola liniowego SN (IRiESD ENEA Operator II.4.5.4.2.1--2.3); `null` --- klasa nieustalona (ocena przyjmuje klase wynikajaca z sieci za polem); odmowa `bay_equipment.line_class_invalid`. Klasa koryguje funkcje EAZ szablonu i dopuszcza wykonanie pola (klasa z generacja --- wylacznie Z.11.1 / Z.11, odmowa `pole.klasa_pola_niezgodna_z_wykonaniem`) |
+
+Odmowy zgodnosci szablonu (straznik kazdej operacji, `enm/zgodnosc_szablonu_pola.py`, te same
+co walidator W046--W048 i filtr `GET /api/catalog/bay-templates`): wykonanie lacznikow
+niedopuszczone w izolacji rodziny (`pole.wykonanie_lacznikow_niezgodne_z_izolacja`, ENEA Zeszyt 1 §13), szablon pola GPZ w stacji spoza GPZ
+(`pole.szablon_tylko_gpz`), klasa pola niezgodna z wykonaniem.
 
 Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
 `dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
 analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
+
+---
+
+### 3.7c `set_object_state`
+
+**Cel:** Oznaczenie pola SN (razem z jego aparatami) albo jednej instancji aparatu pola jako
+istniejacego w sieci (`ISTNIEJACY`) albo projektowanego (`PROJEKTOWANY`). Kazda operacja
+tworzaca pole albo aparat nadaje `PROJEKTOWANY` jawnie; `ISTNIEJACY` ustawia wylacznie ta
+operacja albo import istniejacej sieci niosacy stan (arkusz importu --- kolumna `stan` arkusza
+„Szyny”; archiwum projektu --- rekord pola wprost).
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `bay_ref` | `string` | jedno z `bay_ref` / `switch_ref` | Pole rozdzielnicy |
+| `switch_ref` | `string` | jedno z `bay_ref` / `switch_ref` | Galaz laczeniowa poza polem (rozlacznik sekcyjny w ciagu, sprzeglo, lacznik pola bez lustra w wyposazeniu); galaz opisana aparatem pola ma stan tego aparatu i zmienia sie go przez `bay_ref` + `device_ref` |
+| `stan_obiektu` | `"ISTNIEJACY" \| "PROJEKTOWANY"` | TAK | Stan obiektu |
+| `device_ref` | `string` | NIE | Aparat pola --- bez niego stan dostaje pole i kazdy jego aparat (wraz z galeziami, ktore wskazuja) |
+
+Odmowy: `object_state.bay_ref_missing` (brak celu), `object_state.target_ambiguous` (oba cele),
+`object_state.state_invalid`, `object_state.bay_not_found`, `object_state.device_ref_invalid`,
+`object_state.device_not_found`, `object_state.switch_not_found`,
+`object_state.switch_has_bay_device` (galaz opisana aparatem pola --- wskazanie karty pola),
+`pole.gaz_fluorowany` (oznaczenie pola albo aparatu z gazem fluorowanym jako projektowanego ---
+rozporzadzenie (UE) 2024/573, art. 13 ust. 9 lit. a; akcja naprawcza „wybierz wykonanie bez
+gazow fluorowanych”). Zdarzenie: `OBJECT_STATE_SET`.
+
+Odmowa `pole.gaz_fluorowany` jest wspolna dla KAZDEJ operacji domenowej: straznik dyspozytora
+porownuje model przed i po operacji (`enm/gaz_fluorowany_pola.py`) --- utworzenie pola,
+dobudowa pola do istniejacej rozdzielnicy, wymiana aparatu (`set_bay_equipment`), przypisanie
+typu rozdzielnicy i zmiana stanu obiektu przechodza przez te sama regule.
 
 ---
 

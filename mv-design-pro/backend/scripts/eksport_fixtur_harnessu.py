@@ -5059,6 +5059,35 @@ def geometria_stacji_gpz_110kv() -> dict[str, Any]:
     )
 
 
+def _pole_liniowe_gpz(sekcja_staly: int | None) -> dict[str, Any]:
+    """Karta UX-04/POLE-LINIOWE-WZORZEC: GPZ 110/15 kV z dwiema sekcjami SN, po jednym polu
+    liniowym zajętym kablem i jednym wolnym w każdej sekcji — jako odpowiedź operacji: migawka
+    + widoki logiczne. ``sekcja_staly`` (1 albo 2): pola liniowe tej sekcji wg ENEA Z.10
+    w wykonaniu z wyłącznikiem stałym i odłącznikiem szynowym (izolacja powietrzna, §13),
+    drugiej — Z.10 z łącznikiem trójpołożeniowym (`zbuduj_gpz_pole_liniowe_z10`); ``None``:
+    pola z odgałęzieniem przekładnika napięciowego od strony linii — Z.11.1 i Z.11
+    (`zbuduj_gpz_pole_liniowe_z11`). Wykonania ustawia operacja `set_bay_equipment`."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import (
+        zbuduj_gpz_pole_liniowe_z10,
+        zbuduj_gpz_pole_liniowe_z11,
+    )
+
+    model = EnergyNetworkModel.model_validate(
+        zbuduj_gpz_pole_liniowe_z10(sekcja_staly)
+        if sekcja_staly is not None
+        else zbuduj_gpz_pole_liniowe_z11()
+    )
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -5196,6 +5225,13 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
     },
     "geometria_stacji_gpz_110kv": geometria_stacji_gpz_110kv,
+    **{
+        f"pole_liniowe_z10_gpz_staly_w_sekcji_{sekcja}": (
+            lambda sekcja=sekcja: _pole_liniowe_gpz(sekcja)
+        )
+        for sekcja in (1, 2)
+    },
+    "pole_liniowe_z11_gpz_odgalezienie": lambda: _pole_liniowe_gpz(None),
 }
 
 

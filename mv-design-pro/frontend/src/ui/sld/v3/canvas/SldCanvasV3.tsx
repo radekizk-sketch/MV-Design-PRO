@@ -123,6 +123,7 @@ import {
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
 import { GpzAdnotacjeWarstwa } from './GpzAdnotacjeWarstwa';
+import { atrybutStanuObiektu } from '../../../shared/stanObiektu';
 import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -560,6 +561,7 @@ function SceneSymbolNode(props: {
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-apparatus-origin={symbol.meta?.apparatusOrigin}
       data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-stan-obiektu={atrybutStanuObiektu(symbol.meta?.stanObiektu)}
       data-bay-reserve={symbol.meta?.bayReserve}
       data-track-role={symbol.meta?.trackRole}
       data-designation-source={symbol.meta?.designationSource}
@@ -567,6 +569,7 @@ function SceneSymbolNode(props: {
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
       data-owner-ref={symbol.meta?.ownerRef}
       data-device-ref={symbol.meta?.deviceRef}
+      data-apparatus-kind={symbol.meta?.apparatusKind}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
       // TR2W-BEZ-POLA (§0.C.5): kanał audytu stanu niekompletnego — sonda
@@ -586,6 +589,7 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
         {...daneGlifuSymbolu(symbol)}
+        ramkaScada={palette.ramkaScada}
       />
     </g>
   );

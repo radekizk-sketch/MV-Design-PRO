@@ -14,7 +14,14 @@ function makeFamily(overrides: Partial<SwitchgearFamily> = {}): SwitchgearFamily
     series_name: null,
     network_voltages_kv: [15],
     um_classes_kv: [17.5],
-    insulation_type: 'sf6',
+    insulation_type: 'air',
+    medium_lacznikow: 'PROZNIA',
+    // Pola WYLICZANE backendu — przychodzą z każdą odpowiedzią (front nie zna reguły).
+    gaz_fluorowany: false,
+    dopuszczona_do_budowania: true,
+    powod_blokady_pl: null,
+    dopuszczona_do_nowych_pol: true,
+    powod_blokady_nowych_pol_pl: null,
     construction_type: 'RMU',
     status: 'verified',
     source_refs: ['catalog:demo'],
@@ -118,6 +125,10 @@ describe('SwitchgearFamilyPicker', () => {
         switchgear_family_ref: 'DEMO__BEZ_KARTY',
         family_name: 'Rodzina bez karty',
         status: 'requires_catalog',
+        dopuszczona_do_budowania: false,
+        powod_blokady_pl: 'Rodzina wymaga karty katalogowej producenta.',
+        dopuszczona_do_nowych_pol: false,
+        powod_blokady_nowych_pol_pl: 'Rodzina wymaga karty katalogowej producenta.',
       }),
     ];
     const { container } = render(
@@ -156,7 +167,16 @@ describe('SwitchgearFamilyPicker', () => {
   it('same rodziny requires_catalog — fallback zamiast listy martwych opcji', () => {
     const { container } = render(
       <SwitchgearFamilyPicker
-        families={[makeFamily({ switchgear_family_ref: 'DEMO__X', status: 'requires_catalog' })]}
+        families={[
+          makeFamily({
+            switchgear_family_ref: 'DEMO__X',
+            status: 'requires_catalog',
+            dopuszczona_do_budowania: false,
+            powod_blokady_pl: 'Rodzina wymaga karty katalogowej producenta.',
+            dopuszczona_do_nowych_pol: false,
+            powod_blokady_nowych_pol_pl: 'Rodzina wymaga karty katalogowej producenta.',
+          }),
+        ]}
         manufacturerRef="DEMO"
         manufacturerRequiresCatalog={false}
         onSelect={() => {}}
@@ -192,5 +212,42 @@ describe('SwitchgearFamilyPicker', () => {
         .querySelector('[data-testid="switchgear-family-picker-option-F2"]')
         ?.getAttribute('data-selected'),
     ).toBe('true');
+  });
+
+  it('rodzina z SF₆: w nowym polu niewybieralna z powodem backendu, w polu istniejącym — wybieralna', () => {
+    const powod = 'Rozdzielnica Demo SF6 wykorzystuje gaz fluorowany (SF₆). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.';
+    const families: SwitchgearFamily[] = [
+      makeFamily({ switchgear_family_ref: 'DEMO__AIR' }),
+      makeFamily({
+        switchgear_family_ref: 'DEMO__SF6',
+        family_name: 'Demo SF6',
+        insulation_type: 'sf6',
+        medium_lacznikow: 'SF6',
+        gaz_fluorowany: true,
+        dopuszczona_do_nowych_pol: false,
+        powod_blokady_nowych_pol_pl: powod,
+      }),
+    ];
+    for (const [stan, wybieralna] of [[null, false], ['PROJEKTOWANY', false], ['ISTNIEJACY', true]] as const) {
+      const onSelect = vi.fn();
+      const { container, unmount } = render(
+        <SwitchgearFamilyPicker
+          families={families}
+          manufacturerRef="DEMO"
+          manufacturerRequiresCatalog={false}
+          stanObiektu={stan}
+          onSelect={onSelect}
+        />,
+      );
+      const sf6 = container.querySelector(
+        '[data-testid="switchgear-family-picker-option-DEMO__SF6"]',
+      ) as HTMLButtonElement;
+      expect(sf6.disabled).toBe(!wybieralna);
+      const blokada = container.querySelector('[data-testid="switchgear-family-picker-blocked-DEMO__SF6"]');
+      expect(blokada?.textContent ?? null).toBe(wybieralna ? null : powod);
+      sf6.click();
+      expect(onSelect).toHaveBeenCalledTimes(wybieralna ? 1 : 0);
+      unmount();
+    }
   });
 });

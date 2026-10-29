@@ -88,13 +88,18 @@ const POWOD_CZAS_TB =
   'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
   'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
   'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
+const POWOD_KARTA_POLA =
+  'Klasę pola, wykonanie z szablonu, stan obiektu i funkcje zabezpieczeniowe pola ustawia się na ' +
+  'karcie pola — na schemacie kliknij pole prawym przyciskiem i wybierz „Otwórz kartę pola”; ' +
+  'karta pokazuje ocenę pola z akcją naprawczą.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (162 kody, stan rejestru po nałożeniu GPZ-MODEL na partie
- * 9–13). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * KOMPLETNA tabela kodów kanonu (177 kodów — pomiar rejestru na drzewie karty
+ * UX-04/POLE-LINIOWE-WZORZEC: 166 bazy + 9 kodów `bay.*` + 2 kody stanu obiektu w katalogu).
+ * Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -155,6 +160,19 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'station.required_field_missing': formularz('add_sn_bay'),
   'station.line_field_multiple_segments': formularz('przepnij_element_na_pole'),
   'station.element_bypasses_field': formularz('przepnij_element_na_pole'),
+  // Pole liniowe GPZ i wyposażenie pola (karta UX-04/POLE-LINIOWE-WZORZEC, W045–W053): klasę,
+  // wykonanie, stan obiektu i funkcje EAZ edytuje formularz INLINE karty pola (E-11,
+  // `set_bay_equipment` / `set_object_state` bez okna w `OPERATION_FORM_REGISTRY`) — droga
+  // przez schemat i menu pola, z oceną pola i akcją naprawczą na karcie.
+  'bay.fluorinated_gas_not_existing': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.switching_execution_insulation_mismatch': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.gpz_template_outside_gpz': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.line_class_execution_mismatch': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.generation_fed_from_load_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.loads_behind_dedicated_generation_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.ufls_in_bay_with_generation': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.reclosing_in_dedicated_generation_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.settlement_core_missing': przestrzen('schemat', POWOD_KARTA_POLA),
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),
@@ -395,6 +413,8 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'Wskazany element nie istnieje w modelu — zaznacz istniejący element na schemacie i przypisz mu typ.',
   ),
   'catalog.clear_forbidden': KATALOG,
+  'catalog.object_state_not_applicable': KATALOG,
+  'catalog.object_state_invalid': KATALOG,
   'catalog.materialization_required': KATALOG,
   'catalog.materialization_incomplete': KATALOG,
   'catalog.nameplate_mismatch': KATALOG,

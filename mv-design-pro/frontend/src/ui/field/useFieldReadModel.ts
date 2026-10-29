@@ -4,7 +4,14 @@ import { useSnapshotStore } from '../topology/snapshotStore';
 import type {
   BayCanonicalModel,
   BayProjectResults,
+  KlasaPolaLiniowego,
 } from '../../types/enm';
+import type {
+  Etykieta,
+  KompletnoscDowodu,
+  StatusWerdyktu,
+  WyjasnienieWerdyktu,
+} from '../../ui2/wyniki/wzorzec/werdykt';
 
 export interface FieldReadModelStatus {
   data_source: 'ENM_FIELD_READ_MODEL';
@@ -21,12 +28,70 @@ export interface FieldReadModelSummary {
   fields_with_results_count: number;
 }
 
+/** Ocena jednej funkcji EAZ pola wobec wymogu klasy — lustro `enm.pole_liniowe_gpz.OcenaFunkcjiPola`
+ *  (rekord wyjaśnialny: co oceniono, kryterium, podstawa, dowód, etykieta ze słownika backendu
+ *  i wyjaśnienie kanoniczne z przyczyną, brakami i zastrzeżeniami). */
+export interface OcenaFunkcjiPola {
+  kod: string;
+  funkcja_pl: string;
+  wymog: 'OBOWIAZKOWA' | 'NAPOWIETRZNA' | 'NA_ZADANIE_OSD' | 'DOPUSZCZALNA' | 'ZAKAZANA';
+  obecna: boolean;
+  status: StatusWerdyktu;
+  co_oceniono: string;
+  kryterium: string;
+  podstawa: string;
+  dowod: string;
+  kompletnosc_dowodu: KompletnoscDowodu;
+  etykieta: Etykieta;
+  wyjasnienie: WyjasnienieWerdyktu;
+}
+
+/** Moduł wytwarzania za polem — lustro `enm.pole_liniowe_gpz.ModulZaPolem`. */
+export interface ModulZaPolem {
+  ref_id: string;
+  p_kw: number;
+  napiecie_kv: number | null;
+  /** Typ modułu wg progów NC RfG (A–D); `null` = nieustalony (powód w `powod_pl`). */
+  typ: string | null;
+  powod_pl: string;
+}
+
+export interface NiezgodnoscPolaLiniowego {
+  kod: string;
+  bay_ref: string;
+  komunikat_pl: string;
+  /** Akcja naprawcza — ta sama, którą walidator podaje w gotowości (W049–W053). */
+  akcja_pl: string;
+}
+
+/** Ocena pola liniowego GPZ wg klasy pola — lustro `enm.pole_liniowe_gpz.OcenaPolaLiniowego`
+ *  (to samo źródło co walidator W049–W053). Krotki backendu jako tablice. */
+export interface OcenaPolaLiniowego {
+  bay_ref: string;
+  klasa_zadeklarowana: KlasaPolaLiniowego | null;
+  klasa_z_sieci: KlasaPolaLiniowego;
+  klasa_oceny: KlasaPolaLiniowego;
+  /** `true` = pole nie ma zadeklarowanej klasy, oceniono klasą wynikającą z sieci za polem. */
+  klasa_przyjeta: boolean;
+  moduly: ModulZaPolem[];
+  /** Odbiory za polem: `[ref_id, P w kW]`. */
+  odbiory: [string, number][];
+  linia_napowietrzna: boolean;
+  ajee_wymagany: boolean;
+  ajee_rdzen_obecny: boolean;
+  ajee_przyczyna: string;
+  oceny_funkcji: OcenaFunkcjiPola[];
+  niezgodnosci: NiezgodnoscPolaLiniowego[];
+}
+
 export interface FieldReadModelItem {
   bay_id: string;
   bay_ref: string;
   bay_name: string;
   canonical_model: BayCanonicalModel;
   project_results?: BayProjectResults | null;
+  /** Ocena pola liniowego GPZ (`null` = pole nie jest polem liniowym GPZ). */
+  ocena_pola_liniowego?: OcenaPolaLiniowego | null;
 }
 
 export interface FieldReadModelResponse {

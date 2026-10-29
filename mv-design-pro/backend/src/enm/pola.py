@@ -18,8 +18,9 @@ którejkolwiek z tych reguł jest naruszeniem karty (strażnik wskrzeszenia
 
 Moduł-LIŚĆ warstwy ENM: importuje wyłącznie `enm.models`, `enm.rola_pola_sn`,
 `enm.migrations.klucze_meta_pola` (dawne klucze `meta` pola — wspólne z migracją),
-`network_model.nazwy` i `network_model.pochodne.pasma_napieciowe` (pasmo nN/SN — JEDNA
-granica w backendzie). Nie importuje operacji domenowych ani magazynu.
+`network_model.nazwy`, `network_model.pochodne.pasma_napieciowe` (pasmo nN/SN — JEDNA
+granica w backendzie) i `network_model.catalog.rodzaje_aparatury` (reguła portów toru pola —
+liść bez importów projektu). Nie importuje operacji domenowych ani magazynu.
 """
 
 from __future__ import annotations
@@ -29,6 +30,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU, StanObiektu
+from network_model.catalog.rodzaje_aparatury import porty_toru_pola
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
@@ -400,9 +403,16 @@ def zbuduj_pole(
     bay_number: str | None = None,
     feeder_short_name: str | None = None,
     outgoing_destination_ref: str | None = None,
+    stan_obiektu: StanObiektu | None,
 ) -> dict[str, Any]:
     """JEDYNY builder rekordu pola — wszystkie drogi budowy pola (GPZ, wcięcie stacji, stacja
     końca ciągu, operacja katalogowa pola, pola nN, pole źródłowe DER, pola ZKSN).
+
+    ``stan_obiektu`` jest argumentem OBOWIĄZKOWYM bez wartości domyślnej (korekta właściciela
+    2026-10-28): każda droga budowy nadaje stan jawnie — operacja projektowa ``PROJEKTOWANY``,
+    import istniejącej sieci stan z pliku; ``None`` przekazują wyłącznie drogi odtwarzające pola
+    zastanego zapisu (migracja, uzupełnienie pól ZKSN z katalogu), które stanu nie znają.
+    Aparat pola bez własnego stanu DZIEDZICZY stan pola (aparat powstaje razem z polem).
 
     Argumenty są 1:1 polami `Bay`; struktury zagnieżdżone kopiowane GŁĘBOKO (builder jest
     właścicielem tego, co zapisuje — wołający nie trzyma uchwytu do wnętrza migawki).
@@ -455,7 +465,11 @@ def zbuduj_pole(
         "apparatus_catalog_ref": _napis(apparatus_catalog_ref),
         "config_id": _napis(config_id),
         "catalog_bindings": copy.deepcopy(dict(catalog_bindings)) if catalog_bindings else None,
-        "primary_devices": [copy.deepcopy(dict(d)) for d in (primary_devices or [])],
+        "primary_devices": porty_toru_pola(
+            aparaty_ze_stanem_pola(
+                [copy.deepcopy(dict(d)) for d in (primary_devices or [])], stan_obiektu
+            )
+        ),
         "funkcja_pomiaru": _napis(funkcja_pomiaru),
         "rodzaj_pomiaru": _napis(rodzaj_pomiaru),
         "wybor_bloku": wybor,
@@ -464,8 +478,99 @@ def zbuduj_pole(
         "bay_number": _napis(bay_number),
         "feeder_short_name": _napis(feeder_short_name),
         "outgoing_destination_ref": _napis(outgoing_destination_ref),
+        "stan_obiektu": stan_obiektu,
     }
     return waliduj_rekord_pola(rekord)
+
+
+def aparaty_ze_stanem_pola(
+    aparaty: list[dict[str, Any]], stan_pola: str | None
+) -> list[dict[str, Any]]:
+    """Aparaty tworzone RAZEM z polem: aparat bez nadanego stanu dziedziczy stan pola; stan
+    podany na aparacie (import istniejącej sieci) zostaje. Zmienia i zwraca podaną listę."""
+    for aparat in aparaty:
+        if aparat.get("stan_obiektu") is None:
+            aparat["stan_obiektu"] = stan_pola
+    return aparaty
+
+
+def _tozsamosc_instancji_aparatu(aparat: Mapping[str, Any]) -> tuple[str, str, str]:
+    """Instancja aparatu pola = identyfikator, rodzaj i pozycja katalogu. Zmiana pozycji
+    katalogu albo rodzaju to WYMIANA aparatu — nowa instancja (korekta właściciela 2026-10-28)."""
+    return (
+        str(aparat.get("device_ref") or ""),
+        str(aparat.get("kind") or ""),
+        str(aparat.get("catalog_ref") or ""),
+    )
+
+
+def _sprawdz_stany_nowego_pola(rekord: Mapping[str, Any]) -> None:
+    """Nowe pole i każdy jego aparat MUSZĄ mieć nadany stan obiektu — obiekt bez stanu to
+    defekt drogi budowy (żadna operacja nie zgaduje stanu), więc błąd programu, nie odmowa."""
+    if rekord.get("stan_obiektu") is None:
+        raise BladPola(
+            f"pole {rekord.get('ref_id')!r}: nowe pole bez nadanego stanu obiektu "
+            "(ISTNIEJACY/PROJEKTOWANY) — droga budowy musi nadać stan jawnie"
+        )
+    for aparat in rekord.get("primary_devices") or []:
+        if isinstance(aparat, Mapping) and aparat.get("stan_obiektu") is None:
+            raise BladPola(
+                f"pole {rekord.get('ref_id')!r}: aparat {aparat.get('device_ref')!r} bez "
+                "nadanego stanu obiektu — droga budowy musi nadać stan jawnie"
+            )
+
+
+def aparaty_po_wymianie(
+    stare: Iterable[Any], nowe: Iterable[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """Wyposażenie pola po zmianie operacją projektową: instancja niezmieniona (ten sam
+    identyfikator, rodzaj i pozycja katalogu) zachowuje stan obiektu, każda inna jest WYMIANĄ —
+    nowa instancja, stan ``PROJEKTOWANY`` (korekta właściciela 2026-10-28: aparat wymieniony
+    w istniejącym polu jest nowym aparatem). Stan podany JAWNIE na aparacie (decyzja
+    projektanta w ładunku `set_bay_equipment`: inwentaryzacja aparatu zastanego w polu
+    istniejącym) zostaje — to ta sama jawna decyzja co „oznacz jako istniejący", wyrażona przy
+    wskazaniu pozycji. Zwraca nowe słowniki."""
+    stany = {
+        _tozsamosc_instancji_aparatu(a): a.get("stan_obiektu")
+        for a in stare
+        if isinstance(a, Mapping)
+    }
+    wynik: list[dict[str, Any]] = []
+    for aparat in nowe:
+        kopia = copy.deepcopy(dict(aparat))
+        if kopia.get("stan_obiektu") in STANY_OBIEKTU:
+            wynik.append(kopia)
+            continue
+        tozsamosc = _tozsamosc_instancji_aparatu(kopia)
+        kopia["stan_obiektu"] = stany[tozsamosc] if tozsamosc in stany else "PROJEKTOWANY"
+        wynik.append(kopia)
+    return wynik
+
+
+def _aparaty_po_zmianie(
+    stare: Iterable[Any], nowe: Iterable[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """Aparaty pola po zmianie wyposażenia: instancja niezmieniona (ten sam identyfikator,
+    rodzaj i pozycja katalogu) zachowuje stan obiektu (także nieustalony rekordu zastanego);
+    instancja NOWA musi przyjść z nadanym stanem — inaczej błąd programu."""
+    stany = {
+        _tozsamosc_instancji_aparatu(a): a.get("stan_obiektu")
+        for a in stare
+        if isinstance(a, Mapping)
+    }
+    wynik: list[dict[str, Any]] = []
+    for aparat in nowe:
+        kopia = copy.deepcopy(dict(aparat))
+        if kopia.get("stan_obiektu") is None:
+            tozsamosc = _tozsamosc_instancji_aparatu(kopia)
+            if tozsamosc not in stany:
+                raise BladPola(
+                    f"aparat {kopia.get('device_ref')!r}: nowa instancja aparatu bez nadanego "
+                    "stanu obiektu — droga zmiany wyposażenia musi nadać stan jawnie"
+                )
+            kopia["stan_obiektu"] = stany[tozsamosc]
+        wynik.append(kopia)
+    return wynik
 
 
 def _wszystkie_ref_id(enm: Mapping[str, Any]) -> set[str]:
@@ -495,9 +600,11 @@ def _wszystkie_ref_id(enm: Mapping[str, Any]) -> set[str]:
 
 
 def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]:
-    """JEDYNY pisarz nowego pola do migawki: waliduje kontraktem, odmawia dubla identyfikatora,
-    dopisuje do `bays` (kolejność zapisu = kolejność listy). Zwraca zapisany rekord."""
+    """JEDYNY pisarz nowego pola do migawki: waliduje kontraktem, wymaga nadanego stanu obiektu
+    pola i aparatów, odmawia dubla identyfikatora, dopisuje do `bays` (kolejność zapisu =
+    kolejność listy). Zwraca zapisany rekord."""
     zwalidowany = waliduj_rekord_pola(rekord)
+    _sprawdz_stany_nowego_pola(zwalidowany)
     if zwalidowany["ref_id"] in _wszystkie_ref_id(enm):
         raise BladPola(f"pole {zwalidowany['ref_id']!r}: identyfikator już zajęty w modelu")
     lista = enm.get("bays")
@@ -510,11 +617,21 @@ def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]
 
 def zmien_pole(enm: dict[str, Any], ref_id: str, **zmiany: Any) -> dict[str, Any]:
     """Zmiana pól rekordu (walidowana kontraktem); `meta` podane w `zmiany` ZASTĘPUJE meta
-    rekordu (wołający składa nową wartość jawnie). Nieznane pole = błąd."""
+    rekordu (wołający składa nową wartość jawnie). Nieznane pole = błąd. Nowa lista aparatów:
+    instancja niezmieniona zachowuje stan obiektu, nowa instancja musi mieć stan nadany
+    (`_aparaty_po_zmianie`)."""
     for i, rekord in enumerate(pola(enm)):
         if rekord.get("ref_id") != ref_id:
             continue
         kandydat = {**rekord, **zmiany}
+        if "primary_devices" in zmiany:
+            # Porty aparatów z sekwencji (karta UX-04/POLE-LINIOWE-WZORZEC) — ta sama reguła co
+            # budowa pola (`zbuduj_pole`); porty podane jawnie zostają bez zmian.
+            kandydat["primary_devices"] = porty_toru_pola(
+                _aparaty_po_zmianie(
+                    rekord.get("primary_devices") or [], zmiany["primary_devices"] or []
+                )
+            )
         zwalidowany = waliduj_rekord_pola(kandydat)
         enm["bays"][i] = zwalidowany
         return zwalidowany
@@ -552,11 +669,16 @@ def ref_pola_zksn(branch_point_ref: str, port_id: str) -> str:
 
 
 def pola_zksn_z_portow(
-    *, branch_point_ref: str, bus_ref: str, branch_ports_count: int
+    *,
+    branch_point_ref: str,
+    bus_ref: str,
+    branch_ports_count: int,
+    stan_obiektu: StanObiektu | None,
 ) -> list[dict[str, Any]]:
     """Rekordy pól rozdzielnicy ZKSN wyprowadzone z liczby portów odgałęzień: pole liniowe
     wejściowe (WE), wyjściowe (WY) i po jednym polu odgałęźnym na port (ODG n). Deterministyczne
-    (ta sama liczba portów = te same identyfikatory)."""
+    (ta sama liczba portów = te same identyfikatory). ``stan_obiektu`` — jak `zbuduj_pole`
+    (operacja wstawiająca punkt: ``PROJEKTOWANY``; odtworzenie pól zastanego punktu: ``None``)."""
     liczba = max(int(branch_ports_count), 0)
     rekordy = [
         zbuduj_pole(
@@ -567,6 +689,7 @@ def pola_zksn_z_portow(
             bus_ref=bus_ref,
             branch_point_ref=branch_point_ref,
             branch_point_port_id=PORT_ZKSN_WEJSCIE,
+            stan_obiektu=stan_obiektu,
         ),
         zbuduj_pole(
             ref_id=ref_pola_zksn(branch_point_ref, PORT_ZKSN_WYJSCIE),
@@ -576,6 +699,7 @@ def pola_zksn_z_portow(
             bus_ref=bus_ref,
             branch_point_ref=branch_point_ref,
             branch_point_port_id=PORT_ZKSN_WYJSCIE,
+            stan_obiektu=stan_obiektu,
         ),
     ]
     for indeks in range(1, liczba + 1):
@@ -589,6 +713,7 @@ def pola_zksn_z_portow(
                 bus_ref=bus_ref,
                 branch_point_ref=branch_point_ref,
                 branch_point_port_id=port,
+                stan_obiektu=stan_obiektu,
             )
         )
     return rekordy

@@ -1121,7 +1121,8 @@
         "catalog_item_version",
         "catalog_namespace",
         "catalog_ref",
-        "element_ref"
+        "element_ref",
+        "stan_obiektu"
       ],
       "zagniezdzone": {
         "catalog_binding": {
@@ -1596,6 +1597,7 @@
         "bay_ref",
         "bay_template_ref",
         "devices",
+        "klasa_pola",
         "mode"
       ],
       "zagniezdzone": {
@@ -1606,7 +1608,9 @@
             "earthing_role",
             "kind",
             "linked_ref",
-            "placement"
+            "odgalezienie",
+            "placement",
+            "stan_obiektu"
           ],
           "zagniezdzone": {}
         }
@@ -1674,6 +1678,15 @@
     "set_normal_open_point": {
       "pola": [
         "close_ref",
+        "switch_ref"
+      ],
+      "zagniezdzone": {}
+    },
+    "set_object_state": {
+      "pola": [
+        "bay_ref",
+        "device_ref",
+        "stan_obiektu",
         "switch_ref"
       ],
       "zagniezdzone": {}
@@ -6097,6 +6110,22 @@
     },
     {
       "operacja": "set_normal_open_point",
+      "ladunek": {
+        "klucz_obcy": 1
+      },
+      "obce": [
+        "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_object_state",
+      "ladunek": {
+        "bay_ref": 1
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_object_state",
       "ladunek": {
         "klucz_obcy": 1
       },

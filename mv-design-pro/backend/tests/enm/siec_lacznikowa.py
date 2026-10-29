@@ -24,7 +24,7 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 
 KABEL = "cable-tfk-yakxs-3x120"
-ROZLACZNIK = "sw-ls-schneider-rm6-17kv-400a"
+ROZLACZNIK = "sw-ls-ogolny-prozniowy-24kv-630a"
 
 
 @dataclass(frozen=True)

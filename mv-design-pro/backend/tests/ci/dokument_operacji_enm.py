@@ -289,7 +289,7 @@ ZRODLO_GPZ = "src-gpz-15kv-300mva-rx010"
 TRANSFORMATOR_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 KABEL_SN = "cable-tfk-yakxs-3x120"
 APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
-ROZLACZNIK_SN = "sw-ls-schneider-rm6-17kv-400a"
+ROZLACZNIK_SN = "sw-ls-ogolny-prozniowy-24kv-630a"
 TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
 ZKSN = "ZKSN-2P-630A"
 SLUP_ODGALEZNY = "SLUP-ODG-12"
@@ -656,6 +656,15 @@ KROKI: tuple[Krok, ...] = (
             "bay_ref": k.wskazany("pole_sn"),
             "mode": "szablon",
             "bay_template_ref": "bay_template_line_out",
+        },
+    ),
+    Krok(
+        "stan_pola",
+        "set_object_state",
+        "oznaczenie pola L3 jako istniejącego w sieci (pole zastane, aparaty razem z polem)",
+        lambda k: {
+            "bay_ref": k.wskazany("pole_sn"),
+            "stan_obiektu": "ISTNIEJACY",
         },
     ),
     Krok(

@@ -27,7 +27,7 @@
  */
 import { createContext, useContext } from 'react';
 
-import { DARK_SCADA_SLD_PALETTE, type SldPalette } from './colorTokens';
+import { DARK_SCADA_SLD_PALETTE, RAMKA_SCADA_COLOR, type SldPalette } from './colorTokens';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 
 export type { SldPalette } from './colorTokens';
@@ -90,6 +90,9 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     pomiarowe: '#0B6E60',
     zrodlowe: '#3C6E1E',
   },
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA — TE SAME wartości co motyw
+   *  ciemny (konwencja dyspozytorska niezależna od motywu). */
+  ramkaScada: RAMKA_SCADA_COLOR,
 };
 
 export { DARK_SCADA_SLD_PALETTE } from './colorTokens';

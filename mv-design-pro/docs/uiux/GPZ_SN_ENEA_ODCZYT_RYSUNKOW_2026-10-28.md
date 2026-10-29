@@ -106,3 +106,44 @@ Rodzaje aparatów (port we = strona szyny, port wy = strona odpływu):
 10. Ogranicznik przepięć (odgałęzienie do ziemi, port jeden) — Z.7 przy transformatorze, Z.13–Z.16.
 11. Transformator 110/SN (strona SN Δ, 110 kV Y) — koniec toru Z.7 (przez kabel).
 Pole Z.12 łączy dwie szyny (we: szyna A, wy: szyna B) — jeden obiekt pola lub dwie celki, obie opcje dozwolone (§13).
+
+# Porównanie Z.10 / Z.11.1 / Z.11 i klasa pola liniowego (karta UX-04/POLE-LINIOWE-WZORZEC, 2026-10-28)
+
+Odwzorowanie w modelu: `docs/uiux/UX04_POLE_LINIOWE_WZORZEC.md` (macierze aparat → port → symbol). Poniżej różnice rysunków i wymagania klas własnymi słowami.
+
+## Porównanie wykonań pola liniowego
+| Cecha | Z.10 (s.89) | Z.11.1 (s.91) | Z.11 (s.90) |
+|---|---|---|---|
+| wskaźnik napięcia przy szynie | brak | jest | jest |
+| łącznik szynowy | trójpołożeniowy [INTERPR.] | trójpołożeniowy [INTERPR.] | trójpołożeniowy [INTERPR.] |
+| wyłącznik z napędem M | jest | jest | jest |
+| odgałęzienie PN za wyłącznikiem, przed CT | brak | odłącznik z uziemieniem → głowica/złącze → PN SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3 | jak Z.11.1 |
+| uzwojenie I PN | — | 0-10 VA kl. 0,2 (napięcie zwrotne) | 0-10 VA kl. 0,2 (rozliczenie) |
+| przekładnik prądowy | 200-400/5, 1 rdzeń 15 VA 5P20 | 200-400/5, 1 rdzeń 15 VA 5P20 | 200-400/5/5/5: 10 VA 0,2S FS5 (rozliczenie i AJEE), 10 VA 0,2 FS5 (regulacja), 15 VA 5P20 (zabezpieczenia) |
+| wskaźnik napięcia od kabla, głowica, Ferranti 1/100 | jest | jest | jest |
+| funkcje na rysunku | I>, I>>, ziemnozw., ZS, LRW, SPZ, SCO1/SCO2/SCO-SPZ | jak Z.10 + U>, U<, f<, f>, df/dt, kierunkowe I>, SPZE, wył. od zab. TR; brak SCO-SPZ | jak Z.11.1 |
+| pomiar rozliczeniowy (AJEE) | brak | brak | jest — odbiorcy > 4 MW, wytwórcy ≥ 200 kW (uwaga rysunku) |
+
+Wykonanie łączników (§13, druk 23–25) jest drugą, niezależną osią: łącznik trójpołożeniowy (podstawowe), wyłącznik stały z odłącznikiem szynowym albo wyłącznik poziomo wysuwny (izolacja powietrzna „w uzasadnionych przypadkach"); przy wyłączniku stałym i wysuwnym — uziemniki stałe wyprowadzenia i odgałęzienia PN (§13: uziemienie wyprowadzeń uziemnikami stałymi).
+
+## Klasy pola liniowego SN (IRiESD ENEA Operator, wersja 2.3, II.4.5.4.2.1–2.3)
+Źródło odczytu: IRiESD (tekst ujednolicony obowiązujący od 2026-10-19, s.51–55), katalog sygnałów telemechaniki ENEA (sekcje „Linia SN", „Linia SN z generacją"), Zeszyt 1 §26.9.2–26.9.3, §26.10.4. Pliki źródłowe NIE są w repozytorium.
+
+| Funkcja (kod modelu) | ODBIORCZE (II.4.5.4.2.1) | MIESZANE (II.4.5.4.2.2) | DEDYKOWANE_WYTWORCY (II.4.5.4.2.3) |
+|---|---|---|---|
+| nadprądowe zwłoczne i zwarciowe (51, 50) | wymagane (pkt 1) | wymagane (pkt 1) | wymagane (pkt 1) |
+| ziemnozwarciowe (67N) | wymagane (pkt 2) | wymagane (pkt 2) | wymagane (pkt 2) |
+| SPZ (79) | wymagane w linii napowietrznej i napowietrzno-kablowej (pkt 3) | jw. (pkt 3) | **niedopuszczalne** — brak w liście; rozstrzygnięcie sesji głównej |
+| SPZE | z rysunku Z.11/Z.11.1 | z rysunku | **niedopuszczalne** (jak SPZ) |
+| współpraca z ZS i LRW (ZS, 50BF) | wymagana (pkt 4) | wymagana, wyłączają także linie z elektrowniami (pkt 4; II.4.5.4.7.1 pkt 3–4) | wymagana (pkt 3; II.4.5.4.7.1 pkt 3–4) |
+| podczęstotliwościowe (81U) | wymagane, z blokadą zależną od kierunku przepływu mocy (pkt 5) | na żądanie OSD (pkt 5) | na żądanie OSD (pkt 4) |
+| f>, df/dt (81O, 81R) | — | na żądanie OSD (pkt 5) | na żądanie OSD (pkt 4) |
+| U<, U> (27, 59) z przekładników od strony linii | — | na żądanie OSD (pkt 6) | na żądanie OSD (pkt 5) |
+| blokada załączenia przy napięciu w linii / synchronizm (NZ) | — | na żądanie OSD (pkt 7) | na żądanie OSD (pkt 6) |
+| blokada kierunkowa wyłączenia (67) | — | na żądanie OSD (pkt 8) | brak w liście — pomijana |
+| SCO, SPZ/SCO | SCO dopuszczalne, SPZ/SCO na żądanie OSD (pkt 6) | **niedopuszczalne** (II.4.5.4.7.1 pkt 1) | **niedopuszczalne** (II.4.5.4.7.1 pkt 1) |
+| przekładnik napięciowy od strony linii | niewymagany | wymagany → wyłącznie Z.11.1 albo Z.11 | wymagany → wyłącznie Z.11.1 albo Z.11 |
+
+Typ modułu wytwarzania za polem (IRiESD, słownik pojęć): A 0,8 kW–< 200 kW, B 200 kW–< 10 MW, C 10–< 75 MW, D ≥ 75 MW lub przyłączenie ≥ 110 kV. [INTERPRETACJA] Próg AJEE wytwórcy ≥ 200 kW z rysunku Z.11 jest zbieżny z dolną granicą typu B.
+
+Rozbieżności źródeł: (1) rysunek Z.10 nie wymienia zabezpieczenia podczęstotliwościowego, którego IRiESD II.4.5.4.2.1 pkt 5 wymaga w polu odbiorczym — model dopisuje 81U klasą odbiorczą; (2) Zeszyt 1 §26.9.3 i rysunki Z.11/Z.11.1 wymieniają SCO, a IRiESD II.4.5.4.7.1 pkt 1 zakazuje uruchamiania SCO w liniach z jednostkami wytwórczymi — model stosuje IRiESD (dokument nowszy i nadrzędny dla warunków przyłączenia) i usuwa SCO w klasach z generacją (opis: `docs/uiux/RAPORT_ROZBIEZNOSCI_GPT_GPZ_SN_2026-10-28.md` §13).

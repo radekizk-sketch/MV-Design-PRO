@@ -22,6 +22,7 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import type { EnergyNetworkModel, Port } from '../../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
+import ocenyPol from '../../../field/__tests__/fixtures/ocena_pola_liniowego.json';
 
 let licznikPrzypadku = 0;
 
@@ -105,6 +106,7 @@ function item(templateRef: string | null, familyRef: string | null): FieldReadMo
         equipment_data_state: 'PROPOZYCJA',
         equipment_assumed_data: [
           { nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu pola bez pozycji katalogowej', jakosc: 'ESTIMATED' },
+          { nazwa_pl: 'Głowica kablowa GK', wartosc: null, powod_pl: 'aparat z szablonu pola bez pozycji katalogowej', jakosc: 'ESTIMATED' },
         ],
       },
       runtime_state: null,
@@ -131,7 +133,20 @@ const SZABLON = {
   template_code: 'L',
 };
 
+/**
+ * Powody blokady wg statusu — zdania backendu (`SwitchgearFamily.powod_blokady_pl`, pola
+ * wyliczane przychodzą z każdą odpowiedzią `/switchgear-families`; front nie zna reguły).
+ */
+const POWOD_STATUSU: Readonly<Record<string, string | null>> = {
+  verified: null,
+  repo_verified: null,
+  requires_catalog: 'wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych',
+  deprecated: 'rodzina wycofana z oferty producenta',
+  user_defined: 'rodzina zdefiniowana przez użytkownika bez potwierdzonej karty katalogowej',
+};
+
 function rodzina(status: string, ref = 'ZPUE__ROTOBLOK'): Record<string, unknown> {
+  const powod = POWOD_STATUSU[status] ?? null;
   return {
     switchgear_family_ref: ref,
     manufacturer_ref: 'ZPUE',
@@ -140,6 +155,12 @@ function rodzina(status: string, ref = 'ZPUE__ROTOBLOK'): Record<string, unknown
     network_voltages_kv: [15, 20],
     um_classes_kv: [17.5, 24],
     insulation_type: 'air',
+    medium_lacznikow: 'PROZNIA',
+    gaz_fluorowany: false,
+    dopuszczona_do_budowania: powod === null,
+    powod_blokady_pl: powod,
+    dopuszczona_do_nowych_pol: powod === null,
+    powod_blokady_nowych_pol_pl: powod,
     construction_type: 'jednoczlonowa',
     busbar_system: 'single',
     tor_konfiguracji: 'MODULARNY',
@@ -227,6 +248,23 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/'))).toBe(false);
   });
 
+  // Rozszerzenie 2 karty UX-04: ocena pola liniowego GPZ z modelu odczytu (fikstura z wyniku
+  // backendu) × {pole liniowe GPZ, pole bez oceny — jawne null}.
+  for (const zOcena of [true, false]) {
+    it(`ocena pola liniowego GPZ ${zOcena ? 'z modelu odczytu na karcie' : 'nieobecna, gdy model odczytu niesie null'}`, async () => {
+      const ocena = (ocenyPol as unknown as { ocena: FieldReadModelItem['ocena_pola_liniowego'] }[])[0].ocena;
+      podstawFetch({ pole: { ...item(null, null), ocena_pola_liniowego: zOcena ? ocena : null } });
+      ustawModel();
+      render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+      await waitFor(() => expect(screen.getByTestId('engineering-field-device_0')).toBeInTheDocument());
+      if (zOcena) {
+        expect(screen.getByTestId('ocena-pola-liniowego').getAttribute('data-klasa')).toBe(ocena!.klasa_oceny);
+      } else {
+        expect(screen.queryByTestId('ocena-pola-liniowego')).not.toBeInTheDocument();
+      }
+    });
+  }
+
   it('aparaty z modelu pola, nie z migawki (migawka ma puste primary_devices)', async () => {
     podstawFetch({ pole: item(null, null) });
     ustawModel();
@@ -236,7 +274,12 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     expect(wartosc('device_1')).toContain('Odłącznik');
     // Rola z kanonu ról pól — nagłówek i schemat pola, nigdy kod roli.
     expect(screen.queryByText('LINIA_OUT')).not.toBeInTheDocument();
-    expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
+    // UX-04/POLE-LINIOWE-WZORZEC: schemat pola to wycinek rysunku kanwy z MIGAWKI — ta migawka
+    // nie niesie ani aparatów, ani gałęzi aparatu pola, więc rysunku nie ma i okno mówi to
+    // wprost (dawny schemat dorysowywał aparaty z modelu odczytu własnymi kształtami).
+    expect(screen.getByTestId('schemat-pola-sn')).toHaveTextContent('Schemat pola');
+    expect(screen.getByTestId('schemat-pola-sn-brak')).toHaveTextContent('nie ma rysunku na schemacie');
+    expect(screen.queryByTestId('bay-svg-renderer')).not.toBeInTheDocument();
   });
 
   it('brak powiązania z katalogiem: zdanie, bez zapytań o katalog', async () => {
@@ -277,11 +320,11 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
   });
 
   it.each([
-    ['requires_catalog', 'Wymaga karty katalogowej producenta'],
+    ['requires_catalog', 'wymaga karty katalogowej producenta'],
     ['deprecated', 'wycofana z oferty'],
     // Backend (`POTWIERDZONE_STATUSY_RODZINY`) nie dopuszcza `user_defined` — karta nie może
     // twierdzić inaczej (wcześniej trzy kopie predykatu we froncie dopuszczały ten status).
-    ['user_defined', 'nie dopuszcza budowania'],
+    ['user_defined', 'bez potwierdzonej karty katalogowej'],
   ])('rodzina o statusie %s: „Nie" z powodem', async (status, powod) => {
     podstawFetch({ pole: item(null, 'ZPUE__ROTOBLOK'), rodziny: [rodzina(status)] });
     ustawModel();
@@ -379,6 +422,10 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('PROPOZYCJA'),
     );
     expect(screen.getByTestId('wyposazenie-pola-dane-przyjete')).toHaveTextContent('Wyłącznik Q1');
+    // ZASADA NR 4 pkt 4: wspólny powód — JEDNA adnotacja z obiema nazwami, nie zdanie przy każdej.
+    const grupy = screen.getAllByTestId('wyposazenie-pola-dane-przyjete-grupa');
+    expect(grupy).toHaveLength(1);
+    expect(grupy[0]).toHaveTextContent('Wyłącznik Q1, Głowica kablowa GK — aparat z szablonu pola bez pozycji katalogowej');
     expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(false);
     await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
     await waitFor(() =>

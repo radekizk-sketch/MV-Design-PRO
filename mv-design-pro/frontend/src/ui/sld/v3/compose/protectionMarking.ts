@@ -44,7 +44,7 @@
 
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
@@ -118,7 +118,7 @@ export function ctArrangementLabelText(
 /** Etykieta PL liczby rdzeni CT (§20.2, CTVT-RENDER) — `null` gdy dana
  *  niedostarczona LUB niepoprawna (≤0). „N rdz." = N rdzeni (uzwojeń wtórnych,
  *  IEC 61869-2). Zero zgadywania: człon dokleja się WYŁĄCZNIE dla realnej danej
- *  `Measurement.ct_cores`. */
+ *  długości listy `Measurement.rdzenie`. */
 export function ctCoresLabelText(cores: number | null | undefined): string | null {
   if (cores == null || !Number.isFinite(cores) || cores <= 0) return null;
   return `${cores} rdz.`;
@@ -297,9 +297,9 @@ export function resolveStationProtectionMarking(
   const ctRef = bay.protectionMarking?.ctRef;
 
   const tripTarget =
-    (breakerRef && stack.find((d) => d.symbolId === 'breaker' && d.deviceRef === breakerRef)) || null;
+    (breakerRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && d.deviceRef === breakerRef)) || null;
   const ctAnchor =
-    (ctRef && stack.find((d) => d.symbolId === 'currentTransformer' && d.deviceRef === ctRef)) || null;
+    (ctRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'currentTransformer' && d.deviceRef === ctRef)) || null;
 
   // §17.2: kotwica przy CT (rozwiązanym), gdy brak CT — przy wyłączniku.
   // Gdy ŻADNE z dwóch nie rozwiązuje się na aparat stosu (dane niespójne —
@@ -309,7 +309,7 @@ export function resolveStationProtectionMarking(
   // złamany) — pada na pierwszy aparat WYŁĄCZNIKA stosu jeśli istnieje,
   // inaczej pierwszy element stosu. To WYŁĄCZNIE pozycjonowanie geometryczne
   // (nie asercja połączenia) — `tripTarget` pozostaje `null` niezależnie.
-  const fallbackAnchor = stack.find((d) => d.symbolId === 'breaker') ?? stack[0];
+  const fallbackAnchor = stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker') ?? stack[0];
   const anchor = ctAnchor ?? tripTarget ?? fallbackAnchor;
 
   return { codes, anchor, tripTarget, ctAnchor };
@@ -330,7 +330,7 @@ export function resolveMeterAnchor(
   return (
     stack.find(
       (d) =>
-        (d.symbolId === 'currentTransformer' || d.symbolId === 'voltageTransformer') &&
+        (rodzajSymbolu(d.symbolId) === 'currentTransformer' || rodzajSymbolu(d.symbolId) === 'voltageTransformer') &&
         d.linkedRef === meteringMeasurementRef,
     ) ?? null
   );
@@ -366,7 +366,7 @@ export function resolveCtRatingAnnotations(
   const result: ResolvedCtRatingAnnotation[] = [];
   for (const entry of ctRatingAnnotations) {
     const device = stack.find(
-      (d) => d.symbolId === 'currentTransformer' && d.linkedRef === entry.measurementRef,
+      (d) => rodzajSymbolu(d.symbolId) === 'currentTransformer' && d.linkedRef === entry.measurementRef,
     );
     if (!device) continue;
     result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });
@@ -400,7 +400,7 @@ export function resolveVtMountingAnnotations(
   const result: ResolvedVtMountingAnnotation[] = [];
   for (const entry of vtMountingAnnotations) {
     const device = stack.find(
-      (d) => d.symbolId === 'voltageTransformer' && d.linkedRef === entry.measurementRef,
+      (d) => rodzajSymbolu(d.symbolId) === 'voltageTransformer' && d.linkedRef === entry.measurementRef,
     );
     if (!device) continue;
     result.push({ device, text: vtMountingAnnotationLabelText(entry) });

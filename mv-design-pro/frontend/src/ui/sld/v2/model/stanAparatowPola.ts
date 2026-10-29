@@ -21,21 +21,30 @@
  * kontraktu ENM, ale schemat go nie czyta) i zaszyte stałe `closed/closed/open`
  * w adapterze pól źródeł.
  */
-import type { Bay, BayDeviceState, BayPrimaryDevice, Branch } from '../../../../types/enm';
+import type { Bay, BayDeviceState, BayPrimaryDevice, BayPrimaryDeviceKind, Branch } from '../../../../types/enm';
 
-/** Stan łącznika rysowany przez glif (`v3/symbols/glyphs.tsx` `SwitchState`). */
-export type StanLacznikaRysunku = 'closed' | 'open' | 'unknown';
+/** Rodzaj aparatu, którego położeniem może być „uziemiony" (lustro walidatora backendu). */
+const RODZAJ_TROJPOLOZENIOWY: BayPrimaryDeviceKind = 'THREE_POSITION_SWITCH';
+
+/** Stan łącznika rysowany przez glif (`v3/symbols/glyphs.tsx` `SwitchState`). `'earthed'`
+ *  — WYŁĄCZNIE łącznik trójpołożeniowy w położeniu „uziemiony" (karta
+ *  UX-04/POLE-LINIOWE-WZORZEC); tor pola jest wtedy otwarty. */
+export type StanLacznikaRysunku = 'closed' | 'open' | 'unknown' | 'earthed';
+
+/** Stan łącznika dwupołożeniowego (wyłącznik, odłącznik, rozłącznik, uziemnik, gałąź
+ *  łączeniowa) — położenie „uziemiony" go nie dotyczy. */
+export type StanLacznikaDwupolozeniowego = 'closed' | 'open' | 'unknown';
 
 export interface StanyAparatowPola {
   /** Wyłącznik (symbol `breaker`). */
-  readonly cbState: StanLacznikaRysunku;
+  readonly cbState: StanLacznikaDwupolozeniowego;
   /** Odłącznik albo rozłącznik (symbole `disconnector`/`loadBreakSwitch`). */
-  readonly dsState: StanLacznikaRysunku;
+  readonly dsState: StanLacznikaDwupolozeniowego;
   /** Uziemnik (symbol `earthSwitch`). */
-  readonly esState: StanLacznikaRysunku;
+  readonly esState: StanLacznikaDwupolozeniowego;
   /** Łącznik główny pola (sprzęgło sekcji): wyłącznik, gdy pole ma gałąź wyłącznika,
    *  inaczej odłącznik/rozłącznik — ten aparat rozstrzyga, czy pole łączy. */
-  readonly glownyLacznik: StanLacznikaRysunku;
+  readonly glownyLacznik: StanLacznikaDwupolozeniowego;
 }
 
 type RolaLacznika = 'cb' | 'ds';
@@ -51,16 +60,26 @@ const ROLA_TYPU_GALEZI: Readonly<Record<string, RolaLacznika>> = {
 function stanRekordu(stan: BayDeviceState | undefined): StanLacznikaRysunku {
   if (stan === 'zamkniety' || stan === 'zamkniety_naped_rozbrojony') return 'closed';
   if (stan === 'otwarty' || stan === 'otwarty_naped_rozbrojony') return 'open';
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: położenie łącznika trójpołożeniowego (walidacja
+  // backendu `BayPrimaryDevice` dopuszcza je wyłącznie dla tego rodzaju).
+  if (stan === 'uziemiony') return 'earthed';
   return 'unknown';
 }
 
-function zgodny(stany: readonly StanLacznikaRysunku[]): StanLacznikaRysunku {
+/** Stan rekordu łącznika dwupołożeniowego: „uziemiony" nie jest jego położeniem (rekord
+ *  sprzeczny z rodzajem aparatu) — rysowany jako nieustalony, nie jako otwarty z domysłu. */
+function stanRekorduDwupolozeniowego(stan: BayDeviceState | undefined): StanLacznikaDwupolozeniowego {
+  const wynik = stanRekordu(stan);
+  return wynik === 'earthed' ? 'unknown' : wynik;
+}
+
+function zgodny(stany: readonly StanLacznikaDwupolozeniowego[]): StanLacznikaDwupolozeniowego {
   if (stany.length === 0) return 'unknown';
   return stany.every((s) => s === stany[0]) ? stany[0] : 'unknown';
 }
 
 /** Stan rysunku ze `status` gałęzi łączeniowej; brak albo inna wartość = `unknown`. */
-export function stanStatusuGalezi(status: string | null | undefined): StanLacznikaRysunku {
+export function stanStatusuGalezi(status: string | null | undefined): StanLacznikaDwupolozeniowego {
   return status === 'closed' ? 'closed' : status === 'open' ? 'open' : 'unknown';
 }
 
@@ -78,13 +97,13 @@ export const TYPY_GALEZI_LACZNIKA_TORU: ReadonlySet<string> = new Set(['switch',
 export function stanLacznikaToruZModelu(
   ref: string,
   galezieWgRef: ReadonlyMap<string, Branch>,
-): StanLacznikaRysunku | undefined {
+): StanLacznikaDwupolozeniowego | undefined {
   const galaz = galezieWgRef.get(ref);
   return galaz && TYPY_GALEZI_LACZNIKA_TORU.has(galaz.type) ? stanStatusuGalezi(galaz.status) : undefined;
 }
 
 /** Stan gałęzi łączeniowej po rozstrzygnięciu rekordami aparatów z nią powiązanych. */
-function stanGalezi(galaz: Branch, aparaty: readonly BayPrimaryDevice[]): StanLacznikaRysunku {
+function stanGalezi(galaz: Branch, aparaty: readonly BayPrimaryDevice[]): StanLacznikaDwupolozeniowego {
   const zModelu = stanStatusuGalezi(galaz.status);
   for (const aparat of aparaty) {
     if (aparat.linked_ref !== galaz.ref_id || !aparat.switch_state) continue;
@@ -98,7 +117,7 @@ function stanGalezi(galaz: Branch, aparaty: readonly BayPrimaryDevice[]): StanLa
  * aparatu powiązany `linked_ref`, sprzeczny ze statusem ⇒ `unknown`, jak K6a). Wejście
  * sprzęgła sekcji (`sprzeglaSekcji.ts`) — ta sama reguła co łącznik pola, bez drugiej.
  */
-export function stanGaleziPola(galaz: Branch, aparatyPola: readonly BayPrimaryDevice[]): StanLacznikaRysunku {
+export function stanGaleziPola(galaz: Branch, aparatyPola: readonly BayPrimaryDevice[]): StanLacznikaDwupolozeniowego {
   return stanGalezi(galaz, aparatyPola);
 }
 
@@ -115,7 +134,14 @@ export function stanAparatuZModelu(
 ): StanLacznikaRysunku | undefined {
   const galaz = aparat.linked_ref ? galezieWgRef.get(aparat.linked_ref) : undefined;
   if (galaz && ROLA_TYPU_GALEZI[galaz.type]) return stanGalezi(galaz, aparatyPola);
-  return aparat.switch_state ? stanRekordu(aparat.switch_state.actual_state) : undefined;
+  if (!aparat.switch_state) return undefined;
+  // „Uziemiony" jest położeniem WYŁĄCZNIE łącznika trójpołożeniowego (walidator backendu
+  // `BayPrimaryDevice`); rekord innego łącznika w tym położeniu jest sprzeczny z rodzajem
+  // aparatu — rysowany jako nieustalony, nie jako uziemiony (ta sama reguła co
+  // `stanRekorduDwupolozeniowego`).
+  return aparat.kind === RODZAJ_TROJPOLOZENIOWY
+    ? stanRekordu(aparat.switch_state.actual_state)
+    : stanRekorduDwupolozeniowego(aparat.switch_state.actual_state);
 }
 
 /**
@@ -150,7 +176,7 @@ export function stanyAparatowPolaZModelu(
     ...(bay.equipment_refs ?? []),
     ...aparaty.map((a) => a.linked_ref).filter((r): r is string => typeof r === 'string' && r !== ''),
   ]);
-  const stanyRoli: Record<RolaLacznika, StanLacznikaRysunku[]> = { cb: [], ds: [] };
+  const stanyRoli: Record<RolaLacznika, StanLacznikaDwupolozeniowego[]> = { cb: [], ds: [] };
   [...refy].sort().forEach((ref) => {
     const galaz = galezieWgRef.get(ref);
     const rola = galaz ? ROLA_TYPU_GALEZI[galaz.type] : undefined;
@@ -160,7 +186,7 @@ export function stanyAparatowPolaZModelu(
   const uziemniki = aparaty.filter((a) => a.kind === 'ES');
   const esState =
     uziemniki.length > 0 && uziemniki.every((a) => a.switch_state)
-      ? zgodny(uziemniki.map((a) => stanRekordu(a.switch_state?.actual_state)))
+      ? zgodny(uziemniki.map((a) => stanRekorduDwupolozeniowego(a.switch_state?.actual_state)))
       : 'unknown';
   const cbState = zgodny(stanyRoli.cb);
   const dsState = zgodny(stanyRoli.ds);

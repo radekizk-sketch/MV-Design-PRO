@@ -93,7 +93,15 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
         # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).
         # + karta LINIA-110: geometria słupa i proweniencja parametrów z geometrii.
-        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
+        # + karta UX-04/POLE-LINIOWE-WZORZEC: `SwitchBranch.stan_obiektu` (stan obiektu
+        # łącznika; test odcisku: `tests/enm/test_stan_obiektu_iloczyn.py`).
+        "branches": (
+            "screen_bonding",
+            "geometria_slupa",
+            "parametry_z_geometrii",
+            "normal_state",
+            "stan_obiektu",
+        ),
         # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
         # `tests/enm/test_hash_w5b_bays.py`).
         "bays": (
@@ -111,6 +119,10 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "wybor_bloku",
             "metadane_pochodzenia",
             "surge_arresters",
+            # Karta UX-04/POLE-LINIOWE-WZORZEC: `Bay.stan_obiektu` i `Bay.klasa_pola` (test
+            # odcisku: `tests/enm/test_hash_w5b_bays.py`).
+            "stan_obiektu",
+            "klasa_pola",
         ),
         "generators": (
             "dynamika",
@@ -120,6 +132,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "nastawy_zabezpieczen",
             "deklaracje_modulu",
         ),
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: rdzenie CT i uzwojenia VT jako listy
+        # (`Measurement.rdzenie` / `uzwojenia`; brak = tabliczka niedostarczona).
+        "measurements": ("rdzenie", "uzwojenia"),
     }
 
 

@@ -1,0 +1,1490 @@
+[
+  {
+    "nazwa": "z11_bez_klasy_generacja_i_odbior",
+    "ocena": {
+      "ajee_przyczyna": "za polem: 1 moduł(y) wytwarzania o mocy ≥ 200 kW, 1 odbiór(y) o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego)",
+      "ajee_rdzen_obecny": true,
+      "ajee_wymagany": true,
+      "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+      "klasa_oceny": "MIESZANE",
+      "klasa_przyjeta": true,
+      "klasa_z_sieci": "MIESZANE",
+      "klasa_zadeklarowana": null,
+      "linia_napowietrzna": false,
+      "moduly": [
+        {
+          "napiecie_kv": 15.0,
+          "p_kw": 1000.0,
+          "powod_pl": "moc 1000 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 15 kV < 110 kV → typ B",
+          "ref_id": "gen-pv",
+          "typ": "B"
+        }
+      ],
+      "niezgodnosci": [
+        {
+          "akcja_pl": "ustaw klasę pola z generacją — zestaw funkcji zostanie przeliczony bez SCO",
+          "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "kod": "pole.sco_w_polu_z_generacja",
+          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” (pole linii mieszanej (moduły wytwarzania i odbiorcy)) ma samoczynne częstotliwościowe odciążenie (SCO) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.7.1 pkt 1: SCO nie należy uruchamiać w liniach z jednostkami wytwórczymi."
+        }
+      ],
+      "oceny_funkcji": [
+        {
+          "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> (51) — nadprądowe zwłoczne — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 3",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "za polem nie ma linii napowietrznej — wymóg dotyczy linii napowietrznych i napowietrzno-kablowych",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) — funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "NAPOWIETRZNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 4; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 4; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji f< (81U) — podczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f< (81U) — podczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji f> (81O) — nadczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f> (81O) — nadczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U< (27) — podnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U< (27) — podnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 7",
+          "status": "NIEJEDNOZNACZNY",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+          "kod": "67",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 8",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
+          "status": "NIE_SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja niedopuszczalna w tej klasie pola jest zadeklarowana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium naruszone"
+          },
+          "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        }
+      ],
+      "odbiory": [
+        [
+          "odb-zaklad",
+          5000.0
+        ]
+      ]
+    }
+  },
+  {
+    "nazwa": "z11_1_dedykowane_z_odbiorem",
+    "ocena": {
+      "ajee_przyczyna": "za polem: 1 moduł(y) wytwarzania o mocy ≥ 200 kW, 1 odbiór(y) o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego)",
+      "ajee_rdzen_obecny": false,
+      "ajee_wymagany": true,
+      "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+      "klasa_oceny": "DEDYKOWANE_WYTWORCY",
+      "klasa_przyjeta": false,
+      "klasa_z_sieci": "MIESZANE",
+      "klasa_zadeklarowana": "DEDYKOWANE_WYTWORCY",
+      "linia_napowietrzna": false,
+      "moduly": [
+        {
+          "napiecie_kv": 15.0,
+          "p_kw": 1000.0,
+          "powod_pl": "moc 1000 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 15 kV < 110 kV → typ B",
+          "ref_id": "gen-pv",
+          "typ": "B"
+        }
+      ],
+      "niezgodnosci": [
+        {
+          "akcja_pl": "zmień klasę pola na mieszane albo przyłącz odbiory z pola odbiorczego",
+          "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "kod": "pole.odbiory_za_polem_dedykowanym",
+          "komunikat_pl": "Za pola „Pole liniowe GPZ 1.1” — pole dedykowane modułom wytwarzania — są odbiory (1): IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 dotyczy pola współpracującego wyłącznie z modułami wytwarzania (bez SPZ — odbiorcy nie mieliby samoczynnego ponownego załączenia)."
+        },
+        {
+          "akcja_pl": "wybierz wykonanie Z.11 (przekładnik prądowy z rdzeniem rozliczeniowym 0,2S)",
+          "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "kod": "pole.ajee_brak_rdzenia_rozliczeniowego",
+          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” wymaga pomiaru rozliczeniowego i analizatora jakości energii — za polem: 1 moduł(y) wytwarzania o mocy ≥ 200 kW, 1 odbiór(y) o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego) — a przekładnik prądowy pola nie ma rdzenia rozliczeniowego."
+        }
+      ],
+      "oceny_funkcji": [
+        {
+          "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> (51) — nadprądowe zwłoczne — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 2",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 3; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 3; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji f< (81U) — podczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 4",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f< (81U) — podczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji f> (81O) — nadczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 4",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f> (81O) — nadczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 4",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U< (27) — podnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U< (27) — podnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 6",
+          "status": "NIEJEDNOZNACZNY",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole dedykowane modułom wytwarzania: wynik niejednoznaczny — wymaga weryfikacji"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 (lista funkcji bez SPZ)",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+          "kod": "SPZE",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 (lista funkcji bez SPZ)",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje) — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 II.4.5.4.7.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 II.4.5.4.7.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        }
+      ],
+      "odbiory": [
+        [
+          "odb-zaklad",
+          5000.0
+        ]
+      ]
+    }
+  },
+  {
+    "nazwa": "z10_odbiorcze_z_generacja",
+    "ocena": {
+      "ajee_przyczyna": "za polem brak wytwórcy o mocy ≥ 200 kW i odbiorcy o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego)",
+      "ajee_rdzen_obecny": false,
+      "ajee_wymagany": false,
+      "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+      "klasa_oceny": "ODBIORCZE",
+      "klasa_przyjeta": false,
+      "klasa_z_sieci": "DEDYKOWANE_WYTWORCY",
+      "klasa_zadeklarowana": "ODBIORCZE",
+      "linia_napowietrzna": false,
+      "moduly": [
+        {
+          "napiecie_kv": 15.0,
+          "p_kw": 150.0,
+          "powod_pl": "moc 150 kW w przedziale [0,8; 200) kW (próg istotności NC RfG art. 5 ust. 2 lit. a i próg typu B wg WOS) przy napięciu przyłączenia 15 kV < 110 kV → typ A",
+          "ref_id": "gen-pv",
+          "typ": "A"
+        }
+      ],
+      "niezgodnosci": [
+        {
+          "akcja_pl": "ustaw klasę pola mieszane albo dedykowane wytwórcy i wykonanie Z.11.1 albo Z.11",
+          "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "kod": "pole.generacja_z_pola_odbiorczego",
+          "komunikat_pl": "Za pola „Pole liniowe GPZ 1.1” pracuje 1 moduł(y) wytwarzania, a pole ma klasę pole odbiorcze (bez modułów wytwarzania) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 dotyczy pola, do którego nie są przyłączone moduły wytwarzania. Pole z generacją wymaga klasy mieszanej albo dedykowanej i przekładnika napięciowego od strony linii (Z.11.1/Z.11)."
+        }
+      ],
+      "oceny_funkcji": [
+        {
+          "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> (51) — nadprądowe zwłoczne — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 3",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "za polem nie ma linii napowietrznej — wymóg dotyczy linii napowietrznych i napowietrzno-kablowych",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) — funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
+          },
+          "wymog": "NAPOWIETRZNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji f< (81U) — podczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 5",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f< (81U) — podczęstotliwościowe — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 6",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
+          },
+          "wymog": "DOPUSZCZALNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        }
+      ],
+      "odbiory": []
+    }
+  },
+  {
+    "nazwa": "z11_mieszane_zgodne",
+    "ocena": {
+      "ajee_przyczyna": "za polem: 1 moduł(y) wytwarzania o mocy ≥ 200 kW, 1 odbiór(y) o mocy > 4 MW (ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego)",
+      "ajee_rdzen_obecny": true,
+      "ajee_wymagany": true,
+      "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+      "klasa_oceny": "MIESZANE",
+      "klasa_przyjeta": false,
+      "klasa_z_sieci": "MIESZANE",
+      "klasa_zadeklarowana": "MIESZANE",
+      "linia_napowietrzna": false,
+      "moduly": [
+        {
+          "napiecie_kv": 15.0,
+          "p_kw": 1000.0,
+          "powod_pl": "moc 1000 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 15 kV < 110 kV → typ B",
+          "ref_id": "gen-pv",
+          "typ": "B"
+        }
+      ],
+      "niezgodnosci": [],
+      "oceny_funkcji": [
+        {
+          "co_oceniono": "obecność funkcji I> (51) — nadprądowe zwłoczne w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> (51) — nadprądowe zwłoczne",
+          "kod": "51",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> (51) — nadprądowe zwłoczne — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I>> (50) — nadprądowe zwarciowe (bezzwłoczne)",
+          "kod": "50",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I>> (50) — nadprądowe zwarciowe (bezzwłoczne) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Nie dotyczy",
+            "semantyka": "neutralna"
+          },
+          "funkcja_pl": "SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+          "kod": "79",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 3",
+          "status": "NIE_DOTYCZY",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "za polem nie ma linii napowietrznej — wymóg dotyczy linii napowietrznych i napowietrzno-kablowych",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) — funkcja wymagana w linii napowietrznej i napowietrzno-kablowej w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): nie dotyczy"
+          },
+          "wymog": "NAPOWIETRZNA"
+        },
+        {
+          "co_oceniono": "obecność funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+          "kod": "ZS",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 4; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "LRW (50BF) — lokalna rezerwa wyłącznikowa",
+          "kod": "50BF",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 4; II.4.5.4.7.1 pkt 3–4",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji LRW (50BF) — lokalna rezerwa wyłącznikowa — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "OBOWIAZKOWA"
+        },
+        {
+          "co_oceniono": "obecność funkcji f< (81U) — podczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f< (81U) — podczęstotliwościowe",
+          "kod": "81U",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f< (81U) — podczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji f> (81O) — nadczęstotliwościowe w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "f> (81O) — nadczęstotliwościowe",
+          "kod": "81O",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji f> (81O) — nadczęstotliwościowe — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "df/dt (81R) — szybkość zmian częstotliwości (ROCOF)",
+          "kod": "81R",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 5",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji df/dt (81R) — szybkość zmian częstotliwości (ROCOF) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U< (27) — podnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U< (27) — podnapięciowe (przekładniki od strony linii)",
+          "kod": "27",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U< (27) — podnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "U> (59) — nadnapięciowe (przekładniki od strony linii)",
+          "kod": "59",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji U> (59) — nadnapięciowe (przekładniki od strony linii) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Wynik niejednoznaczny — wymaga weryfikacji",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+          "kod": "NZ",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 7",
+          "status": "NIEJEDNOZNACZNY",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcji brak; operator może jej wymagać — rozstrzygają warunki przyłączenia",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): wynik niejednoznaczny — wymaga weryfikacji"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Brak wystarczającego dowodu",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+          "kod": "67",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": true,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 8",
+          "status": "BRAK_DOWODU",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "warunki przyłączenia operatora systemu dystrybucyjnego"
+            ],
+            "przyczyna_pl": "funkcja zadeklarowana; wymóg ustala operator w warunkach przyłączenia, których model nie zawiera",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): brak wystarczającego dowodu"
+          },
+          "wymog": "NA_ZADANIE_OSD"
+        },
+        {
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "kod": "SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        },
+        {
+          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
+          "kod": "SPZ/SCO",
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
+          "obecna": false,
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
+          "status": "SPELNIA",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
+            "zastrzezenia": [
+              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
+            ],
+            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+          },
+          "wymog": "ZAKAZANA"
+        }
+      ],
+      "odbiory": [
+        [
+          "odb-zaklad",
+          5000.0
+        ]
+      ]
+    }
+  }
+]

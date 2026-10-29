@@ -17,7 +17,11 @@ const centerSldOnElementMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = { element_ref: 'branch-1', catalog_namespace: 'KABEL_SN' };
-const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock };
+const snapshotState = {
+  error: null as string | null,
+  executeDomainOperation: executeDomainOperationMock,
+  snapshot: null as { branches: Array<{ ref_id: string; type: string }> } | null,
+};
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -47,6 +51,7 @@ describe('KreatorPrzypisaniaKatalogu — realna ścieżka', () => {
     appState.activeCaseId = 'case-1';
     context = { element_ref: 'branch-1', catalog_namespace: 'KABEL_SN' };
     snapshotState.error = null;
+    snapshotState.snapshot = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     selectElementMock.mockReset();
@@ -95,5 +100,46 @@ describe('KreatorPrzypisaniaKatalogu — realna ścieżka', () => {
     render(<KreatorPrzypisaniaKatalogu />);
     expect(screen.getByTestId('mvd-kreator-przypisanie-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  // Stan obiektu łącznika (zakaz gazów fluorowanych): iloczyn rodzaj elementu {łącznik, kabel,
+  // bezpiecznik} × przełącznik inwentaryzacji {zaznaczony, niezaznaczony}.
+  describe('inwentaryzacja aparatu zastanego', () => {
+    async function zapisz(): Promise<Record<string, unknown>> {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      await userEvent.type(screen.getByTestId('mvd-kreator-przypisanie-id'), 'sw-cb-zpue-rotoblok-24kv-630a');
+      await userEvent.click(screen.getByTestId('mvd-kreator-przypisanie-zapisz'));
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      return executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    }
+
+    it('łącznik + zaznaczona inwentaryzacja → stan_obiektu ISTNIEJACY w ładunku operacji', async () => {
+      context = { element_ref: 'sw-1', catalog_namespace: 'APARAT_SN' };
+      snapshotState.snapshot = { branches: [{ ref_id: 'sw-1', type: 'breaker' }] };
+      render(<KreatorPrzypisaniaKatalogu />);
+      await userEvent.click(screen.getByTestId('mvd-kreator-przypisanie-istniejacy'));
+      const payload = await zapisz();
+      expect(payload.stan_obiektu).toBe('ISTNIEJACY');
+      expect(kluczeSpozaKontraktu('assign_catalog_to_element', payload)).toEqual([]);
+    });
+
+    it('łącznik bez zaznaczenia → ładunek bez stanu (wymiana czyni łącznik projektowanym)', async () => {
+      context = { element_ref: 'sw-1', catalog_namespace: 'APARAT_SN' };
+      snapshotState.snapshot = { branches: [{ ref_id: 'sw-1', type: 'switch' }] };
+      render(<KreatorPrzypisaniaKatalogu />);
+      expect(screen.getByTestId('mvd-kreator-przypisanie-istniejacy')).not.toBeChecked();
+      const payload = await zapisz();
+      expect(payload).not.toHaveProperty('stan_obiektu');
+    });
+
+    it.each([
+      ['kabel', 'cable'],
+      ['bezpiecznik', 'fuse'],
+    ])('%s → brak przełącznika (backend przyjmuje stan wyłącznie dla łącznika)', (_nazwa, typ) => {
+      context = { element_ref: 'el-1' };
+      snapshotState.snapshot = { branches: [{ ref_id: 'el-1', type: typ }] };
+      render(<KreatorPrzypisaniaKatalogu />);
+      expect(screen.queryByTestId('mvd-kreator-przypisanie-istniejacy')).toBeNull();
+    });
   });
 });

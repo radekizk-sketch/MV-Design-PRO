@@ -29,6 +29,7 @@ from network_model.catalog.bay_templates import (
     FIELD_TYPES_WITHOUT_TEMPLATE,
     enumerate_canonical_configurations,
 )
+from network_model.catalog.rodzaje_aparatury import porty_toru_pola
 
 from .registry import list_reference_packs
 
@@ -158,7 +159,9 @@ def producer_cell_primary_devices(
         elif kind == "SURGE_ARRESTER":
             entry["earthing_role"] = "surge_ground"
         devices.append(entry)
-    return devices
+    # Porty aparatów z sekwencji celki (karta UX-04/POLE-LINIOWE-WZORZEC) — ta sama reguła co
+    # każda droga budowy pola (`rodzaje_aparatury.porty_toru_pola`).
+    return porty_toru_pola(devices)
 
 
 def _has_main_path(devices: list[dict[str, Any]]) -> bool:

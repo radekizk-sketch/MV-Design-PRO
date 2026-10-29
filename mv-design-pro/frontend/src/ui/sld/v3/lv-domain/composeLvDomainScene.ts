@@ -628,7 +628,7 @@ export function composeLvDomainScene(
           busRef,
           accuracyClass: m.accuracy_class,
           burdenVa: m.burden_va,
-          ctCores: m.ct_cores,
+          ctCores: m.rdzenie?.length ?? null,
           ctArrangement: m.ct_arrangement,
         },
       });

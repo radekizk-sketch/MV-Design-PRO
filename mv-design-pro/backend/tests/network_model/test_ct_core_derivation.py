@@ -71,7 +71,9 @@ class TestAlfZKlasy:
 class TestKatalogReferencyjny:
     def test_kazdy_typ_wystawia_rodzaj_rdzenia(self) -> None:
         typy = get_default_mv_catalog().list_ct_types()
-        assert len(typy) == 12  # pełny inwentarz katalogu referencyjnego (pomiar)
+        # Pełny inwentarz katalogu referencyjnego (pomiar 2026-10-29: 14 = 12 + 2 typy ogólne OSD
+        # pól liniowych GPZ wg ENEA Z.10/Z.11.1 i Z.11, karta UX-04/POLE-LINIOWE-WZORZEC).
+        assert len(typy) == 14
 
         for typ in typy:
             d = typ.to_dict()
@@ -80,15 +82,17 @@ class TestKatalogReferencyjny:
             assert d["application"] in ("protection", "metering")
 
     def test_rozklad_rdzeni_w_katalogu_referencyjnym(self) -> None:
-        # POMIAR: 9 rdzeni zabezpieczeniowych (2× 5P10, 6× 5P20, 1× 10P10) i 3 pomiarowe
-        # (3× 0.5). Liczba ma znaczenie inżynierskie: to WSZYSTKIE typy, na których może
-        # dziś stanąć oś zabezpieczeń.
+        # POMIAR 2026-10-29: 10 typów zabezpieczeniowych (2× 5P10, 7× 5P20, 1× 10P10) i 4 pomiarowe
+        # (3× 0.5, 1× 0,2S). Liczba ma znaczenie inżynierskie: to WSZYSTKIE typy, na których może
+        # dziś stanąć oś zabezpieczeń. Typ ogólny OSD Z.11 (200-400/5/5/5) jest pomiarowy na
+        # poziomie typu (klasa rdzenia I — rozliczeniowy 0,2S); jego trzy rdzenie, w tym 5P20 do
+        # zabezpieczeń, niesie lista `rdzenie` (przekladniki.py) — nie pole `application`.
         typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
         zabezpieczeniowe = [t for t in typy if t["application"] == "protection"]
         pomiarowe = [t for t in typy if t["application"] == "metering"]
 
-        assert len(zabezpieczeniowe) == 9
-        assert len(pomiarowe) == 3
+        assert len(zabezpieczeniowe) == 10
+        assert len(pomiarowe) == 4
         assert all(t["accuracy_limit_factor"] is not None for t in zabezpieczeniowe)
         assert all(t["accuracy_limit_factor"] is None for t in pomiarowe)
 
@@ -135,7 +139,7 @@ class TestDoborCieplnyIDynamiczny:
         from network_model.catalog.repository import get_default_mv_catalog
 
         typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
-        assert len(typy) == 12
+        assert len(typy) == 14  # pomiar 2026-10-29 (patrz `test_kazdy_typ_wystawia_rodzaj_rdzenia`)
         bez_ith = [t["id"] for t in typy if t["ith_ka_1s"] is None]
         bez_idyn = [t["id"] for t in typy if t["idyn_ka_peak"] is None]
         assert bez_ith == [], f"typy bez pradu cieplnego: {bez_ith}"

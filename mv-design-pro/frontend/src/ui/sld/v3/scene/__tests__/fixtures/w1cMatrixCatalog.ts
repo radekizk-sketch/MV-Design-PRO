@@ -51,6 +51,8 @@ interface CatalogDevice {
   readonly render_variant?: string;
   readonly designation?: string;
   readonly earthing_role?: string;
+  /** Porty aparatu (karta UX-04): węzły pola, na których leżą zaciski — tor z portów. */
+  readonly ports?: BayPrimaryDevice['ports'];
 }
 interface CatalogEntry {
   readonly config_ref: string;
@@ -138,6 +140,11 @@ function devicesForCase(entry: CatalogEntry, state: W1cState | null): BayPrimary
     }
     if (d.earthing_role) {
       device.earthing_role = d.earthing_role as BayPrimaryDevice['earthing_role'];
+    }
+    // UX-04: porty z katalogu 1:1 (ta sama dana, którą `set_bay_equipment` zapisuje w modelu) —
+    // macierz ćwiczy tor z portów, nie tylko kolejność wg `placement`.
+    if (d.ports && d.ports.length > 0) {
+      device.ports = d.ports;
     }
     if (state !== null && index === mainIndex) {
       device.switch_state = switchState(state);

@@ -12,6 +12,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.catalog.gazy_fluorowane import AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL
 from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
@@ -32,8 +33,14 @@ from network_model.pochodne.pasma_napieciowe import (
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
+from .gaz_fluorowany_pola import (
+    KOD_WALIDATORA_GAZU_FLUOROWANEGO,
+    RODZAJE_GALEZI_LACZENIOWYCH,
+    naruszenia_gazu_fluorowanego,
+)
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
+from .katalog_projektu import kontekst_katalogu
 from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
@@ -349,6 +356,11 @@ class ENMValidator:
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
         self._check_rodzaj_stacji(enm, issues)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany w polu, które nie jest istniejące (W045)
+        self._check_gaz_fluorowany(enm, issues)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: szablon pola niezgodny z polem (W046–W048)
+        self._check_zgodnosc_szablonu_pola(enm, issues)
+        self._check_pole_liniowe_gpz(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -1243,7 +1255,7 @@ class ENMValidator:
                     message_pl=(
                         f"{opis_obiektu(bay, 'Pole')}: uziemnik "
                         f"({_oznaczenia_aparatow(closed_es)}) ZAMKNIĘTY przy "
-                        f"jednocześnie zamkniętym łączniku toru głównego "
+                        f"jednocześnie zamkniętym łączniku toru z nim skojarzonym "
                         f"({_oznaczenia_aparatow(closed_main)}) — niedozwolona "
                         f"kombinacja stanów (uziemienie toru pod napięciem, blokada "
                         f"rozdzielnicy)."
@@ -1977,6 +1989,134 @@ class ENMValidator:
                         fix_action=FixAction(
                             action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=rodzaj.station_ref,
+                        ),
+                    )
+                )
+
+    def _check_gaz_fluorowany(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W045: gaz fluorowany (SF₆) w polu albo aparacie pola, który nie jest istniejący.
+
+        Ta sama reguła co strażnik operacji domenowych (`enm.gaz_fluorowany_pola` →
+        `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`): operacje nie
+        wprowadzają NOWEGO naruszenia, więc walidator widzi rekordy zastane (stan obiektu
+        nieustalony — zapis sprzed atrybutu) z rodziną albo aparatem z gazem fluorowanym.
+        Poziom IMPORTANT: obliczenia sieci są poprawne, niezgodny jest wybór wyrobu
+        (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a). Akcja: pole istniejące w sieci —
+        oznaczenie stanu (`set_object_state`), pole projektowane — wybór wykonania bez gazów
+        fluorowanych na karcie pola.
+        """
+        # Nośnik gazu jest tylko w polu z rodziną, z aparatem głównym albo z aparatem
+        # wyposażenia z pozycją katalogu — tylko te rekordy trafiają do reguły (walidator biegnie
+        # po każdej operacji; bez zrzutu całego modelu). Łącznik z pozycją katalogu (nośnik
+        # ŁĄCZNIK) czyta stan z aparatu pola, który go opisuje, albo z pola, do którego należy
+        # (`stan_obiektu_lacznika`) — wtedy reguła dostaje wszystkie pola.
+        laczniki = [
+            galaz.model_dump(mode="json")
+            for galaz in enm.branches
+            if galaz.type in RODZAJE_GALEZI_LACZENIOWYCH and galaz.catalog_ref
+        ]
+        pola_z_wyrobem = [
+            pole.model_dump(mode="json")
+            for pole in enm.bays
+            if laczniki
+            or pole.switchgear_family_ref
+            or pole.apparatus_catalog_ref
+            or any(a.catalog_ref for a in pole.primary_devices)
+        ]
+        if not pola_z_wyrobem and not laczniki:
+            return
+        with kontekst_katalogu(enm):
+            naruszenia = naruszenia_gazu_fluorowanego(
+                {"bays": pola_z_wyrobem, "branches": laczniki}
+            )
+        for naruszenie in naruszenia:
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_GAZU_FLUOROWANEGO,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref or naruszenie.element_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Jeśli obiekt istnieje w sieci, oznacz go jako istniejący na karcie pola "
+                        f"albo łącznika; jeśli jest projektowany — "
+                        f"{AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=naruszenie.bay_ref or naruszenie.element_ref,
+                    ),
+                )
+            )
+
+    def _check_zgodnosc_szablonu_pola(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W046–W048: szablon pola niezgodny z polem (`enm.zgodnosc_szablonu_pola`).
+
+        W046 — wykonanie łączników niedopuszczone w izolacji rodziny rozdzielnicy (ENEA Zeszyt 1,
+        §13); W047 — szablon pola rozdzielni GPZ w polu stacji spoza GPZ; W048 — klasa pola
+        z generacją przy wykonaniu bez przekładnika napięciowego od strony linii (IRiESD
+        II.4.5.4.2.2–2.3). Ta sama reguła co strażnik operacji i kroku kreatora: operacje nie
+        wprowadzają NOWEJ niezgodności, więc walidator widzi rekordy zastane (zapis sprzed reguły,
+        import). Poziom IMPORTANT: obliczenia sieci są poprawne (aparaty pola nie mają
+        impedancji), niezgodny jest opis pola.
+        """
+        pola = [pole.model_dump(mode="json") for pole in enm.bays if pole.bay_template_ref]
+        if not pola:
+            return
+        # Import LENIWY: reguła czyta szablony pól (`bay_templates`), a te — kanon ról pola
+        # z pakietu `enm`, którego `__init__` importuje ten walidator (cykl przy imporcie
+        # szablonów jako pierwszych).
+        from .zgodnosc_szablonu_pola import (
+            AKCJA_NAPRAWCZA_SZABLONU_PL,
+            KODY_WALIDATORA_SZABLONU,
+            niezgodnosci_szablonu,
+        )
+
+        for niezgodnosc in niezgodnosci_szablonu({"bays": pola}):
+            akcja = AKCJA_NAPRAWCZA_SZABLONU_PL[niezgodnosc.kod]
+            issues.append(
+                ValidationIssue(
+                    code=KODY_WALIDATORA_SZABLONU[niezgodnosc.kod],
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=niezgodnosc.komunikat_pl,
+                    element_refs=[niezgodnosc.bay_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=f"{akcja[0].upper()}{akcja[1:]}.",
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=niezgodnosc.bay_ref
+                    ),
+                )
+            )
+
+    def _check_pole_liniowe_gpz(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W049–W053: pole liniowe GPZ niezgodne z klasą i siecią za polem
+        (`enm.pole_liniowe_gpz`, IRiESD ENEA Operator II.4.5.4.2, ENEA Zeszyt 1 Z.11).
+
+        W049 — generacja zasilana z pola odbiorczego; W050 — odbiory za polem dedykowanym
+        wytwórcy; W051 — SCO w polu z generacją; W052 — SPZ w polu dedykowanym; W053 — brak
+        rdzenia rozliczeniowego przy wymaganym pomiarze AJEE. Poziom IMPORTANT: obliczenia
+        sieci są poprawne, niezgodny jest opis pola (funkcje, wykonanie, klasa)."""
+        if not any(pole.gpz_section_id for pole in enm.bays):
+            return
+        from .pole_liniowe_gpz import KODY_WALIDATORA_POLA_LINIOWEGO, oceny_pol_liniowych
+
+        for ocena in oceny_pol_liniowych(enm.model_dump(mode="json")):
+            for niezgodnosc in ocena.niezgodnosci:
+                akcja = niezgodnosc.akcja_pl
+                issues.append(
+                    ValidationIssue(
+                        code=KODY_WALIDATORA_POLA_LINIOWEGO[niezgodnosc.kod],
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=niezgodnosc.komunikat_pl,
+                        element_refs=[niezgodnosc.bay_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=f"{akcja[0].upper()}{akcja[1:]}.",
+                        fix_action=FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT", element_ref=niezgodnosc.bay_ref
                         ),
                     )
                 )

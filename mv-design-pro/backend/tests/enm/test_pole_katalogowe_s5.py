@@ -70,8 +70,11 @@ KOD_NIEZGODNOSCI = "sn.pole_katalogowe_niezgodne"
 
 #: Rodzina modułowa 15 kV (fikstura sieci jest siecią 15 kV) z polem
 #: transformatorowym (wyłącznik) i polem potrzeb własnych (bezpieczniki).
-POLE_MODULARNE_WYLACZNIK = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
-POLE_MODULARNE_BEZPIECZNIKI = "ZPUE_WLOSZCZOWA__ROTOBLOK__AUX"
+#: Karta UX-04/POLE-LINIOWE-WZORZEC: pole budowane operacją jest PROJEKTOWANE, a pole
+#: projektowane nie może mieć gazu fluorowanego (rozporządzenie (UE) 2024/573, art. 13 ust. 9)
+#: — Rotoblok z SF₆ zastąpił Rotoblok AIR (izolacja i gaszenie w powietrzu).
+POLE_MODULARNE_WYLACZNIK = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR__TRANSFORMER"
+POLE_MODULARNE_BEZPIECZNIKI = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR__AUX"
 
 #: Bloki fabryczne ABB SafeRing różniące się WYŁĄCZNIE aparatem jednostki
 #: transformatorowej — to są dwa różne wyroby (§3), więc pole jednostki CCF
@@ -79,6 +82,14 @@ POLE_MODULARNE_BEZPIECZNIKI = "ZPUE_WLOSZCZOWA__ROTOBLOK__AUX"
 BLOK_RMU_BEZPIECZNIKI = "ABB__SAFERING__CCF"
 BLOK_RMU_WYLACZNIK = "ABB__SAFERING__CCV"
 JEDNOSTKA_TRANSFORMATOROWA = 3
+
+#: Bloki fabryczne bez gazów fluorowanych dla ścieżki OPERACJI (pole projektowane — SafeRing
+#: z SF₆ jest dopuszczony wyłącznie w polu istniejącym, więc `add_sn_bay` go odmawia; plan
+#: katalogowy CCF/CCV wyżej sprawdza `rozwiaz_plan_pola` bez operacji). ZPUE TPM AIR: jednostka
+#: transformatorowa T (rozłącznik z bezpiecznikami) i jednostka wyłącznikowa W.
+BLOK_BEZ_GAZU_BEZPIECZNIKI = "ZPUE_WLOSZCZOWA__TPM_AIR__LT"
+BLOK_BEZ_GAZU_WYLACZNIK = "ZPUE_WLOSZCZOWA__TPM_AIR__LW"
+JEDNOSTKA_GLOWNA_BLOKU_BEZ_GAZU = 2
 
 #: Blok fabryczny spreparowany na potrzeby testu niezgodności: jednostka żąda
 #: ogranicznika przepięć, którego słownik aparatów rodziny SafeRing nie zna.
@@ -180,25 +191,25 @@ PRZYPADKI: tuple[Przypadek, ...] = (
         },
     ),
     Przypadek(
-        opis_pl="Jednostka bloku SafeRing CCF — rozłącznik z bezpiecznikami",
+        opis_pl="Jednostka bloku TPM AIR T — rozłącznik z bezpiecznikami",
         tor="BLOK_RMU",
         zgodnosc="zgodna",
         aparat_glowny="bezpieczniki",
         payload={
-            "factory_configuration_ref": BLOK_RMU_BEZPIECZNIKI,
-            "factory_unit_index": JEDNOSTKA_TRANSFORMATOROWA,
+            "factory_configuration_ref": BLOK_BEZ_GAZU_BEZPIECZNIKI,
+            "factory_unit_index": JEDNOSTKA_GLOWNA_BLOKU_BEZ_GAZU,
         },
         oczekiwany_aparat="FUSE",
         oczekiwany_typ_galezi="switch",
     ),
     Przypadek(
-        opis_pl="Jednostka bloku SafeRing CCV — wyłącznik próżniowy",
+        opis_pl="Jednostka bloku TPM AIR W — wyłącznik próżniowy",
         tor="BLOK_RMU",
         zgodnosc="zgodna",
         aparat_glowny="wylacznik",
         payload={
-            "factory_configuration_ref": BLOK_RMU_WYLACZNIK,
-            "factory_unit_index": JEDNOSTKA_TRANSFORMATOROWA,
+            "factory_configuration_ref": BLOK_BEZ_GAZU_WYLACZNIK,
+            "factory_unit_index": JEDNOSTKA_GLOWNA_BLOKU_BEZ_GAZU,
         },
         oczekiwany_aparat="CB",
         oczekiwany_typ_galezi="breaker",
@@ -477,7 +488,10 @@ def test_odwzorowanie_aparatu_jest_zlozeniem_a_nie_druga_lista() -> None:
 
 @pytest.mark.parametrize(
     "apparatus_kind",
-    ["voltage_indicator", "protection_relay", "meter", "busbar", "bus_coupler", "interlock"],
+    # Wskaźnik napięcia ma od UX-04/POLE-LINIOWE-WZORZEC rodzaj w modelu
+    # (``VOLTAGE_INDICATOR``, pozycja Z.10 „pojemnościowy wskaźnik napięcia") — jego
+    # odwzorowanie przypina ``tests/enm/test_pole_liniowe_gpz_szablony.py``.
+    ["protection_relay", "meter", "busbar", "bus_coupler", "interlock"],
 )
 def test_aparat_bez_odpowiednika_w_modelu_jest_twardym_bledem(apparatus_kind: str) -> None:
     """Aparat, którego model nie reprezentuje, NIE jest po cichu pomijany (§5).
@@ -739,3 +753,25 @@ def test_kanoniczny_szablon_pola_zachowuje_dotychczasowa_sciezke() -> None:
     ]
     # Ścieżka kanoniczna NIE dorabia referencji katalogowej, której nie ma.
     assert all(aparat.get("catalog_ref") is None for aparat in pole["primary_devices"])
+
+
+def test_oznaczenie_kanoniczne_aparatu_liczy_tylko_tor_glowny_szablonow() -> None:
+    """Karta UX-04: aparaty odgałęzienia przekładnika napięciowego (Q5 → Q51 → GK1 → T3 pól
+    Z.11.1 / Z.11) nie są kanonem oznaczenia aparatu, który dokłada jednostka bloku fabrycznego.
+    Iniekcja (pomiar 2026-10-29): bez filtra toru głównego uziemnik, głowica i przekładnik
+    napięciowy wypadały z tablicy i ten plik dawał błąd budowy pól bloków z uziemnikiem."""
+    from enm.pole_katalogowe import OZNACZENIE_KANONICZNE_APARATU
+    from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
+
+    assert OZNACZENIE_KANONICZNE_APARATU["earthing_switch"] == "Q9"
+    assert OZNACZENIE_KANONICZNE_APARATU["cable_head"] == "GK"
+    assert OZNACZENIE_KANONICZNE_APARATU["voltage_transformer"] == "T2"
+    # Odgałęzienia istnieją w rejestrze (test nie jest pusty z braku danych) i mają INNE
+    # oznaczenia niż kanon toru głównego.
+    odgalezienia = {
+        (a.kind, a.designation_q)
+        for s in BAY_TEMPLATE_REGISTRY.values()
+        for a in s.devices
+        if a.odgalezienie is not None
+    }
+    assert {("ES", "Q51"), ("CABLE_HEAD", "GK1"), ("VT", "T3")} <= odgalezienia

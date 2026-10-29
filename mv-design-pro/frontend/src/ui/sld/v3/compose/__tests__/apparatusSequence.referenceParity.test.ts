@@ -25,6 +25,8 @@ import {
   referenceProfileIdForFieldRole,
 } from '../../../reference/referenceProfiles';
 import {
+  SYMBOL_QET_RODZAJU,
+  WARIANT_RYSUNKU_QET,
   planApparatusSymbolIds,
   resolveBayApparatusSymbolIds,
   symbolIdForPrimaryDeviceKind,
@@ -130,6 +132,21 @@ describe('parytet mapowania kind→symbol z pakietem iec60617', () => {
         symbolIdForPrimaryDeviceKind(entry.kind),
         `kind ${entry.kind}: mapowanie frontendu ≠ pakiet iec60617`,
       ).toBe(entry.frontend_symbol_id);
+    }
+  });
+
+  it('SYMBOL_QET_RODZAJU ≡ `frontend_symbol_id_qet` pakietu iec60617 (wariant rysunku QET, karta UX-04)', () => {
+    const zPakietu = Object.fromEntries(
+      IEC60617_PACK.symbol_map
+        .filter((entry) => entry.frontend_symbol_id_qet != null)
+        .map((entry) => [entry.kind, entry.frontend_symbol_id_qet]),
+    );
+    expect(zPakietu).toEqual(SYMBOL_QET_RODZAJU);
+    for (const entry of IEC60617_PACK.symbol_map) {
+      expect(
+        symbolIdForPrimaryDeviceKind(entry.kind, WARIANT_RYSUNKU_QET),
+        `kind ${entry.kind}: wariant QET frontendu ≠ pakiet iec60617`,
+      ).toBe(entry.frontend_symbol_id_qet ?? entry.frontend_symbol_id);
     }
   });
 });

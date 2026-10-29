@@ -103,7 +103,7 @@ async function wstawLacznikNormalnieOtwarty(
     insert_at: { mode: 'RATIO', value: 0.5 },
     switch_type: 'ROZLACZNIK',
     switch_name: nazwa,
-    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-ogolny-prozniowy-24kv-630a'),
   });
   const lacznik = (op.snapshot?.branches ?? []).find((b) => b.name === nazwa)?.ref_id;
   expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();

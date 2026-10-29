@@ -17,6 +17,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
         "id": "d31902c7-6b3e-54c1-b1fc-15393a93a5a2",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "field_status": "READY_FOR_TRUNK",
@@ -35,6 +36,7 @@
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -423,7 +425,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7b73b0406300e378c179898b74acd8d9653054d9d73d6d7efcc3574805e1f040",
+      "hash_sha256": "6e5a3244d06741eff48e26563bbdb832d7dfa76f56dbc9e95847e1da7ed2365f",
       "name": "Drogi operacji budowy",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"

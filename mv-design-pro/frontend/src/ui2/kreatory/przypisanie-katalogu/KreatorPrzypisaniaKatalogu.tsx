@@ -5,6 +5,11 @@
  * `assign_catalog_to_element`. Przestrzeń katalogową bierze z kontekstu, a gdy jej brak —
  * backend wyznacza ją z typu elementu (bez fabrykacji po stronie UI). ZERO fizyki w UI:
  * materializację parametrów znamionowych z katalogu wykonuje backend.
+ *
+ * Łącznik (gałąź łączeniowa): wymiana pozycji czyni go projektowanym, chyba że projektant
+ * zaznaczy inwentaryzację aparatu zastanego — wtedy operacja niesie `stan_obiektu: 'ISTNIEJACY'`
+ * (pole operacji `assign_catalog_to_element`; backend przyjmuje je wyłącznie dla łącznika, więc
+ * przełącznik pojawia się wyłącznie dla łącznika). Reguła gazu fluorowanego — tylko w backendzie.
  */
 
 import { useCallback, useState } from 'react';
@@ -15,6 +20,7 @@ import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalog
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ElementType } from '../../../ui/types';
+import { isSwitchBranch } from '../../../types/enm';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -23,6 +29,7 @@ import {
   KreatorSekcja,
   KreatorSiatka,
   PanelTeorii,
+  PolePrzelacznikBinarny,
   PoleTekstowe,
   RzadWartosci,
   useSelekcjaPoOperacji,
@@ -48,6 +55,12 @@ export function KreatorPrzypisaniaKatalogu() {
   const [catalogItemId, setCatalogItemId] = useState(readString(context?.catalog_item_id));
   const [wersja, setWersja] = useState(readString(context?.catalog_item_version));
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  const [istniejacy, setIstniejacy] = useState(false);
+  // Łącznik = gałąź łączeniowa modelu (`isSwitchBranch` — rodzaje `RODZAJE_GALEZI_LACZENIOWYCH`
+  // backendu; bezpiecznik nie ma komory gaszeniowej z gazem i nie niesie stanu obiektu).
+  const jestLacznik = useSnapshotStore((s) =>
+    (s.snapshot?.branches ?? []).some((b) => b.ref_id === elementRef && isSwitchBranch(b)),
+  );
 
   const brakElementu = !elementRef;
   const kompletne = Boolean(elementRef && catalogItemId.trim());
@@ -77,6 +90,7 @@ export function KreatorPrzypisaniaKatalogu() {
       payload.catalog_item_id = catalogItemId.trim();
       if (wersja.trim()) payload.catalog_item_version = wersja.trim();
     }
+    if (jestLacznik && istniejacy) payload.stan_obiektu = 'ISTNIEJACY';
     setBladGlobalny(null);
     try {
       const response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', payload);
@@ -93,7 +107,7 @@ export function KreatorPrzypisaniaKatalogu() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, catalogItemId, catalogNamespace, closeForm, elementRef, executeDomainOperation, fallbackType, selekcjaPoOperacji, wersja]);
+  }, [activeCaseId, catalogItemId, catalogNamespace, closeForm, elementRef, executeDomainOperation, fallbackType, istniejacy, jestLacznik, selekcjaPoOperacji, wersja]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: elementRef || 'Brak' },
@@ -153,6 +167,15 @@ export function KreatorPrzypisaniaKatalogu() {
           placeholder={T.wersjaPlaceholder}
           testid="mvd-kreator-przypisanie-wersja"
         />
+        {jestLacznik ? (
+          <PolePrzelacznikBinarny
+            etykieta={T.istniejacyEtykieta}
+            opis={T.istniejacyOpis}
+            wlaczone={istniejacy}
+            onZmiana={setIstniejacy}
+            testid="mvd-kreator-przypisanie-istniejacy"
+          />
+        ) : null}
         <PanelTeorii
           tytul={T.teoriaTytul}
           opis={T.teoriaOpis}

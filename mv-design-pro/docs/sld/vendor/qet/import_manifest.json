@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://github.com/qelectrotech/qelectrotech-elements",
+  "upstreamCommit": "14a4727f70856d8e79de59a353fa3c52d3e90e21",
+  "license": "CC-BY-3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "The QElectroTech team",
+  "wyjscie": "frontend/src/ui/sld/v3/cad/qet/qetPoleSn.ts",
+  "skala": 0.4,
+  "rasterZaciskowQet": 20,
+  "uwaga": "Skala 0,4 przenosi raster zacisków QET (20 jednostek) na raster schematu GRID = 8. Zaciski każdego symbolu leżą w rasterze 20 jednostek QET, więc po imporcie leżą na siatce schematu. Rysunek źródłowy przedstawia położenie OTWARTE łącznika; położenia zamknięte i uziemione powstają WYŁĄCZNIE przez obrót prymitywów noża wokół przegubu na kierunek styku stałego (reguła importera, kąty w wyjściu).",
+  "elementy": [
+    {
+      "id": "en_60617_07_13_05",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt",
+      "upstreamBlobSha": "8df98b9b5c2783ea2413b406bef53ded66da628a",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_06",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt",
+      "upstreamBlobSha": "58a1758ff8fda670013b32a3a2068633223b4e9c",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_07",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt",
+      "upstreamBlobSha": "cee8fc840450295927176ac3b938eeded5f2fcd5",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_08",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt",
+      "upstreamBlobSha": "ca96486920218370b3afffb17a0ae8bfe3f6414c",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_21_09",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_21/en_60617_07_21_09.elmt",
+      "upstreamBlobSha": "8079d0cde1116a3efa45064a5211b3cbf92ba2e0",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_15_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt",
+      "upstreamBlobSha": "4c1c408e1e15c304f08c67cb03a5456b941bc614",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_06_09_10",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_09/en_60617_06_09_10.elmt",
+      "upstreamBlobSha": "37de2decfe2a496cd014a1dd411a5e8d52e990ca",
+      "teksty": {
+        "Form 1 / Forme 1": "pomin"
+      }
+    },
+    {
+      "id": "en_60617_06_13_10",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_10.elmt",
+      "upstreamBlobSha": "4742b0a5097196c28ac3c07e30ce427a95a36ad2",
+      "teksty": {
+        "Form 1 / Forme 1": "pomin",
+        "3": "zachowaj"
+      }
+    },
+    {
+      "id": "en_60617_06_13_01A",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt",
+      "upstreamBlobSha": "a883a2e6daec80c241594505c96295c917884adc",
+      "teksty": { "Form 1 / Forme 1": "pomin" }
+    },
+    {
+      "id": "en_60617_03_04_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_03/en_60617_03_04/en_60617_03_04_01.elmt",
+      "upstreamBlobSha": "1a6cf258181f1205b6d9cb95262b7335c829b7a7",
+      "teksty": {}
+    },
+    {
+      "id": "hv_uziemnik",
+      "sourcePath": "10_electric/10_allpole/450_high_voltage/interrupteur_sectionneur_de_terre.elmt",
+      "upstreamBlobSha": "addcaa782655cfe3d85a8f285cb48ec02194fee5",
+      "teksty": {}
+    },
+    {
+      "id": "hv_wskaznik_pojemnosciowy",
+      "sourcePath": "10_electric/10_allpole/450_high_voltage/signal_capacitif.elmt",
+      "upstreamBlobSha": "fa4f0d85eabef67c8dfcf4cd102fdba3bc7c91d4",
+      "teksty": {}
+    }
+  ],
+  "symbole": [
+    {
+      "symbolId": "qetBreaker",
+      "namePl": "Wyłącznik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_13_05", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "cele": { "closed": [0, -20] } },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ]
+    },
+    {
+      "symbolId": "qetDisconnector",
+      "namePl": "Odłącznik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "cele": { "closed": [0, -20] } },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ]
+    },
+    {
+      "symbolId": "qetLoadBreakSwitch",
+      "namePl": "Rozłącznik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_13_08", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "cele": { "closed": [0, -24] } },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ]
+    },
+    {
+      "symbolId": "qetFuseSwitch",
+      "namePl": "Rozłącznik z bezpiecznikami",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_21_09", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": { "skladnik": 0, "prymitywy": [1, 3, 4, 5, 6], "przegub": [0, 10], "cele": { "closed": [0, -13] } },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -30] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 30] }
+      ]
+    },
+    {
+      "symbolId": "qetEarthSwitch",
+      "namePl": "Uziemnik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "hv_uziemnik", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": { "skladnik": 0, "prymitywy": [3], "przegub": [0, 0], "cele": { "closed": [0, -10] } },
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -20] }]
+    },
+    {
+      "symbolId": "qetThreePositionSwitch",
+      "namePl": "Łącznik trójpołożeniowy",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_07 (odłącznik dwukierunkowy) + en_60617_02_15_01 (uziemienie) na zestyku prawym",
+      "skladniki": [
+        { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_15_01", "obrot": -90, "przesuniecie": [35, -40] }
+      ],
+      "noz": {
+        "skladnik": 0,
+        "prymitywy": [1],
+        "przegub": [0, 2],
+        "cele": { "closed": [-20, -20], "earthed": [20, -20] },
+        "nieznanyJakOtwarty": true
+      },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [-20, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ],
+      "zaciskiWewnetrzne": [
+        { "skladnik": 0, "zacisk": [20, -40], "z": { "skladnik": 1, "zacisk": [0, -15] }, "powod": "zestyk uziemiający łącznika połączony z symbolem uziemienia — nie jest portem pola" }
+      ],
+      "portyWewnatrzGabarytu": {
+        "top": "zacisk szynowy QET leży 20 jednostek QET pod górną krawędzią gabarytu, bo symbol uziemienia na zestyku prawym sięga 10 jednostek nad poziom zacisków (obrys całego symbolu musi mieścić się w gabarycie)"
+      },
+      "uwaga": "Nóż w rysunku źródłowym stoi w osi (położenie odłączone). Położenie zamknięte = obrót na zestyk szynowy (lewy), uziemione = obrót na zestyk uziemiający (prawy); przegub w środku okręgu osi noża. Uziemiana jest strona wyłącznika (zacisk dolny, wspólny z nożem) — ENEA Zeszyt 1, Z.10."
+    },
+    {
+      "symbolId": "qetCurrentTransformer",
+      "namePl": "Przekładnik prądowy",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_06_09_10", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": null,
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [-30, -60] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [-30, 0] }
+      ]
+    },
+    {
+      "symbolId": "qetCoreBalanceCt",
+      "namePl": "Przekładnik Ferrantiego",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": null,
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 40] }
+      ],
+      "uwaga": "Element EN 60617 06-13-10: przekładnik z trzema przewlekanymi przewodami pierwotnymi (znak „3”) — trzy żyły kabla przechodzą przez rdzeń pierścieniowy. Przewód przechodzi przez symbol bez przerwy toru (port ENM „obwod”)."
+    },
+    {
+      "symbolId": "qetVoltageTransformer",
+      "namePl": "Przekładnik napięciowy",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_06_13_01A", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": null,
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -40] }],
+      "zaciskiPozaTorem": [
+        { "skladnik": 0, "zacisk": [0, 71], "powod": "zacisk uzwojenia wtórnego — obwody wtórne nie należą do toru pierwotnego pola; przekładnik napięciowy jest zakończeniem odgałęzienia (port ENM „przylacze”)" }
+      ],
+      "uwaga": "Element EN 60617 06-13-01 (forma 1): dwa okręgi uzwojeń. Zacisk pierwotny u góry jest jedynym portem symbolu; zacisk wtórny nie jest portem (nie ma przewodu toru), a jego doprowadzenie jest częścią rysunku źródła."
+    },
+    {
+      "symbolId": "qetCableHead",
+      "namePl": "Głowica kablowa",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_03_04_01", "obrot": -90, "przesuniecie": [20, 0] }],
+      "noz": null,
+      "porty": [
+        { "name": "top", "skladnik": 0, "punkt": [40, -20], "dir": "N", "powod": "plik źródłowy nie ma elementów terminal; zacisk = koniec środkowej żyły po stronie rozdzielnicy" },
+        { "name": "bottom", "skladnik": 0, "punkt": [-80, -20], "dir": "S", "powod": "plik źródłowy nie ma elementów terminal; zacisk = koniec przewodu kabla" }
+      ],
+      "uwaga": "Obrót o −90° ustawia żyły (strona rozdzielnicy) u góry, a kabel u dołu toru pola."
+    },
+    {
+      "symbolId": "qetVoltageIndicator",
+      "namePl": "Pojemnościowy wskaźnik napięcia",
+      "zlozenie": null,
+      "skladniki": [{ "element": "hv_wskaznik_pojemnosciowy", "obrot": 0, "przesuniecie": [0, 0] }],
+      "noz": null,
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [10, -10] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [10, 10] }
+      ],
+      "uwaga": "Przewód toru przechodzi przez symbol (odczep pojemnościowy w izolatorze) — port ENM „przylacze” na węźle toru, bez przerwy toru."
+    }
+  ]
+}

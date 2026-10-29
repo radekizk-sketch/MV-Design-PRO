@@ -17,6 +17,7 @@ import {
   type TypPunktuNeutralnego,
 } from '../../../types/uziemienie';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
+import { nazwaMediumPl } from '../../../ui/catalog/dopuszczenieNowychPol';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import type {
   ComplexOhmResponse,
@@ -888,7 +889,8 @@ function apparatusKindLabel(value: string | undefined): string {
 }
 
 export function etykietaAparatu(item: MVApparatusType): string {
-  return `${item.name} · ${apparatusKindLabel(item.device_kind)} · Un ${formatujLiczbe(item.u_n_kv, 1)} kV · In ${formatujLiczbe(item.i_n_a, 0)} A`;
+  const medium = nazwaMediumPl(item.medium);
+  return `${item.name} · ${apparatusKindLabel(item.device_kind)} · Un ${formatujLiczbe(item.u_n_kv, 1)} kV · In ${formatujLiczbe(item.i_n_a, 0)} A${medium ? ` · ${medium}` : ''}`;
 }
 
 export function pasujeRodzajAparatu(item: MVApparatusType, kind: GpzLineFieldApparatusKind): boolean {

@@ -39,8 +39,22 @@
  * (§16-v3, `meta.kind==='openTerminal'` — realny znacznik sceny, nie próbka).
  */
 import { legendLabelForSymbol, type SheetLegendEntry } from './Frame';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, czySymbolQet, type SymbolId } from '../symbols/defs';
 import type { SceneV3 } from '../scene/buildScene';
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC — ATRYBUCJA symboli QElectroTech (licencja CC BY 3.0
+ * wymaga wskazania autora i licencji przy każdym rozpowszechnieniu rysunku, także w pliku
+ * eksportu). JEDEN tekst dla legendy (panel i eksport), tabliczki rysunkowej eksportu
+ * i okna pola (`ui/field/SchematPolaSn.tsx`). Źródło: `docs/sld/vendor/qet/README.md`.
+ */
+export const ATRYBUCJA_SYMBOLI_QET_PL =
+  'Symbole aparatów pola wg PN-EN 60617 z biblioteki QElectroTech (The QElectroTech team), licencja CC BY 3.0';
+
+/** Atrybucja symboli QET, gdy scena rysuje choć jeden z nich; `null` = brak symboli QET. */
+export function atrybucjaSymboliSceny(scene: Pick<SceneV3, 'symbols'>): string | null {
+  return scene.symbols.some((s) => czySymbolQet(s.symbolId)) ? ATRYBUCJA_SYMBOLI_QET_PL : null;
+}
 
 /** Kolejność deterministyczna: klucze `SYMBOL_DEFS` (obiekt literalny w
  *  źródle — kolejność wstawiania właściwości stabilna w JS/TS), NIE kolejność
@@ -101,6 +115,8 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
   const noteEntries: SheetLegendEntry[] = scene.meta.neutralEarthingNotePl
     ? [{ kind: 'note' as const, id: 'sn-neutral-earthing', labelPl: scene.meta.neutralEarthingNotePl }]
     : [];
+  const atrybucja = atrybucjaSymboliSceny(scene);
+  if (atrybucja) noteEntries.push({ kind: 'note', id: 'qet-atrybucja', labelPl: atrybucja });
 
   return [...symbolEntries, ...lineEntries, ...noteEntries];
 }

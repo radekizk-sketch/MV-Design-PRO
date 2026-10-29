@@ -6,14 +6,15 @@
  * (`buildBaySections`), więc powierzchnia i inspektor nie mogą się rozjechać: aparaty pierwotne
  * (także złożone z łączników gałęzi), tor pomiarowy, zabezpieczenie, uzależnienia, wyniki
  * projektowe i wywód pola, katalog producenta (`useKatalogPola`) i jawne zaciski `Bay.ports`.
- * Schemat pola to `BayWindowSchematic` z tego samego modelu.
+ * Schemat pola to wycinek rysunku kanwy z tej samej migawki ENM (`SchematPolaSn`).
  *
  * Karta W5-C: wyposażenie pola SN (aparaty pierwotne) ustawia tu `EdytorWyposazeniaPola` —
  * jedyny dostawca operacji `set_bay_equipment` (katalog / szablon pola / usunięcie), ze
  * stanem danych i danymi przyjętymi z modelu odczytu pola. Pole nN ma własne operacje
  * rozdzielnicy nN — edytora SN dla niego nie ma (backend odmówiłby `bay_equipment.bay_not_mv`).
  * Obwody wtórne przekładników pola (CT/VT z `bay_ref` pola) poprawia `EdytorObwoduWtornegoPola`
- * — jedyny dostawca operacji `set_measurement_secondary_circuit`.
+ * — jedyny dostawca operacji `set_measurement_secondary_circuit`. Pole liniowe GPZ pokazuje ocenę
+ * wg klasy pola z modelu odczytu (`ocena_pola_liniowego`, `OcenaPolaLiniowegoGpz`).
  *
  * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
  * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
@@ -22,9 +23,11 @@
  */
 import { useMemo } from 'react';
 
-import { BayWindowSchematic } from '../../field/BayWindowSchematic';
 import { EdytorObwoduWtornegoPola } from '../../field/EdytorObwoduWtornegoPola';
+import { EdytorStanuObiektuPola } from '../../field/EdytorStanuObiektuPola';
 import { EdytorWyposazeniaPola } from '../../field/EdytorWyposazeniaPola';
+import { OcenaPolaLiniowegoGpz } from '../../field/OcenaPolaLiniowegoGpz';
+import { SchematPolaSn } from '../../field/SchematPolaSn';
 import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useKatalogPola } from '../../field/useKatalogPola';
 import { buildBaySections, SectionBlock } from '../../network-build/InspectorEngineeringView';
@@ -111,8 +114,17 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
       ) : (
         <div
           data-testid="bay-card-sections"
-          className="grid flex-1 grid-cols-1 gap-3 overflow-auto rounded border border-scada-border bg-white xl:grid-cols-[minmax(0,1fr)_320px]"
+          // UX-04 (pomiar 2026-10-29, okno 1600 px): siatka dwóch kolumn wg progu OKNA
+          // (`xl:`) zostawiała karcie ~570 px między nawigatorem a inspektorem — tabela
+          // wymagań łamała podstawę normową po 2–3 słowa, a kolumna schematu pod nim
+          // była pusta. Jedna kolumna: schemat pola na górze, sekcje na pełną szerokość.
+          className="flex flex-1 flex-col gap-3 overflow-auto rounded border border-scada-border bg-white"
         >
+          {item && (
+            <div className="min-w-0">
+              <SchematPolaSn item={item} snapshot={snapshot} />
+            </div>
+          )}
           <div className="min-w-0">
             {sections.map((section, index) => (
               <SectionBlock
@@ -123,6 +135,7 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 executeDomainOperation={executeDomainOperation}
               />
             ))}
+            {item?.ocena_pola_liniowego ? <OcenaPolaLiniowegoGpz ocena={item.ocena_pola_liniowego} /> : null}
             {bayInModel && !czyPoleNn(snapshot, bayInModel) ? (
               <EdytorWyposazeniaPola
                 key={bayInModel.ref_id}
@@ -130,6 +143,14 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 snapshot={snapshot}
                 stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
                 danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+                bladStore={() => useSnapshotStore.getState().error}
+              />
+            ) : null}
+            {bayInModel ? (
+              <EdytorStanuObiektuPola
+                bay={bayInModel}
                 activeCaseId={activeCaseId}
                 executeDomainOperation={executeDomainOperation}
                 bladStore={() => useSnapshotStore.getState().error}
@@ -145,11 +166,6 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
               />
             ) : null}
           </div>
-          {item && (
-            <div className="min-w-0">
-              <BayWindowSchematic item={item} />
-            </div>
-          )}
         </div>
       )}
     </div>

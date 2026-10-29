@@ -7,7 +7,9 @@
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, type SymbolId } from './defs';
+import { SYMBOL_DEFS, obrysSymbolu, type SymbolId } from './defs';
+import { CadPrimitiveLayer } from '../cad/CadSymbol';
+import { QET_SYMBOLE_POLA_SN, type QetPolozenieNoza, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
 import { BASE_STROKE } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
@@ -18,7 +20,13 @@ import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwo
 export const V3_STROKE_BASE = BASE_STROKE;
 export const V3_STROKE_APPARATUS = 1.2;
 
-export type SwitchState = 'closed' | 'open' | 'unknown';
+/** Położenie łącznika na rysunku. `'earthed'` (uziemiony) — WYŁĄCZNIE łącznik
+ *  trójpołożeniowy (karta UX-04/POLE-LINIOWE-WZORZEC, ENEA Zeszyt 1 §13): nóż na zestyku
+ *  uziemiającym; tor pola jest wtedy OTWARTY. Pozostałe glify rysują go jak `unknown`. */
+export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed';
+
+/** Margines ramki stanu SCADA wokół obrysu symbolu QET [px świata]. */
+export const RAMKA_SCADA_MARGINES = 2;
 
 /** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
  *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
@@ -131,6 +139,13 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: `true`, gdy symbol rysuje ŁĄCZNIK pola (rodzaj
+   *  aparatu z `RODZAJE_LACZNIKOW_POLA`, lustro backendu `compose/rodzajeAparatuPola.ts`)
+   *  — WYŁĄCZNIE glify QET czytają to pole i rysują ramkę stanu SCADA. */
+  readonly ramkaLacznika?: boolean;
+  /** Kolory ramki stanu SCADA z palety motywu (`SldPalette.ramkaScada`). Brak = bez ramki
+   *  (harness mono, miniatury paneli). */
+  readonly ramkaScada?: Readonly<Record<'zamkniety' | 'otwarty', string>>;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -534,6 +549,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
 export function CableHeadGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('cableHead', props)}>
+      <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <path d="M2,14 L14,14 L8,2 Z" fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
@@ -1200,6 +1216,96 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Karta UX-04/POLE-LINIOWE-WZORZEC — symbole QElectroTech EN 60617 pola liniowego SN.
+// Geometria z importera (`cad/qet/qetPoleSn.ts`), rysunek przez wspólną warstwę
+// prymitywów CAD (`CadPrimitiveLayer`). Rysunek źródła = położenie OTWARTE; położenie
+// zamknięte/uziemione/nieznane = obrót noża o kąt z importera wokół przegubu.
+// ---------------------------------------------------------------------------
+
+/** Położenie noża rysowane dla stanu łącznika: `earthed` tylko tam, gdzie symbol ma
+ *  zestyk uziemiający (łącznik trójpołożeniowy); dla pozostałych — jak stan nieznany. */
+export function polozenieNozaQet(id: QetSymbolPolaSnId, state: SwitchState): QetPolozenieNoza {
+  const noz = QET_SYMBOLE_POLA_SN[id].noz;
+  if (!noz) return 'open';
+  return noz.katy[state] === undefined ? 'unknown' : state;
+}
+
+/** Ramka stanu SCADA symbolu QET: `zamkniety` (czerwona) dla położenia zamkniętego,
+ *  `otwarty` (zielona) dla otwartego i uziemionego (tor pola przerwany); `null` dla stanu
+ *  nieznanego albo symbolu bez noża — wtedy ramki nie ma (symbol zostaje). JEDNA reguła dla
+ *  rysunku i dla sond sceny. */
+export function rodzajRamkiScada(id: SymbolId, state: SwitchState | undefined): 'zamkniety' | 'otwarty' | null {
+  if (!(id in QET_SYMBOLE_POLA_SN)) return null;
+  const qid = id as QetSymbolPolaSnId;
+  if (!QET_SYMBOLE_POLA_SN[qid].noz) return null;
+  const polozenie = polozenieNozaQet(qid, state ?? 'unknown');
+  if (polozenie === 'closed') return 'zamkniety';
+  if (polozenie === 'open' || polozenie === 'earthed') return 'otwarty';
+  return null;
+}
+
+/** Prostokąt ramki stanu SCADA względem lewego górnego rogu gabarytu: obrys CAŁEGO rysunku
+ *  (wszystkie położenia noża i porty, `obrysSymbolu`) + `RAMKA_SCADA_MARGINES`. */
+export function prostokatRamkiScada(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+  const o = obrysSymbolu(id);
+  const m = RAMKA_SCADA_MARGINES;
+  return { x: o.x - m, y: o.y - m, width: o.width + 2 * m, height: o.height + 2 * m };
+}
+
+function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
+  const symbol = QET_SYMBOLE_POLA_SN[id];
+  function QetGlyph(props: GlyphProps): JSX.Element {
+    const state: SwitchState = props.state ?? 'unknown';
+    const ink = stroke(props);
+    const w = grubosc(props, V3_STROKE_APPARATUS);
+    const noz = symbol.noz;
+    const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
+    const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
+    const ramka = props.ramkaLacznika && props.ramkaScada ? rodzajRamkiScada(id, state) : null;
+    const r = ramka ? prostokatRamkiScada(id) : null;
+    return (
+      <g
+        {...glyphGroupProps(id, props)}
+        data-symbol-family="qet"
+        data-qet-polozenie={polozenie}
+        data-ramka-scada={ramka ?? (props.ramkaLacznika && noz ? 'brak' : undefined)}
+      >
+        <CadPrimitiveLayer prims={symbol.stale} ink={ink} paper="none" strokeWidth={w} nonScalingStroke={false} state="closed" />
+        {noz && (
+          <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
+            <CadPrimitiveLayer
+              prims={noz.prymitywy}
+              ink={ink}
+              paper="none"
+              strokeWidth={w}
+              nonScalingStroke={false}
+              state={polozenie === 'unknown' ? 'unknown' : 'closed'}
+            />
+          </g>
+        )}
+        {ramka && r && props.ramkaScada && (
+          <rect
+            x={r.x}
+            y={r.y}
+            width={r.width}
+            height={r.height}
+            fill="none"
+            stroke={props.ramkaScada[ramka]}
+            strokeWidth={w}
+            data-qet="ramka-scada"
+          />
+        )}
+      </g>
+    );
+  }
+  return QetGlyph;
+}
+
+const QET_GLYPHS: Readonly<Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.Element>> = Object.fromEntries(
+  (Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]).map((id) => [id, qetGlyph(id)]),
+) as Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.Element>;
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -1239,6 +1345,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
   lvPortal: LvPortalGlyph,
+  ...QET_GLYPHS,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

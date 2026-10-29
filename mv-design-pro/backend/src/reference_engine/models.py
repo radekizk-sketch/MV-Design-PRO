@@ -29,6 +29,9 @@ ApparatusKind = Literal[
     "TRANSFORMER_DEVICE",
     "FUSE",
     "SURGE_ARRESTER",
+    "THREE_POSITION_SWITCH",
+    "VOLTAGE_INDICATOR",
+    "CORE_BALANCE_CT",
     "GENERATOR_PV",
     "GENERATOR_BESS",
     "GENERATOR_FW",
@@ -65,6 +68,10 @@ class ReferenceFieldProfile(BaseModel):
     # Grupy alternatywne (np. funkcja łączeniowa toru pola RMU:
     # rozłącznik ALBO wyłącznik) — grupa spełniona, gdy obecny ≥1 kind.
     one_of_groups: list[list[ApparatusKind]] = Field(default_factory=list)
+    # Grupy `one_of_groups` (funkcja ODŁĄCZENIA od szyny), które w polu wysuwnym spełnia
+    # wysunięcie wyłącznika (ENEA Zeszyt 1 §13 — wyłącznik poziomo wysuwny na wózku; predykat
+    # `bay_templates.odlaczenie_wysunieciem_wylacznika`). Grupa spoza listy — bez zmian.
+    grupy_spelniane_wysunieciem: list[list[ApparatusKind]] = Field(default_factory=list)
     optional: list[ApparatusKind] = Field(default_factory=list)
     forbidden: list[ApparatusKind] = Field(default_factory=list)
     canonical_order: list[ApparatusKind] = Field(default_factory=list)
@@ -78,11 +85,16 @@ class ReferenceSymbolMapEntry(BaseModel):
     `frontend_symbol_id` = `SymbolId` biblioteki v3 (`symbols/defs.ts`);
     `None` dla kindów DER (nie są aparatem pola — renderowane osobno,
     lustro `symbolIdForPrimaryDeviceKind`, parytet egzekwowany testem).
+    `frontend_symbol_id_qet` = `SymbolId` wariantu rysunku EN 60617 kolekcji QElectroTech
+    (`BayPrimaryDevice.render_variant == "qet_en60617"`, karta UX-04/POLE-LINIOWE-WZORZEC) —
+    lustro `SYMBOL_QET_RODZAJU` (`apparatusSequence.ts`); `None` = rodzaj bez elementu QET
+    w repozytorium (rysowany symbolem kanonicznym).
     """
 
     kind: ApparatusKind
     symbol_name_pl: str
     frontend_symbol_id: str | None = None
+    frontend_symbol_id_qet: str | None = None
 
 
 class ReferenceCellApparatus(BaseModel):

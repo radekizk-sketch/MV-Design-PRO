@@ -11,7 +11,7 @@ export const ARKUSZ_STRINGS = {
 
   formatEyebrow: 'Czego potrzebuje arkusz',
   formatOpis:
-    'Wymagane arkusze: „Szyny" (id, nazwa, napięcie_kV) oraz „Linie" (id, szyna_pocz, szyna_kon, typ, długość_km). Opcjonalnie: „Trafo", „Źródła", „Odbiory". Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna „typ_katalogowy" (typ z katalogu) albo pełna tabliczka w wierszu (odcinek: rodzaj LINIA/KABEL, R_ohm_km, X_ohm_km, B_uS_km lub C_nF_km, Un_kV, I_dop_A; transformator: Sn_MVA, uk_pct, Pk_kW, grupa, zaczepy). Z tabliczki powstaje typ w katalogu projektu — bez wartości domyślnych.',
+    'Wymagane arkusze: „Szyny" (id, nazwa, napięcie_kV) oraz „Linie" (id, szyna_pocz, szyna_kon, typ, długość_km). Opcjonalnie: „Trafo", „Źródła", „Odbiory". Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna „typ_katalogowy" (typ z katalogu) albo pełna tabliczka w wierszu (odcinek: rodzaj LINIA/KABEL, R_ohm_km, X_ohm_km, B_uS_km lub C_nF_km, Un_kV, I_dop_A; transformator: Sn_MVA, uk_pct, Pk_kW, grupa, zaczepy). Z tabliczki powstaje typ w katalogu projektu — bez wartości domyślnych. Kolumna „stan” arkusza „Szyny” (opcjonalna: „istniejący” albo „projektowany”, puste = projektowany) nadaje stan obiektu polom rozdzielnicy szyny — pole istniejące może zawierać gaz fluorowany, projektowane nie.',
 
   wyborEyebrow: 'Plik z danymi',
   wybierz: 'Wybierz plik arkusza',

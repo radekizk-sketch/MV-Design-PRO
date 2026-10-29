@@ -138,6 +138,36 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
   }
 }
 
+export interface CadPrimitiveLayerProps {
+  readonly prims: readonly CadPrimitive[];
+  readonly ink: string;
+  readonly paper: string;
+  /** Grubość bazowa kreski — px ekranu przy `nonScalingStroke`, jednostki sceny bez niego. */
+  readonly strokeWidth: number;
+  readonly nonScalingStroke: boolean;
+  /** Położenie łącznika — WYŁĄCZNIE do kreski przerywanej noża w stanie nieznanym. */
+  readonly state: CadSwitchState;
+  readonly fontFamily?: string;
+}
+
+/**
+ * Warstwa prymitywów CAD bez transformacji gabarytu — TEN SAM rysunek prymitywów co
+ * `CadSymbol` (jedno miejsce zamiany LINE/CIRCLE/ARC/PATH/PIVOT/LETTER na SVG). Karta
+ * UX-04/POLE-LINIOWE-WZORZEC: rysuje nią symbole QET pola liniowego SN
+ * (`symbols/glyphs.tsx`), których geometria pochodzi z importera, nie z rejestru nN.
+ */
+export function CadPrimitiveLayer(props: CadPrimitiveLayerProps): JSX.Element {
+  const ctx: KontekstRysunkuCad = {
+    ink: props.ink,
+    paper: props.paper,
+    strokePx: props.strokeWidth,
+    nonScaling: props.nonScalingStroke,
+    fontFamily: props.fontFamily ?? 'Inter, "Segoe UI", Arial, sans-serif',
+    state: props.state,
+  };
+  return <>{props.prims.map((p, i) => rysujPrymityw(p, i, ctx))}</>;
+}
+
 export function CadSymbol(props: CadSymbolProps): JSX.Element {
   const def = ELECTRICAL_CAD_SYMBOL_REGISTRY[props.id];
   const scale = props.scale ?? 1;

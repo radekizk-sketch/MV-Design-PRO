@@ -266,7 +266,7 @@ import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
-import { computeProjectLegendEntries } from '../sheet/projectLegend';
+import { atrybucjaSymboliSceny, computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sheetSizeFor } from '../sheet/outline';
 import type { SymbolId } from '../symbols/defs';
@@ -1657,6 +1657,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setContextRequest(null);
     setContextSubject(null);
   }, []);
+  // UX-04 (pomiar 2026-10-29, zrzut okna pola): akcja z menu OBIEKTU działała na
+  // obiekcie menu, a prawy inspektor pokazywał POPRZEDNIE zaznaczenie — „Otwórz
+  // kartę pola" z menu wyłącznika otwierało kartę pola, a inspektor dalej pokazywał
+  // odcinek kablowy zaznaczony po kreatorze magistrali. Reguła: wykonanie akcji
+  // z menu obiektu NAJPIERW zaznacza ten obiekt TĄ SAMĄ ścieżką co natywny lewy klik
+  // (`handleElementClick` — jedno źródło refu, rodzaju i tematu selekcji); samo
+  // otwarcie i zamknięcie menu bez akcji zaznaczenia nie zmienia. Menu tła nie ma
+  // obiektu — zaznaczenie zostaje.
+  const celMenuRef = useRef<{ readonly testId: string; readonly meta: SldElementClickMeta | undefined } | null>(null);
+  const klikElementuRef = useRef<((testId: string, meta?: SldElementClickMeta) => void) | null>(null);
   /** Indeks refów modelu — jedno przejście po snapshocie, nie skan na klik. */
   const modelIndex = useMemo(() => buildCanvasModelIndex(snapshot), [snapshot]);
   const handleElementContextMenu = useCallback(
@@ -1665,6 +1675,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // tła (jedyna kategoria BEZ obiektu modelu — jej akcje dotyczą arkusza,
       // nie elementu).
       if (testId === 'sld-v3-background') {
+        celMenuRef.current = null;
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
         setContextSubject(null);
         return;
@@ -1685,6 +1696,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         modelIndex,
       );
       if (wynik.stan === 'brak') return;
+      celMenuRef.current = { testId, meta };
       setContextRequest({
         kind: wynik.temat.menuKind,
         elementId: wynik.temat.modelRef,
@@ -1717,6 +1729,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const handleAction = useSldActionExecutor({ readOnly: props.readOnly ?? false });
   const handleContextMenuAction = useCallback(
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
+      const cel = kind === 'background' ? null : celMenuRef.current;
+      celMenuRef.current = null;
+      if (cel) klikElementuRef.current?.(cel.testId, cel.meta);
       handleAction(actionId, kind, elementId);
       closeContextMenu();
     },
@@ -2115,6 +2130,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       modelRevision: snapshot?.header.revision ?? null,
       modelHash: snapshot?.header.hash_sha256 ?? null,
       stationCount: scene.meta.stationCount,
+      atrybucjaSymboli: atrybucjaSymboliSceny(scene),
       sheetAspect: contentFrame.height > 0 ? contentFrame.width / contentFrame.height : 0,
       lodLabelPl: SCENE_LOD_LABELS_PL[scene.meta.lod],
     });
@@ -2484,6 +2500,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [derDrag, modelIndex, odslonInspektor, props.readOnly, selectElement, snapshot],
   );
+  // Uzbrojona paleta OZE: klik w stację ją „zrzuca", klik gdzie indziej anuluje — akcja
+  // z menu nie może tego wywołać, więc w tym trybie zaznaczenie przed akcją jest pomijane.
+  klikElementuRef.current = (testId, meta) => {
+    if (!derDrag.state) handleElementClick(testId, meta);
+  };
 
   /**
    * Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w pusty

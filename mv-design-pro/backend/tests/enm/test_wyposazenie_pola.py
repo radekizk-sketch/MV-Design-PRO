@@ -31,6 +31,7 @@ from enm.wyposazenie_pola import (
     RODZAJE_KATALOGOWE_APARATU,
     stan_danych_wyposazenia,
 )
+from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, _pusty, galaz, wykonaj
 
@@ -54,8 +55,12 @@ def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
 
 
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
+    """Pierwsza pozycja rodzaju dopuszczona w polu PROJEKTOWANYM (pola sieci testowej budują
+    operacje projektowe — zakaz gazów fluorowanych, karta UX-04/POLE-LINIOWE-WZORZEC)."""
     return _pierwsza(
-        katalog_biezacy().mv_apparatus_types, lambda t: t.device_kind == rodzaj_katalogowy
+        katalog_biezacy().mv_apparatus_types,
+        lambda t: t.device_kind == rodzaj_katalogowy
+        and not czy_medium_z_gazem_fluorowanym(t.medium),
     )
 
 
@@ -537,7 +542,8 @@ def test_dwa_aparaty_nie_wskazuja_tego_samego_lacznika(siec: Any) -> None:
 
 
 def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
-    """Pole GPZ na rodzinie bez przekładnika prądowego (ZPUE TPM) — CT odrzucony,
+    """Pole GPZ na rodzinie bez przekładnika prądowego (Schneider RM AirSeT — rodzina bez gazów
+    fluorowanych; dawniej ZPUE TPM z SF₆, zakazana w polu projektowanym) — CT odrzucony,
     wyłącznik przyjęty."""
     enm = wykonaj(
         _pusty(),
@@ -548,7 +554,7 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "switchgear_family_ref": "ZPUE_WLOSZCZOWA__TPM",
+            "switchgear_family_ref": "SCHNEIDER__RM_AIRSET",
         },
     )
     (pole_gpz,) = (b["ref_id"] for b in enm["bays"])

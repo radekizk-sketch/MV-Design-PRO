@@ -447,6 +447,10 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         for key in ("r_ohm", "x_ohm", "normal_state"):
             if key in data:
                 branch_data[key] = data[key]
+        # Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-28): łącznik utworzony
+        # operacją jest obiektem PROJEKTOWANYM — jedyny pisarz gałęzi nadaje stan sam, ładunek
+        # go nie wybiera (ISTNIEJACY wyłącznie `set_object_state` albo import istniejącej sieci).
+        branch_data["stan_obiektu"] = "PROJEKTOWANY"
     elif branch_type == "fuse":
         for key in ("rated_current_a", "rated_voltage_kv"):
             if key in data:

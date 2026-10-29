@@ -19,6 +19,30 @@ Moduł-LIŚĆ: bez importów spoza biblioteki standardowej — czytają go opera
 
 from __future__ import annotations
 
+from typing import Literal, get_args
+
+#: Rola pola w MODELU (`Bay.bay_role`) — JEDYNA lista ról modelu (rozszerzenie 4 karty
+#: UX-04/POLE-LINIOWE-WZORZEC: dawniej trzy kopie literałów w `enm/models.py`,
+#: `network_model/catalog/bay_templates.py`, `switchgear/complete_mv_bay_template.py` i zbiór
+#: w `domain_operations_v2._normalize_sn_bay_role`). Nowe role (ZU, BKR, PW) dokładają karty
+#: pól GPZ ADDYTYWNIE — wyłącznie tutaj.
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
+ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
+
+#: Rola KANONICZNA pola SN (`Bay.field_role`, `BayBaseModel.bay_role`) — klucze nazw ról.
+RolaKanonicznaPolaSn = Literal[
+    "LINIA_IN",
+    "LINIA_OUT",
+    "TRANSFORMATOROWE",
+    "LINIA_ODG",
+    "SPRZEGLO",
+    "POMIAROWE",
+    "PV_SN",
+    "BESS_SN",
+    "FW_SN",
+]
+ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
+
 #: Rola pola podana aliasem modelu (`Bay.bay_role`, skróty kreatorów i szablonów) albo rolą
 #: kanoniczną (`field_role`) → rola kanoniczna. JEDEN słownik dla operacji budujących stację
 #: (`insert_station_on_segment_sn`, `append_station_on_endpoint`) i dla nazw ról — ta sama
@@ -38,6 +62,11 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+}
+
+#: Rola kanoniczna pola SN → rola MODELU (`Bay.bay_role`) — wyprowadzona z aliasów (jedna tablica).
+ROLA_MODELU_Z_ROLI_KANONICZNEJ: dict[str, str] = {
+    rola: alias for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
 }
 
 #: Polska nazwa pola SN wg roli kanonicznej. Kod roli (`LINIA_IN`, `TR`) jest wartością pola
@@ -107,6 +136,18 @@ def kanoniczna_rola_pola_sn(raw: object) -> str:
     return ROLA_POLA_SN_Z_ALIASU.get(normalized, normalized)
 
 
+def rola_modelu_pola_sn(raw: object) -> str | None:
+    """Rola MODELU (`Bay.bay_role`) z aliasu modelu albo roli kanonicznej (`LINIA_ODG` →
+    `FEEDER`); rola źródłowa `OZE` przechodzi bez zmiany. Rola pusta albo spoza kanonu daje
+    ``None`` — wołający ODMAWIA z nazwaną przyczyną (funkcja nie podstawia roli domyślnej)."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    normalized = raw.strip().upper()
+    if normalized in ROLE_POLA_MODELU:
+        return normalized
+    return ROLA_MODELU_Z_ROLI_KANONICZNEJ.get(ROLA_POLA_SN_Z_ALIASU.get(normalized, ""))
+
+
 def nazwa_roli_pola_sn(rola: object) -> str:
     """Polska nazwa pola SN dla roli podanej kanonicznie (`LINIA_IN`) albo aliasem modelu (`IN`).
 
@@ -136,3 +177,9 @@ def nazwa_roli_pola_sn_z_okresleniem(rola: object, okreslenie: str = "") -> str:
     nazwa = nazwa_roli_pola_sn(rola)
     okreslenie = okreslenie.strip()
     return f"{nazwa} {okreslenie}" if okreslenie else nazwa
+
+
+# Kanon ról jest jeden: aliasy modelu w słowniku aliasów to role modelu, a klucze nazw ról SN
+# to role kanoniczne (zmiana jednej listy bez drugiej przerywa import, nie rozjeżdża się cicho).
+assert {a for a, r in ROLA_POLA_SN_Z_ALIASU.items() if a != r} <= set(ROLE_POLA_MODELU)
+assert set(NAZWA_ROLI_POLA_SN_PL) == set(ROLE_KANONICZNE_POLA_SN)

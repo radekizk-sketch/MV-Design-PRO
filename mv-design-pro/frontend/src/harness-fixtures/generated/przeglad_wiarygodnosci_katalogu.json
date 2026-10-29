@@ -24,7 +24,7 @@
     {
       "rodzina": "aparaty-sn",
       "etykieta_pl": "Aparatura SN",
-      "liczba_pozycji": 50,
+      "liczba_pozycji": 52,
       "sprawdzone_reguly": [
         "KAT-W-003"
       ],
@@ -32,7 +32,7 @@
         {
           "kod": "KAT-W-003",
           "policzone": 24,
-          "pominiete": 26,
+          "pominiete": 28,
           "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
         }
       ],

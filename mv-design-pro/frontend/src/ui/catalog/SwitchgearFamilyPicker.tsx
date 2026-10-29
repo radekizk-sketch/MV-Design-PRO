@@ -15,6 +15,7 @@
 import { clsx } from 'clsx';
 
 import type { BayDeviceInstanceWire, BayKind } from './BayTemplatePicker';
+import type { StanObiektu } from '../../types/enm';
 
 export interface SwitchgearFamily {
   readonly switchgear_family_ref: string;
@@ -49,13 +50,35 @@ export interface SwitchgearFamily {
    */
   readonly rated_current_options?: readonly number[];
   readonly short_time_current_options?: readonly number[];
-  readonly insulation_type: 'air' | 'sf6' | 'vacuum' | 'mixed' | 'unknown';
+  /**
+   * Izolacja główna rodziny (`InsulationType`, `switchgear/switchgear_family.py`): powietrzna
+   * (AIS), stała (SSIS), gazowa bez gazów fluorowanych (powietrze suche / azot), SF₆ albo
+   * nieokreślona. Medium łączników to OSOBNA oś (`medium_lacznikow`).
+   */
+  readonly insulation_type: 'air' | 'ssis' | 'gaz_bez_f' | 'sf6' | 'unknown';
+  /**
+   * Medium łączników rodziny: SF₆, próżnia, powietrze albo „wg katalogu aparatów" (rodzina
+   * z łącznikami dobieranymi z katalogu aparatów SN). `null` = karta nie rozstrzyga.
+   */
+  readonly medium_lacznikow?: 'SF6' | 'PROZNIA' | 'POWIETRZE' | 'KATALOG_APARATOW' | null;
+  /**
+   * Pola WYLICZANE przez backend (jedno źródło reguły — `gazy_fluorowane.py` i status rodziny):
+   * `gaz_fluorowany` (`null` = rodzina nie potwierdza wykonania bez gazów fluorowanych),
+   * dopuszczenie do budowania (status) i do NOWYCH pól (status + zakaz gazów fluorowanych
+   * w obiektach projektowanych, rozporządzenie (UE) 2024/573, art. 13 ust. 9) — każde z
+   * powodem blokady po polsku. Front nie trzyma żadnej kopii tych reguł.
+   */
+  readonly gaz_fluorowany: boolean | null;
+  readonly dopuszczona_do_budowania: boolean;
+  readonly powod_blokady_pl: string | null;
+  readonly dopuszczona_do_nowych_pol: boolean;
+  readonly powod_blokady_nowych_pol_pl: string | null;
   readonly construction_type:
     | 'RMU'
     | 'jednoczlonowa'
     | 'dwuczlonowa'
     | 'wysuwna'
-    | 'GIS_SF6'
+    | 'GIS'
     | 'wnetrzowa'
     | 'kontenerowa'
     | 'prefabrykowana'
@@ -80,6 +103,7 @@ export interface SwitchgearFamily {
   readonly status:
     | 'verified'
     | 'repo_verified'
+    | 'standard_osd'
     | 'user_defined'
     | 'requires_catalog'
     | 'deprecated';
@@ -124,48 +148,39 @@ export interface FactoryConfigurationWire {
 }
 
 /**
- * Statusy rodzin, na których backend POZWALA budować konfigurację
- * (`switchgear/families.py: POTWIERDZONE_STATUSY_RODZINY`). Rodzina spoza tego
- * zbioru jest w katalogu — bo nie kasujemy wiedzy o portfolio producenta — ale
- * walidator zgodności odmówi na niej budowania twardym błędem.
- *
- * DLACZEGO TO TU JEST (2026-08-14). Picker renderował KAŻDĄ rodzinę z odpowiedzi
- * jako klikalny przycisk. Dopóki katalog miał wyłącznie rodziny `repo_verified`,
- * nikt tego nie widział; pierwsza rodzina `requires_catalog` w odpowiedzi (ABB
- * UniSec — publiczna strona nie podaje klas prądowych i zwarciowych) zamieniłaby
- * ten przycisk w martwy klik: UI oferuje wybór, backend go odrzuca. Wybór bez
- * pokrycia w backendzie jest zakazany, więc taka rodzina jest pokazana jako
- * NIEAKTYWNA z powodem, a nie ukryta i nie klikalna.
+ * Stan obiektu pola, dla którego wybierana jest rodzina (`Bay.stan_obiektu`): pole istniejące
+ * w sieci może mieć rodzinę z gazem fluorowanym (serwis i przeniesienie — art. 13 ust. 7 i 10
+ * rozporządzenia (UE) 2024/573), pole projektowane — nie.
  */
-export const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new Set([
-  'verified',
-  'repo_verified',
-]);
+export type StanObiektuPola = StanObiektu;
 
 /**
- * JEDYNY predykat frontu „czy na tej rodzinie wolno budować" — picker, kreator stacji i karta
- * pola czytają go stąd. Zbiór jest lustrem `POTWIERDZONE_STATUSY_RODZINY`; parytet przypina
- * `backend/tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`. Korekta 2026-10-15: trzy kopie
- * tego zbioru we froncie dopuszczały też `user_defined`, którego backend NIE dopuszcza
- * (`family_validation.wymagaj_rodziny_oferowanej`) — wybór oferowany w UI kończyłby się twardym
- * błędem operacji.
+ * JEDYNY predykat frontu „czy tę rodzinę wolno wybrać" — picker, kreator stacji, kreator pola
+ * i karta pola czytają go stąd. Decyzja jest BACKENDU (pola wyliczane rodziny): pole
+ * istniejące — `dopuszczona_do_budowania` (status), każde inne (nowe, projektowane) —
+ * `dopuszczona_do_nowych_pol` (status i zakaz gazów fluorowanych). Parytet przypina
+ * `backend/tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`. Korekta 2026-10-15: trzy
+ * kopie zbioru statusów we froncie dopuszczały `user_defined`, którego backend nie dopuszcza;
+ * korekta 2026-10-28: front nie trzyma już ŻADNEJ kopii reguły.
  */
-export function czyRodzinaDoBudowania(family: SwitchgearFamily): boolean {
-  return STATUSY_DO_BUDOWANIA.has(family.status);
+export function czyRodzinaDoBudowania(
+  family: SwitchgearFamily,
+  stanObiektu: StanObiektuPola | null = null,
+): boolean {
+  return stanObiektu === 'ISTNIEJACY'
+    ? family.dopuszczona_do_budowania
+    : family.dopuszczona_do_nowych_pol;
 }
 
-const POWOD_BLOKADY_PL: Partial<Record<SwitchgearFamily['status'], string>> = {
-  requires_catalog: 'Wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych.',
-  deprecated: 'Rodzina wycofana z oferty producenta.',
-};
-
 /**
- * Powód, dla którego na rodzinie NIE wolno budować (albo `null`, gdy wolno). Status bez
- * własnego zdania dostaje zdanie domyślne backendu (`family_validation`), nigdy ciszę.
+ * Powód, dla którego rodziny NIE wolno wybrać (albo `null`) — zdanie backendu z podstawą
+ * i akcją naprawczą, nigdy cisza ani zdanie składane we froncie.
  */
-export function powodBlokadyRodzinyPl(family: SwitchgearFamily): string | null {
-  if (czyRodzinaDoBudowania(family)) return null;
-  return POWOD_BLOKADY_PL[family.status] ?? 'Status rodziny nie dopuszcza budowania konfiguracji.';
+export function powodBlokadyRodzinyPl(
+  family: SwitchgearFamily,
+  stanObiektu: StanObiektuPola | null = null,
+): string | null {
+  return stanObiektu === 'ISTNIEJACY' ? family.powod_blokady_pl : family.powod_blokady_nowych_pol_pl;
 }
 
 export interface SwitchgearFamilyPickerProps {
@@ -175,6 +190,8 @@ export interface SwitchgearFamilyPickerProps {
   readonly selectedRef?: string | null;
   readonly onSelect: (familyRef: string | null) => void;
   readonly className?: string;
+  /** Stan obiektu pola, dla którego wybierana jest rodzina; brak = pole nowe (projektowane). */
+  readonly stanObiektu?: StanObiektuPola | null;
 }
 
 /**
@@ -187,12 +204,39 @@ export const CONSTRUCTION_LABELS_PL: Record<SwitchgearFamily['construction_type'
   jednoczlonowa: 'Jednoczłonowa',
   dwuczlonowa: 'Dwuczłonowa',
   wysuwna: 'Wysuwna',
-  GIS_SF6: 'GIS / SF₆',
+  GIS: 'GIS (izolacja gazowa)',
   wnetrzowa: 'Wnętrzowa',
   kontenerowa: 'Kontenerowa',
   prefabrykowana: 'Prefabrykowana',
   unknown: 'Nieznana konstrukcja',
 };
+
+/** Nazwy PL izolacji rodziny — JEDNO źródło frontu (picker, kreator stacji, karta pola). */
+export const NAZWY_IZOLACJI_RODZINY_PL: Readonly<Record<SwitchgearFamily['insulation_type'], string>> = {
+  air: 'powietrzna (AIS)',
+  ssis: 'stała (SSIS)',
+  gaz_bez_f: 'gazowa bez gazów fluorowanych',
+  sf6: 'SF₆',
+  unknown: 'nieokreślona',
+};
+
+/** Nazwy PL medium łączników rodziny. */
+export const NAZWY_MEDIUM_LACZNIKOW_PL: Readonly<
+  Record<NonNullable<SwitchgearFamily['medium_lacznikow']>, string>
+> = {
+  SF6: 'SF₆',
+  PROZNIA: 'próżnia',
+  POWIETRZE: 'powietrze',
+  KATALOG_APARATOW: 'wg katalogu aparatów',
+};
+
+/** „Izolacja: … · łączniki: …" — medium rodziny widoczne przy każdym wyborze. */
+export function opisMediumRodzinyPl(family: SwitchgearFamily): string {
+  const lacznik = family.medium_lacznikow
+    ? NAZWY_MEDIUM_LACZNIKOW_PL[family.medium_lacznikow]
+    : 'nieokreślone';
+  return `Izolacja: ${NAZWY_IZOLACJI_RODZINY_PL[family.insulation_type]} · łączniki: ${lacznik}`;
+}
 
 export function SwitchgearFamilyPicker({
   families,
@@ -201,6 +245,7 @@ export function SwitchgearFamilyPicker({
   selectedRef,
   onSelect,
   className,
+  stanObiektu = null,
 }: SwitchgearFamilyPickerProps): JSX.Element {
   if (manufacturerRef === null) {
     return (
@@ -213,7 +258,7 @@ export function SwitchgearFamilyPicker({
     );
   }
 
-  const doBudowania = families.filter(czyRodzinaDoBudowania);
+  const doBudowania = families.filter((family) => czyRodzinaDoBudowania(family, stanObiektu));
 
   if (manufacturerRequiresCatalog || doBudowania.length === 0) {
     return (
@@ -240,8 +285,8 @@ export function SwitchgearFamilyPicker({
     >
       {families.map((family) => {
         const isSelected = family.switchgear_family_ref === selectedRef;
-        const doWyboru = czyRodzinaDoBudowania(family);
-        const powodBlokady = powodBlokadyRodzinyPl(family);
+        const doWyboru = czyRodzinaDoBudowania(family, stanObiektu);
+        const powodBlokady = powodBlokadyRodzinyPl(family, stanObiektu);
         return (
           <li key={family.switchgear_family_ref}>
             <button
@@ -267,6 +312,12 @@ export function SwitchgearFamilyPicker({
                   {CONSTRUCTION_LABELS_PL[family.construction_type]}
                 </span>
               </div>
+              <span
+                className="text-[11px] text-gray-500"
+                data-testid={`switchgear-family-picker-medium-${family.switchgear_family_ref}`}
+              >
+                {opisMediumRodzinyPl(family)}
+              </span>
               {family.series_name && (
                 <span className="text-[11px] text-gray-500">Seria: {family.series_name}</span>
               )}

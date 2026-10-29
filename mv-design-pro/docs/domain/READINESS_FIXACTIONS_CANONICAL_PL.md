@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **166** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -147,6 +147,15 @@ Wszystkie **166** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.lv_earthing_system_missing` | STATIONS | 2 | BLOCKER | Transformator SN/nN nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone | panel: `inspector`, tab: `parametry`, focus: `lv_earthing_system` |
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
+| `bay.fluorinated_gas_not_existing` | STATIONS | 3 | WARNING | Pole albo aparat pola z gazem fluorowanym (SF₆) nie jest oznaczone jako istniejące — pole projektowane wymaga wykonania bez gazów fluorowanych | panel: `inspector`, tab: `pola` |
+| `bay.generation_fed_from_load_bay` | STATIONS | 3 | WARNING | Za polem odbiorczym pracują moduły wytwarzania — pole z generacją wymaga klasy mieszanej albo dedykowanej i wykonania Z.11.1 albo Z.11 | panel: `inspector`, tab: `pola` |
+| `bay.gpz_template_outside_gpz` | STATIONS | 3 | WARNING | Pole stacji spoza GPZ ma szablon pola liniowego rozdzielni GPZ — wybierz szablon pola stacji SN | panel: `inspector`, tab: `pola` |
+| `bay.line_class_execution_mismatch` | STATIONS | 3 | WARNING | Klasa pola liniowego z generacją wymaga wykonania z przekładnikiem napięciowym od strony linii (ENEA Z.11.1 albo Z.11) | panel: `inspector`, tab: `pola` |
+| `bay.loads_behind_dedicated_generation_bay` | STATIONS | 3 | WARNING | Za polem dedykowanym modułom wytwarzania są odbiory — pole dedykowane współpracuje wyłącznie z modułami wytwarzania | panel: `inspector`, tab: `pola` |
+| `bay.reclosing_in_dedicated_generation_bay` | STATIONS | 3 | WARNING | Pole dedykowane modułom wytwarzania ma samoczynne ponowne załączenie — lista funkcji pola dedykowanego nie przewiduje SPZ | panel: `inspector`, tab: `pola` |
+| `bay.settlement_core_missing` | STATIONS | 3 | WARNING | Pole wymaga pomiaru rozliczeniowego i analizatora jakości energii (wytwórca ≥ 200 kW albo odbiorca > 4 MW), a przekładnik prądowy nie ma rdzenia rozliczeniowego | panel: `inspector`, tab: `pola` |
+| `bay.switching_execution_insulation_mismatch` | STATIONS | 3 | WARNING | Wykonanie łączników pola nie jest dopuszczone w izolacji rozdzielnicy — łącznik trójpołożeniowy przy szynie wymaga izolacji gazowej bez gazów fluorowanych albo stało-powietrznej | panel: `inspector`, tab: `pola` |
+| `bay.ufls_in_bay_with_generation` | STATIONS | 3 | WARNING | Pole z generacją ma samoczynne częstotliwościowe odciążenie — SCO nie uruchamia się w liniach z jednostkami wytwórczymi | panel: `inspector`, tab: `pola` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
@@ -230,20 +239,20 @@ Wszystkie **166** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 105 |
-| WARNING | 55 |
+| WARNING | 64 |
 | INFO | 6 |
-| **Razem** | **166** |
+| **Razem** | **175** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
 | CATALOGS | 51 |
-| STATIONS | 23 |
+| STATIONS | 32 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **166** |
+| **Razem** | **175** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

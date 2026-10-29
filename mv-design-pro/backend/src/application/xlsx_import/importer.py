@@ -2,7 +2,12 @@
 Import sieci SN z arkusza XLSX — ODCZYT I WALIDACJA (bez zapisu).
 
 Format arkusza (uzgodniony z operatorami sieci):
-- Arkusz "Szyny"    (wymagany):  id, nazwa, napięcie_kV
+- Arkusz "Szyny"    (wymagany):  id, nazwa, napięcie_kV [stan — stan obiektu pól rozdzielnicy
+                                 szyny: „istniejący" (pole zastane w sieci: gaz fluorowany
+                                 dopuszczony, rozporządzenie (UE) 2024/573, art. 13 ust. 10)
+                                 albo „projektowany"; puste = projektowany — pola powstają
+                                 operacjami projektowymi, a stan „istniejący" nadaje im
+                                 jawna operacja `set_object_state` z tej kolumny]
 - Arkusz "Linie"    (wymagany):  id, szyna_pocz, szyna_kon, typ, długość_km
                                  + DOKŁADNIE JEDNA droga do typu przewodu (W1):
                                  (a) typ_katalogowy — identyfikator typu z katalogu
@@ -84,6 +89,7 @@ from typing import Any
 
 from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
+from network_model.catalog.gazy_fluorowane import NAZWY_STANOW_OBIEKTU_PL, StanObiektu
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogNamespace, OverheadConductorType
@@ -99,6 +105,22 @@ ARKUSZ_ZRODLA = "Źródła"
 ARKUSZ_ODBIORY = "Odbiory"
 
 ARKUSZE_WYMAGANE: tuple[str, ...] = (ARKUSZ_SZYNY, ARKUSZ_LINIE)
+
+
+def stan_obiektu_z_arkusza(wartosc: object) -> StanObiektu | None:
+    """Komórka kolumny `stan` arkusza "Szyny" → stan obiektu. Słownik = nazwy stanów
+    (`NAZWY_STANOW_OBIEKTU_PL`, wielkość liter bez znaczenia) i kody stanów; komórka pusta albo
+    spoza słownika → ``None`` (pusta: pola projektowane; spoza słownika: błąd wiersza
+    w `_waliduj_wartosci`)."""
+    if not isinstance(wartosc, str) or not wartosc.strip():
+        return None
+    tekst = wartosc.strip()
+    for kod, nazwa in NAZWY_STANOW_OBIEKTU_PL.items():
+        if tekst.upper() == kod or tekst.lower() == nazwa:
+            return kod  # type: ignore[return-value]
+    return None
+
+
 ARKUSZE_OPCJONALNE: tuple[str, ...] = (ARKUSZ_TRAFO, ARKUSZ_ZRODLA, ARKUSZ_ODBIORY)
 
 
@@ -216,6 +238,9 @@ class XlsxNetworkImporter:
     OPTIONAL_SHEETS = set(ARKUSZE_OPCJONALNE)
 
     BUS_COLUMNS: dict[str, type] = {"id": str, "nazwa": str, "napięcie_kV": float}
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pól rozdzielnicy szyny (import istniejącej
+    # sieci niosący stan — jedyna, obok operacji `set_object_state`, droga stanu ISTNIEJACY).
+    BUS_OPTIONAL_COLUMNS: dict[str, type] = {"stan": str}
     LINE_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna_pocz": str,
@@ -357,7 +382,7 @@ class XlsxNetworkImporter:
             # nie ma czego walidowac.
             struktura_ok = True
             szyny, ok = self._parse_sheet(
-                wb[ARKUSZ_SZYNY], self.BUS_COLUMNS, {}, ARKUSZ_SZYNY, bledy
+                wb[ARKUSZ_SZYNY], self.BUS_COLUMNS, self.BUS_OPTIONAL_COLUMNS, ARKUSZ_SZYNY, bledy
             )
             struktura_ok &= ok
             linie, ok = self._parse_sheet(
@@ -686,6 +711,20 @@ class XlsxNetworkImporter:
     ) -> list[BladArkusza]:
         bledy: list[BladArkusza] = []
         for szyna in szyny:
+            stan = szyna.get("stan")
+            if stan is not None and stan_obiektu_z_arkusza(stan) is None:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_SZYNY,
+                        wiersz=szyna["_wiersz"],
+                        kolumna="stan",
+                        komunikat=(
+                            f"Stan obiektu '{stan}' spoza słownika (dopuszczalne: "
+                            + ", ".join(f"„{n}”" for n in NAZWY_STANOW_OBIEKTU_PL.values())
+                            + "; puste = projektowany)"
+                        ),
+                    )
+                )
             if szyna["napięcie_kV"] <= 0:
                 bledy.append(
                     BladArkusza(
@@ -1325,6 +1364,7 @@ class XlsxNetworkImporter:
                 "ref": szyna["id"],
                 "name": szyna["nazwa"],
                 "voltage_kv": float(szyna["napięcie_kV"]),
+                "stan_obiektu": stan_obiektu_z_arkusza(szyna.get("stan")),
                 "wiersz": szyna["_wiersz"],
             }
             for szyna in szyny

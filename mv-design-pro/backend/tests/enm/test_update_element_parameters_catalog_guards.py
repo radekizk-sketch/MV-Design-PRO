@@ -42,7 +42,7 @@ def _enm_with_catalog_bound_assets() -> dict:
                 "from_bus_ref": "bus/mid",
                 "to_bus_ref": "bus/lv",
                 "status": "closed",
-                "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                "catalog_ref": "sw-ls-ogolny-prozniowy-24kv-630a",
                 "source_mode": "KATALOG",
                 "catalog_namespace": "APARAT_SN",
             },

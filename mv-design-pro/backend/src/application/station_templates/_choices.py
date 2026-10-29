@@ -278,8 +278,11 @@ PROT_GENERATOR_OPTIONS = (
 # =============================================================================
 # Aparatura pól SN (APARAT_SN) — B-12: szablon WSKAZUJE aparat, nie zgaduje go
 # operacja domenowa. Referencje z katalogu `mv_switch_catalog` (typoszereg 17,5 kV
-# dla sieci 15 kV: wyłączniki VD4/3AH5, rozłączniki NAL/RM6 dla pól liniowych
-# stacji wnętrzowych). Projektant zmienia wybór w kreatorze stacji.
+# dla sieci 15 kV: wyłączniki VD4/3AH5, rozłącznik próżniowy dla pól liniowych stacji
+# wnętrzowych). Szablon tworzy stację PROJEKTOWANĄ — żadna pozycja nie ma medium z gazem
+# fluorowanym (rozporządzenie (UE) 2024/573, art. 13 ust. 9; pin
+# `tests/application/test_szablony_stacji_bez_gazu_fluorowanego.py`). Projektant zmienia wybór
+# w kreatorze stacji.
 # =============================================================================
 
 SN_APPARATUS_OPTIONS = (
@@ -300,8 +303,8 @@ SN_APPARATUS_OPTIONS = (
         "APARAT_SN",
     ),
     CatalogChoice(
-        "sw-ls-schneider-rm6-17kv-400a",
-        "Rozłącznik Schneider RM6 17,5 kV 400 A",
+        "sw-ls-ogolny-prozniowy-24kv-630a",
+        "Rozłącznik próżniowy (typ ogólny) 24 kV 630 A",
         "APARAT_SN",
     ),
     CatalogChoice(

@@ -91,7 +91,16 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + W5-C: pozycja normalna łącznika (punkt normalnie otwarty). `None` =
     # niezadeklarowana — poza odciskiem (gałęzie sprzed karty haszują jak przed nią);
     # zadeklarowana jest treścią modelu i stanem łączeniowym (odcisk przełączeń).
-    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
+    # + UX-04/POLE-LINIOWE-WZORZEC: stan obiektu łącznika ISTNIEJACY/PROJEKTOWANY (`None` =
+    # gałąź sprzed atrybutu — poza odciskiem; nadany stan jest treścią modelu, bo rozstrzyga
+    # zakaz gazów fluorowanych).
+    "branches": (
+        "screen_bonding",
+        "geometria_slupa",
+        "parametry_z_geometrii",
+        "normal_state",
+        "stan_obiektu",
+    ),
     # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
     # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
     # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
@@ -111,6 +120,13 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "wybor_bloku",
         "metadane_pochodzenia",
         "surge_arresters",
+        # Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-28): stan obiektu
+        # ISTNIEJACY/PROJEKTOWANY. `None` = rekord sprzed atrybutu (stan nieustalony) — poza
+        # odciskiem; nadany stan jest treścią modelu (rozstrzyga zakaz gazów fluorowanych).
+        "stan_obiektu",
+        # Ta sama karta (rozszerzenie 2): klasa pola liniowego (IRiESD II.4.5.4.2). `None` =
+        # klasa nieustalona — poza odciskiem; zadeklarowana jest treścią modelu.
+        "klasa_pola",
     ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
@@ -133,6 +149,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "nastawy_zabezpieczen",
         "deklaracje_modulu",
     ),
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4 pkt 3): rdzenie CT i uzwojenia VT jako
+    # listy. `None` = tabliczka niedostarczona (każdy przekładnik sprzed karty) — poza odciskiem;
+    # podana lista jest treścią modelu (dobór obciążenia obwodów wtórnych).
+    "measurements": ("rdzenie", "uzwojenia"),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
@@ -155,6 +175,10 @@ _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
     "buses": ("grounding",),
     "corridors": ("no_point_ref",),
     "branch_points": ("switch_state",),
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: `Measurement.ct_cores` (sama liczba rdzeni) skasowane —
+    # rdzenie opisuje lista `rdzenie`. Przekładnik bez liczby haszuje jak przed kasacją;
+    # przekładnik, który ją miał, zmienia odcisk (liczba zastąpiona listą rdzeni).
+    "measurements": ("ct_cores",),
 }
 
 #: W5-C: pola SKASOWANE z kolekcji `line_runs` — kolekcja stoi poza `_ELEMENT_KEYS`
@@ -172,6 +196,23 @@ _POLA_SKASOWANE_W_ODCISKU_CIAGOW: tuple[str, ...] = ("nop_station_ref",)
 #: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
 _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
     "bays": ("surge_arresters",),
+}
+
+#: Karta UX-04/POLE-LINIOWE-WZORZEC: pola-LISTY ELEMENTÓW ZAGNIEŻDŻONYCH rekordu (aparat pola
+#: `Bay.primary_devices[*]`) dodane po zamrożeniu odcisków, z wartością domyślną pustej listy.
+#: Pusta lista portów = porty nienadane (aparat sprzed karty) — poza odciskiem, żeby migawki
+#: z aparatami pól sprzed karty haszowały jak przed nią; porty podane są treścią modelu
+#: (połączenia aparatów pola). Przypięte testem `tests/enm/test_pole_liniowe_gpz_szablony.py`
+#: (`test_odcisk_pustych_list_jak_brak_pola`).
+_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] = {
+    "bays": {"primary_devices": ("ports", "rdzenie", "uzwojenia")},
+}
+
+#: Ta sama karta (korekta właściciela 2026-10-28): pola ELEMENTÓW ZAGNIEŻDŻONYCH o wartości
+#: domyślnej `None` — stan obiektu instancji aparatu pola (`BayPrimaryDevice.stan_obiektu`).
+#: `None` = aparat sprzed atrybutu — poza odciskiem; nadany stan jest treścią modelu.
+_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
+    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie")},
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
@@ -196,6 +237,27 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE.get(key, ()):
         if pole in item and item[pole] == []:
             del item[pole]
+    zagniezdzone_puste = _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE.get(key, {})
+    zagniezdzone_none = _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE.get(key, {})
+    for lista in sorted(set(zagniezdzone_puste) | set(zagniezdzone_none)):
+        elementy = item.get(lista)
+        if isinstance(elementy, list):
+            pola_puste = zagniezdzone_puste.get(lista, ())
+            pola_none = zagniezdzone_none.get(lista, ())
+            # Nowa lista nowych słowników — elementy zagnieżdżone należą do migawki wołającego
+            # (`_kopia_pod_hash` kopiuje elementy kolekcji płytko).
+            item[lista] = [
+                (
+                    {
+                        k: v
+                        for k, v in el.items()
+                        if not ((k in pola_puste and v == []) or (k in pola_none and v is None))
+                    }
+                    if isinstance(el, dict)
+                    else el
+                )
+                for el in elementy
+            ]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
     if pelna:

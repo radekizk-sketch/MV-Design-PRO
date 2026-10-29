@@ -26,16 +26,22 @@ import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '
 import {
   fetchCompleteBayTemplates,
   fetchCtTypes,
+  fetchSzablonyPolaKanoniczne,
   fetchMvApparatusTypes,
   fetchSurgeArresterTypes,
   fetchVtTypes,
   getCatalogErrorMessage,
+  type SzablonPolaKanoniczny,
 } from '../catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../catalog/BayTemplatePicker';
+import { nazwaMediumPl, notaPozycjiUkrytych, pozycjeDoWyboru } from '../catalog/dopuszczenieNowychPol';
 import type { CatalogType, MVApparatusType } from '../catalog/types';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
+  BEZ_ZMIANY_KLASY,
   czyWierszKompletny,
+  KLASY_POLA_LINIOWEGO,
+  NAZWA_KLASY_POLA_PL,
   NAZWA_RODZAJU_APARATU_PL,
   PRZESTRZEN_KATALOGU_APARATU,
   RODZAJE_APARATU_POLA_SN,
@@ -53,6 +59,7 @@ import {
   type RodzajAparatuPolaSn,
   type TrybWyposazenia,
   type WierszAparatu,
+  type ZmianaKlasyPola,
 } from './wyposazeniePola';
 import type { DomainOpResponseV1 } from '../../types/enm';
 
@@ -85,12 +92,34 @@ export interface EdytorWyposazeniaPolaProps {
   readonly bladStore?: () => string | null;
 }
 
-function pozycjeDlaWiersza(katalog: PozycjeKatalogu, kind: RodzajAparatuPolaSn): readonly CatalogType[] {
+/**
+ * Pozycje katalogu dla wiersza. Filtr gazu fluorowanego jest BACKENDU
+ * (`dopuszczony_do_nowych_pol` pozycji, ta sama reguła co strażnik operacji): aparat, który po
+ * zapisie będzie projektowany (każdy wiersz bez jawnego stanu „istniejący" — nowy albo
+ * wymieniony), widzi wyłącznie pozycje dopuszczone. Wiersz inwentaryzacji aparatu zastanego
+ * (`stan_obiektu === 'ISTNIEJACY'`) widzi wszystkie, z medium w etykiecie. Pozycja już wybrana
+ * zostaje na liście (rekord niezmieniony nie znika z widoku).
+ */
+function pozycjeDlaWiersza(
+  katalog: PozycjeKatalogu,
+  kind: RodzajAparatuPolaSn,
+  wiersz: Pick<WierszAparatu, 'stan_obiektu' | 'catalog_ref'> = { stan_obiektu: '', catalog_ref: '' },
+): readonly CatalogType[] {
   const przestrzen: PrzestrzenKatalogu | null = PRZESTRZEN_KATALOGU_APARATU[kind];
   if (przestrzen === null) return [];
   if (przestrzen !== 'APARAT_SN') return katalog[przestrzen];
   const dozwolone = RODZAJE_KATALOGOWE_APARATU[kind] ?? [];
-  return katalog.APARAT_SN.filter((p) => dozwolone.includes(p.device_kind));
+  return pozycjeDoWyboru(
+    katalog.APARAT_SN.filter((p) => dozwolone.includes(p.device_kind)),
+    wiersz.stan_obiektu === 'ISTNIEJACY' ? 'ISTNIEJACY' : 'PROJEKTOWANY',
+    wiersz.catalog_ref,
+  );
+}
+
+/** Etykieta pozycji aparatu: nazwa + medium (medium widoczne zawsze, gdy karta je podaje). */
+function etykietaPozycji(p: CatalogType): string {
+  const medium = nazwaMediumPl((p as MVApparatusType).medium);
+  return medium ? `${p.name} · ${medium}` : p.name;
 }
 
 function wierszeStartowe(bay: Bay): WierszAparatu[] {
@@ -98,14 +127,35 @@ function wierszeStartowe(bay: Bay): WierszAparatu[] {
   return z.length > 0 ? z : [{ ...WIERSZ_PUSTY }];
 }
 
+/**
+ * Dane przyjęte wyposażenia — ZASADA NR 4 pkt 4: źródło wartości roboczej podane dyskretnie,
+ * JEDNĄ adnotacją na wspólny powód i jakość (pomiar 2026-10-29: zdanie „rodzaj aparatu bez
+ * katalogu SN — przyjęty z szablonu pola…" powtarzało się przy każdym z dziesięciu aparatów).
+ * Grupy w kolejności pierwszego wystąpienia, aparaty w kolejności pola — każdy rekord
+ * `dane_przyjete` backendu jest nadal wymieniony z nazwy, nic nie znika.
+ */
+export function grupyDanychPrzyjetych(
+  dane: readonly DanaPrzyjetaWyposazenia[],
+): readonly { readonly powod_pl: string; readonly jakosc: string; readonly nazwy: readonly string[] }[] {
+  const grupy = new Map<string, { powod_pl: string; jakosc: string; nazwy: string[] }>();
+  for (const d of dane) {
+    const klucz = `${d.jakosc}\u0000${d.powod_pl}`;
+    const grupa = grupy.get(klucz) ?? { powod_pl: d.powod_pl, jakosc: d.jakosc, nazwy: [] };
+    grupa.nazwy.push(d.nazwa_pl);
+    grupy.set(klucz, grupa);
+  }
+  return [...grupy.values()];
+}
+
 function ListaDanychPrzyjetych({ dane, testid }: { dane: readonly DanaPrzyjetaWyposazenia[]; testid: string }) {
   if (dane.length === 0) return null;
   return (
-    <ul data-testid={testid} className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
-      {dane.map((d, i) => (
-        <li key={`${d.nazwa_pl}:${i}`}>
-          <span className="font-medium text-scada-text">{d.nazwa_pl}</span> — {d.powod_pl} (jakość:{' '}
-          {d.jakosc === 'ESTIMATED' ? 'szacowana' : d.jakosc})
+    <ul data-testid={testid} className="mt-1 list-none pl-0 text-[11px] text-scada-muted">
+      {grupyDanychPrzyjetych(dane).map((g) => (
+        <li key={`${g.jakosc}:${g.powod_pl}`} data-testid={`${testid}-grupa`}>
+          <span className="text-scada-text">{g.nazwy.join(', ')}</span>
+          {' — '}
+          {g.powod_pl} (jakość: {g.jakosc === 'ESTIMATED' ? 'szacowana' : g.jakosc})
         </li>
       ))}
     </ul>
@@ -126,11 +176,38 @@ export function EdytorWyposazeniaPola({
   const [szablonRef, setSzablonRef] = useState('');
   const [katalog, setKatalog] = useState<PozycjeKatalogu>(KATALOG_PUSTY);
   const [szablony, setSzablony] = useState<readonly CompleteMvBayTemplateSummary[]>([]);
+  const [kanoniczne, setKanoniczne] = useState<readonly SzablonPolaKanoniczny[]>([]);
+  const [klasa, setKlasa] = useState<ZmianaKlasyPola>(BEZ_ZMIANY_KLASY);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [wynik, setWynik] = useState<WyposazeniePolaOdpowiedz | null>(null);
   const [zapis, setZapis] = useState(false);
   const [otwarty, setOtwarty] = useState(false);
+
+  // Klasa pola po zapisie (zmiana z formularza albo klasa rekordu) — wejście oceny szablonów.
+  const klasaPo = klasa.zmien ? klasa.wartosc : (bay.klasa_pola ?? null);
+
+  // Szablony kanoniczne z oceną dopuszczalności W TYM POLU (rola, pole GPZ, rodzina rozdzielnicy,
+  // klasa) — filtr i powody odmowy liczy backend tą samą regułą co strażnik operacji.
+  useEffect(() => {
+    if (!otwarty) return undefined;
+    let anulowane = false;
+    fetchSzablonyPolaKanoniczne({
+      bayRole: bay.bay_role,
+      poleGpz: Boolean(bay.gpz_section_id),
+      switchgearFamilyRef: bay.switchgear_family_ref ?? null,
+      klasaPola: klasaPo,
+    })
+      .then((lista) => {
+        if (!anulowane) setKanoniczne(lista);
+      })
+      .catch((e: unknown) => {
+        if (!anulowane) setBladKatalogu(getCatalogErrorMessage(e));
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [otwarty, bay.bay_role, bay.gpz_section_id, bay.switchgear_family_ref, klasaPo]);
 
   useEffect(() => {
     if (!otwarty) return undefined;
@@ -164,10 +241,27 @@ export function EdytorWyposazeniaPola({
       .sort((a, b) => (a.ref_id < b.ref_id ? -1 : 1));
   }, [bay.equipment_refs, snapshot]);
 
-  // Szablony pola tej samej funkcji (rola pola w modelu) — inne backend odrzuca.
-  const szablonyPola = useMemo(
-    () => szablony.filter((s) => s.bay_role === bay.bay_role),
-    [bay.bay_role, szablony],
+  // Szablony pola tej samej funkcji (rola pola w modelu) — inne backend odrzuca. Szablony
+  // producenckie (pola rodzin) i kanoniczne dopuszczone w tym polu; szablon kanoniczny
+  // niedopuszczony nie jest opcją wyboru — jego powód odmowy widać pod listą.
+  const szablonyPola = useMemo(() => {
+    const producenckie = szablony.filter((s) => s.bay_role === bay.bay_role);
+    const znane = new Set(producenckie.map((s) => s.template_ref));
+    return [
+      ...producenckie.map((s) => ({ ref: s.template_ref, etykieta: s.template_name_pl ?? s.template_ref })),
+      ...kanoniczne
+        .filter((s) => s.dopuszczony && !znane.has(s.template_ref))
+        .map((s) => ({ ref: s.template_ref, etykieta: s.template_name_pl })),
+    ];
+  }, [bay.bay_role, kanoniczne, szablony]);
+  const niedopuszczone = useMemo(() => kanoniczne.filter((s) => !s.dopuszczony), [kanoniczne]);
+  // Klasa pola liniowego dotyczy pola GPZ funkcji, dla której backend ma szablon pola liniowego
+  // (oś `wykonanie_pola`, ENEA Z.10/Z.11.1/Z.11) — rola z listy szablonów, nie z tablicy frontu.
+  const polePozwalaNaKlase =
+    Boolean(bay.gpz_section_id) && (kanoniczne.some((s) => s.wykonanie_pola !== null) || bay.klasa_pola != null);
+  const wybranyKanoniczny = useMemo(
+    () => kanoniczne.find((s) => s.template_ref === szablonRef) ?? null,
+    [kanoniczne, szablonRef],
   );
 
   const zmienWiersz = useCallback((indeks: number, zmiana: (w: WierszAparatu) => WierszAparatu) => {
@@ -186,7 +280,7 @@ export function EdytorWyposazeniaPola({
       const odpowiedz = await executeDomainOperation(
         activeCaseId,
         'set_bay_equipment',
-        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef),
+        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef, klasa),
       );
       if (!odpowiedz) {
         setBlad(bladStore?.() ?? 'Nie udało się zapisać wyposażenia pola.');
@@ -201,7 +295,7 @@ export function EdytorWyposazeniaPola({
     } finally {
       setZapis(false);
     }
-  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, szablonRef, tryb, wiersze]);
+  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, klasa, szablonRef, tryb, wiersze]);
 
   const pole = 'rounded border border-scada-border bg-white px-1.5 py-1 text-xs';
 
@@ -232,6 +326,7 @@ export function EdytorWyposazeniaPola({
             setWiersze(wierszeStartowe(bay));
             setTryb('katalog');
             setSzablonRef('');
+            setKlasa(BEZ_ZMIANY_KLASY);
             setBlad(null);
             setOtwarty(true);
           }}
@@ -264,7 +359,7 @@ export function EdytorWyposazeniaPola({
           {tryb === 'katalog' ? (
             <div className="mt-2 space-y-2">
               {wiersze.map((w, i) => {
-                const pozycje = w.kind ? pozycjeDlaWiersza(katalog, w.kind) : [];
+                const pozycje = w.kind ? pozycjeDlaWiersza(katalog, w.kind, w) : [];
                 const maKatalog = w.kind !== '' && PRZESTRZEN_KATALOGU_APARATU[w.kind] !== null;
                 return (
                   <div key={i} data-testid={`wyposazenie-pola-aparat-${i}`} className="flex flex-wrap items-center gap-1.5">
@@ -307,7 +402,7 @@ export function EdytorWyposazeniaPola({
                         <option value="">— pozycja katalogowa —</option>
                         {pozycje.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name}
+                            {etykietaPozycji(p)}
                           </option>
                         ))}
                       </select>
@@ -348,6 +443,20 @@ export function EdytorWyposazeniaPola({
                         ))}
                       </select>
                     ) : null}
+                    {bay.stan_obiektu === 'ISTNIEJACY' ? (
+                      <select
+                        aria-label={`Stan aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-stan`}
+                        className={pole}
+                        value={w.stan_obiektu}
+                        onChange={(e) =>
+                          zmienWiersz(i, (x) => ({ ...x, stan_obiektu: e.target.value as WierszAparatu['stan_obiektu'] }))
+                        }
+                      >
+                        <option value="">aparat bez zmian albo nowy (wymiana — projektowany)</option>
+                        <option value="ISTNIEJACY">aparat istniejący (inwentaryzacja aparatu zastanego)</option>
+                      </select>
+                    ) : null}
                     <input
                       aria-label={`Oznaczenie aparatu ${i + 1}`}
                       data-testid={`wyposazenie-pola-aparat-${i}-oznaczenie`}
@@ -355,6 +464,15 @@ export function EdytorWyposazeniaPola({
                       placeholder="np. Q1"
                       value={w.designation}
                       onChange={(e) => zmienWiersz(i, (x) => ({ ...x, designation: e.target.value }))}
+                    />
+                    <input
+                      aria-label={`Odgałęzienie toru aparatu ${i + 1}`}
+                      data-testid={`wyposazenie-pola-aparat-${i}-odgalezienie`}
+                      className={`${pole} w-24`}
+                      placeholder="tor główny"
+                      title="Odgałęzienie toru (np. pn — odgałęzienie przekładnika napięciowego); puste = tor główny pola"
+                      value={w.odgalezienie}
+                      onChange={(e) => zmienWiersz(i, (x) => ({ ...x, odgalezienie: e.target.value }))}
                     />
                     <button
                       type="button"
@@ -367,6 +485,12 @@ export function EdytorWyposazeniaPola({
                   </div>
                 );
               })}
+              {wiersze.some((w) => w.kind !== '' && PRZESTRZEN_KATALOGU_APARATU[w.kind] === 'APARAT_SN' && w.stan_obiektu !== 'ISTNIEJACY') &&
+              notaPozycjiUkrytych(katalog.APARAT_SN, 'PROJEKTOWANY') !== null ? (
+                <p data-testid="wyposazenie-pola-nota-ukrytych" className="text-scada-muted">
+                  {notaPozycjiUkrytych(katalog.APARAT_SN, 'PROJEKTOWANY')}
+                </p>
+              ) : null}
               <button
                 type="button"
                 data-testid="wyposazenie-pola-dodaj"
@@ -393,8 +517,59 @@ export function EdytorWyposazeniaPola({
                     : '— pole nie ma szablonu: wskaż szablon —'}
                 </option>
                 {szablonyPola.map((s) => (
-                  <option key={s.template_ref} value={s.template_ref}>
-                    {s.template_name_pl ?? s.template_ref}
+                  <option key={s.ref} value={s.ref}>
+                    {s.etykieta}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny ? (
+            <p data-testid="wyposazenie-pola-szablon-opis" className="mt-1 text-[11px] text-scada-muted">
+              {wybranyKanoniczny.podstawa ? `Podstawa: ${wybranyKanoniczny.podstawa}. ` : ''}
+              {wybranyKanoniczny.wykonanie_lacznikow_pl ? `Wykonanie łączników: ${wybranyKanoniczny.wykonanie_lacznikow_pl}. ` : ''}
+              {wybranyKanoniczny.funkcje_eaz.length > 0
+                ? 'Funkcje zabezpieczeniowe pola:'
+                : 'Szablon bez funkcji zabezpieczeniowych.'}
+            </p>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny && wybranyKanoniczny.funkcje_eaz_pl.length > 0 ? (
+            <ul data-testid="wyposazenie-pola-szablon-funkcje-eaz" className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
+              {wybranyKanoniczny.funkcje_eaz_pl.map((opis, i) => (
+                <li key={wybranyKanoniczny.funkcje_eaz[i]} data-kod={wybranyKanoniczny.funkcje_eaz[i]}>
+                  {opis}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {tryb === 'szablon' && niedopuszczone.length > 0 ? (
+            <ul data-testid="wyposazenie-pola-szablony-niedostepne" className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
+              {niedopuszczone.map((s) => (
+                <li key={s.template_ref} data-testid={`wyposazenie-pola-szablon-niedostepny-${s.template_ref}`}>
+                  <span className="font-medium text-scada-text">{s.template_name_pl}</span> — niedostępny w tym polu:{' '}
+                  {s.odmowy.map((o) => o.komunikat_pl).join(' ')}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {polePozwalaNaKlase ? (
+            <label className="mt-2 flex flex-wrap items-center gap-2">
+              <span>Klasa pola liniowego</span>
+              <select
+                data-testid="wyposazenie-pola-klasa"
+                className={pole}
+                value={klasaPo ?? ''}
+                onChange={(e) =>
+                  setKlasa({
+                    zmien: true,
+                    wartosc: e.target.value === '' ? null : (e.target.value as (typeof KLASY_POLA_LINIOWEGO)[number]),
+                  })
+                }
+              >
+                <option value="">— klasa nieustalona —</option>
+                {KLASY_POLA_LINIOWEGO.map((k) => (
+                  <option key={k} value={k}>
+                    {NAZWA_KLASY_POLA_PL[k]}
                   </option>
                 ))}
               </select>

@@ -516,12 +516,12 @@
         "burden_va": null,
         "bus_ref": "QF-G1_pcc",
         "ct_arrangement": null,
-        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT Agregat G1",
         "purpose": "protection",
         "ratio_primary": 200.0,
         "ratio_secondary": 5.0,
+        "rdzenie": null,
         "ref_id": "CT-QF-G1"
       },
       {
@@ -530,12 +530,12 @@
         "burden_va": null,
         "bus_ref": "QF-PV1_pcc",
         "ct_arrangement": null,
-        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT PV1",
         "purpose": "protection",
         "ratio_primary": 200.0,
         "ratio_secondary": 5.0,
+        "rdzenie": null,
         "ref_id": "CT-QF-PV1"
       },
       {
@@ -544,12 +544,12 @@
         "burden_va": null,
         "bus_ref": "T1_zacisk",
         "ct_arrangement": null,
-        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
         "ratio_primary": 2300.0,
         "ratio_secondary": 5.0,
+        "rdzenie": null,
         "ref_id": "CT-T1"
       }
     ],
@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "e2727c2e6f9af13f2a3da3d1a3546ba54f0ad0f9aab9a36ecf0b4843a5e6e053",
+  "projection_hash": "4d99b8fe3a82de4adda8bb3508881cdad2b93ea39e09ef4b4acb18616ffbc6dc",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

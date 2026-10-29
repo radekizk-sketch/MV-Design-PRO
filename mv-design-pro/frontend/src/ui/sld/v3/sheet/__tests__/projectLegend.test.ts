@@ -6,7 +6,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { computeProjectLegendEntries } from '../projectLegend';
+import { ATRYBUCJA_SYMBOLI_QET_PL, atrybucjaSymboliSceny, computeProjectLegendEntries } from '../projectLegend';
+import { buildSheetTitleBlockData } from '../../export/sheetTitleBlock';
+import { QET_SYMBOL_IDS } from '../../symbols/defs';
 import type { SceneV3 } from '../../scene/buildScene';
 import type { PreviewSegment, PreviewSymbol } from '../../compose/preview';
 
@@ -163,5 +165,33 @@ describe('computeProjectLegendEntries — zero fabrykacji (K12 §0.3)', () => {
     const entries = computeProjectLegendEntries(scene);
     expect(entries.find((e) => e.id === 'earthSwitch')?.labelPl).toContain('blokada zamkn. na tor pod napięciem');
     expect(entries.find((e) => e.id === 'meter')?.labelPl).toContain('nie napęd silnikowy');
+  });
+});
+
+// UX-04/POLE-LINIOWE-WZORZEC: licencja CC BY 3.0 symboli QElectroTech wymaga atrybucji przy
+// każdym rozpowszechnieniu rysunku. Iloczyn: {każdy symbol QET, brak symbolu QET} × {legenda,
+// tabliczka eksportu} — jeden tekst z jednego źródła (`atrybucjaSymboliSceny`).
+describe('UX-04 — atrybucja symboli QElectroTech (legenda i tabliczka eksportu)', () => {
+  it('tekst wskazuje autora, bibliotekę i licencję', () => {
+    expect(ATRYBUCJA_SYMBOLI_QET_PL).toContain('QElectroTech');
+    expect(ATRYBUCJA_SYMBOLI_QET_PL).toContain('The QElectroTech team');
+    expect(ATRYBUCJA_SYMBOLI_QET_PL).toContain('CC BY 3.0');
+  });
+  for (const id of QET_SYMBOL_IDS) {
+    it(`scena z ${id}: wpis legendy i wiersz tabliczki „Symbole"`, () => {
+      const scene = makeScene({ symbols: [{ symbolId: 'breaker' }, { symbolId: id }] });
+      expect(atrybucjaSymboliSceny(scene)).toBe(ATRYBUCJA_SYMBOLI_QET_PL);
+      const wpis = computeProjectLegendEntries(scene).find((e) => e.id === 'qet-atrybucja');
+      expect(wpis).toEqual({ kind: 'note', id: 'qet-atrybucja', labelPl: ATRYBUCJA_SYMBOLI_QET_PL });
+      const tabliczka = buildSheetTitleBlockData({ stationCount: 0, sheetAspect: 1, atrybucjaSymboli: atrybucjaSymboliSceny(scene) });
+      expect(tabliczka.rows[tabliczka.rows.length - 1]).toEqual({ labelPl: 'Symbole', value: ATRYBUCJA_SYMBOLI_QET_PL });
+    });
+  }
+  it('scena bez symboli QET: bez wpisu i bez wiersza (zero fabrykacji)', () => {
+    const scene = makeScene({ symbols: [{ symbolId: 'breaker' }, { symbolId: 'disconnector' }] });
+    expect(atrybucjaSymboliSceny(scene)).toBeNull();
+    expect(computeProjectLegendEntries(scene).some((e) => e.id === 'qet-atrybucja')).toBe(false);
+    const tabliczka = buildSheetTitleBlockData({ stationCount: 0, sheetAspect: 1, atrybucjaSymboli: atrybucjaSymboliSceny(scene) });
+    expect(tabliczka.rows.some((r) => r.labelPl === 'Symbole')).toBe(false);
   });
 });

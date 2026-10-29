@@ -6,14 +6,14 @@
       "element_id": "bus_sn_main",
       "target_name": "Szyna SN",
       "ikss_ka": 0.0028127459119,
-      "ip_ka": 0.00795577146357,
-      "ith_ka": 0.00487691478026,
+      "ip_ka": 0.00795577146358,
+      "ith_ka": 0.00487691478032,
       "sk_mva": 0.0730772824229,
-      "rk_ohm": 0.108278327026,
+      "rk_ohm": 0.1082783283,
       "xk_ohm": -10160.4763524,
       "zk_ohm": 10160.476353,
-      "rx_ratio": -1.06568160065e-05,
-      "xr_ratio": -93836.6580964,
+      "rx_ratio": -1.06568161319e-05,
+      "xr_ratio": -93836.6569923,
       "kappa": 2.00003133154,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -83,11 +83,11 @@
         }
       ],
       "ib_ka": 0.0028127459119,
-      "i_dc_ka": 0.00397915538949,
+      "i_dc_ka": 0.00397915538951,
       "ik_ka": 0.0028127459119,
       "ik_thevenin_ka": 0.0028127459119,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842977739e-05,
+      "i2t_ka2s": 2.37842977745e-05,
       "z1_ohm": {
         "re": 0.0541391635129,
         "im": 1.06263679295
@@ -97,7 +97,7 @@
         "im": 1.06263679295
       },
       "z0_ohm": {
-        "re": 5.11590769747e-13,
+        "re": 1.2745363594e-09,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -439,14 +439,14 @@
       "element_id": "bus_sn_b",
       "target_name": "Stacja B SN",
       "ikss_ka": 0.0028127459119,
-      "ip_ka": 0.00795577146357,
-      "ith_ka": 0.00487691478026,
+      "ip_ka": 0.00795577146358,
+      "ith_ka": 0.00487691478032,
       "sk_mva": 0.0730772824229,
-      "rk_ohm": 0.108278327026,
+      "rk_ohm": 0.1082783283,
       "xk_ohm": -10160.4763524,
       "zk_ohm": 10160.476353,
-      "rx_ratio": -1.06568160065e-05,
-      "xr_ratio": -93836.6580964,
+      "rx_ratio": -1.06568161319e-05,
+      "xr_ratio": -93836.6569923,
       "kappa": 2.00003133154,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -516,11 +516,11 @@
         }
       ],
       "ib_ka": 0.0028127459119,
-      "i_dc_ka": 0.00397915538949,
+      "i_dc_ka": 0.00397915538951,
       "ik_ka": 0.0028127459119,
       "ik_thevenin_ka": 0.0028127459119,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842977739e-05,
+      "i2t_ka2s": 2.37842977745e-05,
       "z1_ohm": {
         "re": 0.0541391635129,
         "im": 1.06263679295
@@ -530,7 +530,7 @@
         "im": 1.06263679295
       },
       "z0_ohm": {
-        "re": 5.11590769747e-13,
+        "re": 1.2745363594e-09,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -587,13 +587,13 @@
       "target_name": "Stacja C SN",
       "ikss_ka": 0.00281425466409,
       "ip_ka": 0.00796330032695,
-      "ith_ka": 0.00501865538273,
+      "ith_ka": 0.00501865538279,
       "sk_mva": 0.0731164809546,
-      "rk_ohm": 2.93742408265,
+      "rk_ohm": 2.93742408393,
       "xk_ohm": -10155.0287875,
       "zk_ohm": 10155.0292124,
-      "rx_ratio": -0.000289258075394,
-      "xr_ratio": -3457.12042313,
+      "rx_ratio": -0.000289258075519,
+      "xr_ratio": -3457.12042163,
       "kappa": 2.00085078783,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -663,11 +663,11 @@
         }
       ],
       "ib_ka": 0.00281425466409,
-      "i_dc_ka": 0.00401628904955,
+      "i_dc_ka": 0.00401628904957,
       "ik_ka": 0.00281425466409,
       "ik_thevenin_ka": 0.00281425466409,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.51869018506e-05,
+      "i2t_ka2s": 2.51869018513e-05,
       "z1_ohm": {
         "re": 0.755712041326,
         "im": 1.92641924066
@@ -677,7 +677,7 @@
         "im": 1.92641924066
       },
       "z0_ohm": {
-        "re": 1.426,
+        "re": 1.42600000127,
         "im": -10158.881626
       },
       "branch_contributions": null,
@@ -869,7 +869,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "07ce0bfbbb6e90c73205dcf34309c487e054d5d81a23405985dfacdeab25a84e",
+      "result_hash": "67c4df9c40e78e7bbc663c8a793acc28c765081435f783fe734d7f500b2dd98e",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -880,7 +880,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "d0a62e49f70cc6f6b6eaa74dec2692be74363925483cc2c61b0ffd4fb4568061",
+      "catalog_fingerprint": "179c98a7c33b3b79321978aa3ea1afefb8ad2636d5efca674424606ae251f035",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

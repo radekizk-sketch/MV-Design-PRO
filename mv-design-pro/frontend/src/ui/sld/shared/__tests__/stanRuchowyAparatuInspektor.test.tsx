@@ -189,9 +189,9 @@ function poleZPowiazaniem(status: StatusGalezi, rekord: RekordAparatu): EnergyNe
   return snapshot;
 }
 
-function stanGlifu(snapshot: EnergyNetworkModel, deviceRef: string): 'closed' | 'open' | 'unknown' | undefined {
+function stanGlifu(snapshot: EnergyNetworkModel, deviceRef: string): 'closed' | 'open' | 'unknown' | 'earthed' | undefined {
   const galezie = new Map(snapshot.branches.map((b) => [b.ref_id, b]));
-  return projectBayPrimaryDevices(snapshot.bays![0], galezie)?.find((d) => d.deviceRef === deviceRef)?.switchState;
+  return projectBayPrimaryDevices(snapshot.bays![0], galezie, snapshot.bays)?.find((d) => d.deviceRef === deviceRef)?.switchState;
 }
 
 function polozenie(snapshot: EnergyNetworkModel, ref: string) {

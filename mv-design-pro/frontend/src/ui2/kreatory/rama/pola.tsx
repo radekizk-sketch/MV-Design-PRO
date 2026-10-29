@@ -328,6 +328,12 @@ export interface PoleKataloguProps {
   blad?: string;
   komunikatBledu?: string | null;
   pomoc?: string;
+  /**
+   * Zdanie o pozycjach ukrytych przez filtr dopuszczenia backendu (np. aparaty z gazem
+   * fluorowanym niedopuszczone do obiektu projektowanego — `ui/catalog/dopuszczenieNowychPol`).
+   * Dyskretne, pod listą; `null` = nic nie ukryto.
+   */
+  nota?: string | null;
   testid?: string;
 }
 
@@ -347,6 +353,7 @@ export function PoleKatalogu({
   blad,
   komunikatBledu,
   pomoc,
+  nota,
   testid,
 }: PoleKataloguProps) {
   return (
@@ -369,6 +376,11 @@ export function PoleKatalogu({
       {status === 'error' ? (
         <p className="mvd-pole-blad" role="alert">
           {komunikatBledu ?? 'Nie udało się pobrać katalogu.'}
+        </p>
+      ) : null}
+      {nota ? (
+        <p className="mvd-pole-pomoc" data-testid={testid ? `${testid}-nota` : undefined}>
+          {nota}
         </p>
       ) : null}
     </Polakoszulka>

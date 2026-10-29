@@ -1548,6 +1548,95 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: przekładniki pól liniowych GPZ wg rysunków ENEA
+        # Operator „Stacje elektroenergetyczne 110 kV", Zeszyt 1 — TYP OGÓLNY OSD (jak rodziny
+        # rozdzielnic `TYP_OGOLNY_OSD__GPZ_*`), nie wyrób producenta. Przekładnia przełączalna
+        # 200-400/5 A: pole `ratio_primary_a` = zaczep 400 A, rdzenie z rysunku w `rdzenie`.
+        {
+            "id": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "name": "CT 200-400/5 A, 1 rdzeń 15 VA 5P20 (typ ogólny OSD, ENEA Z.10/Z.11.1)",
+            "params": {
+                "ratio_primary_a": 400.0,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": "5P20",
+                "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 15.0,
+                        "klasa": "5P20",
+                        "fs": None,
+                        "przeznaczenie": ["ZABEZPIECZENIA"],
+                    }
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 (s.89) "
+                        "i Z.11.1 (s.91); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości "
+                        "rozdzielnicy SN: Ith 20 kA/1 s dla toru 200-1000 A)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzenia). "
+                        + verification_note
+                    ),
+                ),
+            },
+        },
+        {
+            "id": "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+            "name": "CT 200-400/5/5/5 A, 3 rdzenie (typ ogólny OSD, ENEA Z.11)",
+            "params": {
+                "ratio_primary_a": 400.0,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": "0,2S",
+                "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
+                "fs_safety_factor": 5.0,
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 10.0,
+                        "klasa": "0,2S",
+                        "fs": 5.0,
+                        "przeznaczenie": ["ROZLICZENIE", "JAKOSC_ENERGII"],
+                    },
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 10.0,
+                        "klasa": "0,2",
+                        "fs": 5.0,
+                        "przeznaczenie": ["REGULACJA"],
+                    },
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 15.0,
+                        "klasa": "5P20",
+                        "fs": None,
+                        "przeznaczenie": ["ZABEZPIECZENIA"],
+                    },
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 (s.90); "
+                        "IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: "
+                        "Ith 20 kA/1 s dla toru 200-1000 A)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z rysunku standardu: rdzeń I rozliczeniowy i analizatora "
+                        "jakości energii (AJEE — odbiorcy > 4 MW, wytwórcy ≥ 200 kW), rdzeń II "
+                        "układów regulacyjnych, rdzeń III zabezpieczeniowy. Pola skalarne opisują "
+                        "rdzeń I. " + verification_note
+                    ),
+                ),
+            },
+        },
         {
             "id": "ct_2000_5_10p10_30va_arteche",
             "name": "CT 2000/5 A kl. 10P10 30 VA",

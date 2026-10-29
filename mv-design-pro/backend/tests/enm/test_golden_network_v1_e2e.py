@@ -325,7 +325,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
         payload={
             "segment_id": ring_segment_ref,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+            "catalog_ref": "sw-ls-ogolny-prozniowy-24kv-630a",
         },
     )
     _assert_step_ok(r8, "Krok 8: insert_section_switch_sn")

@@ -119,6 +119,8 @@ export function buildCanonicalGpzProps(
     // GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola i predykat pola wolnego.
     substations: enm.substations ?? [],
     branches: enm.branches ?? [],
+    // Karta UX-04 (stan obiektu): pola modelu — reguła stanu łącznika z gałęzi.
+    bays: enm.bays ?? [],
     galezieWgRef,
     // GPZ-PARYTET cz. 3 (pkt 1): rodzaj źródła pola OZE z przyłączonych wytwórców — ta
     // sama relacja i funkcja co pola źródłowe stacji (`v2/model/polaZModelu.ts`).
@@ -374,7 +376,7 @@ export function extractTransformerDesignation(name: string | null | undefined, i
 /** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
  *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
-type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements' | 'substations' | 'branches'> & {
+type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays'> & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
   /** Wytwórcy wg pola (`Generator.meta.field_ref`) — rodzaj źródła pola OZE. */
@@ -538,7 +540,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
     // pierwotnych, przypisań zabezpieczeń i pomiarów w modelu daje tu `undefined` —
     // „brak danych = brak rysunku" (spec §17.2).
-    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef),
+    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef, protectionCtx.bays),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
     // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu

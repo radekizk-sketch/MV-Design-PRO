@@ -15,6 +15,10 @@
 
 import { clsx } from 'clsx';
 import type { BayCanonicalRole } from '../../types/enm';
+import type {
+  RdzenPrzekladnikaPradowego,
+  UzwojeniePrzekladnikaNapieciowego,
+} from '../../types/przekladniki';
 import {
   FIELD_ROLE_LABEL_PL,
   fieldLabelInSentencePl,
@@ -60,21 +64,37 @@ export type BayRole = 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT'
  * i dlatego rysunek pola nie miał z czego pokazać składu rozdzielnicy.
  */
 export interface BayDeviceTemplateWire {
+  // Lustro `BayDeviceTemplate.kind` (`network_model/catalog/bay_templates.py`); równość zbiorów
+  // przypina `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py`.
   readonly kind:
     | 'CB'
     | 'DS_BUS'
     | 'DS_LINE'
+    | 'DS_BRANCH'
     | 'ES'
     | 'CT'
     | 'VT'
     | 'FUSE'
     | 'SURGE_ARRESTER'
     | 'CABLE_HEAD'
-    | 'TRANSFORMER_DEVICE';
+    | 'TRANSFORMER_DEVICE'
+    | 'THREE_POSITION_SWITCH'
+    | 'VOLTAGE_INDICATOR'
+    | 'CORE_BALANCE_CT';
   readonly designation_q: string;
   readonly position: number;
   readonly placement: 'UPSTREAM' | 'MIDSTREAM' | 'DOWNSTREAM' | 'OFF_PATH' | 'GROUND_BRANCH';
   readonly optional?: boolean;
+  /** Podstawa pozycji w szablonie (rysunek/punkt standardu); `null` = szablon bez podstawy. */
+  readonly podstawa?: string | null;
+  /** Pozycja katalogowa aparatu wskazana przez szablon; `null` = wartość robocza. */
+  readonly catalog_ref?: string | null;
+  /** Odgałęzienie toru, w którym aparat leży (Z.11/Z.11.1: przekładnik napięciowy za
+   *  wyłącznikiem); `null` = tor główny. */
+  readonly odgalezienie?: string | null;
+  /** Tabliczka przekładnika wg rysunku standardu: rdzenie CT, uzwojenia VT. */
+  readonly rdzenie?: readonly RdzenPrzekladnikaPradowego[];
+  readonly uzwojenia?: readonly UzwojeniePrzekladnikaNapieciowego[];
 }
 
 /** Port pola — `BayPortTemplate` backendu (`base_template.ports`). */

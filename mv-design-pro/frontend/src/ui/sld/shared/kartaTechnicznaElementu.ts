@@ -30,9 +30,11 @@ import type {
   Measurement,
   ProtectionAssignment,
   Source,
+  StanObiektu,
   Substation,
   Transformer,
 } from '../../../types/enm';
+import { isSwitchBranch } from '../../../types/enm';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import {
@@ -55,6 +57,7 @@ import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
 // ---------------------------------------------------------------------------
@@ -194,9 +197,10 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'funkcje_zabezpieczen',
     'przekladniki',
     'przylaczenie',
+    'stan_obiektu',
   ],
-  aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'typ', 'ur', 'ir', 'ik_wyl', 'stan'],
-  lacznik: ['nazwa', 'rodzaj', 'polaczenie', 'stan', 'typ', 'ur', 'ir', 'ik_wyl'],
+  aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'typ', 'ur', 'ir', 'ik_wyl', 'stan', 'stan_obiektu'],
+  lacznik: ['nazwa', 'rodzaj', 'polaczenie', 'stan', 'typ', 'ur', 'ir', 'ik_wyl', 'stan_obiektu'],
   transformator: [
     'nazwa',
     'rola',
@@ -278,9 +282,10 @@ function edycja(elementRef: string, parametr: string, wartosc: unknown): EdycjaW
   };
 }
 
-const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
+const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'earthed' | 'unknown', string>> = {
   closed: 'zamknięty',
   open: 'otwarty',
+  earthed: 'uziemiony',
   unknown: 'nieustalony (model niejednoznaczny)',
 };
 
@@ -318,6 +323,9 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   PCS: 'Układ przekształtnikowy PCS',
   BATTERY: 'Bateria',
   SURGE_ARRESTER: 'Ogranicznik przepięć',
+  THREE_POSITION_SWITCH: 'Łącznik trójpołożeniowy',
+  VOLTAGE_INDICATOR: 'Pojemnościowy wskaźnik napięcia',
+  CORE_BALANCE_CT: 'Przekładnik Ferrantiego',
 };
 
 const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {
@@ -615,6 +623,24 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
     ? stanLacznikaPolaZModelu(aparat.ref, bay, ix.galezie)
     : stanLacznikaToruZModelu(aparat.ref, ix.galezie);
   return stan ? POLOZENIE_PL[stan] : null;
+}
+
+/** Stan obiektu (istniejący / projektowany) — nazwa PL; `null` = stan nieustalony (zapis sprzed
+ *  atrybutu), na karcie „brak danych", nigdy domysł „istniejący". */
+function nazwaStanuObiektu(stan: StanObiektu | null | undefined): string | null {
+  return stan ? NAZWY_STANOW_OBIEKTU_PL[stan] : null;
+}
+
+/** Stan obiektu aparatu: rekord aparatu pola niesie własny stan (`BayPrimaryDevice.stan_obiektu`
+ *  — ten sam, który ocenia zakaz gazów fluorowanych), gałąź łączeniowa — regułę
+ *  `stanObiektuLacznika` (lustro backendu: aparat wskazujący gałąź, stan gałęzi, stan pola). */
+function stanObiektuAparatu(ix: IndeksModelu, aparat: AparatPola): string | null {
+  if (aparat.urzadzenie) return nazwaStanuObiektu(aparat.urzadzenie.stan_obiektu);
+  // Bezpiecznik (gałąź `fuse`) nie niesie stanu obiektu w modelu — tylko jego rekord w polu.
+  if (aparat.galaz && isSwitchBranch(aparat.galaz)) {
+    return nazwaStanuObiektu(stanObiektuLacznika(ix.model.bays, aparat.galaz));
+  }
+  return null;
 }
 
 function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
@@ -930,6 +956,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
           edycja: edycja(bay.ref_id, 'feeder_short_name', bay.feeder_short_name),
         }),
         ...(bay.outgoing_destination_ref ? [wiersz('kierunek', 'Kierunek (stacja docelowa)', kierunek)] : []),
+        wiersz('stan_obiektu', 'Stan obiektu', nazwaStanuObiektu(bay.stan_obiektu)),
       ],
     },
     {
@@ -950,6 +977,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
             { klucz: 'ir', etykieta: 'Iᵣ' },
             { klucz: 'ik', etykieta: 'Zdolność wyłączalna' },
             { klucz: 'stan', etykieta: 'Stan' },
+            { klucz: 'stan_obiektu', etykieta: 'Stan obiektu' },
           ],
           wiersze: aparaty.map((a) => {
             const zn = znamionaAparatu(a, katalogi);
@@ -962,6 +990,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
                 ir: zn.ir,
                 ik: a.lacznik ? zn.ik : 'nie dotyczy',
                 stan: a.lacznik ? stanAparatu(ix, a, bay) : 'nie dotyczy',
+                stan_obiektu: stanObiektuAparatu(ix, a),
               },
             };
           }),
@@ -1021,6 +1050,7 @@ function kartaAparatu(
           `${opisSzyny(ix, galaz.from_bus_ref) ?? BRAK_DANYCH_PL} — ${opisSzyny(ix, galaz.to_bus_ref) ?? BRAK_DANYCH_PL}`,
         ),
         wiersz('stan', 'Położenie (model)', stanAparatu(ix, aparat, null)),
+        wiersz('stan_obiektu', 'Stan obiektu', stanObiektuAparatu(ix, aparat)),
       ]
     : [
         wiersz('nazwa', 'Nazwa', nazwa, galaz ? { edycja: edycja(galaz.ref_id, 'name', galaz.name) } : {}),
@@ -1029,6 +1059,7 @@ function kartaAparatu(
         wiersz('stacja', 'Stacja', bay ? nazwaStacji(ix, stacjaPola(ix.model, bay.ref_id)) : null),
         ...(globalId ? [wiersz('identyfikator', 'Identyfikator na schemacie', globalId)] : []),
         wiersz('stan', 'Położenie (model)', aparat.lacznik ? stanAparatu(ix, aparat, bay) : 'nie dotyczy'),
+        wiersz('stan_obiektu', 'Stan obiektu', stanObiektuAparatu(ix, aparat)),
       ];
   return {
     rodzaj: lacznikToru ? 'lacznik' : 'aparat',

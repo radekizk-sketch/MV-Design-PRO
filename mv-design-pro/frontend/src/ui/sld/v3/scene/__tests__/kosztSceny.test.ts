@@ -565,6 +565,39 @@ interface OdciskiLod {
  * znika naruszenie `DEVICE_TERMINAL_UNRESOLVED` („Magistrala 1" wskazywała skasowany odcinek)
  * i jego notatka STOP, zostaje notatka łamania arkusza. To dokładnie wkład danych karty
  * MENU-KANON opisany wyżej, nałożony na scenę GPZ-MODEL.
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta UX-04/POLE-LINIOWE-WZORZEC, 2026-10-28) — zmienione wyłącznie
+ * 4 odciski SCENY: L1 i L2 obu sieci; L0 scen, cały declutter i wszystkie plany bez zmian
+ * (zielone w kroku budżetów). Pomiar: pełne sceny L0/L1/L2 obu sieci zrzucone z bazy karty
+ * `f44e042f6` (`git archive`) i z drzewa karty, porównane liść po liściu. Dwa wkłady, oba
+ * zamierzone:
+ *  · tor pola z portów (stacja i GPZ, jedna reguła `compose/apparatusSequence.ts`): pole
+ *    stacji, którego aparaty nie niosą portów w modelu, dostaje w `meta.stopNotes` pełne
+ *    zdanie braku („aparaty pola nie niosą portów w modelu — kolejność wg umiejscowienia, bez
+ *    przewodów między aparatami") — 171 notatek w sieci referencyjnej (fikstura
+ *    `sldSubstrate52s` sprzed modelu portów), 342 w podwojonej, tylko L1/L2 (na L0 pola nie
+ *    są rysowane). Przewodów nie przybyło (bez portów nie ma węzła wspólnego), geometria
+ *    aparatów bez zmian;
+ *  · przedłużenie szyny do zaczepu źródła systemowego (`#hv-bus-source-extension`) kończy
+ *    się w osi zejścia źródła (x 232), nie 8 j.św. dalej przy prawej krawędzi symbolu (x 240)
+ *    — kikut za zaczepem był odcinkiem kończącym się poza portem i poza szyną (wyrocznia
+ *    `gpzInternalSegmentsEndAtPortsOrBus` dopuszczała go wyłącznie dlatego, że przedłużenie
+ *    uprawomocniało samo siebie).
+ * DOWÓD, ŻE TO JEDYNE ZMIANY: zrzut sześciu scen z usuniętymi notatkami braku portów
+ * i końcem przedłużenia zastąpionym stałą jest CO DO BAJTU identyczny w bazie i po karcie
+ * (sha256 `f7dc6c1ef93d4ffa265d0ef31069040b522f0dc5708b1d2dc596ea8f81601c1c` w obu fazach).
+ *
+ * TA SAMA KARTA, trzeci wkład (2026-10-29, stan obiektu ISTNIEJACY/PROJEKTOWANY) — znów
+ * wyłącznie 4 odciski SCENY L1/L2 obu sieci. Fikstura `sldSubstrate52s` jest
+ * przegenerowana z operacji backendu, które zapisują stan obiektu pola i aparatu
+ * (`PROJEKTOWANY` dla obiektów budowanych operacjami), a scena przenosi go do
+ * `symbols[].meta.stanObiektu` (ramka obiektu projektowanego i zakaz gazów fluorowanych
+ * w nowych polach czytają tę samą wartość). Pomiar sondą (`buildSceneV3` przez vite-node,
+ * kod i fikstura bazy `f44e042f6` z `git archive` wobec drzewa karty, porównanie liść po
+ * liściu): różnice to WYŁĄCZNIE (1) `meta.stanObiektu = 'PROJEKTOWANY'` na 171 symbolach
+ * sieci referencyjnej i 342 podwojonej, (2) notatki braku portów opisane wyżej (171/342),
+ * (3) koniec przedłużenia szyny 240 → 232. L0 obu sieci identyczne z bazą; kod bazy na
+ * nowej fiksturze daje odciski bazy (pole jest dla niego nieznane).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -582,7 +615,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
+      scena: 'a6fbf9b4df309e1eb0eff468da3eca3e',
       declutter: '40b7251b852fc542752fe1ba1f29338e',
       plany: [
         '06752775d45bbab5bd2330a0c33ea6b7',
@@ -595,7 +628,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '83203575489a3a901a5628b7c7e66235',
+      scena: 'e6bdd2058c3d09c3e8021d6c2dadab77',
       declutter: '3ac69d221753e008d7ac680e0531d8d4',
       plany: [
         '67205bf8127c4c224ade425c47dd2246',
@@ -623,7 +656,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '90661362a6f0ab5e8a1be3bb3ff396a9',
+      scena: 'f9606cdf9b029e9356734d8fec829881',
       declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
       plany: [
         'bb96bce423fc0946291bdd36d49ed8c2',
@@ -636,7 +669,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '60589317c4b2576b7bea5a668ec3ed59',
+      scena: 'b615d671cd8f8028ea951b5d374fb4ed',
       declutter: 'fd2ac4acf96701c6273059192dddd93f',
       plany: [
         '28965374c394c62b1d414eddfdd5e98a',

@@ -98,6 +98,7 @@ import {
   DANE_DOMYSLNE,
   RODZAJE_ZABEZPIECZEN,
   aparatyDlaPola,
+  notaAparatowPola,
   brakujacePolaToru,
   czyAparaturaKompletna,
   czyKoniecOdcinka,
@@ -2093,6 +2094,11 @@ export function KreatorStacjiSnNn() {
                     placeholder={T.aparatPolaPlaceholder}
                     pomoc={`${T.aparatPolaPomoc} ${T.aparatPolaWarianty(wariantyAparatuRoli(pole.field_role))}`}
                     komunikatBledu={bladAparatow ?? T.aparatBlad}
+                    nota={notaAparatowPola(
+                      aparaty,
+                      kontekst.snVoltageKv,
+                      rodzajeAparatuRoli[ROLA_POLA_NA_BAY_ROLE[pole.field_role]] ?? [],
+                    )}
                     wymagane
                     testid={`mvd-kreator-stacja-aparat-${index + 1}`}
                   />

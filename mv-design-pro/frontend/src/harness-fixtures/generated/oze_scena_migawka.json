@@ -16,6 +16,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "c1c1ea71-581f-5aec-bca9-7a2b36121487",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "field_status": "READY_FOR_TRUNK",
@@ -34,6 +35,7 @@
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -61,6 +63,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "2cb83e0a-4748-55f6-9c43-ef57b6005e76",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "created_by": "append_station_on_endpoint"
@@ -79,6 +82,7 @@
       "ref_id": "field/abf895244054e9481b88924a2bb075b2/1",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -105,6 +109,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "11957254-6baa-5c01-8053-86267497ecd4",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "created_by": "append_station_on_endpoint",
@@ -128,6 +133,7 @@
       "ref_id": "field/abf895244054e9481b88924a2bb075b2/2",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -153,6 +159,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "98334801-d35d-5cc0-a273-6ab788aa8d69",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "transformer_ref": "tr/abf895244054e9481b88924a2bb075b2/transformer"
@@ -167,6 +174,7 @@
       "ref_id": "stn/abf895244054e9481b88924a2bb075b2/nn_main_breaker",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -194,6 +202,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "c5e3da6a-9cac-5f75-8c82-9c9a8fa15872",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "feeder_role": "ODPLYW_NN"
@@ -208,6 +217,7 @@
       "ref_id": "stn/abf895244054e9481b88924a2bb075b2/nn_feeder/000",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -233,6 +243,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": null,
       "id": "8b9c6be1-56cd-5249-a727-35880e16e8a4",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "apparatus_kind": "BREAKER",
@@ -251,6 +262,7 @@
       "ref_id": "nn/a900546aa477764f997d4c616bd1ff3c/source_field",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -287,6 +299,7 @@
       "r_ohm": 0.0,
       "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_device",
       "source_mode": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [
         "gpz_field_device",
@@ -324,6 +337,7 @@
       "r_ohm": 0.0,
       "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/002",
       "source_mode": "KATALOG",
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [
         "station_field_device"
@@ -360,6 +374,7 @@
       "r_ohm": 0.0,
       "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/001",
       "source_mode": "KATALOG",
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [
         "station_field_device"
@@ -473,6 +488,7 @@
       "r_ohm": null,
       "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_device",
       "source_mode": "MIGRACJA",
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [],
       "to_bus_ref": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_bus",
@@ -497,6 +513,7 @@
       "r_ohm": null,
       "ref_id": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_device",
       "source_mode": "MIGRACJA",
+      "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
       "tags": [],
       "to_bus_ref": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_bus",
@@ -775,7 +792,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "85fba19ec404340e0b2419428a1a7ea5d8647d2d37e23921ca70d0106bd8fc63",
+    "hash_sha256": "f3de160b9341ab191d9bedae56df1608f272de18259a8d3e0ca28bef019f07bd",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

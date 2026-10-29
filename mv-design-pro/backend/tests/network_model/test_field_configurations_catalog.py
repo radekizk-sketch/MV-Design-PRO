@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from network_model.catalog.bay_templates import (
+    BAY_TEMPLATES_GPZ_LINE,
     config_ref_for_template,
     enumerate_canonical_configurations,
     functional_group_for_role,
@@ -20,8 +21,22 @@ from reference_engine.field_configuration_catalog import (
     producer_cell_primary_devices,
 )
 
-_LATERAL = {"ES", "VT", "SURGE_ARRESTER"}
-_MAIN_ORDER = ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"]
+_LATERAL = {"ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"}
+# Karta UX-04/POLE-LINIOWE-WZORZEC: łącznik trójpołożeniowy szynowy (ENEA Z.10 poz. 2–3) stoi
+# przy szynie, przekładnik Ferrantiego (poz. 8) — na kablu za głowicą; wskaźnik napięcia
+# (poz. 6) jest odgałęzieniem (OFF_PATH), nie aparatem toru.
+_MAIN_ORDER = [
+    "DS",
+    "THREE_POSITION_SWITCH",
+    "LOAD_SWITCH",
+    "CB",
+    "FUSE",
+    "CT",
+    "DS",
+    "CABLE_HEAD",
+    "CORE_BALANCE_CT",
+    "TRANSFORMER_DEVICE",
+]
 
 CATALOG_JSON = (
     Path(__file__).resolve().parents[3]
@@ -46,12 +61,16 @@ def test_canonical_enumeration_covers_registry() -> None:
     """Każdy kanoniczny szablon pola staje się przypadkiem macierzy (uwaga 16)."""
     configs = enumerate_canonical_configurations()
     refs = {c["config_ref"] for c in configs}
-    # 10 szablonów + 2 warianty pola źródłowego SN (W2b).
+    # 10 szablonów + 9 szablonów pola liniowego GPZ wg ENEA (Z.10, Z.11.1, Z.11 × łącznik
+    # trójpołożeniowy, wyłącznik stały z odłącznikiem szynowym, wyłącznik wysuwny — karta
+    # UX-04/POLE-LINIOWE-WZORZEC) + 2 warianty pola źródłowego SN (W2b).
     assert config_ref_for_template("bay_template_line_in") in refs
     assert config_ref_for_template("bay_template_transformer") in refs
+    for szablon in BAY_TEMPLATES_GPZ_LINE:
+        assert config_ref_for_template(szablon.template_id) in refs
     assert "kanoniczny:mv_source_cb" in refs
     assert "kanoniczny:mv_source_lbs" in refs
-    assert len(configs) == 12
+    assert len(configs) == 10 + len(BAY_TEMPLATES_GPZ_LINE) + 2 == 21
 
 
 def test_enumeration_is_deterministic() -> None:

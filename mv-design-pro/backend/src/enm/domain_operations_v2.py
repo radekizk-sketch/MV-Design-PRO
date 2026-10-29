@@ -76,6 +76,7 @@ from .domain_operations import (
     POLE_JEDNOSTKI_BLOKU,
     POLE_RODZAJU_POLA,
     _aparaty_i_konfiguracja_pola,
+    _aparaty_pola_liniowego_gpz,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
@@ -111,6 +112,7 @@ from .dynamika_z_katalogu import (
 )
 from .exceptions import DomainInvariantError
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
+from .gaz_fluorowany_pola import RODZAJE_GALEZI_LACZENIOWYCH
 from .katalog_projektu import katalog_biezacy, sekcja_katalogu_projektu
 from .katalog_projektu_karty import (
     KLUCZ_KART_WIDMOWYCH,
@@ -150,9 +152,11 @@ from .pole_katalogowe import (
     rozwiaz_plan_pola,
 )
 from .rola_pola_sn import (
+    ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
     nazwa_roli_pola_sn,
+    rola_modelu_pola_sn,
 )
 from .slownik_komunikatow import (
     NAZWY_KLAS_APARATU_NN_PL,
@@ -171,6 +175,7 @@ from .slownik_komunikatow import (
     w_cudzyslowie,
     wartosc_w_zdaniu,
 )
+from .stan_obiektu_pola import set_object_state
 from .topology import transformatory_zasilajace_gpz
 from .topology_ops import (
     attach_protection,
@@ -1988,13 +1993,24 @@ def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
 _KOD_BLEDU_POLA_KATALOGOWEGO = KOD_BLEDU_POLA_KATALOGOWEGO
 
 
-def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
+def _normalize_sn_bay_role(payload: dict[str, Any]) -> str | dict[str, Any]:
+    """Rola modelu pola z ładunku (alias modelu albo rola kanoniczna) — JEDEN kanon ról
+    (`enm.rola_pola_sn.rola_modelu_pola_sn`). Rola pusta albo spoza kanonu to odmowa nazwana
+    (ta sama klasa odmowy co `add_grid_source_sn`, kod ``sn.bay_role_invalid``) — dawniej
+    rola nieznana zamieniała się po cichu w pole odgałęźne (`FEEDER`)."""
     raw_role = payload.get("bay_role")
-    if isinstance(raw_role, str):
-        normalized = raw_role.strip().upper()
-        if normalized in {"IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"}:
-            return normalized
-    return "FEEDER"
+    rola = rola_modelu_pola_sn(raw_role)
+    if rola is not None:
+        return rola
+    dozwolone = lista_pl(nazwa_roli_pola_sn(r) for r in ROLE_POLA_MODELU)
+    if not isinstance(raw_role, str) or not raw_role.strip():
+        przyczyna = "nie wskazano roli pola"
+    else:
+        przyczyna = f"nieznana rola pola „{raw_role.strip()}”"
+    return _error_response(
+        f"Pole SN: {przyczyna} — wskaż rolę z kanonu ról pól SN: {dozwolone}.",
+        "sn.bay_role_invalid",
+    )
 
 
 def _default_sn_bay_name(role: str) -> str:
@@ -2004,19 +2020,26 @@ def _default_sn_bay_name(role: str) -> str:
 
 
 def _resolve_bay_template_protection_codes(
-    manufacturer_ref: str | None, bay_template_ref: str | None, bay_role: str
+    manufacturer_ref: str | None,
+    bay_template_ref: str | None,
+    bay_role: str,
+    klasa_pola: str | None = None,
 ) -> list[str]:
-    """Wymagane funkcje zabezpieczeniowe (ANSI/IEC) pola → Bay.protection_codes.
+    """Wymagane funkcje EAZ pola (kody słownika `funkcje_eaz`) → Bay.protection_codes.
 
-    Kolejność (zero fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
+    Zestaw należy do SZABLONU pola (karta UX-04/POLE-LINIOWE-WZORZEC). Kolejność (zero
+    fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
     1. `CompleteMvBayTemplate.protection_requirements` z wybranego szablonu producenta
        (reużycie kanonicznego resolvera Reference Engine — bez równoległej ścieżki), gdy
        paczka producenta je dostarcza — mają pierwszeństwo (dane producenckie);
-    2. kanoniczna tablica wymaganych funkcji per rola pola (`BAY_PROTECTION_CODES_BY_ROLE`,
-       PTPiREE/IRiESD + IEC 60255): IN/OUT/FEEDER/TR/COUPLER/OZE; pole pomiarowe = puste
-       (uczciwy brak, nie fabrykacja).
+    2. `BayTemplate.funkcje_eaz` wskazanego szablonu kanonu (np. ENEA Z.10 ≠ Z.11 przy tej
+       samej roli; pole rezerwowe bez wyłącznika = puste); szablon pola liniowego GPZ —
+       skorygowany klasą pola (`klasa_pola`, IRiESD II.4.5.4.2: bez SCO w polu z generacją,
+       bez SPZ w polu dedykowanym wytwórcy — `bay_templates.funkcje_eaz_pola_liniowego`);
+    3. funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI`) — pole bez szablonu;
+       pole pomiarowe = puste (uczciwy brak, nie fabrykacja).
     """
-    from network_model.catalog.bay_templates import protection_codes_for_bay_role
+    from network_model.catalog.bay_templates import funkcje_eaz_roli, funkcje_eaz_szablonu
 
     if bay_template_ref:
         from network_model.catalog.switchgear.canonical_fallback import (
@@ -2037,8 +2060,11 @@ def _resolve_bay_template_protection_codes(
             )
         if template is not None and template.protection_requirements:
             return list(template.protection_requirements)
+        z_szablonu = funkcje_eaz_szablonu(bay_template_ref, klasa_pola)
+        if z_szablonu is not None:
+            return z_szablonu
 
-    return protection_codes_for_bay_role(bay_role)
+    return funkcje_eaz_roli(bay_role)
 
 
 def _pole_rekonfigurowane_i_szyna(
@@ -2108,7 +2134,10 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
 
-    bay_role = _normalize_sn_bay_role(payload)
+    bay_role_lub_odmowa = _normalize_sn_bay_role(payload)
+    if isinstance(bay_role_lub_odmowa, dict):
+        return bay_role_lub_odmowa
+    bay_role = bay_role_lub_odmowa
     pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
     existing_field = pole_modelu(enm, existing_field_ref) if existing_field_ref else None
     if existing_field_ref and not isinstance(existing_field, dict):
@@ -2296,9 +2325,13 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
-    # refy danych). Bez szablonu: brak kodów (wsteczna zgodność).
+    # refy danych). Bez szablonu: brak kodów (wsteczna zgodność). Pole rekonfigurowane
+    # zachowuje zadeklarowaną klasę pola liniowego — zestaw funkcji wg klasy (IRiESD II.4.5.4.2).
     protection_codes = _resolve_bay_template_protection_codes(
-        manufacturer_ref, bay_template_ref, bay_role
+        manufacturer_ref,
+        bay_template_ref,
+        bay_role,
+        existing_field.get("klasa_pola") if isinstance(existing_field, dict) else None,
     )
     if protection_codes:
         producer_refs["protection_codes"] = protection_codes
@@ -2536,6 +2569,42 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
             primary_devices=primary_devices_spec or None,
         )
+        if (
+            isinstance(gpz_section_id, str)
+            and gpz_section_id.strip()
+            and not aparaty_pola
+            and not bay_template_ref
+            and not switchgear_family_ref
+            and not wybor_bloku
+        ):
+            # Karta UX-04/POLE-LINIOWE-WZORZEC: pole liniowe GPZ bez wskazanego szablonu —
+            # TA SAMA reguła co pola tworzone z GPZ i przydziałem odgałęzienia
+            # (`_aparaty_pola_liniowego_gpz`: wzorzec ENEA Zeszyt 1, Z.10, aparat główny
+            # wskazuje gałąź aparatu pola).
+            galaz_aparatu = next(
+                (
+                    b
+                    for b in new_enm.get("branches", [])
+                    if isinstance(b, dict) and b.get("ref_id") == apparatus_ref
+                ),
+                None,
+            )
+            try:
+                aparaty_pola, konfiguracja_pola, bay_template_ref = _aparaty_pola_liniowego_gpz(
+                    field_ref=field_ref,
+                    bay_role=bay_role,
+                    bay_template_ref=None,
+                    switchgear_family_ref=None,
+                    napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
+                    galaz_aparatu=galaz_aparatu,
+                )
+            except NiezgodnoscKonfiguracjiError as blad:
+                return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
+            # Funkcje EAZ z szablonu rozstrzygniętego wyżej (wzorzec ENEA) — kody liczone przed
+            # rozstrzygnięciem szablonu byłyby kodami roli, nie pola Z.10.
+            protection_codes = _resolve_bay_template_protection_codes(
+                manufacturer_ref, bay_template_ref, bay_role
+            )
         dodaj_pole(
             new_enm,
             zbuduj_pole(
@@ -2565,6 +2634,7 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
                     "default_device_ref": apparatus_ref,
                     "field_status": "CONFIGURED_FOR_TRUNK",
                 },
+                stan_obiektu="PROJEKTOWANY",
             ),
         )
         created.insert(0, field_ref)
@@ -2815,6 +2885,7 @@ def _add_nn_outgoing_field_internal(
             apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
             tags=list(payload.get("tags") or []),
             meta=meta_odplywu,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -2891,6 +2962,7 @@ def _append_nn_source_meta_field(
             apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
             tags=["nn_source_field"],
             meta=meta_pola_zrodla,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -4514,6 +4586,9 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         kopia_galaz["name"] = f"{nazwa_prefix} — {nazwa_elementu(oryginal, 'branches')}"
         kopia_galaz["from_bus_ref"] = _przemapuj_bus(oryginal.get("from_bus_ref"))
         kopia_galaz["to_bus_ref"] = _przemapuj_bus(oryginal.get("to_bus_ref"))
+        if kopia_galaz.get("type") in RODZAJE_GALEZI_LACZENIOWYCH:
+            # Kopia łącznika to NOWA instancja — obiekt projektowany (UX-04), nie stan oryginału.
+            kopia_galaz["stan_obiektu"] = "PROJEKTOWANY"
         new_enm.setdefault("branches", []).append(kopia_galaz)
         created.append(kopia_galaz["ref_id"])
         ev_seq += 1
@@ -5373,6 +5448,7 @@ def _dodaj_pole_zrodla_sn(
                 "default_device_ref": apparatus_ref,
                 "field_status": "CONFIGURED_FOR_TRUNK",
             },
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     return (
@@ -5474,6 +5550,7 @@ def _append_converter_field_if_needed(
             apparatus_catalog_ref=aparat_pola_ref,
             tags=["nn_source_field"],
             meta=field_meta,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -5912,8 +5989,8 @@ def _add_converter_source_der_sn(
     LF/SC liczą je istniejącymi mechanizmami (zero zmian solverów, zero nowej fizyki).
     """
     from network_model.catalog.bay_templates import (
+        funkcje_eaz_roli,
         mv_source_field_primary_devices,
-        protection_codes_for_bay_role,
     )
 
     has_block_transformer = bool(der_topology.get("has_block_transformer"))
@@ -6183,9 +6260,7 @@ def _add_converter_source_der_sn(
         cable_head=bool(mv_field_cfg.get("cable_head", True)),
     )
     protection_codes = (
-        protection_codes_for_bay_role("OZE")
-        if bool(mv_field_cfg.get("protection_relay", True))
-        else []
+        funkcje_eaz_roli("OZE") if bool(mv_field_cfg.get("protection_relay", True)) else []
     )
     field_name = nazwa_nadana(mv_field_cfg.get("field_name")) or nazwa_pola_zrodlowego_sn(
         technology
@@ -6231,6 +6306,7 @@ def _add_converter_source_der_sn(
                 "der_role": "mv_source_field",
                 "der_feeder_bus_ref": block_hv_bus_ref,
             },
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     created.insert(0, field_ref)
@@ -8570,6 +8646,8 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_normal_open_point",
         # W5-C: wyposażenie pola SN (`enm/wyposazenie_pola.py`)
         "set_bay_equipment",
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (`enm/stan_obiektu_pola.py`)
+        "set_object_state",
         # Universal
         "set_connection_conditions",
     }
@@ -8608,5 +8686,6 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "close_switch": close_switch,
     "set_normal_open_point": set_normal_open_point,
     "set_bay_equipment": set_bay_equipment,
+    "set_object_state": set_object_state,
     "set_connection_conditions": set_connection_conditions,
 }

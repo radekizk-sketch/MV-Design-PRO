@@ -141,9 +141,10 @@ const SZABLONY = [
 
 /**
  * BLOKI FABRYCZNE per rodzina — subzasób `/factory-configurations`.
- * ZPUE TPM Air ma transkrybowaną kartę (bloki LL/LLT), Schneider RM6 jej NIE MA
- * (dług danych nazwany w kanonie §9) i musi dawać uczciwy stan zerowy, a nie
- * wymyślony blok.
+ * ZPUE TPM Air ma transkrybowaną kartę (bloki LL/LLT), rodzina RMU powietrzna bez
+ * transkrypcji jej NIE MA (dług danych nazwany w kanonie §9) i musi dawać uczciwy stan zerowy,
+ * a nie wymyślony blok. RM6 (SF₆) jest w ofercie, ale nowa stacja jej nie dopuszcza (zakaz
+ * gazów fluorowanych w obiektach projektowanych — pola wyliczane backendu).
  */
 const jednostka = (
   unit_code: string,
@@ -197,6 +198,7 @@ const BLOKI_WG_RODZINY: Record<string, Record<string, unknown>[]> = {
       notes_pl: null,
     },
   ],
+  ZPUE_RMU_BEZ_BLOKOW: [],
   SCHNEIDER_RM6: [],
 };
 
@@ -260,7 +262,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
    *  · Rotoblok — `wnetrzowa` ⇒ MODULARNY (konstrukcja zgodna z kartą ZPUE;
    *    fixture deklarował wcześniej `RMU`, co przeczyło katalogowi),
    *  · TPM Air — `RMU` ⇒ BLOK_RMU z transkrybowanymi blokami,
-   *  · RM6 — `RMU` ⇒ BLOK_RMU BEZ bloków w katalogu (jawny dług danych),
+   *  · RMU powietrzna — `RMU` ⇒ BLOK_RMU BEZ bloków w katalogu (jawny dług danych),
+   *  · RM6 — SF₆ ⇒ w ofercie z powodem, niedopuszczona do nowej stacji,
    *  · rodzina bez konstrukcji ⇒ tor `null` (katalog nie wyznacza toru pracy).
    * `tor_konfiguracji` jest po stronie backendu polem WYLICZANYM i przychodzi
    * z KAŻDĄ odpowiedzią — fixture bez niego opisywał odpowiedź, której nie ma.
@@ -277,6 +280,12 @@ vi.mock('../../../../ui/catalog/api', () => ({
         rated_current_options: [630],
         short_time_current_options: [16],
         insulation_type: 'air',
+        medium_lacznikow: 'PROZNIA',
+        gaz_fluorowany: false,
+        dopuszczona_do_budowania: true,
+        powod_blokady_pl: null,
+        dopuszczona_do_nowych_pol: true,
+        powod_blokady_nowych_pol_pl: null,
         construction_type: 'wnetrzowa',
         tor_konfiguracji: 'MODULARNY',
         status: 'repo_verified',
@@ -293,6 +302,34 @@ vi.mock('../../../../ui/catalog/api', () => ({
         rated_current_options: [630],
         short_time_current_options: [20],
         insulation_type: 'air',
+        medium_lacznikow: 'POWIETRZE',
+        gaz_fluorowany: false,
+        dopuszczona_do_budowania: true,
+        powod_blokady_pl: null,
+        dopuszczona_do_nowych_pol: true,
+        powod_blokady_nowych_pol_pl: null,
+        construction_type: 'RMU',
+        tor_konfiguracji: 'BLOK_RMU',
+        status: 'repo_verified',
+        source_refs: ['kat'],
+        notes_pl: null,
+      },
+      {
+        switchgear_family_ref: 'ZPUE_RMU_BEZ_BLOKOW',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_name: 'RMU powietrzna (bez transkrypcji bloków)',
+        series_name: null,
+        network_voltages_kv: [],
+        um_classes_kv: [17.5],
+        rated_current_options: [],
+        short_time_current_options: [],
+        insulation_type: 'air',
+        medium_lacznikow: 'PROZNIA',
+        gaz_fluorowany: false,
+        dopuszczona_do_budowania: true,
+        powod_blokady_pl: null,
+        dopuszczona_do_nowych_pol: true,
+        powod_blokady_nowych_pol_pl: null,
         construction_type: 'RMU',
         tor_konfiguracji: 'BLOK_RMU',
         status: 'repo_verified',
@@ -302,13 +339,20 @@ vi.mock('../../../../ui/catalog/api', () => ({
       {
         switchgear_family_ref: 'SCHNEIDER_RM6',
         manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-        family_name: 'RM6 (bez transkrypcji bloków)',
+        family_name: 'RM6',
         series_name: null,
         network_voltages_kv: [],
         um_classes_kv: [17.5],
         rated_current_options: [],
         short_time_current_options: [],
         insulation_type: 'sf6',
+        medium_lacznikow: 'SF6',
+        gaz_fluorowany: true,
+        dopuszczona_do_budowania: true,
+        powod_blokady_pl: null,
+        dopuszczona_do_nowych_pol: false,
+        powod_blokady_nowych_pol_pl:
+          'Rozdzielnica RM6 wykorzystuje gaz fluorowany (SF₆) — obiekt projektowany wymaga wykonania bez gazów fluorowanych (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.',
         construction_type: 'RMU',
         tor_konfiguracji: 'BLOK_RMU',
         status: 'repo_verified',
@@ -324,7 +368,16 @@ vi.mock('../../../../ui/catalog/api', () => ({
         um_classes_kv: [17.5],
         rated_current_options: [],
         short_time_current_options: [],
-        insulation_type: 'unknown',
+        // Izolację i medium łączników deklaruje każda rodzina rejestru (przypina to
+        // `backend/tests/network_model/catalog/test_gazy_fluorowane.py`); brak dotyczy tu
+        // wyłącznie konstrukcji.
+        insulation_type: 'air',
+        medium_lacznikow: 'PROZNIA',
+        gaz_fluorowany: false,
+        dopuszczona_do_budowania: true,
+        powod_blokady_pl: null,
+        dopuszczona_do_nowych_pol: true,
+        powod_blokady_nowych_pol_pl: null,
         construction_type: 'unknown',
         tor_konfiguracji: null,
         status: 'repo_verified',
@@ -361,14 +414,14 @@ vi.mock('../../../../ui/catalog/api', () => ({
       {
         id: 'sw-cb-abb-vd4-17kv-630a',
         name: 'ABB VD4 17,5 kV 630 A',
-        device_kind: 'WYLACZNIK',
+        device_kind: 'WYLACZNIK', dopuszczony_do_nowych_pol: true,
         u_n_kv: 17.5,
         i_n_a: 630,
       },
       {
         id: 'sw-cb-abb-vd4-24kv-1250a',
         name: 'ABB VD4 24 kV 1250 A',
-        device_kind: 'WYLACZNIK',
+        device_kind: 'WYLACZNIK', dopuszczony_do_nowych_pol: true,
         u_n_kv: 24,
         i_n_a: 1250,
       },
@@ -378,14 +431,14 @@ vi.mock('../../../../ui/catalog/api', () => ({
       {
         id: 'sw-fuse-eti-vv-17kv-63a',
         name: 'ETI VV 17,5 kV 63 A',
-        device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY',
+        device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', dopuszczony_do_nowych_pol: true,
         u_n_kv: 17.5,
         i_n_a: 63,
       },
       {
         id: 'sw-ds-abb-ojs-17kv-630a',
         name: 'ABB OJS 17,5 kV 630 A',
-        device_kind: 'ODLACZNIK',
+        device_kind: 'ODLACZNIK', dopuszczony_do_nowych_pol: true,
         u_n_kv: 17.5,
         i_n_a: 630,
       },
@@ -1620,8 +1673,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     const rodzina = (await screen.findByTestId(
       'mvd-kreator-stacja-rodzina',
     )) as HTMLSelectElement;
-    // Wszystkie cztery rodziny producenta są na liście (portfolio, nie wycinek).
-    for (const ref of ['ZPUE_ROTOBLOK', 'ZPUE_TPM_AIR', 'SCHNEIDER_RM6', 'BEZ_KONSTRUKCJI']) {
+    // Wszystkie rodziny producenta są na liście (portfolio, nie wycinek).
+    for (const ref of ['ZPUE_ROTOBLOK', 'ZPUE_TPM_AIR', 'ZPUE_RMU_BEZ_BLOKOW', 'SCHNEIDER_RM6', 'BEZ_KONSTRUKCJI']) {
       expect(rodzina.querySelector(`option[value="${ref}"]`)).not.toBeNull();
     }
   });
@@ -1865,9 +1918,19 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     }
   });
 
+  it('rodzina z SF₆ jest w ofercie z powodem, ale nowej stacji nie da się na niej zbudować', async () => {
+    render(<KreatorStacjiSnNn />);
+    await wybierzRodzine('ZPUE_TPM_AIR');
+    const rodzina = screen.getByTestId('mvd-kreator-stacja-rodzina') as HTMLSelectElement;
+    const opcja = rodzina.querySelector('option[value="SCHNEIDER_RM6"]') as HTMLOptionElement;
+    expect(opcja).not.toBeNull();
+    expect(opcja.textContent).toContain('gaz fluorowany (SF₆)');
+    expect(opcja.disabled).toBe(true);
+  });
+
   it('tor BLOKOWY RMU × rodzina z DŁUGIEM DANYCH: uczciwy stan zerowy, zero fabrykacji', async () => {
     render(<KreatorStacjiSnNn />);
-    await wybierzRodzine('SCHNEIDER_RM6');
+    await wybierzRodzine('ZPUE_RMU_BEZ_BLOKOW');
 
     await screen.findByTestId('mvd-kreator-stacja-tor-blok');
     await screen.findByTestId('mvd-kreator-stacja-blok-brak');

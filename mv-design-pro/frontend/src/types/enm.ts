@@ -6,6 +6,10 @@
  */
 
 import type {
+  RdzenPrzekladnikaPradowego,
+  UzwojeniePrzekladnikaNapieciowego,
+} from './przekladniki';
+import type {
   RolaUziemnika,
   TolerancjaNapieciaNn,
   TypPunktuNeutralnego,
@@ -379,6 +383,13 @@ export interface SwitchBranch extends BranchBase {
    * Bieżące położenie czytane przez fizykę to `status`.
    */
   normal_state?: 'closed' | 'open' | null;
+  /**
+   * Stan obiektu łącznika (lustro `enm.models.SwitchBranch.stan_obiektu`): rozłącznik sekcyjny
+   * w ciągu, sprzęgło, łącznik pola bez lustra w wyposażeniu pola. Łącznik opisany aparatem pola
+   * dzieli stan z tym aparatem (`enm.gaz_fluorowany_pola.stan_obiektu_lacznika`); `null`/brak =
+   * stan z pola, które go wymienia, albo nieustalony.
+   */
+  stan_obiektu?: StanObiektu | null;
 }
 
 export interface FuseBranch extends BranchBase {
@@ -1191,7 +1202,22 @@ export interface OgranicznikPrzepiecPola {
  * (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem rekordu — wynika z napięcia
  * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
  */
+/**
+ * Stan obiektu pola i instancji aparatu pola — lustro `network_model.catalog.gazy_fluorowane
+ * .StanObiektu`: `ISTNIEJACY` (obiekt zastany w sieci — ustawia go wyłącznie operacja
+ * `set_object_state` albo import istniejącej sieci niosący stan) albo `PROJEKTOWANY` (każda
+ * operacja tworząca nadaje go jawnie). `null`/brak = stan nieustalony (zapis sprzed atrybutu) —
+ * NIE jest stanem istniejącym.
+ */
+export type StanObiektu = 'ISTNIEJACY' | 'PROJEKTOWANY';
+
 export interface Bay extends ENMElement {
+  /** Stan obiektu pola (lustro `enm.models.Bay.stan_obiektu`). */
+  stan_obiektu?: StanObiektu | null;
+  /** Klasa pola liniowego (lustro `enm.models.Bay.klasa_pola`; IRiESD ENEA II.4.5.4.2.1–2.3):
+   *  odbiorcze, mieszane, dedykowane wytwórcy. `null` = nieustalona. Jedno źródło trybu
+   *  „linia/generacja" pola: generacja ⇔ klasa mieszana albo dedykowana wytwórcy. */
+  klasa_pola?: KlasaPolaLiniowego | null;
   bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
@@ -1281,6 +1307,9 @@ export type BayCanonicalRole =
 export type BayDeviceState =
   | 'zamkniety'
   | 'otwarty'
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: położenie WYŁĄCZNIE łącznika trójpołożeniowego
+  // (ENEA Zeszyt 1 §13, Z.10) — lustro `backend/src/enm/models.py::BaySwitchState`.
+  | 'uziemiony'
   | 'zamkniety_naped_rozbrojony'
   | 'otwarty_naped_rozbrojony'
   | 'nieznany'
@@ -1334,7 +1363,20 @@ export type BayPrimaryDeviceKind =
   | 'BATTERY'
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
   // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
-  | 'SURGE_ARRESTER';
+  | 'SURGE_ARRESTER'
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.10 s.89, §13): łącznik
+  // trójpołożeniowy, przekładnik Ferrantiego na kablu, pojemnościowy wskaźnik napięcia.
+  | 'THREE_POSITION_SWITCH'
+  | 'CORE_BALANCE_CT'
+  | 'VOLTAGE_INDICATOR';
+
+/** Port aparatu pola — lustro `backend/src/enm/models.py::PortAparatuPola` (karta
+ *  UX-04/POLE-LINIOWE-WZORZEC). `wezel` — węzeł wewnętrzny pola (`szyna`, `w1`…, `kabel`);
+ *  porty o tym samym węźle łączy przewód; `null` = przyłączenie niepodane (brak danych). */
+export interface PortAparatuPola {
+  port_id: string;
+  wezel?: string | null;
+}
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
@@ -1343,8 +1385,14 @@ export type BayPrimaryPlacement =
   | 'OFF_PATH'
   | 'GROUND_BRANCH';
 
+/** Klasa pola liniowego SN — lustro `network_model.catalog.bay_templates.KlasaPolaLiniowego`. */
+export type KlasaPolaLiniowego = 'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY';
+
 export interface BayPrimaryDevice {
   device_ref: string;
+  /** Stan obiektu instancji aparatu (lustro `enm.models.BayPrimaryDevice.stan_obiektu`): aparat
+   *  dziedziczy stan pola przy tworzeniu, aparat wymieniony jest projektowany. */
+  stan_obiektu?: StanObiektu | null;
   linked_ref?: string | null;
   catalog_ref?: string | null;
   symbol_ref: string;
@@ -1366,6 +1414,17 @@ export interface BayPrimaryDevice {
    *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
    *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
   earthing_role?: RolaUziemnika | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: jawne porty aparatu z węzłami pola — lustro
+   *  `backend/src/enm/models.py::BayPrimaryDevice.ports`. Pusta lista = porty niepodane. */
+  ports?: PortAparatuPola[];
+  /** Rdzenie przekładnika prądowego aparatu kind='CT' (lustro `BayPrimaryDevice.rdzenie`);
+   *  pusta lista = tabliczka niepodana. */
+  rdzenie?: RdzenPrzekladnikaPradowego[];
+  /** Uzwojenia przekładnika napięciowego aparatu kind='VT' (lustro `BayPrimaryDevice.uzwojenia`). */
+  uzwojenia?: UzwojeniePrzekladnikaNapieciowego[];
+  /** Odgałęzienie toru, w którym leży aparat (np. 'pn' — odgałęzienie przekładnika napięciowego
+   *  Z.11.1/Z.11); lustro `BayPrimaryDevice.odgalezienie`. `null`/brak = aparat toru głównego. */
+  odgalezienie?: string | null;
 }
 
 export interface BayMeasurements {
@@ -1615,6 +1674,8 @@ export interface BayBaseModel {
   bay_template_ref?: string | null;
   /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
   switchgear_family_ref?: string | null;
+  /** Stan obiektu pola (`Bay.stan_obiektu`; `null` = nieustalony). */
+  stan_obiektu?: StanObiektu | null;
   /** W5-C: stan danych wyposażenia z rekordu pola (`Bay.primary_devices`). */
   equipment_data_state: StanDanychWyposazenia;
   /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
@@ -1757,12 +1818,14 @@ export interface Measurement extends ENMElement {
    *  warunek konieczny dla 67N kierunkowego) vs gwiazda. WYŁĄCZNIE dla
    *  measurement_type==='VT'; `null`/brak = dotychczasowe uproszczenie. */
   vt_arrangement?: 'open_delta' | 'star' | null;
-  /** CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (osobne
-   *  uzwojenia wtórne, np. pomiarowe 0,2S + zabezpieczeniowe 5P10; tabliczka
-   *  CT wg IEC 61869-2). Dane producenta; WYŁĄCZNIE dla
-   *  measurement_type==='CT'; wartość > 0. `null`/brak = dana niedostarczona
-   *  (uczciwy brak, zero fabrykacji). Oś odrębna od `ct_arrangement`. */
-  ct_cores?: number | null;
+  /** Rdzenie przekładnika prądowego (tabliczka IEC 61869-2: przekładnia, moc, klasa, FS,
+   *  przeznaczenie) — lustro `network_model/catalog/przekladniki.RdzenPrzekladnikaPradowego`.
+   *  Liczba rdzeni = długość listy (dawne `ct_cores` skasowane). WYŁĄCZNIE dla
+   *  measurement_type==='CT'; `null`/brak = tabliczka niedostarczona. */
+  rdzenie?: RdzenPrzekladnikaPradowego[] | null;
+  /** Uzwojenia przekładnika napięciowego (tabliczka IEC 61869-3) — lustro
+   *  `UzwojeniePrzekladnikaNapieciowego`. WYŁĄCZNIE dla measurement_type==='VT'. */
+  uzwojenia?: UzwojeniePrzekladnikaNapieciowego[] | null;
   /** CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego —
    *  szynowy (`bus`) vs kablowy (`cable`). Dane producenta/projektowe;
    *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`

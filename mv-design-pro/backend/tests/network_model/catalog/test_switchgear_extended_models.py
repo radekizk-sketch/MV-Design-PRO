@@ -292,12 +292,21 @@ class TestSlownikAparatow:
             "CB": "circuit_breaker",
             "DS_BUS": "switch_disconnector",
             "DS_LINE": "switch_disconnector",
+            # UX-04 (Z.11 / Z.11.1 z wyłącznikiem stałym): odłącznik odgałęzienia przekładnika
+            # napięciowego — w rodzinie celki ten sam odłącznik co szynowy i liniowy.
+            "DS_BRANCH": "switch_disconnector",
             "ES": "earthing_switch",
             "FUSE": "fuse_set",
             "CT": "current_transformer",
             "VT": "voltage_transformer",
             "CABLE_HEAD": "cable_head",
             "SURGE_ARRESTER": "surge_arrester",
+            # UX-04/POLE-LINIOWE-WZORZEC (ENEA Z.10): łącznik trójpołożeniowy jest w rodzinie
+            # celki rozłącznikiem/odłącznikiem z zestykiem uziemiającym, przekładnik
+            # Ferrantiego — przekładnikiem prądowym, wskaźnik napięcia — sygnalizacją pola.
+            "THREE_POSITION_SWITCH": "switch_disconnector",
+            "CORE_BALANCE_CT": "current_transformer",
+            "VOLTAGE_INDICATOR": "voltage_indicator",
         }
 
     def test_transformator_pola_lezy_poza_slownikiem_rodziny(self):

@@ -50,6 +50,7 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
+from network_model.catalog.gazy_fluorowane import StanObiektu
 from network_model.core.topologia import przeglad_wszerz_od
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
@@ -754,11 +755,17 @@ def rozbuduj_z_dowolnej_szyny(
 
 @dataclass(frozen=True)
 class SzynaSpec:
-    """Szyna grafu wejściowego — identyfikator literaturowy/arkuszowy, nazwa, napięcie."""
+    """Szyna grafu wejściowego — identyfikator literaturowy/arkuszowy, nazwa, napięcie.
+
+    `stan_obiektu` — stan obiektu pól rozdzielnicy tej szyny niesiony przez import istniejącej
+    sieci (arkusz importu, kolumna `stan`). ``None`` = brak deklaracji: pola powstają operacjami
+    projektowymi, więc są projektowane; ``ISTNIEJACY`` nadaje kompilator JAWNĄ operacją
+    `set_object_state` po zbudowaniu sieci (żadnego drugiego pisarza stanu)."""
 
     lit: str
     name: str
     voltage_kv: float
+    stan_obiektu: StanObiektu | None = None
 
 
 @dataclass(frozen=True)
@@ -958,7 +965,8 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
        `add_transformer_sn_nn` z nową szyną LV albo HV), krawędź zamykająca łączy
        szyny już istniejące (`connect_secondary_ring_sn`, transformator między
        istniejącymi szynami);
-    4. odbiory → `add_load_sn`.
+    4. odbiory → `add_load_sn`;
+    5. pola rozdzielnic szyn zadeklarowanych jako istniejące → `set_object_state`.
     Szyna nieosiągalna z żadnego źródła to błąd wejścia (wyspa bez zasilania nie ma
     w modelu żadnej operacji, która by ją utworzyła) — zero cichego pomijania.
     """
@@ -1169,6 +1177,19 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
         nowy = next(o for o in enm["loads"] if o["ref_id"] not in przed_odbiory)
         wynik.load_map[odbior.name] = nowy["ref_id"]
         wynik.enm = enm
+
+    # 5. stan obiektu pól rozdzielnic szyn zadeklarowanych jako istniejące (import istniejącej
+    # sieci niosący stan) — jawna operacja, pola w kolejności modelu.
+    for szyna_spec in graf.szyny:
+        if szyna_spec.stan_obiektu != "ISTNIEJACY":
+            continue
+        ref_szyny = wynik.bus_map[szyna_spec.lit]
+        for rekord_pola in [p for p in enm.get("bays", []) if p.get("bus_ref") == ref_szyny]:
+            enm = wykonaj(
+                enm,
+                "set_object_state",
+                {"bay_ref": rekord_pola["ref_id"], "stan_obiektu": "ISTNIEJACY"},
+            )
 
     wynik.enm = enm
     return wynik

@@ -9,7 +9,7 @@
  * zmian semantyki; to jest model danych, nie widok.
  */
 
-import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement, StanObiektu } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
 
 
@@ -26,7 +26,7 @@ export interface BayPrimaryDeviceView {
   readonly deviceRef: string;
   /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
    *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
-  readonly switchState?: 'closed' | 'open' | 'unknown';
+  readonly switchState?: 'closed' | 'open' | 'unknown' | 'earthed';
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `BayPrimaryDevice.linked_ref` — dla
    *  aparatów pomiarowych (CT/VT) wskazuje `Measurement.ref_id` (wzorzec
    *  potwierdzony w `backend/src/application/field_read_model.py:488`).
@@ -47,6 +47,28 @@ export interface BayPrimaryDeviceView {
   /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu — `catalog_ref` rekordu albo
    *  gałęzi (`null` = model go nie niesie; brak typu nie jest uzupełniany). */
   readonly typeRef?: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: wariant rysunku symbolu z rekordu aparatu
+   *  (`BayPrimaryDevice.render_variant`, np. `qet_en60617` szablonu ENEA Z.10) — wybiera
+   *  symbol (`compose/apparatusSequence.ts symbolIdForPrimaryDeviceKind`). `null` = wariant
+   *  kanoniczny. */
+  readonly renderVariant?: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: jawne porty aparatu z węzłami pola
+   *  (`BayPrimaryDevice.ports`) — z nich kompozycja GPZ czyta kolejność aparatów i rysuje
+   *  przewody port→port. Pusta lista = porty niepodane (rekord sprzed kontraktu portów). */
+  readonly ports?: readonly PortAparatuPolaView[];
+  /** Karta UX-04 (stan obiektu): istniejący / projektowany — z rekordu aparatu
+   *  (`BayPrimaryDevice.stan_obiektu`) albo, dla gałęzi łączeniowej pola, z reguły
+   *  `stanObiektuLacznika` (`ui/shared/stanObiektu.ts`, lustro backendu). `null` = stan
+   *  nieustalony; `undefined` = projekcja bez stanu (sylwetka konwencji). Rysunek pokazuje go
+   *  dyskretnie (podpowiedź na symbolu, atrybut `data-stan-obiektu`). */
+  readonly stanObiektu?: StanObiektu | null;
+}
+
+/** Port aparatu pola z modelu: nazwa portu (`we`/`wy`/`przylacze`/`obwod`) i węzeł pola
+ *  (`szyna`, `w1`…, `kabel`); `wezel = null` — przyłączenie niepodane. */
+export interface PortAparatuPolaView {
+  readonly portId: string;
+  readonly wezel: string | null;
 }
 
 /**
@@ -95,9 +117,9 @@ export interface CtRatingAnnotationView {
    *  §18.3 „zero zgadywania"). */
   readonly arrangement?: '3xCT' | 'ferranti';
   /** CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT (osobne uzwojenia
-   *  wtórne, tabliczka IEC 61869-2) z `Measurement.ct_cores`. Doklejona jako
+   *  wtórne, tabliczka IEC 61869-2) z długości listy `Measurement.rdzenie`. Doklejona jako
    *  DODATKOWY człon etykiety (`ctRatingLabelText`, „… · N rdz.") WYŁĄCZNIE gdy
-   *  dana obecna — `undefined` gdy `Measurement.ct_cores` nieobecne (zero zmiany
+   *  dana obecna — `undefined` gdy `Measurement.rdzenie` nieobecne (zero zmiany
    *  tekstu/szerokości względem F10.4/F10.6, uczciwy brak). Oś odrębna od
    *  `arrangement`. */
   readonly cores?: number;

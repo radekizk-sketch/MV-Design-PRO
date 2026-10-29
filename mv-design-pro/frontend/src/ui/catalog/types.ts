@@ -217,6 +217,14 @@ export interface SwitchEquipmentType extends CatalogType {
   medium?: string;
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;
+  /**
+   * Filtr pickera z backendu (`GET /api/catalog/switch-equipment-types` — to samo wyliczenie co
+   * `mv-apparatus-types`): pozycja z gazem fluorowanym nie jest dopuszczona do obiektu
+   * projektowanego; powód — zdanie backendu z podstawą (`ui/catalog/dopuszczenieNowychPol`).
+   */
+  gaz_fluorowany?: boolean;
+  dopuszczony_do_nowych_pol?: boolean;
+  powod_blokady_nowych_pol_pl?: string | null;
 }
 
 /**
@@ -377,6 +385,16 @@ export interface MVApparatusType extends CatalogType {
   wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;
+  /** Medium gaszenia łuku / izolacji pozycji (dana karty; `null` = aparat bez komory). */
+  medium?: string | null;
+  /**
+   * Filtr pickera z backendu (`GET /api/catalog/mv-apparatus-types`, reguła
+   * `gazy_fluorowane.odmowa_gazu_fluorowanego_pl`): pozycja z gazem fluorowanym nie jest
+   * dopuszczona do obiektu projektowanego; powód — zdanie backendu z podstawą.
+   */
+  gaz_fluorowany?: boolean;
+  dopuszczony_do_nowych_pol?: boolean;
+  powod_blokady_nowych_pol_pl?: string | null;
 }
 
 /** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */

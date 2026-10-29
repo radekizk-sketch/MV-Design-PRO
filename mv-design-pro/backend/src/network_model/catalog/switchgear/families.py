@@ -72,6 +72,8 @@ ZPUE_WLOSZCZOWA__ROTOBLOK = SwitchgearFamily(
     rated_current_options=[630, 1250],
     short_time_current_options=[16],  # kA / 1s
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): aparaty łączeniowe w SF₆: wyłączniki „ZPUE Rotoblok … (SF6)” w katalogu aparatów (`mv_switch_catalog.py`); wykonania bez SF₆ to osobne rodziny Rotoblok Air i Rotoblok VCB.
+    medium_lacznikow="SF6",
     construction_type="wnetrzowa",  # rozdzielnica wnętrzowa
     busbar_system="single",
     compartment_models=["busbar_compartment", "cable_compartment"],
@@ -138,6 +140,8 @@ ELEKTROMETAL__E2ALPHA = SwitchgearFamily(
     rated_current_options=[630, 1250, 2000],
     short_time_current_options=[25, 31],  # kA / 1s (24 kV → 25, niższe napięcia → do 31.5)
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna; aparat łączeniowy z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="wnetrzowa",
     busbar_system="single",
     compartment_models=[
@@ -208,6 +212,8 @@ ABB__UNIGEAR_ZS1 = SwitchgearFamily(
     rated_current_options=[1250, 2500, 4000],
     short_time_current_options=[25, 31, 50, 63],  # kA / 1s
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, człon wysuwny; wyłącznik z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="wysuwna",
     busbar_system="single",  # opcjonalnie double — patrz catalog
     compartment_models=[
@@ -289,6 +295,8 @@ ABB__SAFERING = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[16, 20, 21],  # kA / 1s
     insulation_type="sf6",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja SF₆, sealed-for-life.
+    medium_lacznikow="SF6",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -350,6 +358,8 @@ SIEMENS__NXAIR = SwitchgearFamily(
     rated_current_options=[1250, 2500, 4000],
     short_time_current_options=[25, 31, 40],  # kA / 1s
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, człon wysuwny; wyłącznik z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="wysuwna",
     busbar_system="single",
     compartment_models=[
@@ -422,6 +432,8 @@ SIEMENS__8DJH = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[20, 21, 25],  # kA / 1s
     insulation_type="sf6",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja SF₆, sealed-for-life.
+    medium_lacznikow="SF6",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -501,7 +513,9 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
     um_classes_kv=[24.0],
     rated_current_options=[400, 630, 1250],
     short_time_current_options=[16, 20, 25],  # kA / 1s (zależnie od celki)
-    insulation_type="mixed",  # szyny w powietrzu, aparaty łączeniowe w SF6/próżni
+    insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: szyny w powietrzu, aparaty łączeniowe w SF₆ (wyłącznik SF1/próżniowy jako opcja celki — rodzina jako całość nie jest wykonaniem bez gazu).
+    medium_lacznikow="SF6",
     construction_type="wnetrzowa",
     busbar_system="single",
     compartment_models=[
@@ -577,6 +591,8 @@ ZPUE_WLOSZCZOWA__TPM = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[16, 20, 25],  # kA / 3 s wg karty
     insulation_type="sf6",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja SF₆.
+    medium_lacznikow="SF6",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -636,7 +652,9 @@ ZPUE_WLOSZCZOWA__TPM_AIR = SwitchgearFamily(
     um_classes_kv=[24.0],
     rated_current_options=[630],
     short_time_current_options=[16, 20],  # kA / 1 s wg karty
-    insulation_type="mixed",  # suche powietrze pod nadciśnieniem + aparatura próżniowa
+    insulation_type="gaz_bez_f",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: bez SF₆ — suche powietrze pod nadciśnieniem, aparatura próżniowa.
+    medium_lacznikow="PROZNIA",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment", "metering_compartment"],
@@ -698,6 +716,8 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_AIR = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[16],  # kA / 1 s wg karty
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: bez SF₆ — rozłączniki i konektory w izolacji powietrznej.
+    medium_lacznikow="POWIETRZE",
     construction_type="wnetrzowa",
     busbar_system="single",
     compartment_models=["busbar_compartment", "cable_compartment"],
@@ -759,6 +779,8 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_VCB = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[16, 20],  # 16 kA / 3 s, 20 kA / 1 s wg karty
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, aparat trójfunkcyjny TGI z wyłącznikiem próżniowym.
+    medium_lacznikow="PROZNIA",
     construction_type="wnetrzowa",
     busbar_system="single",
     compartment_models=["busbar_compartment", "cable_compartment"],
@@ -820,6 +842,8 @@ ZPUE_WLOSZCZOWA__RELF = SwitchgearFamily(
     rated_current_options=[630, 1250, 1600, 2000, 2500, 4000],
     short_time_current_options=[31, 40],  # 31,5 kA / 3 s; 40 kA / 3 s w wariancie 12 kV
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, człon wysuwny; aparat z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="dwuczlonowa",
     busbar_system="single",
     compartment_models=[
@@ -889,6 +913,8 @@ ZPUE_WLOSZCZOWA__RELF_2S = SwitchgearFamily(
     rated_current_options=[630, 1250, 1600, 2000, 2500],
     short_time_current_options=[31],  # 31,5 kA / 3 s
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, człon wysuwny; aparat z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="dwuczlonowa",
     busbar_system="double",
     compartment_models=[
@@ -961,6 +987,8 @@ ZPUE_WLOSZCZOWA__RXD = SwitchgearFamily(
     # rozdzielnicą dwuczłonową w izolacji POWIETRZNEJ (metal-enclosed), a nie
     # gazową — wcześniejsza klasyfikacja GIS była błędna.
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja powietrzna, człon wysuwny; aparat z katalogu aparatów (medium sprawdzane przy aparacie).
+    medium_lacznikow="KATALOG_APARATOW",
     construction_type="dwuczlonowa",
     busbar_system="single",
     compartment_models=[
@@ -1035,6 +1063,8 @@ ABB__SAFEPLUS = SwitchgearFamily(
     rated_current_options=[630, 1250],
     short_time_current_options=[20, 25],  # 25 kA / 1 s, 20 kA / 3 s
     insulation_type="sf6",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja SF₆, sealed-for-life.
+    medium_lacznikow="SF6",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -1100,6 +1130,8 @@ ABB__UNISEC = SwitchgearFamily(
     rated_current_options=[],
     short_time_current_options=[],
     insulation_type="air",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): portfolio z aparatami w SF₆ — bez SF₆ jest wyłącznie wariant UniSec Air (aparat GSec Air), nie cała rodzina.
+    medium_lacznikow="SF6",
     construction_type="wnetrzowa",
     busbar_system="single",
     compartment_models=["busbar_compartment", "cable_compartment"],
@@ -1164,6 +1196,8 @@ SCHNEIDER__RM6 = SwitchgearFamily(
     rated_current_options=[630],
     short_time_current_options=[20, 21],  # kA / 1 s (IAC AFLR do 20 kA)
     insulation_type="sf6",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: izolacja SF₆.
+    medium_lacznikow="SF6",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -1222,7 +1256,9 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
     um_classes_kv=[12.0, 24.0],
     rated_current_options=[630],
     short_time_current_options=[20],  # 20 kA / 1 s (także warianty 20 kA / 3 s)
-    insulation_type="mixed",  # czyste powietrze + aparatura próżniowa
+    insulation_type="gaz_bez_f",
+    # Medium łączników (gaz fluorowany wyprowadzony: `SwitchgearFamily.gaz_fluorowany`): karta: bez SF₆ — czyste powietrze pod nadciśnieniem, aparatura próżniowa.
+    medium_lacznikow="PROZNIA",
     construction_type="RMU",
     busbar_system="ring_main",
     compartment_models=["cable_compartment"],
@@ -1266,10 +1302,176 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
 )
 
 # =============================================================================
+# Typ ogólny rozdzielnicy SN GPZ wg standardu OSD (ENEA Operator, Zeszyt 1, §13)
+# =============================================================================
+#
+# Trzy rodziny ``standard_osd`` — po jednej na medium izolacyjne dopuszczone dla nowych pól
+# (dyrektywa właściciela 2026-10-28: bez gazów fluorowanych). Wartości z wymagań operatora,
+# jakość robocza (ZASADA NR 4): rozdzielnica 24 kV dla sieci ≤ 20 kV (§13), szyny 1250 A
+# (transformator ≤ 25 MVA, tabela 3) albo 2000 A (25–40 MVA, tabela 4), pole liniowe 630 A
+# (tabele 3–4), wytrzymywany prąd zwarciowy 16 kA przez 3 s (§9.2 — zapis 16 kA jako wartości
+# 1-sekundowej jest zachowawczy). Wyłączniki z próżniowymi komorami gaszeniowymi (§13).
+
+_UWAGI_TYPU_OGOLNEGO_OSD = (
+    "Typ ogólny wg ENEA Operator, „Stacje elektroenergetyczne 110 kV”, Zeszyt 1 (wersja "
+    "02.2023-2): §13 — rozdzielnica jednosystemowa, dwusekcyjna, wnętrzowa, osłonięta, "
+    "przedziałowa, łukoodporna; napięcie znamionowe 24 kV w sieci ≤ 20 kV; wyłączniki "
+    "z próżniowymi komorami gaszeniowymi; §8.2 tabele 3–4 — szyny 1250 A / 2000 A, pole "
+    "liniowe 630 A; §9.2 — 16 kA przez 3 s. Wartości robocze (bez karty producenta). Status "
+    "danych: standard_osd — wymagania operatora, nie karta wyrobu."
+)
+
+_POLA_GPZ_TYPU_OGOLNEGO: list[str] = [
+    "liniowe_doplywowe",
+    "liniowe_odplywowe",
+    "transformatorowe",
+    "pomiarowe",
+    "sprzeglowe_poprzeczne",
+    "potrzeb_wlasnych",
+]
+
+#: Słownik aparatów rodziny jest ZGRUBIONY (`apparatus_vocabulary._ZGRUBIENIE_DO_SLOWNIKA_RODZINY`):
+#: odłącznik szynowy, odłącznik odgałęzienia i łącznik trójpołożeniowy to „łącznik odłączający"
+#: (`switch_disconnector`), przekładnik Ferrantiego — przekładnik prądowy. Identyfikatory
+#: drobnoziarniste nie są elementami tego słownika — filtr rodziny i strażnik trybu katalogu
+#: odrzucałyby nimi własne aparaty rodziny (test `test_slownik_aparatow_rodzin_zgrubiony`).
+_APARATY_GPZ_TYPU_OGOLNEGO: list[str] = [
+    "circuit_breaker",
+    "switch_disconnector",
+    "earthing_switch",
+    "current_transformer",
+    "voltage_transformer",
+    "surge_arrester",
+    "cable_head",
+    "voltage_indicator",
+]
+
+TYP_OGOLNY_OSD__GPZ_AIS = SwitchgearFamily(
+    switchgear_family_ref="TYP_OGOLNY_OSD__GPZ_AIS",
+    manufacturer_ref="TYP_OGOLNY_OSD",
+    family_name="Rozdzielnica GPZ z izolacją powietrzną (typ ogólny wg ENEA Zeszyt 1 §13)",
+    series_name=None,
+    product_line_code="GPZ_AIS",
+    network_voltages_kv=[15.0, 20.0],
+    um_classes_kv=[24.0],
+    rated_current_options=[630, 1250, 2000],
+    short_time_current_options=[16],
+    insulation_type="air",
+    # Medium łączników: §13 — wyłącznik stały z odłącznikiem szynowym albo poziomo wysuwny
+    # z wózkiem; wyłącznik jest pozycją katalogu aparatów (komora próżniowa, §13).
+    medium_lacznikow="KATALOG_APARATOW",
+    construction_type="wnetrzowa",
+    busbar_system="sectionalized_single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=list(_POLA_GPZ_TYPU_OGOLNEGO),
+    allowed_apparatus_kinds=list(_APARATY_GPZ_TYPU_OGOLNEGO),
+    allowed_interlocks=["earthing_only_when_open", "racking_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3", "LOD4"],
+    cad_footprint_ref=None,
+    source_document_refs=["ENEA Operator — Stacje elektroenergetyczne 110 kV, Zeszyt 1, §13"],
+    source_version="02.2023-2",
+    verified_at=None,
+    lifecycle_status="current",
+    status="standard_osd",
+    source_refs=[],
+    notes_pl=(
+        _UWAGI_TYPU_OGOLNEGO_OSD + " Izolacja powietrzna — §13: „w uzasadnionych przypadkach "
+        "np. przy rozbudowie rozdzielnicy powietrznej”."
+    ),
+)
+
+TYP_OGOLNY_OSD__GPZ_SSIS = SwitchgearFamily(
+    switchgear_family_ref="TYP_OGOLNY_OSD__GPZ_SSIS",
+    manufacturer_ref="TYP_OGOLNY_OSD",
+    family_name="Rozdzielnica GPZ z izolacją stało-powietrzną (typ ogólny wg ENEA Zeszyt 1 §13)",
+    series_name=None,
+    product_line_code="GPZ_SSIS",
+    network_voltages_kv=[15.0, 20.0],
+    um_classes_kv=[24.0],
+    rated_current_options=[630, 1250, 2000],
+    short_time_current_options=[16],
+    insulation_type="ssis",
+    # Medium łączników: łączniki próżniowe w osłonach z izolacji stałej (§13: wyłączniki
+    # z próżniowymi komorami gaszeniowymi).
+    medium_lacznikow="PROZNIA",
+    construction_type="wnetrzowa",
+    busbar_system="sectionalized_single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=list(_POLA_GPZ_TYPU_OGOLNEGO),
+    allowed_apparatus_kinds=list(_APARATY_GPZ_TYPU_OGOLNEGO),
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3", "LOD4"],
+    cad_footprint_ref=None,
+    source_document_refs=["ENEA Operator — Stacje elektroenergetyczne 110 kV, Zeszyt 1, §13"],
+    source_version="02.2023-2",
+    verified_at=None,
+    lifecycle_status="current",
+    status="standard_osd",
+    source_refs=[],
+    notes_pl=_UWAGI_TYPU_OGOLNEGO_OSD,
+)
+
+TYP_OGOLNY_OSD__GPZ_GAZ_BEZ_F = SwitchgearFamily(
+    switchgear_family_ref="TYP_OGOLNY_OSD__GPZ_GAZ_BEZ_F",
+    manufacturer_ref="TYP_OGOLNY_OSD",
+    family_name=(
+        "Rozdzielnica GPZ z izolacją gazową bez gazów fluorowanych "
+        "(typ ogólny wg ENEA Zeszyt 1 §13)"
+    ),
+    series_name=None,
+    product_line_code="GPZ_GAZ_BEZ_F",
+    network_voltages_kv=[15.0, 20.0],
+    um_classes_kv=[24.0],
+    rated_current_options=[630, 1250, 2000],
+    short_time_current_options=[16],
+    insulation_type="gaz_bez_f",
+    # Medium łączników: łączniki próżniowe w przedziale z suchym powietrzem albo azotem
+    # (§13: „inną o zbliżonych właściwościach dielektrycznych”; przedział gazowy z niezależnym
+    # wskaźnikiem ciśnienia).
+    medium_lacznikow="PROZNIA",
+    construction_type="GIS",
+    busbar_system="sectionalized_single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=list(_POLA_GPZ_TYPU_OGOLNEGO),
+    allowed_apparatus_kinds=list(_APARATY_GPZ_TYPU_OGOLNEGO),
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3", "LOD4"],
+    cad_footprint_ref=None,
+    source_document_refs=["ENEA Operator — Stacje elektroenergetyczne 110 kV, Zeszyt 1, §13"],
+    source_version="02.2023-2",
+    verified_at=None,
+    lifecycle_status="current",
+    status="standard_osd",
+    source_refs=[],
+    notes_pl=(
+        _UWAGI_TYPU_OGOLNEGO_OSD + " Przedział gazowy z niezależnym wskaźnikiem ciśnienia gazu "
+        "(§13)."
+    ),
+)
+
+# =============================================================================
 # Registry
 # =============================================================================
 
 _FAMILIES: tuple[SwitchgearFamily, ...] = (
+    TYP_OGOLNY_OSD__GPZ_AIS,
+    TYP_OGOLNY_OSD__GPZ_SSIS,
+    TYP_OGOLNY_OSD__GPZ_GAZ_BEZ_F,
     ZPUE_WLOSZCZOWA__ROTOBLOK,
     ZPUE_WLOSZCZOWA__ROTOBLOK_AIR,
     ZPUE_WLOSZCZOWA__ROTOBLOK_VCB,
@@ -1311,14 +1513,6 @@ def list_families_for_manufacturer(manufacturer_ref: str) -> list[SwitchgearFami
     )
 
 
-#: Statusy rodziny, przy których katalog uznaje dane za potwierdzone źródłem
-#: i pozwala BUDOWAĆ na rodzinie konfigurację (polityka
-#: `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`). `requires_catalog` i `deprecated`
-#: są poza tym zbiorem — rodzina istnieje w katalogu (nie niszczymy wiedzy o
-#: realnym portfolio producenta), ale konfigurator jej NIE oferuje.
-POTWIERDZONE_STATUSY_RODZINY: frozenset[str] = frozenset({"verified", "repo_verified"})
-
-
 def list_offered_switchgear_families() -> list[SwitchgearFamily]:
     """Rodziny oferowane w konfiguratorze — z potwierdzonymi danymi źródłowymi.
 
@@ -1326,7 +1520,7 @@ def list_offered_switchgear_families() -> list[SwitchgearFamily]:
     używa go zarówno walidator zgodności, jak i ścieżka szablonów pól, żeby
     rodzina bez karty katalogowej nie mogła wejść do oferty bocznymi drzwiami.
     """
-    return [f for f in list_switchgear_families() if f.status in POTWIERDZONE_STATUSY_RODZINY]
+    return [f for f in list_switchgear_families() if f.dopuszczona_do_budowania]
 
 
 def get_switchgear_family(switchgear_family_ref: str) -> SwitchgearFamily:

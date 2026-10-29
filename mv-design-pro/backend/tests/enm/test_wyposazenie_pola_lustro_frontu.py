@@ -122,3 +122,22 @@ def test_predykaty_lacznika_frontu_sa_lustrem_typow_backendu() -> None:
     assert z_pozycja == frozenset(TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM)
     assert z_pozycja | bezpiecznik == TYPY_LACZNIKOW_ENM
     assert not (z_pozycja & bezpiecznik)
+
+
+def test_klasy_pola_liniowego_sa_lustrem() -> None:
+    """Klasa pola liniowego (karta UX-04/POLE-LINIOWE-WZORZEC, rozszerzenie 2): lista klas,
+    nazwy polskie i unia typu `KlasaPolaLiniowego` frontu = słownik `bay_templates`, a literal
+    modelu `Bay.klasa_pola` = ta sama lista (jedno źródło klas w trzech nośnikach)."""
+    from enm.models import Bay
+    from network_model.catalog.bay_templates import KLASY_POLA_LINIOWEGO, NAZWY_KLASY_POLA_PL
+
+    assert _lista("KLASY_POLA_LINIOWEGO") == frozenset(KLASY_POLA_LINIOWEGO)
+    assert {
+        k: v.strip("'")
+        for k, v in re.findall(r"^\s+(\w+): ('[^']*'),", _obiekt("NAZWA_KLASY_POLA_PL"), re.M)
+    } == NAZWY_KLASY_POLA_PL
+    assert _unia("KlasaPolaLiniowego", _ENM_TS) == frozenset(KLASY_POLA_LINIOWEGO)
+    literal = typing.get_args(Bay.model_fields["klasa_pola"].annotation)
+    assert frozenset(a for arg in literal for a in typing.get_args(arg)) == frozenset(
+        KLASY_POLA_LINIOWEGO
+    )

@@ -57,7 +57,6 @@ from network_model.catalog.switchgear.device_instance import (
 )
 from network_model.catalog.switchgear.switchgear_family import (
     NAZWY_TOROW_KONFIGURACJI_PL,
-    POWODY_BLOKADY_RODZINY_PL,
     TorKonfiguracji,
 )
 from network_model.catalog.types import NAZWY_KATEGORII_KATALOGU_PL, CatalogNamespace
@@ -274,6 +273,11 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ZakresModulu("enm/grupa_polaczen.py"),
     ZakresModulu("enm/operacje_lacznikow.py"),
     ZakresModulu("enm/wyposazenie_pola.py"),
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: operacja stanu obiektu i odmowy zakazu gazów
+    # fluorowanych (komunikat odmowy `pole.gaz_fluorowany` i kwestia walidatora W045).
+    ZakresModulu("enm/stan_obiektu_pola.py"),
+    ZakresModulu("enm/gaz_fluorowany_pola.py"),
+    ZakresModulu("network_model/catalog/gazy_fluorowane.py"),
     ZakresModulu(
         "enm/uziemienie.py",
         powod=(
@@ -985,12 +989,11 @@ def _male_pierwsze(tekst: str) -> str:
             "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
             _male_pierwsze,
         ),
-        (
-            POWODY_BLOKADY_RODZINY_PL,
-            "ui/catalog/SwitchgearFamilyPicker.tsx",
-            "POWOD_BLOKADY_PL",
-            lambda t: _male_pierwsze(t).rstrip("."),
-        ),
+        # `POWODY_BLOKADY_RODZINY_PL` był tu porównywany z kopią `POWOD_BLOKADY_PL` w pickerze
+        # rodzin. Karta UX-04/POLE-LINIOWE-WZORZEC skasowała kopię: front pokazuje zdanie
+        # wyliczane backendu (`powod_blokady_pl`, `powod_blokady_nowych_pol_pl`) bez własnej
+        # mapy — parytet zastąpił strażnik `tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`
+        # (predykat frontu czyta wyłącznie pola backendu, brak drugiej kopii reguły).
     ],
 )
 def test_mapy_wartosci_sa_slowami_frontu(

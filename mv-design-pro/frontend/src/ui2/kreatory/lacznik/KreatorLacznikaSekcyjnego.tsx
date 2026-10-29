@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import { nazwaMediumPl, notaPozycjiUkrytych, pozycjeDoWyboru } from '../../../ui/catalog/dopuszczenieNowychPol';
 import type { MVApparatusType } from '../../../ui/catalog/types';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { punktyPodzialu } from '../../../ui/shared/stanLacznika';
@@ -120,10 +121,19 @@ export function KreatorLacznikaSekcyjnego() {
     [dane.catalog_ref, typy],
   );
 
+  // Obiekt tworzony przez kreator jest projektowany — picker pokazuje wyłącznie pozycje
+  // dopuszczone przez backend (zakaz gazów fluorowanych, `ui/catalog/dopuszczenieNowychPol`).
   const opcjeTypow = useMemo(
-    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A` })),
+    () =>
+      pozycjeDoWyboru(typy, 'PROJEKTOWANY').map((t) => ({
+        id: t.id,
+        etykieta: [`${t.name} · ${t.u_n_kv} kV · ${t.i_n_a} A`, nazwaMediumPl(t.medium)]
+          .filter(Boolean)
+          .join(' · '),
+      })),
     [typy],
   );
+  const notaTypow = useMemo(() => notaPozycjiUkrytych(typy, 'PROJEKTOWANY'), [typy]);
 
   const zmien = useCallback(<K extends keyof LacznikFormData>(pole: K, wartosc: LacznikFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
@@ -261,6 +271,7 @@ export function KreatorLacznikaSekcyjnego() {
             wartosc={dane.catalog_ref}
             onZmiana={(v) => zmien('catalog_ref', v)}
             opcje={opcjeTypow}
+            nota={notaTypow}
             status={bladKatalogu ? 'error' : 'ready'}
             placeholder={T.typKatalogPlaceholder}
             komunikatBledu={bladKatalogu ?? T.typBlad}

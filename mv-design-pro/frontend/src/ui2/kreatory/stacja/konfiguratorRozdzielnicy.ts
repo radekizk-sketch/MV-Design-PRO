@@ -35,6 +35,7 @@ import type {
 import {
   CONSTRUCTION_LABELS_PL,
   czyRodzinaDoBudowania,
+  NAZWY_IZOLACJI_RODZINY_PL,
   type FactoryConfigurationUnitWire,
   type FactoryConfigurationWire,
   type SwitchgearFamily,
@@ -76,7 +77,11 @@ export function torRodziny(rodzina: SwitchgearFamily | null | undefined): TorKon
 // --------------------------------------- Oferta rodzin producenta (widok)
 
 /** Powód, dla którego rodziny katalogu NIE MOŻNA dziś użyć (albo `null`). */
-export type PowodNiedostepnosci = 'WYMAGA_KARTY' | 'WYCOFANA' | 'INNA_KLASA_NAPIECIOWA';
+export type PowodNiedostepnosci =
+  | 'WYMAGA_KARTY'
+  | 'WYCOFANA'
+  | 'INNA_KLASA_NAPIECIOWA'
+  | 'GAZ_FLUOROWANY';
 
 export interface PozycjaOfertyRodzin {
   readonly rodzina: SwitchgearFamily;
@@ -148,9 +153,11 @@ function powodNiedostepnosci(
   snVoltageKv: number,
 ): PowodNiedostepnosci | null {
   if (rodzina.status === 'deprecated') return 'WYCOFANA';
-  // Statusy dopuszczające budowę — jeden predykat frontu (`czyRodzinaDoBudowania`, lustro
-  // `POTWIERDZONE_STATUSY_RODZINY` z `switchgear/families.py`, parytet przypięty testem).
-  if (!czyRodzinaDoBudowania(rodzina)) return 'WYMAGA_KARTY';
+  // Dopuszczenie rodziny do NOWEJ stacji — jeden predykat frontu (`czyRodzinaDoBudowania`,
+  // pola wyliczane backendu, parytet przypięty testem): status rodziny, potem zakaz gazów
+  // fluorowanych w obiektach projektowanych (stacja z kreatora jest projektowana).
+  if (!rodzina.dopuszczona_do_budowania) return 'WYMAGA_KARTY';
+  if (!czyRodzinaDoBudowania(rodzina, 'PROJEKTOWANY')) return 'GAZ_FLUOROWANY';
   // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
   // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
   if (rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
@@ -364,13 +371,7 @@ export function opisNapiecRodziny(rodzina: SwitchgearFamily | null | undefined):
 }
 
 /** Nazwy PL izolacji rodziny — komplet słownika kontraktu (test dwustronny). */
-export const NAZWY_IZOLACJI_PL: Readonly<Record<SwitchgearFamily['insulation_type'], string>> = {
-  air: 'powietrzna',
-  sf6: 'SF₆',
-  vacuum: 'próżniowa',
-  mixed: 'mieszana',
-  unknown: 'nieokreślona',
-};
+export const NAZWY_IZOLACJI_PL = NAZWY_IZOLACJI_RODZINY_PL;
 
 /** Nazwy PL toru konfiguracji — język projektanta, nie kod kontraktu. */
 export const NAZWY_TORU_PL: Readonly<Record<TorKonfiguracji, string>> = {

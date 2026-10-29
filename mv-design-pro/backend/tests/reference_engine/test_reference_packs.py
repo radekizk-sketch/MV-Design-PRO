@@ -7,8 +7,13 @@ profile referencyjne — kreator nie może definiować pól poza referencją
 szablonu ⇒ czerwono.
 """
 
+import pytest
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, ENMHeader, Substation
-from network_model.catalog.bay_templates import BayTemplate, list_bay_templates
+from network_model.catalog.bay_templates import (
+    BayTemplate,
+    list_bay_templates,
+    template_primary_devices,
+)
 from network_model.catalog.switchgear import (
     SWITCHGEAR_FAMILY_REGISTRY,
     list_switchgear_solution_templates_for_manufacturer,
@@ -36,19 +41,15 @@ EXPECTED_PACK_IDS = [
     "siemens_8djh",
 ]
 
-# Mapowanie kindów szablonu kreatora → kindy ENM (DS_BUS/DS_LINE = odłącznik).
-_TEMPLATE_KIND_TO_ENM = {"DS_BUS": "DS", "DS_LINE": "DS"}
-
 
 def _bay_from_template(template: BayTemplate, ref_id: str, substation_ref: str) -> Bay:
+    """Pole z szablonu TĄ SAMĄ materializacją co operacje domenowe (`template_primary_devices`:
+    rodzaj aparatu pierwotnego, porty, odgałęzienie toru) — dawna kopia mapy rodzajów w teście
+    (DS_BUS/DS_LINE) nie znała odłącznika odgałęzienia DS_BRANCH, a pole bez portów nie
+    pozwalało odróżnić odgałęzienia przekładnika napięciowego od toru głównego."""
     devices = [
-        BayPrimaryDevice(
-            device_ref=f"{ref_id}/{device.designation_q}/{index}",
-            symbol_ref=device.designation_q,
-            kind=_TEMPLATE_KIND_TO_ENM.get(device.kind, device.kind),
-            placement=device.placement,
-        )
-        for index, device in enumerate(template.devices)
+        BayPrimaryDevice.model_validate(entry)
+        for entry in template_primary_devices(template.template_id, field_ref=ref_id)
     ]
     return Bay(
         ref_id=ref_id,
@@ -56,6 +57,7 @@ def _bay_from_template(template: BayTemplate, ref_id: str, substation_ref: str) 
         bay_role=template.bay_role,
         substation_ref=substation_ref,
         bus_ref="bus/sn",
+        bay_template_ref=template.template_id,
         primary_devices=devices,
     )
 
@@ -100,6 +102,10 @@ class TestPackRegistry:
             "TRANSFORMER_DEVICE",
             "FUSE",
             "SURGE_ARRESTER",
+            # UX-04/POLE-LINIOWE-WZORZEC: pozycje pola liniowego ENEA Z.10.
+            "THREE_POSITION_SWITCH",
+            "VOLTAGE_INDICATOR",
+            "CORE_BALANCE_CT",
             "GENERATOR_PV",
             "GENERATOR_BESS",
             "GENERATOR_FW",
@@ -240,3 +246,52 @@ class TestFamilyTemplatesMatchCells:
         pack = get_reference_pack("elektrometal_e2alpha")
         assert pack.cell_configurations == []
         assert "NIE publikuje składu aparatowego" in (pack.notes_pl or "")
+
+
+_SZABLONY_GPZ = [
+    t for t in list_bay_templates() if t.template_id.startswith("bay_template_gpz_line")
+]
+
+
+def _niezgodnosci_pola(bay: Bay) -> list[str]:
+    station = Substation(
+        ref_id="st/x", name="Stacja testowa", station_type="gpz", bus_refs=["bus/sn"]
+    )
+    enm = EnergyNetworkModel(header=ENMHeader(name="Pole GPZ"), substations=[station], bays=[bay])
+    report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
+    return sorted(c.rule_code for c in report.packs[0].checks if c.status == "fail")
+
+
+@pytest.mark.parametrize("szablon", _SZABLONY_GPZ, ids=lambda t: t.template_id)
+@pytest.mark.parametrize("ze_wskazaniem_szablonu", [True, False])
+@pytest.mark.parametrize("z_portami", [True, False])
+def test_profil_pola_liniowego_gpz_iloczyn(
+    szablon: BayTemplate, ze_wskazaniem_szablonu: bool, z_portami: bool
+) -> None:
+    """Iloczyn {9 szablonów Z.10/Z.11.1/Z.11 × wykonanie łączników} × {pole wskazuje szablon,
+    nie wskazuje} × {aparaty z portami, bez portów}. Funkcję odłączenia pola wysuwnego spełnia
+    wysunięcie wyłącznika WYŁĄCZNIE, gdy pole wskazuje szablon wysuwny (jedno źródło:
+    `odlaczenie_wysunieciem_wylacznika`); odgałęzienie przekładnika napięciowego wypada z
+    kolejności toru WYŁĄCZNIE na podstawie portów (`aparaty_poza_torem_glownym`)."""
+    bay = _bay_from_template(szablon, "bay/gpz", "st/x")
+    if not ze_wskazaniem_szablonu:
+        bay = bay.model_copy(update={"bay_template_ref": None})
+    if not z_portami:
+        bay = bay.model_copy(
+            update={
+                "primary_devices": [d.model_copy(update={"ports": []}) for d in bay.primary_devices]
+            }
+        )
+    oczekiwane: list[str] = []
+    # Odłącznik odgałęzienia (Z.11.1/Z.11) nie odłącza pola od szyny — rozpoznany po portach;
+    # pole bez portów nie odróżnia odgałęzienia od toru (zero domysłu, jak przed portami).
+    odgalezienie_rozpoznane = szablon.wykonanie_pola == "Z10" or z_portami
+    if (
+        szablon.wykonanie_lacznikow == "WYSUWNY"
+        and not ze_wskazaniem_szablonu
+        and odgalezienie_rozpoznane
+    ):
+        oczekiwane.append("profile.one_of.THREE_POSITION_SWITCH|DS")
+    if szablon.wykonanie_pola != "Z10" and not z_portami:
+        oczekiwane.append("profile.order")
+    assert _niezgodnosci_pola(bay) == sorted(oczekiwane)

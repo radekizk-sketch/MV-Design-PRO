@@ -16,6 +16,7 @@
       "funkcja_pomiaru": null,
       "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
       "id": "d31902c7-6b3e-54c1-b1fc-15393a93a5a2",
+      "klasa_pola": null,
       "manufacturer_ref": null,
       "meta": {
         "field_status": "READY_FOR_TRUNK",
@@ -34,6 +35,7 @@
       "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
+      "stan_obiektu": "PROJEKTOWANY",
       "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
@@ -105,7 +107,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7c730226812ebd189f46e71e4d0170cffa4e16d8f958a33c7033d3dd08a5e08e",
+    "hash_sha256": "41d132dd4cf6e6c8162cc6bc971401960c2054b2c544d454ad3193d816861cc2",
     "name": "GPZ bez odcinków",
     "revision": 2,
     "updated_at": "2026-09-25T00:00:00Z"

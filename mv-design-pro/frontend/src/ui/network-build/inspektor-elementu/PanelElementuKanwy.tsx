@@ -199,9 +199,10 @@ export function SekcjaWezlaSn({ wezel }: { readonly wezel: NonNullable<DaneEleme
 }
 
 /** Położenie łącznika w modelu — ten sam stan, który rysuje glif kanwy. */
-export const POLOZENIE_LACZNIKA_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
+export const POLOZENIE_LACZNIKA_PL: Readonly<Record<'closed' | 'open' | 'earthed' | 'unknown', string>> = {
   closed: 'zamknięty',
   open: 'otwarty',
+  earthed: 'uziemiony',
   unknown: 'nieustalony (model niejednoznaczny)',
 };
 export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';

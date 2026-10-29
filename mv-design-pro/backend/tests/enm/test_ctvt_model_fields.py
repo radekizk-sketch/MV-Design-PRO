@@ -1,9 +1,10 @@
 """CTVT-MODEL [DOMAIN] — testy nowych pól ENM `Measurement` (karta CTVT-MODEL,
 domknięcie luki W5/V12K-173; karta W3-B, mapa 4 #3 — obwód wtórny):
 
-1. `Measurement.ct_cores` — liczba rdzeni przekładnika prądowego (dane
-   producenta wg IEC 61869-2). WYŁĄCZNIE dla measurement_type=='CT'; wartość
-   > 0; None = uczciwy brak (zero fabrykacji).
+1. `Measurement.rdzenie` / `Measurement.uzwojenia` (karta UX-04/POLE-LINIOWE-WZORZEC; dawna
+   liczba `ct_cores` skasowana) — tabliczka rdzeni CT (IEC 61869-2) i uzwojeń VT
+   (IEC 61869-3) jako lista. `rdzenie` WYŁĄCZNIE dla CT, `uzwojenia` WYŁĄCZNIE dla VT;
+   lista niepusta; None = uczciwy brak (zero fabrykacji).
 2. `Measurement.vt_mounting` — typ montażu VT (`bus`/`cable`). WYŁĄCZNIE dla
    measurement_type=='VT'; oś ODRĘBNA od `vt_arrangement`.
 3. `Measurement.obwod_wtorny` (karta W3-B) — obwód wtórny CT/VT (długość,
@@ -29,6 +30,27 @@ from enm.models import (
     ObciazenieAparatu,
     ObwodWtorny,
 )
+
+RDZEN_Z10 = {
+    "przekladnia": "200-400/5",
+    "moc_va": 15.0,
+    "klasa": "5P20",
+    "przeznaczenie": ["ZABEZPIECZENIA"],
+}
+RDZEN_ROZLICZENIOWY = {
+    "przekladnia": "200-400/5",
+    "moc_va": 10.0,
+    "klasa": "0,2S",
+    "fs": 5.0,
+    "przeznaczenie": ["ROZLICZENIE", "JAKOSC_ENERGII"],
+}
+UZWOJENIE_RESZTKOWE = {
+    "przekladnia": "15/√3 / 0,1/3",
+    "moc_va": 7.5,
+    "klasa": "0,5/3P",
+    "przeznaczenie": ["POMIAR", "ZABEZPIECZENIA"],
+    "otwarty_trojkat": True,
+}
 
 
 def _ct(**kwargs) -> dict:
@@ -61,35 +83,61 @@ def _vt(**kwargs) -> dict:
 
 
 class TestCtVtVariantFields:
-    def test_ct_cores_accepted_for_ct_measurement(self):
-        m = Measurement.model_validate(_ct(ct_cores=3))
-        assert m.ct_cores == 3
+    def test_rdzenie_accepted_for_ct_measurement(self):
+        m = Measurement.model_validate(_ct(rdzenie=[RDZEN_ROZLICZENIOWY, RDZEN_Z10]))
+        assert m.rdzenie is not None
+        assert [r.klasa for r in m.rdzenie] == ["0,2S", "5P20"]
+        assert [r.rodzaj for r in m.rdzenie] == ["metering", "protection"]
+        assert m.rdzenie[1].alf == 20.0
         assert m.vt_mounting is None
+
+    def test_uzwojenia_accepted_for_vt_measurement(self):
+        m = Measurement.model_validate(_vt(uzwojenia=[UZWOJENIE_RESZTKOWE]))
+        assert m.uzwojenia is not None
+        assert m.uzwojenia[0].otwarty_trojkat is True
+        assert m.rdzenie is None
 
     def test_vt_mounting_accepted_for_vt_measurement(self):
         m = Measurement.model_validate(_vt(vt_mounting="bus"))
         assert m.vt_mounting == "bus"
-        assert m.ct_cores is None
+        assert m.rdzenie is None
 
     def test_vt_mounting_cable_accepted(self):
         m = Measurement.model_validate(_vt(vt_mounting="cable"))
         assert m.vt_mounting == "cable"
 
-    def test_ct_cores_rejected_on_vt_measurement(self):
-        with pytest.raises(ValueError, match="ct_cores wymaga measurement_type='CT'"):
-            Measurement.model_validate(_vt(ct_cores=2))
+    def test_rdzenie_rejected_on_vt_measurement(self):
+        with pytest.raises(ValueError, match="rdzenie wymagają measurement_type='CT'"):
+            Measurement.model_validate(_vt(rdzenie=[RDZEN_Z10]))
+
+    def test_uzwojenia_rejected_on_ct_measurement(self):
+        with pytest.raises(ValueError, match="uzwojenia wymagają measurement_type='VT'"):
+            Measurement.model_validate(_ct(uzwojenia=[UZWOJENIE_RESZTKOWE]))
 
     def test_vt_mounting_rejected_on_ct_measurement(self):
         with pytest.raises(ValueError, match="vt_mounting wymaga measurement_type='VT'"):
             Measurement.model_validate(_ct(vt_mounting="bus"))
 
-    def test_ct_cores_must_be_positive(self):
+    @pytest.mark.parametrize("pole,fabryka", [("rdzenie", _ct), ("uzwojenia", _vt)])
+    def test_pusta_lista_odrzucona(self, pole, fabryka):
+        # Pusta lista nie opisuje przekładnika — brak tabliczki to None.
         with pytest.raises(ValueError):
-            Measurement.model_validate(_ct(ct_cores=0))
+            Measurement.model_validate(fabryka(**{pole: []}))
 
-    def test_ct_cores_negative_rejected(self):
+    def test_dawne_ct_cores_nie_istnieje(self):
+        # Pole skasowane (karta UX-04/POLE-LINIOWE-WZORZEC): ENM ignoruje nieznane klucze
+        # (konwencja `ENMElement`), więc dawna liczba nie przeżywa wczytania ani zapisu —
+        # liczbę rdzeni daje wyłącznie lista `rdzenie`.
+        m = Measurement.model_validate(_ct(ct_cores=3))
+        assert "ct_cores" not in m.model_dump()
+        assert m.rdzenie is None
+
+    def test_rdzen_niespojny_odrzucony(self):
+        # Rdzeń zabezpieczeniowy przeznaczony do rozliczenia — sprzeczność klasy.
         with pytest.raises(ValueError):
-            Measurement.model_validate(_ct(ct_cores=-1))
+            Measurement.model_validate(
+                _ct(rdzenie=[{**RDZEN_Z10, "przeznaczenie": ["ROZLICZENIE"]}])
+            )
 
     def test_vt_mounting_unknown_value_rejected(self):
         with pytest.raises(ValueError):
@@ -99,9 +147,9 @@ class TestCtVtVariantFields:
         ct = Measurement.model_validate(_ct())
         vt = Measurement.model_validate(_vt())
         # Uczciwy brak — dane producenta niedostarczone, ZERO domyślnych wartości.
-        assert ct.ct_cores is None
+        assert ct.rdzenie is None
         assert ct.vt_mounting is None
-        assert vt.ct_cores is None
+        assert vt.uzwojenia is None
         assert vt.vt_mounting is None
 
 
@@ -205,14 +253,15 @@ class TestVtUzwojenie:
 
 class TestSerialization:
     def test_fields_present_in_model_dump_when_set(self):
-        ct = Measurement.model_validate(_ct(ct_cores=3))
+        ct = Measurement.model_validate(_ct(rdzenie=[RDZEN_Z10]))
         vt = Measurement.model_validate(_vt(vt_mounting="cable"))
-        assert ct.model_dump()["ct_cores"] == 3
+        assert ct.model_dump()["rdzenie"][0]["klasa"] == "5P20"
         assert vt.model_dump()["vt_mounting"] == "cable"
 
     def test_fields_absent_from_model_dump_exclude_none_when_unset(self):
         dumped = Measurement.model_validate(_ct()).model_dump(exclude_none=True)
-        assert "ct_cores" not in dumped
+        assert "rdzenie" not in dumped
+        assert "uzwojenia" not in dumped
         assert "vt_mounting" not in dumped
         assert "obwod_wtorny" not in dumped
         assert "vt_uzwojenie" not in dumped
@@ -220,9 +269,14 @@ class TestSerialization:
     def test_round_trip_materialization_from_producer_data(self):
         """Materializacja end-to-end: payload z danymi producenta (dict) →
         model → serializacja z powrotem, wartości przeniesione bez zmian."""
-        ct = Measurement.model_validate(_ct(ct_cores=4, ct_arrangement="3xCT"))
-        vt = Measurement.model_validate(_vt(vt_mounting="bus", vt_arrangement="open_delta"))
-        assert Measurement.model_validate(ct.model_dump()).ct_cores == 4
+        ct = Measurement.model_validate(
+            _ct(rdzenie=[RDZEN_ROZLICZENIOWY, RDZEN_Z10], ct_arrangement="3xCT")
+        )
+        vt = Measurement.model_validate(
+            _vt(vt_mounting="bus", vt_arrangement="open_delta", uzwojenia=[UZWOJENIE_RESZTKOWE])
+        )
+        assert Measurement.model_validate(ct.model_dump()).rdzenie == ct.rdzenie
+        assert Measurement.model_validate(vt.model_dump(mode="json")).uzwojenia == vt.uzwojenia
         assert Measurement.model_validate(vt.model_dump()).vt_mounting == "bus"
 
     def test_obwod_wtorny_round_trip(self):
@@ -265,7 +319,7 @@ class TestDeterminism:
         assert compute_enm_hash(_make_minimal_enm()) == compute_enm_hash(_make_minimal_enm())
 
     def test_hash_stable_when_new_fields_set(self):
-        measurement = Measurement.model_validate(_ct(ct_cores=3))
+        measurement = Measurement.model_validate(_ct(rdzenie=[RDZEN_Z10]))
         enm1 = EnergyNetworkModel(
             header=ENMHeader(name="CTVT hash test 2", defaults=ENMDefaults()),
             measurements=[measurement],

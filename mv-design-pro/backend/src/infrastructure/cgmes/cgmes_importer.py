@@ -364,6 +364,11 @@ def import_from_eq_tp(
                     type=enm_type,
                     status=status,
                     normal_state=normal_state,
+                    # Profile EQ/TP nie niosą stanu obiektu (istniejący / projektowany) — stan
+                    # nieustalony jawnie, bez domysłu (karta UX-04/POLE-LINIOWE-WZORZEC). Łącznik
+                    # z EQ nie ma pozycji katalogu, więc nie jest nośnikiem gazu fluorowanego;
+                    # stan nadaje projektant operacją `set_object_state`.
+                    stan_obiektu=None,
                 )
             )
 

@@ -178,7 +178,8 @@ def test_zaden_rekord_katalogu_nie_niesie_zera_ani_liczby_w_wielkosci_niewlasciw
         for pole in ("breaking_capacity_ka", "making_capacity_ka", "i_th_ka", "i_dyn_ka"):
             if getattr(aparat, pole) == 0:
                 zera.append((aparat.id, pole))
-    assert len(rekordy) == 50
+    # 50 + 2 rozłączniki próżniowe typu ogólnego (karta UX-04/POLE-LINIOWE-WZORZEC).
+    assert len(rekordy) == 52
     assert zera == []
     assert niewlasciwe == []
 
@@ -372,13 +373,26 @@ def test_wartosc_robocza_pradu_krotkotrwalego(ref: str) -> None:
 
 @pytest.mark.parametrize("ref", sorted(POZYCJE))
 def test_kandydaci_doboru_aparatu_pola_sn(ref: str) -> None:
+    from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
+    from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
+
     _, ik, _ = POZYCJE[ref]
     kandydaci = {k.catalog_ref: k for k in kandydaci_aparatow_pola_sn()}
+    medium = next(r for r in get_all_switch_equipment_types() if r["id"] == ref)["params"].get(
+        "medium"
+    )
     if ref in BEZ_DANYCH:
         # Łącznik WN nie jest kandydatem aparatu pola SN (pomyłka klasy napięcia).
         assert ref not in kandydaci
+    elif czy_medium_z_gazem_fluorowanym(medium):
+        # Karta UX-04: pole źródłowe SN powstaje jako projektowane — pozycja z gazem
+        # fluorowanym nie jest kandydatem doboru (zakaz rozporządzenia (UE) 2024/573 art. 13).
+        assert ref not in kandydaci
     else:
         assert kandydaci[ref].ik_ka == ik
+    # Żaden kandydat nie niesie gazu fluorowanego (cały zbiór, nie tylko pozycje z tabeli).
+    media = {r["id"]: r["params"].get("medium") for r in get_all_switch_equipment_types()}
+    assert not [r for r in kandydaci if czy_medium_z_gazem_fluorowanym(media[r])]
     assert not [
         r
         for r, k in kandydaci.items()

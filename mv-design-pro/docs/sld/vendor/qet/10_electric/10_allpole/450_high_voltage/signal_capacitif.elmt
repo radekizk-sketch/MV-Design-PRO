@@ -1,0 +1,52 @@
+<definition version="0.100.0" type="element" link_type="simple" width="30" height="40" hotspot_x="10" hotspot_y="20">
+    <uuid uuid="{daa93685-c84b-6c01-eb92-443fe00fbf96}"/>
+    <names>
+        <name lang="ar">مُؤشر وجود جهد سعوي</name>
+        <name lang="ca">Indicador d'assistència de tensió capacitiva</name>
+        <name lang="cs">Kapacitní indikátor napětí</name>
+        <name lang="da">Kapacitiv spændingstilstedeværelsesindikator</name>
+        <name lang="de">Kapazitätsschalter</name>
+        <name lang="el">Χωρητικός δείκτης παρουσίας τάσης</name>
+        <name lang="en">Capacitive voltage attendance indicator</name>
+        <name lang="es">Indicador capacitivo de presencia de tensión</name>
+        <name lang="fi">Kapasitiivinen jännitteen läsnäoloilmaisin</name>
+        <name lang="fr">Indicateur présence tension capacitif</name>
+        <name lang="hr">Kapacitivni indikator prisutnosti napona</name>
+        <name lang="hu">Kapacitív feszültségjelző</name>
+        <name lang="it">Indicatore presenza tensione capacitiva</name>
+        <name lang="ja">静電容量形電圧検知器</name>
+        <name lang="ko">정전 용량형 전압 표시기</name>
+        <name lang="mn">Багтаамжит хүчдэлийн үзүүлэлт</name>
+        <name lang="nb">Kapasitiv spenningsindikator</name>
+        <name lang="nl">Capacitair Voltage melder</name>
+        <name lang="nl_BE">Capacitieve spanningsaanwezigheidsindicator</name>
+        <name lang="pl">Pojemnościowy wskaźnik napięcia</name>
+        <name lang="pt">Indicador de presença de tensão capacitiva</name>
+        <name lang="pt_BR">Indicador de presença de tensão capacitiva</name>
+        <name lang="ro">Indicator capacitiv de prezență a tensiunii</name>
+        <name lang="ru">Ёмкостный индикатор наличия напряжения</name>
+        <name lang="sk">Kapacitný indikátor prítomnosti napätia</name>
+        <name lang="sl">Indikator kapacitivne napetostne prisotnosti</name>
+        <name lang="sr">Капацитивни индикатор присуства напона</name>
+        <name lang="sv">Kapacitiv spänningsindikator</name>
+        <name lang="tr">Kapasitif gerilim varlık göstergesi</name>
+        <name lang="uk">Ємнісний індикатор наявності напруги</name>
+        <name lang="zh">电容信号</name>
+    </names>
+    <informations>Author: The QElectroTech team
+License: see http://qelectrotech.org/wiki/doc/elements_license</informations>
+    <description>
+        <dynamic_text x="13" y="-13.95" z="1" text_width="-1" Halignment="AlignLeft" Valignment="AlignTop" frame="false" rotation="0" keep_visual_rotation="false" text_from="ElementInfo" uuid="{de433e83-eb90-4695-be0c-ba1ff0d24d9f}" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular">
+            <text></text>
+            <info_name>label</info_name>
+        </dynamic_text>
+        <line x1="10" y1="-10" x2="10" y2="10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="10" y1="0" x2="5" y2="0" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="5" y1="-5" x2="5" y2="5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="3.25" y1="-5" x2="3.25" y2="5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="0" y1="0" x2="3" y2="0" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <arc x="-10" y="-5" width="10" height="10" start="270" angle="180" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="true"/>
+        <terminal uuid="{1ba6e027-9a88-4392-94aa-86ffc6dd3f08}" name="" x="10" y="-10" orientation="n" type="Generic"/>
+        <terminal uuid="{f38ded83-dfd6-4578-86a5-c71e45f50014}" name="" x="10" y="10" orientation="s" type="Generic"/>
+    </description>
+</definition>

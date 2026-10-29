@@ -56,6 +56,10 @@ _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
     "CableType": ("wartosci_robocze",),
     "LineType": ("wartosci_robocze",),
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: jawna lista rdzeni CT / uzwojeń VT z tabliczki — typ
+    # opisany polami skalarnymi (pusta lista) ma odcisk sprzed karty.
+    "CTType": ("rdzenie",),
+    "VTType": ("uzwojenia",),
 }
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`
@@ -72,7 +76,8 @@ _PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(("k
 
 def _kanon(wartosc: Any) -> Any:
     """Serializacja wartosci spoza JSON: enum po wartosci, dataclass jako slownik,
-    zbior posortowany, reszta przez `str` (deterministycznie dla typow katalogu)."""
+    zbior posortowany, model pydantic po polach, reszta przez `str` (deterministycznie dla
+    typow katalogu)."""
     if isinstance(wartosc, Enum):
         return wartosc.value
     if dataclasses.is_dataclass(wartosc) and not isinstance(wartosc, type):
@@ -81,6 +86,11 @@ def _kanon(wartosc: Any) -> Any:
         return sorted(wartosc, key=str)
     if isinstance(wartosc, tuple):
         return list(wartosc)
+    # Model pydantic (rdzeń CT, uzwojenie VT — `catalog/przekladniki`) po polach, nie przez
+    # `repr`: postać JSON jest kontraktem modelu, `repr` — szczegółem wersji biblioteki.
+    model_dump = getattr(wartosc, "model_dump", None)
+    if callable(model_dump):
+        return model_dump(mode="json")
     return str(wartosc)
 
 

@@ -112,7 +112,12 @@ PRZYPADKI: list[tuple[str, dict[str, Any], float, bool]] = [
 #: Rodzina modułowa z katalogowym polem transformatorowym — nośnik podmiany
 #: danych napięciowych w kanale operacji domenowej.
 RODZINA_MODULOWA_REF = "ZPUE_WLOSZCZOWA__ROTOBLOK"
-POLE_MODULARNE = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
+#: Kanał OPERACJI buduje pole PROJEKTOWANE — pole projektowane nie może mieć gazu fluorowanego
+#: (karta UX-04/POLE-LINIOWE-WZORZEC; rozporządzenie (UE) 2024/573, art. 13 ust. 9), więc
+#: nośnikiem podmiany jest Rotoblok AIR (izolacja i gaszenie w powietrzu, ta sama struktura pól
+#: katalogowych co Rotoblok z SF₆); kanał predykatu czyta dane Rotobloku bez zmian.
+RODZINA_MODULOWA_OPERACJI_REF = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR"
+POLE_MODULARNE = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR__TRANSFORMER"
 
 #: Rodzina RMU wskazywana przez pakiet Reference Engine V1 `abb_safering` —
 #: nośnik podmiany danych napięciowych w kanale listy sprawdzeń.
@@ -224,8 +229,8 @@ def test_operacja_domenowa_bramkuje_napiecie_iloczyn_cech(
     """
     monkeypatch.setitem(
         SWITCHGEAR_FAMILY_REGISTRY,
-        RODZINA_MODULOWA_REF,
-        _rodzina_z_deklaracja(RODZINA_MODULOWA_REF, deklaracja),
+        RODZINA_MODULOWA_OPERACJI_REF,
+        _rodzina_z_deklaracja(RODZINA_MODULOWA_OPERACJI_REF, deklaracja),
     )
     snapshot, stacja_ref, szyna_ref = _snapshot_o_napieciu(napiecie_kv)
     payload = {
@@ -265,8 +270,8 @@ def test_proba_i_wykonanie_daja_ten_sam_werdykt_napieciowy(
     """
     monkeypatch.setitem(
         SWITCHGEAR_FAMILY_REGISTRY,
-        RODZINA_MODULOWA_REF,
-        _rodzina_z_deklaracja(RODZINA_MODULOWA_REF, deklaracja),
+        RODZINA_MODULOWA_OPERACJI_REF,
+        _rodzina_z_deklaracja(RODZINA_MODULOWA_OPERACJI_REF, deklaracja),
     )
     snapshot, stacja_ref, szyna_ref = _snapshot_o_napieciu(napiecie_kv)
     payload = {

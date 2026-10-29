@@ -205,6 +205,13 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_bay_equipment:mode": "Sposób wyposażenia pola",
     "set_bay_equipment:devices": "Aparaty pola",
     "set_bay_equipment:bay_template_ref": "Szablon pola",
+    "set_bay_equipment:klasa_pola": "Klasa pola liniowego",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (istniejący/projektowany).
+    "set_object_state:bay_ref": "Pole rozdzielnicy",
+    "set_object_state:stan_obiektu": "Stan obiektu",
+    "set_object_state:device_ref": "Aparat pola",
+    "set_object_state:switch_ref": "Łącznik",
+    "assign_catalog_to_element:stan_obiektu": "Stan obiektu łącznika",
     "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
     "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie
     "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp

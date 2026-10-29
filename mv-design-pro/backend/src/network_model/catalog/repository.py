@@ -209,6 +209,9 @@ def _derive_mv_apparatus_records(
                     "i_th_ka": icw_ka,
                     "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
                     "manufacturer": params.get("manufacturer"),
+                    # Medium gaszenia łuku — ta sama dana co rekord łącznika (zakaz gazów
+                    # fluorowanych w aparatach pól projektowanych czyta ją z pozycji aparatu).
+                    "medium": params.get("medium"),
                     **_jakosc_pol_projekcji_aparatu(params.get("card_field_status")),
                     **_copy_catalog_quality(record),
                 },

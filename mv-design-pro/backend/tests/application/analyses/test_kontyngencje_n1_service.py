@@ -950,8 +950,16 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
     # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
     # wynik UI/UX (GPZ-MODEL).
-    "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
-    "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
+    # 2026-10-28 (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych w obiektach
+    # projektowanych): gn01 63af4b10… → 6e9613ad…, gn03 d05d5914… → c1a30de4…. Pełne widoki
+    # z kodu bazy `f44e042f6` (odtwarzają dokładnie poprzednie piny) i po karcie porównane liść
+    # po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Różnice modelu
+    # wejściowego: każda gałąź łączeniowa utworzona operacją niesie `stan_obiektu`
+    # „PROJEKTOWANY", a rozłącznik sekcyjny gn03 ma pozycję katalogu bez SF₆
+    # (`sw-ls-ogolny-prozniowy-24kv-630a` zamiast RM6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne.
+    "gn01_promieniowa": "6e9613adf1ed802212d7aefc408e36538398fac0a63c7210e044e81d99a21de2",
+    "gn03_pierscien": "c1a30de457e5befd7dce52b9ccbc466ca9d101118e6a4a5202103a02d66b29e4",
 }
 
 

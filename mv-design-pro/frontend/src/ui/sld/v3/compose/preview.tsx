@@ -36,6 +36,9 @@ import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
+import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
+import { czyLacznikPola } from './rodzajeAparatuPola';
+import { atrybutStanuObiektu } from '../../../shared/stanObiektu';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
@@ -310,6 +313,14 @@ export interface PreviewElementMeta {
    *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —
    *  nakładka energizacji i temat menu kluczują po polu). */
   readonly deviceRef?: string;
+  /** UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM (`BayPrimaryDevice.kind`) pozycji
+   *  stosu — glif QET rysuje ramkę stanu SCADA wyłącznie dla łącznika pola
+   *  (`czyLacznikPola`, lustro backendu). `undefined` = symbol bez rekordu aparatu. */
+  readonly apparatusKind?: BayPrimaryDeviceKind;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola
+   *  (przekładnik napięciowy od strony linii), w którym stoi aparat; `undefined` = tor główny
+   *  pola. Audytor DOM: `data-odgalezienie-toru`. */
+  readonly odgalezienieToru?: number;
   /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
    *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
    *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez
@@ -330,6 +341,10 @@ export interface PreviewElementMeta {
   /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu (`catalog_ref`); DOM
    *  `data-apparatus-type`. Brak = model nie niesie typu. */
   readonly apparatusTypeRef?: string;
+  /** Karta UX-04 (stan obiektu): stan istniejący / projektowany rekordu aparatu; DOM
+   *  `data-stan-obiektu` (`NIEUSTALONY` dla `null`) i podpowiedź na symbolu
+   *  (`canvas/hitAreas.ts`). Brak = symbol bez rekordu aparatu. */
+  readonly stanObiektu?: StanObiektu | null;
   /** GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe/wolne, do którego należy symbol; DOM
    *  `data-bay-reserve`. */
   readonly bayReserve?: 'rezerwowe' | 'wolne';
@@ -516,6 +531,9 @@ export function daneGlifuSymbolu(
     gpzSections: meta?.gpzGlyph?.sections,
     gpzTransformers: meta?.gpzGlyph?.transformers,
     gpzFeeders: meta?.gpzGlyph?.feeders,
+    // UX-04/POLE-LINIOWE-WZORZEC: ramka stanu SCADA tylko dla łącznika pola (jeden predykat
+    // z lustrem backendu); kolory ramki dokłada kanwa z palety motywu.
+    ramkaLacznika: czyLacznikPola(meta?.apparatusKind),
   };
 }
 
@@ -562,8 +580,14 @@ export function pointsToPath(points: readonly RouteVertex[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 }
 
-function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly stroke: string }): JSX.Element {
-  const { symbol, stroke } = props;
+/** Węzeł symbolu podglądu — eksportowany dla kadru pola (`ui/field/SchematPolaSn.tsx`).
+ *  `ramkaScada` = kolory ramki stanu łącznika z palety motywu; brak = harness mono bez ramki. */
+export function PreviewSymbolNode(props: {
+  readonly symbol: PreviewSymbol;
+  readonly stroke: string;
+  readonly ramkaScada?: GlyphProps['ramkaScada'];
+}): JSX.Element {
+  const { symbol, stroke, ramkaScada } = props;
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   // F11.3 (spec §13.3): nakładka stanu źródła = WYŁĄCZNIE kolor kreski glifu
   // (tabela `SOURCE_STATE_OVERLAY_COLOR`) + atrybut `data-source-state` —
@@ -581,14 +605,18 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-apparatus-origin={symbol.meta?.apparatusOrigin}
       data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-stan-obiektu={atrybutStanuObiektu(symbol.meta?.stanObiektu)}
       data-bay-reserve={symbol.meta?.bayReserve}
       data-track-role={symbol.meta?.trackRole}
       data-config-id={symbol.meta?.configId}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
       data-source-state={state}
+      data-device-ref={symbol.meta?.deviceRef}
+      data-apparatus-kind={symbol.meta?.apparatusKind}
+      data-odgalezienie-toru={symbol.meta?.odgalezienieToru}
     >
-      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} />
+      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} ramkaScada={ramkaScada} />
     </g>
   );
 }
@@ -620,7 +648,7 @@ export function segmentDasharray(segment: PreviewSegment): string | undefined {
   return undefined;
 }
 
-function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
+export function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
   const { segment, stroke } = props;
   if (segment.points.length < 2) return null;
   const strokeWidth = SEGMENT_STROKE_WIDTH[klasaWagiOdcinka(segment.meta)];
@@ -638,7 +666,7 @@ function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly 
   );
 }
 
-function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: string }): JSX.Element {
+export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: string }): JSX.Element {
   const { label, stroke } = props;
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
   const cx = label.rect.x + label.rect.width / 2;

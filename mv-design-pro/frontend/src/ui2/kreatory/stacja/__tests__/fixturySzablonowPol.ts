@@ -300,6 +300,13 @@ export const RODZINA_SAFERING: SwitchgearFamily = {
   status: 'repo_verified',
   source_refs: [SAFERING_SOURCE],
   notes_pl: null,
+  // Zrzut API: SafeRing izoluje SF₆ — dopuszczona do istniejących, nie do nowych pól.
+  gaz_fluorowany: true,
+  dopuszczona_do_budowania: true,
+  powod_blokady_pl: null,
+  dopuszczona_do_nowych_pol: false,
+  powod_blokady_nowych_pol_pl:
+    'Rodzina SafeRing wykorzystuje gaz fluorowany (SF₆) w izolacji albo w gaszeniu łuku — obiekt projektowany nie może go zawierać (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a (rozdzielnice SN do 24 kV, od 2026-01-01) i lit. b (powyżej 24 kV do 52 kV, od 2030-01-01); dyrektywa właściciela 2026-10-28 — nowe pola SN bez gazów fluorowanych w każdym napięciu; ENEA Zeszyt 1, §13 — wyłączniki z próżniowymi komorami gaszeniowymi). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.',
 };
 
 /** Rodzina ABB UniGear ZS1 — zrzut `GET /api/catalog/switchgear-families`. */
@@ -317,6 +324,11 @@ export const RODZINA_UNIGEAR: SwitchgearFamily = {
   status: 'repo_verified',
   source_refs: [UNIGEAR_SOURCE],
   notes_pl: null,
+  gaz_fluorowany: false,
+  dopuszczona_do_budowania: true,
+  powod_blokady_pl: null,
+  dopuszczona_do_nowych_pol: true,
+  powod_blokady_nowych_pol_pl: null,
 };
 
 /**

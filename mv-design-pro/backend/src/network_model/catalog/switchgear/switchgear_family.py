@@ -2,9 +2,11 @@
 
 Goal §11A.2: rodzina to konkretna seria produktów producenta (np. "Rotoblok",
 "Safevap", "UniGear ZS1", "8DJH"). Każda ma:
-- konstrukcję (RMU / jednoczłonowa / wysuwna / GIS SF6 / kontenerowa),
+- konstrukcję (RMU / jednoczłonowa / wysuwna / GIS / kontenerowa),
 - układ szyn (single / sectionalized / double / ring main),
-- klasę izolacji (air / SF6 / vacuum / mixed),
+- izolację (powietrzna / stało-powietrzna / gazowa bez gazów fluorowanych / SF₆) i medium
+  łączników (SF₆ / próżnia / powietrze / aparat z katalogu aparatów) — z obu osi wynika gaz
+  fluorowany rodziny (`gaz_fluorowany`, dyrektywa właściciela 2026-10-28),
 - listę dopuszczonych napięć i prądów,
 - listę dopuszczonych typów pól (`allowed_bay_kinds`).
 
@@ -26,15 +28,45 @@ from __future__ import annotations
 
 from typing import Literal, get_args
 
+from network_model.catalog.gazy_fluorowane import odmowa_gazu_fluorowanego_pl
 from pydantic import BaseModel, Field, computed_field
 
-InsulationType = Literal["air", "sf6", "vacuum", "mixed", "unknown"]
+#: Izolacja rodziny rozdzielnicy — JEDYNE źródło medium izolacyjnego pola (pole czyta je przez
+#: `Bay.switchgear_family_ref`; szablony pól NIE niosą medium): ``air`` — izolacja powietrzna
+#: (AIS), ``ssis`` — izolacja stało-powietrzna (aparaty w osłonach z izolacji stałej),
+#: ``gaz_bez_f`` — izolacja gazowa bez gazów fluorowanych (suche powietrze albo azot pod
+#: nadciśnieniem), ``sf6`` — izolacja gazowa SF₆, ``unknown`` — karta nie rozstrzyga.
+InsulationType = Literal["air", "ssis", "gaz_bez_f", "sf6", "unknown"]
+
+NAZWY_IZOLACJI_RODZINY_PL: dict[str, str] = {
+    "air": "izolacja powietrzna",
+    "ssis": "izolacja stało-powietrzna",
+    "gaz_bez_f": "izolacja gazowa bez gazów fluorowanych",
+    "sf6": "izolacja gazowa SF₆",
+    "unknown": "izolacja nieustalona",
+}
+
+#: Medium gaszenia łuku w aparatach łączeniowych rodziny (druga oś gazu fluorowanego, obok
+#: izolacji): ``SF6`` — łączniki w SF₆ (także w rozdzielnicy powietrznej, np. SM6, Rotoblok),
+#: ``PROZNIA`` — łączniki próżniowe, ``POWIETRZE`` — łączniki powietrzne, ``KATALOG_APARATOW``
+#: — rodzina nie ma własnych łączników: aparat jest pozycją katalogu aparatów (człon wysuwny,
+#: wyłącznik stały), więc medium rozstrzyga aparat (`SwitchEquipmentType.medium`). ``None`` —
+#: karta nie rozstrzyga.
+MediumLacznikowRodziny = Literal["SF6", "PROZNIA", "POWIETRZE", "KATALOG_APARATOW"]
+
+NAZWY_MEDIUM_LACZNIKOW_PL: dict[str, str] = {
+    "SF6": "łączniki w SF₆",
+    "PROZNIA": "łączniki próżniowe",
+    "POWIETRZE": "łączniki powietrzne",
+    "KATALOG_APARATOW": "aparat łączeniowy z katalogu aparatów",
+}
+
 ConstructionType = Literal[
     "RMU",
     "jednoczlonowa",
     "dwuczlonowa",
     "wysuwna",
-    "GIS_SF6",
+    "GIS",
     "wnetrzowa",
     "kontenerowa",
     "prefabrykowana",
@@ -51,6 +83,7 @@ BusbarSystem = Literal[
 SwitchgearFamilyStatus = Literal[
     "verified",
     "repo_verified",
+    "standard_osd",
     "user_defined",
     "requires_catalog",
     "deprecated",
@@ -78,11 +111,26 @@ NAZWY_TOROW_KONFIGURACJI_PL: dict[str, str] = {
 #: Status rodziny, który wyklucza budowanie konfiguracji → powód dla projektanta (karta
 #: #142). Słowa = przeglądarka rodzin frontu
 #: (``ui/catalog/SwitchgearFamilyPicker.tsx::POWOD_BLOKADY_PL``); kod statusu zostaje w danych.
+#: Statusy rodziny, przy których katalog uznaje dane za potwierdzone źródłem
+#: i pozwala BUDOWAĆ na rodzinie konfigurację (polityka
+#: `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`). `requires_catalog` i `deprecated`
+#: są poza tym zbiorem — rodzina istnieje w katalogu (nie niszczymy wiedzy o
+#: realnym portfolio producenta), ale konfigurator jej NIE oferuje.
+POTWIERDZONE_STATUSY_RODZINY: frozenset[str] = frozenset({"verified", "repo_verified"})
+
+#: Statusy, przy których na rodzinie wolno budować: potwierdzone źródłem producenta ORAZ
+#: ``standard_osd`` — typ ogólny rozdzielnicy wg standardu operatora (ENEA Operator, Zeszyt 1,
+#: §13) bez producenta: wartości robocze (jakość ESTIMATED, ZASADA NR 4), dopóki projektant nie
+#: wskaże wyrobu. Rodzina ``standard_osd`` nie produkuje szablonów pól rodziny (nie ma celek
+#: producenta) — pola budują szablony kanoniczne (`canonical_fallback`).
+STATUSY_DOPUSZCZONE_DO_BUDOWANIA: frozenset[str] = POTWIERDZONE_STATUSY_RODZINY | {"standard_osd"}
+
 POWODY_BLOKADY_RODZINY_PL: dict[str, str] = {
     "requires_catalog": (
         "wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych"
     ),
     "deprecated": "rodzina wycofana z oferty producenta",
+    "user_defined": "rodzina zdefiniowana przez użytkownika bez potwierdzonej karty katalogowej",
 }
 
 #: Tor konfiguracji rodziny WYPROWADZONY z `construction_type` — bez osobnego
@@ -103,7 +151,7 @@ TOR_KONFIGURACJI_WG_KONSTRUKCJI: dict[str, TorKonfiguracji | None] = {
     "jednoczlonowa": "MODULARNY",
     "dwuczlonowa": "MODULARNY",
     "wysuwna": "MODULARNY",
-    "GIS_SF6": "MODULARNY",
+    "GIS": "MODULARNY",
     "wnetrzowa": "MODULARNY",
     "kontenerowa": "MODULARNY",
     "prefabrykowana": "MODULARNY",
@@ -172,6 +220,10 @@ class SwitchgearFamily(BaseModel):
     status: SwitchgearFamilyStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     notes_pl: str | None = None
+    #: Medium łączników rodziny (`MediumLacznikowRodziny`) — druga oś gazu fluorowanego obok
+    #: `insulation_type`; każda rodzina rejestru deklaruje je jawnie (pin:
+    #: `tests/network_model/catalog/test_gazy_fluorowane.py`).
+    medium_lacznikow: MediumLacznikowRodziny | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -184,3 +236,57 @@ class SwitchgearFamily(BaseModel):
         (jawny brak) — walidator odmawia budowania na takiej rodzinie.
         """
         return tor_konfiguracji_dla_konstrukcji(self.construction_type)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def gaz_fluorowany(self) -> bool | None:
+        """Czy rodzina wykorzystuje gaz fluorowany — WYPROWADZONE z izolacji i medium łączników.
+
+        ``True`` — izolacja SF₆ albo łączniki w SF₆; ``False`` — izolacja i łączniki bez gazu
+        fluorowanego (łączniki z katalogu aparatów: rozstrzyga aparat, nie rodzina);
+        ``None`` — karta nie rozstrzyga którejś z osi (brak potwierdzenia ≠ brak gazu)."""
+        if self.insulation_type == "sf6" or self.medium_lacznikow == "SF6":
+            return True
+        if self.insulation_type == "unknown" or self.medium_lacznikow is None:
+            return None
+        return False
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def powod_blokady_pl(self) -> str | None:
+        """Powód, dla którego na rodzinie NIE wolno budować żadnej konfiguracji (status
+        rodziny; ``None`` = wolno). Nie zależy od stanu obiektu — rodzina z gazem fluorowanym
+        jest dopuszczona do pól istniejących (`powod_odmowy_dla_stanu`)."""
+        if self.status not in STATUSY_DOPUSZCZONE_DO_BUDOWANIA:
+            return POWODY_BLOKADY_RODZINY_PL.get(
+                self.status, "status rodziny nie dopuszcza budowania konfiguracji"
+            )
+        return None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def dopuszczona_do_budowania(self) -> bool:
+        """Czy na rodzinie wolno budować konfigurację (wyprowadzone z `powod_blokady_pl`)."""
+        return self.powod_blokady_pl is None
+
+    def powod_odmowy_dla_stanu(self, stan_obiektu: str | None) -> str | None:
+        """Powód odmowy rodziny dla pola o danym stanie (``None`` = wolno): status rodziny,
+        potem zakaz gazu fluorowanego (`gazy_fluorowane.odmowa_gazu_fluorowanego_pl` — jedna
+        reguła z aparatami i walidatorem modelu)."""
+        return self.powod_blokady_pl or odmowa_gazu_fluorowanego_pl(
+            f"Rodzina {self.family_name}",
+            gaz_fluorowany=self.gaz_fluorowany,
+            stan_obiektu=stan_obiektu,
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def powod_blokady_nowych_pol_pl(self) -> str | None:
+        """Powód odmowy rodziny dla pola PROJEKTOWANEGO — filtr pickera nowych pól z backendu."""
+        return self.powod_odmowy_dla_stanu("PROJEKTOWANY")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def dopuszczona_do_nowych_pol(self) -> bool:
+        """Czy rodzinę wolno przypisać polu projektowanemu."""
+        return self.powod_blokady_nowych_pol_pl is None

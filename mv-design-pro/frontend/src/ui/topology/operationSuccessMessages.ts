@@ -31,6 +31,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   open_switch: 'Otwarto łącznik w modelu sieci',
   close_switch: 'Zamknięto łącznik w modelu sieci',
   set_bay_equipment: 'Zapisano wyposażenie pola SN',
+  set_object_state: 'Zapisano stan obiektu',
   przepnij_element_na_pole: 'Zmieniono przyłączenie elementu na zacisk pola stacji',
   append_station_on_endpoint: 'Dodano stację na końcu segmentu SN',
   add_shunt_compensator_sn: 'Dodano kompensator bocznikowy SN',

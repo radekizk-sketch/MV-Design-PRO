@@ -95,7 +95,10 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
     // Karta SLD-SUBSTRAT (kontynuacja): łącznik i wyłącznik sekcyjny NA torze
     // ciągu (`lineSwitch`/`lineBreaker`, `scene/elementyToru.ts`) są aparatami
     // ciągłości tak samo jak ich pionowe odpowiedniki w polach — zamknięty łącznik
-    // na torze nie przerywa toru energii.
+    // na torze nie przerywa toru energii. Karta UX-04/POLE-LINIOWE-WZORZEC: rysunek
+    // QElectroTech EN 60617 tego samego łącznika toru (pole liniowe GPZ wg ENEA Z.10)
+    // jest aparatem ciągłości jak jego kanoniczny odpowiednik; uziemnik (poza torem)
+    // ciągłości nie niesie.
     expect([...CONTINUITY_APPARATUS_SYMBOL_IDS].sort()).toEqual([
       'breaker',
       'disconnector',
@@ -104,6 +107,11 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
       'lineSwitch',
       'loadBreakSwitch',
       'noPoint',
+      'qetBreaker',
+      'qetDisconnector',
+      'qetFuseSwitch',
+      'qetLoadBreakSwitch',
+      'qetThreePositionSwitch',
     ]);
   });
 

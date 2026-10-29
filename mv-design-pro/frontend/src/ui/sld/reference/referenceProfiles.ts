@@ -26,6 +26,11 @@ export interface ReferenceFieldProfile {
   readonly name_pl: string;
   readonly required: readonly BayPrimaryDeviceKind[];
   readonly one_of_groups: readonly (readonly BayPrimaryDeviceKind[])[];
+  /** Grupy `one_of_groups` spełniane w polu wysuwnym wysunięciem wyłącznika (backend:
+   *  `bay_templates.odlaczenie_wysunieciem_wylacznika`, ENEA Zeszyt 1 §13). Sprawdzenie
+   *  frontendu (`profileViolationsForKinds`) ocenia stosy rodzajów BEZ szablonu pola, więc
+   *  pola wysuwnego nie widzi — ocenia je wyłącznie silnik backendu (`compliance.py`). */
+  readonly grupy_spelniane_wysunieciem?: readonly (readonly BayPrimaryDeviceKind[])[];
   readonly optional: readonly BayPrimaryDeviceKind[];
   readonly forbidden: readonly BayPrimaryDeviceKind[];
   readonly canonical_order: readonly BayPrimaryDeviceKind[];
@@ -37,6 +42,9 @@ export interface ReferenceSymbolMapEntry {
   readonly kind: BayPrimaryDeviceKind;
   readonly symbol_name_pl: string;
   readonly frontend_symbol_id: string | null;
+  /** Symbol wariantu rysunku QElectroTech EN 60617 (`render_variant` = `qet_en60617`);
+   *  brak = rodzaj bez elementu QET w repozytorium. Lustro `SYMBOL_QET_RODZAJU`. */
+  readonly frontend_symbol_id_qet?: string;
 }
 
 interface Iec62271Pack {
@@ -62,11 +70,13 @@ export const REFERENCE_FIELD_PROFILES: ReadonlyMap<string, ReferenceFieldProfile
 export const REFERENCE_SYMBOL_ID_BY_KIND: ReadonlyMap<BayPrimaryDeviceKind, string | null> =
   new Map(IEC60617_PACK.symbol_map.map((entry) => [entry.kind, entry.frontend_symbol_id]));
 
-/** Odwrotność słownika symboli: `SymbolId` → kind aparatu. */
+/** Odwrotność słownika symboli: `SymbolId` (kanoniczny ORAZ wariantu QET) → kind aparatu. */
 export const REFERENCE_KIND_BY_SYMBOL_ID: ReadonlyMap<string, BayPrimaryDeviceKind> = new Map(
-  IEC60617_PACK.symbol_map
-    .filter((entry) => entry.frontend_symbol_id != null)
-    .map((entry) => [entry.frontend_symbol_id as string, entry.kind]),
+  IEC60617_PACK.symbol_map.flatMap((entry) =>
+    [entry.frontend_symbol_id, entry.frontend_symbol_id_qet]
+      .filter((id): id is string => id != null)
+      .map((id) => [id, entry.kind] as const),
+  ),
 );
 
 /**

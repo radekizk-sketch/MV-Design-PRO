@@ -4,6 +4,12 @@ import type { CatalogListItem } from './api';
 import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
 import type { TypeCategory } from './types';
 import {
+  KATEGORIE_Z_DOPUSZCZENIEM_NOWYCH_POL,
+  nazwaMediumPl,
+  notaPozycjiUkrytych,
+  pozycjeDoWyboru,
+} from './dopuszczenieNowychPol';
+import {
   pradAparatuSnKatalogu,
   pradKaLubBrakDanych,
   pradLacznikaKatalogu,
@@ -40,6 +46,11 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   ZKSN: 'ZKSN',
 };
 
+function mediumParametru(record: Record<string, unknown>): string {
+  const medium = nazwaMediumPl(typeof record.medium === 'string' ? record.medium : null);
+  return medium ? `, medium ${medium}` : '';
+}
+
 function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
   const record = type as unknown as Record<string, unknown>;
 
@@ -52,9 +63,9 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
     case 'TRANSFORMER':
       return `${record.rated_power_mva ?? '-'} MVA, ${record.voltage_hv_kv ?? '-'} / ${record.voltage_lv_kv ?? '-'} kV, uk=${record.uk_percent ?? '-'}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
+      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, Ik ${pradLacznikaKatalogu(record, 'ik_ka')}${mediumParametru(record)}`;
     case 'MV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
+      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}${mediumParametru(record)}`;
     case 'LV_APPARATUS':
       return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
     case 'LV_RCD':
@@ -121,12 +132,25 @@ export function TypePicker({
     loadTypes();
   }, [isOpen, loadTypes]);
 
+  // Przypisanie typu łącznika (`assign_catalog_to_element` bez jawnego stanu) czyni obiekt
+  // projektowanym — picker aparatury SN pokazuje wyłącznie pozycje dopuszczone przez backend
+  // (zakaz gazów fluorowanych) i pozycję już przypisaną (`ui/catalog/dopuszczenieNowychPol`).
+  const zDopuszczeniem = KATEGORIE_Z_DOPUSZCZENIEM_NOWYCH_POL.has(category);
+  const dopuszczoneTypes = useMemo(
+    () => (zDopuszczeniem ? pozycjeDoWyboru(types, 'PROJEKTOWANY', currentTypeId) : types),
+    [currentTypeId, types, zDopuszczeniem],
+  );
+  const notaUkrytych = useMemo(
+    () => (zDopuszczeniem ? notaPozycjiUkrytych(types, 'PROJEKTOWANY', currentTypeId) : null),
+    [currentTypeId, types, zDopuszczeniem],
+  );
+
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) {
-      return types;
+      return dopuszczoneTypes;
     }
     const query = searchQuery.toLowerCase();
-    return types.filter((type) => {
+    return dopuszczoneTypes.filter((type) => {
       const manufacturer =
         (type as unknown as Record<string, unknown>).manufacturer
         ?? (type as unknown as Record<string, unknown>).vendor;
@@ -136,7 +160,7 @@ export function TypePicker({
         || (typeof manufacturer === 'string' && manufacturer.toLowerCase().includes(query))
       );
     });
-  }, [searchQuery, types]);
+  }, [dopuszczoneTypes, searchQuery]);
 
   if (!isOpen) {
     return null;
@@ -195,6 +219,12 @@ export function TypePicker({
                 </button>
               </div>
             </div>
+          ) : null}
+
+          {!loading && !error && notaUkrytych ? (
+            <p className="pb-3 text-xs text-scada-muted" data-testid="type-picker-nota-ukrytych">
+              {notaUkrytych}
+            </p>
           ) : null}
 
           {!loading && !error && filteredTypes.length === 0 ? (

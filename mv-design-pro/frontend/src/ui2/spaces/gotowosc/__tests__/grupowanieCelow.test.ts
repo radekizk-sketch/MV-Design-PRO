@@ -102,6 +102,8 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
       'catalog.element_missing',
       'catalog.element_not_found',
       'catalog.clear_forbidden',
+      'catalog.object_state_not_applicable',
+      'catalog.object_state_invalid',
       'catalog.materialization_required',
       'catalog.materialization_incomplete',
       'catalog.nameplate_mismatch',

@@ -108,7 +108,9 @@ describe('Property Grid Field Definitions', () => {
       const typeRefSection = sections.find((s) => s.id === 'type_reference');
       expect(typeRefSection).toBeDefined();
 
-      const typeRefField = typeRefSection!.fields.find((f) => f.key === 'type_ref');
+      // Klucz rekordu ENM: `catalog_ref` (dawny `type_ref` nie istniał w modelu — sekcja zawsze
+      // pokazywała „Nie przypisano typu z katalogu”).
+      const typeRefField = typeRefSection!.fields.find((f) => f.key === 'catalog_ref');
       expect(typeRefField).toBeDefined();
       // type_ref_with_actions has editable: true for button access,
       // but source: 'type' makes the value read-only

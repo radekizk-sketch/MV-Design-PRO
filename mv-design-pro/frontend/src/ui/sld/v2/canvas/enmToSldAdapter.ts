@@ -30,6 +30,8 @@ import type {
   ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
+import { isSwitchBranch } from '../../../../types/enm';
+import { stanObiektuLacznika } from '../../../shared/stanObiektu';
 import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
@@ -1875,7 +1877,7 @@ function buildExplicitStationMiniBays(
       esState: states.esState,
       // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH, gdy pole niesie
       // zmaterializowane aparaty; `undefined` → konwencja §12.4.
-      primaryDevices: projectBayPrimaryDevices(bay, branchByRef),
+      primaryDevices: projectBayPrimaryDevices(bay, branchByRef, snapshot.bays),
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
       // nieprzezroczysty — pin `enmToSldAdapter.configIdOpaque.test.ts`).
       configId: bay.config_id ?? undefined,
@@ -2151,9 +2153,14 @@ export function projectBayPrimaryDevices(
   // GPZ-PARYTET cz. 2 (pkt 2): gałęzie migawki po `ref_id` — stan aparatu z `status` jego
   // gałęzi łączeniowej (`stanAparatuZModelu`), nie z samego rekordu.
   galezieWgRef: ReadonlyMap<string, Branch>,
+  // Karta UX-04 (stan obiektu): wszystkie pola modelu — stan obiektu łącznika z gałęzi czyta
+  // regułę `stanObiektuLacznika` (aparat pola wskazujący gałąź może leżeć w innym polu).
+  polaModelu: readonly Bay[] | null | undefined,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
-  if (!devices || devices.length === 0) return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef);
+  if (!devices || devices.length === 0) {
+    return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef, polaModelu);
+  }
   // Porządek fizyczny aparatów — JEDNA funkcja dla adaptera v2 i sekwencji v3
   // (`orderByPrimaryPlacement`, `v2/domain/apparatusContracts.ts`).
   return orderByPrimaryPlacement(devices)
@@ -2171,6 +2178,13 @@ export function projectBayPrimaryDevices(
       designation: device.designation ?? undefined,
       pochodzenie: 'rekord_pola',
       typeRef: device.catalog_ref ?? null,
+      // Karta UX-04/POLE-LINIOWE-WZORZEC: wariant rysunku i porty aparatu z rekordu —
+      // kompozycja wybiera nimi symbol i prowadzi przewody port→port.
+      renderVariant: device.render_variant ?? null,
+      ports: (device.ports ?? []).map((port) => ({ portId: port.port_id, wezel: port.wezel ?? null })),
+      // Karta UX-04 (stan obiektu): stan instancji aparatu z jego rekordu (ten sam, który
+      // ocenia zakaz gazów fluorowanych, `enm/gaz_fluorowany_pola.py`); `null` = nieustalony.
+      stanObiektu: device.stan_obiektu ?? null,
     }));
 }
 
@@ -2208,6 +2222,7 @@ const RODZAJ_APARATU_Z_TYPU_GALEZI: Readonly<Record<string, BayPrimaryDeviceKind
 function aparatyZGaleziPola(
   equipmentRefs: readonly string[],
   galezieWgRef: ReadonlyMap<string, Branch>,
+  polaModelu: readonly Bay[] | null | undefined,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const aparaty: BayPrimaryDeviceView[] = [];
   for (const ref of equipmentRefs) {
@@ -2226,6 +2241,9 @@ function aparatyZGaleziPola(
       ...(galaz.type === 'fuse' ? {} : { switchState: stanStatusuGalezi(galaz.status) }),
       pochodzenie: 'galaz_pola',
       typeRef: galaz.catalog_ref ?? null,
+      // Karta UX-04 (stan obiektu): łącznik — reguła `stanObiektuLacznika` (lustro backendu);
+      // bezpiecznik nie niesie stanu obiektu w modelu (`FuseBranch`), więc stan nieustalony.
+      stanObiektu: isSwitchBranch(galaz) ? stanObiektuLacznika(polaModelu, galaz) : null,
     });
   }
   return aparaty.length > 0 ? aparaty : undefined;
@@ -2319,11 +2337,10 @@ export function resolveBayCtRatingAnnotations(
     // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
     // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
     purpose: m.purpose,
-    // CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT 1:1 z
-    // `Measurement.ct_cores` — dana producenta (IEC 61869-2), doklejana do
-    // etykiety WYŁĄCZNIE gdy obecna (`undefined` gdy `null`/brak — uczciwy brak,
-    // zero fabrykacji). Domyka konsumenta-render danej wprowadzonej w V12K-176.
-    cores: m.ct_cores ?? undefined,
+    // CTVT-RENDER: liczba rdzeni CT = długość listy `Measurement.rdzenie` (tabliczka
+    // IEC 61869-2), doklejana do etykiety WYŁĄCZNIE gdy lista obecna (`undefined` gdy
+    // `null`/brak — uczciwy brak, zero fabrykacji).
+    cores: m.rdzenie?.length ?? undefined,
   }));
 }
 

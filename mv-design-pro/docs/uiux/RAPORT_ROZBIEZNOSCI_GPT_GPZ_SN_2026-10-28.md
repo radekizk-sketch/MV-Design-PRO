@@ -154,3 +154,74 @@ Podstawa: `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`.
 | E-2 | sprzęgło (`gpz.ts:864` `symbolSprzegla`, #504 sztywne `lineBreaker`) | jeden symbol wyłącznika między sekcjami | Z.12 (s.92): łącznik trójpołożeniowy A → wyłącznik M → CT 1000/5/5 (2 rdzenie) → łącznik trójpołożeniowy B, ze wskaźnikami napięcia po obu stronach; Z.2: pola 1 i 2 w jednej ramce | dwie celki (łącznik szyn + wznios) wg przekazania §2 i §13, jeden ciągły tor A/B |
 | E-3 | pole pomiaru napięcia | VT jako gniazdo / wskaźnik w polu (stan sprzed przekazania) | Z.17 (s.97): łącznik trójpołożeniowy → wskaźnik → VT wprost przez głowicę, bez wyłącznika, bezpieczniki tylko po stronie wtórnej; jedno pole na sekcję (§13) | osobne pole Z.17 na sekcję (karta POLA-TR-POMIAR-SPRZEGLO) |
 | E-4 | pole TR strona SN | — | Z.7 (s.86): wyłącznik → węzeł odgałęzienia VT (odłącznik z uziemieniem) → CT 4 rdzenie → wskaźnik → głowica → kabel; ogranicznik przy zaciskach transformatora, poza celką | karta POLA-TR-POMIAR-SPRZEGLO |
+
+## 13. Wykonanie karty UX-04/POLE-LINIOWE-WZORZEC (2026-10-28) — co wciągnięto, co odrzucono
+
+Kod materiału GPT nie był scalany ani kopiowany: każdy wciągnięty element powstał na gałęzi
+karty od nowa, z testem iloczynu cech i wstrzykniętą regresją. Dokument karty:
+`docs/uiux/UX04_POLE_LINIOWE_WZORZEC.md` (macierze Z.10 / Z.11.1 / Z.11 → ENM → QET → zrzut).
+
+| Element materiału | Decyzja | Realizacja w karcie |
+|---|---|---|
+| #499 potok vendor QET (licencja, README, manifest z SHA bloba) | WCIĄGNIĘTE jako wzorzec | `docs/sld/vendor/qet/` z 12 elementami EN 60617 / 450_high_voltage pola SN (w tym przekładnik napięciowy `en_60617_06_13_01A` z jawnie zadeklarowanym zaciskiem wtórnym poza torem) (commit `14a4727f…`), importer `scripts/import_qet_pole_sn.py` (deterministyczny, fail-closed na DTD, nieznany element, tekst bez decyzji, ścieżkę poza katalogiem, styl kreski, port poza rastrem), test w głównym pytest (`backend/tests/ci/test_qet_pole_sn_import.py`) — bez nowego workflow CI; 7 plików nN z #499 nie są potrzebne polu SN i nie weszły |
+| #499 atrybucja tylko w repo | POPRAWIONE | atrybucja CC BY 3.0 w legendzie (panel i eksport), w tabliczce rysunkowej eksportu (wiersz „Symbole") i w oknie pola — jeden tekst `sheet/projectLegend.ts::ATRYBUCJA_SYMBOLI_QET_PL` |
+| #500 `CadPrimitiveLayer` | WCIĄGNIĘTE | `frontend/src/ui/sld/v3/cad/CadSymbol.tsx` — ten sam rysunek prymitywów co `CadSymbol` |
+| #500 warianty zamknięte autorskie | ODRZUCONE | położenie noża wyprowadzone REGUŁĄ z geometrii `.elmt` (obrót noża na styk stały; łącznik trójpołożeniowy: zamknięty i uziemiony w przeciwnych kierunkach), test `test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione` |
+| #500 ramka z wypełnieniem, tylko korpus, znikanie symbolu | ODRZUCONE | ramka = obrys całego symbolu (`fill="none"`), stan nieznany — bez ramki, symbol zostaje, podpis „stan nieznany" (`symbols/__tests__/qetRamkaScada.test.tsx`, iloczyn symbol × stan × motyw) |
+| #500 `scadaFrameState` (7 typów), katalog „73", rejestr odbioru w localStorage | ODRZUCONE | jedno mapowanie położenia rekordu ENM → ramka; jeden rejestr symboli (`symbols/defs.ts`); odbiór wyłącznie B-02 |
+| #502 reguła CT w torze, VT/ES poza torem; R6 §4 pkt 2 (porty zamiast `linked_ref`) | WCIĄGNIĘTE do modelu | jawne porty aparatu w ENM (`BayPrimaryDevice.ports`, węzły pola), kolejność toru z obchodu portów (`apparatusSequence.ts::torPolaZPortow`), brak portu = `gpz.bay.port.missing` i brak przewodu |
+| #502 `BayWindowSchematic` (wersja GPT) | ODRZUCONE | ponadto skasowano wersję z gałęzi głównej (ta sama klasa: druga ścieżka rysunku pola, kolor stanu odwrotny do SCADA, stan nieznany jak zamknięty); okno pola pokazuje wycinek sceny kanwy (`ui/field/SchematPolaSn.tsx`, `sld/v3/scene/kadrPola.ts`) |
+| #502 walidator kompozycji we froncie (`bayPrimaryComposition.ts`) | ODRZUCONE | braki przyłączy liczy kompozycja z portów modelu; walidacja wyposażenia — backend (`wyposazenie_pola.py::_sprawdz_aparat`) |
+| #504 przewody port → port, `missingData` braków portów, notatki stopu | WCIĄGNIĘTE | `compose/gpz.ts::buildFieldStack` (`przewodyZPortow`) i `scene/buildScene.ts` |
+| #504 ramka na `SldCanvasV3` rozpoznawana z prefiksów `parityKeys` | POPRAWIONE | predykat „łącznik pola" z lustra backendu (`compose/rodzajeAparatuPola.ts::czyLacznikPola` ⇔ `RODZAJE_LACZNIKOW_POLA`), każdy rodzaj łącznika dostaje ramkę (parytet `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py`) |
+| #504 `switchingSequenceValidator` (stała odmowa) | ODRZUCONE | klik = wybór, przełączenie osobną akcją menu (`open_switch` / `close_switch`); walidacja na topologii wynikowej — karta UX-04/LOGIKA-LACZENIOWA |
+
+Rozbieżność E-1 (§ „Rozbieżności stanu repozytorium z rysunkami ENEA") — zamknięta kodem
+i skorygowana rozszerzeniami karty: pola liniowe GPZ tworzone z GPZ i przydziałem odejścia
+dostają szablon Z.10 z PIERWSZYM wykonaniem łączników dopuszczonym w izolacji rodziny
+rozdzielnicy (łącznik trójpołożeniowy; w izolacji powietrznej — wyłącznik stały z odłącznikiem
+szynowym), BEZ gazów fluorowanych. Dawny wariant „SF6 domyślny" i „AIS jawny" (zapis tej sekcji
+sprzed rozszerzenia 3) jest nieaktualny: wykonanie łączników jest osią szablonu, a izolacja
+i medium — wyłącznie cechą rodziny rozdzielnicy. Szablon RMU `bay_template_line_out` zostaje dla
+stacji SN/nN (standard Z.10 ich nie obejmuje).
+
+### 13.1. Rozbieżności i decyzje rozszerzeń karty
+
+| # | Miejsce | Stan przed | Podstawa | Decyzja i realizacja |
+|---|---|---|---|---|
+| E-5 | `backend/src/network_model/catalog/bay_templates.py` (szablon pola liniowego GPZ), `Bay.protection_codes` | dotychczasowy wzorzec nie rozróżniał klas pola: jeden zestaw funkcji EAZ z rysunku Z.10 dla każdego pola liniowego, bez względu na to, czy za polem jest generacja | IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1–2.3, II.4.5.4.7.1 | `Bay.klasa_pola` (ODBIORCZE / MIESZANE / DEDYKOWANE_WYTWORCY), wymagania funkcji wg klasy (`WYMAGANIA_EAZ_KLASY_POLA`), klasa z generacją wyłącznie w Z.11.1 / Z.11 (`W048`), ocena pola z kontraktem werdyktu (`enm/pole_liniowe_gpz.py`, `W049`–`W053`); tabela klas: `GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md` |
+| E-6 | rysunek Z.10 (s.89) a IRiESD | Z.10 nie wymienia zabezpieczenia podczęstotliwościowego | IRiESD II.4.5.4.2.1 pkt 5: pole odbiorcze — podczęstotliwościowe z blokadą zależną od kierunku przepływu mocy | klasa odbiorcza dopisuje 81U za 67N (`_KODY_DOPISYWANE_KLASY`); rysunek pozostaje odczytany bez zmian |
+| E-7 | Zeszyt 1 §26.9.3 i rysunki Z.11 / Z.11.1 a IRiESD | rysunki wymieniają SCO w polach z przekładnikiem napięciowym od strony linii | IRiESD II.4.5.4.7.1 pkt 1: SCO nie uruchamia się w liniach z jednostkami wytwórczymi | IRiESD ma pierwszeństwo (warunki przyłączenia OSD); klasy MIESZANE i DEDYKOWANE usuwają SCO i SPZ/SCO z zestawu (`ZAKAZANA`), obecność → `NIE_SPELNIA`, walidator `W051`; klasa ODBIORCZE w Z.11.1 / Z.11 zachowuje SCO z rysunku |
+| E-8 | pole dedykowane wytwórcy | IRiESD II.4.5.4.2.3 nie wymienia SPZ ani blokady kierunkowej | lista funkcji II.4.5.4.2.3 | rozstrzygnięcie sesji głównej (rozszerzenie 2): SPZ i SPZE w polu dedykowanym są niezgodnością (`ZAKAZANA`, `W052`), blokada kierunkowa 67 pomijana |
+| E-9 | funkcje „na żądanie OSD" | — | IRiESD II.4.5.4.2.2 pkt 5–8, II.4.5.4.2.3 pkt 4–6 | nigdy `SPELNIA`: obecna → `BRAK_DOWODU`, nieobecna → `NIEJEDNOZNACZNY` (model nie niesie warunków przyłączenia) |
+| E-10 | tryb pracy pola | rozszerzenie 2 opisuje osobno klasę pola i tryb „linia SN z generacją" | katalog sygnałów ENEA, sekcja „Linia SN z generacją" | jeden atrybut: tryb z generacją = klasa MIESZANE albo DEDYKOWANE_WYTWORCY (dwa atrybuty o tej samej treści byłyby dwiema prawdami); wykonanie pola wyprowadzone z szablonu (`BayTemplate.wykonanie_pola`), nie osobne pole modelu |
+| E-11 | rodziny rozdzielnic i katalog aparatów | izolacja i medium łączników mieszane w jednym słowniku (`InsulationType` z wartością `vacuum`, `GIS_SF6`), `gaz_fluorowany` deklarowany ręcznie | rozporządzenie (UE) 2024/573 art. 13 ust. 9; ENEA Zeszyt 1 §13 | dwie osie: izolacja rodziny (`InsulationType`: air, ssis, gaz_bez_f, sf6, unknown) i medium łączników rodziny (`MediumLacznikowRodziny`: SF6, PROZNIA, POWIETRZE, KATALOG_APARATOW — medium sprawdzane przy aparacie); `SwitchgearFamily.gaz_fluorowany` WYLICZANE; medium aparatu w `MVApparatusType.medium` |
+| E-12 | silnik referencyjny pola (`reference_engine/compliance.py`) | kontrola profilu `line_breaker` liczyła kolejność i grupy na WSZYSTKICH aparatach pola (odgałęzienie przekładnika napięciowego Z.11 / Z.11.1 łamało kolejność) i nie znała wyłącznika wysuwnego (brak łącznika szynowego = brak odłączenia) | ENEA Zeszyt 1 §13 (odłączenie przez wysunięcie wyłącznika) | tor główny z predykatu `aparaty_poza_torem_glownym` (ten sam co ocena kolejności), zakazane na wszystkich aparatach; grupa odłączenia spełniona wysunięciem przy szablonie wysuwnym (`grupy_spelniane_wysunieciem`); iniekcje: wyłączenie wysunięcia → 5 czerwonych, tor = wszystkie aparaty → 13 czerwonych |
+| E-13 | wyrocznia frontowa profili (`frontend/src/ui/sld/reference/referenceProfiles.ts::profileViolationsForKinds`) | ocenia listę rodzajów bez szablonu i bez portów; konsumenci wyłącznie testowi | — | świadomie bez wysunięcia i bez odgałęzienia: funkcja nie zna szablonu pola, a ocena pola w produkcie idzie z backendu; lustro niesie pole profilu (parytet paczek bajtowy) |
+| E-14 | kompozycja odgałęzień (`frontend/src/ui/sld/v3/compose/apparatusSequence.ts`, `ulozPasyBoczne`) | odczep pasa bocznego mógł przeciąć pas postawiony wcześniej na niższym węźle | czytelność rysunku (V12K-335) | odczep stawianego pasa nie przecina pasów już postawionych — pas sięgający wysokości odczepu odsuwa się w prawo; iniekcja → 2 czerwone |
+| E-15 | pole GPZ bez szablonu i bez aparatu (`add_grid_source_sn`) | pole dostawało funkcje EAZ roli, choć nie ma czym wyłączyć | — | funkcje EAZ wyłącznie w polu z aparatem albo szablonem; iloczyn {z aparatem, bez} × sekcje {1, 2}, iniekcja → 2 czerwone; fikstura `sldSubstrate52s` z generatora |
+| E-16 | przekładnik napięciowy odgałęzienia na kanwie | rysowany symbolem kanonicznym (biblioteka QET pola nie miała przekładnika napięciowego) | EN 60617-06-13-01 | element QET `en_60617_06_13_01A` (blob `a883a2e6…`), symbol `qetVoltageTransformer`, zacisk wtórny jawnie poza torem z powodem (`zaciskiPozaTorem`); importer odrzuca zacisk bez przypisania, wpis bez powodu i zacisk spoza źródła (3 iniekcje) |
+| E-17 | menu kontekstowe obiektu na kanwie (`frontend/src/ui/sld/v3/canvas/SldCanvasV3Workspace.tsx::handleContextMenuAction`) | prawy klik otwierał menu bez zaznaczenia: akcja „Otwórz kartę pola” wykonana z menu kabla zostawiała w inspektorze poprzednio zaznaczony obiekt (zrzut roboczy pokazywał kabel zamiast pola) — defekt produktu, nie specyfikacji | jedna prawda zaznaczenia (klik zaznacza, inspektor pokazuje zaznaczony obiekt) | akcja menu obiektu zaznacza obiekt tą samą drogą co lewy klik (`handleElementClick`, przez referencję z klasy obiektu menu), menu tła nie zaznacza; inwentarz klasy: menu obiektów kanwy v3 — naprawione; portal nN (`LvDomainPortal`) ma własne zaznaczenie widoku, nie inspektor powłoki — bez zmiany; drzewo kontekstu i listy przypadków nie są obiektami kanwy; test iloczynu `menuObiektuZaznacza.test.tsx` (obiekt {kabel, stacja} × akcja {nawigacja, budowa} × menu {obiektu, tła} × tryb {zwykły, paleta źródeł}) |
+| E-18 | katalog aparatów SN: rozłączniki NAL — `sw-ls-abb-nal-{12,24}kv-{400,630}a` (4 rekordy, ZWERYFIKOWANY, źródło ABB 1VCL100001) i `sw-ls-zpue-nal-{12,24}kv-630a` (2 rekordy, NIEWERYFIKOWANY) | rekordy mają medium `SF6`, a literatura producenta opisuje NAL jako rozłącznik powietrzny | karta katalogowa producenta | ROZBIEŻNOŚĆ DANYCH — nie zmieniono rekordu bez karty źródłowej (zmiana medium zmienia dopuszczenie do nowych pól); skutek dziś: pozycja jest wykluczona z kandydatów doboru aparatu pola SN (`kandydaci_aparatow_pola_sn`, zakaz gazów fluorowanych w nowych polach). Do weryfikacji z kartą 1VCL100001 przez właściciela danych katalogu |
+| E-19 | kandydaci doboru aparatu pola źródłowego SN (`backend/src/application/analyses/dobor_toru_der_sn.py::kandydaci_aparatow_pola_sn`) | dobór proponował łączniki z SF₆ dla pola, które powstaje jako projektowane | rozporządzenie (UE) 2024/573, art. 13 ust. 9 | ten sam predykat co pickery i strażnik operacji (`czy_medium_z_gazem_fluorowanym`), test na całym zbiorze kandydatów (żaden kandydat nie niesie gazu fluorowanego) |
+| E-20 | ocena funkcji EAZ pola (`backend/src/enm/pole_liniowe_gpz.py::OcenaFunkcjiPola`) i karta pola (`frontend/src/ui/field/OcenaPolaLiniowegoGpz.tsx`) | rekord niósł status i przyczynę w polach płaskich, a karta tłumaczyła status własną mapą „status → tekst” | kontrakt werdyktu wyjaśnialnego §5 i §9 (`werdykt_wyjasnialny_guard`) | rekord niesie `WyjasnienieWerdyktu` (zdanie, przyczyna, czego brakuje, zastrzeżenie niepełnego dowodu) i `Etykieta` ze słownika §9 poziomu kryterium (`werdykt.etykiety.etykieta`); karta wyświetla etykietę i semantykę z rekordu, mapa frontu usunięta |
+
+### 13.2. Inwentarz gazów fluorowanych (pomiar 2026-10-28 na drzewie karty)
+
+- **Rodziny rozdzielnic z gazem fluorowanym (8 z 21):** `ABB__SAFEPLUS`, `ABB__SAFERING`,
+  `ABB__UNISEC`, `SCHNEIDER__RM6`, `SCHNEIDER__SM6_24`, `SIEMENS__8DJH`,
+  `ZPUE_WLOSZCZOWA__ROTOBLOK`, `ZPUE_WLOSZCZOWA__TPM` — zostają w katalogu dla obiektów
+  istniejących (art. 13 ust. 7 i 10); dla obiektu projektowanego są niewybieralne z powodem
+  (pickery z pól backendu). Bez gazu fluorowanego: 13 rodzin, w tym nowe rodziny ogólne OSD
+  dla GPZ `TYP_OGOLNY_OSD__GPZ_AIS`, `TYP_OGOLNY_OSD__GPZ_SSIS`, `TYP_OGOLNY_OSD__GPZ_GAZ_BEZ_F`.
+- **Katalog aparatów SN (52 pozycje, z czego 13 z gazem fluorowanym):** wyłączniki SF6 4,
+  próżniowe 16, bez medium 1; rozłączniki SF6 9, próżniowe 2; reklozery próżniowe 4; odłączniki
+  powietrzne 6, bez medium 1; rozłączniki bezpiecznikowe 7 i uziemniki 2 bez medium. Katalog
+  łączników gałęzi niesie te same pozycje (52, 13 z gazem fluorowanym).
+- **Repozytorium:** wzmianki SF6 w kodzie produkcyjnym backendu (15 plików: `network_model` 9,
+  `enm` 3, `application` 2, `domain` 1) i frontendu (8 plików: `ui` 6, `ui2` 2) to opis medium
+  katalogu, reguła zakazu i jej komunikaty — żaden tor tworzenia nie wybiera już rodziny ani
+  aparatu z SF6 domyślnie. Specy e2e budujące nowe stacje przeszły na wykonania bez gazów
+  fluorowanych (Rotoblok Air, Schneider RM AirSeT); cztery z nich niosą przy wyborze rodziny
+  komentarz z powodem migracji. Szablon pola nie niesie medium (oś łączników), więc żaden z 9 szablonów GPZ nie
+  zawiera SF6.

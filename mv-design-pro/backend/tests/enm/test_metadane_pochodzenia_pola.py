@@ -65,10 +65,12 @@ CATALOG_TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 RODZINA_MODULARNA = "ZPUE_WLOSZCZOWA__RELF"
 PRODUCENT_MODULARNY = "ZPUE_WLOSZCZOWA"
 
-#: Blok fabryczny rodziny BLOKOWEJ (rozdzielnica wtórna RM6) — pole powstaje
-#: jako JEDNOSTKA bloku, nie jako luźna celka.
-BLOK_RMU = "SCHNEIDER__RM6__BI"
-PRODUCENT_BLOKOWY = "SCHNEIDER"
+#: Blok fabryczny rodziny BLOKOWEJ — pole powstaje jako JEDNOSTKA bloku, nie jako luźna celka.
+#: Karta UX-04/POLE-LINIOWE-WZORZEC: pole projektowane nie może mieć gazu fluorowanego
+#: (rozporządzenie (UE) 2024/573, art. 13 ust. 9), więc blok RM6 (SF₆) zastąpił blok TPM AIR
+#: (izolacja suchym powietrzem, łączniki próżniowe) — ten sam tor jednostek bloku.
+BLOK_RMU = "ZPUE_WLOSZCZOWA__TPM_AIR__LW"
+PRODUCENT_BLOKOWY = "ZPUE_WLOSZCZOWA"
 
 #: Obie operacje stacyjne budujące pola z wpisów `sn_fields` kreatora.
 OPERACJE_STACYJNE = ("wciecie", "koniec_ciagu")
@@ -426,7 +428,7 @@ def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen
     ma źródła wymagań zabezpieczeniowych z szablonu: pole dopływowe nie dostaje
     ŻADNEGO kodu z domysłu (`bay_template_ref` None, lista kodów pusta), a pole
     transformatora stacji — wyłącznie kanoniczny zestaw pola transformatorowego
-    (`TRANSFORMER_BAY_PROTECTION_CODES`, ta sama reguła, którą dawny rekord `bays`
+    (`BAY_TEMPLATE_TRANSFORMER.funkcje_eaz`, ta sama reguła, którą dawny rekord `bays`
     tego pola niósł obok wpisu — scalone w W5-B w JEDEN rekord).
     """
     odpowiedz = _uruchom("koniec_ciagu", [])
@@ -441,14 +443,14 @@ def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen
     assert domykane, "operacja nie domknela zadnego pola stacji konca ciagu"
     role = {spec.get("field_role") for spec in domykane}
     assert {"LINIA_IN", "TRANSFORMATOROWE"} <= role, role
-    from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+    from network_model.catalog.bay_templates import BAY_TEMPLATE_TRANSFORMER
 
     for spec in domykane:
         assert _metadana(spec, POLE_RODZAJU_POLA), f"pole domykane bez funkcji jednostki: {spec}"
         assert _metadana(spec, POLE_STATUSU_ZRODLA) == "catalog_solution"
         assert _metadana(spec, POLE_ZRODEL_DANYCH) == []
         oczekiwane_kody = (
-            list(TRANSFORMER_BAY_PROTECTION_CODES)
+            list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz)
             if spec.get("field_role") == "TRANSFORMATOROWE"
             else []
         )
@@ -513,6 +515,7 @@ def test_builder_jest_wlascicielem_struktur_zagniezdzonych(
     """
     zagniezdzone = {"poziom": {"wartosc": "przed"}}
     spec = zbuduj_pole(
+        stan_obiektu="PROJEKTOWANY",
         ref_id="field/test/1",
         bay_role="IN",
         bus_ref="bus-a",

@@ -964,8 +964,13 @@ export function bayMainPathHeight(
 export function apparatusIdentifierLeftReserve(
   bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
 ): number {
-  const { symbolIds } = resolveBayApparatusSymbolIds(bay);
-  const identifiers = apparatusIdentifiers(symbolIds).filter((id): id is string => id != null);
+  const { symbolIds, galezie } = resolveBayApparatusSymbolIds(bay);
+  // Aparaty odgałęzienia toru (UX-04, rozszerzenie 4) mają podpisy PO PRAWEJ swojej kolumny
+  // (pas `GalazPlanu.rezerwaEtykiet`) — nie wchodzą do kolumny podpisów po lewej.
+  const wGalezi = new Set(galezie.flatMap((g) => g.pozycje));
+  const identifiers = apparatusIdentifiers(symbolIds).filter(
+    (id, i): id is string => id != null && !wGalezi.has(i),
+  );
   if (identifiers.length === 0) return 0;
   const maxWidth = Math.max(...identifiers.map((text) => measureLabelWidth(text, 't4')));
   // `snapUp` (nie surowa suma): `bx + leftReserve` MUSI pozostać NA SIATCE —

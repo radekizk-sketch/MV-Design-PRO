@@ -62,6 +62,9 @@ export interface SheetTitleBlockInput {
   readonly modelHash?: string | null;
   /** `scene.meta.stationCount` — liczba stacji NA RYSUNKU. */
   readonly stationCount: number;
+  /** UX-04: atrybucja symboli QElectroTech (`sheet/projectLegend.ts::atrybucjaSymboliSceny`)
+   *  — wiersz „Symbole" WYŁĄCZNIE, gdy rysunek ma symbole QET (licencja CC BY 3.0). */
+  readonly atrybucjaSymboli?: string | null;
   /** Proporcja kadru arkusza (szerokość/wysokość) — mierzona, nie deklarowana. */
   readonly sheetAspect: number;
   /** Etykieta poziomu szczegółu (`SCENE_LOD_LABELS_PL`). */
@@ -110,6 +113,7 @@ export function buildSheetTitleBlockData(input: SheetTitleBlockInput): SheetTitl
       { labelPl: 'Skala', value: 'bez skali — schemat jednokreskowy' },
       { labelPl: 'Liczba stacji', value: String(input.stationCount) },
       { labelPl: 'Poziom szczegółu', value: input.lodLabelPl?.trim() ? input.lodLabelPl.trim() : null },
+      ...(input.atrybucjaSymboli ? [{ labelPl: 'Symbole', value: input.atrybucjaSymboli }] : []),
     ],
   };
 }

@@ -32,6 +32,10 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
+from network_model.catalog.gazy_fluorowane import (
+    czy_medium_z_gazem_fluorowanym,
+    odmowa_gazu_fluorowanego_pl,
+)
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
@@ -265,10 +269,31 @@ def list_transformer_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_transformer_types()]
 
 
+def _dopuszczenie_do_nowych_pol(nazwa: str, medium: str | None) -> dict[str, Any]:
+    """Pola filtru pickerów aparatu (zakaz gazów fluorowanych w obiektach projektowanych) —
+    JEDNO miejsce wyliczenia dla obu przestrzeni katalogu łączników SN (łącznik gałęzi
+    i aparat pola niosą te same pozycje: `CatalogRepository.from_records` wyprowadza aparaty
+    z rekordów łączników). Reguła: `odmowa_gazu_fluorowanego_pl` dla obiektu projektowanego —
+    ta sama, którą stosuje strażnik operacji domenowej."""
+    gaz = czy_medium_z_gazem_fluorowanym(medium)
+    powod = odmowa_gazu_fluorowanego_pl(
+        f"Aparat {nazwa}", gaz_fluorowany=gaz, stan_obiektu="PROJEKTOWANY"
+    )
+    return {
+        "gaz_fluorowany": gaz,
+        "dopuszczony_do_nowych_pol": powod is None,
+        "powod_blokady_nowych_pol_pl": powod,
+    }
+
+
 @router.get("/switch-equipment-types")
 def list_switch_equipment_types() -> list[dict[str, Any]]:
-    """List all switch equipment types from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_switch_equipment_types()]
+    """Pozycje katalogu łączników SN (picker typu łącznika w siatce właściwości) z polami
+    filtru pickerów — te same co w ``/mv-apparatus-types`` (`_dopuszczenie_do_nowych_pol`)."""
+    return [
+        {**item.to_dict(), **_dopuszczenie_do_nowych_pol(item.name, item.medium)}
+        for item in get_default_mv_catalog().list_switch_equipment_types()
+    ]
 
 
 @router.get("/mv-apparatus-types")
@@ -278,14 +303,24 @@ def list_mv_apparatus_types() -> list[dict[str, Any]]:
     ``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni
     parametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja
     katalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.
+
+    Filtr pickerów (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych w obiektach
+    projektowanych): ``gaz_fluorowany`` (medium pozycji z gazem fluorowanym),
+    ``dopuszczony_do_nowych_pol`` i ``powod_blokady_nowych_pol_pl`` — TA SAMA reguła co strażnik
+    operacji (`network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl` dla obiektu
+    projektowanego). Picker aparatu pola projektowanego pokazuje wyłącznie pozycje dopuszczone;
+    pola istniejącego — wszystkie, z medium na widoku.
     """
-    return [
-        {
-            **item.to_dict(),
-            "wartosci_robocze": [p.to_dict() for p in propozycje_aparatu_sn(item)],
-        }
-        for item in get_default_mv_catalog().list_mv_apparatus_types()
-    ]
+    wynik: list[dict[str, Any]] = []
+    for item in get_default_mv_catalog().list_mv_apparatus_types():
+        wynik.append(
+            {
+                **item.to_dict(),
+                "wartosci_robocze": [p.to_dict() for p in propozycje_aparatu_sn(item)],
+                **_dopuszczenie_do_nowych_pol(item.name, item.medium),
+            }
+        )
+    return wynik
 
 
 @router.get("/maszyny-wirujace/wartosci-robocze")
@@ -714,19 +749,103 @@ def list_complete_bay_templates_endpoint(
     return [t.model_dump(mode="json") for t in templates]
 
 
+@router.get("/bay-templates")
+def list_bay_templates_endpoint(
+    bay_role: str | None = None,
+    pole_gpz: bool = False,
+    switchgear_family_ref: str | None = None,
+    klasa_pola: str | None = None,
+) -> list[dict[str, Any]]:
+    """Szablony kanoniczne pól SN (`bay_templates.BAY_TEMPLATE_REGISTRY`) z oceną dopuszczalności
+    w polu o podanych cechach — filtr pickera szablonu z backendu (karta UX-04/POLE-LINIOWE-
+    WZORZEC, rozszerzenie 3).
+
+    Cechy pola: rola modelu (`bay_role` — szablon innej funkcji pominięty, jak w operacji
+    `set_bay_equipment`), pole sekcji GPZ (`pole_gpz`), rodzina rozdzielnicy pola (izolacja —
+    jedno źródło medium) i klasa pola liniowego. Ocena: TA SAMA reguła co strażnik operacji
+    i walidator (`enm.zgodnosc_szablonu_pola.odmowy_szablonu_dla_pola`) — szablon odrzucony niesie
+    listę odmów (kod + zdanie z podstawą i akcją), więc picker pokazuje, DLACZEGO wykonanie jest
+    niedostępne, zamiast je przemilczać. Kolejność rejestru (deterministyczna).
+    """
+    from enm.zgodnosc_szablonu_pola import odmowy_szablonu_dla_pola
+    from network_model.catalog.bay_templates import (
+        KLASY_POLA_LINIOWEGO,
+        NAZWY_WYKONANIA_LACZNIKOW_PL,
+        NAZWY_WYKONANIA_POLA_PL,
+        funkcje_eaz_szablonu,
+        list_bay_templates,
+    )
+    from network_model.catalog.funkcje_eaz import opis_funkcji_eaz_pl
+    from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
+
+    if klasa_pola is not None and klasa_pola not in KLASY_POLA_LINIOWEGO:
+        raise HTTPException(
+            status_code=422,
+            detail="Klasa pola liniowego spoza słownika (odbiorcze, mieszane, dedykowane).",
+        )
+    rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(switchgear_family_ref or "")
+    if switchgear_family_ref and rodzina is None:
+        raise HTTPException(status_code=404, detail="Katalog nie zna wskazanej rodziny.")
+    wynik: list[dict[str, Any]] = []
+    for szablon in list_bay_templates():
+        if bay_role is not None and szablon.bay_role != bay_role:
+            continue
+        odmowy = odmowy_szablonu_dla_pola(
+            szablon,
+            pole_gpz=pole_gpz,
+            insulation_type=rodzina.insulation_type if rodzina is not None else None,
+            nazwa_rodziny=rodzina.family_name if rodzina is not None else "",
+            klasa_pola=klasa_pola,
+            opis_pola="pola",
+        )
+        wynik.append(
+            {
+                "template_ref": szablon.template_id,
+                "template_name_pl": szablon.description,
+                "bay_role": szablon.bay_role,
+                "podstawa": szablon.podstawa,
+                "wykonanie_pola": szablon.wykonanie_pola,
+                "wykonanie_pola_pl": (
+                    NAZWY_WYKONANIA_POLA_PL[szablon.wykonanie_pola]
+                    if szablon.wykonanie_pola
+                    else None
+                ),
+                "wykonanie_lacznikow": szablon.wykonanie_lacznikow,
+                "wykonanie_lacznikow_pl": (
+                    NAZWY_WYKONANIA_LACZNIKOW_PL[szablon.wykonanie_lacznikow]
+                    if szablon.wykonanie_lacznikow
+                    else None
+                ),
+                "tylko_gpz": szablon.tylko_gpz,
+                # Zestaw EAZ szablonu W KLASIE pola (`funkcje_eaz_szablonu`): ten sam, który
+                # operacja zapisze w `Bay.protection_codes` po wyborze szablonu.
+                "funkcje_eaz": funkcje_eaz_szablonu(szablon.template_id, klasa_pola),
+                # Nazwa każdej funkcji ze słownika EAZ (zapis rysunku, IEEE C37.2, nazwa PL) —
+                # picker pokazuje, czym jest funkcja, bez kopii słownika we froncie.
+                "funkcje_eaz_pl": [
+                    opis_funkcji_eaz_pl(kod)
+                    for kod in funkcje_eaz_szablonu(szablon.template_id, klasa_pola)
+                ],
+                "dopuszczony": not odmowy,
+                "odmowy": [{"kod": kod, "komunikat_pl": zdanie} for kod, zdanie in odmowy],
+            }
+        )
+    return wynik
+
+
 @router.get("/bay-protection-codes")
 def list_bay_protection_codes() -> dict[str, list[str]]:
-    """Kanoniczne funkcje zabezpieczeniowe wymagane dla ról pól SN (readout).
+    """Funkcje EAZ pól SN tworzonych wg roli (readout).
 
-    Jedno źródło prawdy: `BAY_PROTECTION_CODES_BY_ROLE` (PTPiREE/IRiESD +
-    IEC 60255) — to samo, z którego korzystają operacje domenowe budujące pola.
-    Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ kopiowania
-    tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
+    Jedno źródło prawdy: funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI` →
+    `BayTemplate.funkcje_eaz`) — to samo, z którego korzystają operacje domenowe budujące pola
+    bez wskazanego szablonu. Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ
+    kopiowania tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
     pustą — uczciwy brak funkcji wyzwalających, nie luka danych.
     """
-    from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+    from network_model.catalog.bay_templates import SZABLON_KANONICZNY_ROLI, funkcje_eaz_roli
 
-    return {role: list(codes) for role, codes in BAY_PROTECTION_CODES_BY_ROLE.items()}
+    return {role: funkcje_eaz_roli(role) for role in SZABLON_KANONICZNY_ROLI}
 
 
 @router.get("/bay-apparatus-kinds")

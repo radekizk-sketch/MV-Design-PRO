@@ -44,6 +44,7 @@ import type {
   StationSwitchgearChoice,
   TopologicalStationKind,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { notaPozycjiUkrytych, pozycjeDoWyboru } from '../../../ui/catalog/dopuszczenieNowychPol';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type {
   CatalogNamespace,
@@ -994,6 +995,25 @@ export function aparatyDlaPola(
   aparaty: readonly MVApparatusType[],
   snVoltageKv: number,
   rodzajeDlaRoli: readonly string[] = [],
+): MVApparatusType[] {
+  // Pole tworzone przez kreator stacji jest projektowane — wyłącznie pozycje dopuszczone przez
+  // backend (zakaz gazów fluorowanych, `ui/catalog/dopuszczenieNowychPol`).
+  return pozycjeDoWyboru(aparatyZgodneZPolem(aparaty, snVoltageKv, rodzajeDlaRoli), 'PROJEKTOWANY');
+}
+
+/** Zdanie o aparatach zgodnych z polem, które filtr dopuszczenia ukrył (`null` = żadnych). */
+export function notaAparatowPola(
+  aparaty: readonly MVApparatusType[],
+  snVoltageKv: number,
+  rodzajeDlaRoli: readonly string[] = [],
+): string | null {
+  return notaPozycjiUkrytych(aparatyZgodneZPolem(aparaty, snVoltageKv, rodzajeDlaRoli), 'PROJEKTOWANY');
+}
+
+function aparatyZgodneZPolem(
+  aparaty: readonly MVApparatusType[],
+  snVoltageKv: number,
+  rodzajeDlaRoli: readonly string[],
 ): MVApparatusType[] {
   const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty

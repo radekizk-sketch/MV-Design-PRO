@@ -164,7 +164,41 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-28, zakaz gazów fluorowanych w polach
+#: projektowanych): + 2 rozłączniki próżniowe typu ogólnego (`switch_equipment_types` i ich
+#: projekcje `mv_apparatus_types`), pole ``medium`` w każdej projekcji aparatu SN (50
+#: pozycji) oraz 2 typy ogólne OSD przekładnika prądowego pola liniowego z listą rdzeni
+#: (`ct_types`; lista pusta jest poza odciskiem). Dowód w teście niżej: zrzut bez tych pozycji
+#: i bez pola ``medium`` daje
+#: DOKŁADNIE ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna liczba katalogu się nie
+#: zmieniła. Pełny odcisk katalogu domyślnego po karcie:
+#: 8a75b5ccfb7e26e4775a5a01f9332768ce5aa790ec1746cfe60add70a86b01a7.
+ODCISK_PO_KARCIE_POLA_LINIOWEGO = "c53c5e19e96c3dd16a71058e33d33c20b991a5a0b23be5680020170888333de1"
+ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
+#: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
+#: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
+PRZEKLADNIKI_POLA_LINIOWEGO = (
+    "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+    "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+)
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
+
+
+def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
+    """Usuwa zmiany katalogu karty UX-04/POLE-LINIOWE-WZORZEC (cztery pozycje, pole medium)."""
+    for identyfikator in PRZEKLADNIKI_POLA_LINIOWEGO:
+        postac = zrzut["ct_types"].pop(identyfikator)  # type: ignore[attr-defined]
+        assert postac["rdzenie"], identyfikator
+    # Pozostałe typy CT/VT nie niosą listy (pusta lista poza odciskiem).
+    for przestrzen, pole in (("ct_types", "rdzenie"), ("vt_types", "uzwojenia")):
+        assert all(pole not in p for p in zrzut[przestrzen].values())  # type: ignore[attr-defined]
+    for przestrzen in ("switch_equipment_types", "mv_apparatus_types"):
+        for identyfikator in ROZLACZNIKI_BEZ_GAZU_F:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    aparaty = zrzut["mv_apparatus_types"].values()  # type: ignore[attr-defined]
+    assert len(aparaty) == 50
+    for postac in aparaty:
+        postac.pop("medium")
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -229,6 +263,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_POLA_LINIOWEGO
+    _cofnij_karte_pola_liniowego(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
 
     # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.

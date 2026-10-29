@@ -584,6 +584,14 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # najkrotsze nowe: `krok`, `pasmo`, `skala`, `poziom`, `metoda`), ZERO nowych
     # trafien (RC=0, zapadka dlugu 56 plikow/suma 255 bez zmian) — decyzja „do mapy".
     "werdykt/dokument.py",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): pin mapy zazadal decyzji dla
+    # `werdykt/etykiety.py` — ocena pola liniowego GPZ (`enm/pole_liniowe_gpz.py`) bierze z niego
+    # etykiete statusu ze slownika §9 kontraktu werdyktu (`PozycjaSlownikaEtykiet`, funkcja
+    # `etykieta`), zamiast mapy „status -> tekst" na karcie pola. Modul deklaruje KONTRAKT
+    # rekordu werdyktu (jak `kontrakt.py` i `dokument.py` wyzej), zadne pole nie jest atrybutem
+    # typu wbudowanego (precedens `real`/`imag` nie zachodzi) — decyzja „do mapy". Pomiar delty
+    # pol i trafien przy pinie w samotescie.
+    "werdykt/etykiety.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza

@@ -9,7 +9,7 @@
  * 1. Identyfikacja (ID, Nazwa, UUID)
  * 2. Stan (W eksploatacji, Cykl życia)
  * 3. Topologia (Szyna początkowa, końcowa)
- * 4. Referencja typu (type_ref) — READ-ONLY
+ * 4. Referencja typu (`catalog_ref` rekordu ENM) — READ-ONLY
  * 5. Parametry elektryczne z typu — READ-ONLY
  * 6. Parametry lokalne (długość, zaczep) — edytowalne
  * 7. Wartości obliczeniowe — READ-ONLY
@@ -162,7 +162,7 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'type_ref',
+          key: 'catalog_ref',
           label: 'Typ przewodu (katalog)',
           value: null,
           type: 'type_ref_with_actions',
@@ -256,7 +256,7 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'type_ref',
+          key: 'catalog_ref',
           label: 'Typ transformatora (katalog)',
           value: null,
           type: 'type_ref_with_actions',
@@ -353,7 +353,7 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'equipment_type_ref',
+          key: 'catalog_ref',
           label: 'Typ aparatu (katalog)',
           value: null,
           type: 'type_ref_with_actions',

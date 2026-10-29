@@ -18,6 +18,7 @@ from enm.migrations.field_specs_promocja import (
 )
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji
+from network_model.catalog.bay_templates import BAY_TEMPLATE_GPZ_LINE_DOMYSLNY
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -778,9 +779,13 @@ class TestNnFieldAdapters:
         # Uziemnik/CT/głowica niezmienione (override dotyczy TYLKO aparatu głównego).
         assert kinds == ["DS", "LOAD_SWITCH", "CT", "DS", "ES", "CABLE_HEAD"]
 
-    def test_add_sn_bay_no_template_no_primary_devices(self):
-        """Wsteczna zgodność: pole bez kanonicznego szablonu NIE zyskuje
-        primary_devices (ścieżka konwencji §12.4 na SLD, zero regresu)."""
+    def test_add_sn_bay_gpz_bez_szablonu_dostaje_wzorzec_z10(self):
+        """Karta UX-04/POLE-LINIOWE-WZORZEC (przepisany do kanonu; dawniej „pole bez szablonu
+        NIE zyskuje aparatów — ścieżka konwencji §12.4 na SLD", a tę ścieżkę skasowała karta
+        GEOMETRIA-STACJI: aparat pola wyłącznie z rekordu). Intencja zachowana — zero aparatów
+        z domysłu: pole liniowe GPZ bez wskazanego szablonu dostaje NAZWANY wzorzec ENEA
+        Zeszyt 1, Z.10 (ta sama reguła co pola z `create_gpz` i przydziału odejścia), a aparat
+        główny wskazuje gałąź aparatu pola."""
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
         result = execute_domain_operation(
@@ -793,8 +798,66 @@ class TestNnFieldAdapters:
                 "apparatus_kind": "BREAKER",
             },
         )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
+        assert spec["bay_template_ref"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
+        assert [(d["designation"], d["kind"]) for d in spec["primary_devices"]] == [
+            ("Q1", "THREE_POSITION_SWITCH"),
+            ("Q0", "CB"),
+            ("T1", "CT"),
+            ("PF1", "VOLTAGE_INDICATOR"),
+            ("GK", "CABLE_HEAD"),
+            ("T2", "CORE_BALANCE_CT"),
+        ]
+        wylacznik = next(d for d in spec["primary_devices"] if d["kind"] == "CB")
+        galaz = _find_by_ref(result["snapshot"], "branches", spec["equipment_refs"][0])
+        assert galaz is not None and wylacznik["linked_ref"] == galaz["ref_id"]
+
+    def test_add_sn_bay_stacja_sn_nn_bez_szablonu_bez_aparatow(self):
+        """Para predykatu z testem wyżej: wzorzec Z.10 dotyczy WYŁĄCZNIE pól sekcji GPZ
+        (`gpz_section_id`). Pole stacji SN/nN bez szablonu nie zyskuje aparatów z domysłu."""
+        _, snapshot = _build_gpz_plus_segments(2)
+        wynik = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": _get_first_segment_ref(snapshot),
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert wynik.get("snapshot") is not None, f"Error: {wynik.get('error')}"
+        s = wynik["snapshot"]
+        stacja = next(
+            st for st in s["substations"] if st["ref_id"] != s["substations"][0]["ref_id"]
+        )
+        szyna_sn = next(
+            b["ref_id"]
+            for b in s["buses"]
+            if b["ref_id"] in stacja["bus_refs"] and (b.get("voltage_kv") or 0) > 1
+        )
+        result = execute_domain_operation(
+            enm_dict=s,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": szyna_sn,
+                "station_ref": stacja["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        spec = _pola_sn_stacji(result["snapshot"], stacja["ref_id"])[-1]
+        assert not spec.get("gpz_section_id")
         assert spec["primary_devices"] == []
+        assert not spec.get("bay_template_ref")
 
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
         """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
@@ -823,7 +886,7 @@ class TestNnFieldAdapters:
         zabezpieczeniowe (Bay.protection_codes) z kanonu — domyka ogniwo szablon/rola →
         koordynacja/LoM/glify SLD (G-POLE-R związał tylko refy danych).
         """
-        from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+        from network_model.catalog.bay_templates import BAY_TEMPLATE_TRANSFORMER
 
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
@@ -838,13 +901,19 @@ class TestNnFieldAdapters:
             },
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
-        assert spec["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+        assert spec["protection_codes"] == list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz)
 
     def test_add_sn_bay_feeder_role_materializes_canonical_protection_codes(self):
-        """Rola odpływowa materializuje kanoniczny zestaw feeder (PTPiREE/IEC 60255):
-        nadprądowe 51/50, ziemnozwarciowe 51N, kierunkowe ziemnozwarciowe 67N.
+        """Pole odpływowe GPZ dostaje domyślny szablon pola liniowego (ENEA Z.10) i zestaw EAZ
+        TEGO szablonu — jedno rozstrzygnięcie (`_resolve_bay_template_protection_codes`:
+        producent → szablon → rola). Do karty UX-04/POLE-LINIOWE-WZORZEC kody liczono z roli
+        PRZED rozstrzygnięciem szablonu, więc pole GPZ niosło zestaw roli (51/50/51N/67N)
+        sprzeczny z własnym szablonem.
         """
-        from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+        from network_model.catalog.bay_templates import (
+            BAY_TEMPLATE_GPZ_LINE_DOMYSLNY,
+            funkcje_eaz_roli,
+        )
 
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
@@ -859,11 +928,13 @@ class TestNnFieldAdapters:
             },
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
-        assert spec["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["OUT"]
+        assert spec["bay_template_ref"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
+        assert spec["protection_codes"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.funkcje_eaz
+        assert spec["protection_codes"] != funkcje_eaz_roli("OUT")
 
     def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):
-        """Rola źródłowa OZE materializuje interfejs przyłączeniowy NC RfG (67/67N/27/59/81/df/dt)."""
-        from network_model.catalog.bay_templates import OZE_INTERFACE_BAY_PROTECTION_CODES
+        """Rola źródłowa OZE materializuje interfejs przyłączeniowy NC RfG (67/67N/27/59/81/81R)."""
+        from network_model.catalog.bay_templates import funkcje_eaz_roli
 
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
@@ -878,7 +949,7 @@ class TestNnFieldAdapters:
             },
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
-        assert spec["protection_codes"] == list(OZE_INTERFACE_BAY_PROTECTION_CODES)
+        assert spec["protection_codes"] == funkcje_eaz_roli("OZE")
 
     def test_add_nn_outgoing_field_dopisuje_jeden_rekord_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -2135,8 +2206,8 @@ class TestInsertStationFieldTemplateBinding:
 
     def test_insert_fields_bind_template_and_protection_codes(self):
         from network_model.catalog.bay_templates import (
-            BAY_PROTECTION_CODES_BY_ROLE,
-            TRANSFORMER_BAY_PROTECTION_CODES,
+            BAY_TEMPLATE_TRANSFORMER,
+            funkcje_eaz_roli,
         )
 
         _, snapshot = _build_gpz_plus_segments(1)
@@ -2198,17 +2269,17 @@ class TestInsertStationFieldTemplateBinding:
 
         # PS-2: pole SPRZĘGŁO materializuje kody zabezpieczeń COUPLER (51/50).
         coupler = specs["SPRZEGLO"]
-        assert coupler["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["COUPLER"]
+        assert coupler["protection_codes"] == funkcje_eaz_roli("COUPLER")
         # PS-1: szablon producenta + refy przeniesione na field_spec (nie zgubione).
         assert coupler["bay_template_ref"] == "abb_unigear_zs1__sprzeglowe"
         assert coupler["manufacturer_ref"] == "abb"
 
         # TR: kody transformatorowe (87T/51/50/...) z kanonu.
         tr = specs["TRANSFORMATOROWE"]
-        assert tr["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+        assert tr["protection_codes"] == list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz)
 
         # IN: kody liniowe (51/50/51N).
-        assert specs["LINIA_IN"]["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["IN"]
+        assert specs["LINIA_IN"]["protection_codes"] == funkcje_eaz_roli("IN")
 
 
 # ===========================================================================

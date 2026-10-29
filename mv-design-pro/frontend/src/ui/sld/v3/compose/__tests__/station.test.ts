@@ -1541,7 +1541,8 @@ describe('V3 compose/station — F10.3 §18.4: sprzęgło (COUPLER) renderuje ST
 
 // ---------------------------------------------------------------------------
 // CTVT-RENDER (spec §18.3/§20.2, CTVT-MODEL/V12K-176) — konsument-render pól
-// `Measurement.ct_cores`/`vt_mounting`: rdzenie CT doklejone do ISTNIEJĄCEJ
+// `Measurement.rdzenie` (liczba rdzeni = długość listy tabliczki)/`vt_mounting`:
+// rdzenie CT doklejone do ISTNIEJĄCEJ
 // etykiety CT + NOWA adnotacja montażu VT (szynowy/kablowy). WARUNKOWOŚĆ:
 // adnotacja i rezerwacja WYŁĄCZNIE gdy dana obecna; None ⇒ zero adnotacji +
 // zero zmiany geometrii (bajt-inwariancja).
@@ -1556,7 +1557,7 @@ function makeLineBayWithVtPrimaryDevices(): readonly BayPrimaryDeviceView[] {
   ];
 }
 
-describe('CTVT-RENDER §18.3: liczba rdzeni CT doklejona do etykiety (ct_cores)', () => {
+describe('CTVT-RENDER §18.3: liczba rdzeni CT doklejona do etykiety (Measurement.rdzenie)', () => {
   it('ctCoresLabelText: dana obecna ⇒ „N rdz."; None/≤0/NaN ⇒ null (zero fabrykacji)', () => {
     expect(ctCoresLabelText(2)).toBe('2 rdz.');
     expect(ctCoresLabelText(3)).toBe('3 rdz.');

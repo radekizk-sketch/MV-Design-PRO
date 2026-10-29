@@ -1002,11 +1002,15 @@ def _blok_z_jednostkami_liniowymi() -> Any:
     from network_model.catalog.switchgear.factory_configuration import (
         list_factory_configurations,
     )
+    from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
 
+    # Stacja budowana operacją jest PROJEKTOWANA — blok bez gazu fluorowanego (karta
+    # UX-04/POLE-LINIOWE-WZORZEC; rozporządzenie (UE) 2024/573, art. 13 ust. 9).
     return next(
         c
         for c in sorted(list_factory_configurations(), key=lambda c: c.configuration_ref)
-        if [u.bay_kind for u in c.units].count("liniowe_odplywowe") >= 2
+        if SWITCHGEAR_FAMILY_REGISTRY[c.switchgear_family_ref].gaz_fluorowany is False
+        and [u.bay_kind for u in c.units].count("liniowe_odplywowe") >= 2
         and any(u.bay_kind == "transformatorowe" for u in c.units)
     )
 

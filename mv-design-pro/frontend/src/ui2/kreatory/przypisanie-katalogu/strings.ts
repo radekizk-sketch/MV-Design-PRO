@@ -45,6 +45,14 @@ export const PRZYPISANIE_KATALOGU_STRINGS = {
   walidacjaStopka: 'Wskaż element i pozycję katalogową, aby przypisać typ.',
   bladDodania: 'Nie udało się przypisać katalogu.',
 
+  // Stan obiektu łącznika (zakaz gazów fluorowanych w obiektach projektowanych)
+  istniejacyEtykieta: 'Inwentaryzacja aparatu zastanego (łącznik istniejący w sieci)',
+  istniejacyOpis:
+    'Zaznacz, gdy wskazana pozycja opisuje aparat już zainstalowany w sieci — łącznik zachowa stan '
+    + '„istniejący” i może mieć SF₆ (serwis i przeniesienie, rozporządzenie (UE) 2024/573, art. 13 '
+    + 'ust. 7 i 10). Bez zaznaczenia wymiana pozycji czyni łącznik projektowanym: wymaga wykonania '
+    + 'bez gazów fluorowanych (art. 13 ust. 9).',
+
   // Panel teorii
   teoriaTytul: 'Teoria: zasada katalog-first (Catalog Binding Rule)',
   teoriaOpis:

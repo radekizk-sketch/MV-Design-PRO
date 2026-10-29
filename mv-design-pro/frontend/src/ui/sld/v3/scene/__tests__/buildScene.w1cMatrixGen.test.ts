@@ -19,7 +19,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { symbolIdForPrimaryDeviceKind } from '../../compose/apparatusSequence';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../../symbols/defs';
 import {
   allApparatusIdentifiersValid,
   allEarthSwitchesLateral,
@@ -46,6 +46,73 @@ const PLACEMENT_ORDER: Record<string, number> = {
 };
 
 const LATERAL_SYMBOLS = new Set(['earthSwitch', 'voltageTransformer', 'surgeArrester']);
+/** Aparat boczny wg RODZAJU symbolu (uziemnik QET jest uziemnikiem — karta UX-04). */
+const jestBoczny = (symbolId: string): boolean => LATERAL_SYMBOLS.has(rodzajSymbolu(symbolId as SymbolId));
+
+type DaneAparatu = {
+  readonly kind: string;
+  readonly placement: string;
+  readonly render_variant?: string | null;
+  readonly ports?: readonly { readonly port_id: string; readonly wezel?: string | null }[];
+};
+/** Symbol aparatu z JEGO rekordu: rodzaj + wariant rysunku (`render_variant`). */
+const symbolAparatu = (d: DaneAparatu): string | null =>
+  symbolIdForPrimaryDeviceKind(d.kind as never, d.render_variant ?? null);
+
+const WEZLY_KONCA = new Set(['kabel', 'transformator', 'odplyw']);
+const wejscieAparatu = (d: DaneAparatu): string | null | undefined => d.ports?.find((p) => p.port_id === 'we')?.wezel;
+const wyjscieAparatu = (d: DaneAparatu): string | null | undefined => d.ports?.find((p) => p.port_id === 'wy')?.wezel;
+
+/** Kolejność fizyczna z PORTÓW (karta UX-04, wyrocznia niezależna od `torPolaZPortow`): od
+ *  węzła szyny; na węźle najpierw aparaty jednoportowe (jeden port w danych), potem aparat
+ *  dwuportowy wchodzący na węzeł — jego drugi port jest następnym węzłem. ROZGAŁĘZIENIE
+ *  (rozszerzenie 4, Z.11.1/Z.11): tor główny prowadzi jedyną drogą aparatów dwuportowych do
+ *  węzła końca toru (kabel/transformator/odpływ), pozostałe aparaty wychodzące z węzłów toru
+ *  głównego zaczynają odgałęzienia (kolejność napotkania), obchodzone tą samą regułą.
+ *  Pozostałe na końcu w kolejności wejścia. Wejście: aparaty w porządku `placement`. */
+function kolejnoscZPortow<T extends DaneAparatu>(devices: readonly T[]): { tor: T[]; galezie: T[][]; reszta: T[] } {
+  const dwuportowe = devices.filter((d) => d.ports?.length === 2);
+  const drogi: T[][] = [];
+  const szukaj = (wezel: string, droga: T[]): void => {
+    if (WEZLY_KONCA.has(wezel)) {
+      drogi.push(droga);
+      return;
+    }
+    for (const d of dwuportowe) {
+      const wy = wyjscieAparatu(d);
+      if (wejscieAparatu(d) === wezel && wy && !droga.includes(d)) szukaj(wy, [...droga, d]);
+    }
+  };
+  szukaj('szyna', []);
+  const glowne = drogi.length === 1 ? new Set(drogi[0]) : null;
+  const reszta = new Set(devices);
+  const poczatki: { wezel: string; d: T }[] = [];
+  const obchod = (start: string, pierwszy: T | null, glowny: boolean): T[] => {
+    const tor: T[] = [];
+    let wezel: string | null = start;
+    let wymuszony = pierwszy;
+    while (wezel != null) {
+      for (const d of devices) {
+        if (reszta.has(d) && d.ports?.length === 1 && d.ports[0].wezel === wezel) {
+          tor.push(d);
+          reszta.delete(d);
+        }
+      }
+      const kandydaci: T[] = wymuszony ? [wymuszony] : dwuportowe.filter((d) => reszta.has(d) && wejscieAparatu(d) === wezel);
+      wymuszony = null;
+      if (kandydaci.length === 0) break;
+      const dalej = (glowny && glowne ? kandydaci.find((d) => glowne.has(d)) : undefined) ?? kandydaci[0];
+      if (glowny && glowne) for (const d of kandydaci) if (d !== dalej) poczatki.push({ wezel, d });
+      tor.push(dalej);
+      reszta.delete(dalej);
+      wezel = wyjscieAparatu(dalej) ?? null;
+    }
+    return tor;
+  };
+  const tor = obchod('szyna', null, true);
+  const galezie = poczatki.filter(({ d }) => reszta.has(d)).map(({ wezel, d }) => obchod(wezel, d, false));
+  return { tor, galezie, reszta: devices.filter((d) => reszta.has(d)) };
+}
 
 interface SceneSym {
   readonly symbolId: string;
@@ -78,21 +145,30 @@ function poleNiesieTransformator(fixture: W1cMatrixFixture, fieldRef: string, de
   );
 }
 
-function expectedSequence(devices: readonly { kind: string; placement: string }[], zTransformatorem = false): string[] {
-  const sorted = devices
+function expectedSequence(devices: readonly DaneAparatu[], zTransformatorem = false): string[] {
+  const poPlacement = devices
     .map((d, i) => ({ d, i }))
-    .filter(({ d }) => symbolIdForPrimaryDeviceKind(d.kind as never) != null)
+    .filter(({ d }) => symbolAparatu(d) != null)
     .sort((a, b) => {
       const pd = PLACEMENT_ORDER[a.d.placement] - PLACEMENT_ORDER[b.d.placement];
       return pd !== 0 ? pd : a.i - b.i;
     })
-    .map(({ d }) => ({ kind: d.kind, symbolId: symbolIdForPrimaryDeviceKind(d.kind as never)! }));
+    .map(({ d }) => d);
+  const zPortami = poPlacement.some((d) => (d.ports?.length ?? 0) > 0);
+  const obchod = zPortami ? kolejnoscZPortow(poPlacement) : { tor: poPlacement, galezie: [], reszta: [] };
+  const opis = (lista: readonly DaneAparatu[]) => lista.map((d) => ({ kind: d.kind, symbolId: symbolAparatu(d)! }));
+  const sorted = opis([...obchod.tor, ...obchod.reszta]);
   const main = [
     ...sorted.filter((s) => !LATERAL_KINDS.has(s.kind)).map((s) => s.symbolId),
     ...(zTransformatorem ? ['transformer2W'] : []),
   ];
   const lateral = sorted.filter((s) => LATERAL_KINDS.has(s.kind)).map((s) => s.symbolId);
-  return [...main, ...lateral];
+  // Odgałęzienie toru: kolumna (aparaty szeregowe), potem jej aparaty boczne.
+  const galezie = obchod.galezie.flatMap((galaz) => {
+    const g = opis(galaz);
+    return [...g.filter((s) => !LATERAL_KINDS.has(s.kind)), ...g.filter((s) => LATERAL_KINDS.has(s.kind))].map((s) => s.symbolId);
+  });
+  return [...main, ...lateral, ...galezie];
 }
 
 describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → scena', () => {
@@ -148,9 +224,7 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
       for (const s of syms) {
         expect(SYMBOL_DEFS[s.symbolId as keyof typeof SYMBOL_DEFS], s.symbolId).toBeTruthy();
       }
-      const mappable = target.case.devices.filter(
-        (d) => symbolIdForPrimaryDeviceKind(d.kind as never) != null,
-      );
+      const mappable = target.case.devices.filter((d) => symbolAparatu(d) != null);
       expect(syms.length, target.case.configId).toBe(
         mappable.length + (poleNiesieTransformator(fixture, target.fieldRef, target.case.devices) ? 1 : 0),
       );
@@ -161,14 +235,15 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
     const segs = sceneL2.segments as SceneSeg[];
     for (const target of fixture.targets) {
       const syms = baySymbols(sceneL2, target.fieldRef);
-      const mainAxis = syms.filter((s) => !LATERAL_SYMBOLS.has(s.symbolId));
+      const mainAxis = syms.filter((s) => !jestBoczny(s.symbolId));
       if (mainAxis.length === 0) continue;
       const axisX =
         mainAxis[0].x + SYMBOL_DEFS[mainAxis[0].symbolId as keyof typeof SYMBOL_DEFS].width / 2;
       for (const kind of ['ES', 'SURGE_ARRESTER'] as const) {
-        const hasKind = target.case.devices.some((d) => d.kind === kind);
-        if (!hasKind) continue;
-        const symId = kind === 'ES' ? 'earthSwitch' : 'surgeArrester';
+        const device = target.case.devices.find((d) => d.kind === kind);
+        if (!device) continue;
+        // Symbol z rekordu (wariant QET: `qetEarthSwitch`) — ownerRef odczepu niesie symbol.
+        const symId = symbolAparatu(device)!;
         const laterals = segs.filter((s) =>
           String(s.meta?.ownerRef ?? '').startsWith(`${target.fieldRef}#lateral-${symId}-`),
         );

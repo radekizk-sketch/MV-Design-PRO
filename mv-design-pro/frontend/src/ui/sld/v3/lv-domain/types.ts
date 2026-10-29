@@ -19,6 +19,7 @@
 
 import type { RawOverlayElement } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SwzApiResponse } from '../canvas/overlay';
+import type { RdzenPrzekladnikaPradowego } from '../../../../types/przekladniki';
 
 /** Stan energizacji ZACISKU / ODCINKA / WYSPY — jedna zamknięta lista (§5/§6). */
 export type LvEnergizationState = 'ENERGIZED' | 'DEENERGIZED' | 'UNKNOWN' | 'CONFLICT' | 'MULTISOURCE';
@@ -246,7 +247,8 @@ export interface LvDomainMeasurement {
   /** Tabliczka przekładnika TEKSTEM obok symbolu (R2 §9); brak danych = null. */
   readonly accuracy_class: string | null;
   readonly burden_va: number | null;
-  readonly ct_cores: number | null;
+  /** Rdzenie CT (lista z tabliczki; liczba rdzeni = długość) — `null` gdy niedostarczone. */
+  readonly rdzenie: readonly RdzenPrzekladnikaPradowego[] | null;
   readonly ct_arrangement: '3xCT' | 'ferranti' | null;
 }
 

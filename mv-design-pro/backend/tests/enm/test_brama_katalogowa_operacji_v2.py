@@ -321,7 +321,9 @@ def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 #: Katalogowe pole rodziny MODULOWEJ obslugujacej 15 kV (fikstura jest siecia
 #: 15 kV) — materializacja pola stacji z katalogu rozdzielnic (etap S5).
-POLE_KATALOGOWE_SN = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
+#: Pole projektowane — rodzina bez gazu fluorowanego (karta UX-04/POLE-LINIOWE-WZORZEC;
+#: rozporządzenie (UE) 2024/573, art. 13 ust. 9).
+POLE_KATALOGOWE_SN = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR__TRANSFORMER"
 
 
 def _payload_sn_bay_z_katalogu(snapshot: dict[str, Any]) -> dict[str, Any]:

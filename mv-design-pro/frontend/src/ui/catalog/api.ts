@@ -1,14 +1,11 @@
-import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
 import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
-import { executeDomainOp } from '../topology/domainApi';
 import type { KartaWidmowa } from '../../types/enm';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
   CableType,
-  CatalogNamespace,
   ConverterType,
   CTCatalogType,
   KatalogPrzewodowLiniiWn,
@@ -91,8 +88,6 @@ export type CatalogListItem =
   | ShuntCapacitorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
-const DECATALOGING_BLOCKED_MESSAGE =
-  'Odkatalogowanie elementów technicznych jest niedostępne w trybie katalog-first.';
 const NETWORK_ERROR_MESSAGE =
   'Nie można połączyć się z API katalogów. Uruchom backend i odśwież widok.';
 const CATALOG_OPERATION_ERROR_MESSAGE =
@@ -250,6 +245,52 @@ export async function fetchCompleteBayTemplates(
   return fetchCatalogJson<CompleteMvBayTemplateSummary[]>(
     `/api/catalog/complete-bay-templates${query ? `?${query}` : ''}`,
   );
+}
+
+/** Odmowa szablonu pola w polu o podanych cechach (kod reguły + zdanie z podstawą i akcją). */
+export interface OdmowaSzablonuPola {
+  readonly kod: string;
+  readonly komunikat_pl: string;
+}
+
+/** Szablon kanoniczny pola SN z oceną dopuszczalności (`GET /api/catalog/bay-templates`). */
+export interface SzablonPolaKanoniczny {
+  readonly template_ref: string;
+  readonly template_name_pl: string;
+  readonly bay_role: string;
+  readonly podstawa: string | null;
+  readonly wykonanie_pola: string | null;
+  readonly wykonanie_pola_pl: string | null;
+  readonly wykonanie_lacznikow: string | null;
+  readonly wykonanie_lacznikow_pl: string | null;
+  readonly tylko_gpz: boolean;
+  /** Kody EAZ szablonu w klasie pola — ten sam zestaw, który operacja zapisze
+   *  w `Bay.protection_codes`. */
+  readonly funkcje_eaz: readonly string[];
+  /** Opis każdej funkcji ze słownika EAZ backendu (`funkcje_eaz.opis_funkcji_eaz_pl`:
+   *  zapis rysunku, numer IEEE C37.2, nazwa) — w kolejności `funkcje_eaz`. */
+  readonly funkcje_eaz_pl: readonly string[];
+  readonly dopuszczony: boolean;
+  readonly odmowy: readonly OdmowaSzablonuPola[];
+}
+
+/** Cechy pola, dla których backend ocenia szablony (ta sama reguła co strażnik operacji). */
+export interface CechyPolaSzablonu {
+  readonly bayRole?: string | null;
+  readonly poleGpz: boolean;
+  readonly switchgearFamilyRef?: string | null;
+  readonly klasaPola?: string | null;
+}
+
+/** Szablony kanoniczne pól SN z oceną dopuszczalności w polu o podanych cechach. */
+export async function fetchSzablonyPolaKanoniczne(cechy: CechyPolaSzablonu): Promise<SzablonPolaKanoniczny[]> {
+  const params = new URLSearchParams();
+  if (cechy.bayRole) params.set('bay_role', cechy.bayRole);
+  if (cechy.poleGpz) params.set('pole_gpz', 'true');
+  if (cechy.switchgearFamilyRef) params.set('switchgear_family_ref', cechy.switchgearFamilyRef);
+  if (cechy.klasaPola) params.set('klasa_pola', cechy.klasaPola);
+  const query = params.toString();
+  return fetchCatalogJson<SzablonPolaKanoniczny[]>(`/api/catalog/bay-templates${query ? `?${query}` : ''}`);
 }
 
 export async function fetchCableTypes(): Promise<CableType[]> {
@@ -790,56 +831,4 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
   return sortCatalogItems(types);
 }
 
-export async function assignTypeToBranch(
-  projectId: string,
-  branchId: string,
-  typeId: string,
-  catalogNamespace: CatalogNamespace = 'KABEL_SN',
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: branchId,
-    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-  });
-}
-
-export async function assignTypeToTransformer(
-  projectId: string,
-  transformerId: string,
-  typeId: string,
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: transformerId,
-    catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-  });
-}
-
-export async function assignEquipmentTypeToSwitch(
-  projectId: string,
-  switchId: string,
-  typeId: string,
-  catalogNamespace: CatalogNamespace = 'APARAT_SN',
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: switchId,
-    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-  });
-}
-
-export async function clearTypeFromBranch(_projectId: string, _branchId: string): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
-
-export async function clearTypeFromTransformer(
-  _projectId: string,
-  _transformerId: string,
-): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
-
-export async function clearEquipmentTypeFromSwitch(
-  _projectId: string,
-  _switchId: string,
-): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
 

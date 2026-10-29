@@ -63,6 +63,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   close_switch: null,
   // Wyposażenie pola edytuje formularz INLINE na karcie pola (E-11, `BayConfiguratorSurface`).
   set_bay_equipment: null,
+  // Stan obiektu pola zmienia edytor INLINE na karcie pola (E-11, `EdytorStanuObiektuPola`).
+  set_object_state: null,
   przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,

@@ -61,8 +61,9 @@ import { ETYKIETY_RODZAJU_APARATU } from './stacjaModel';
  * przez normalizatory niżej (jedna geometria, dwa adaptery — nigdy dwie
  * równoległe ścieżki rysowania):
  *  · `BayDeviceTemplate.kind` — kanoniczny układ aparatury szablonu pola
- *    (CB, DS_BUS, DS_LINE, ES, CT, VT, FUSE, SURGE_ARRESTER, CABLE_HEAD,
- *    TRANSFORMER_DEVICE),
+ *    (CB, DS_BUS, DS_LINE, DS_BRANCH, ES, CT, VT, FUSE, SURGE_ARRESTER,
+ *    CABLE_HEAD, TRANSFORMER_DEVICE, THREE_POSITION_SWITCH, VOLTAGE_INDICATOR,
+ *    CORE_BALANCE_CT),
  *  · `BayDeviceInstanceTemplate.apparatus_kind` — kompozycja producenta
  *    (dokłada VPIS, przekaźnik, licznik i wyłącznik strony nN).
  */
@@ -70,9 +71,12 @@ export type RodzajAparatuBom =
   | 'APARAT_GLOWNY'
   | 'ODLACZNIK_SZYNOWY'
   | 'ODLACZNIK_LINIOWY'
+  | 'ODLACZNIK_ODGALEZIENIA'
+  | 'LACZNIK_TROJPOLOZENIOWY'
   | 'UZIEMNIK'
   | 'PRZEKLADNIK_PRADOWY'
   | 'PRZEKLADNIK_NAPIECIOWY'
+  | 'PRZEKLADNIK_FERRANTIEGO'
   | 'BEZPIECZNIK'
   | 'OGRANICZNIK_PRZEPIEC'
   | 'GLOWICA_KABLOWA'
@@ -109,8 +113,10 @@ export interface PozycjaBom {
 
 /**
  * `BayDeviceTemplate.kind` → rodzaj kanoniczny. Tablica ZAMKNIĘTA względem
- * kontraktu backendu (`bay_templates.py`) — test sprawdza obie strony, więc
- * nowy kind w kontrakcie czerwieni się tutaj, zamiast po cichu zniknąć z pola.
+ * kontraktu backendu (`bay_templates.py`): klucze wynikają z typu
+ * `BayDeviceTemplateWire['kind']`, którego równość z backendem przypina
+ * `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py` — nowy kind
+ * w kontrakcie czerwieni tamten test i kompilację tej tablicy.
  */
 export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   Record<BayDeviceTemplateWire['kind'], RodzajAparatuBom>
@@ -118,6 +124,7 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   CB: 'APARAT_GLOWNY',
   DS_BUS: 'ODLACZNIK_SZYNOWY',
   DS_LINE: 'ODLACZNIK_LINIOWY',
+  DS_BRANCH: 'ODLACZNIK_ODGALEZIENIA',
   ES: 'UZIEMNIK',
   CT: 'PRZEKLADNIK_PRADOWY',
   VT: 'PRZEKLADNIK_NAPIECIOWY',
@@ -125,6 +132,9 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   SURGE_ARRESTER: 'OGRANICZNIK_PRZEPIEC',
   CABLE_HEAD: 'GLOWICA_KABLOWA',
   TRANSFORMER_DEVICE: 'TRANSFORMATOR',
+  THREE_POSITION_SWITCH: 'LACZNIK_TROJPOLOZENIOWY',
+  VOLTAGE_INDICATOR: 'WSKAZNIK_NAPIECIA',
+  CORE_BALANCE_CT: 'PRZEKLADNIK_FERRANTIEGO',
 };
 
 /**
@@ -194,9 +204,15 @@ const POZA_TOREM: Readonly<Record<RodzajAparatuBom, UmiejscowienieBom | null>> =
   APARAT_GLOWNY: null,
   ODLACZNIK_SZYNOWY: null,
   ODLACZNIK_LINIOWY: null,
+  // Odłącznik odgałęzienia przekładnika napięciowego (Z.11/Z.11.1) nie przewodzi prądu
+  // roboczego pola — leży w odgałęzieniu pomiarowym, nie w torze mocy.
+  ODLACZNIK_ODGALEZIENIA: 'BOCZNE',
+  LACZNIK_TROJPOLOZENIOWY: null,
   UZIEMNIK: 'ZIEMIA',
   PRZEKLADNIK_PRADOWY: null,
   PRZEKLADNIK_NAPIECIOWY: 'BOCZNE',
+  // Przekładnik Ferrantiego obejmuje kabel odejścia — w osi toru, bez przerwy toru.
+  PRZEKLADNIK_FERRANTIEGO: null,
   BEZPIECZNIK: null,
   OGRANICZNIK_PRZEPIEC: 'ZIEMIA',
   GLOWICA_KABLOWA: null,
@@ -231,9 +247,14 @@ export const SYMBOL_RODZAJU_BOM: Readonly<Record<RodzajAparatuBom, SymbolId>> = 
   APARAT_GLOWNY: 'breaker',
   ODLACZNIK_SZYNOWY: 'disconnector',
   ODLACZNIK_LINIOWY: 'disconnector',
+  ODLACZNIK_ODGALEZIENIA: 'disconnector',
+  // Łącznik trójpołożeniowy i przekładnik Ferrantiego mają w kanonie wyłącznie glif QET
+  // (EN 60617, karta UX-04/POLE-LINIOWE-WZORZEC) — bez symbolu podobnego w zastępstwie.
+  LACZNIK_TROJPOLOZENIOWY: 'qetThreePositionSwitch',
   UZIEMNIK: 'earthSwitch',
   PRZEKLADNIK_PRADOWY: 'currentTransformer',
   PRZEKLADNIK_NAPIECIOWY: 'voltageTransformer',
+  PRZEKLADNIK_FERRANTIEGO: 'qetCoreBalanceCt',
   BEZPIECZNIK: 'fuse',
   OGRANICZNIK_PRZEPIEC: 'surgeArrester',
   GLOWICA_KABLOWA: 'cableHead',

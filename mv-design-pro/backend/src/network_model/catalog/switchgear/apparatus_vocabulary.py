@@ -52,6 +52,12 @@ FAMILY_APPARATUS_FOR_ENM_KIND: dict[str, str] = {
     "VT": "voltage_transformer",
     "CABLE_HEAD": "cable_head",
     "SURGE_ARRESTER": "surge_arrester",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.10): zgrubienie jak w
+    # `_ZGRUBIENIE_DO_SLOWNIKA_RODZINY` — łącznik trójpołożeniowy to w słowniku rodziny
+    # łącznik odłączający (`switch_disconnector`), przekładnik Ferrantiego — przekładnik prądowy.
+    "THREE_POSITION_SWITCH": "switch_disconnector",
+    "CORE_BALANCE_CT": "current_transformer",
+    "VOLTAGE_INDICATOR": "voltage_indicator",
 }
 
 #: Kanoniczna tożsamość aparatu dla KAŻDEGO rodzaju z `BayDeviceTemplate.kind`
@@ -60,6 +66,9 @@ APPARATUS_KIND_FOR_TEMPLATE_KIND: dict[str, ApparatusKind] = {
     "CB": "circuit_breaker",
     "DS_BUS": "disconnector_busbar",
     "DS_LINE": "disconnector_line",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.11/Z.11.1): odłącznik odgałęzienia
+    # przekładnika napięciowego strony liniowej — poza torem głównym pola.
+    "DS_BRANCH": "disconnector_branch",
     "ES": "earthing_switch",
     "CT": "current_transformer",
     "VT": "voltage_transformer",
@@ -67,13 +76,21 @@ APPARATUS_KIND_FOR_TEMPLATE_KIND: dict[str, ApparatusKind] = {
     "SURGE_ARRESTER": "surge_arrester",
     "CABLE_HEAD": "cable_head",
     "TRANSFORMER_DEVICE": "transformer",
+    "THREE_POSITION_SWITCH": "three_position_switch",
+    "VOLTAGE_INDICATOR": "voltage_indicator",
+    "CORE_BALANCE_CT": "core_balance_ct",
 }
 
 #: Zgrubienie tożsamości aparatu do słownika rodziny (rodzina deklaruje
-#: `switch_disconnector`, nie rozróżniając odłącznika szynowego od liniowego).
+#: `switch_disconnector`, nie rozróżniając odłącznika szynowego od liniowego;
+#: łącznik trójpołożeniowy jest w słowniku rodziny łącznikiem odłączającym, przekładnik
+#: Ferrantiego — przekładnikiem prądowym).
 _ZGRUBIENIE_DO_SLOWNIKA_RODZINY: dict[ApparatusKind, str] = {
     "disconnector_busbar": "switch_disconnector",
     "disconnector_line": "switch_disconnector",
+    "disconnector_branch": "switch_disconnector",
+    "three_position_switch": "switch_disconnector",
+    "core_balance_ct": "current_transformer",
 }
 
 #: Aparaty leżące POZA celką rozdzielnicy — nie podlegają słownikowi rodziny.

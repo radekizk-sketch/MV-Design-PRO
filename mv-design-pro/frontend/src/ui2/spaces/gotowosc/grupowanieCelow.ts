@@ -282,6 +282,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.element_missing': 'wspolne',
   'catalog.element_not_found': 'wspolne',
   'catalog.clear_forbidden': 'wspolne',
+  'catalog.object_state_not_applicable': 'wspolne',
+  'catalog.object_state_invalid': 'wspolne',
   'catalog.materialization_required': 'wspolne',
   'catalog.materialization_incomplete': 'wspolne',
   'catalog.nameplate_mismatch': 'wspolne',
@@ -494,6 +496,9 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   relay: 'zabezpieczenia',
   tcc: 'zabezpieczenia',
   station: 'stacje',
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: kody `bay.*` (W045–W053 — gaz fluorowany, wykonanie
+  // i klasa pola liniowego GPZ, AJEE) leżą wszystkie w obszarze STATIONS rejestru.
+  bay: 'stacje',
   apparatus: 'stacje',
   field: 'stacje',
   trunk: 'wspolne',

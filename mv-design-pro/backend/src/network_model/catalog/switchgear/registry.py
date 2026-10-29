@@ -136,7 +136,33 @@ SCHNEIDER_ELECTRIC = Manufacturer(
     ),
 )
 
+#: Typ ogólny rozdzielnicy wg standardu operatora — NIE producent. Nosiciel rodzin
+#: ``standard_osd`` (rozdzielnica GPZ wg ENEA Operator, Zeszyt 1, §13), żeby projektant mógł
+#: wskazać medium izolacyjne pola (powietrzna / stało-powietrzna / gazowa bez gazów
+#: fluorowanych), zanim wybierze wyrób. Status ``requires_catalog``: wartości są robocze (z
+#: normy operatora), nie z karty producenta (ZASADA NR 4 — jakość ESTIMATED).
+TYP_OGOLNY_OSD = Manufacturer(
+    manufacturer_ref="TYP_OGOLNY_OSD",
+    name="Typ ogólny wg standardu OSD (bez producenta)",
+    normalized_code="TYP_OGOLNY_OSD",
+    country=None,
+    status="requires_catalog",
+    source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Pozycje typu ogólnego niosą wymagania standardu operatora (ENEA Operator, „Stacje "
+        "elektroenergetyczne 110 kV”, Zeszyt 1, §8.2, §9.2, §13) jako wartości robocze — nie "
+        "zastępują karty producenta; dobór wyrobu potwierdza projektant."
+    ),
+    notes_pl=(
+        "Typ ogólny rozdzielnicy SN GPZ wg standardu OSD — medium izolacyjne i klasy "
+        "znamionowe z wymagań operatora, bez wskazania producenta."
+    ),
+)
+
 _STARTING_MANUFACTURERS: tuple[Manufacturer, ...] = (
+    TYP_OGOLNY_OSD,
     ZPUE_WLOSZCZOWA,
     ELEKTROMETAL,
     ABB,

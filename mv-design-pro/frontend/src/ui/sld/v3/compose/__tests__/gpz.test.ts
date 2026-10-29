@@ -801,6 +801,7 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       neutralEarthingNotePl: null,
       zone: null,
       adnotacje: null,
+      brakiPrzylaczy: [],
     };
   }
 

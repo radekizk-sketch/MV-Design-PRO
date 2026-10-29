@@ -17,6 +17,18 @@
     "typ": {
       "id": "ct_200_5_5p10_10va_abb",
       "name": "CT 200/5 A kl. 5P10 10 VA",
+      "rdzenie": [
+        {
+          "przekladnia": "200/5",
+          "moc_va": 10.0,
+          "klasa": "5P10",
+          "fs": null,
+          "przeznaczenie": [
+            "ZABEZPIECZENIA"
+          ]
+        }
+      ],
+      "liczba_rdzeni": 1,
       "ratio_primary_a": 200.0,
       "ratio_secondary_a": 5.0,
       "accuracy_class": "5P10",

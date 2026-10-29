@@ -34,6 +34,78 @@
       }
     },
     {
+      "area": "STATIONS",
+      "code": "bay.fluorinated_gas_not_existing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.generation_fed_from_load_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.gpz_template_outside_gpz",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.line_class_execution_mismatch",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.loads_behind_dedicated_generation_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.reclosing_in_dedicated_generation_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.settlement_core_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.switching_execution_insulation_mismatch",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.ufls_in_bay_with_generation",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
       "area": "GENERATORS",
       "code": "bess.energy_module_missing",
       "fix_navigation": {
@@ -249,6 +321,23 @@
       "code": "catalog.namespace_required",
       "fix_navigation": {
         "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.object_state_invalid",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.object_state_not_applicable",
+      "fix_navigation": {
         "panel": "inspector",
         "tab": "katalog"
       }
@@ -1415,7 +1504,7 @@
       }
     }
   ],
-  "count": 166,
+  "count": 177,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1559,6 +1648,15 @@
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",
     "W044": "station.field_role_unknown",
+    "W045": "bay.fluorinated_gas_not_existing",
+    "W046": "bay.switching_execution_insulation_mismatch",
+    "W047": "bay.gpz_template_outside_gpz",
+    "W048": "bay.line_class_execution_mismatch",
+    "W049": "bay.generation_fed_from_load_bay",
+    "W050": "bay.loads_behind_dedicated_generation_bay",
+    "W051": "bay.ufls_in_bay_with_generation",
+    "W052": "bay.reclosing_in_dedicated_generation_bay",
+    "W053": "bay.settlement_core_missing",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

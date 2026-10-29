@@ -48,6 +48,7 @@ from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
     template_primary_devices,
 )
+from network_model.catalog.rodzaje_aparatury import porty_toru_pola
 from network_model.catalog.switchgear import (
     CompleteMvBayTemplate,
     FactoryConfiguration,
@@ -120,15 +121,23 @@ KOD_BLEDU_POLA_KATALOGOWEGO = "sn.pole_katalogowe_niezgodne"
 def _oznaczenia_kanoniczne() -> dict[str, str]:
     """Kanoniczne oznaczenie operatorskie aparatu (Q0, Q9, T1, F1, GK, TR).
 
-    WYPROWADZONE z 10 kanonicznych szablonów pola, nie wymyślone: oznaczenie
+    WYPROWADZONE z kanonicznych szablonów pola (rejestr `BAY_TEMPLATE_REGISTRY`), nie wymyślone: oznaczenie
     aparatu jest daną kanonu rysunku pola. Rodzaj, który w kanonie występuje
     z RÓŻNYMI oznaczeniami (odłącznik szynowy: Q1 w polu liniowym, Q2 w drugim
     slocie sprzęgła), jest niejednoznaczny i NIE trafia do tablicy — takiemu
     aparatowi oznaczenie musi dać slot szablonu, a nie ta funkcja.
+
+    Aparaty ODGAŁĘZIENIA toru (`BayDeviceTemplate.odgalezienie`, np. kolumna przekładnika
+    napięciowego Q5 → Q51 → GK1 → T3 pól Z.11.1 / Z.11) mają oznaczenia swojego odgałęzienia
+    i nie są kanonem aparatu toru, który dokłada jednostka bloku — liczy się tor główny
+    (pomiar 2026-10-29: bez tego filtra uziemnik, głowica kablowa i przekładnik napięciowy
+    traciły oznaczenie kanoniczne, a pola bloków z uziemnikiem nie dawały się zbudować).
     """
     oznaczenia_wg_rodzaju: dict[str, set[str]] = {}
     for szablon in BAY_TEMPLATE_REGISTRY.values():
         for aparat in szablon.devices:
+            if aparat.odgalezienie is not None:
+                continue
             oznaczenia_wg_rodzaju.setdefault(aparat.kind, set()).add(aparat.designation_q)
     return {
         APPARATUS_KIND_FOR_TEMPLATE_KIND[kind]: next(iter(oznaczenia))
@@ -419,7 +428,9 @@ def _aparaty_z_pola_katalogowego(
             (aparat["kind"] for aparat in aparaty if aparat["kind"] in _SWITCHABLE_PRIMARY_KINDS),
             None,
         )
-    return aparaty, rodzaj_glownego
+    # Porty aparatów z sekwencji BOM-u (karta UX-04/POLE-LINIOWE-WZORZEC) — ta sama reguła co
+    # szablon kanoniczny i każda droga budowy pola (`rodzaje_aparatury.porty_toru_pola`).
+    return porty_toru_pola(aparaty), rodzaj_glownego
 
 
 def _jednostka_bloku(

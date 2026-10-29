@@ -111,15 +111,22 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`.
     Karta GPZ-MODEL podniosla ten sam pin na swojej bazie 122 -> 123 (ta sama korekta W5-C,
     bez nowego pola Literal); po jej nalozeniu na drzewo scalone pomiar guardem = 125, bez
-    zmiany."""
+    zmiany.
+
+    Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29) dodaje PIEC pol Literal z lustrem w
+    `types/enm.ts` i zachowanym parytetem zbioru wartosci: stan obiektu `StanObiektu`
+    (`'ISTNIEJACY' | 'PROJEKTOWANY'` — obiekt zastany albo projektowany, rozstrzyga zakaz gazow
+    fluorowanych w nowych polach) na `SwitchBranch`, `Bay`, `BayPrimaryDevice`
+    i `BayBaseModel` oraz `Bay.klasa_pola` (`'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY'`,
+    IRiESD ENEA II.4.5.4.2.1–2.3) — licznik 125 -> 130 (pomiar guardem na drzewie karty)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 125, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 125 — "
+    assert int(dopasowanie.group(1)) == 130, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 130 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

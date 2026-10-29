@@ -32,7 +32,7 @@ TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
 LINIA_SN = "line-base-al-st-70"
 ZKSN = "ZKSN-2P-630A"
 SLUP_ROZGALEZNY = "SLUP-ODG-12"
-LACZNIK_SEKCYJNY = "sw-ls-schneider-rm6-17kv-400a"
+LACZNIK_SEKCYJNY = "sw-ls-ogolny-prozniowy-24kv-630a"
 
 
 class BladBudowy(RuntimeError):
