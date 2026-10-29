@@ -205,7 +205,7 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
             title: 'Audyt deterministyczny',
             metrics: [
               { label: 'result_hash', value: 'hash-akad' },
-              { label: 'solver_version', value: 'v126-academic-whitebox-1.2' },
+              { label: 'solver_version', value: 'v126-academic-whitebox-1.3' },
               { label: 'input_hash', value: 'hash-wejscia' },
             ],
           },

@@ -59,9 +59,7 @@
         "admittance"
       ]
     },
-    "neutral_earthing_design": {
-      "petersen_detuning": 0.05
-    },
+    "neutral_earthing_design": {},
     "transient_trv": {
       "breaker_rated_voltage_kv": 17.5,
       "trv_natural_frequency_hz": 12000,
@@ -455,10 +453,12 @@
         },
         {
           "kod": "galezie.b0",
-          "opis_pl": "Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): 1 z 3",
+          "opis_pl": "Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): 3 z 3",
           "spelniony": true,
           "elementy": [
-            "cab_main_b"
+            "cab_main_b",
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ],
           "blokujacy": true,
           "klucz_parametru": null
@@ -478,33 +478,10 @@
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
-        },
-        {
-          "kod": "galezie.bez_b0",
-          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
-          "spelniony": false,
-          "elementy": [
-            "line_b_c",
-            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
-          ],
-          "blokujacy": false,
-          "klucz_parametru": null
         }
       ],
       "braki": [],
-      "uwagi": [
-        {
-          "kod": "galezie.bez_b0",
-          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
-          "spelniony": false,
-          "elementy": [
-            "line_b_c",
-            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
-          ],
-          "blokujacy": false,
-          "klucz_parametru": null
-        }
-      ],
+      "uwagi": [],
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
@@ -581,6 +558,14 @@
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.breaker_rated_voltage_kv",
+          "opis_pl": "Napięcie znamionowe wyłącznika U_r",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "breaker_rated_voltage_kv"
         },
         {
           "kod": "parametr.trv_natural_frequency_hz",
@@ -672,8 +657,8 @@
       ],
       "proponowane": {
         "breaker_rated_voltage_kv": {
-          "wartosc": 110.0,
-          "zrodlo_pl": "najwyższe napięcie znamionowe szyny modelu (110 kV)"
+          "wartosc": 17.5,
+          "zrodlo_pl": "napięcie najwyższe urządzenia U_m sieci SN 15 kV (17.5 kV, IEC 60038 tab. 3–5; U_r aparatu = U_m, IEC 62271-1)"
         }
       },
       "powod_wycofania_pl": null

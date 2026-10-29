@@ -168,9 +168,12 @@ class TestV126SanityCoverageAllAnalyses:
 
     ALWAYS_COMPLETE = [
         V126AnalysisType.EARTH_FAULT_DETECTION,
-        V126AnalysisType.TRANSIENT_TRV,
     ]
+    #: Napięcie powrotne: U_r wyłącznika, f_n i τ obwodu oraz krotność prądu załączania są
+    #: parametrami biegu bez wartości zastępczej solvera (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)
+    #: — bez nich blok wiarygodności melduje brak, nie „zweryfikowany".
     NEEDS_INPUT = [
+        V126AnalysisType.TRANSIENT_TRV,
         V126AnalysisType.POWER_QUALITY_HARMONICS,
         V126AnalysisType.EARTHING_SAFETY,
         V126AnalysisType.INSULATION_COORDINATION,
@@ -267,13 +270,28 @@ class TestV126SanityWithRealInputs:
             update={
                 "insulation": [
                     V126InsulationInput(
-                        location_bus_ref="B2", u_m_kv=17.5, network_neutral="isolated"
+                        location_bus_ref="B2", u_m_kv=17.5, network_neutral="izolowany"
                     )
                 ]
             }
         )
         res = _run_model(V126AnalysisType.INSULATION_COORDINATION, model)
         assert res["sanity"]["status"] == "zweryfikowany"
+
+    def test_trv_with_circuit_parameters_verified(self) -> None:
+        model = _input().model_copy(
+            update={
+                "parameters": {
+                    "breaker_rated_voltage_kv": 17.5,
+                    "trv_natural_frequency_hz": 12000.0,
+                    "trv_tau_s": 0.00018,
+                    "inrush_multiple_in": 8.0,
+                }
+            }
+        )
+        res = _run_model(V126AnalysisType.TRANSIENT_TRV, model)
+        assert res["sanity"]["status"] == "zweryfikowany"
+        assert res["trv_margin_percent"] is not None and "missing_fields" not in res
 
     def test_motor_starting_credible_motor_verified(self) -> None:
         # Silnik 15 kV dopasowany do szyny B2 (15 kV) — zapad napięcia w granicach wiarygodności.

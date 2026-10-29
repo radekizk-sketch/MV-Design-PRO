@@ -31,8 +31,10 @@ import { useShellStore } from '../../shell/useShellStore';
 import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
 import { useDaneSkladowych } from './api';
 import {
+  doziemienieWiersza,
   fmtImpedancjaUziemienia,
   fmtZespolona,
+  jestZwarciemJednofazowym,
   KLUCZ_PUNKT,
   KOLUMNY_SKLADOWYCH,
   naWierszeSkladowych,
@@ -128,6 +130,8 @@ export function EkranSkladowych() {
     wierszAktywny?.element_id ?? wierszAktywny?.target_id ?? null,
   );
   const uziemienia = uziemieniaSieci(dane?.snapshotPrzebiegu ?? null);
+  const doziemienie = doziemienieWiersza(wierszAktywny);
+  const wierszJednofazowy = jestZwarciemJednofazowym(wierszAktywny);
 
   const otworzDowod = () => {
     if (przebieg) setWynikiTab('dowod', przebieg.id);
@@ -315,6 +319,88 @@ export function EkranSkladowych() {
               </>
             )}
           </section>
+
+          {(doziemienie || wierszJednofazowy) && (
+            <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-doziemienie">
+              <h4>{T.doziemienieTytul}</h4>
+              <p className="mvd-skladowe-nota">{T.doziemienieOpis}</p>
+              {!doziemienie ? (
+                <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-doziemienie-brak-wiersza">
+                  {T.doziemienieBrakWiersza}
+                </p>
+              ) : (
+                <>
+                  <p data-testid="mvd-skladowe-doziemienie-naglowek">
+                    <b>{doziemienie.naglowek}</b>
+                  </p>
+                  <dl className="mvd-skladowe-siatka" data-testid="mvd-skladowe-doziemienie-wartosci">
+                    {doziemienie.wartosci.map((w) => (
+                      <div
+                        key={w.klucz}
+                        className="mvd-skladowe-wartosc"
+                        data-testid={`mvd-skladowe-doziemienie-${w.klucz}`}
+                      >
+                        <dt>{w.etykieta}</dt>
+                        <dd className="mvd-num">{w.wartosc}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className="mvd-skladowe-wzor" data-testid="mvd-skladowe-doziemienie-wzor">
+                    <span className="mvd-skladowe-lbl">{T.doziemienieWzor}</span>
+                    <MathBlock latex={doziemienie.wzorLatex} />
+                  </div>
+                  <dl className="mvd-skladowe-siatka">
+                    {doziemienie.opisUziemienia && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-uziemienie">
+                        <dt>{T.doziemienieUziemienie}</dt>
+                        <dd>{doziemienie.opisUziemienia}</dd>
+                      </div>
+                    )}
+                    <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-podstawa">
+                      <dt>{T.doziemieniePodstawa}</dt>
+                      <dd>{doziemienie.podstawa}</dd>
+                    </div>
+                    {doziemienie.brak && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-brak">
+                        <dt>{T.doziemienieBrak}</dt>
+                        <dd>{doziemienie.brak}</dd>
+                      </div>
+                    )}
+                    {doziemienie.podwojne && (
+                      <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-doziemienie-podwojne">
+                        <dt>{T.doziemieniePodwojne}</dt>
+                        <dd>{doziemienie.podwojne}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  {doziemienie.zastrzezenia.length > 0 && (
+                    <ul className="mvd-skladowe-lista" data-testid="mvd-skladowe-doziemienie-zastrzezenia">
+                      {doziemienie.zastrzezenia.map((z) => (
+                        <li key={z}>{z}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {doziemienie.danePrzyjete.length > 0 && (
+                    <div data-testid="mvd-skladowe-doziemienie-dane-przyjete">
+                      <span className="mvd-skladowe-lbl">{T.doziemienieDanePrzyjete}</span>
+                      <ul className="mvd-skladowe-lista">
+                        {doziemienie.danePrzyjete.map((dana) => (
+                          <li key={dana.nazwa} title={dana.powod}>
+                            {dana.wartosc ? `${dana.nazwa}: ${dana.wartosc}` : dana.nazwa}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {doziemienie.niepelny && (
+                    <p className="mvd-skladowe-nota" data-testid="mvd-skladowe-doziemienie-niepelny">
+                      {T.doziemienieNiepelny}
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
 
           {wierszAktywny && (
             <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-raport">

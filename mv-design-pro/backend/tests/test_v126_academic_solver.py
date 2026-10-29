@@ -81,7 +81,7 @@ def _academic_input() -> V126AcademicInput:
                 {
                     "location_bus_ref": "B2",
                     "u_m_kv": 17.5,
-                    "network_neutral": "isolated",
+                    "network_neutral": "izolowany",
                     "arrester_residual_10ka_kv": 70.0,
                 }
             ],

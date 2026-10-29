@@ -111,6 +111,15 @@ class TransformerZeroSeqModel:
     lv_winding: WindingZeroSeq
     z0_pu: complex | None
     trace: list[dict]
+    #: Impedancja zerowa samego transformatora Z_T0 = Z_T [pu na S_base] (bez 3·Z_N) —
+    #: składnik drogi punktu neutralnego uzwojenia przy doziemieniu
+    #: (``enm.uziemienie_sekcji.PunktUziemienia.z0_uzwojenia_ohm``); ``None`` dla OPEN.
+    z_t0_pu: complex | None = None
+    #: Impedancje punktów neutralnych uzwojeń Z_N [Ω] (bez mnożnika 3) z tej samej decyzji
+    #: ``_neutral_grounded_and_zn`` co ``z0_pu`` — 0 dla uziemienia bezpośredniego i uzwojenia
+    #: bez drogi do ziemi.
+    zn_hv_ohm: complex = 0j
+    zn_lv_ohm: complex = 0j
 
 
 #: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
@@ -354,6 +363,9 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         lv_winding=lv_winding,
         z0_pu=z0_pu,
         trace=tracer.to_list(),
+        z_t0_pu=None if z0_pu is None else z_t_pu_base,
+        zn_hv_ohm=zn_hv_ohm,
+        zn_lv_ohm=zn_lv_ohm,
     )
 
 

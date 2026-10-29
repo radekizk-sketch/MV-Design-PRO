@@ -2,7 +2,7 @@
 punktu neutralnego Z MODELU, nigdy podstawionej.
 
 Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: kategoria szyny SN pochodzi z JEDNEJ prawdy
-o uziemieniu sieci (`enm.uziemienie_sekcji` przez `v126_contracts._kategoria_tov_szyny`) —
+o uziemieniu sieci (`enm.uziemienie_sekcji` przez `v126_contracts._doziemienie_szyny_izolacji`) —
 punkt neutralny uzwojenia transformatora z drogą prądu zerowego po stronie SN albo zespół
 uziemiający. Intencja W5-D zostaje: kategorii, której model nie wyznacza, NIE podstawia się.
 Zmienia się tylko to, co znaczy „model nie wyznacza": sieć SN bez żadnego punktu uziemienia
@@ -11,8 +11,9 @@ odpowiedź co składowa zerowa — brak drogi), a brakiem jest zespół uziemiaj
 w punkcie neutralnym (nazwana odmowa E-ZU-02).
 
 Iloczyn cech: {źródło danej: punkt neutralny transformatora po stronie LV, po stronie
-HV} × {directly_grounded, resistor_grounded → "earthed"; petersen_coil, isolated →
-"isolated"} + {uzwojenie SN w trójkącie → sieć izolowana z modelu} + {zespół bez elementu →
+HV} × {directly_grounded → "bezposrednie", resistor_grounded → "rezystor", petersen_coil →
+"kompensowany", isolated → "izolowany"} (warunek odbioru 2026-10-29: każdy tryb osobno — dawne
+„earthed" zrównywało rezystor z uziemieniem bezpośrednim) + {uzwojenie SN w trójkącie → sieć izolowana z modelu} + {zespół bez elementu →
 brak wiersza, szyna nazwana, gotowość koordynacji izolacji z warunkiem blokującym
 `ograniczniki.uziemienie_sieci_nieznane`}.
 """
@@ -110,10 +111,10 @@ def _model(
 @pytest.mark.parametrize(
     ("uziemienie", "oczekiwane"),
     [
-        (GroundingConfig(type="directly_grounded"), "earthed"),
-        (GroundingConfig(type="resistor_grounded", r_ohm=40.0), "earthed"),
-        (GroundingConfig(type="petersen_coil", x_ohm=120.0), "isolated"),
-        (GroundingConfig(type="isolated"), "isolated"),
+        (GroundingConfig(type="directly_grounded"), "bezposrednie"),
+        (GroundingConfig(type="resistor_grounded", r_ohm=40.0), "rezystor"),
+        (GroundingConfig(type="petersen_coil", x_ohm=120.0), "kompensowany"),
+        (GroundingConfig(type="isolated"), "izolowany"),
     ],
 )
 def test_kategoria_punktu_neutralnego_zawsze_z_modelu(
@@ -131,11 +132,11 @@ def test_kategoria_punktu_neutralnego_zawsze_z_modelu(
 @pytest.mark.parametrize(("strona", "grupa"), [("lv", "YNd11"), ("hv", "Dyn11")])
 def test_siec_sn_bez_punktu_uziemienia_jest_izolowana_z_modelu(strona: str, grupa: str) -> None:
     """Uzwojenie po stronie SN w trójkącie, brak zespołu: sieć SN nie ma drogi prądu
-    zerowego — kategoria „isolated" WYPROWADZONA z modelu (ta sama prawda co Ik1: brak
+    zerowego — tryb „izolowany" WYPROWADZONY z modelu (ta sama prawda co Ik1: brak
     drogi), nie podstawiona domyślnie."""
     model = _model(strona=strona, uziemienie=None, grupa=grupa)
     rows = build_v126_insulation_from_enm(model)
-    assert [(r.location_bus_ref, r.network_neutral) for r in rows] == [("BUS_SN", "isolated")]
+    assert [(r.location_bus_ref, r.network_neutral) for r in rows] == [("BUS_SN", "izolowany")]
     assert ograniczniki_bez_uziemienia_sieci(model) == ()
 
 

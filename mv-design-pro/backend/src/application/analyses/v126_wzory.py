@@ -135,28 +135,29 @@ def _podstawienie_petersen_rezonans(dane: Mapping[str, Any]) -> str | None:
 
 
 def _podstawienie_petersen_resztkowy(dane: Mapping[str, Any]) -> str | None:
-    """`_petersen_design`, linie 1452-1461: `data={"ic_a":…, "detuning_v":…,
-    "residual_damping_d":…}`."""
+    """`_petersen_design` (krok „petersen_residual_current"): `data={"ic_a":…, "i_l_a":…,
+    "i_w_a":…, "detuning_v":…}` — prąd dławika i składowa czynna z impedancji punktów
+    neutralnych MODELU (solver `doziemienie_sn`)."""
     ic = _liczba(dane, "ic_a")
-    v = _liczba(dane, "detuning_v")
-    d = _liczba(dane, "residual_damping_d")
-    if ic is None or v is None or d is None:
+    i_l = _liczba(dane, "i_l_a")
+    i_w = _liczba(dane, "i_w_a")
+    if ic is None or i_l is None or i_w is None:
         return None
     return (
-        rf"I_{{\mathrm{{res}}}}(\mathrm{{rezonans}}) = {_pl(ic)}\ \mathrm{{A}}\cdot {_pl(d)}\text{{,}}\quad "
-        rf"I_{{\mathrm{{res}}}}(\pm{_pl(v)}) = {_pl(ic)}\ \mathrm{{A}}\cdot "
-        rf"\sqrt{{{_pl(d)}^2 + {_pl(v)}^2}}"
+        rf"I_{{\mathrm{{res}}}} = \sqrt{{{_pl(i_w)}^2 + ({_pl(ic)} - {_pl(i_l)})^2}}\ \mathrm{{A}}"
+        rf"\text{{,}}\quad v = \dfrac{{{_pl(ic)} - {_pl(i_l)}}}{{{_pl(ic)}}}"
     )
 
 
 def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> str | None:
-    """`_ner_design` (krok „ner_resistance_sizing"): `data={"u_phase_v":…, "resistors":
-    [{"r_ohm":…}, …], "ic_a":…, "i_coil_a":…}` — rezystory punktu neutralnego z MODELU."""
-    u_f = _liczba(dane, "u_phase_v")
+    """`_ner_design` (krok „ner_resistance_sizing"): `data={"resistors": [{"r_ohm":…}, …],
+    "ic_a":…, "i_resistive_a":…, "i_coil_a":…}` — rezystory punktu neutralnego z MODELU,
+    składowe prądu z impedancji punktów neutralnych (solver `doziemienie_sn`)."""
     ic = _liczba(dane, "ic_a")
+    i_r = _liczba(dane, "i_resistive_a")
     i_l = _liczba(dane, "i_coil_a")
     rezystory = dane.get("resistors")
-    if u_f is None or ic is None or i_l is None or not isinstance(rezystory, list):
+    if ic is None or i_r is None or i_l is None or not isinstance(rezystory, list):
         return None
     surowe = [r.get("r_ohm") for r in rezystory if isinstance(r, Mapping)]
     opory = [float(r) for r in surowe if isinstance(r, int | float) and r > 0]
@@ -165,14 +166,14 @@ def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> str | None:
     suma = " + ".join(rf"\dfrac{{1}}{{{_pl(r)}\ \Omega}}" for r in opory)
     return (
         rf"R_N = \left({suma}\right)^{{-1}}\text{{,}}\quad "
-        rf"I_R = \dfrac{{{_pl(u_f)}\ \mathrm{{V}}}}{{R_N}}\text{{,}}\quad "
-        rf"I_{{\mathrm{{ef}}}} = \sqrt{{I_R^2 + ({_pl(ic)} - {_pl(i_l)})^2}}"
+        rf"I_{{\mathrm{{ef}}}} = \sqrt{{{_pl(i_r)}^2 + ({_pl(ic)} - {_pl(i_l)})^2}}\ \mathrm{{A}}"
     )
 
 
 def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
-    """`_ner_design` (krok „ner_thermal_withstand"): `data={"t_clear_s":…, "resistors":
-    [{"i_resistor_a":…, "r_ohm":…, "i_n_a":…, "t_n_s":…}, …]}`."""
+    """`_ner_thermal` (krok „ner_thermal_withstand"): `data={"t_clear_s":…, "resistors":
+    [{"i_thermal_a":…, "r_ohm":…, "i_n_a":…, "t_n_s":…}, …]}` — prąd cieplny zastępczy
+    I_th = I_R·√(m+n) rezystora (IEC 60909-0 §12)."""
     t = _liczba(dane, "t_clear_s")
     rezystory = dane.get("resistors")
     if t is None or not isinstance(rezystory, list) or not rezystory:
@@ -181,13 +182,43 @@ def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
     for rez in rezystory:
         if not isinstance(rez, Mapping):
             return None
-        i_k, r, i_n, t_n = (_liczba(rez, k) for k in ("i_resistor_a", "r_ohm", "i_n_a", "t_n_s"))
-        if i_k is None or r is None or i_n is None or t_n is None:
+        i_th, r, i_n, t_n = (_liczba(rez, k) for k in ("i_thermal_a", "r_ohm", "i_n_a", "t_n_s"))
+        if i_th is None or r is None or i_n is None or t_n is None:
             return None
         czlony.append(
-            rf"E = {_pl(i_k)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot {_pl(t)}\ \mathrm{{s}}"
+            rf"E = {_pl(i_th)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot {_pl(t)}\ \mathrm{{s}}"
             rf" \leq E_n = {_pl(i_n)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot "
             rf"{_pl(t_n)}\ \mathrm{{s}}"
+        )
+    return r";\quad ".join(czlony)
+
+
+def _podstawienie_ner_czas_dopuszczalny(dane: Mapping[str, Any]) -> str | None:
+    """`_ner_thermal` (krok „ner_thermal_permissible_time"): `data={"c_max":…, "u_phase_v":…,
+    "resistors": [{"z_loop_ohm": {"r_ohm":…, "x_ohm":…}, "i_resistor_a":…, "i_n_a":…,
+    "t_n_s":…, "permissible_time_s":…}, …]}`."""
+    c = _liczba(dane, "c_max")
+    u_f = _liczba(dane, "u_phase_v")
+    rezystory = dane.get("resistors")
+    if c is None or u_f is None or not isinstance(rezystory, list) or not rezystory:
+        return None
+    czlony: list[str] = []
+    for rez in rezystory:
+        if not isinstance(rez, Mapping) or not isinstance(rez.get("z_loop_ohm"), Mapping):
+            return None
+        petla = rez["z_loop_ohm"]
+        r_p, x_p = _liczba(petla, "r_ohm"), _liczba(petla, "x_ohm")
+        i_k, i_n, t_n, t_dop = (
+            _liczba(rez, k) for k in ("i_resistor_a", "i_n_a", "t_n_s", "permissible_time_s")
+        )
+        if r_p is None or x_p is None or i_k is None or i_n is None or t_n is None or t_dop is None:
+            return None
+        czlony.append(
+            rf"I_R = \dfrac{{{_pl(c)} \cdot {_pl(u_f)}\ \mathrm{{V}}}}"
+            rf"{{|{_pl(r_p)} + \mathrm{{j}}{_pl(x_p)}|\ \Omega}} = {_pl(i_k)}\ \mathrm{{A}}"
+            rf"\text{{,}}\quad I_{{\mathrm{{th}}}}^2(t_{{\mathrm{{dop}}}})\cdot t_{{\mathrm{{dop}}}}"
+            rf" = {_pl(i_n)}^2\ \mathrm{{A}}^2 \cdot {_pl(t_n)}\ \mathrm{{s}}"
+            rf" \Rightarrow t_{{\mathrm{{dop}}}} = {_pl(t_dop)}\ \mathrm{{s}}"
         )
     return r";\quad ".join(czlony)
 
@@ -336,36 +367,47 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
         r"\text{,}\quad X_L = \omega L\text{,}\quad I_L^{\,(\mathrm{rezonans})} = I_C",
         podstawienie=_podstawienie_petersen_rezonans,
     ),
-    # _petersen_design, linia 1448-1461.
+    # _petersen_design — prąd resztkowy dławika modelu (solver `doziemienie_sn`).
     "petersen_residual_current": WzorKroku(
-        r"v = \dfrac{I_L - I_C}{I_C}\text{,}\quad I_{\mathrm{res}} = I_C\sqrt{d^2+v^2}",
+        r"I_N = \sum_p \dfrac{U_f}{Z_{N,p} + Z_{0,p}/3}\text{,}\quad I_w = \mathrm{Re}\,I_N"
+        r"\text{,}\quad I_L = -\mathrm{Im}\,I_N\text{,}\quad "
+        r"I_{\mathrm{res}} = \sqrt{I_w^2 + (I_C - I_L)^2}\text{,}\quad v = \dfrac{I_C - I_L}{I_C}",
         podstawienie=_podstawienie_petersen_resztkowy,
     ),
-    # _ner_design — brak danych rezystora punktu neutralnego (albo prądu dławika Z.14).
+    # _ner_design — brak danych rezystora punktu neutralnego albo punktów uziemienia w ruchu.
     "ner_no_resistor": WzorKroku(
         r"R_N = R_{\mathrm{zespołu}}\text{,}\quad "
-        r"I_{\mathrm{ef}} = \sqrt{I_R^2 + (I_C - I_L)^2}"
+        r"I_{\mathrm{ef}} = \left|\sum_p \dfrac{U_f}{Z_{N,p} + Z_{0,p}/3} + j I_C\right|"
     ),
     # _ner_design — rezystory punktu neutralnego z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
     "ner_resistance_sizing": WzorKroku(
         r"R_N = \left(\sum_k \dfrac{1}{R_k}\right)^{-1}\text{,}\quad "
-        r"I_R = \dfrac{U_f}{R_N}\text{,}\quad "
-        r"I_{\mathrm{ef}} = \sqrt{I_R^2 + (I_C - I_L)^2}",
+        r"I_N = \sum_p \dfrac{U_f}{Z_{N,p} + Z_{0,p}/3}\text{,}\quad "
+        r"I_{\mathrm{ef}} = \sqrt{I_R^2 + (I_C - I_L)^2}\ \ (I_R = \mathrm{Re}\,I_N,\ "
+        r"I_L = -\mathrm{Im}\,I_N)",
         podstawienie=_podstawienie_ner_dobor,
     ),
-    # _ner_design — brak czasu wyłączenia (sprawdzenie cieplne niewykonane).
+    # _ner_thermal — brak czasu wyłączenia albo c_max (porównanie z t_wył niewykonane).
     "ner_thermal_incomplete": WzorKroku(
-        r"E_k = I_{R,k}^2 \cdot R_k \cdot t_{\text{wył}} "
+        r"E_k = I_{\mathrm{th},k}^2 \cdot R_k \cdot t_{\text{wył}} "
         r"\leq E_{n,k} = I_{n,k}^2 \cdot R_k \cdot t_{n,k}"
     ),
-    # _ner_design — sprawdzenie cieplne każdego rezystora w ruchu.
+    # _ner_thermal — prąd największy rezystora i dopuszczalny czas doziemienia (IEC 60909-0).
+    "ner_thermal_permissible_time": WzorKroku(
+        r"I_{R,k} = \dfrac{c_{\max} U_f}{\left|R_k + Z_{0,\mathrm{TU}}/3\right|}\text{,}\quad "
+        r"I_{\mathrm{th}}^2(t_{\mathrm{dop}}) \cdot t_{\mathrm{dop}} = I_{n,k}^2 \cdot t_{n,k}",
+        podstawienie=_podstawienie_ner_czas_dopuszczalny,
+    ),
+    # _ner_thermal — sprawdzenie cieplne każdego rezystora w ruchu.
     "ner_thermal_withstand": WzorKroku(
-        r"E_k = I_{R,k}^2 \cdot R_k \cdot t_{\text{wył}} "
+        r"I_{\mathrm{th},k} = I_{R,k}\sqrt{m+n}\text{,}\quad "
+        r"E_k = I_{\mathrm{th},k}^2 \cdot R_k \cdot t_{\text{wył}} "
         r"\leq E_{n,k} = I_{n,k}^2 \cdot R_k \cdot t_{n,k}",
         podstawienie=_podstawienie_ner_cieplo,
     ),
-    # _insulation, linia 1695-1707 (IEC 60071 — margines BIL).
+    # _insulation (IEC 60071 — przepięcie dorywcze wg trybu doziemienia i margines BIL).
     "iec60071_arrester_margin": WzorKroku(
+        r"U_{\mathrm{TOV}} = k\,\dfrac{U_m}{\sqrt{3}}\text{,}\quad "
         r"M_{\mathrm{BIL}} = \dfrac{\mathrm{BIL} - U_{\mathrm{res}}}{U_{\mathrm{res}}}\cdot 100\%"
     ),
     # _earth_fault_detection, linia 1748-1757 (tabela decyzyjna — bez jednostek fizycznych).
@@ -375,7 +417,7 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
         podstawienie=_podstawienie_detekcji_doziemnej,
         wynik_pl=_wynik_detekcji_doziemnej,
     ),
-    # _transient, linia 1823-1831 (IEC 62271-100 — napięcie powrotne).
+    # _transient — napięcie powrotne wobec obwiedni modelowej solvera (nie tabel IEC 62271-100).
     "trv_inrush_ferro": WzorKroku(
         r"u_{\mathrm{TRV}}(t) = U_r\left(1-\cos(\omega_n t)\right)e^{-t/\tau} "
         r"+ \dfrac{U_r}{\sqrt{3}}"

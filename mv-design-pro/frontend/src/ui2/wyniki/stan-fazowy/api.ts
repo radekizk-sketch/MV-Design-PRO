@@ -131,6 +131,12 @@ export interface SzynaNiesymetryczna {
   readonly faza_c: FazaSzynyNiesymetrycznej | null;
   /** VUF [%] wg składowych symetrycznych — liczy solver; `null` gdy nierozwiązana. */
   readonly voltage_unbalance_factor_pct: number | null;
+  /**
+   * Szyna nN: potencjał przewodu N względem uziemionego punktu gwiazdowego transformatora
+   * zasilającego [V] (napięcie N–PE w TN-S; liczy solver). Brak pola = szyna poza pasmem nN
+   * albo nierozwiązana — jawny brak, nie zero.
+   */
+  readonly u_n_pe_v?: number;
 }
 
 /** Przepływ jednej fazy gałęzi (1:1 `FazaGaleziV1.to_dict`). */
@@ -155,6 +161,11 @@ export interface GalazNiesymetryczna {
   readonly losses_q_mvar: number;
   /** Prąd znamionowy [A] z IR; `null` = brak danej (łącznik, transformator, linia bez katalogu). */
   readonly rated_current_a: number | null;
+  /**
+   * Gałąź nN: prąd przewodu N [A] = |I_a + I_b + I_c| (liczy solver). Brak pola = gałąź poza
+   * pasmem nN — jawny brak, nie zero.
+   */
+  readonly prad_n_a?: number;
 }
 
 /** Wyspa zasilona rozwiązana przez solver (1:1 `WyspaWynikuUnbalancedV1.to_dict`). */
@@ -179,6 +190,12 @@ export interface PodsumowanieNiesymetrii {
   readonly max_voltage_unbalance_factor_pct: number | null;
   readonly max_voltage_unbalance_bus_id: string | null;
   readonly unsolved_bus_ids: readonly string[];
+  /** Największe napięcie N–PE szyny nN [V] i jej identyfikator (pola obecne, gdy są szyny nN). */
+  readonly max_u_n_pe_v?: number;
+  readonly max_u_n_pe_bus_id?: string;
+  /** Największy prąd przewodu N gałęzi nN [A] i jej identyfikator (gdy są gałęzie nN). */
+  readonly max_prad_n_a?: number;
+  readonly max_prad_n_branch_id?: string;
 }
 
 /** Założenie biegu nazwane kodem kanonu gotowości (`enm/assembler.py::_zalozenie`). */

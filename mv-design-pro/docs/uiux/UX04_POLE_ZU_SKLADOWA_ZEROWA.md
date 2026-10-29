@@ -156,7 +156,9 @@ w ruchu (zespół albo uzwojenie SN transformatora uziemione przez R_N):
 - brak R, I_n albo t_n urządzenia → wartość robocza (pozycja typowa katalogu §16, I_n = U_f/R
   dla uzwojenia TR), wpis `dane_przyjete` ESTIMATED, `kompletnosc_dowodu = NIEPELNY`;
 - brak rezystora w modelu przy wariancie rezystorowym → odmowa nazwana `ner_no_resistor`
-  (`uziemienie_sn.sieci.rezystory`), Z.14 bez prądu dławika → `uziemienie_sn.sieci.prad_dlawikow_a`.
+  (`uziemienie_sn.sieci.rezystory`); prąd dławików Z.14 i prąd doziemienia liczy od 2026-10-29
+solver doziemienia sieci z punktów uziemienia w ruchu (`uziemienie_sn.sieci.punkty_neutralne`,
+§3.17) — brak punktów to odmowa nazwana tym polem.
 
 Sonda (15 kV, rezystor 43,3 Ω / 200 A / 10 s, kabel 2 km): I_R = 8 660,3/43,3 = 200,0 A;
 t_wył = 1 s → E = 200²·43,3·1 = 1,732 MJ ≤ E_n = 200²·43,3·10 = 17,32 MJ (zapas 10×).
@@ -361,6 +363,117 @@ kabel i źródło bez Z0): węzły SN `brak_drogi` → `brak_danych`. Sieci reje
 transformatora bez grupy (statusy wierszy wszystkich 366 wpisów identyczne przed i po tej
 części), więc złote hashe bez zmian.
 
+### 3.13 Odcinek SN bez B′0 — wartość robocza pojemności doziemnej (zasada nr 4, B-01)
+
+Katalog kabli i linii SN nie niesie pojemności doziemnej. Dawniej odcinek bez B′0 dawał
+`b0_s = 0` i `prad_pojemnosciowy_a = None` (sieć „bez I_C”), a projekt uziemienia V12.6 meldował
+`missing_fields = ["b0_siemens_per_km"]`. Teraz jedna reguła
+(`network_model/catalog/wartosci_robocze.py::wyprowadz_susceptancje_zerowa_sn`, wpięta w jedyny
+predykat `enm/skladowa_zerowa_galezi.py::skladowa_zerowa_galezi`): kabel SN B′0 = B′1 (żyły
+z ekranem nad izolacją, pole promieniowe — IEC 60502-2: C′0 = C′1), linia SN B′0 = 0,4·B′1
+(metoda odbić zwierciadlanych dla typowych słupów SN 0,34–0,45); B′0 w modelu ma pierwszeństwo;
+nN, WN, napięcie nieznane i B′1 nieznane — brak nazwany, nie zero. Dana przyjęta ESTIMATED
+w jednostce S/km, kompletność dowodu NIEPEŁNY.
+
+Sonda (`sonda_odcinek2.py`, magistrala 1,5 + 3,5 km z katalogu bez B′0, dławik albo rezystor):
+I_C `None` → 15,9161 A (√3·15 kV·0,000612611 S); projekt uziemienia V12.6 z `missing_fields`
+→ liczony (dławik: X_L = 544,1195 Ω przy I_L = I_C; rezystor: I_R = 197,3113 A, I_F = 197,4321 A
+— patrz §3.17); I″k1 sieci rezystorowej 216,9163 → 217,1240 A (bocznik pojemności w Y0:
+Z0 = 131,40 + j6,00 → 131,50 − j4,61 Ω). Testy: `tests/enm/test_b0_wartosc_robocza_odcinka.py`.
+
+### 3.14 Napięcie powrotne (TRV) i prąd załączania V12.6 bez wartości zastępczych (B-01)
+
+Dawniej `_transient` podstawiał U_r = największe U_n szyn (w modelu GPZ — 110 kV dla
+wyłącznika SN), f_n = 12 kHz, τ = 180 µs i krotność prądu załączania 8·I_n — bez podstawy
+normowej. Teraz U_r proponuje gotowość z modelu: U_m sieci SN (IEC 60038 tab. 3–5; U_r aparatu
+= U_m, IEC 62271-1), a f_n, τ i krotność prądu załączania są parametrami wymaganymi z nazwanym
+brakiem (`missing_fields`, `brak_danych`). Sonda: bieg bez parametrów — margines −1194,8609 %
+i status „niespełniony” → brak nazwany czterech pól, krzywa pusta; fixtura strażnika prezentacji
+dostaje parametry jawnie (U_r 17,5 kV zamiast 15 kV: krzywa ×17,5/15, margines bez zmian, bo
+obie strony skalują się z U_r). Testy: `tests/test_v126_trv_parametry.py`,
+`tests/application/analyses/test_v126_gotowosc.py`. Wartości robocze f_n i τ nie powstały:
+tablice znamionowych parametrów TRV IEC 62271-100 (u_c, t_3) nie są danymi programu, a wpisanie
+ich z pamięci byłoby fabrykacją — wymaga to wprowadzenia tablic normy z redakcją i jednostką
+redakcyjną (zgłoszone na liście znalezisk w §6).
+
+### 3.15 Przewód N w rozpływie niesymetrycznym nN
+
+Rozpływ niesymetryczny (`network_model/solvers/power_flow_unbalanced.py`, postać Krona) liczy
+napięcia faza–N; impedancja wzajemna Z_m = (Z0 − Z1)/3 jest w sieci nN impedancją przewodu N.
+Wynik dostał prąd przewodu N gałęzi nN I_N = I_a + I_b + I_c (`prad_n_a`) i potencjał przewodu N
+szyny nN względem PE (`u_n_pe_v`, zero w węźle bilansującym i po stronie transformatora z
+uziemionym punktem gwiazdowym), z maksimami w podsumowaniu — pola addytywne kontraktu
+`domain/result_contract_power_flow_unbalanced_v1.py` wyłącznie dla nN; ekran stanu fazowego
+pokazuje obie wielkości. Straty kabla nN liczone z prądem przewodu N (dawne założenie „straty
+z impedancji własnej” zdjęte). Sonda: odbiór jednofazowy — I_N 96,087 A, U_N–PE 7,924 V;
+odbiór dwufazowy — I_N 91,398 A, U_N–PE 7,537 V, straty kabla nN 1,768 → 1,552 kW; odbiór
+symetryczny — 0 A, 0 V. Testy: `tests/enm/test_rozplyw_niesymetryczny_przewod_n.py`.
+
+### 3.16 Obciążalność cieplna rezystora punktu neutralnego (D31, B-01)
+
+Sprawdzenie cieplne rezystora liczy prąd NAJWIĘKSZY (c_max z jedynego nośnika IEC 60909-0
+tab. 1, droga zerowa Z_0,TU/3 albo Z_T0 uzwojenia transformatora), prąd cieplny zastępczy
+I_th = I_R·√(m + n) (IEC 60909-0 §12) i znamionowanie czasowe I_n, t_n (IEEE Std C57.32):
+E_k = I_th²·R·t_wył ≤ E_n, czas dopuszczalny t_dop z I_th(t)²·t = I_n²·t_n. Sonda (R = 43,3 Ω,
+200 A / 10 s, t_wył 1 s): I_R 200,0 A (U_f/R) → 217,2686 A (c_max = 1,1, Z_0,TU), I_th
+217,5461 A, E_k 1,7321 → 2,0492 MJ ≤ E_n 17,32 MJ, t_dop 8,471 s. Brak t_wył — ocena cieplna
+„dane niekompletne” z polem `ner_clearing_time_s`, liczby I i t_dop bez zmian. Testy:
+`tests/enm/test_v126_ner_cieplo_zu.py`.
+
+### 3.17 Sposób pracy punktu neutralnego a zwarcie 1F
+
+Warunek odbioru właściciela (2026-10-29): sposoby pracy punktu neutralnego sieci SN nie
+przechodzą przez jeden model Z1+Z2+Z0. Tryb wynika z jedynej tabeli
+`network_model/core/uziemienie.py::TRYB_DOZIEMIENIA_TYPU` (isolated → izolowany,
+petersen_coil → kompensowany, resistor_grounded → rezystor, directly_grounded → bezpośredni),
+prąd i napięcia liczy solver `network_model/solvers/doziemienie_sn.py::oblicz_doziemienie`
+(warstwa solverów, poza listą rdzeni FROZEN), a wiersz zwarcia 1F, wiersz odpowiedzi, raport,
+konfigurator stacji, projekt uziemienia V12.6 i koordynacja izolacji V12.6 czytają ten sam
+wynik (`enm/doziemienie_sieci.py::doziemienie_wiersza`, `enm/uziemienie_sekcji.py`).
+
+| Tryb | Model | Wzór | Norma / podstawa | Wynik sondy (15 kV, kabel 2 km, B′0 = 2π·50·390 nF/km) |
+|---|---|---|---|---|
+| izolowany | admitancja sieci, impedancje podłużne pominięte | I_C = 3ωC_0U_f = √3·U_n·B_0; U0 = U_f; U_b = U_c = √3·U_f | IEC 60909-0:2016 rozdz. 1 (poza zakresem); podwójne doziemienie — IEC 60909-3, odmowa nazwana | I_C = 6,3664 A; U0 = 8 660,25 V; U_b = U_c = 15 000 V; k = 1,7321; wiersz IEC: przyczyna „poza zakresem IEC 60909” (dawniej „brak drogi”) |
+| kompensowany | admitancja sieci + punkt neutralny I_N = Σ U_f/(Z_N + Z_0/3) | I_res = √(I_w² + (I_C − I_L)²); v = (I_C − I_L)/I_C (v > 0 — niedokompensowanie) | IEC 60909-0 rozdz. 1 (poza zakresem); ENEA Zeszyt 1 §16, Z.13 | dławik 100 A: I_L = 97,7396 A, I_w = 0,5516 A (R_0,TU), I_res = 91,3748 A, v = −14,3523; AWSC załączony: I_w = 29,1633 A, I_res = 95,7912 A (dawniej I″k1 = 104,59 A z modelu impedancyjnego — przyczyna „poza zakresem IEC 60909”) |
+| rezystor | admitancja sieci + punkt neutralny (R_N z Z_0,TU albo Z_T0 w szeregu); napięcia z impedancji składowych punktu | I_F = \|I_N + jI_C\|, przy czystym R_N: I_F = √(I_R² + I_C²), I_R = U_f/R_N; Z.14 — dławik ‖ rezystor w jednym Z_N | ENEA Zeszyt 1 §16, Z.14/Z.15; napięcia — składowe symetryczne, k (IEC 60071-1) | Z.15: I_w = 197,3113 A, I_L = 9,0096 A (X_0,TU), I_F = 197,3290 A, k = 1,7425; Z.14: I_L = 104,0443 A, I_w = 189,2451 A, I_F = 212,9664 A; uzwojenie TR (Z_T0): I_F = 199,9865 A; V12.6 I_F 200,1072 → 197,3290 A (Z_0,TU i znak I_C − I_L) |
+| bezpośredni | rdzeń IEC 60909 (Z1 + Z2 + Z0 punktu) | I″k1 = 3cU_f/\|Z1 + Z2 + Z0\|; V_b = E·[(a² − a)Z2 + (a² − 1)Z0]/(Z1+Z2+Z0) | IEC 60909-0:2016 | I″k1 = 3 456,1058 A (bez zmian); U0 = 6 486,76 V; U_b = 11 984,96 V, U_c = 12 578,23 V; k = 1,4524 |
+
+Impedancja przejścia Z_f (opcja `fault_impedance` biegu) wchodzi w trybach izolowanym,
+kompensowanym i rezystorowym jako I_F = |U_f·Y/(1 + Z_f·Y)|, Y = (I_N + jI_C)/U_f. Wynik nie
+deklaruje zgodności: niesie tryb, charakter prądu, wzór, podstawę, zastrzeżenia (straty
+dławika poza modelem, impedancje podłużne pominięte, droga YNyn, zerowa pojemność modelu),
+dane przyjęte i kompletność dowodu. Konfigurator stacji pokazuje doziemienie stanu normalnego
+modelu (oba stany AWSC); bez punktu zwarcia napięcia trybu rezystorowego pochodzą z admitancji
+sieci (U0 = U_f, zastrzeżenie jawne), wiersz zwarcia — z impedancji składowych punktu.
+
+Koordynacja izolacji V12.6 (`v126_academic.py::_wiersz_izolacji`, wersja solvera
+`v126-academic-whitebox-1.3`) dostała tryb zamiast kategorii „isolated/earthed” (sieć
+z rezystorem była utożsamiana z siecią uziemioną bezpośrednio): U_TOV = k·U_m/√3 z k solvera
+doziemienia (albo wartości roboczej trybu: √3 dla trzech trybów nieskutecznie uziemionych, 1,4
+dla bezpośredniego); doziemienie długotrwałe (izolowany, kompensowany): U_c ≥ U_TOV;
+wyłączane (rezystor, bezpośredni): U_c ≥ U_m/√3 i TOV(10 s) ≥ U_TOV (czas ≤ 10 s — założenie
+jawne; dobór wstępny bez karty przy doziemieniu wyłączanym: U_c = max(U_m/√3, U_TOV/1,4), żeby
+wytrzymałość TOV doboru wstępnego nie przeczyła kryterium). BIL z jednej tabeli IEC 60071-1 tab. 2 (do 123 kV; powyżej — brak podstawy nazwany),
+dobór wstępny bez karty ze skrajnych stosunków katalogu ograniczników (U_res/U_c = 4,0
+największy, TOV/U_c = 1,4 najmniejszy, U_r/U_c = 1,2 największy — test przypina je do katalogu),
+uzasadnienie każdego kryterium w wierszu (`uzasadnienie_pl`). Sonda (U_m = 17,5 kV):
+
+| Tryb / ogranicznik | U_TOV przed → po [kV] | U_c wymagane [kV] | Margines BIL przed → po [%] | Status przed → po |
+|---|---|---|---|---|
+| izolowany, karta POLIM-D 17,5 | 24,500 (1,4·U_m) → 17,500 | 17,500 | 69,64 → 69,64 | niespełniony → niespełniony (U_c 15,3 < 17,5) |
+| kompensowany, karta | 24,500 → 17,500 | 17,500 | 69,64 → 69,64 | niespełniony → niespełniony |
+| rezystor, karta | 20,125 (1,15·U_m) → 17,500 | 10,104 | 69,64 → 69,64 | niespełniony → spełniony (TOV 21,6 ≥ 17,5) |
+| bezpośredni, karta | 20,125 → 14,145 | 10,104 | 69,64 → 69,64 | niespełniony → spełniony |
+| izolowany / kompensowany, bez karty | 24,500 → 17,500 | 17,500 | 84,65 → 35,71 (U_res 51,45 → 70,0) | niespełniony → spełniony |
+| rezystor, bez karty | 20,125 → 17,500 | 10,104 (dobór wstępny U_c = U_TOV/1,4 = 12,5) | 219,82 → 90,00 (U_res 29,70 → 50,0) | niespełniony → spełniony |
+| bezpośredni, bez karty | 20,125 → 14,145 | 10,104 | 219,82 → 135,06 (U_res 29,70 → 40,41) | niespełniony → spełniony |
+
+Dawne „przed” liczyło TOV jako wielokrotność napięcia MIĘDZYFAZOWEGO U_m (1,4·U_m), a
+wytrzymałość TOV ogranicznika z karty brało jako 1,25·U_c niezależnie od karty; „po” liczy
+U_TOV fazowo i porównuje z wytrzymałością TOV 10 s z karty katalogowej. Detekcja doziemień
+V12.6: wyposażenie przekaźnika bez danych — komplet metod jako dana przyjęta ESTIMATED,
+nastawy startowe z podstawą (praktyka, bez wartości normowej).
+
 ## 4. Iloczyn testów
 
 wariant {izolowany, dławik, dławik + AWSC spoczynek, dławik + AWSC załączony, rezystor,
@@ -412,6 +525,49 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
   brak} × stos aparatów pola ZU z kreatora GPZ {kompletny tor, bez wyłącznika, z aparatem
   transformatora, przekładnik przed wyłącznikiem, uziemnik w osi toru, bez aparatów}.
 
+Odcinek 2 karty (B′0, TRV, przewód N, D31, sposób pracy punktu neutralnego):
+
+- `tests/enm/test_b0_wartosc_robocza_odcinka.py` — pasmo {SN kabel, SN linia, nN, WN, napięcie
+  nieznane} × B′1 {znane, brak} × B′0 modelu {podane, brak} (`test_regula_b0_iloczyn_pasmo_b1_b0`)
+  × konsument {I_C sieci, rozstrojenie, projekt uziemienia V12.6, Y0 zwarcia 1F, dane przyjęte,
+  rozpływ niesymetryczny bez danych przyjętych B′0, sieć IT nN czytająca wyłącznie B′0 modelu}
+  × liczba odcinków {1, 2}; stosunek linii w zakresie metody odbić; determinizm;
+- `tests/test_v126_trv_parametry.py` — parametr {U_r, f_n, τ, krotność prądu załączania} ×
+  stan {brak, zero, ujemny, logiczny} → brak nazwany bez liczby; komplet → krzywa i udar; margines
+  niezależny od U_r; determinizm; `tests/application/analyses/test_v126_gotowosc.py` —
+  propozycja U_r = U_m sieci SN z modelu;
+- `tests/enm/test_rozplyw_niesymetryczny_przewod_n.py` — odbiory {jednofazowy, dwufazowy,
+  symetryczny} z wyrocznią I_N = I_a + I_b + I_c i U_N–PE = Σ Z_N·I_N po drodze; punkt
+  gwiazdowy szyny pośredniej {uziemiony, nieuziemiony} × odbiór {symetryczny, faza A}; grupa
+  połączeń transformatora {Dyn11, YNd11, YNyn0, Yyn0, Yd11, Dd0} → szyny odniesienia
+  przewodu N; sieć bez nN bez pól przewodu N; determinizm;
+- `tests/enm/test_v126_ner_cieplo_zu.py` — droga zerowa {Z_0,TU zespołu, Z_T0 uzwojenia TR} ×
+  czas wyłączenia {brak, 0,5 s, 3 s} × liczba rezystorów {1, 2 równolegle} × c_max {z nośnika,
+  brak — odmowa nazwana}; wyrocznia ręczna I_th(t)²·t; ślad WHITE BOX; determinizm;
+- `tests/enm/test_doziemienie_tryby_punktu_neutralnego.py` (66 testów) — wyrocznie solvera
+  czterech trybów z jawnych wzorów (I_C = 3ωC_0U_f, I_res = √(I_w² + (I_C − I_L)²) przy udziale
+  I_L/I_C {0,9; 1,0; 1,1} × Z_0,TU {brak, podane}, AWSC załączony, I_F = |I_N + jI_C| ×
+  Z_0,TU {brak, podane}, Z.14 dwie gałęzie łącznie, napięcia faz zdrowych z impedancji
+  składowych, Z_f, droga YNyn, brak B′0 i brak impedancji punktu — braki nazwane) oraz iloczyn
+  `test_iloczyn_tryb_uklad_odcinki_zu_konsumenci`: tryb {izolowany, dławik, dławik + AWSC,
+  rezystor, Z.14, uzwojenie TR, bezpośredni} × układ {1 sekcja, 2 ze sprzęgłem zamkniętym,
+  2 z otwartym — ZU w sekcji 1, sekcja 2 bez ZU} × odcinki {kabel, linia napowietrzna, mieszane}
+  × konsument {wiersz zwarcia 1F, wiersz odpowiedzi, przyczyna braku wyniku zerowego,
+  kompletność dowodu, linie raportu, konfigurator stacji}; Z_f opcji biegu
+  (`test_impedancja_przejscia_biegu_trafia_do_doziemienia`, tryb × {izolowany, dławik,
+  rezystor});
+- `tests/test_v126_izolacja_tryby_punktu_neutralnego.py` — tryb × k {z solvera doziemienia,
+  roboczy trybu} × ogranicznik {karta katalogowa, dobór wstępny} × konsument {wiersz,
+  dane przyjęte, kompletność dowodu, uzasadnienie każdego kryterium}; stosunki doboru
+  wstępnego przypięte do katalogu; `tests/test_v126_bil_parytet.py` — U_m {wiersz tabeli,
+  między wierszami, powyżej tabeli} × źródło {katalog API, wiersz solvera};
+  `tests/test_v126_uziemienie_z_modelu.py::test_detekcja_doziemien_dane_przyjete_przekaznika`
+  — tryb × wyposażenie przekaźnika {podane, brak};
+- front: `ui2/wyniki/akademickie/__tests__/model.test.ts` (dane przyjęte z fixtury solvera),
+  `EkranAnalizAkademickich.test.tsx` (panel danych przyjętych z fixtury, kolumna uzasadnienia,
+  werdykt rozstrojenia z fixtury), `ui2/wyniki/stan-fazowy/__tests__/ekranStanuFazowego.test.tsx`
+  (przewód N), `StationEarthingPanel.test.tsx` (doziemienie trybu w konfiguratorze stacji).
+
 ## 5. Iniekcje (test czerwony bez naprawy)
 
 | Iniekcja | Wynik |
@@ -449,6 +605,24 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | Transformator bez grupy: składowa uziemiona innym bocznikiem liczona (dawne pierwszeństwo) | 12 czerwonych (zestaw 259: plik transformatora, plik odcinka, `test_skladowa_zerowa_zu.py`) |
 | Transformator bez grupy pominięty w przyczynach (stan sprzed zmiany) | 18 czerwonych |
 | Rola `ZU` bez profilu referencyjnego (`profile_id_for_bay` → `None`, stan po dopisaniu roli do listy modelu) | 19 testów czerwonych: `test_profile_mapping_covers_all_bay_roles` oraz 18 z 21 testów `test_profil_pola_zespolu_uziemiajacego.py` (pole ZU z aparatami bez żadnej kontroli = cicha zgodność) |
+| B′0: wyprowadzenie wartości roboczej wyłączone (`skladowa_zerowa_galezi` → `pochodne = ()`) | 7 czerwonych z 167 (iloczyn reguły B′0 i konsumenci pojemności) |
+| Przewód N: straty gałęzi z impedancji własnej (bez Z_m·I_N) | 2 czerwone (`test_straty_galezi_z_realnym_i0_z_pelnej_macierzy_fazowej`, fazy A-B i A-B-C niesymetryczne) |
+| Przewód N: potencjał N nie zerowany w uziemionym punkcie gwiazdowym (solver) | 1 czerwony (`test_solver_potencjal_n_zerowany_w_uziemionym_punkcie_gwiazdowym[faza-A-uziemiona]`) |
+| Przewód N: assembler bez punktów uziemienia N (`neutral_earthed_bus_ids=()`) | 3 czerwone (`test_assembler_punkty_odniesienia_przewodu_n_z_modelu_polaczen`) |
+| D31: prąd rezystora U_f/R zamiast c_max·U_f/\|R + Z_0/3\| | 18 czerwonych z 157 |
+| D31: Z_0,TU pominięte w pętli rezystora | 13 czerwonych z 157 |
+| Zmiana przyczyny sieci izolowanej `brak_drogi` → `poza_zakresem_iec60909` (sama naprawa, bez iniekcji) | wykryta przez dwa testy spoza nowych plików, przepisane do kanonu z zachowaniem intencji (zero liczby, przyczyna nazwana): `test_short_circuit_migracja_e3_golden.py::test_golden_sc1f_bez_skladowej_zerowej_jest_jawna_odmowa`, `test_siec_zerowa_transformator_bez_grupy.py` (szyna SN stacji SN/nN bez zespołu, 4 przypadki) |
+| Tryby: sieć izolowana przez model impedancyjny (`TRYB_DOZIEMIENIA_TYPU["isolated"]` → `bezposrednie`) | 37 czerwonych z 280: 18 przypadków iloczynu trybu, Z_f biegu, 11 przypadków iloczynu sekcji × ZU × łącznika, sonda Ik1 wariantu, kotwica, wiersz odpowiedzi z przyczyną, 3 testy detekcji doziemień V12.6 |
+| Tryby: rezystor bez I_C (`i_metal = I_N` w trybie rezystorowym) | 26 czerwonych z 280: wyrocznie rezystora i Z.14, Z_f, 9 przypadków iloczynu, 6 testów V12.6 rezystora z modelu, 5 testów doboru NER |
+| Tryby: I_L odjęte bez I_w (część czynna I_N zdjęta w trybie kompensowanym) | 17 czerwonych z 280: wyrocznie I_res × udział I_L/I_C, AWSC załączony, Z_f, 9 przypadków iloczynu, test AWSC i Z_0,TU projektu dławika V12.6 |
+| Tryby: Z_0,TU / Z_T0 pominięte (`I_N = Σ U_f/Z_N`) | 35 czerwonych z 280: 18 przypadków iloczynu, wyrocznie trzech trybów, Z_f, 6 testów V12.6 rezystora z modelu, 2 testy V12.6 z impedancją transformatora uziemiającego |
+
+Iniekcje trybów w testach (monkeypatch w `test_doziemienie_tryby_punktu_neutralnego.py`,
+`test_v126_izolacja_tryby_punktu_neutralnego.py::test_iniekcja_k_rezystora_jak_bezposrednie`)
+przypinają te same cztery defekty na stałe: test przechodzi wtedy, gdy wyrocznia pod iniekcją
+się rozjeżdża, a `test_bez_iniekcji_wyrocznie_zgodne` pilnuje, że bez iniekcji jest zgodna.
+Iniekcje źródłowe z tabeli zmieniały plik źródłowy; po każdej plik przywrócono i porównano
+bajtowo z kopią.
 
 ## 6. Inwentarz klasy (ścieżki opisu punktu neutralnego SN i ich czytelnicy)
 
@@ -477,6 +651,12 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | (12) zakres sieci prądu pojemnościowego (gałęzie i baterie) | `v126_academic.py::_projekt_uziemienia_sieci`, ocena ferrorezonansu TRV, `v126_gotowosc.py::_warunki_punktu_neutralnego`, `enm/uziemienie_sekcji.py::_b0_sieci` (walidator rozstrojenia, I_C) | każda galwanicznie połączona sieć SN osobno (`V126UziemienieSnInput.sieci`: `galezie_sieci`, `baterie_sieci` z `galezie_sieci_sn`/`baterie_sieci_sn`); B_0 baterii w jedynej prawdzie; ferrorezonans bierze największą Σb·ℓ spośród sieci (najgorszy przypadek, nie sumę); §3.9 |
 | (13) profil referencyjny pola ZU | `reference_engine/registry.py::profile_id_for_bay`, pakiet `iec62271` (backend i kopia frontu `ui/sld/reference/iec62271.pack.json`), `docs/sld/REFERENCE_ENGINE_SPEC_V1.md` §4–§5 | rola `ZU` dostała profil `earthing_unit` (ENEA Zeszyt 1 Zał. 13–15: DS → CB → CT → głowica mostu; transformator uziemiający w polu zakazany — jest zespołem modelu); dotąd pole ZU z aparatami nie podlegało żadnej kontroli. Przy okazji tabela profili specyfikacji dostała brakujący wiersz `capacitor_bank` karty BKR. Lustro frontu `referenceProfileIdForFieldRole`: `EARTHING_UNIT` → `earthing_unit` (wiersz 14) |
 | (15) rola ZU w kreatorze pola SN i rodzaj pola katalogowego | `ui2/kreatory/pole/polaSnModel.ts` (`ROLE_KOLEJNOSC`, `bayKindZRoli`), `network_model/catalog/switchgear/complete_mv_bay_template.py` (`BayKind`, opis rodzaju), `catalog/bay_templates.py::FIELD_TYPES_WITHOUT_TEMPLATE`, `reference_engine/compliance.py::_BAY_ROLE_TO_FAMILY_BAY_KIND`, front `ui/catalog/BayTemplatePicker.tsx`, `ui2/kreatory/stacja/konfiguratorRozdzielnicy.ts::ROLA_Z_FUNKCJI_POLA` | kreator pola SN nie oferował roli ZU (test „każda rola z jednej listy ról modelu” czerwony na drzewie scalonym), a `bayKindZRoli` dawałby dla ZU rodzaj liniowy odpływowy (szablony pól liniowych producentów). Teraz rodzaj pola katalogowego `zespol_uziemiajacy` (rola kanonu `ZESPOL_UZIEMIAJACY`), jawnie bez szablonu w katalogu (rejestr braków, fikstura katalogu konfiguracji pól zregenerowana generatorem `gen_field_configurations_catalog.py`), bez roli operacji stacyjnej SN/nN; kreator oferuje ZU, zespół dodaje kreator zespołu uziemiającego na zacisku pola |
+| (18) sposób pracy punktu neutralnego — jedna tabela trybu | `network_model/core/uziemienie.py:130` (`TRYB_DOZIEMIENIA_TYPU`), `:144` (`tryb_doziemienia_typu`), `:141` (`TRYBY_IEC60909`); czytelnicy: `enm/mapping.py:566` (bocznik uzwojenia), `:1222`, `:1273–1295` (przyczyna `poza_zakresem_iec60909`), `enm/uziemienie_sekcji.py:382`, `:534` (tryb sekcji i punktu) | tryb zamiast kategorii izolowany/uziemiony; izolowany i kompensowany nie dostają liczby z modelu Z1+Z2+Z0 (przyczyna „poza zakresem IEC 60909” zamiast „brak drogi”) |
+| (19) solver doziemienia SN | `network_model/solvers/doziemienie_sn.py:282` (`oblicz_doziemienie`), `:234` (`prad_punktow_neutralnych_a`), `:248` (napięcia z impedancji składowych), `:266` (napięcia z admitancji sieci) | nowy solver warstwy solverów (poza listą FROZEN): I_C, I_res, I_F, Z.14, Z_f, U0 i napięcia faz zdrowych, ślad WHITE BOX, zastrzeżenia, dane przyjęte |
+| (20) konsumenci wyniku doziemienia | `enm/doziemienie_sieci.py:35` (`doziemienie_wiersza`) ← `enm/canonical_analysis.py:2857` (wiersz 1F i wiersz odpowiedzi); `api/analysis_run_exports.py:815` (`_linie_doziemienia`, raport); `enm/uziemienie_sekcji.py:538`, `:591` (`dane_doziemienia`, `doziemienie` — konfigurator stacji, front `StationConfigurator.tsx`); `solver_input/v126_contracts.py:607` (`_doziemienie_szyny_izolacji`), `:665` (`wiersze_izolacji_projektanta`); `network_model/solvers/v126_academic.py:2016` (projekt uziemienia), `:2038` (`_petersen_design`), `:2209` (`_ner_design`) | wszystkie czytają jeden wynik `oblicz_doziemienie`; prąd dławików Z.14 z punktów neutralnych modelu (`punkty_neutralne`), nie z parametru `prad_dlawikow_a` (skasowany) |
+| (21) koordynacja izolacji V12.6 | `network_model/solvers/v126_academic.py:359` (`K_ROBOCZY_TRYBU`), `:412` (`_wiersz_izolacji`), `:567` (`_uzasadnienie_izolacji`), `:2520` (`_insulation`); front `ui2/wyniki/akademickie/prezentacja.ts` (kolumna uzasadnienia) | U_TOV = k·U_m/√3 z k trybu; kryteria wg czasu doziemienia; uzasadnienie każdego kryterium; wersja solvera 1.3 |
+| (22) kontrakty wejściowe V12.6 | `solver_input/v126_contracts.py:40` (`_WejscieV126`, `extra="forbid"`) | parametr spoza kontraktu (np. dawny `prad_dlawikow_a`) to błąd walidacji, nie cicho zignorowane pole; `V126RunRequest` bez zmian (koperta żądania) |
+| (23) odcinek bez B′0, TRV, przewód N, D31 | `network_model/catalog/wartosci_robocze.py:1343`, `enm/skladowa_zerowa_galezi.py:206` (B′0); `application/analyses/v126_gotowosc.py:291` (propozycja U_r), `v126_academic.py:2678` (`_transient`); `network_model/solvers/power_flow_unbalanced.py:178`, `:463`, `enm/assembler.py:2308`, `domain/result_contract_power_flow_unbalanced_v1.py:63`, `:120` (przewód N); `v126_academic.py:2488`, `solver_input/v126_contracts.py:340`, `:504` (D31) | §3.13–§3.16 |
 | (14) rola pola ZU w adapterach SLD | `ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts::mapBayRoleToFieldRole` (GPZ), `enmToSldAdapter.ts::fieldRoleFromBayRole`/`fieldRoleFromCatalogRole`/`stationFieldDesignation` (stacje), `canonicalGpzModel.ts::BayFieldRole`, `domain/apparatusContracts.ts::FIELD_ROLE`, `v3/compose/gpz.ts` i `directions.ts` (numeracja rysunkowa, opis roli), `ui/shared/rodzajStacji.ts` i `enm/rodzaj_stacji.py` (kategoria) | pole ZU spadało w adapterze GPZ w `default: LINE_OUT` (pole liniowe odpływowe — kandydat na pole magistrali sieci i numer pola liniowego), a w adapterze stacji w `?? LINE_BRANCH` (pole odgałęźne); po scaleniu z kartą BKR przełącznik GPZ jest wyczerpujący, więc rola ZU bez gałęzi była błędem kompilacji. Teraz rola stosu `EARTHING_UNIT`: nie jest polem kablowym (`czyPoleKabloweGpz` fałsz), oznaczniki aparatów jak pole baterii (Q0/Q1/Q8/T1), numeracja rysunkowa `FZ1…` (licznik odrębny), oznaczenie stacji „ZU”, opis roli „pole zespołu uziemiającego”, kategoria rodzaju stacji „inne”. Glifu zespołu na końcu toru pola nie dodano — punkt neutralny rysuje glif sekcji (wiersz 7); wygląd pola ZU na schemacie podlega werdyktowi B-02 (rozstrzygnięcie 9) |
 
 Znaleziska uboczne naprawione w tej karcie: kreator GPZ wymuszał uziemienie źródła SN
@@ -515,18 +695,46 @@ wobec E_n w wielkościach głównych, bez żetonu statusu; zakładki przeglądar
 przestrzeni zespołu nie powstały — te katalogi przegląda kreator zespołu uziemiającego
 i przeglądarka katalogu budowy sieci, tak jak ograniczniki i baterie kondensatorów.
 
+Znaleziska uboczne naprawione w odcinku 2 karty: ślad dławika V12.6 podstawiał `0.0` za brak
+składowej czynnej AWSC (`awsc.i_w_a or 0.0`) — jawne `None`; dwa wpisy zapadki podstawień
+koordynacji izolacji zdjęte (pin strażnika podstawień: pola kontraktów 4444 → 4484, pliki
+603 → 605, zapadka 47/220 → 47/218 — pomiar różnicy zbiorów na `0344668a0`); opis domyślnej
+wartości solvera w katalogu analiz V12.6 mówił U_res = 3,9·U_c (solver 4,0) i niósł kod
+`ESTIMATED` w zdaniu dla człowieka — poprawiony, fixtura katalogu zregenerowana generatorem;
+trzy nowe błędy typów (`v126_wzory._podstawienie_ner_czas_dopuszczalny`,
+`analysis_run_exports._linie_doziemienia`) — zapadka mypy z powrotem 167/21; fixtura testu
+panelu uziemienia stacji typowana (`as const` łamał bramkę typów testów); wyjątek strażnika
+matematyki ASCII przesunięty z linią (`v126_katalog.py:453` → `:458`); dwa wpisy MIGRACJA
+strażnika werdyktu wyjaśnialnego przeniesione z ładunkiem do nowych funkcji (`_wiersz_izolacji`,
+`_ner_thermal`) bez zmiany klasy — wiersz izolacji niesie `uzasadnienie_pl` każdego kryterium,
+pełna migracja ocen V12.6 do `OcenaKryterium` pozostaje pozycją planu §8 kontraktu werdyktu
+(203 wpisy MIGRACJA, właściciel migracji poza tą kartą); dwa testy przyczyny sieci izolowanej
+przepisane do kanonu (§5).
+
 Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
 
-- Katalog kabli (63 pozycje) i linii (26) nie niesie pojemności zerowej (b0/C0). Bez niej
-  I_C, rozstrojenie i projekt uziemienia V12.6 są liczalne wyłącznie, gdy projektant wpisze
-  B0 odcinka. Propozycja: wartość robocza C0 = C1 dla kabli z żyłami ekranowanymi
-  indywidualnie (pole promieniowe, IEC 60502-2), relacja inżynierska dla linii, wyprowadzana
-  przy materializacji z częstotliwością przypadku (karta W3-F: częstotliwość nie jest
-  własnością katalogu). Zmienia materializację wszystkich odcinków i złote wyniki 1F/2FG —
-  to osobna decyzja architekta (B-01 materializacji), nie zakres składowej zerowej ZU.
-- V12.6 TRV: `breaker_rated_voltage_kv` przyjmuje domyślnie najwyższe napięcie szyny modelu
-  (ta sama klasa co dawne U_l projektu uziemienia), ale poza zakresem B-01 tej karty
-  („zmiany tylko w zakresie składowej zerowej i Z_N").
+- Pojemność zerowa odcinka (dawniej zgłoszona jako brak katalogu) — naprawione w §3.13
+  wartością roboczą B′0 z B′1; katalog bez zmian (B′0 z modelu ma pierwszeństwo).
+- V12.6 TRV: U_r dawniej z najwyższego napięcia szyny modelu — naprawione w §3.14 (U_m sieci
+  SN). Zostają bez wartości roboczej f_n, τ i krotność prądu załączania: znamionowe parametry
+  TRV IEC 62271-100 (u_c, t_3, współczynnik amplitudy) nie są danymi programu, a wpisanie ich
+  z pamięci byłoby fabrykacją. Brak jest nazwany (`missing_fields`), krzywa nie powstaje;
+  zamknięcie wymaga wprowadzenia tablic normy z wydaniem i jednostką redakcyjną (decyzja
+  architekta o źródle tablic). Obwiednia TRV `_transient` (wzór jednoczęstotliwościowy) nie ma
+  w kodzie podstawy normowej — zgłoszone razem z tablicami.
+- Hosting capacity V12.6: ziarno Monte Carlo jest odciskiem CAŁEGO modelu wejściowego
+  (mechanizm karty HOSTING-RNG-IZOLACJA, jawny w śladzie `seed_model`), więc zmiana pola bez
+  związku z hosting (tu: wiersz izolacji w fixturze `generuj_odpowiedzi_v126.py`) zmienia
+  wynik fixtury 7,7 → 7,0 MW przy n = 64 losowań. Determinizm (to samo wejście → ten sam wynik)
+  jest zachowany; rozrzut to skutek małego n fixtury (domyślnie n = 1000). Zawężenie ziarna do
+  pól wpływających na hosting zmienia wszystkie wyniki hosting — decyzja architekta (B-01).
+- Glif ZU na końcu toru pola SLD — wstrzymany (werdykt wizualny B-02).
+- Model dwóch sekcji przy otwartym sprzęgle: sekcja 2 bez zespołu nie ma pojemności własnych
+  odcinków w teście iloczynu (odcinki są w sekcji 1), więc jej wiersz to brak nazwany zerowej
+  pojemności, nie liczba — zachowanie poprawne, odnotowane jako granica iloczynu.
+- `ground_fault_bridge` (most doziemienia V12.6) nie ma konsumenta w ścieżce użytkownika;
+  kryterium dostrojenia ±10 % i wartości domyślne niezawodności V12.6 są praktyką bez
+  przywołanej normy — zgłoszone, bez zmian w tej karcie.
 - Rozpływ niesymetryczny: odbiór faza–N w sieci SN za YNd11 dostaje odmowę „brak drogi I0"
   także przy zespole uziemiającym, bo solver BFS (FROZEN) nie ma boczników. Sieci SN
   nie zasilają odbiorów faza–N (odbiory SN to transformatory SN/nN i odbiory trójfazowe),

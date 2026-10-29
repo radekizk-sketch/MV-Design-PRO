@@ -20,11 +20,13 @@ Niezależność od Z₀ przy obciążeniu symetrycznym (I_a+I_b+I_c ≡ 0 ⇒ sp
 
 from __future__ import annotations
 
+import cmath
 import math
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
     CanonicalRun,
@@ -153,8 +155,8 @@ def test_siec_symetryczna_prady_zgodne_z_nr() -> None:
 
 
 def test_siec_symetryczna_straty_zgodne_z_nr_gdy_z0_rowne_z1() -> None:
-    """Straty: solver FROZEN liczy |I|²·Z_s (impedancja własna) — bez wyrazu wzajemnego.
-    Przy Z0 = Z1 (Z_m = 0) Z_s = Z1 i straty są tożsame z NR (pomiar: 0,1 % × 5)."""
+    """Straty z pełnej macierzy impedancji fazowych (I^H·Z·I). Przy Z0 = Z1 (Z_m = 0)
+    Z_s = Z1 i straty są tożsame z NR (pomiar: 0,1 % × 5)."""
     enm = siec_symetryczna(r0=0.253, x0=0.1)
     nr = _bieg(enm, "PF")
     bfs = _bieg(enm, ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY)
@@ -162,9 +164,6 @@ def test_siec_symetryczna_straty_zgodne_z_nr_gdy_z0_rowne_z1() -> None:
     straty_bfs = bfs.raw_result["result_v1"]["summary"]["total_losses_p_mw"]
     assert straty_bfs > 0.0
     assert math.isclose(straty_bfs, straty_nr, rel_tol=5e-3), (straty_bfs, straty_nr)
-    # Z_m = 0 dla wszystkich gałęzi → założenie strat z impedancji własnej NIE jest emitowane.
-    kody = [z["kod"] for z in bfs.raw_result["zalozenia"]]
-    assert "power_flow.unbalanced_losses_self_impedance" not in kody
 
 
 def test_siec_symetryczna_straty_zgodne_z_nr_takze_przy_z0_rozne_od_z1() -> None:
@@ -178,43 +177,77 @@ def test_siec_symetryczna_straty_zgodne_z_nr_takze_przy_z0_rozne_od_z1() -> None
     straty_nr = nr.raw_result["result_v1"]["summary"]["total_losses_p_mw"]
     straty_bfs = bfs.raw_result["result_v1"]["summary"]["total_losses_p_mw"]
     assert math.isclose(straty_bfs, straty_nr, rel_tol=5e-3), (straty_bfs, straty_nr)
-    kody = [z["kod"] for z in bfs.raw_result["zalozenia"]]
-    assert "power_flow.unbalanced_losses_self_impedance" not in kody
 
 
-def test_straty_galezi_z_realnym_i0_licza_sie_z_impedancji_wlasnej_i_sa_nazwane() -> None:
-    """Ograniczenie solvera FROZEN (B-01, znalezisko W5-D): straty gałęzi z realnym I0
-    = Σ|I_φ|²·R_s (impedancja własna, bez wyrazu wzajemnego), R_s = (R0 + 2·R1)/3.
-    Odbiór faza–N wprost na SN: kabel niesie realny I0 → Z_s ze składowych; pin
-    formuły z prądów i R_s ze śladu + założenie `losses_self_impedance` z listą gałęzi."""
-    enm = siec_symetryczna(r0=0.759, x0=0.3)
+def _odbiory_jednofazowe(enm: EnergyNetworkModel, moce: dict[str, tuple[float, float]]) -> Any:
     dane = enm.model_dump(mode="json")
     dane["loads"] = [
         {
-            "ref_id": "ld_sn",
-            "name": "Odbior SN 1-f",
+            "ref_id": f"ld_{faza}",
+            "name": f"Odbior SN faza {faza}",
             "bus_ref": "b_sn",
-            "p_mw": 0.3,
-            "q_mvar": 0.1,
-            "phases": "A",
+            "p_mw": p,
+            "q_mvar": q,
+            "phases": faza,
         }
+        for faza, (p, q) in sorted(moce.items())
     ]
-    bfs = _bieg(EnergyNetworkModel.model_validate(dane), ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY)
-    kabel = next(
-        r for r in bfs.raw_result["result_v1"]["branch_results"] if r["element_id"] == "cab1"
-    )
+    return _bieg(EnergyNetworkModel.model_validate(dane), ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY)
+
+
+@pytest.mark.parametrize(
+    "moce",
+    [
+        {"A": (0.3, 0.1)},
+        {"A": (0.3, 0.1), "B": (0.15, 0.05)},
+        {"A": (0.3, 0.1), "B": (0.15, 0.05), "C": (0.05, 0.0)},
+    ],
+    ids=["faza-A", "fazy-A-B", "fazy-A-B-C-niesymetryczne"],
+)
+def test_straty_galezi_z_realnym_i0_z_pelnej_macierzy_fazowej(
+    moce: dict[str, tuple[float, float]],
+) -> None:
+    """Straty gałęzi z realnym I0 = Re Σ_p (Z_s·I_p + Z_m·Σ_{q≠p} I_q)·I_p* (macierz Krona
+    gałęzi, Z_s = (Z0 + 2·Z1)/3, Z_m = (Z0 − Z1)/3 — strata w przewodzie powrotnym razem z
+    fazami). Wyrocznia ręczna z napięć faz szyny odbioru (kontrakt: u_kv, angle_deg) i mocy
+    odbiorów: I_p = (S_p/U_p)*. Iloczyn: liczba obciążonych faz {1, 2, 3 nierówne}. Przy jednej
+    fazie wynik równa się dawnemu Σ|I|²·R_s (Z_m mnoży zerowe prądy), przy dwóch i trzech —
+    nie (dawne uproszczenie zawyżało straty o −2·R_m·Re(I_a·I_b*)…)."""
+    bfs = _odbiory_jednofazowe(siec_symetryczna(r0=0.759, x0=0.3), moce)
+    # Dawne założenie „straty z impedancji własnej" nie istnieje (uproszczenie usunięte).
+    assert "power_flow.unbalanced_losses_self_impedance" not in {
+        z["kod"] for z in bfs.raw_result["zalozenia"]
+    }
+    wynik = bfs.raw_result["result_v1"]
+    kabel = next(r for r in wynik["branch_results"] if r["element_id"] == "cab1")
+    szyna = next(r for r in wynik["bus_results"] if r["element_id"] == "b_sn")
     krok = next(k for k in bfs.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
-    r_s = krok["result"]["z_self_ohm"]["re"]
-    assert math.isclose(r_s, (0.759 + 2.0 * 0.253) * 2.0 / 3.0, rel_tol=1e-12)
-    suma_i2 = sum(kabel[f]["i_a"] ** 2 for f in ("faza_a", "faza_b", "faza_c"))
-    # Straty [MW] = Σ|I|²·R_s [W] / 1e6; prądy w kontrakcie zaokrąglone do 3 miejsc.
-    assert math.isclose(kabel["losses_p_mw"], suma_i2 * r_s / 1e6, rel_tol=2e-3)
-    zalozenie = next(
-        z
-        for z in bfs.raw_result["zalozenia"]
-        if z["kod"] == "power_flow.unbalanced_losses_self_impedance"
+    z_s = complex(krok["result"]["z_self_ohm"]["re"], krok["result"]["z_self_ohm"]["im"])
+    z_m = complex(krok["result"]["z_mutual_ohm"]["re"], krok["result"]["z_mutual_ohm"]["im"])
+    assert z_s == pytest.approx(complex(0.759 + 2 * 0.253, 0.3 + 2 * 0.1) * 2.0 / 3.0)
+    assert z_m == pytest.approx(complex(0.759 - 0.253, 0.3 - 0.1) * 2.0 / 3.0)
+    prady: dict[str, complex] = {}
+    for faza in "ABC":
+        napiecie = szyna[f"faza_{faza.lower()}"]
+        u = cmath.rect(napiecie["u_kv"] * 1e3, math.radians(napiecie["angle_deg"]))
+        p, q = moce.get(faza, (0.0, 0.0))
+        prady[faza] = (complex(p, q) * 1e6 / u).conjugate()
+    straty_w = sum(
+        (
+            (z_s * prady[f] + z_m * sum(prady[g] for g in "ABC" if g != f)) * prady[f].conjugate()
+        ).real
+        for f in "ABC"
     )
-    assert zalozenie["elementy"] == ["cab1"]
+    assert math.isclose(kabel["losses_p_mw"], straty_w / 1e6, rel_tol=2e-3), (
+        kabel["losses_p_mw"],
+        straty_w / 1e6,
+    )
+    samowlasne_w = sum(abs(i) ** 2 for i in prady.values()) * z_s.real
+    if len(moce) == 1:
+        assert math.isclose(straty_w, samowlasne_w, rel_tol=1e-9)
+    else:
+        # Dawna formuła |I|²·R_s różni się od pełnej macierzy o więcej niż tolerancja pinu.
+        assert not math.isclose(kabel["losses_p_mw"], samowlasne_w / 1e6, rel_tol=2e-2)
 
 
 def test_obciazenie_symetryczne_napiecia_nie_zaleza_od_z0() -> None:

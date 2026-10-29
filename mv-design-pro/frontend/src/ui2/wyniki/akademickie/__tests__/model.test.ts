@@ -23,6 +23,7 @@ import { at } from '../../../../test/arrayAt';
 import {
   ETYKIETY_METRYK_RAPORTU,
   POLITYKI_EKSPORTU_RAPORTU,
+  danePrzyjeteWyniku,
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
   liczbaKrokowSladuRaportu,
@@ -215,5 +216,52 @@ describe('słowniki raportu V12.6 — parytet z budowniczym raportu backendu', (
   it('polityka eksportu raportu = POLITYKI_EKSPORTU_RAPORTU', () => {
     const polityki = new Set([...ZRODLO.matchAll(/"export_policy": "([a-z_]+)"/g)].map((m) => m[1]));
     expect([...polityki].sort()).toEqual(Object.keys(POLITYKI_EKSPORTU_RAPORTU).sort());
+  });
+});
+
+/**
+ * Dane przyjęte wyniku (zasada nr 4) — zbierane z dowolnej głębokości ładunku (wiersze
+ * `arresters[]`, `sieci[]`, poziom wyniku), bez powtórzeń. Iloczyn: głębokość {wynik, wiersz
+ * tablicy, zagnieżdżenie} × wartość {liczba z jednostką, brak} × powtórzenie {tak, nie};
+ * ładunki z REALNEJ odpowiedzi solvera (fixtura generatora backendu).
+ */
+describe('danePrzyjeteWyniku — dane przyjęte z odpowiedzi solvera', () => {
+  const ODPOWIEDZI = JSON.parse(
+    readFileSync(
+      join(process.cwd(), 'src', 'ui2', 'wyniki', 'akademickie', '__tests__', 'odpowiedziSolvera.json'),
+      'utf-8',
+    ),
+  ) as Record<string, unknown>;
+
+  it('koordynacja izolacji: dobór wstępny ogranicznika z wierszy `arresters[]` z jednostką', () => {
+    const dane = danePrzyjeteWyniku(ODPOWIEDZI.insulation_coordination);
+    expect(dane.map((d) => d.nazwa)).toEqual([
+      'Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)',
+      'Napięcie znamionowe ogranicznika U_r (dobór wstępny)',
+      'Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)',
+    ]);
+    expect(dane[0]!.wartosc).toBe('17.5 kV');
+    dane.forEach((d) => expect(d.powod.length).toBeGreaterThan(0));
+  });
+
+  it('detekcja doziemień: dana przyjęta bez wartości liczbowej (komplet metod przekaźnika)', () => {
+    const dane = danePrzyjeteWyniku(ODPOWIEDZI.earth_fault_detection);
+    expect(dane).toEqual([
+      expect.objectContaining({ nazwa: 'Metody detekcji dostępne w przekaźniku', wartosc: null }),
+    ]);
+  });
+
+  it('powtórzenia (ta sama nazwa i wartość w dwóch wierszach) zliczane raz; inna wartość osobno', () => {
+    const dana = (w: number) => ({
+      nazwa_pl: 'B′0 wartość robocza',
+      wartosc: { wartosc: w, jednostka: 'S/km' },
+      powod_pl: 'reguła',
+    });
+    const ladunek = {
+      dane_przyjete: [dana(1)],
+      sieci: [{ dane_przyjete: [dana(1)] }, { gleboko: { dane_przyjete: [dana(2)] } }],
+    };
+    expect(danePrzyjeteWyniku(ladunek).map((d) => d.wartosc)).toEqual(['1 S/km', '2 S/km']);
+    expect(danePrzyjeteWyniku({ wynik: 1 })).toEqual([]);
   });
 });

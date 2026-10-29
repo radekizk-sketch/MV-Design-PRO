@@ -110,22 +110,27 @@ def _rownolegle(a: complex, b: complex) -> complex:
     return a * b / (a + b)
 
 
-#: Z_N wariantu w obwodzie zerowym (bez mnożnika 3) — wyrocznia ręczna; ``None`` = brak
-#: drogi przez mały bocznik (sieć izolowana albo skompensowana).
+#: Z_N wariantu (gałęzie punktu neutralnego w ruchu, bez mnożnika 3) — wyrocznia ręczna;
+#: ``None`` = punkt neutralny bez gałęzi (sieć izolowana).
 Z_N_WARIANTU: dict[str, complex | None] = {
     "izolowany": None,
-    "dlawik": None,
-    "dlawik_awsc_spoczynek": None,
+    "dlawik": complex(0.0, X_L),
+    "dlawik_awsc_spoczynek": complex(0.0, X_L),
     "dlawik_awsc_zalaczony": _rownolegle(complex(R_AWSC, 0.0), complex(0.0, X_L)),
     "rezystor": complex(R_N, 0.0),
     "dlawik_rezystor": _rownolegle(complex(R_N, 0.0), complex(0.0, X_L)),
     "bezposrednie": complex(0.0, 0.0),
 }
-#: Przyczyna braku wyniku zerowego wariantów bez małej impedancji (§0 pkt 7).
+#: Przyczyna braku wyniku IEC 60909 wariantów, w których prąd doziemny NIE jest prądem
+#: zwarciowym (IEC 60909-0:2016 rozdz. 1: sieć izolowana i skompensowana — także dławik
+#: z AWSC w OBU stanach automatyki, Z.13; warunek odbioru właściciela 2026-10-29). Dawniej
+#: AWSC załączony liczono jak sieć uziemioną przez impedancję (I″k1 = 111,2 A), a sieć
+#: izolowaną meldowano jako „brak drogi” — oba obrazy przechodziły przez model Z1+Z2+Z0.
 PRZYCZYNA_WARIANTU: dict[str, str] = {
-    "izolowany": "brak_drogi",
+    "izolowany": "poza_zakresem_iec60909",
     "dlawik": "poza_zakresem_iec60909",
     "dlawik_awsc_spoczynek": "poza_zakresem_iec60909",
+    "dlawik_awsc_zalaczony": "poza_zakresem_iec60909",
 }
 
 
@@ -392,10 +397,11 @@ def test_sonda_ik1_wariantu_z_wyroczni_recznej(wariant: str, stan_awsc: str) -> 
         _sprawdz_liczony(wiersz, _z_t_ohm(migawka) + 3.0 * R_N)
         return
     klucz = _klucz_wariantu(wariant, stan_awsc)
-    z_n = Z_N_WARIANTU[klucz]
-    if z_n is None:
+    if klucz in PRZYCZYNA_WARIANTU:
         _sprawdz_odmowe(wiersz, PRZYCZYNA_WARIANTU[klucz])
         return
+    z_n = Z_N_WARIANTU[klucz]
+    assert z_n is not None
     _sprawdz_liczony(wiersz, Z0_TU + 3.0 * z_n)
 
 
@@ -410,8 +416,6 @@ def test_sonda_wartosci_bezwzgledne_z_podstawa() -> None:
         "rezystor": 216.9,
         # Z_N = R_N‖jX_L = 34,64+j17,32 Ω → Z0 = 105,42+j57,96 Ω → |2Z1+Z0| = 121,42 Ω
         "dlawik_rezystor": 235.4,
-        # Z_N = R_W‖jX_L = 23,84+j79,45 Ω → Z0 = 73,01+j244,36 Ω → |2Z1+Z0| = 257,1 Ω
-        "dlawik_awsc_zalaczony": 111.2,
         # Z0 = Z_0,TU = 1,5+j6,0 Ω → |2Z1+Z0| = 8,26 Ω
         "bezposrednie": 3_460.0,
     }
@@ -474,26 +478,29 @@ def test_kombinacja_sprzeczna_to_odmowa_nazwana_nie_liczba() -> None:
 Z0_ZU = Z0_TU + 3.0 * R_N
 
 #: (sekcje, sprzęgło, ZU, łącznik ZU sekcji 1) → oczekiwanie na szynie S1 i S2: liczba
-#: (Z0) albo przyczyna braku wyniku zerowego.
+#: (Z0) albo przyczyna braku wyniku zerowego. Sieć SN bez zespołu w ruchu jest siecią
+#: IZOLOWANĄ: prąd doziemny to prąd pojemnościowy, nie prąd zwarciowy IEC 60909 (warunek
+#: odbioru 2026-10-29) — dawniej „brak drogi” odcinał ją jak węzeł bez drogi zerowej.
+IZOL = "poza_zakresem_iec60909"
 UKLADY: dict[tuple[int, str, str, str], tuple[Any, Any]] = {
     (1, "-", "obie", "zamkniety"): (Z0_ZU / 2.0, None),
     (1, "-", "obie", "otwarty"): (Z0_ZU, None),
     (1, "-", "jedna", "zamkniety"): (Z0_ZU, None),
-    (1, "-", "jedna", "otwarty"): ("brak_drogi", None),
-    (1, "-", "zadna", "zamkniety"): ("brak_drogi", None),
-    (1, "-", "zadna", "otwarty"): ("brak_drogi", None),
+    (1, "-", "jedna", "otwarty"): (IZOL, None),
+    (1, "-", "zadna", "zamkniety"): (IZOL, None),
+    (1, "-", "zadna", "otwarty"): (IZOL, None),
     (2, "zamkniete", "obie", "zamkniety"): (Z0_ZU / 2.0, Z0_ZU / 2.0),
     (2, "zamkniete", "obie", "otwarty"): (Z0_ZU, Z0_ZU),
     (2, "zamkniete", "jedna", "zamkniety"): (Z0_ZU, Z0_ZU),
-    (2, "zamkniete", "jedna", "otwarty"): ("brak_drogi", "brak_drogi"),
-    (2, "zamkniete", "zadna", "zamkniety"): ("brak_drogi", "brak_drogi"),
-    (2, "zamkniete", "zadna", "otwarty"): ("brak_drogi", "brak_drogi"),
+    (2, "zamkniete", "jedna", "otwarty"): (IZOL, IZOL),
+    (2, "zamkniete", "zadna", "zamkniety"): (IZOL, IZOL),
+    (2, "zamkniete", "zadna", "otwarty"): (IZOL, IZOL),
     (2, "otwarte", "obie", "zamkniety"): (Z0_ZU, Z0_ZU),
-    (2, "otwarte", "obie", "otwarty"): ("brak_drogi", Z0_ZU),
-    (2, "otwarte", "jedna", "zamkniety"): (Z0_ZU, "brak_drogi"),
-    (2, "otwarte", "jedna", "otwarty"): ("brak_drogi", "brak_drogi"),
-    (2, "otwarte", "zadna", "zamkniety"): ("brak_drogi", "brak_drogi"),
-    (2, "otwarte", "zadna", "otwarty"): ("brak_drogi", "brak_drogi"),
+    (2, "otwarte", "obie", "otwarty"): (IZOL, Z0_ZU),
+    (2, "otwarte", "jedna", "zamkniety"): (Z0_ZU, IZOL),
+    (2, "otwarte", "jedna", "otwarty"): (IZOL, IZOL),
+    (2, "otwarte", "zadna", "zamkniety"): (IZOL, IZOL),
+    (2, "otwarte", "zadna", "otwarty"): (IZOL, IZOL),
 }
 
 
@@ -683,7 +690,7 @@ def _wiersz_odpowiedzi(wynik: Any, szyna: str) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("wariant", "napiecie_szyny", "przyczyna"),
     [
-        ("izolowany", UN_KV, "brak_drogi"),
+        ("izolowany", UN_KV, "poza_zakresem_iec60909"),
         ("dlawik", UN_KV, "poza_zakresem_iec60909"),
         ("rezystor", 110.0, "brak_danych"),
         ("rezystor", UN_KV, None),
@@ -766,8 +773,10 @@ def test_galaz_bez_z0_odcina_wezel_brak_danych(r1_ohm_per_km: float) -> None:
 
 def test_kotwica_1e6_nie_udaje_uziemienia(monkeypatch: pytest.MonkeyPatch) -> None:
     """§0 pkt 7: węzeł odcięty grupą połączeń (Yd11, sekcja 2 bez zespołu, sprzęgło
-    otwarte) — wiersz bez liczby z przyczyną ``brak_drogi``; Z0 węzła liczonego (sekcja 1)
-    nie zależy od wartości kotwicy (blok rozprzężony)."""
+    otwarte) — wiersz bez liczby; sieć SN sekcji 2 jest izolowana, więc przyczyna to
+    ``poza_zakresem_iec60909`` (prąd doziemny pojemnościowy — warunek odbioru 2026-10-29),
+    a kotwica numeryczna zostaje; Z0 węzła liczonego (sekcja 1) nie zależy od wartości
+    kotwicy (blok rozprzężony)."""
     migawka, przypadek = _uklad(2, "otwarte", "jedna", "zamkniety")
     enm = EnergyNetworkModel.model_validate(
         apply_scenario(EnergyNetworkModel.model_validate(migawka), przypadek).snapshot
@@ -775,7 +784,7 @@ def test_kotwica_1e6_nie_udaje_uziemienia(monkeypatch: pytest.MonkeyPatch) -> No
     graf = map_enm_to_network_graph(enm)
     siec = mapowanie.zbuduj_siec_zerowa(enm, graf)
     s1, s2 = (_ref_to_uuid(s) for s in _szyny(migawka))
-    assert siec.przyczyny[s2].przyczyna == "brak_drogi"
+    assert siec.przyczyny[s2].przyczyna == "poza_zakresem_iec60909"
     assert s1 not in siec.przyczyny
     indeks = mapowanie.AdmittanceMatrixBuilder(graf)
     indeks.build(siec_zwarciowa=True)
@@ -851,7 +860,9 @@ def _kroki_zespolow(wynik: Any) -> list[dict[str, Any]]:
 KABEL_SN = "cable-tfk-yakxs-3x120"
 #: B′0 kabla wpisany przez projektanta w odcinku (``zero_sequence``): kabel SN o polu
 #: promieniowym — pojemność doziemna żyły = pojemność robocza C′ = 390 nF/km pozycji katalogu.
-#: Katalog linii i kabli SN nie niesie B′0 (żadna pozycja — patrz dokument karty §6).
+#: Katalog linii i kabli SN nie niesie B′0 (żadna pozycja — dokument karty §6); bez wpisu
+#: projektanta B′0 przyjmuje reguła wartości roboczej (kabel SN B′0 = B′1 — test
+#: ``test_b0_wartosc_robocza_odcinka.py``), tu dana projektanta — bez danej przyjętej B′0.
 B0_KABLA_S_PER_KM = 2.0 * math.pi * 50.0 * 390e-9
 
 
@@ -943,24 +954,73 @@ def test_v126_rezystor_z_modelu_z_danymi_przyjetymi(wariant: str, t_wyl_s: float
     # Nastawa dławika projektanta (MODEL): zakres dławika nie kształtuje prądu — bez wpisu.
     assert not any(n.startswith("Prąd minimalny zakresu") for n in nazwy)
     assert not any(n.startswith("Prąd maksymalny zakresu") for n in nazwy)
-    assert uziemienie.prad_dlawikow_a == (I_NASTAWY_A if wariant == "dlawik_rezystor" else None)
+    # Punkt uziemienia w ruchu do prądu doziemienia (ten sam solver co wiersz zwarcia 1F):
+    # zespół — Z_N gałęzi w ruchu i Z_0,TU; uzwojenie TR — R_N i Z_T0 transformatora.
+    z_n_oczekiwane = (
+        _rownolegle(complex(R_N, 0.0), complex(0.0, X_L))
+        if wariant == "dlawik_rezystor"
+        else complex(R_N, 0.0)
+    )
+    z0_oczekiwane = _z_t_ohm(_siec(wariant)) if wariant == "uzwojenie_tr" else Z0_TU
+    (punkt,) = uziemienie.punkty_neutralne
+    assert complex(punkt.z_n_r_ohm, punkt.z_n_x_ohm) == pytest.approx(z_n_oczekiwane, rel=1e-9)
+    assert complex(punkt.z0_r_ohm, punkt.z0_x_ohm) == pytest.approx(z0_oczekiwane, rel=1e-9)
+    assert uziemienie.punkty_neutralne_awsc == []
+    assert uziemienie.dlawik_w_ruchu is (wariant == "dlawik_rezystor")
 
     wynik = V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, wejscie)["result"]
     assert wynik["neutral_earthing_type"] == "resistor_grounded"
     assert wynik["kompletnosc_dowodu"] == "NIEPELNY"
     assert wynik["resistor_ohm"] == pytest.approx(R_N, abs=1e-4)
-    i_r = U_F_V / R_N
+    # Wyrocznia jawna (warunek odbioru 2026-10-29): I_N = U_f/(Z_N + Z_0/3), I_ef = |I_N + j·I_C|
+    # — impedancja zerowa transformatora uziemiającego (albo Z_T0 uzwojenia) wchodzi do R_N/X_N,
+    # w Z.14 obie gałęzie łącznie (dawniej I_R = U_f/R_N i nastawa dławika bez Z_0).
     i_c = wynik["capacitive_earth_fault_current_a"]
-    i_l = I_NASTAWY_A if wariant == "dlawik_rezystor" else 0.0
+    i_n = U_F_V / (z_n_oczekiwane + z0_oczekiwane / 3.0)
+    assert wynik["resistive_component_a"] == pytest.approx(i_n.real, abs=1e-3)
     assert wynik["resultant_earth_fault_current_a"] == pytest.approx(
-        math.hypot(i_r, i_c - i_l), abs=1e-3
+        abs(i_n + complex(0.0, i_c)), abs=1e-3
     )
+    if wariant == "dlawik_rezystor":
+        assert wynik["coil_current_a"] == pytest.approx(-i_n.imag, abs=1e-3)
+    # Sprawdzenie cieplne: prąd NAJWIĘKSZY (c_max, droga Z_0/3 + R_N) i I_th z m + n
+    # (IEC 60909-0 §12) — wyrocznia ręczna ``wyrocznia_cieplna_rezystora``; dla uzwojenia TR
+    # droga zerowa to Z_T0 transformatora (dawniej pomijana — prąd zawyżony).
+    z0_tu = z0_oczekiwane
+    cieplo = wynik["thermal_check"]
+    oczekiwane = wyrocznia_cieplna_rezystora(R_N, z0_tu, t_wyl_s)
+    assert cieplo["i_resistor_a"] == pytest.approx(oczekiwane["i_k"], rel=1e-6)
     if t_wyl_s is None:
-        assert wynik["thermal_check"]["missing_fields"] == ["ner_clearing_time_s"]
+        assert cieplo["missing_fields"] == ["ner_clearing_time_s"]
+        assert "energy_dissipated_j" not in cieplo
     else:
-        assert wynik["thermal_check"]["energy_dissipated_j"] == pytest.approx(
-            i_r**2 * R_N * t_wyl_s, rel=1e-6
-        )
+        assert cieplo["i_thermal_a"] == pytest.approx(oczekiwane["i_th"], rel=1e-6)
+        assert cieplo["energy_dissipated_j"] == pytest.approx(oczekiwane["e_k"], rel=1e-6)
+
+
+def wyrocznia_cieplna_rezystora(
+    r_ohm: float,
+    z0_tu: complex | None,
+    t_wyl_s: float | None,
+    *,
+    c: float = C_MAX,
+    u_f_v: float = U_F_V,
+) -> dict[str, float]:
+    """Wyrocznia ręczna sprawdzenia cieplnego rezystora punktu neutralnego (niezależna od
+    solvera): I_R = c·U_f/|R + Z_0,TU/3|; κ = 1,02 + 0,98·e^(−3R/X) (IEC 60909-0 wz. 55);
+    m = (e^(4·f·T·ln(κ−1)) − 1)/(2·f·T·ln(κ−1)) (wz. 102), n = 1; I_th = I_R·√(m + n);
+    E = I_th²·R·t."""
+    z = complex(r_ohm, 0.0) + (z0_tu / 3.0 if z0_tu is not None else 0.0)
+    i_k = c * u_f_v / abs(z)
+    wynik = {"i_k": i_k}
+    if t_wyl_s is None:
+        return wynik
+    kappa = 1.02 + 0.98 * math.exp(-3.0 * z.real / z.imag) if z.imag > 0 else 1.02
+    ln = math.log(kappa - 1.0)
+    m = (math.exp(4.0 * 50.0 * t_wyl_s * ln) - 1.0) / (2.0 * 50.0 * t_wyl_s * ln)
+    i_th = i_k * math.sqrt(m + 1.0)
+    wynik.update({"i_th": i_th, "e_k": i_th**2 * r_ohm * t_wyl_s, "m": m, "kappa": kappa})
+    return wynik
 
 
 # ---------------------------------------------------------------------------
@@ -1051,13 +1111,17 @@ def test_prad_awsc_roboczy_tylko_gdy_awsc_zalaczony(stan_awsc: str) -> None:
     nazwy_biegu = {d["nazwa_pl"] for d in zalozenie["dane_przyjete"]}
     nazwa_awsc = _I_AWSC + " (Zespół uziemiający sekcji 1)"
     wiersz = _wiersz(wynik, _szyny(migawka)[0])
+    # Sieć skompensowana w OBU stanach AWSC (Z.13): bez wyniku IEC 60909; prąd resztkowy
+    # w ``doziemienie_sieci`` — wartość robocza I_W wchodzi do niego tylko po załączeniu.
+    assert wiersz["ikss_a"] is None
+    nazwy_doziemienia = {d["nazwa_pl"] for d in wiersz["doziemienie_sieci"]["dane_przyjete"]}
     if stan_awsc == "spoczynek":
         assert nazwa_awsc not in nazwy_biegu
-        assert wiersz["ikss_a"] is None and _nazwy_danych(wiersz) == set()
+        assert nazwa_awsc not in nazwy_doziemienia
     else:
         assert nazwa_awsc in nazwy_biegu
-        assert wiersz["ikss_a"] is not None
-        assert nazwa_awsc in _nazwy_danych(wiersz)
+        assert nazwa_awsc in nazwy_doziemienia
+        assert wiersz["doziemienie_sieci"]["kompletnosc_dowodu"] == "NIEPELNY"
 
 
 def test_nastawa_dlawika_robocza_w_danych_bocznika() -> None:

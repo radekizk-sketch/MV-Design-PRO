@@ -54,6 +54,13 @@ class BusResultUnbalancedV1:
     voltage_unbalance_factor_pct: float | None
     #: ``ref_id`` źródła sieciowego wyspy, która zasila szynę (``None`` = nierozwiązana).
     zrodlo_ref: str | None
+    #: Szyna nN: potencjał przewodu N (PEN) względem punktu gwiazdowego uziemionego
+    #: transformatora zasilającego [V] — napięcie N–PE w układzie TN-S przy przewodzie PE bez
+    #: prądu; solver: V_N,do = V_N,od + Z_m·(I_a + I_b + I_c) (Z_m = Z_N). Przewód N uziemiony
+    #: wyłącznie w punkcie gwiazdowym (bez uziemień powtórnych PEN — wartość górna). ``None`` —
+    #: szyna poza pasmem nN albo nierozwiązana; w ``to_dict`` wyłącznie, gdy jest liczbą
+    #: (pole addytywne).
+    u_n_pe_v: float | None = None
 
     @property
     def solved(self) -> bool:
@@ -71,6 +78,7 @@ class BusResultUnbalancedV1:
             "faza_c": None if self.faza_c is None else self.faza_c.to_dict(),
             "voltage_unbalance_factor_pct": _r(self.voltage_unbalance_factor_pct, 4),
             "zrodlo_ref": self.zrodlo_ref,
+            **({} if self.u_n_pe_v is None else {"u_n_pe_v": round(self.u_n_pe_v, 3)}),
         }
 
 
@@ -106,6 +114,10 @@ class BranchResultUnbalancedV1:
     #: Prąd znamionowy gałęzi [A] z IR; ``None`` = brak danej (łącznik, transformator,
     #: linia bez katalogu) — jawny brak, nie liczba.
     rated_current_a: float | None
+    #: Linia albo kabel nN: prąd przewodu N (PEN) I_N = |I_a + I_b + I_c| [A] (3·I_0 — prąd
+    #: powrotny odbiorów faza–N). ``None`` — gałąź poza pasmem nN, łącznik albo transformator
+    #: (nie mają przewodu N); w ``to_dict`` wyłącznie, gdy jest liczbą (pole addytywne).
+    prad_n_a: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,6 +133,7 @@ class BranchResultUnbalancedV1:
             "losses_p_mw": round(self.losses_p_mw, 6),
             "losses_q_mvar": round(self.losses_q_mvar, 6),
             "rated_current_a": _r(self.rated_current_a, 3),
+            **({} if self.prad_n_a is None else {"prad_n_a": round(self.prad_n_a, 3)}),
         }
 
 
@@ -167,6 +180,22 @@ class ResultSetPowerFlowUnbalancedV1:
     schema_version: str = SCHEMA_VERSION_POWER_FLOW_UNBALANCED_V1
     zalozenia: tuple[dict[str, Any], ...] = field(default=())
 
+    def _podsumowanie_przewodu_n(self) -> dict[str, Any]:
+        """Największy potencjał przewodu N szyny nN i największy prąd przewodu N gałęzi nN
+        (pola addytywne — wyłącznie, gdy wynik ma szyny albo gałęzie nN)."""
+        wynik: dict[str, Any] = {}
+        szyny = [(b.u_n_pe_v, b.bus_id) for b in self.bus_results if b.u_n_pe_v is not None]
+        if szyny:
+            u_max, bus_max = max(szyny)
+            wynik["max_u_n_pe_v"] = round(u_max, 3)
+            wynik["max_u_n_pe_bus_id"] = bus_max
+        galezie = [(g.prad_n_a, g.branch_id) for g in self.branch_results if g.prad_n_a is not None]
+        if galezie:
+            i_max, branch_max = max(galezie)
+            wynik["max_prad_n_a"] = round(i_max, 3)
+            wynik["max_prad_n_branch_id"] = branch_max
+        return wynik
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
@@ -187,6 +216,7 @@ class ResultSetPowerFlowUnbalancedV1:
                 "max_voltage_unbalance_factor_pct": _r(self.max_voltage_unbalance_factor_pct, 4),
                 "max_voltage_unbalance_bus_id": self.max_voltage_unbalance_bus_id,
                 "unsolved_bus_ids": list(self.unsolved_bus_ids),
+                **self._podsumowanie_przewodu_n(),
             },
             "zalozenia": [dict(z) for z in self.zalozenia],
         }

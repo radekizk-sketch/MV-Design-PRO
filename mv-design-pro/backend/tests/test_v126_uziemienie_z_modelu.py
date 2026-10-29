@@ -40,6 +40,14 @@ KATEGORIA_DETEKCJI = {
 #: Parametry biegu, którymi dawne domyślne dało się „ustawić” sieć — nie mają skutku.
 PROBA_NADPISANIA = {"neutral_grounding": "solid", "neutral_earthing_type": "resistor"}
 
+#: Parametry obwodu napięcia powrotnego wyłącznika (dane projektanta — `test_v126_trv_parametry`).
+TRV_OBWOD = {
+    "breaker_rated_voltage_kv": 17.5,
+    "trv_natural_frequency_hz": 12000.0,
+    "trv_tau_s": 0.00018,
+    "inrush_multiple_in": 8.0,
+}
+
 
 def _siec(uziemienie: V126UziemienieSnInput | None, parametry: dict | None = None):
     return V126AcademicInput(
@@ -127,7 +135,10 @@ def test_brak_uziemienia_to_odmowa_nazwana_bez_domyslnej(rodzaj, uziemienie, fra
 
 @pytest.mark.parametrize(("uziemienie", "fragment"), BRAKI)
 def test_ferrorezonans_bez_uziemienia_nieoceniony_nie_brak_przeslanek(uziemienie, fragment):
-    wynik = _bieg(V126AnalysisType.TRANSIENT_TRV, _siec(uziemienie, PROBA_NADPISANIA))["result"]
+    # Parametry obwodu napięcia powrotnego podane (bez wartości zastępczych solvera — karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek TRV), żeby pokazać, że TRV nie zależy od uziemienia.
+    parametry = {**PROBA_NADPISANIA, **TRV_OBWOD}
+    wynik = _bieg(V126AnalysisType.TRANSIENT_TRV, _siec(uziemienie, parametry))["result"]
     ferro = wynik["ferroresonance"]
     assert ferro["risk"] is None
     assert "nieustalony" in ferro["recommendation"]
@@ -149,3 +160,33 @@ def test_ferrorezonans_z_wariantu_modelu(wariant: str, ryzyko: bool) -> None:
         )["result"]
         assert wynik["ferroresonance"]["risk"] is ryzyko
         assert "brak_danych" not in wynik["ferroresonance"]
+
+
+@pytest.mark.parametrize("wariant", ["izolowany", "dlawik", "rezystor", "bezposrednie"])
+@pytest.mark.parametrize(
+    "metody", [None, ["wattmetric"]], ids=["bez-danych-przekaznika", "metody-projektanta"]
+)
+def test_detekcja_doziemien_dane_przyjete_przekaznika(wariant: str, metody: list | None):
+    """Zasada nr 4: brak wyposażenia przekaźnika nie blokuje doboru metody — komplet metod
+    przyjęty jawnie (ESTIMATED, kompletność NIEPEŁNY); metody projektanta — bez danej przyjętej.
+    Nastawy startowe niosą podstawę (praktyka, bez wartości normowej)."""
+    parametry = {} if metody is None else {"relay_methods": metody}
+    wynik = _bieg(
+        V126AnalysisType.EARTH_FAULT_DETECTION, _siec(_uziemienie(wariant, False), parametry)
+    )["result"]
+    assert "bez wartości normowej" in wynik["settings_podstawa_pl"]
+    if metody is None:
+        (dana,) = wynik["dane_przyjete"]
+        assert dana["jakosc"] == "ESTIMATED"
+        assert dana["nazwa_pl"] == "Metody detekcji dostępne w przekaźniku"
+        assert wynik["kompletnosc_dowodu"] == "NIEPELNY"
+        assert wynik["relay_support_status"] == "spelniony"
+    else:
+        assert wynik["dane_przyjete"] == []
+        assert wynik["kompletnosc_dowodu"] == "PELNY"
+        oczekiwany = (
+            "spelniony"
+            if wynik["recommended_method"] in metody or wariant in ("rezystor", "bezposrednie")
+            else "brak_w_przekazniku"
+        )
+        assert wynik["relay_support_status"] == oczekiwany

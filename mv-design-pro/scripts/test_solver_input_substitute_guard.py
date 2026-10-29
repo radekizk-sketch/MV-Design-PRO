@@ -2073,7 +2073,25 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i `SkladowaZerowaOdcinka.brak_podstawy_pl` (nazwana odmowa, gdy wartosci nie da sie
     # przyjac) — jedno zrodlo skladowej zerowej odcinka `enm/skladowa_zerowa_galezi.py`.
     # PASS niezmieniony (zapadka 220, zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4444." in wyjscie, wyjscie
+    # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (B'0, TRV, przewod N, D31, sposob pracy
+    # punktu neutralnego, 2026-10-29): 4444 -> 4484 — POMIAR `contract_fields()` na `0344668a0`
+    # (`git archive`: 4444, pin zgodny) i na drzewie karty (4484). Roznica zbiorow +43, -3.
+    # +43: wejscie i wynik solvera doziemienia SN (`DaneDoziemienia`/`WynikDoziemienia`/
+    # `PunktNeutralnyDoziemienia`: `charakter`, `dlawik_w_ruchu`, `droga_szeregowa`, `i_c_a`,
+    # `i_l_a`, `i_w_a`, `rozstrojenie`, `u_f_v`, `u_faza_b_v`, `u_faza_c_v`, `wspolczynnik_k`,
+    # `z_n_ohm`, `zastrzezenia_pl`, `brak_pl`, `brak_b0_pl`, `ikss_iec_a`, `z0_uzwojenia_ohm`,
+    # `z_n_uzwojenia_ohm`, `zn_hv_ohm`, `zn_lv_ohm`, `z_t0_pu`, `sekcje_wezlow`,
+    # `sekcje_sn_wezlow`), punkty neutralne V12.6 (`punkty_neutralne`, `punkty_neutralne_awsc`,
+    # `z_n_r_ohm`, `z_n_x_ohm`, `z0_r_ohm`, `z0_x_ohm`, `z0_tu_r_ohm`, `z0_tu_x_ohm`,
+    # `c_max_zrodlo_pl`), koordynacja izolacji z trybu (`earth_fault_factor`,
+    # `earth_fault_factor_zrodlo_pl`, `arrester_rated_kv`, `arrester_tov_10s_kv`), B'0 roboczy
+    # (`robocze_b0`, `galezie_b0_robocze`), przewod N rozplywu niesymetrycznego (`prad_n_a`,
+    # `u_n_pe_v`, `neutral_earthed_bus_ids`, `neutral_current_pu`, `neutral_voltage_pu`).
+    # -3: `prad_dlawikow_a` (parametr V12.6 zastapiony punktami neutralnymi modelu),
+    # `predicted_tov_kv` i `predicted_energy_kj_per_kv` (wejscie wiersza izolacji — U_TOV liczy
+    # solver z k trybu; dwa wpisy zapadki `A:or:item.*` zdjete). PASS niezmieniony (zero
+    # podstawien; `awsc.i_w_a or 0.0` w sladzie dlawika zastapione jawnym `None`).
+    assert "Pol kontraktow wejsciowych: 4484." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2388,7 +2406,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Wartosc robocza R'0/X'0 odcinka (2026-10-29): 602 -> 603 (+1 `enm/skladowa_zerowa_
         # galezi.py`, jedno zrodlo skladowej zerowej odcinka); dlug i wykluczenia BEZ ZMIAN.
         # POMIAR guardem na drzewie karty.
-        "Przeskanowano 603 plikow w zakresie: network_model, solver_input, enm, "
+        # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 603 -> 605 (+1
+        # `network_model/solvers/doziemienie_sn.py` — solver doziemienia wg sposobu pracy punktu
+        # neutralnego, +1 `enm/doziemienie_sieci.py` — wiersz doziemienia sieci). POMIAR guardem
+        # na `0344668a0` (603) i na drzewie karty (605).
+        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2475,7 +2497,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wpisy `A:or:enm.frequency_hz` i `B:ifexp:enm.frequency_hz` w `v126_contracts.py` zdjete
     # (czestotliwosc sieci z naglowka modelu zamiast `enm.buses[0].frequency_hz or 50.0`).
     # POMIAR guardem na drzewie scalenia.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 220." in wyjscie, wyjscie
+    # Odcinek 2 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 47/220 -> 47/218 —
+    # network_model −2: wpisy `A:or:item.arrester_residual_10ka_kv` i `A:or:item.predicted_tov_kv`
+    # w `v126_academic.py` zdjete (koordynacja izolacji z k trybu punktu neutralnego, dobor
+    # wstepny jako dana przyjeta ESTIMATED). POMIAR guardem na `0344668a0` i na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 218." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2601,7 +2627,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `pochodne/bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Zespol uziemiajacy SN (2026-10-29): 191 -> 193 (+2 jak wyzej). POMIAR guardem.
         # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
-        "  network_model: pliki_skanowane=195, dlug=10 plikow/suma 67, "
+        # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
+        # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
+        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2693,7 +2721,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart (2026-10-29): enm 75 + 1 + 1 = 77. POMIAR guardem.
         # Wartosc robocza R'0/X'0 odcinka (2026-10-29): enm 77 -> 78 (+1 `enm/skladowa_zerowa_
         # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=78, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Odcinek 2 karty ZU (2026-10-29): enm 78 -> 79 (+1 `enm/doziemienie_sieci.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
+        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

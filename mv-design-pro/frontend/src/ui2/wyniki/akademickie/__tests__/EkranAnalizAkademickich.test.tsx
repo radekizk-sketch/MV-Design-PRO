@@ -479,7 +479,10 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
  * kilku sieciach.
  */
 describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN osobno', () => {
-  const jednaSiec = ODPOWIEDZI.neutral_earthing_design;
+  // Sieć fixtury (dławik 15 A, I_C ≈ 12,5 A) jest rozstrojona: v = −0,199 z solvera doziemienia
+  // sieci. Testy tej grupy ćwiczą składanie werdyktu wielu sieci, więc punkt wyjścia to sieć
+  // dostrojona (status nadpisany w atrapie); werdykt samej fixtury — test poniżej.
+  const jednaSiec = { ...ODPOWIEDZI.neutral_earthing_design, tuning_status: 'dostrojony' };
   const wiersz = (szyna: string, nadpisanie: Record<string, unknown> = {}) => ({
     szyna_ref: szyna,
     nazwa_pl: `Sieć SN 15 kV — ${nazwaZMigawki(szyna)}`,
@@ -500,6 +503,16 @@ describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN os
     await uruchom();
     expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent('dławik dostrojony');
     expect(screen.queryByTestId('mvd-akad-obiekty-sieci')).not.toBeInTheDocument();
+  });
+
+  it('fixtura solvera (dławik 15 A przy I_C ≈ 12,5 A): werdykt „rozstrojony” z wyniku wprost', async () => {
+    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], wynik: ODPOWIEDZI.neutral_earthing_design });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(
+      'prąd resztkowy powyżej 10 % prądu pojemnościowego',
+    );
   });
 
   it('dwie sieci dostrojone: werdykt zbiorczy 2 z 2 i wiersz każdej sieci z jej prądem', async () => {
@@ -551,6 +564,45 @@ describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN os
   });
 });
 
+describe('EkranAnalizAkademickich — dane przyjęte i wyjaśnienie werdyktu (zasada nr 4)', () => {
+  it('koordynacja izolacji: dane przyjęte doboru wstępnego z powodem, nota dowodu niepełnego i uzasadnienie kryteriów', async () => {
+    ustawFetchV126({ potwierdzone: ['insulation_coordination'], wynikZFixtury: true });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('insulation_coordination');
+    await uruchom();
+    const panel = screen.getByTestId('mvd-akad-dane-przyjete');
+    expect(within(panel).getByTestId('mvd-akad-dane-przyjete-niepelny')).toHaveTextContent(
+      S.danePrzyjeteNiepelny,
+    );
+    const pozycje = within(panel).getAllByRole('listitem');
+    expect(pozycje).toHaveLength(3);
+    expect(pozycje[0]).toHaveTextContent('Napięcie trwałej pracy ogranicznika U_c (dobór wstępny): 17.5 kV');
+    expect(pozycje[0]).toHaveAttribute('title', expect.stringContaining('IEC 60099-5'));
+    // Werdykt wiersza nie stoi sam: uzasadnienie z liczbami, limitem i podstawą normową.
+    expect(screen.getAllByText(/U_TOV = k·U_m\/√3 = 1,732·17,5\/√3 = 17,50 kV/).length).toBeGreaterThan(0);
+  });
+
+  it('wynik bez danych przyjętych i z dowodem pełnym nie renderuje panelu', async () => {
+    ustawFetchV126({
+      potwierdzone: ['earth_fault_detection'],
+      wynik: { ...ODPOWIEDZI.earth_fault_detection, dane_przyjete: [], kompletnosc_dowodu: 'PELNY' },
+    });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('earth_fault_detection');
+    await uruchom();
+    expect(screen.queryByTestId('mvd-akad-dane-przyjete')).not.toBeInTheDocument();
+  });
+
+  it('detekcja doziemień: dana przyjęta bez wartości liczbowej pokazana samą nazwą', async () => {
+    ustawFetchV126({ potwierdzone: ['earth_fault_detection'], wynikZFixtury: true });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('earth_fault_detection');
+    await uruchom();
+    const lista = screen.getByTestId('mvd-akad-dane-przyjete-lista');
+    expect(within(lista).getByRole('listitem')).toHaveTextContent(/^Metody detekcji dostępne w przekaźniku$/);
+  });
+});
+
 describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów', () => {
   it('ślad dłuższy niż 8 kroków renderuje się w CAŁOŚCI (limit powierzchni zastanej)', async () => {
     ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 25 });
@@ -583,7 +635,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     expect(screen.getByTestId('mvd-akad-raport-opis')).toHaveTextContent('7');
     fireEvent.click(screen.getByTestId('mvd-akad-raport-informacje-audytowe-przelacz'));
     const lista = screen.getByTestId('mvd-akad-raport-informacje-audytowe-lista');
-    for (const wartosc of ['report:v126:test:abc', 'hash-raportu', 'proof:v126:test:abc', 'hash-dowodu', 'hash-akad', 'v126-academic-whitebox-1.2', 'hash-wejscia']) {
+    for (const wartosc of ['report:v126:test:abc', 'hash-raportu', 'proof:v126:test:abc', 'hash-dowodu', 'hash-akad', 'v126-academic-whitebox-1.3', 'hash-wejscia']) {
       expect(lista).toHaveTextContent(wartosc);
     }
   });
@@ -650,7 +702,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     const mock = ustawFetchV126({ potwierdzone: ['neutral_earthing_design', 'earth_fault_detection'] });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('neutral_earthing_design');
-    fireEvent.change(screen.getByTestId('mvd-akad-pole-petersen_detuning'), { target: { value: '500' } });
+    fireEvent.change(screen.getByTestId('mvd-akad-pole-ner_clearing_time_s'), { target: { value: '0.5' } });
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
     await otworzAnalize('earth_fault_detection');
     await uruchom();

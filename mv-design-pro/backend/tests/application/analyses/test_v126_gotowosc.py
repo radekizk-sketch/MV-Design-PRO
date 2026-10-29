@@ -545,12 +545,44 @@ def test_zespol_bez_elementu_to_nazwany_brak_modelu(
     assert "Zespół uziemiający GPZ" in warunek.opis_pl
 
 
-def test_trv_proponuje_breaker_rated_voltage_kv_jako_najwyzsze_napiecie_modelu() -> None:
+def test_trv_proponuje_breaker_rated_voltage_kv_jako_u_m_sieci_sn() -> None:
+    """U_r wyłącznika = U_m sieci SN (IEC 60038 tab. 3–5, IEC 62271-1), nie najwyższe napięcie
+    szyny modelu: sieć złota GPZ 110/15 kV → 17,5 kV (dawniej 110 kV — wyłącznik SN oceniany
+    obwiednią aparatu WN)."""
     enm = build_golden_enm()
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.TRANSIENT_TRV, {})
     propozycja = wynik.proponowane["breaker_rated_voltage_kv"]
-    assert propozycja.wartosc == 110.0
-    assert "110" in propozycja.zrodlo_pl
+    assert propozycja.wartosc == 17.5
+    assert "sieci SN 15 kV" in propozycja.zrodlo_pl
+    assert "IEC 60038" in propozycja.zrodlo_pl and "IEC 62271-1" in propozycja.zrodlo_pl
+    warunek = {w.kod: w for w in wynik.warunki}["parametr.breaker_rated_voltage_kv"]
+    assert warunek.spelniony is True
+
+
+@pytest.mark.parametrize(
+    ("napiecia_kv", "oczekiwane"),
+    [((110.0,), 123.0), ((20.0, 0.4), 24.0), ((0.4,), None), ((), None)],
+    ids=["tylko-WN", "SN-i-nN", "tylko-nN", "bez-szyn"],
+)
+def test_trv_propozycja_u_r_iloczyn_pasm(
+    napiecia_kv: tuple[float, ...], oczekiwane: float | None
+) -> None:
+    """Iloczyn: pasma szyn modelu {WN, SN+nN, nN, brak} — U_m z jedynej tabeli
+    (``napiecie_najwyzsze_sieci_kv``); nN i model bez szyn → brak propozycji, a warunek
+    parametru U_r jest BLOKUJĄCY (solver nie podstawia domyślnego U_r)."""
+    from application.analyses.v126_gotowosc import _propozycja_napiecia_wylacznika
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader
+
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="TRV"),
+        buses=[Bus(ref_id=f"s{i}", name=f"S{i}", voltage_kv=u) for i, u in enumerate(napiecia_kv)],
+    )
+    propozycja = _propozycja_napiecia_wylacznika(enm)
+    assert (None if propozycja is None else propozycja.wartosc) == oczekiwane
+    if oczekiwane is None and napiecia_kv:
+        wynik = ocen_gotowosc_v126(enm, V126AnalysisType.TRANSIENT_TRV, {})
+        warunek = {w.kod: w for w in wynik.warunki}["parametr.breaker_rated_voltage_kv"]
+        assert warunek.spelniony is False and warunek.blokujacy is True
 
 
 def test_neutral_earthing_design_bez_zespolu_to_brak_modelu_nie_propozycja() -> None:
@@ -608,10 +640,10 @@ def test_uzupelnij_parametry_wstawia_propozycje_tylko_gdy_brak_wejscia_projektan
 
     enm = build_golden_enm()
     scalone = uzupelnij_parametry_z_modelu(enm, V126AnalysisType.TRANSIENT_TRV, {})
-    assert scalone["breaker_rated_voltage_kv"] == 110.0
+    assert scalone["breaker_rated_voltage_kv"] == 17.5
 
     # Projektant podał 0 (liczbowo "fałszywe", ale OBECNE wg `_obecna`) na polu
-    # opcjonalnym (TRV) -> 0 WYGRYWA z propozycją modelu (110.0).
+    # opcjonalnym (TRV) -> 0 WYGRYWA z propozycją modelu (17,5).
     scalone = uzupelnij_parametry_z_modelu(
         enm, V126AnalysisType.TRANSIENT_TRV, {"breaker_rated_voltage_kv": 0}
     )

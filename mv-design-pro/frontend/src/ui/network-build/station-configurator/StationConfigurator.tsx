@@ -48,6 +48,7 @@ import {
 } from './cards/StationConfigReadinessCard';
 import type { MeasurementRow } from './przekladnikiStacji';
 import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
+import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
@@ -622,6 +623,50 @@ function fmtPrad(wartosc: number | null): string {
   return wartosc === null ? 'brak danych susceptancji zerowej gałęzi' : `${wartosc.toFixed(1)} A`;
 }
 
+function fmtA(wartosc: number | null): string | null {
+  return wartosc === null ? null : `${wartosc.toFixed(1)} A`;
+}
+
+function fmtV(wartosc: number | null): string | null {
+  return wartosc === null ? null : `${wartosc.toFixed(0)} V`;
+}
+
+/** Doziemienie metaliczne sieci SN wg sposobu pracy punktu neutralnego (solver `doziemienie_sn`). */
+function DoziemienieSekcji({
+  doziemienie,
+  stan,
+}: {
+  readonly doziemienie: DoziemienieSieci;
+  readonly stan: 'spoczynek' | 'zalaczony';
+}): JSX.Element {
+  const wartosci: [string, string | null][] = [
+    [`Prąd doziemienia (${doziemienie.charakter_pl})`, fmtA(doziemienie.prad_a)],
+    ['Prąd pojemnościowy I_C', fmtA(doziemienie.i_c_a)],
+    ['Prąd indukcyjny I_L', fmtA(doziemienie.i_l_a)],
+    ['Składowa czynna I_w', fmtA(doziemienie.i_w_a)],
+    ['Napięcie składowej zerowej U0', fmtV(doziemienie.u0_v)],
+    ['Współczynnik zwarcia doziemnego k', doziemienie.wspolczynnik_k === null ? null : doziemienie.wspolczynnik_k.toFixed(3)],
+  ];
+  return (
+    <div className="space-y-1" data-testid={`station-earthing-doziemienie-${stan}`}>
+      <div className="text-scada-text">
+        {`Doziemienie sieci${stan === 'zalaczony' ? ' po załączeniu AWSC' : ''}: ${doziemienie.tryb_pl}`}
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        {wartosci
+          .filter((w): w is [string, string] => w[1] !== null)
+          .map(([etykieta, wartosc]) => (
+            <Fact key={etykieta} label={etykieta} value={wartosc} />
+          ))}
+      </div>
+      {doziemienie.brak_pl ? <div className="text-scada-grounded">{doziemienie.brak_pl}</div> : null}
+      <div className="text-scada-muted" title={doziemienie.zastrzezenia_pl.join(' ')}>
+        {doziemienie.podstawa_pl}
+      </div>
+    </div>
+  );
+}
+
 function StationEarthingPanel({
   earthing,
 }: {
@@ -667,25 +712,40 @@ function StationEarthingPanel({
             <div className="grid gap-2 md:grid-cols-2">
               <Fact label="Prąd pojemnościowy sieci" value={fmtPrad(sekcja.prad_pojemnosciowy_a)} />
               <Fact
-                label="Prąd dławików w ruchu"
+                label="Suma nastaw dławików w ruchu"
                 value={sekcja.prad_dlawikow_a === null ? 'brak dławika w ruchu' : `${sekcja.prad_dlawikow_a.toFixed(1)} A`}
               />
               <Fact
-                label="Stopień rozstrojenia kompensacji"
+                label="Rozstrojenie kompensacji v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)"
                 value={sekcja.rozstrojenie === null ? 'nie dotyczy' : `${(sekcja.rozstrojenie * 100).toFixed(1)} %`}
               />
               <Fact label="Kompletność danych" value={ETYKIETA_KOMPLETNOSCI[sekcja.kompletnosc]} />
             </div>
-            {sekcja.wariant_awsc_zalaczony !== sekcja.wariant ? (
+            <DoziemienieSekcji doziemienie={sekcja.doziemienie} stan="spoczynek" />
+            {sekcja.ma_awsc ? (
               <div className="text-scada-muted" data-testid="station-earthing-awsc">
-                Po załączeniu automatyki AWSC punkt neutralny pracuje jak układ dławik‖rezystor —
-                zwarcie doziemne liczy się w obu stanach automatyki.
+                Po załączeniu automatyki AWSC rezystor wymuszający dodaje składową czynną prądu
+                doziemnego — sieć pozostaje skompensowana; doziemienie pokazano w obu stanach automatyki.
               </div>
             ) : null}
+            {sekcja.doziemienie_awsc_zalaczony ? (
+              <DoziemienieSekcji doziemienie={sekcja.doziemienie_awsc_zalaczony} stan="zalaczony" />
+            ) : null}
             {sekcja.galezie_bez_b0.length > 0 ? (
-              <div className="text-scada-grounded">
-                {`Gałęzie bez susceptancji zerowej (prąd pojemnościowy zaniżony): ${sekcja.galezie_bez_b0.length}.`}
+              <div className="text-scada-grounded" data-testid="station-earthing-bez-b0">
+                {`Gałęzie bez susceptancji zerowej B′0 (prąd pojemnościowy niewyznaczony — uzupełnij B′0 albo typ katalogowy odcinka): ${sekcja.galezie_bez_b0.length}.`}
               </div>
+            ) : null}
+            {sekcja.dane_przyjete_pojemnosci.length > 0 ? (
+              <ul className="text-scada-muted" data-testid="station-earthing-b0-robocze">
+                {sekcja.dane_przyjete_pojemnosci.map((dana) => (
+                  <li key={dana.nazwa_pl} title={dana.powod_pl}>
+                    {dana.wartosc === null
+                      ? dana.nazwa_pl
+                      : `${dana.nazwa_pl}: ${dana.wartosc.wartosc} ${dana.wartosc.jednostka}`}
+                  </li>
+                ))}
+              </ul>
             ) : null}
             {[...sekcja.odmowy, ...sekcja.ostrzezenia].map((tekst) => (
               <div key={tekst} className="text-scada-alarm">{tekst}</div>

@@ -37,6 +37,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from application.v126_artifacts import POWODY_NIEZWALIDOWANIA_HARMONICZNYCH_PL
+from network_model.solvers.v126_academic import (
+    MARGINES_BIL_MIN_PROCENT,
+    PRAD_RESZTKOWY_MAX_UDZIAL_IC,
+)
+from network_model.solvers.v126_academic import (
+    POZIOMY_IZOLACJI_IEC60071 as POZIOMY_IZOLACJI_IEC60071,  # re-eksport dla katalogu API
+)
 from solver_input.v126_contracts import V126AnalysisType
 
 # --- Grupy inżynierskie -----------------------------------------------------
@@ -245,12 +252,10 @@ class KartaAnalizy:
 THD_U_PNEN50160_PROCENT = 8.0
 THD_U_IEEE519_PROCENT = 5.0
 TDD_IEEE519_PROCENT = 5.0
-MARGINES_BIL_MIN_PROCENT = 20.0
 ZAPAD_ROZRUCHU_MAX_PROCENT = 15.0
 WSKAZNIK_CIEPLNY_ROZRUCHU_MAX = 1.0
 MARGINES_TRV_MIN_PROCENT = 10.0
 UDZIAL_2H_BLOKADA_87T_PROCENT = 10.0
-PRAD_RESZTKOWY_MAX_UDZIAL_IC = 0.10
 KROTNOSC_OCHRONY_DODATKOWEJ = 1.25
 
 _PARAMETRY_UZIOMU: tuple[ParametrUzytkownika, ...] = (
@@ -680,40 +685,63 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 ),
             ),
             PodstawaOceny(
-                "Przepięcie dorywcze",
-                "TOV",
+                "Przepięcie dorywcze przy doziemieniu",
+                "U_c",
                 "kV",
-                "TOV ≤ U_r ogranicznika (1,25·MCOV)",
-                "U_r = 1,25·MCOV",
-                "IEC 60071 / IEC 60099-4",
-                symbol_latex=r"\mathrm{TOV}",
-                warunek_latex=r"\mathrm{TOV} \leq U_r",
-                wzor_latex=r"U_r = 1{,}25\cdot \mathrm{MCOV}",
+                "U_TOV = k·U_m/√3; sieć izolowana i kompensowana (doziemienie długotrwałe): "
+                "U_c ≥ U_TOV; sieć z rezystorem i uziemiona bezpośrednio (doziemienie "
+                "wyłączane): U_c ≥ U_m/√3 oraz wytrzymałość TOV 10 s ≥ U_TOV",
+                "k z solvera doziemienia sieci (sposób pracy punktu neutralnego)",
+                "IEC 60071-1 / IEC 60071-2 / IEC 60099-5",
+                symbol_latex=r"U_c",
+                warunek_latex=(
+                    r"U_c \geq U_{\mathrm{TOV}} \ \text{albo}\ "
+                    r"\left(U_c \geq \dfrac{U_m}{\sqrt{3}} \wedge "
+                    r"\mathrm{TOV}_{10\,\mathrm{s}} \geq U_{\mathrm{TOV}}\right)"
+                ),
+                wzor_latex=r"U_{\mathrm{TOV}} = k\,\dfrac{U_m}{\sqrt{3}}",
                 wzor_opis_pl=(
-                    "MCOV — trwałe dopuszczalne napięcie pracy ogranicznika [kV]; "
-                    "U_r — napięcie znamionowe ogranicznika [kV]. IEC 60071 / IEC 60099-4."
+                    "k — współczynnik zwarcia doziemnego sieci (U_fazy zdrowej/U_f) z solvera "
+                    "doziemienia wg sposobu pracy punktu neutralnego; U_m — napięcie "
+                    "najwyższe sieci [kV]; U_c — napięcie trwałej pracy ogranicznika [kV]; "
+                    "TOV_10s — wytrzymałość ogranicznika na przepięcie dorywcze 10 s [kV]."
                 ),
             ),
         ),
         dane_z_modelu=(
             DanaZModelu(
-                "Ograniczniki przepięć i ich karty katalogowe (MCOV, U_res, TOV, energia)",
+                "Ograniczniki przepięć i ich karty katalogowe (U_c, U_r, U_res, wytrzymałość "
+                "TOV 10 s)",
                 "aparaty pierwotne pól i stacji",
             ),
             DanaZModelu(
-                "Najwyższe napięcie urządzenia U_m", "karta ogranicznika albo poziom napięcia szyny"
+                "Napięcie najwyższe sieci U_m",
+                "poziom napięcia szyny albo karta ogranicznika",
             ),
-            DanaZModelu("Sposób uziemienia punktu neutralnego", "szyny, transformatory"),
+            DanaZModelu(
+                "Sposób pracy punktu neutralnego i współczynnik zwarcia doziemnego k",
+                "zespoły uziemiające sieci SN (solver doziemienia), źródła, transformatory",
+            ),
         ),
         domyslne_solvera=(
             DomyslnaSolvera(
                 "arrester_mcov_kv",
                 "Dobór wstępny ogranicznika bez karty katalogowej",
-                "MCOV = 1,05·U_m (sieć izolowana) albo 1,05·U_m/√3 (uziemiona); U_res = 2,8·MCOV; "
-                "TOV = 1,4·U_m (izolowana) albo 1,15·U_m",
+                "U_c = wymagane wg czasu doziemienia (przy doziemieniu wyłączanym U_c dobrane "
+                "tak, by TOV_10s ≥ U_TOV); U_r = 1,2·U_c; U_res = 4,0·U_c; TOV_10s = 1,4·U_c "
+                "(skrajne stosunki ograniczników ZnO SN katalogu programu, zachowawczo)",
                 "kV",
-                "Reguły doboru wstępnego solvera stosowane WYŁĄCZNIE przy braku karty ogranicznika — "
-                "miejsce bez karty jest oznaczone w gotowości.",
+                "Wartości robocze WYŁĄCZNIE przy braku karty ogranicznika — każda jest daną "
+                "przyjętą wiersza o jakości szacowanej, a ocena ma kompletność dowodu NIEPEŁNY.",
+            ),
+            DomyslnaSolvera(
+                "earth_fault_factor",
+                "Współczynnik zwarcia doziemnego bez wyniku doziemienia sieci",
+                "k = √3 (sieć izolowana, kompensowana, z rezystorem); k = 1,4 (uziemiona "
+                "bezpośrednio)",
+                "1",
+                "Wartość robocza trybu dla szyny poza siecią SN modelu — dana przyjęta "
+                "wiersza (IEC 60071-1).",
             ),
         ),
         katalog_odniesienia="insulation-levels",
@@ -797,7 +825,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "%",
                 "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
                 MARGINES_TRV_MIN_PROCENT,
-                "IEC 62271-100 (obwiednia napięcia powrotnego)",
+                "obwiednia modelowa solvera (narost liniowy do 2·U_r w 88 µs) — nie obwiednia "
+                "tabel IEC 62271-100",
                 symbol_latex=r"M_{\mathrm{TRV}}",
                 warunek_latex=(
                     r"M_{\mathrm{TRV}} = \dfrac{\text{obwiednia} - u_{\mathrm{TRV}}}"
@@ -816,7 +845,11 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
         ),
         dane_z_modelu=(
-            DanaZModelu("Najwyższe napięcie znamionowe szyn (proponowane U_r)", "szyny"),
+            DanaZModelu(
+                "Napięcie najwyższe urządzenia U_m sieci SN (proponowane U_r wyłącznika, "
+                "IEC 60038 / IEC 62271-1)",
+                "sieci SN, szyny",
+            ),
             DanaZModelu("Susceptancje doziemne gałęzi (ferrorezonans)", "linie, kable"),
             DanaZModelu(
                 "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
@@ -829,7 +862,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Napięcie znamionowe wyłącznika",
                 "kV",
                 False,
-                "Puste = najwyższe napięcie znamionowe szyny modelu.",
+                "Puste = napięcie najwyższe urządzenia U_m sieci SN modelu (IEC 60038 tab. 3–5; "
+                "U_r aparatu = U_m, IEC 62271-1).",
             ),
             ParametrUzytkownika(
                 "trv_natural_frequency_hz",
@@ -1008,7 +1042,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             WielkoscGlowna("I_C", "Prąd pojemnościowy doziemienia sieci", "A", r"I_C"),
             WielkoscGlowna("C_0", "Pojemność doziemna sieci", "F", r"C_0"),
             WielkoscGlowna("L, X_L", "Indukcyjność i reaktancja dławika", "H, Ω", r"L,\ X_L"),
-            WielkoscGlowna("I_res", "Prąd resztkowy przy rozstrojeniu", "A", r"I_{\mathrm{res}}"),
+            WielkoscGlowna("I_res", "Prąd resztkowy dławika modelu", "A", r"I_{\mathrm{res}}"),
             WielkoscGlowna("R_N", "Rezystancja uziemiająca punktu neutralnego", "Ω", r"R_N"),
             WielkoscGlowna("E", "Energia wydzielona w rezystorze w czasie wyłączenia", "J", r"E"),
         ),
@@ -1017,9 +1051,11 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Prąd resztkowy (sieć kompensowana)",
                 "I_res/I_C",
                 "-",
-                "I_res przy przyjętym rozstrojeniu ≤ udział granicznego prądu pojemnościowego",
+                "I_res = √(I_w² + (I_C − I_L)²) dławika modelu (I_L, I_w z impedancji punktów "
+                "neutralnych w ruchu) ≤ udział prądu pojemnościowego",
                 PRAD_RESZTKOWY_MAX_UDZIAL_IC,
-                "kompensacja rezonansowa Petersena · IEC 62271-203",
+                "kompensacja rezonansowa Petersena (ENEA Zeszyt 1 §16, Z.13) — kryterium metody "
+                "V12.6, bez wartości normowej",
                 symbol_latex=r"I_{\mathrm{res}}/I_C",
                 warunek_latex=r"I_{\mathrm{res}}/I_C \leq 10\%",
             ),
@@ -1027,20 +1063,24 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Energia w rezystorze (sieć uziemiona przez rezystor)",
                 "E",
                 "J",
-                "E = I_R²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora",
+                "E_k = I_th²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora (I_th = I_R,k·√(m+n), "
+                "I_R,k = c_max·U_f/|R + Z_0,TU/3|)",
                 "E ≤ E_n",
                 "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
                 symbol_latex=r"E",
                 warunek_latex=r"E \leq E_n",
                 wzor_latex=(
-                    r"E = I_R^2 \cdot R \cdot t_{\text{wył}} \leq E_n = I_n^2 \cdot R \cdot t_n"
+                    r"E_k = I_{\mathrm{th}}^2 \cdot R \cdot t_{\text{wył}} \leq "
+                    r"E_n = I_n^2 \cdot R \cdot t_n\text{,}\quad "
+                    r"I_{R,k} = \dfrac{c_{\max} U_f}{\left|R + Z_{0,\mathrm{TU}}/3\right|}"
                 ),
                 wzor_opis_pl=(
-                    "I_R = U_f/R — prąd rezystora przy doziemieniu metalicznym [A] (składowa "
-                    "pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez "
-                    "rezystor); R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — "
-                    "czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy "
-                    "rezystora i dopuszczalny czas jego przepływu [A, s]."
+                    "I_R,k — największy prąd rezystora przy doziemieniu metalicznym wg IEC 60909-0 "
+                    "(c_max z tab. 1, droga zerowa gałęzi uziemiającej Z_0,TU/3 + R) [A]; "
+                    "I_th = I_R,k·√(m+n) — prąd cieplny zastępczy (IEC 60909-0 §12) [A]; R — "
+                    "rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — czas wyłączenia "
+                    "zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy rezystora i dopuszczalny "
+                    "czas jego przepływu [A, s] (IEEE Std C57.32)."
                 ),
             ),
         ),
@@ -1052,8 +1092,9 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "zespoły uziemiające sekcji SN, transformatory",
             ),
             DanaZModelu(
-                "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu) "
-                "i prąd dławika w układzie dławik ‖ rezystor",
+                "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu), "
+                "impedancje punktów neutralnych w ruchu (dławik gaszący, rezystor wymuszający "
+                "AWSC, dławik ‖ rezystor) i impedancja zerowa transformatora uziemiającego",
                 "zespoły uziemiające sekcji SN, transformatory",
             ),
         ),
@@ -1071,44 +1112,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Dla sieci z rezystorem w punkcie neutralnym; bez wpisu sprawdzenie cieplne "
                 "rezystora nie jest wykonywane.",
             ),
-            # Karta B-02 (parytet katalog ↔ kontrolki): oba parametry dławika solver
-            # CZYTA z `parameters` (nadpisanie wartości domyślnej), więc karta musi je
-            # obiecywać jako dane od użytkownika — opcjonalne, z wartością domyślną
-            # udokumentowaną niżej w `domyslne_solvera` (jedna para: pole + domyślna).
-            ParametrUzytkownika(
-                "petersen_detuning",
-                "Stopień rozstrojenia dławika",
-                "-",
-                False,
-                "Opcjonalnie; bez wpisu solver przyjmuje wartość domyślną 0,05 (±5 %).",
-            ),
-            ParametrUzytkownika(
-                "petersen_residual_damping",
-                "Tłumienie prądu resztkowego",
-                "-",
-                False,
-                "Opcjonalnie (d = I_R/I_C z karty dławika); bez wpisu 0 — bez strat dławika.",
-            ),
-        ),
-        domyslne_solvera=(
-            DomyslnaSolvera(
-                "petersen_detuning",
-                "Stopień rozstrojenia dławika",
-                0.05,
-                "-",
-                "Parametr metody: ±5 % rozstrojenia przyjęte przy braku wartości projektanta.",
-            ),
-            DomyslnaSolvera(
-                "petersen_residual_damping",
-                "Składowa tłumienia prądu resztkowego",
-                0.0,
-                "-",
-                "Parametr metody: brak strat dławika w karcie ⇒ 0 (prąd resztkowy w rezonansie = 0).",
-            ),
         ),
         uwagi_metody_pl=(
-            "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — "
-            "w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN.",
+            "Dławik dobierany do rezonansu z pojemnością doziemną sieci; prąd resztkowy, "
+            "rozstrojenie i składowa czynna liczone dla dławika MODELU tym samym solverem co "
+            "wiersz zwarcia jednofazowego (straty czynne dławika i upływność izolacji sieci "
+            "nie są opisane w modelu — rzeczywisty prąd resztkowy jest nie mniejszy).",
         ),
     ),
 )

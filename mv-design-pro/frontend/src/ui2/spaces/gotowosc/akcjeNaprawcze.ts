@@ -345,7 +345,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'power_flow.unbalanced_no_zero_sequence_path': EDYCJA,
   'power_flow.unbalanced_shunt_admittance_omitted': EDYCJA,
   'power_flow.unbalanced_magnetising_branch_omitted': EDYCJA,
-  'power_flow.unbalanced_losses_self_impedance': EDYCJA,
   'power_flow.unbalanced_transformer_series_model': EDYCJA,
   'power_flow.unbalanced_zero_sequence_confined': EDYCJA,
   'power_flow.unbalanced_zero_sequence_via_source': EDYCJA,

@@ -190,3 +190,55 @@ export function swiezoscWyniku(
     przyczyna: 'model-zmieniony',
   };
 }
+
+// ---------------------------------------------------------------------------
+// Dane przyjęte wyniku (wartości robocze ESTIMATED, zasada nr 4)
+// ---------------------------------------------------------------------------
+
+/** Dana przyjęta wyniku V12.6 — kształt `DanaPrzyjeta` backendu (`nazwa_pl`, `wartosc`, `powod_pl`). */
+export interface DanaPrzyjetaWyniku {
+  readonly nazwa: string;
+  readonly wartosc: string | null;
+  readonly powod: string;
+}
+
+/**
+ * Wszystkie dane przyjęte wyniku (listy `dane_przyjete` na dowolnej głębokości — wynik
+ * zbiorczy, `sieci[]`, `arresters[]`), bez powtórzeń (nazwa + wartość), w kolejności
+ * wystąpienia. Liczby i teksty backendu — formatowanie wyłącznie złożeniem wartości z jednostką.
+ */
+export function danePrzyjeteWyniku(payload: unknown): DanaPrzyjetaWyniku[] {
+  const wynik: DanaPrzyjetaWyniku[] = [];
+  const widziane = new Set<string>();
+  const odwiedz = (wezel: unknown): void => {
+    if (Array.isArray(wezel)) {
+      wezel.forEach(odwiedz);
+      return;
+    }
+    if (!jestObiektem(wezel)) return;
+    for (const [klucz, wartosc] of Object.entries(wezel)) {
+      if (klucz === 'dane_przyjete' && Array.isArray(wartosc)) {
+        for (const dana of wartosc) {
+          if (!jestObiektem(dana) || typeof dana.nazwa_pl !== 'string') continue;
+          const w = dana.wartosc;
+          const tekst =
+            jestObiektem(w) && typeof w.wartosc === 'number'
+              ? `${w.wartosc} ${String(w.jednostka ?? '')}`.trim()
+              : null;
+          const klucz = `${dana.nazwa_pl}::${tekst ?? ''}`;
+          if (widziane.has(klucz)) continue;
+          widziane.add(klucz);
+          wynik.push({
+            nazwa: dana.nazwa_pl,
+            wartosc: tekst,
+            powod: typeof dana.powod_pl === 'string' ? dana.powod_pl : '',
+          });
+        }
+      } else {
+        odwiedz(wartosc);
+      }
+    }
+  };
+  odwiedz(payload);
+  return wynik;
+}

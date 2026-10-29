@@ -29,5 +29,5 @@
   "network_model/solvers/short_circuit_core.py": "4db632fc4414a0f4e6ac1a8e0422df49100d118a4e196526f6b2a37544aee1a0",
   "network_model/solvers/short_circuit_iec60909.py": "c631470fbbd3dfba857398d5ef506324590430e6fbaf7243ad07e6f0760bfe6c",
   "network_model/solvers/state_estimation_wls.py": "9b34d61049a76a8a7784543b954ab765aa2e98dc1d122b810a2f7671c34c9053",
-  "network_model/solvers/v126_academic.py": "f806eec805814e67143dfd2508d5ff0a0c1352337430f1cfdf30c3127cd0a47f"
+  "network_model/solvers/v126_academic.py": "3e42313865e92ef1b00c51f0b8cae6462424ddf81ed9f4370aced6c1a13aba7e"
 }
