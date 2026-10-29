@@ -2043,6 +2043,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # baterii (`q_n`, `u_n`, `straty_kw`, `x_dlawika`, `y_sekcji_s`, `liczba_sekcji`,
     # `sekcje_zalaczone`, `parametry_robocze`, `parametry_robocze_pl`) i wejscie v126
     # (`baterie`, `b0_siemens`). PASS niezmieniony (zero podstawien).
+    # Slad sieci zerowej w wyniku zwarcia 1F/2FG (2026-10-29): 4394 -> 4395 — POMIAR
+    # `contract_fields()` na HEAD karty (`git archive`: 4394, pin zgodny) i na drzewie karty
+    # (4395). Roznica zbiorow +1, -0: `WejscieZwarcia.siec_zerowa_trace` (slad WHITE BOX budowy
+    # Y0/Z0 przekazywany do `raw_result["siec_zerowa"]`). PASS niezmieniony (zero podstawien).
     # Zespol uziemiajacy SN jedyna prawda punktu neutralnego (2026-10-29): 4374 -> 4419 — POMIAR
     # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
     # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
@@ -2058,6 +2062,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (baterie tej sieci) i `baterie_b0` (wklad baterii do B_0 jedynej prawdy uziemienia).
     # Na `687a2ef65` (4394) roznica -3 (pola skasowanej drugiej prawdy punktu neutralnego),
     # +51 (pola tej karty). PASS niezmieniony.
+    # Scalenie karty sladu sieci zerowej (01f80af8d) do drzewa kart ZU i BKR (2026-10-29):
+    # 4442 -> 4442 — POMIAR `contract_fields()` na `7d5bc9411` (4442) i na drzewie scalenia
+    # (4442). Roznica zbiorow +1 `WejscieZwarcia.siec_zerowa_trace` (pelny slad budowy Y0),
+    # -1 `WejscieZwarcia.slad_punktu_neutralnego` (kroki punktow neutralnych sa czescia tego
+    # samego sladu — jedno zrodlo, bez drugiej kopii). PASS niezmieniony.
     assert "Pol kontraktow wejsciowych: 4442." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf

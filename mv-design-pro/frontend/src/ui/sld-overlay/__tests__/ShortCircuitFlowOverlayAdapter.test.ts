@@ -44,7 +44,8 @@ describe('faultTypeToOverlayAnalysisType', () => {
     expect(faultTypeToOverlayAnalysisType('3F')).toBe('SC_3F');
     expect(faultTypeToOverlayAnalysisType('1F')).toBe('SC_1F');
     expect(faultTypeToOverlayAnalysisType('2F')).toBe('SC_2F');
-    expect(faultTypeToOverlayAnalysisType('2F+Z')).toBe('SC_2F');
+    // Token kontraktu wiersza wyniku (`ShortCircuitType.TWO_PHASE_GROUND.value`).
+    expect(faultTypeToOverlayAnalysisType('2F+G')).toBe('SC_2F');
     expect(faultTypeToOverlayAnalysisType('sc_1f')).toBe('SC_1F');
   });
 });

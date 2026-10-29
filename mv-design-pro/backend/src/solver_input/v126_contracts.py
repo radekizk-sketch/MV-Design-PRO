@@ -7,6 +7,7 @@ from typing import Any
 from enm.bateria_kondensatorow import parametry_baterii
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from enm.nazwy_elementow import nazwa_elementu
+from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.uziemienie_sekcji import (
     UziemienieSekcji,
     b0_baterii_s,
@@ -564,7 +565,9 @@ def wiersze_izolacji_projektanta(
                 V126InsulationInput.model_validate({**wiersz, "network_neutral": kategoria})
             )
         except ValidationError as exc:
-            raise OdmowaDanychError(str(exc)) from exc
+            raise OdmowaDanychError(
+                f"Dane koordynacji izolacji niezgodne z kontraktem: {opis_bledu_walidacji(exc)}."
+            ) from exc
     return wynik
 
 

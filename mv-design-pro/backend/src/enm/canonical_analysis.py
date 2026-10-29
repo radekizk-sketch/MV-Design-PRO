@@ -2925,18 +2925,24 @@ def _execute_short_circuit(
             if wejscie.zrodla_sieciowe_trace
             else {}
         ),
+        # Ślad WHITE BOX budowy sieci składowej zerowej (rozbicie macierzy Y0 po elementach:
+        # Z0 i B0 linii/kabli, źródła, baterie, transformatory z decyzją grupy połączeń) —
+        # addytywnie, WYŁĄCZNIE dla biegu doziemnego (1F, 2F+G); bieg 3F/2F bajt w bajt jak
+        # przed wpięciem. Liczby zespolone jako ``{"re", "im"}``.
+        **(
+            {"siec_zerowa": json_bezpieczny(list(wejscie.siec_zerowa_trace))}
+            if wejscie.siec_zerowa_trace
+            else {}
+        ),
         # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
         # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho. Karta
         # TB-WARTOSC-ROBOCZA: + `fault.czas_tb_wartosc_robocza` z listą punktów.
         **({"zalozenia": zalozenia_biegu} if zalozenia_biegu else {}),
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC przypadku i ślad WHITE BOX punktów
-        # neutralnych SN (Z_N obu stanów AWSC) — addytywnie, WYŁĄCZNIE gdy bieg je ma.
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC przypadku — addytywnie, WYŁĄCZNIE gdy
+        # różny od stanu normalnego. Ślad punktów neutralnych SN (bocznik zespołu w OBU stanach
+        # AWSC, pominięte Z0 źródeł SN) jest częścią śladu sieci zerowej ``siec_zerowa`` — jedno
+        # źródło śladu, bez drugiej kopii tych samych kroków.
         **({"stan_awsc": wejscie.stan_awsc} if wejscie.stan_awsc != "spoczynek" else {}),
-        **(
-            {"punkt_neutralny_sn": list(wejscie.slad_punktu_neutralnego)}
-            if wejscie.slad_punktu_neutralnego
-            else {}
-        ),
         # Karta S-2 AUTORYTET: znaczniki pochodzenia k_sc WSZYSTKICH źródeł
         # falownikowych czynnych w grafie TEGO biegu (`ProweniencjaWynikuZwarciowego.
         # z_grafu`, zapisane przy asemblacji wejścia — `enm/assembler.py::
@@ -4359,9 +4365,10 @@ def build_short_circuit_results(
     rows.sort(key=lambda row: row["target_id"] or "")
     # CV-4.3 K7: ślad wyprowadzenia Z_Q źródeł sieciowych i założenia biegu (kody
     # gotowości) — addytywnie, dokładnie wtedy, gdy artefakt biegu je niesie (ekran
-    # wyników zwarć czyta `zrodla_sieciowe`/`zalozenia` z tej odpowiedzi).
+    # wyników zwarć czyta `zrodla_sieciowe`/`zalozenia` z tej odpowiedzi). Ślad sieci składowej
+    # zerowej (`siec_zerowa`) — tak samo, tylko bieg doziemny go niesie.
     odpowiedz: dict[str, Any] = {"run_id": str(run.id), "rows": rows}
-    for klucz in ("zrodla_sieciowe", "zalozenia"):
+    for klucz in ("zrodla_sieciowe", "siec_zerowa", "zalozenia"):
         wartosc = (run.raw_result or {}).get(klucz)
         if wartosc:
             odpowiedz[klucz] = wartosc
@@ -4479,9 +4486,15 @@ def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:
 
 
 def _typ_zwarcia_z_opcji(options: Mapping[str, Any]) -> str:
-    """Typ zwarcia biegu ('3F'/'1F'/'2F'/'2F+Z'…) z opcji — domyślnie '3F', ten sam
-    fallback co `enm.assembler._short_circuit_type_from_options`."""
-    return str(options.get("fault_type") or options.get("short_circuit_type") or "3F")
+    """Token rodzaju zwarcia biegu w zapisie kontraktu wyniku ('3F'/'1F'/'2F'/'2F+G').
+
+    Jedno źródło: parser opcji assemblera (`_short_circuit_type_from_options`) — ten sam,
+    z którego bieg bierze rodzaj zwarcia, więc pisownie wejściowe tego samego rodzaju
+    ('2FG', '2F+Z', 'SC_2F_G'…) dają jeden token. Do tej poprawki funkcja oddawała surowy
+    napis opcji: pasmo MIN/MAX nie parowało biegów 2FG zapisanych różną pisownią, a token
+    kotwicy ('2F+Z') różnił się od tokenu wierszy wyniku ('2F+G').
+    """
+    return _short_circuit_type_from_options(dict(options)).value
 
 
 @dataclass(frozen=True)

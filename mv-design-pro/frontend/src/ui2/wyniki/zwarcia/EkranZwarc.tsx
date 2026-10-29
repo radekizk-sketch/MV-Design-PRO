@@ -22,6 +22,7 @@ import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
@@ -185,6 +186,14 @@ export function EkranZwarc({
         zrodlaSieciowe={wynik.zrodla_sieciowe}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
+      />
+
+      {/* Ślad budowy sieci składowej zerowej — właściwość CAŁEGO biegu 1F/2F+G (jak ślad Z_Q):
+          z tej macierzy pochodzi Z0 każdego punktu zwarcia. */}
+      <SladSieciZerowej
+        siecZerowa={wynik.siec_zerowa}
+        rodzajZwarcia={rows[0].fault_type}
+        szczegolyAudytowe={szczegolyAudytowe}
       />
 
       {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak

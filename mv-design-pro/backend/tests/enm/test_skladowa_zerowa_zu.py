@@ -34,8 +34,10 @@ zespołu) dostaje kotwicę numeryczną i przyczynę ``brak_drogi`` — wiersz be
 węzłów liczonych jest niezależne od wartości kotwicy (sonda z inną stałą).
 
 IDENTYFIKATORY I HASH: dwa niezależne biegi tego samego modelu dają ten sam artefakt
-(wiersze, ślad punktu neutralnego, odcisk modelu); model bez zespołu uziemiającego nie
-dostaje żadnego nowego klucza biegu (``punkt_neutralny_sn``, ``stan_awsc``).
+(wiersze, ślad sieci zerowej z krokami punktu neutralnego, odcisk modelu); model bez zespołu
+uziemiającego nie dostaje kroków zespołu w śladzie sieci zerowej ani klucza ``stan_awsc``.
+Ślad punktów neutralnych jest częścią JEDNEGO śladu sieci zerowej biegu (``siec_zerowa``,
+``enm.mapping.zbuduj_siec_zerowa``) — bez drugiej kopii tych samych kroków.
 """
 
 from __future__ import annotations
@@ -432,7 +434,7 @@ def test_slad_white_box_niesie_oba_stany_awsc() -> None:
     migawka = _siec("dlawik_awsc")
     for stan in ("spoczynek", "zalaczony"):
         wynik = _bieg(migawka, _przypadek(migawka, stan_awsc=stan), klucz=f"slad-{stan}")
-        (krok,) = wynik.raw_result["punkt_neutralny_sn"]
+        (krok,) = _kroki_zespolow(wynik)
         assert krok["inputs"]["stan_awsc"] == stan
         assert _zespolona(krok["inputs"]["z_n_spoczynek_ohm"]) == pytest.approx(
             complex(0.0, X_L), rel=1e-12
@@ -814,14 +816,25 @@ def test_determinizm_dwa_biegi_ten_sam_artefakt_i_odcisk() -> None:
     wiersze_a = {k: (v["ikss_a"], v["z0_ohm"]) for k, v in _wiersze(a).items()}
     wiersze_b = {k: (v["ikss_a"], v["z0_ohm"]) for k, v in _wiersze(b).items()}
     assert wiersze_a == wiersze_b
-    assert a.raw_result["punkt_neutralny_sn"] == b.raw_result["punkt_neutralny_sn"]
+    assert _kroki_zespolow(a) and _kroki_zespolow(a) == _kroki_zespolow(b)
+    assert a.raw_result["siec_zerowa"] == b.raw_result["siec_zerowa"]
 
 
 def test_model_bez_zespolu_bez_nowych_kluczy_biegu() -> None:
     migawka = _siec("izolowany")
     wynik = _bieg(migawka, _przypadek(migawka))
     assert "punkt_neutralny_sn" not in wynik.raw_result
+    assert _kroki_zespolow(wynik) == []
     assert "stan_awsc" not in wynik.raw_result
+
+
+def _kroki_zespolow(wynik: Any) -> list[dict[str, Any]]:
+    """Kroki bocznika zespołów uziemiających w JEDYNYM śladzie sieci zerowej biegu."""
+    return [
+        krok
+        for krok in wynik.raw_result.get("siec_zerowa") or ()
+        if str(krok.get("key", "")).startswith("z0_zespol_uziemiajacy[")
+    ]
 
 
 # ---------------------------------------------------------------------------

@@ -31,10 +31,12 @@ from typing import Any
 
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+from pydantic import ValidationError
 
 from .migrations.klucze_meta_pola import KLUCZE_META_ZAKAZANE
 from .models import Bay, EnergyNetworkModel
 from .rola_pola_sn import kanoniczna_rola_pola_sn, nazwa_roli_pola_nn, nazwa_roli_pola_sn
+from .slownik_komunikatow import opis_bledu_walidacji
 
 #: Kolejność ról przy grupowaniu pól po szynie — pola liniowe wyjściowe przed odgałęźnymi,
 #: te przed wejściowymi (kolejność wyboru wolnego pola startu ciągu; ta sama, którą miała
@@ -44,7 +46,15 @@ _RANGA_ROLI_NA_SZYNIE: dict[str, int] = {"OUT": 0, "FEEDER": 1, "IN": 2}
 
 class BladPola(ValueError):
     """Odmowa zapisu rekordu pola: kształt spoza kontraktu `Bay`, dubel identyfikatora albo
-    klucz `meta` z typowanym odpowiednikiem. Błąd programu wołającego, nie danych projektanta."""
+    klucz `meta` z typowanym odpowiednikiem. Błąd programu wołającego, nie danych projektanta —
+    z wyjątkiem kształtu rekordu (klucz spoza kontraktu, klucz `meta` z typowanym odpowiednikiem,
+    wartość spoza kontraktu `Bay`), który przychodzi też z formularza zmiany pola. Wtedy
+    ``przyczyna_pl`` niesie treść dla projektanta (polskie nazwy pól, bez identyfikatora rekordu
+    i bez tekstu biblioteki pydantic); dla błędów programu (dubel, brak pola) = ``None``."""
+
+    def __init__(self, komunikat: str, *, przyczyna_pl: str | None = None) -> None:
+        super().__init__(komunikat)
+        self.przyczyna_pl = przyczyna_pl
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +353,11 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
     nieznane = sorted(set(rekord) - set(Bay.model_fields))
     if nieznane:
         raise BladPola(
-            f"pole {rekord.get('ref_id')!r}: klucze spoza kontraktu Bay: {', '.join(nieznane)}"
+            f"pole {rekord.get('ref_id')!r}: klucze spoza kontraktu Bay: {', '.join(nieznane)}",
+            przyczyna_pl=(
+                "parametry spoza opisu pola rozdzielnicy: "
+                + ", ".join(f"„{klucz}”" for klucz in nieznane)
+            ),
         )
     meta = rekord.get("meta")
     if isinstance(meta, Mapping):
@@ -351,12 +365,21 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
         if zakazane:
             raise BladPola(
                 f"pole {rekord.get('ref_id')!r}: klucze meta z typowanym odpowiednikiem: "
-                f"{', '.join(zakazane)}"
+                f"{', '.join(zakazane)}",
+                przyczyna_pl=(
+                    "adnotacje powielające parametry pola zapisane w modelu wprost: "
+                    + ", ".join(f"„{klucz}”" for klucz in zakazane)
+                ),
             )
     try:
         model = Bay.model_validate(dict(rekord))
-    except ValueError as blad:
-        raise BladPola(f"pole {rekord.get('ref_id')!r}: {blad}") from blad
+    except ValidationError as blad:
+        # Treść po polsku z jednego mapowania (surowy tekst pydantic nie trafia do odmowy
+        # operacji — `domain_operations` wkleja ją w komunikat dla projektanta).
+        przyczyna = opis_bledu_walidacji(blad)
+        raise BladPola(
+            f"pole {rekord.get('ref_id')!r}: {przyczyna}", przyczyna_pl=przyczyna
+        ) from blad
     # DETERMINIZM: `ENMElement.id` ma fabrykę `uuid4` — rekord zbudowany operacją (bez `id`)
     # dostałby LOSOWY identyfikator techniczny, a ta sama operacja na tym samym wejściu dawałaby
     # różne migawki. Rekord bez `id` zostaje bez `id` (jak każdy element dopisywany operacjami
