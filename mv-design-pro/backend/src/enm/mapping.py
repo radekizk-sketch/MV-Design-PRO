@@ -705,11 +705,18 @@ def _assemble_zero_sequence_y0(
         # bocznik). ``b0_siemens_per_km`` jest już w S/km (NIE μS/km — w
         # odróżnieniu od ``b_us_per_km`` zgodnej, patrz nazwa pola i
         # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
-        # Zero fabrykacji: B′0 z modelu albo z wartości roboczej odcinka SN (zasada nr 4 —
-        # ``skladowa_zerowa_galezi``: kabel B′0 = B′1, linia B′0 = 0,4·B′1, dana przyjęta
-        # ESTIMATED); bez podstawy (nN, WN, B′1 nieznane) bocznik pomijany — NIE podstawiamy
-        # zera znaczącego fizycznie.
-        b0_siemens_per_km = skladowa.b0_s_per_km
+        # Zero fabrykacji: bocznik wyłącznie z B′0 MODELU (dana projektanta albo producenta);
+        # B′0 nieznane — bocznik pomijany, NIE podstawiamy zera znaczącego fizycznie.
+        # Wartość robocza B′0 (``skladowa_zerowa_galezi``: kabel B′0 = B′1, linia
+        # B′0 = 0,4·B′1) NIE wchodzi do sieci zerowej zwarć IEC 60909: w sieciach izolowanych
+        # i skompensowanych wiersz 1F jest poza zakresem normy (prąd pojemnościowy z B′0
+        # roboczego liczy ``doziemienie_sieci``), a w sieciach uziemionych przez małą
+        # impedancję pkt 5.2 f) uwzględnia pojemności tylko przy współczynniku zwarcia
+        # doziemnego > 1,4 — bocznik roboczy rozciągałby bezwarunkowe B0 na daną szacowaną
+        # i zmieniał I″k1 sieci uziemionych bezpośrednio (k ≤ 1,4, pomiar parytetu
+        # assemblera: G16, G17). Ten sam predykat co konsumenci pojemności — model ma
+        # pierwszeństwo, więc ``robocze_b0`` puste ⇔ B′0 z modelu.
+        b0_siemens_per_km = None if skladowa.robocze_b0 else skladowa.b0_s_per_km
         if b0_siemens_per_km is not None:
             y0_shunt_total_s = b0_siemens_per_km * branch.length_km
             y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
@@ -738,16 +745,6 @@ def _assemble_zero_sequence_y0(
                     f"i {nazwa_szyny[branch.to_bus_ref]})"
                 ),
                 result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
-                notes=(
-                    "Wartość robocza (zasada nr 4): "
-                    + "; ".join(
-                        f"{etykieta} = {wartosc:.6g} S/km — {zalozenie}"
-                        for _, etykieta, zalozenie, wartosc in skladowa.robocze_b0
-                    )
-                    + "."
-                    if skladowa.robocze_b0
-                    else None
-                ),
             )
 
     for source in sorted(enm.sources, key=lambda s: s.ref_id):

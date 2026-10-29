@@ -63,13 +63,14 @@ _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
 
 def galezie_z0_robocze(
-    enm: EnergyNetworkModel, *, z_pojemnoscia: bool = True
+    enm: EnergyNetworkModel,
 ) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
-    """Załączone linie i kable, których R′0/X′0 (i B′0 przy ``z_pojemnoscia``) są wartością
-    roboczą (kolejność ref_id).
+    """Załączone linie i kable, których R′0/X′0 są wartością roboczą (kolejność ref_id).
 
-    ``z_pojemnoscia`` — obliczenie czyta pojemność doziemną B′0 (sieć zerowa zwarć z bocznikiem
-    pojemności, impedancja zerowa węzła); rozpływ niesymetryczny jej nie czyta (``False``).
+    B′0 z wartości roboczej NIE wchodzi do tego zbioru: sieć zerowa zwarć IEC 60909 czyta
+    wyłącznie B′0 modelu (``enm.mapping._assemble_zero_sequence_y0``), a rozpływ niesymetryczny
+    pomija pojemności odcinków. Dane przyjęte B′0 niesie wyłącznie konsument pojemności
+    doziemnej (``enm.uziemienie_sekcji`` — prąd pojemnościowy sieci, projekt uziemienia V12.6).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
     wierszy wyniku. Predykat pola: ``enm.skladowa_zerowa_galezi`` — ten sam, z którego sieć
@@ -83,8 +84,7 @@ def galezie_z0_robocze(
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
-        skladowa = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref))
-        pola = skladowa.robocze + (skladowa.robocze_b0 if z_pojemnoscia else ())
+        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze
         if pola:
             wynik.append((galaz, pola))
     return wynik
@@ -95,17 +95,15 @@ def zalozenia_z0_galezi(
     scenario: str | None,
     *,
     galezie: Iterable[str] | None = None,
-    z_pojemnoscia: bool = True,
 ) -> tuple[dict[str, Any], ...]:
     """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej.
 
     ``galezie`` zawęża zbiór (rozpływ niesymetryczny: wyłącznie gałęzie z realnym prądem I0);
-    ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu). ``z_pojemnoscia``
-    jak w ``galezie_z0_robocze``.
+    ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu).
     """
     dozwolone = None if galezie is None else set(galezie)
     zalozenia: list[dict[str, Any]] = []
-    for galaz, pola in galezie_z0_robocze(enm, z_pojemnoscia=z_pojemnoscia):
+    for galaz, pola in galezie_z0_robocze(enm):
         if dozwolone is not None and galaz.ref_id not in dozwolone:
             continue
         nazwa = nazwa_elementu(galaz, "branches")

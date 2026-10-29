@@ -33,7 +33,7 @@ from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
 from network_model.catalog.wartosci_robocze import zdanie_parametru_maszyny_pl
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -841,9 +841,9 @@ def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
     if doziemienie.get("podwojne_doziemienie_pl"):
         linie.append(f"Zastrzeżenie doziemienia: {doziemienie['podwojne_doziemienie_pl']}")
     dane = [
-        str(d["nazwa_pl"])
+        d["nazwa_pl"].strip()
         for d in doziemienie.get("dane_przyjete") or ()
-        if isinstance(d, dict) and d.get("nazwa_pl")
+        if isinstance(d, dict) and jest_nazwa(d.get("nazwa_pl"))
     ]
     if dane:
         linie.append("Dane przyjęte doziemienia (wartości robocze): " + "; ".join(dane))
