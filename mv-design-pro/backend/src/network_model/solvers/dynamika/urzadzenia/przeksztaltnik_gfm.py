@@ -132,8 +132,8 @@ class RdzenGFM:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "uklad",
-            "uklad stanow rdzenia jest WYPROWADZONY z jego nastaw (np. opoznienie "
-            "odbudowy dodaje stan); nazwy wchodza do odcisku jako `nazwy_stanow` urzadzenia",
+            "układ stanów rdzenia jest WYPROWADZONY z jego nastaw (np. opóźnienie "
+            "odbudowy dodaje stan); nazwy wchodzą do odcisku jako `nazwy_stanow` urządzenia",
         ),
     )
 
@@ -234,7 +234,7 @@ class RdzenGFM:
         if self.strategia_ograniczenia != STRATEGIA_NASYCENIE:
             raise AssertionError(
                 f"Strategia ograniczenia {self.strategia_ograniczenia!r} spoza zbioru "
-                f"kontraktu {STRATEGIE_GFM} — rdzen nie wybiera strategii sam"
+                f"kontraktu {STRATEGIE_GFM} — rdzeń nie wybiera strategii sam"
             )
         kierunek = obrot(stany[STAN_KATA])
         rzut = napiecie.re * kierunek.re + napiecie.im * kierunek.im
@@ -323,14 +323,14 @@ class RdzenGFM:
         if napiecie_pu == 0:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{opis}: zerowe napiecie punktu pracy nie wyznacza kata SEM",
+                f"{opis}: zerowe napięcie punktu pracy nie wyznacza kąta SEM",
             )
         prad = moc_pu.conjugate() / napiecie_pu.conjugate()
         if abs(prad) > self.i_max_pu:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{opis}: punkt pracy wymaga pradu {abs(prad)} pu ponad ogranicznik "
-                f"{self.i_max_pu} pu — rownowaga nie istnieje",
+                f"{opis}: punkt pracy wymaga prądu {abs(prad)} pu ponad ogranicznik "
+                f"{self.i_max_pu} pu — równowaga nie istnieje",
                 i_pu=abs(prad),
                 i_max_pu=self.i_max_pu,
             )
@@ -394,7 +394,7 @@ def zbuduj_rdzen_gfm(
     if tryb not in TRYBY_GFM:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Tryb przeksztaltnika tworzacego siec {tryb!r} spoza zbioru {TRYBY_GFM}",
+            f"Tryb przekształtnika tworzącego sieć {tryb!r} spoza zbioru {TRYBY_GFM}",
             tryb=tryb,
         )
     if strategia_ograniczenia not in STRATEGIE_GFM:
@@ -406,16 +406,16 @@ def zbuduj_rdzen_gfm(
     if r_wirtualne_pu <= 0.0 and x_wirtualne_pu <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            "Przeksztaltnik tworzacy siec o ZEROWEJ impedancji wirtualnej nie ma "
-            "skonczonej admitancji — R_w i X_w nie moga byc jednoczesnie zerowe",
+            "Przekształtnik tworzący sieć o ZEROWEJ impedancji wirtualnej nie ma "
+            "skończonej admitancji — R_w i X_w nie mogą być jednocześnie zerowe",
             r_wirtualne_pu=r_wirtualne_pu,
             x_wirtualne_pu=x_wirtualne_pu,
         )
     if tryb == TRYB_MASZYNA_WIRTUALNA and h_wirtualne_s <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            "Tryb maszyny wirtualnej wymaga niezerowej wirtualnej stalej bezwladnosci "
-            "— rownanie ruchu bez masy nie ma rozwiazania",
+            "Tryb maszyny wirtualnej wymaga niezerowej wirtualnej stałej bezwładności "
+            "— równanie ruchu bez masy nie ma rozwiązania",
             h_wirtualne_s=h_wirtualne_s,
         )
     return RdzenGFM(
@@ -503,7 +503,7 @@ class PrzeksztaltnikGFM:
 
     @property
     def _opis(self) -> str:
-        return f"przeksztaltnik tworzacy siec {self.ident}"
+        return f"przekształtnik tworzący sieć {self.ident}"
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         return self.rdzen.uklad.wektor(

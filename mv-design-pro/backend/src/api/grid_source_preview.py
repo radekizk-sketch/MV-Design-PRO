@@ -14,6 +14,7 @@ from domain.generator_validation import (
     blad_wejsc_kontroli_mocy,
     moc_pozorna_z_nastawy_mva,
 )
+from enm.slownik_komunikatow import lista_pl, pole
 from fastapi import APIRouter, HTTPException
 from network_model.catalog.wartosci_robocze import (
     TolerancjaNnRozstrzygnieta,
@@ -25,6 +26,8 @@ from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
     NAZWA_WLASNE,
+    NAZWY_WSPOLCZYNNIKOW_PL,
+    ZESTAWY_WARUNKOW,
     obciazalnosc_skorygowana,
     widok_zestawow,
     wspolczynniki_z_opisu,
@@ -132,14 +135,16 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
     if request.sk3_min_mva is None and request.ik3_min_ka is None:
         if request.rx_ratio_min is not None:
             raise OdmowaDanychError(
-                "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
-                "bez własnej mocy zwarciowej liczy się z danych MAX."
+                f"Pole {pole('rx_ratio_min')} bez pola {pole('sk3_min_mva')} albo "
+                f"{pole('ik3_min_ka')} nie ma zastosowania — scenariusz MIN bez własnej mocy "
+                "zwarciowej liczy się z danych MAX."
             )
         return None
     if request.short_circuit_mode == "IMPEDANCE":
         raise OdmowaDanychError(
-            "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
-            "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń."
+            f"Tryb impedancyjny (R+jX) nie ma wariantu MIN: pola {pole('sk3_min_mva')}, "
+            f"{pole('ik3_min_ka')} i {pole('rx_ratio_min')} podaj w trybie mocy zwarciowej "
+            "albo je usuń."
         )
     if request.sk3_min_mva is not None:
         sk_min_mva = request.sk3_min_mva
@@ -497,9 +502,12 @@ class CableLayingConditionsRequest(BaseModel):
             if wartosc is not None
         ]
         if podane and self.set_name != NAZWA_WLASNE:
+            nazwany = ZESTAWY_WARUNKOW.get(self.set_name)
+            zestaw = f"„{nazwany.etykieta_pl}”" if nazwany else "wskazany"
             raise OdmowaDanychError(
-                f"Współczynniki {', '.join(podane)} można podać tylko dla "
-                f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma własne wartości."
+                f"{lista_pl((NAZWY_WSPOLCZYNNIKOW_PL[k] for k in podane), 'i').capitalize()} "
+                f"można podać tylko dla własnych warunków ułożenia; zestaw {zestaw} ma "
+                "własne wartości."
             )
         return self
 

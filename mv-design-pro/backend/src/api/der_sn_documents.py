@@ -29,6 +29,7 @@ from application.analyses.raport_zgodnosci import build_compliance_report_from_t
 from application.koszty.lista_materialowa import koszt_listy_materialowej
 from catalog.cenniki import aktualny_cennik
 from domain.execution import RunStatus
+from enm.slownik_komunikatow import pole
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from network_model.odmowa_danych import OdmowaDanychError
@@ -112,7 +113,7 @@ def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> 
     wartosc = payload.get(klucz)
     if wartosc is None:
         raise OdmowaDanychError(
-            f"Brak pola {klucz!r} zastosowanego {etykieta} — brak danych do "
+            f"Brak pola {pole(klucz)} zastosowanego {etykieta} — brak danych do "
             "porównania z propozycją D2."
         )
     return float(wartosc)

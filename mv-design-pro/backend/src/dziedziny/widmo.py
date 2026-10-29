@@ -189,8 +189,8 @@ class SkladowaWidma(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "widmo.faza",
-                    f"Składowa {self.f_hz} Hz: faza nieznana wymaga powodu "
-                    "(faza_nieznana_powod_pl) — nieznana faza nie jest zerem.",
+                    f"Składowa {self.f_hz:g} Hz: faza nieznana wymaga podania powodu braku "
+                    "fazy — nieznana faza nie jest zerem.",
                 )
             )
         if self.faza_deg is not None and self.faza_nieznana_powod_pl is not None:

@@ -179,12 +179,17 @@ class UrzadzenieOchronneNn:
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
             raise OdmowaDanychError(
-                f"Nieznany rodzaj urządzenia '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
+                "Nieznany rodzaj urządzenia — dozwolone: wyłącznik nadprądowy MCB, "
+                "rozłącznik bezpiecznikowy z wkładką albo wyłącznik kompaktowy MCCB."
             )
         if self.in_a <= 0:
-            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(
+                f"Prąd znamionowy urządzenia In musi być dodatni, otrzymano {self.in_a:g} A."
+            )
         if self.kind == KIND_MCB and not self.klasa_mcb:
-            raise OdmowaDanychError("Urządzenie MCB wymaga klasa_mcb (B/C/D).")
+            raise OdmowaDanychError(
+                "Urządzenie MCB wymaga charakterystyki wyzwalania (klasa B, C albo D)."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1177,8 +1182,7 @@ class LVCircuitVerificationProofPack:
             if data.swz_tt_it is None:
                 raise OdmowaDanychError(
                     "Pakiet dowodowy obwodu nN w układzie TT/IT wymaga rekordu werdyktu "
-                    "wyjaśnialnego SWZ TT/IT (pole swz_tt_it) — bez niego krok 10 nie ma "
-                    "czego cytować."
+                    "wyjaśnialnego SWZ TT/IT — bez niego krok 10 nie ma czego cytować."
                 )
             steps.extend(_kroki_tt_it(data, fl))
         else:

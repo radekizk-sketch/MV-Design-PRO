@@ -54,9 +54,9 @@ class OknoMocy:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "domkniecie_gory",
-            "domkniecie ZALEZNE OD STANU (crowbar) skladane w trakcie "
-            "liczenia pochodnych (`z_domknieciem`); w urzadzeniu zbudowanym przez fabryke "
-            "jest zawsze `None`, a nastawy crowbar wchodza do odcisku przez `crowbar`",
+            "domknięcie ZALEŻNE OD STANU (crowbar) składane w trakcie "
+            "liczenia pochodnych (`z_domknieciem`); w urządzeniu zbudowanym przez fabrykę "
+            "jest zawsze `None`, a nastawy crowbar wchodzą do odcisku przez `crowbar`",
         ),
     )
 
@@ -72,7 +72,7 @@ class OknoMocy:
             raise OdmowaDynamiki(
                 KOD_PARAMETRY_SPRZECZNE,
                 f"Okno mocy [{self.dol_pu}, {self.gora_pu}] pu jest puste "
-                "(dolna granica powyzej gornej)",
+                "(dolna granica powyżej górnej)",
                 dol_pu=self.dol_pu,
                 gora_pu=self.gora_pu,
             )
@@ -119,7 +119,7 @@ def moc_znamionowa_pu(s_n_mva: float, s_bazowa_mva: float) -> float:
     if s_bazowa_mva <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})",
+            f"Baza mocy musi być dodatnia (otrzymano {s_bazowa_mva})",
             s_bazowa_mva=s_bazowa_mva,
         )
     return s_n_mva / s_bazowa_mva

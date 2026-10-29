@@ -207,7 +207,10 @@ def test_nieznany_charakter_q_jest_odrzucany(app_client) -> None:
         json={**_PAYLOAD_8KM, "reactive_character": "pojemnosciowy"},
     )
     assert response.status_code == 422
-    assert "reactive_character" in response.json()["detail"]
+    # Odmowa nazywa wielkość słowami (karta klasy surowych kluczy), nie kluczem pola.
+    detail = response.json()["detail"]
+    assert "Charakter mocy biernej" in detail, detail
+    assert "reactive_character" not in detail, detail
 
 
 # ===========================================================================
@@ -335,7 +338,9 @@ def test_nieznany_zestaw_warunkow_jest_odrzucany_przez_api(app_client) -> None:
     assert response.status_code == 422
     detail = response.json()["detail"]
     assert "Nieznany zestaw warunków ułożenia" in detail
-    assert "warunki_katalogowe" in detail
+    # Dostępne zestawy nazwane etykietą projektanta, nie kluczem zestawu.
+    assert "„Warunki katalogowe (bez korekty)”" in detail
+    assert "warunki_katalogowe" not in detail
 
 
 def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
@@ -386,7 +391,9 @@ def test_wspolczynniki_przy_nazwanym_zestawie_sa_odrzucane(app_client) -> None:
         },
     )
     assert response.status_code == 422
-    assert "f_grunt" in response.text
+    # Odmowa nazywa współczynnik słowami (jedna mapa NAZWY_WSPOLCZYNNIKOW_PL), nie kluczem.
+    assert "Współczynnik gruntu" in response.text, response.text
+    assert "f_grunt" not in response.text, response.text
 
 
 # ===========================================================================

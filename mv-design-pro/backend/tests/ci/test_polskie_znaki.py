@@ -21,10 +21,11 @@ przez testy detektora):
   ``/`` lub ``_`` (``KAT-T-001``, ``RATIO/ODLEGLOSC``).
 
 ZAKRES I WYJĄTKI (uzasadnione merytorycznie, nie „poza kartą"):
-- rdzenie FROZEN ``network_model/solvers/**`` i profile NC RfG
-  ``catalog/profiles/nc_rfg/**`` — edycja wymaga decyzji właściciela (bramka
-  B-01); ich trafienia są PRZYPIĘTE zapadką per plik (``ZAMROZONE_TRAFIENIA``),
-  działającą w obie strony: wzrost to nowy dług, spadek wymaga obniżenia pinu;
+- rdzenie FROZEN z JEDNEJ listy ``scripts/rdzenie_b01.py`` (predykat
+  ``jest_rdzeniem_b01``) — edycja wymaga decyzji B-01; ich trafienia są PRZYPIĘTE
+  zapadką per plik (``ZAMROZONE_TRAFIENIA``), działającą w obie strony: wzrost to
+  nowy dług, spadek wymaga obniżenia pinu. Pozostałe pliki ``network_model/solvers/**``
+  nie są zamrożone i podlegają regule bez wyjątku;
 - zapis jednostek w ``network_model/catalog/**`` — opisy źródeł katalogowych
   cytują oznaczenia producenta 1:1 (``ETI VVC3 12kV/16A``, ``TK 521_VD4_40kA_E``,
   ``Vestas V90-2MW``); przepisanie ich zmieniłoby cytat, nie redakcję. Polskie
@@ -34,10 +35,12 @@ ZAKRES I WYJĄTKI (uzasadnione merytorycznie, nie „poza kartą"):
 from __future__ import annotations
 
 import ast
+import importlib.util
 import json
 import re
 from collections import Counter
 from collections.abc import Iterator
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -49,8 +52,22 @@ BACKEND = Path(__file__).resolve().parents[2]
 SRC = BACKEND / "src"
 FRONTEND = BACKEND.parent / "frontend"
 
-#: Katalogi, których edycja wymaga zgody właściciela (B-01) — trafienia pinowane.
-ZAMROZONE = ("network_model/solvers/", "catalog/profiles/nc_rfg/")
+
+@cache
+def _rdzenie_b01() -> Any:
+    """Moduł ``scripts/rdzenie_b01.py`` — jedna lista rdzeni B-01 (bez kopii w teście)."""
+    sciezka = BACKEND.parent / "scripts" / "rdzenie_b01.py"
+    spec = importlib.util.spec_from_file_location("rdzenie_b01", sciezka)
+    assert spec is not None and spec.loader is not None
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def jest_zamrozony(rel: str) -> bool:
+    """Plik (względem ``src``), którego edycja wymaga zgody B-01 — trafienia pinowane."""
+    return bool(_rdzenie_b01().jest_rdzeniem_b01(rel))
+
 
 #: Katalog, w którym zapis jednostek cytuje oznaczenia producenta (patrz docstring).
 CYTATY_PRODUCENTA = ("network_model/catalog/",)
@@ -76,27 +93,11 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (l)): zdjęte `v126_academic.py`
 #: (6 -> 0) — rdzeń B-01, dziewięć literałów poprawionych przeglądem ręcznym (sześć ze skanu
 #: i trzy „nieskonczone/NaN", których słownik nie znał — formy dopisane do słownika).
-ZAMROZONE_TRAFIENIA: dict[str, int] = {
-    "network_model/solvers/cable_voltage_drop.py": 15,
-    "network_model/solvers/der_selection_preview.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/bazowe.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/fabryka.py": 10,
-    "network_model/solvers/dynamika/urzadzenia/magazyn.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/maszyna_synchroniczna.py": 6,
-    "network_model/solvers/dynamika/urzadzenia/okno_mocy.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/pochodne_kierunkowe.py": 1,
-    "network_model/solvers/dynamika/urzadzenia/przeksztaltnik_gfl.py": 4,
-    "network_model/solvers/dynamika/urzadzenia/przeksztaltnik_gfm.py": 7,
-    "network_model/solvers/dynamika/urzadzenia/regulatory.py": 3,
-    "network_model/solvers/dynamika/urzadzenia/turbina_wiatrowa.py": 6,
-    "network_model/solvers/dynamika/urzadzenia/uklad_stanow.py": 7,
-    "network_model/solvers/dynamika/walidacja/rowne_pola.py": 6,
-    "network_model/solvers/equipment_checks/cable_thermal_aging.py": 4,
-    "network_model/solvers/equipment_checks/ct_burden_saturation.py": 6,
-    "network_model/solvers/equipment_checks/transformer_losses.py": 3,
-    "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 8,
-    "network_model/solvers/transformer_rated_currents.py": 6,
-}
+#: Karta klasy surowych kluczy pól (2026-10-29): dawny predykat ``ZAMROZONE`` obejmował
+#: cały katalog ``network_model/solvers/`` i chował 19 plików spoza listy B-01 (96
+#: literałów). Predykat bierze teraz listę z ``scripts/rdzenie_b01.py``; literały tych
+#: plików poprawione u źródła (pomiar skanem tego testu: 96 -> 0, rdzenie B-01: 0).
+ZAMROZONE_TRAFIENIA: dict[str, int] = {}
 
 _IDENTYFIKATOR = re.compile(r"[A-Za-z0-9_.:/\-{}\[\]*|]*")
 _SLOWO = re.compile(r"(?<![\w\\])(?<!\\')[A-Za-z]+(?!\w)")
@@ -200,11 +201,11 @@ def _skan_src() -> tuple[list[str], Counter[str], list[str]]:
         for linia, tekst in literaly_tekstu(zrodlo):
             slowa = slowa_bez_znakow(tekst, kody)
             if slowa:
-                if rel.startswith(ZAMROZONE):
+                if jest_zamrozony(rel):
                     zamrozone[rel] += 1
                 else:
                     naruszenia.append(f"{rel}:{linia} {slowa}: {tekst[:100]!r}")
-            if not rel.startswith(ZAMROZONE + CYTATY_PRODUCENTA):
+            if not (jest_zamrozony(rel) or rel.startswith(CYTATY_PRODUCENTA)):
                 sklejone = jednostki_sklejone(tekst)
                 if sklejone:
                     jednostki.append(f"{rel}:{linia} {sklejone}: {tekst[:100]!r}")
@@ -234,6 +235,27 @@ def test_zapadka_rdzeni_zamrozonych(skan_src):
     a naprawa (po zgodzie B-01) wymaga obniżenia pinu (zapadka w obie strony)."""
     _, zamrozone, _ = skan_src
     assert dict(sorted(zamrozone.items())) == ZAMROZONE_TRAFIENIA
+
+
+@pytest.mark.parametrize(
+    ("rel", "zamrozony"),
+    [
+        ("network_model/solvers/short_circuit_iec60909.py", True),
+        ("network_model/solvers/v126_academic.py", True),
+        ("network_model/solvers/ncrfg_ptpiree/__init__.py", True),
+        ("catalog/profiles/nc_rfg/__init__.py", True),
+        ("network_model/solvers/cable_voltage_drop.py", False),
+        ("network_model/solvers/dynamika/urzadzenia/fabryka.py", False),
+        ("network_model/solvers/equipment_checks/ct_burden_saturation.py", False),
+        ("network_model/solvers/protection_lv_curves.py", False),
+    ],
+)
+def test_wyjatek_zapadki_to_wylacznie_lista_b01(rel: str, zamrozony: bool) -> None:
+    """Wyjątek zapadki pochodzi z ``scripts/rdzenie_b01.py``, nie z katalogu solverów:
+    plik solvera spoza listy B-01 podlega regule bez wyjątku (dawny predykat katalogowy
+    chował 19 takich plików)."""
+    assert (SRC / rel).exists(), rel
+    assert jest_zamrozony(rel) is zamrozony
 
 
 # --- nazwy elementów sieci, z których generatory budują fikstury frontu -------------

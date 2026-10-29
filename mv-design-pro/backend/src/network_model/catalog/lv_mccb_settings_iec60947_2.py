@@ -58,7 +58,9 @@ def resolwuj_nastawy_mccb(
         ValueError: ``i_n_a <= 0``.
     """
     if i_n_a <= 0:
-        raise OdmowaDanychError(f"i_n_a musi być dodatnie, otrzymano {i_n_a}.")
+        raise OdmowaDanychError(
+            f"Prąd znamionowy wyłącznika kompaktowego I_n musi być dodatni, otrzymano {i_n_a} A."
+        )
     ir_a = ir_range[1] * i_n_a if ir_range is not None else None
     isd_a = isd_range[1] * ir_a if isd_range is not None and ir_a is not None else None
     ii_a = ii_range[1] * i_n_a if ii_range is not None else None

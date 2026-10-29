@@ -130,7 +130,7 @@ def test_line_incomplete_override_rejected(catalog_with_types, override):
     """Karta FAB-D2 (D5): nadpisanie impedancji musi nieść KOMPLET (r, x, b)
     albo jest odrzucone — częściowy override nie fabrykuje brakujących
     składowych jako 0.0."""
-    with pytest.raises(ValueError, match="impedance_override.incomplete"):
+    with pytest.raises(ValueError, match="Nadpisanie impedancji linii/kabla jest niekompletne"):
         resolve_line_params(
             type_ref="line_100",
             is_cable=False,

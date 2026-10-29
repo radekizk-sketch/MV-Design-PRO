@@ -503,13 +503,17 @@ def dodaj_transformator(
         payload["hv_voltage_kv"] = hv_voltage_kv
     else:
         raise BenchmarkBuildError(
-            "dodaj_transformator: podaj hv_bus_ref albo (hv_voltage_kv + lv_bus_ref)."
+            "Transformator grafu wejściowego wymaga wskazania szyny górnego napięcia albo "
+            "napięcia strony górnej razem z szyną dolnego napięcia."
         )
     if lv_bus_ref is not None:
         payload["lv_bus_ref"] = lv_bus_ref
     else:
         if lv_voltage_kv is None:
-            raise BenchmarkBuildError("dodaj_transformator: podaj lv_bus_ref albo lv_voltage_kv.")
+            raise BenchmarkBuildError(
+                "Transformator grafu wejściowego wymaga wskazania szyny dolnego napięcia albo "
+                "napięcia strony dolnej."
+            )
         payload["lv_voltage_kv"] = lv_voltage_kv
     if off_nominal_ratio is not None and off_nominal_ratio != 1.0:
         # Krok zaczepu musi być NIEUJEMNY (walidacja domenowa) — kierunek
@@ -635,7 +639,8 @@ def zbuduj_topologie(
     )
     if unreachable:
         raise BenchmarkBuildError(
-            f"zbuduj_topologie: krawędzie nieosiągalne z szyny bilansującej: {unreachable}"
+            "Krawędzie grafu wejściowego nieosiągalne z szyny bilansującej: "
+            f"{', '.join(unreachable)}"
         )
 
     for edge in edges:
@@ -722,8 +727,8 @@ def rozbuduj_z_dowolnej_szyny(
     )
     if unreachable:
         raise BenchmarkBuildError(
-            f"rozbuduj_z_dowolnej_szyny: krawędzie nieosiągalne z korzeni {korzenie}: "
-            f"{unreachable}"
+            "Krawędzie grafu wejściowego nieosiągalne z szyn źródłowych "
+            f"{', '.join(korzenie)}: {', '.join(unreachable)}"
         )
 
     for edge in edges:

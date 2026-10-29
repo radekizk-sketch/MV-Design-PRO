@@ -163,7 +163,7 @@ def zakresy_waznosci_elementow(
         zakresy = element.zakresy_waznosci
         if len(zakresy) != len(element.nazwy_stanow):
             raise AssertionError(
-                f"Element {element.ident!r} podal {len(zakresy)} zakresów ważności "
+                f"Element {element.ident!r} podał {len(zakresy)} zakresów ważności "
                 f"wobec {len(element.nazwy_stanow)} stanów — deklaracja musi być "
                 "kompletna"
             )
@@ -211,7 +211,7 @@ def pochodne_ukladu(
         pozycja = kontekst.model.indeks_wezla[element.wezel]
         czesci.append(element.pochodne(stan, complex(napiecia[pozycja])))
     pochodne = spakuj_stany(tuple(czesci))
-    sprawdz_wektor(pochodne, kontekst.adresy_stanow, "pochodne stanow", t_s)
+    sprawdz_wektor(pochodne, kontekst.adresy_stanow, "pochodne stanów", t_s)
     return pochodne
 
 
@@ -657,7 +657,7 @@ class TrapezNiejawny:
             )
         raise OdmowaDynamiki(
             KOD_KROK_NIEZBIEZNY,
-            f"Newton kroku nie zbiegl przy t={t_s} s (dt={dt_s} s, "
+            f"Newton kroku nie zbiegł przy t={t_s} s (dt={dt_s} s, "
             f"{nastawy.max_iteracji_newtona} iteracji, residuum {norma} > "
             f"tolerancja {nastawy.tolerancja})",
             t_s=t_s,

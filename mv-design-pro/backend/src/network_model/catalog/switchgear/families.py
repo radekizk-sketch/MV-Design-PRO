@@ -1334,6 +1334,7 @@ def get_switchgear_family(switchgear_family_ref: str) -> SwitchgearFamily:
     if switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
         available = ", ".join(sorted(SWITCHGEAR_FAMILY_REGISTRY.keys()))
         raise BrakZasobuError(
-            f"Unknown switchgear_family_ref: {switchgear_family_ref}. " f"Available: {available}"
+            f"Nieznana rodzina rozdzielnic {switchgear_family_ref!r}. Dostępne rodziny: "
+            f"{available}"
         )
     return SWITCHGEAR_FAMILY_REGISTRY[switchgear_family_ref]

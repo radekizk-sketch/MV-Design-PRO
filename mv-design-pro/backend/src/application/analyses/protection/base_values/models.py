@@ -194,9 +194,14 @@ class BaseValues:
     def __post_init__(self) -> None:
         """Validate invariants."""
         if self.un_kv is None and self.source_un != BaseValueSourceUn.UNKNOWN:
-            raise ValueError("un_kv is None but source_un is not UNKNOWN")
+            raise ValueError(
+                "Wartość bazowa bez napięcia znamionowego Un nie może wskazywać źródła tej "
+                "wartości"
+            )
         if self.in_a is None and self.source_in != BaseValueSourceIn.UNKNOWN:
-            raise ValueError("in_a is None but source_in is not UNKNOWN")
+            raise ValueError(
+                "Wartość bazowa bez prądu znamionowego In nie może wskazywać źródła tej wartości"
+            )
 
     @property
     def un_v(self) -> float | None:
@@ -303,7 +308,7 @@ class ProtectionSetpoint:
                 raise ValueError(f"Dla bazy {self.basis.value} wymagany jest multiplier")
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
-                raise ValueError("Dla bazy ABS wymagana jest wartość abs_value")
+                raise ValueError("Dla nastawy w wartościach bezwzględnych wymagana jest wartość")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -347,7 +352,7 @@ class ProtectionComputedValue:
     def __post_init__(self) -> None:
         """Validate computed value invariants."""
         if not self.computed_from or self.computed_from.strip() == "":
-            raise ValueError("Wartość computed musi mieć wypełnione pole computed_from")
+            raise ValueError("Wartość wyliczona musi wskazywać, z czego ją wyliczono")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""

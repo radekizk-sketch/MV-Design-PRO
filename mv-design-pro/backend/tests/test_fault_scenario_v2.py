@@ -127,7 +127,9 @@ class TestNodeLocationType:
         assert s.location.position is None
 
     def test_node_with_position_fails(self):
-        with pytest.raises(FaultScenarioValidationError, match="NODE"):
+        with pytest.raises(
+            FaultScenarioValidationError, match="Zwarcie w węźle nie ma położenia na gałęzi"
+        ):
             _make_v2_scenario(location_type="NODE", element_ref="node-1", position=0.5)
 
     def test_node_serialization(self):
@@ -173,7 +175,7 @@ class TestBranchPointLocationType:
         assert s.location.position == 1.0
 
     def test_branch_point_without_alpha_fails(self):
-        with pytest.raises(FaultScenarioValidationError, match="alpha"):
+        with pytest.raises(FaultScenarioValidationError, match="miejsca zwarcia α"):
             _make_v2_scenario(
                 location_type="BRANCH_POINT",
                 element_ref="branch-1",
@@ -181,7 +183,7 @@ class TestBranchPointLocationType:
             )
 
     def test_branch_point_alpha_negative_fails(self):
-        with pytest.raises(FaultScenarioValidationError, match="alpha"):
+        with pytest.raises(FaultScenarioValidationError, match="miejsca zwarcia α"):
             _make_v2_scenario(
                 location_type="BRANCH_POINT",
                 element_ref="branch-1",
@@ -189,7 +191,7 @@ class TestBranchPointLocationType:
             )
 
     def test_branch_point_alpha_above_one_fails(self):
-        with pytest.raises(FaultScenarioValidationError, match="alpha"):
+        with pytest.raises(FaultScenarioValidationError, match="miejsca zwarcia α"):
             _make_v2_scenario(
                 location_type="BRANCH_POINT",
                 element_ref="branch-1",
@@ -223,7 +225,10 @@ class TestFaultModeValidation:
 
     def test_metallic_with_impedance_fails(self):
         """METALLIC mode + fault_impedance → error (fault.mode_conflict_impedance_provided)."""
-        with pytest.raises(FaultScenarioValidationError, match="metaliczny"):
+        with pytest.raises(
+            FaultScenarioValidationError,
+            match="Zwarcie metaliczne nie dopuszcza impedancji przejścia",
+        ):
             _make_v2_scenario(
                 fault_mode=FaultMode.METALLIC,
                 fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
@@ -242,7 +247,10 @@ class TestFaultModeValidation:
 
     def test_impedance_without_impedance_fails(self):
         """IMPEDANCE mode without fault_impedance → error (fault.impedance_missing)."""
-        with pytest.raises(FaultScenarioValidationError, match="impedancyjny"):
+        with pytest.raises(
+            FaultScenarioValidationError,
+            match="Zwarcie przez impedancję wymaga jawnej impedancji przejścia",
+        ):
             _make_v2_scenario(
                 fault_mode=FaultMode.IMPEDANCE,
                 fault_impedance=None,

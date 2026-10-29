@@ -175,7 +175,7 @@ def test_sequence_context_requires_both_params_returns_422(app_client) -> None:
         },
     )
     assert resp.status_code == 422
-    assert "run_id oraz bus_ref" in resp.json()["detail"]
+    assert "biegu obliczeniowego i węzła przyłączenia" in resp.json()["detail"]
 
 
 def test_sequence_unknown_bus_ref_returns_422(app_client) -> None:

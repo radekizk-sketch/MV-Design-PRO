@@ -1025,9 +1025,9 @@ class ProofGenerator:
 
         if data.quantities is None:
             raise ValueError(
-                "SC1Input.quantities jest wymagane — proof engine nie liczy fizyki "
-                "(NOT-A-SOLVER); wielkości zwarciowe SC1 liczy solver "
-                "network_model/solvers/short_circuit_asymmetrical_quantities."
+                "Dane wejściowe dowodu zwarcia niesymetrycznego nie niosą wielkości "
+                "zwarciowych — generator dowodu nie liczy fizyki; wielkości zwarciowe liczy "
+                "solver zwarć niesymetrycznych."
             )
         quantities = data.quantities
         if quantities.fault_type != fault_type:
@@ -3495,7 +3495,9 @@ class ProofGenerator:
                 t_prev = sorted_points[idx - 1].t_h
                 t_curr = sorted_points[idx].t_h
                 if t_curr <= t_prev:
-                    raise ValueError("Czasy t_h muszą być ściśle rosnące bez duplikatów.")
+                    raise ValueError(
+                        "Chwile profilu strat [h] muszą być ściśle rosnące bez duplikatów."
+                    )
 
                 delta_t = t_curr - t_prev
                 p_loss = sorted_points[idx].p_loss_kw
@@ -3714,7 +3716,10 @@ class ProofGenerator:
         for f in fields(obj):
             mapping_key = f.metadata.get("mapping_key")
             if not mapping_key:
-                raise ValueError(f"Brak mapping_key dla pola {path}{f.name}.")
+                raise ValueError(
+                    f"Pole danych wejściowych dowodu ({type(obj).__name__}) nie ma klucza "
+                    "mapowania na wielkość dowodu."
+                )
             value = getattr(obj, f.name)
             if value is None:
                 continue
@@ -3911,17 +3916,20 @@ class ProofGenerator:
 
         if data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE):
             if data.in_a is None:
-                raise ValueError("Brak prądu znamionowego in_a dla linii/kabla.")
+                raise ValueError("Brak prądu znamionowego In dla linii/kabla.")
         elif data.element_kind == LoadElementKind.TRANSFORMER:
             if data.sn_mva is None:
-                raise ValueError("Brak mocy znamionowej sn_mva dla transformatora.")
+                raise ValueError("Brak mocy znamionowej S_n dla transformatora.")
         else:
-            raise ValueError(f"Nieobsługiwany element_kind: {data.element_kind}")
+            raise ValueError(
+                "Nieobsługiwany rodzaj elementu dowodu prądów roboczych — dozwolone: linia, "
+                "kabel albo transformator."
+            )
 
         if data.u_ll_kv is None:
-            raise ValueError("Brak napięcia międzyfazowego u_ll_kv.")
+            raise ValueError("Brak napięcia międzyfazowego U.")
         if data.p_mw is None or data.q_mvar is None:
-            raise ValueError("Brak mocy czynnej/biernej p_mw/q_mvar.")
+            raise ValueError("Brak mocy czynnej P albo biernej Q.")
 
         s_mva = math.sqrt(data.p_mw**2 + data.q_mvar**2)
 

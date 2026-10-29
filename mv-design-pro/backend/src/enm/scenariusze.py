@@ -99,6 +99,117 @@ from .rewizje import digest_klucza
 from .slownik_komunikatow import NAZWY_KOLEKCJI_PL, lista_pl, opis_nazwy
 from .topology import TYPY_LACZNIKOW_ENM
 
+# ---------------------------------------------------------------------------
+# Etykiety kontraktu scenariusza dynamicznego po polsku — JEDNO źródło słów pól, rodzajów
+# zdarzeń i wartości: odmowy walidacji tego modułu, opis edytora scenariusza
+# (`application.dynamika.opis_scenariusza`) i odmowy biegu (`application.dynamika.odmowy`).
+# ---------------------------------------------------------------------------
+
+#: Etykiety rodzajów zdarzeń (klucz = wartość dyskryminatora `rodzaj`).
+ETYKIETY_RODZAJOW: dict[str, str] = {
+    "zwarcie": "Zwarcie",
+    "wylaczenie_galezi": "Otwarcie gałęzi lub łącznika",
+    "zalaczenie_galezi": "Zamknięcie gałęzi lub łącznika",
+    "odlaczenie_zrodla": "Odłączenie źródła",
+    "skok_obciazenia": "Skokowa zmiana mocy odbioru",
+    "odlaczenie_odbioru": "Odłączenie odbioru",
+    "zalaczenie_odbioru": "Ponowne załączenie odbioru",
+    "komenda_regulacji": "Zmiana nastawy regulatora źródła",
+    "utrata_czesciowa_zrodla": "Częściowa utrata jednostek źródła",
+    "synchronizacja": "Synchronizacja źródła z siecią",
+}
+
+#: Etykiety wariantów wielkości detektora (klucz = wartość dyskryminatora `rodzaj`); jednostka
+#: progu w nawiasie — próg jest w jednostce kanału, który detektor czyta (kontrakt `Detektor`).
+ETYKIETY_WIELKOSCI_DETEKTORA: dict[str, str] = {
+    "modul_napiecia": "Moduł napięcia szyny [pu]",
+    "czestotliwosc": "Częstotliwość szyny [Hz]",
+    "modul_pradu_zacisku": "Moduł prądu zacisku gałęzi [pu bazy układu]",
+    "stan_urzadzenia": "Zmienna stanu urządzenia [jednostka stanu]",
+    "moc_urzadzenia": "Moc oddawana przez urządzenie [pu bazy układu]",
+}
+
+#: Etykiety pól zdarzeń i scenariusza (klucz = nazwa pola kontraktu).
+ETYKIETY_POL: dict[str, str] = {
+    "t_s": "Chwila zdarzenia",
+    "bus_ref": "Szyna",
+    "element_ref": "Element",
+    "polozenie_wzgledne": "Położenie miejsca zwarcia x (ułamek długości od zacisku początkowego)",
+    "typ": "Rodzaj zwarcia",
+    "r_f_ohm": "Rezystancja przejścia R_f",
+    "x_f_ohm": "Reaktancja przejścia X_f",
+    "t_usuniecia_s": "Chwila usunięcia zwarcia",
+    "sposob_usuniecia": "Sposób usunięcia zwarcia",
+    "ref_id": "Element",
+    "delta_p_mw": "Zmiana mocy czynnej ΔP",
+    "delta_q_mvar": "Zmiana mocy biernej ΔQ",
+    "nastawa": "Nowa nastawa",
+    "p_mw": "Moc czynna P",
+    "q_mvar": "Moc bierna Q",
+    "u_pu": "Napięcie odniesienia U",
+    # Pola segmentów profilu źródła testowego (`StanowiskoBadawcze`) — te same etykiety
+    # nazywają je w odmowach rdzenia (`zrodlo_testowe._sprawdz_liczby`).
+    "tempo_pu_na_s": "Tempo zmiany napięcia [pu/s]",
+    "czas_trwania_s": "Czas trwania zmiany",
+    "odchylka_hz": "Odchyłka częstotliwości",
+    "tempo_hz_na_s": "Tempo zmiany częstotliwości [Hz/s]",
+    "kat_deg": "Skok kąta fazowego",
+    "udzial_pozostaly": "Udział jednostek pracujących dalej (względem stanu początkowego)",
+    "detektory": "Detektory przekroczeń progu (bez działania na sieć)",
+    "ident": "Nazwa detektora",
+    "wielkosc": "Obserwowana wielkość",
+    "prog": "Próg (w jednostce obserwowanej wielkości)",
+    "kierunek": "Kierunek przekroczenia",
+    "jednorazowy": "Tylko pierwsze przekroczenie",
+    "zacisk": "Zacisk gałęzi",
+    "stan": "Nazwa zmiennej stanu urządzenia",
+    "skladowa": "Składowa mocy",
+    "horyzont_s": "Horyzont symulacji",
+    "krok_wyjscia_s": "Krok zapisu przebiegu",
+    "dt_s": "Krok całkowania",
+    "dt_min_s": "Najmniejszy krok całkowania",
+    "dt_max_s": "Największy krok całkowania",
+    "tolerancja": "Tolerancja residuum równań",
+    "tolerancja_kroku": "Tolerancja błędu lokalnego kroku",
+    "eps_init": "Tolerancja stanu początkowego",
+    "max_iteracji_newtona": "Największa liczba iteracji Newtona w kroku",
+    "max_nawrotow": "Największa liczba nawrotów kroku",
+    "integrator": "Metoda całkowania",
+    "tolerancja_lokalizacji_zdarzen_s": (
+        "Tolerancja lokalizacji chwili przekroczenia (wymagana, gdy są detektory)"
+    ),
+}
+
+#: Etykiety wartości wyliczeniowych (klucz = (pole, wartość)).
+ETYKIETY_WARTOSCI: dict[tuple[str, str], str] = {
+    ("typ", "3F"): "trójfazowe (3F)",
+    ("typ", "2F"): "dwufazowe (2F)",
+    ("typ", "1F"): "jednofazowe doziemne (1F)",
+    ("typ", "2FZ"): "dwufazowe doziemne (2FZ)",
+    ("sposob_usuniecia", "izolacja"): "izolacja miejsca zwarcia aparatami",
+    ("sposob_usuniecia", "samoczynne"): "samoczynne zgaśnięcie (idealizacja)",
+    ("integrator", "trapez_niejawny"): "trapezów, niejawna",
+    ("integrator", "rk4_jawny"): "Rungego-Kutty 4. rzędu, jawna",
+    ("kierunek", "w_dol"): "spadek poniżej progu",
+    ("kierunek", "w_gore"): "wzrost powyżej progu",
+    ("zacisk", "od"): "zacisk początkowy (od)",
+    ("zacisk", "do"): "zacisk końcowy (do)",
+    ("skladowa", "p"): "moc czynna P",
+    ("skladowa", "q"): "moc bierna Q",
+}
+
+
+def _etykieta_pola_scenariusza(klucz: str) -> str:
+    """Etykieta pola kontraktu scenariusza w cudzysłowie do wstawienia w zdanie."""
+    return f"„{ETYKIETY_POL[klucz]}”"
+
+
+def _etykieta_rodzaju_zdarzenia(rodzaj: str) -> str:
+    """Etykieta rodzaju zdarzenia w cudzysłowie (rodzaj spoza słownika = opis ogólny)."""
+    etykieta = ETYKIETY_RODZAJOW.get(rodzaj)
+    return f"„{etykieta}”" if etykieta else "zdarzenie innego rodzaju"
+
+
 #: Sufiks katalogu scenariuszy nazwanych projektu: `<digest>.scen/`.
 SUFIKS_KATALOGU_SCENARIUSZY = ".scen"
 #: Prefiks identyfikatora scenariusza PRZEJSCIOWEGO (nigdy nie zapisywany).
@@ -220,7 +331,10 @@ class Nastawa(BaseModel):
     @model_validator(mode="after")
     def _co_najmniej_jedno(self) -> Nastawa:
         if self.p_mw is None and self.q_mvar is None:
-            raise ValueError("Nastawa bez żadnej wartości (p_mw/q_mvar) nie jest nadpisaniem")
+            raise ValueError(
+                "Nastawa scenariusza bez żadnej wartości nie jest nadpisaniem — podaj "
+                f"{_etykieta_pola_scenariusza('p_mw')} albo {_etykieta_pola_scenariusza('q_mvar')}"
+            )
         return self
 
 
@@ -248,7 +362,9 @@ class NastawaDynamiczna(BaseModel):
     def _co_najmniej_jedno(self) -> NastawaDynamiczna:
         if self.p_mw is None and self.q_mvar is None and self.u_pu is None:
             raise ValueError(
-                "NastawaDynamiczna bez żadnej wartości (p_mw/q_mvar/u_pu) nie jest komenda"
+                "Nowa nastawa regulatora bez żadnej wartości nie jest komendą — podaj "
+                f"{_etykieta_pola_scenariusza('p_mw')}, {_etykieta_pola_scenariusza('q_mvar')} "
+                f"albo {_etykieta_pola_scenariusza('u_pu')}"
             )
         return self
 
@@ -297,27 +413,30 @@ class Zwarcie(BaseModel):
 
     @model_validator(mode="after")
     def _usuniecie_po_zwarciu(self) -> Zwarcie:
+        szyna = _etykieta_pola_scenariusza("bus_ref")
+        element = _etykieta_pola_scenariusza("element_ref")
+        polozenie = _etykieta_pola_scenariusza("polozenie_wzgledne")
+        chwila = _etykieta_pola_scenariusza("t_s")
+        usuniecie = _etykieta_pola_scenariusza("t_usuniecia_s")
+        sposob = _etykieta_pola_scenariusza("sposob_usuniecia")
         if (self.bus_ref is None) == (self.element_ref is None):
+            podano = "oba pola" if self.bus_ref is not None else "żadnego z nich"
             raise ValueError(
-                "Zwarcie: podaj dokładnie jedno miejsce — `bus_ref` (zwarcie w węźle) albo "
-                "`element_ref` z `polozenie_wzgledne` (zwarcie w linii/kablu w x*L); "
-                f"podano bus_ref={self.bus_ref!r}, element_ref={self.element_ref!r}."
+                f"Zwarcie: podaj dokładnie jedno miejsce — {szyna} (zwarcie w węźle) albo "
+                f"{element} z polem {polozenie} (zwarcie w linii/kablu w x·L); podano {podano}."
             )
         if (self.element_ref is None) != (self.polozenie_wzgledne is None):
             raise ValueError(
-                "Zwarcie: `polozenie_wzgledne` podaje się razem z `element_ref` i tylko z nim "
-                f"(element_ref={self.element_ref!r}, "
-                f"polozenie_wzgledne={self.polozenie_wzgledne!r})."
+                f"Zwarcie: pole {polozenie} podaje się razem z polem {element} i tylko z nim."
             )
         if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
             raise ValueError(
-                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi być później niż "
-                f"t_s ({self.t_s}) — zwarcie nie może być usunięte przed wystąpieniem."
+                f"Zwarcie: {usuniecie} ({self.t_usuniecia_s:g} s) musi być późniejsza niż "
+                f"{chwila} ({self.t_s:g} s) — zwarcie nie może być usunięte przed wystąpieniem."
             )
         if (self.t_usuniecia_s is None) != (self.sposob_usuniecia is None):
             raise ValueError(
-                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) i sposob_usuniecia "
-                f"({self.sposob_usuniecia}) podaje się razem albo wcale — usunięcie bez "
+                f"Zwarcie: {usuniecie} i {sposob} podaje się razem albo wcale — usunięcie bez "
                 "jawnego sposobu nie mówi, czy łuk zgasł po odcięciu (izolacja), czy pod "
                 "napięciem (samoczynne)."
             )
@@ -576,14 +695,14 @@ class StanowiskoBadawcze(BaseModel):
             ):
                 if poczatek_b < koniec_a:
                     raise ValueError(
-                        f"StanowiskoBadawcze: rampy {wielkosc} nakladaja się: [{poczatek_a}, "
+                        f"StanowiskoBadawcze: rampy {wielkosc} nakładają się: [{poczatek_a}, "
                         f"{koniec_a}) i rampa od {poczatek_b} s."
                     )
             for chwila in chwile:
                 for poczatek, koniec in przedzialy:
                     if poczatek < chwila < koniec:
                         raise ValueError(
-                            f"StanowiskoBadawcze: skok {wielkosc} w t={chwila} s lezy wewnątrz "
+                            f"StanowiskoBadawcze: skok {wielkosc} w t={chwila} s leży wewnątrz "
                             f"rampy [{poczatek}, {koniec})."
                         )
         return self
@@ -700,31 +819,36 @@ class ScenariuszDynamiczny(BaseModel):
 
     @model_validator(mode="after")
     def _spojnosc_harmonogramu(self) -> ScenariuszDynamiczny:
+        horyzont = _etykieta_pola_scenariusza("horyzont_s")
         if self.krok_wyjscia_s > self.horyzont_s:
             raise ValueError(
-                f"ScenariuszDynamiczny: krok_wyjscia_s ({self.krok_wyjscia_s}) nie może "
-                f"być większy niż horyzont_s ({self.horyzont_s})."
+                f"Scenariusz dynamiczny: {_etykieta_pola_scenariusza('krok_wyjscia_s')} "
+                f"({self.krok_wyjscia_s:g} s) nie może być większy niż {horyzont} "
+                f"({self.horyzont_s:g} s)."
             )
         if self.stanowisko is not None:
             obce = sorted({z.rodzaj for z in self.zdarzenia if not isinstance(z, KomendaRegulacji)})
             if obce:
                 raise ValueError(
-                    "ScenariuszDynamiczny: w trybie stanowiska badawczego harmonogram zdarzeń "
-                    f"przyjmuje wyłącznie komendy regulacji; zakłócenia sieci {obce} należą do "
-                    "scenariusza bez stanowiska (mieszanie trybów daloby wynik dwóch badań)."
+                    "Scenariusz dynamiczny: w trybie stanowiska badawczego harmonogram zdarzeń "
+                    f"przyjmuje wyłącznie komendy regulacji; zakłócenia sieci "
+                    f"({lista_pl((_etykieta_rodzaju_zdarzenia(r) for r in obce), 'i')}) "
+                    "należą do scenariusza bez stanowiska (mieszanie trybów dałoby wynik dwóch "
+                    "badań)."
                 )
             for segment in self.stanowisko.profil:
                 if _koniec_segmentu(segment) > self.horyzont_s:
                     raise ValueError(
-                        f"ScenariuszDynamiczny: segment profilu {segment.rodzaj!r} w t_s="
-                        f"{segment.t_s} kończy się w {_koniec_segmentu(segment)} s, poza "
-                        f"horyzont_s ({self.horyzont_s})."
+                        f"Scenariusz dynamiczny: segment profilu stanowiska rozpoczęty w chwili "
+                        f"{segment.t_s:g} s kończy się w {_koniec_segmentu(segment):g} s, poza "
+                        f"polem {horyzont} ({self.horyzont_s:g} s)."
                     )
         for zdarzenie in self.zdarzenia:
             if zdarzenie.t_s > self.horyzont_s:
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zdarzenie {zdarzenie.rodzaj!r} w t_s="
-                    f"{zdarzenie.t_s} wykracza poza horyzont_s ({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zdarzenie "
+                    f"{_etykieta_rodzaju_zdarzenia(zdarzenie.rodzaj)} w chwili "
+                    f"{zdarzenie.t_s:g} s wykracza poza {horyzont} ({self.horyzont_s:g} s)."
                 )
             if (
                 isinstance(zdarzenie, Zwarcie)
@@ -732,9 +856,9 @@ class ScenariuszDynamiczny(BaseModel):
                 and zdarzenie.t_usuniecia_s > self.horyzont_s
             ):
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zwarcie w t_s={zdarzenie.t_s} ma "
-                    f"t_usuniecia_s={zdarzenie.t_usuniecia_s} poza horyzont_s "
-                    f"({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zwarcie w chwili {zdarzenie.t_s:g} s ma "
+                    f"{_etykieta_pola_scenariusza('t_usuniecia_s')} "
+                    f"({zdarzenie.t_usuniecia_s:g} s) poza {horyzont} ({self.horyzont_s:g} s)."
                 )
         return self
 
@@ -745,7 +869,7 @@ class ScenariuszDynamiczny(BaseModel):
         if powtorzone:
             raise ValueError(
                 f"ScenariuszDynamiczny: detektory o powtorzonych identyfikatorach {powtorzone} "
-                "— przekroczenie nie mialoby jednoznacznego adresu."
+                "— przekroczenie nie miałoby jednoznacznego adresu."
             )
         return self
 
@@ -935,17 +1059,22 @@ class OperatingScenario(BaseModel):
     @model_validator(mode="after")
     def _bez_duplikatow(self) -> OperatingScenario:
         if len(set(self.out_of_service)) != len(self.out_of_service):
-            raise ValueError("out_of_service zawiera powtórzony ref_id")
+            raise ValueError("Scenariusz pracy: element wyłączony z pracy podany dwukrotnie")
         if any(not ref for ref in self.switch_states):
-            raise ValueError("switch_states: pusty ref_id")
+            raise ValueError("Scenariusz pracy: stan łącznika bez wskazania łącznika")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
-            raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
+            raise ValueError(
+                "Scenariusz pracy: sonda wstrzyknięcia albo bocznika podana dwukrotnie dla tego "
+                "samego elementu"
+            )
         for ref, mnoznik in self.gen_scaling.items():
             if not ref:
-                raise ValueError("gen_scaling: pusty ref_id")
+                raise ValueError("Scenariusz pracy: skalowanie generacji bez wskazania wytwórcy")
             if mnoznik < 0.0:
-                raise ValueError(f"gen_scaling[{ref!r}]: mnożnik ujemny ({mnoznik})")
+                raise ValueError(
+                    f"Scenariusz pracy: mnożnik generacji wytwórcy jest ujemny ({mnoznik:g})"
+                )
         return self
 
     @property

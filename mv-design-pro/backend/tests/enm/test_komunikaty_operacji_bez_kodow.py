@@ -182,6 +182,40 @@ SYMBOLE_INZYNIERSKIE: frozenset[str] = frozenset(
         "a_Q",
         "b_Q",
         "c_Q",
+        # IEC 60909-0: współczynnik napięciowy c_max, prąd udarowy i_p, czas wyłączenia t_b,
+        # czas trwania zwarcia t_k; IEC 62271-1 / 60909-0 §4.8: czas znamionowy t_th.
+        "c_max",
+        "i_p",
+        "t_b",
+        "t_k",
+        "t_th",
+        # IEC 60076-1: napięcie zwarcia u_k transformatora.
+        "u_k",
+        # PN-HD 60364-4-43 / 60364-5-52: prąd obliczeniowy I_B obwodu.
+        "I_B",
+        # PN-HD 60364-4-41 §411.5 (układ TT): rezystancje uziemień R_A i R_B; IEC 60909-0
+        # §3.6 / PN-HD 60364 (układ IT): susceptancja doziemna b_0 odcinka.
+        "R_A",
+        "R_B",
+        "b_0",
+        # IEC 60947-2 (wyzwalacz elektroniczny): zwłoka długozwłoczna t_r i krótkozwłoczna t_sd.
+        "t_r",
+        "t_sd",
+        # IEC 60255-151: minimalny czas zwłoki t_min krzywej zależnej.
+        "t_min",
+        # Pasmo częstotliwości wpisu karty widmowej (IEC 61000-4-7): f_min, f_max.
+        "f_min",
+        "f_max",
+        # IEC 61000-2-2 / EN 50160 / IEEE 519: wielkości odniesienia limitu w procentach —
+        # napięcie składowej podstawowej U_1, napięcie znamionowe U_N, deklarowane U_C, prąd
+        # obciążenia I_L, prąd znamionowy I_N.
+        "U_1",
+        "U_N",
+        "U_C",
+        "I_L",
+        "I_N",
+        # IEC 60364-4-41 / IEC 61008-1: czas zadziałania (wyłączenia) zabezpieczenia t_a.
+        "t_a",
     }
 )
 
@@ -498,10 +532,6 @@ def _poza_komunikatem(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
         if isinstance(przodek, ast.Call):
             nazwa = _nazwa_wywolania(przodek)
             if nazwa in _WYWOLANIA_POZA_KOMUNIKATEM:
-                return True
-            if nazwa == "replace" and przodek.args and przodek.args[0] is dziecko:
-                # Wzorzec treści rdzenia FROZEN, którą granica operacji TŁUMACZY na słowa
-                # projektanta (`_komunikat_obciazalnosci`) — szukany tekst, nie komunikat.
                 return True
             funkcja = przodek.func
             if (
@@ -1666,7 +1696,7 @@ _WARUNKI_NN = {
         (
             "nN",
             {**_WARUNKI_NN, "soil_thermal_resistivity_km_w": None},
-            "„Rezystywność cieplna gruntu”",
+            "rezystywności cieplnej gruntu",
         ),
         (
             "nN",
@@ -1681,9 +1711,10 @@ _WARUNKI_NN = {
 def test_odmowa_rdzenia_obciazalnosci_slowami_projektanta(
     przekroj: str, warunki: dict[str, Any], oczekiwane: str
 ) -> None:
-    """Każda odmowa FROZEN rdzenia obciążalności kabla (SN: zestawy i współczynniki
-    własne; nN: środowisko, izolacja, liczba obwodów, rezystywność, tablice temperatury,
-    gruntu i grupowania) dociera przez ``_komunikat_obciazalnosci`` bez kluczy
+    """Każda odmowa rdzenia obciążalności kabla (SN: zestawy i współczynniki własne;
+    nN: środowisko, izolacja, liczba obwodów, rezystywność, tablice temperatury, gruntu
+    i grupowania) jest zdaniem projektanta U ŹRÓDŁA (rdzeń nie jest zamrożony — dawna
+    granica tłumacząca klucze na słowa była drugim słownikiem i zniknęła): bez kluczy
     współczynników, nazw kodowych zestawów i nazwy rejestru tablic."""
     from enm.domain_operations_v2 import (
         _der_cable_laying_conditions,

@@ -117,7 +117,7 @@ class PrzypisanieWykonaneV2(BaseModel):
     """Przypisanie stanu wykonane w chwili zdarzenia (przypisanie, komenda regulacji)."""
 
     adres: str = Field(min_length=1, description="Adres stanu `urzadzenie.stan`.")
-    przed: float = Field(description="Wartość stanu tuz przed przypisaniem.")
+    przed: float = Field(description="Wartość stanu tuż przed przypisaniem.")
     po: float = Field(description="Wartość zadana, przypisana dokładnie.")
 
     model_config = {"frozen": True, "extra": "forbid"}
@@ -127,7 +127,7 @@ class PrzypisanieWykonaneV2(BaseModel):
 #: jest skwantyzowany do 9 cyfr znaczacych — przy horyzoncie 600 s to 1e-6 s, grubiej niz
 #: typowa tolerancja lokalizacji zdarzen warunkowych. Pelna precyzja zyje w wyniku rdzenia.
 OPIS_ROZDZIELCZOSCI_CZASU = (
-    "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); "
+    "Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); "
     "chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji."
 )
 
@@ -151,8 +151,8 @@ class ZdarzenieWykonaneV2(BaseModel):
     )
     delta_x_nieprzypisane_max: float = Field(
         description=(
-            "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanow sprzed "
-            "całej chwili — 0,0 dokładnie (ciągłość stanow mierzona, nie deklarowana)."
+            "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanów sprzed "
+            "całej chwili — 0,0 dokładnie (ciągłość stanów mierzona, nie deklarowana)."
         )
     )
     delta_y_max: float = Field(description="Maks. skok stanu algebraicznego przy re-inicjalizacji.")
@@ -176,16 +176,16 @@ class ZdarzenieWykonaneV2(BaseModel):
         + OPIS_ROZDZIELCZOSCI_CZASU
     )
     szerokosc_przedzialu_s: float | None = Field(
-        description="Szerokosc przedziału lokalizacji pobudzenia; None dla planowanego."
+        description="Szerokość przedziału lokalizacji pobudzenia; None dla planowanego."
     )
     iteracje_lokalizacji: int | None = Field(
         description="Liczba prób kroku lokalizacji pobudzenia; None dla planowanego."
     )
     g_przed: float | None = Field(
-        description="Wielkość minus próg na lewym koncu przedziału lokalizacji."
+        description="Wielkość minus próg na lewym końcu przedziału lokalizacji."
     )
     g_po: float | None = Field(
-        description="Wielkość minus próg na prawym koncu przedziału lokalizacji."
+        description="Wielkość minus próg na prawym końcu przedziału lokalizacji."
     )
 
     model_config = {"frozen": True, "extra": "forbid"}
@@ -210,7 +210,7 @@ class PrzekroczenieV2(BaseModel):
         description="Chwila przekroczenia (strona po przekroczeniu). " + OPIS_ROZDZIELCZOSCI_CZASU
     )
     szerokosc_przedzialu_s: float = Field(
-        ge=0.0, description="Szerokosc przedziału lokalizacji (0 dla chwili zdarzenia)."
+        ge=0.0, description="Szerokość przedziału lokalizacji (0 dla chwili zdarzenia)."
     )
     iteracje: int = Field(ge=0, description="Liczba prób kroku lokalizacji.")
 
@@ -360,7 +360,7 @@ class ResultSetDynamicV2(BaseModel):
     def _spojnosc_osi_i_dziedziny(self) -> ResultSetDynamicV2:
         if len(self.strona_probki) != len(self.os_czasu_s):
             raise ValueError(
-                f"strona_probki ({len(self.strona_probki)}) i os_czasu_s "
+                f"Znaczniki strony próbek ({len(self.strona_probki)}) i oś czasu "
                 f"({len(self.os_czasu_s)}) muszą mieć tę samą długość"
             )
         rozne = sorted(k for k, v in self.probki.items() if len(v) != len(self.os_czasu_s))
@@ -368,8 +368,8 @@ class ResultSetDynamicV2(BaseModel):
             raise ValueError(f"Szeregi o długości innej niż oś czasu: {rozne[:5]}")
         if self.dziedzina_fizyki != dziedzina_fizyki_dynamiki():
             raise ValueError(
-                f"dziedzina_fizyki {self.dziedzina_fizyki} różna od mapy dziedzin produktu "
-                f"{dziedzina_fizyki_dynamiki()}"
+                f"Dziedzina fizyki wyniku ({self.dziedzina_fizyki}) różna od mapy dziedzin "
+                f"produktu ({dziedzina_fizyki_dynamiki()})"
             )
         return self
 

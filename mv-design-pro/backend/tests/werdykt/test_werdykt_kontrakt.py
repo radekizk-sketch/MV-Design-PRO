@@ -106,9 +106,9 @@ def test_t1_puste_zdanie_jest_odrzucane(nazwa: str, rekord: BaseModel, zdanie: s
 
 def test_t1_wyjasnienie_odrzuca_powtorzone_braki_i_zastrzezenia() -> None:
     """Lista braków i zastrzeżeń jest bez powtórzeń — generator je usuwa, typ je odrzuca."""
-    with pytest.raises(ValidationError, match="czego_brakuje"):
+    with pytest.raises(ValidationError, match="Lista braków zawiera powtórzone"):
         WyjasnienieWerdyktu(zdanie_pl="Zdanie.", czego_brakuje=("a", "a"))
-    with pytest.raises(ValidationError, match="zastrzezenia"):
+    with pytest.raises(ValidationError, match="Lista zastrzeżeń zawiera powtórzone"):
         WyjasnienieWerdyktu(zdanie_pl="Zdanie.", zastrzezenia=("b", "b"))
 
 
@@ -440,7 +440,7 @@ def test_t10_warunek_wstepny_nieuruchomiony_oznacza_niestosowalnosc() -> None:
 
 def test_t10_niestosowalnosc_z_warunku_wstepnego_wymaga_warunku_kryterium() -> None:
     """Powód „obowiązek nie został uruchomiony" bez nazwanego warunku byłby tekstem bez pola."""
-    with pytest.raises(ValidationError, match="warunek_wstepny_pl"):
+    with pytest.raises(ValidationError, match="opisu warunku wstępnego"):
         f.ocena(
             "LOGICZNE",
             stosowalnosc_oceny=f.stosowalnosc(False, warunek_wstepny_nieuruchomiony=True),
@@ -574,7 +574,7 @@ def test_status_danych_unvalidated_input_wymaga_danych_przyjetych() -> None:
 def test_zakres_parametry_sieci_niosa_status_danych() -> None:
     with pytest.raises(ValidationError, match="statusu danych"):
         f.zakres(parametry_sieci=[f.dana_przyjeta(jakosc=None)])
-    with pytest.raises(ValidationError, match="wykluczenia"):
+    with pytest.raises(ValidationError, match="Lista wykluczeń zawiera powtórzone"):
         f.zakres(wykluczenia=["harmoniczne", "harmoniczne"])
 
 
@@ -662,8 +662,11 @@ def test_domena_walidacji_tylko_dla_biegu_i_zawsze_z_nazwa(
 @pytest.mark.parametrize("domena", ["", "   "])
 @pytest.mark.parametrize("w_domenie", [True, False])
 def test_nazwa_domeny_niepusta(w_domenie: bool, domena: str) -> None:
-    with pytest.raises(ValidationError, match="domena_pl"):
+    # Pusta nazwa domeny odrzuca walidator tekstu pola `domena_pl` (miejsce błędu w `loc`,
+    # treść dla projektanta bez klucza pola — nazwę pola dokłada opis_bledu_walidacji).
+    with pytest.raises(ValidationError, match="nie może być pusty") as blad:
         f.dowod(metoda="SYMULACJA", w_domenie=w_domenie, domena=domena)
+    assert blad.value.errors()[0]["loc"] == ("domena_pl",)
 
 
 @pytest.mark.parametrize("jest_wynik", [True, False])
@@ -673,7 +676,7 @@ def test_wynik_symulacji_wymaga_rozstrzygniecia_domeny(relacja: Relacja, jest_wy
     wyniku (brak biegu) predykat nie jest wymagany."""
     dowod_oceny = f.dowod_symulacji(w_domenie=None)
     if jest_wynik:
-        with pytest.raises(ValidationError, match="w_domenie_walidacji"):
+        with pytest.raises(ValidationError, match="domeny walidacji silnika"):
             f.ocena(
                 relacja,
                 dowod_oceny=dowod_oceny,
@@ -763,7 +766,7 @@ def test_kryterium_logiczne_ma_wynik_zero_jedynkowy(wartosc: float, jednostka: s
 def test_kryterium_logiczne_opisuje_stan() -> None:
     dane = _zrzut(f.ocena("LOGICZNE"))
     dane["wynik"]["punkt_krytyczny_pl"] = None
-    with pytest.raises(ValidationError, match="opisuje stan"):
+    with pytest.raises(ValidationError, match="opisu stanu w punkcie krytycznym"):
         OcenaKryterium.model_validate(dane)
 
 
@@ -1099,7 +1102,7 @@ def test_brak_nazwany_regula_nie_daje_sie_usunac(
 ) -> None:
     dane = _zrzut(rekord)
     dane["wyjasnienie"]["czego_brakuje"] = dane["wyjasnienie"]["czego_brakuje"][1:]
-    with pytest.raises(ValidationError, match="czego_brakuje"):
+    with pytest.raises(ValidationError, match="czego brakuje"):
         _odtworz(_typ(rekord), dane)
 
 

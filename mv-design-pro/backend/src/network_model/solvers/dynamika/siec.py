@@ -109,7 +109,7 @@ class ModelSieci:
 
 
 ZwarcieWGalezi = tuple[float, complex | None]
-"""(polozenie wzgledne x w (0, 1), admitancja zwarcia pu albo `None` = metaliczne)."""
+"""(położenie względne x w (0, 1), admitancja zwarcia pu albo `None` = metaliczne)."""
 
 
 def _macierz_odcinkow(y: complex, b: float, zwarcia: tuple[ZwarcieWGalezi, ...]) -> np.ndarray:
@@ -884,7 +884,7 @@ def rozwiaz_algebre(
         except RuntimeError as blad:
             raise OdmowaDynamiki(
                 KOD_ALGEBRA_NIEZBIEZNA,
-                f"Jakobian czesci algebraicznej osobliwy przy t={t_s} s "
+                f"Jakobian części algebraicznej osobliwy przy t={t_s} s "
                 f"(iteracja {iteracja}, residuum {norma}): {blad}",
                 t_s=t_s,
                 iteracja=iteracja,
@@ -928,7 +928,7 @@ def rozwiaz_algebre(
         return WynikAlgebry(napiecia, max_iteracji, norma, nawroty_lacznie)
     raise OdmowaDynamiki(
         KOD_ALGEBRA_NIEZBIEZNA,
-        f"Newton czesci algebraicznej nie zbiegl przy t={t_s} s "
+        f"Newton części algebraicznej nie zbiegł przy t={t_s} s "
         f"({max_iteracji} iteracji, residuum {norma} > tolerancja {tolerancja})",
         t_s=t_s,
         iteracja=max_iteracji,

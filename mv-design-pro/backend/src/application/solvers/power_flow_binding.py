@@ -260,14 +260,14 @@ def skalary_wyniku_rozplywu(result_v1: dict[str, Any]) -> SkalaryRozplywu:
     iteracje = result_v1.get("iterations_count")
     tolerancja = result_v1.get("tolerance_used")
     base_mva = result_v1.get("base_mva")
-    for nazwa, wartosc in (
-        ("iterations_count", iteracje),
-        ("tolerance_used", tolerancja),
-        ("base_mva", base_mva),
+    for opis, wartosc in (
+        ("liczby iteracji", iteracje),
+        ("użytej tolerancji zbieżności", tolerancja),
+        ("mocy bazowej układu", base_mva),
     ):
         if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
             raise BrakDanychRozplywuError(
-                f"Artefakt wyniku rozpływu nie zawiera liczbowego pola {nazwa!r} — "
+                f"Zapisany wynik rozpływu nie zawiera {opis} jako liczby — "
                 "wynik niekompletny, odczyt odmawia zamiast podstawiać liczbę. "
                 "Uruchom obliczenie ponownie."
             )

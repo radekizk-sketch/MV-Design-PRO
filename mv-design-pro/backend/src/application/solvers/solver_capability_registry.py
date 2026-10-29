@@ -209,7 +209,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_phase_state_sn_solver.py::test_phase_state_sn_solver_balanced_reference_case",
-        applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrownowazenia.",
+        applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrównoważenia.",
     ),
     # USUNIETE (karta W3-D, 2026-09-09): "SOURCE_FRT_LVRT_HVRT" i "SOURCE_COMPLIANCE"
     # (obie analysis_type="source_compliance", `application/compliance/source_compliance.py`,

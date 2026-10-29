@@ -1489,7 +1489,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "471bf407846b8241cf2c7555d0f672f1852141da596345b91d8eb8a79ce5c32a",
+  "projection_hash": "c335e0e2ca5d093d138bd58e179758c6c220a6cb725e468007b21ab514278b39",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2729,7 +2729,7 @@
                       "standard": "IEC 60269-1",
                       "step": "FUSE_GG_GATE",
                       "t_umowny_s": 3600.0,
-                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1h(In<=63A)/2h(63<In<=160A)/3h(160<In<=400A)/4h(In>400A).",
+                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1 h (In ≤ 63 A) / 2 h (63 A < In ≤ 160 A) / 3 h (160 A < In ≤ 400 A) / 4 h (In > 400 A).",
                       "zrodlo_mnoznikow": "IEC 60269-1 (Inf=1,25×In, If=1,6×In dla In>16 A) — zweryfikowane podwójnie: (1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); (2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego napięcia” (cytat wprost: Inf=1,25×In, If=1,6×In dla gG)."
                     },
                     "step": "aparat_wkladka_gg_bramka_konwencjonalna"

@@ -48,7 +48,9 @@ class GridStrengthBuilder:
         very_weak_threshold: float = DEFAULT_VERY_WEAK_THRESHOLD,
     ) -> None:
         if very_weak_threshold > weak_threshold:
-            raise ValueError("very_weak_threshold nie może być większy niż weak_threshold")
+            raise ValueError(
+                "Próg sieci bardzo słabej (SCR) nie może być większy niż próg sieci słabej"
+            )
         self.weak_threshold = float(weak_threshold)
         self.very_weak_threshold = float(very_weak_threshold)
 

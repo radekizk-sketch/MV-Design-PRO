@@ -99,11 +99,11 @@ class PolaRodziny:
 
 #: Pola wspolne kazdej rodziny, ktorych rdzen dynamiki nie konsumuje z zasady.
 _POLA_TOZSAMOSCI: tuple[tuple[str, str], ...] = (
-    ("rodzina", "dyskryminator unii — wybiera model, nie wchodzi do rownan"),
+    ("rodzina", "dyskryminator unii — wybiera model, nie wchodzi do równań"),
     (
         "proweniencja",
-        "pochodzenie danych; konsumuje je warstwa wyzsza przy ustalaniu stopnia "
-        "dowodowego wyniku (solver_input/provenance.py), nie rownania ruchu",
+        "pochodzenie danych; konsumuje je warstwa wyższa przy ustalaniu stopnia "
+        "dowodowego wyniku (solver_input/provenance.py), nie równania ruchu",
     ),
 )
 
@@ -181,15 +181,15 @@ INWENTARZ_POL: dict[str, PolaRodziny] = {
             *_POLA_TOZSAMOSCI,
             (
                 "reg_pradu_kp",
-                "wzmocnienia wewnetrznej petli pradu opisuja regulacje na poziomie "
-                "chwilowym (EMT); w modelu RMS petla pradu jest zastapiona czlonami "
-                "inercyjnymi `tp_s`/`tiq_s`, a przeliczenie wzmocnien na stala czasowa "
-                "zamknietej petli wymaga indukcyjnosci i rezystancji filtru, ktorych "
+                "wzmocnienia wewnętrznej pętli prądu opisują regulacje na poziomie "
+                "chwilowym (EMT); w modelu RMS pętla prądu jest zastąpiona członami "
+                "inercyjnymi `tp_s`/`tiq_s`, a przeliczenie wzmocnień na stała czasowa "
+                "zamkniętej pętli wymaga indukcyjności i rezystancji filtru, których "
                 "kontrakt nie niesie",
             ),
             (
                 "reg_pradu_ki",
-                "jak `reg_pradu_kp` — czlon calkujacy tej samej petli pradu",
+                "jak `reg_pradu_kp` — człon calkujacy tej samej pętli prądu",
             ),
         ),
     ),
@@ -246,22 +246,22 @@ INWENTARZ_POL: dict[str, PolaRodziny] = {
             *_POLA_TOZSAMOSCI,
             (
                 "sztywnosc_walu_pu",
-                "model dwumasowy IEC 61400-27-1 wymaga PODZIALU bezwladnosci na mase "
-                "turbiny i mase generatora; kontrakt niesie wylacznie bezwladnosc "
-                "calkowita, wiec czestotliwosc drgan skretnych nie jest wyznaczona — "
-                "dobranie podzialu zmienialoby wynik badania, wiec tor mechaniczny jest "
+                "model dwumasowy IEC 61400-27-1 wymaga PODZIAŁU bezwładności na masę "
+                "turbiny i masę generatora; kontrakt niesie wyłącznie bezwładność "
+                "całkowitą, więc częstotliwość drgań skrętnych nie jest wyznaczona — "
+                "dobranie podziału zmieniałoby wynik badania, więc tor mechaniczny jest "
                 "jednomasowy (wariant dopuszczony norma)",
             ),
             (
                 "tlumienie_walu_pu",
-                "jak `sztywnosc_walu_pu` — parametr walu w modelu dwumasowym, ktorego "
+                "jak `sztywnosc_walu_pu` — parametr wału w modelu dwumasowym, którego "
                 "kontrakt nie parametryzuje",
             ),
             (
                 "poslizg_ustalony_pu",
-                "poslizg opisuje maszyne indukcyjna; typy 3/4 sa sprzezone z siecia przez "
-                "przeksztaltnik, ktory ten poslizg odsprzega od zaciskow, a typy 1/2 nie "
-                "maja w kontrakcie schematu zastepczego maszyny (odmowa rodziny)",
+                "poślizg opisuje maszynę indukcyjna; typy 3/4 są sprzężone z siecią przez "
+                "przekształtnik, który ten poślizg odsprzęga od zacisków, a typy 1/2 nie "
+                "mają w kontrakcie schematu zastępczego maszyny (odmowa rodziny)",
             ),
         ),
     ),
@@ -687,11 +687,11 @@ def _zbuduj_magazyn(
         if regulacja is not None and regulacja.martwa_strefa_hz > 0.0:
             raise OdmowaDynamiki(
                 KOD_PARAMETRY_SPRZECZNE,
-                f"Magazyn {ident!r}: martwa strefa czestotliwosci "
+                f"Magazyn {ident!r}: martwa strefa częstotliwości "
                 f"{regulacja.martwa_strefa_hz} Hz nie ma realizacji w przeksztaltniku "
-                "tworzacym siec — statyzm GFM WYZNACZA czestotliwosc zamiast na nia "
-                "odpowiadac, wiec nie ma sygnalu, ktory dalo by sie przepuscic przez "
-                "strefe nieczulosci. Martwa strefa jest wlasciwoscia zrodla nadaznego.",
+                "tworzącym sieć — statyzm GFM WYZNACZA częstotliwość zamiast na nią "
+                "odpowiadać, więc nie ma sygnału, który dało by się przepuścić przez "
+                "strefę nieczułości. Martwa strefa jest właściwością źródła nadążnego.",
                 urzadzenie=ident,
                 martwa_strefa_hz=regulacja.martwa_strefa_hz,
             )
@@ -740,8 +740,8 @@ def _zbuduj_turbine(
         # z liczb, ktorych nikt nie podal.
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Turbina {parametry.rodzina!r} wymaga bloku przeksztaltnika — bez niego "
-            "nie ma sprzezenia z siecia",
+            f"Turbina {parametry.rodzina!r} wymaga bloku przekształtnika — bez niego "
+            "nie ma sprzężenia z siecią",
             urzadzenie=ident,
             typ=parametry.rodzina,
         )
@@ -841,8 +841,8 @@ def zbuduj_urzadzenie(
     else:
         raise OdmowaDynamiki(
             KOD_RODZINA_NIEOBSLUGIWANA,
-            f"Urzadzenie {ident!r} deklaruje rodzine parametrow dynamicznych "
-            f"{rodzina!r}, dla ktorej biblioteka nie ma modelu. Rodziny obslugiwane: "
+            f"Urządzenie {ident!r} deklaruje rodzinę parametrów dynamicznych "
+            f"{rodzina!r}, dla której biblioteka nie ma modelu. Rodziny obsługiwane: "
             f"{RODZINY_OBSLUGIWANE}",
             urzadzenie=ident,
             rodzina=rodzina,
@@ -874,7 +874,7 @@ def moc_znamionowa_rodziny_pu(parametry: ParametryZRodzina, s_bazowa_mva: float)
     raise OdmowaDynamiki(
         KOD_RODZINA_NIEOBSLUGIWANA,
         f"Rodzina {rodzina!r} nie niesie mocy znamionowej w kontrakcie. "
-        f"Rodziny obslugiwane: {RODZINY_OBSLUGIWANE}",
+        f"Rodziny obsługiwane: {RODZINY_OBSLUGIWANE}",
         rodzina=rodzina,
         obslugiwane=RODZINY_OBSLUGIWANE,
     )

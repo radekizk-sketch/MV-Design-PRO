@@ -122,7 +122,7 @@ def test_sekcja_sortuje_po_id_i_odrzuca_duplikaty() -> None:
     assert [r.id for r in sekcja.line_types] == ["arkusz-linia-aaa", _LINIA["id"]]
     with pytest.raises(ValidationError, match="powtarza się"):
         KatalogProjektu.model_validate(_sekcja(cable_types=[{**_LINIA, "id": _TRAFO["id"]}]))
-    with pytest.raises(ValidationError, match="pusty identyfikator"):
+    with pytest.raises(ValidationError, match="pozycja bez identyfikatora"):
         KatalogProjektu.model_validate(_sekcja(line_types=[{**_LINIA, "id": "  "}]))
 
 

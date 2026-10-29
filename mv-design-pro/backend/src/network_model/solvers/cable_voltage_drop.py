@@ -15,9 +15,15 @@ REACTIVE_CHARACTERS: tuple[str, ...] = ("inductive", "capacitive")
 def validate_flow_flags(flow_direction: str, reactive_character: str) -> None:
     """Sprawdz kierunek mocy czynnej i charakter mocy biernej (ValueError przy bledzie)."""
     if flow_direction not in FLOW_DIRECTIONS:
-        raise OdmowaDanychError("flow_direction musi byc 'load' albo 'generation'.")
+        raise OdmowaDanychError(
+            "Kierunek przepływu mocy czynnej musi być: odbiór albo generacja "
+            f"(otrzymano {flow_direction!r})."
+        )
     if reactive_character not in REACTIVE_CHARACTERS:
-        raise OdmowaDanychError("reactive_character musi byc 'inductive' albo 'capacitive'.")
+        raise OdmowaDanychError(
+            "Charakter mocy biernej musi być: indukcyjny albo pojemnościowy "
+            f"(otrzymano {reactive_character!r})."
+        )
 
 
 @dataclass(frozen=True)
@@ -66,13 +72,13 @@ class CableVoltageDropResult:
     formula_ref: str = "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
+            "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+            "sinφ = √(1 − cos²φ); znak składowej biernej z charakteru Q.",
             "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-            "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-            "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
+            "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnościowy).",
+            "ΔU > 0 = spadek napięcia; ΔU < 0 = WZROST (typowy przy generacji).",
             "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-            "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe).",
+            "ΔU% = ΔU / U_linii · 100 (U_linii międzyfazowe).",
         )
     )
 
@@ -100,9 +106,9 @@ class CableRatedCurrentResult:
     formula_ref: str = "I = S_n / (√3·U);  S_n = P / cosφ"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
+            "Układ 3-fazowy symetryczny; współczynnik linii √3.",
             "S_n = P / cosφ (moc pozorna z mocy czynnej).",
-            "I = S_n / (√3 · U_linii) (U_linii miedzyfazowe).",
+            "I = S_n / (√3 · U_linii) (U_linii międzyfazowe).",
         )
     )
 
@@ -114,17 +120,17 @@ def compute_cable_voltage_drop(data: CableVoltageDropInput) -> CableVoltageDropR
     """
 
     if data.current_a <= 0:
-        raise OdmowaDanychError("Prad obciazenia musi byc dodatni.")
+        raise OdmowaDanychError("Prąd obciążenia musi być dodatni.")
     if data.length_km <= 0:
-        raise OdmowaDanychError("Dlugosc odcinka musi byc dodatnia.")
+        raise OdmowaDanychError("Długość odcinka musi być dodatnia.")
     if data.line_voltage_v <= 0:
-        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie linii musi być dodatnie.")
     if data.r_ohm_per_km < 0:
-        raise OdmowaDanychError("Rezystancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Rezystancja jednostkowa nie może być ujemna.")
     if data.x_ohm_per_km < 0:
-        raise OdmowaDanychError("Reaktancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Reaktancja jednostkowa nie może być ujemna.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Współczynnik mocy cosφ musi leżeć w zakresie (0, 1].")
     validate_flow_flags(data.flow_direction, data.reactive_character)
 
     # Znaki skladowych sa NIEZALEZNE, bo kierunek mocy czynnej i biernej moze byc
@@ -158,11 +164,11 @@ def compute_cable_rated_current(data: CableRatedCurrentInput) -> CableRatedCurre
     """Oblicz prad znamionowy z mocy przylaczeniowej dla ukladu 3-fazowego."""
 
     if data.active_power_kw <= 0:
-        raise OdmowaDanychError("Moc czynna musi byc dodatnia.")
+        raise OdmowaDanychError("Moc czynna musi być dodatnia.")
     if data.line_voltage_v <= 0:
-        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie linii musi być dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Współczynnik mocy cosφ musi leżeć w zakresie (0, 1].")
 
     apparent_va = data.active_power_kw * 1000.0 / data.cos_phi
     rated_current = apparent_va / (math.sqrt(3.0) * data.line_voltage_v)

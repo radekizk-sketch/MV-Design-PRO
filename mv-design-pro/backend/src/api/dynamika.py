@@ -33,6 +33,7 @@ from application.dynamika.opis_scenariusza import (
 )
 from enm.canonical_analysis import list_runs_for_case
 from enm.scenariusze import (
+    ETYKIETY_POL,
     SCENARIUSZ_NORMALNY,
     OperatingScenario,
     RodzajScenariusza,
@@ -128,7 +129,7 @@ def post_scenariusz_dynamiki(
             detail=[
                 {
                     "pole": ".".join(str(c) for c in blad["loc"]),
-                    "komunikat": opis_pozycji_walidacji(blad),
+                    "komunikat": opis_pozycji_walidacji(blad, nazwy_pol=ETYKIETY_POL),
                 }
                 for blad in exc.errors(include_url=False)
             ],

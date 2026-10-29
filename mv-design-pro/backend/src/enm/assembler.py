@@ -29,6 +29,7 @@ from functools import partial
 from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
+import numpy as np
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
 from enm.bateria_kondensatorow import (
@@ -598,7 +599,7 @@ class WejscieZwarcia:
     enm: EnergyNetworkModel
     graph: NetworkGraph
     solve_graph: NetworkGraph
-    z0_bus: Any
+    z0_bus: np.ndarray | None
     short_circuit_type: ShortCircuitType
     scenario_c: Scenario
     #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): ręczne nadpisanie c z uzasadnieniem albo
@@ -954,8 +955,8 @@ def zloz_wejscie_rozplywu(
             # `Node.__post_init__` odmawia węzła PV bez nastawy, więc ta gałąź oznacza graf
             # zbudowany z pominięciem konstruktora — odmowa nazwana, nie `float(None)`.
             raise ValueError(
-                f"Węzeł PV '{node_id}' nie ma nastawy napięcia (voltage_magnitude) w grafie "
-                "podanym assemblerowi — niespójne wejście."
+                f"Węzeł PV „{node_id}” nie ma nastawy modułu napięcia w grafie sieci podanym "
+                "do złożenia wejścia — niespójne wejście."
             )
         pv_specs.append(
             PVSpec(
@@ -1130,9 +1131,10 @@ def zloz_wejscie_zwarcia(
     # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
     if "c_factor" in options:
         raise OdmowaDanychError(
-            "Opcja biegu `c_factor` została usunięta — współczynnik napięciowy c wynika ze "
-            "scenariusza (`scenario`: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-            "z uzasadnieniem (`nadpisanie_c`: `{wartosc, uzasadnienie}`)."
+            "Płaskie nadpisanie współczynnika napięciowego c dla wszystkich węzłów nie jest "
+            "przyjmowane — c wynika ze scenariusza zwarcia (maksymalny albo minimalny, "
+            "IEC 60909-0 tab. 1 dla każdego węzła) albo z nadpisania c podanego razem "
+            "z wartością i uzasadnieniem."
         )
     nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 
@@ -1156,8 +1158,8 @@ def zloz_wejscie_zwarcia(
         tryb_wkladow = str(tryb_wkladow_surowy).strip().lower()
     if tryb_wkladow not in ("on_demand", "in_run"):
         raise OdmowaDanychError(
-            f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
-            "(oczekiwano 'on_demand'/'in_run')"
+            f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} (dozwolone: "
+            "wkłady liczone na żądanie albo wkłady liczone w biegu)"
         )
     wklady_w_biegu = tryb_wkladow == "in_run"
 
@@ -1199,7 +1201,7 @@ def zloz_wejscie_zwarcia(
     # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
     # Ślad WHITE BOX budowy sieci składowej zerowej (rozbicie po elementach, decyzja grupy
     # połączeń transformatora, droga zerowa baterii) z TEJ SAMEJ macierzy Y0 co ``z0_bus``.
-    z0_bus: Any = None
+    z0_bus: np.ndarray | None = None
     siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
     if _short_circuit_requires_z0(short_circuit_type):
         z0_bus, slad_y0 = build_zero_sequence_zbus_with_trace(enm, solve_graph, scenario=scenario_c)
@@ -1231,7 +1233,7 @@ def zloz_wejscie_zwarcia(
         if location_type in ("BUS", "NODE"):
             if not element_ref:
                 raise OdmowaDanychError(
-                    "Lokalizacja zwarcia scenariusza nie wskazuje elementu (element_ref)"
+                    "Lokalizacja zwarcia scenariusza nie wskazuje elementu sieci"
                 )
             target_node_id = _graph_id_from_ref(element_ref)
             if target_node_id not in graph.nodes:

@@ -236,8 +236,9 @@ def test_json_serializable() -> None:
 
 def test_unknown_source_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="źródło nie istnieje"):
+    with pytest.raises(ValueError, match="źródło nie istnieje") as blad:
         build_osd_response_view(run, source_ref="brak", command="ograniczenie_p", p_limit_pct=50)
+    assert "p_limit_pct" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_unknown_command_raises() -> None:
@@ -248,38 +249,44 @@ def test_unknown_command_raises() -> None:
 
 def test_p_limit_missing_pct_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="p_limit_pct"):
+    with pytest.raises(ValueError, match=r"limitu mocy czynnej \[%\]") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p")
+    assert "p_limit_pct" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_moc_bierna_missing_q_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="q_mvar"):
+    with pytest.raises(ValueError, match=r"zadanej mocy biernej Q \[Mvar\]") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="moc_bierna")
+    assert "q_mvar" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_cosfi_missing_charakter_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="q_charakter"):
+    with pytest.raises(ValueError, match="charakteru mocy biernej") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="cosfi", cos_phi=0.95)
+    assert "q_charakter" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_lfsm_missing_frequency_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="frequency_hz"):
+    with pytest.raises(ValueError, match=r"częstotliwości sieci f \[Hz\]") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="lfsm_o", droop_pct=5.0)
+    assert "frequency_hz" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_rejects_non_pf_run() -> None:
     run = _synthetic_run(build_golden_enm(), analysis_type="short_circuit_sn")
-    with pytest.raises(ValueError, match="przebiegu rozpływu"):
+    with pytest.raises(ValueError, match="przebiegu rozpływu") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50)
+    assert "p_limit_pct" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 def test_rejects_unfinished_run() -> None:
     run = _synthetic_run(build_golden_enm(), status="RUNNING")
-    with pytest.raises(ValueError, match="nie jest zakończony"):
+    with pytest.raises(ValueError, match="nie jest zakończony") as blad:
         build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50)
+    assert "p_limit_pct" not in str(blad.value)  # nazwa wielkości, nie klucz pola
 
 
 # --------------------------------------------------------------------------

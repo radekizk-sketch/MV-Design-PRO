@@ -76,7 +76,10 @@ class TestMeasurementArrangementFields:
         assert m.ct_arrangement is None
 
     def test_ct_arrangement_rejected_on_vt_measurement(self):
-        with pytest.raises(ValueError, match="ct_arrangement wymaga measurement_type='CT'"):
+        with pytest.raises(
+            ValueError,
+            match="„Układ przekładników prądowych” dotyczy wyłącznie przekładnika prądowego CT",
+        ):
             Measurement(
                 ref_id="vt1",
                 name="VT1",
@@ -87,7 +90,10 @@ class TestMeasurementArrangementFields:
             )
 
     def test_vt_arrangement_rejected_on_ct_measurement(self):
-        with pytest.raises(ValueError, match="vt_arrangement wymaga measurement_type='VT'"):
+        with pytest.raises(
+            ValueError,
+            match="„Układ połączeń przekładników napięciowych” dotyczy wyłącznie przekładnika napięciowego VT",
+        ):
             Measurement(
                 ref_id="ct1",
                 name="CT1",

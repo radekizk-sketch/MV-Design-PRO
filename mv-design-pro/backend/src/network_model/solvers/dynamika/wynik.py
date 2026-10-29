@@ -195,7 +195,7 @@ class ZalozenieRdzenia:
     def __post_init__(self) -> None:
         if self.kod not in KODY_ZALOZEN_RDZENIA:
             raise AssertionError(
-                f"Kod zalozenia {self.kod!r} spoza rejestru KODY_ZALOZEN_RDZENIA — dopisz go "
+                f"Kod założenia {self.kod!r} spoza rejestru KODY_ZALOZEN_RDZENIA — dopisz go "
                 "razem ze zdaniem warstwy aplikacji."
             )
 

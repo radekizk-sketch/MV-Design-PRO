@@ -62,7 +62,9 @@ def _read_raw(path: Path | None = None) -> dict[str, Any]:
     p = path or DATA_FILE
     payload = json.loads(p.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or "ieee_1584_2018" not in payload:
-        raise ValueError(f"Plik danych IEEE 1584 nie zawiera klucza 'ieee_1584_2018': {p}")
+        raise ValueError(
+            f"Plik danych IEEE 1584 nie zawiera sekcji współczynników IEEE 1584-2018: {p.name}"
+        )
     return payload
 
 

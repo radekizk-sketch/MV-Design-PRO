@@ -164,7 +164,7 @@ def pierwiastek(x: Dual) -> Dual:
     if x.wartosc <= 0.0:
         raise ValueError(
             f"pierwiastek z {x.wartosc} — pochodna sqrt nie istnieje dla argumentu <= 0; "
-            "wolajacy musi odciac ten przypadek nazwana odmowa, nie liczyc dalej"
+            "wołający musi odciąć ten przypadek nazwana odmowa, nie liczyć dalej"
         )
     wartosc = math.sqrt(x.wartosc)
     return Dual(wartosc, _skala(0.5 / wartosc, x.gradient))

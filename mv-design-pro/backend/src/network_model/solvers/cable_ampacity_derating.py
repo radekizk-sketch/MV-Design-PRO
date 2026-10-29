@@ -63,6 +63,25 @@ class WspolczynnikiKorekcyjne(Protocol):
 # Wspolczynniki korekcyjne
 # ---------------------------------------------------------------------------
 
+#: Wspolczynnik korekcyjny (pole zestawu) -> nazwa w tresci dla projektanta. JEDNO zrodlo:
+#: odmowy tego modulu i kazda warstwa wyzsza, ktora nazywa wspolczynnik, biora nazwe stad
+#: (klucz pola nie trafia do zdania — karta klasy surowych kluczy w komunikatach).
+NAZWY_WSPOLCZYNNIKOW_PL: dict[str, str] = {
+    "f_grunt": "współczynnik gruntu",
+    "f_wiazka": "współczynnik wiązki",
+    "f_grupa": "współczynnik grupowania",
+    "f_temperatura": "współczynnik temperatury",
+    "f_rezystywnosc_gruntu": "współczynnik rezystywności cieplnej gruntu",
+    "f_grupowanie": "współczynnik grupowania obwodów",
+}
+
+#: Zrodlo tablic nN w tresci odmowy (norma, nie nazwa rejestru w repozytorium).
+TABLICE_NN_PL = "zweryfikowanych tablicach PN-HD 60364-5-52"
+
+
+def _wielka(tekst: str) -> str:
+    return tekst[:1].upper() + tekst[1:]
+
 
 @dataclass(frozen=True)
 class WspolczynnikiObciazalnosci:
@@ -92,7 +111,8 @@ class WspolczynnikiObciazalnosci:
         ):
             if not 0.0 < wartosc <= 1.5:
                 raise OdmowaDanychError(
-                    f"Współczynnik {pole} musi leżeć w zakresie (0; 1,5] — otrzymano {wartosc}."
+                    f"{_wielka(NAZWY_WSPOLCZYNNIKOW_PL[pole])} musi leżeć w zakresie (0; 1,5] — "
+                    f"otrzymano {wartosc:g}."
                 )
 
     @property
@@ -164,7 +184,7 @@ ZESTAWY_WARUNKOW: dict[str, WspolczynnikiObciazalnosci] = {
 # Powod, dla ktorego lista jest krotka — zapisany w kodzie, zeby nie wygladala na pelna.
 OGRANICZENIE_ZESTAWOW_PL = (
     "Lista zestawów zawiera wyłącznie warunki o udokumentowanej podstawie w tym "
-    "repozytorium. Dla innych warunków ułożenia podaj współczynniki WPROST "
+    "repozytorium. Dla innych warunków ułożenia podaj współczynniki wprost "
     "(z własnej dokumentacji projektowej) — system nie interpoluje między zestawami, "
     "bo nie ma tablic IEC 60287."
 )
@@ -174,9 +194,11 @@ def zestaw_warunkow(nazwa: str) -> WspolczynnikiObciazalnosci:
     """Zestaw wspolczynnikow po nazwie. ``ValueError`` dla nieznanej nazwy (fail-closed)."""
     zestaw = ZESTAWY_WARUNKOW.get(nazwa)
     if zestaw is None:
-        dostepne = ", ".join(sorted(ZESTAWY_WARUNKOW))
+        dostepne = "; ".join(
+            f"„{znany.etykieta_pl}”" for _, znany in sorted(ZESTAWY_WARUNKOW.items())
+        )
         raise OdmowaDanychError(
-            f"Nieznany zestaw warunków ułożenia: {nazwa}. Dostępne: {dostepne}. "
+            f"Nieznany zestaw warunków ułożenia. Dostępne: {dostepne}. "
             f"{OGRANICZENIE_ZESTAWOW_PL}"
         )
     return zestaw
@@ -242,9 +264,12 @@ def wspolczynniki_z_opisu(
     if klucz != NAZWA_WLASNE:
         return zestaw_warunkow(klucz)
     if f_grunt is None or f_wiazka is None or f_grupa is None:
+        wspolczynniki = ", ".join(
+            NAZWY_WSPOLCZYNNIKOW_PL[k] for k in ("f_grunt", "f_wiazka", "f_grupa")
+        )
         raise OdmowaDanychError(
-            "Własne warunki ułożenia wymagają trzech współczynników "
-            "(f_grunt, f_wiazka, f_grupa) oraz opisu warunków."
+            f"Własne warunki ułożenia wymagają trzech współczynników ({wspolczynniki}) "
+            "oraz opisu warunków."
         )
     return wspolczynniki_wlasne(
         f_grunt=f_grunt,
@@ -330,7 +355,8 @@ class WspolczynnikiObciazalnosciNN:
         ):
             if not 0.0 < wartosc <= 1.3:
                 raise OdmowaDanychError(
-                    f"Współczynnik {pole} musi leżeć w zakresie (0; 1,3] — otrzymano {wartosc}."
+                    f"{_wielka(NAZWY_WSPOLCZYNNIKOW_PL[pole])} musi leżeć w zakresie (0; 1,3] — "
+                    f"otrzymano {wartosc:g}."
                 )
 
     @property
@@ -385,9 +411,10 @@ def _wpis_tablicy_temperatury_nn(
     if wpis is None:
         dostepne = sorted(temp for (iz, temp) in tablica if iz == izolacja)
         raise OdmowaDanychError(
-            f"Brak zweryfikowanej korekty temperatury dla środowiska '{srodowisko}', "
-            f"izolacji {izolacja}, {temperatura_c:g}°C w rejestrze G-D1. "
-            f"Dostępne temperatury dla {izolacja} ({srodowisko}): {dostepne}. "
+            f"Brak zweryfikowanej korekty temperatury dla środowiska „{srodowisko}”, "
+            f"izolacji {izolacja} i temperatury {temperatura_c:g}°C w {TABLICE_NN_PL}. "
+            f"Dostępne temperatury dla {izolacja} ({srodowisko}): "
+            f"{', '.join(f'{t:g}°C' for t in dostepne)}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
         )
     return wpis
@@ -401,7 +428,8 @@ def _wpis_tablicy_rezystywnosci_gruntu_nn(rezystywnosc_km_w: float) -> _tablice_
         dostepne = sorted(_tablice_nn.TABLICA_REZYSTYWNOSCI_GRUNTU_NN)
         raise OdmowaDanychError(
             f"Brak zweryfikowanej korekty rezystywności cieplnej gruntu dla "
-            f"{rezystywnosc_km_w:g} K·m/W w rejestrze G-D1. Dostępne wartości: {dostepne}. "
+            f"{rezystywnosc_km_w:g} K·m/W w {TABLICE_NN_PL}. Dostępne wartości: "
+            f"{', '.join(f'{r:g} K·m/W' for r in dostepne)}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
         )
     return wpis
@@ -420,8 +448,9 @@ def _wpis_tablicy_grupowania_nn(
     if wpis is None:
         dostepne = sorted(tablica)
         raise OdmowaDanychError(
-            f"Brak zweryfikowanej korekty grupowania dla środowiska '{srodowisko}' i "
-            f"{liczba_obwodow} obwodów w rejestrze G-D1. Dostępne liczby obwodów: {dostepne}. "
+            f"Brak zweryfikowanej korekty grupowania dla środowiska „{srodowisko}” i "
+            f"{liczba_obwodow} obwodów w {TABLICE_NN_PL}. Dostępne liczby obwodów: "
+            f"{', '.join(str(n) for n in dostepne)}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
         )
     return wpis
@@ -447,21 +476,23 @@ def wspolczynniki_nn(
     """
     if srodowisko not in _SRODOWISKA_NN:
         raise OdmowaDanychError(
-            f"Nieznane środowisko ułożenia: {srodowisko!r}. Dozwolone: {_SRODOWISKA_NN}."
+            f"Nieznane środowisko ułożenia „{srodowisko}”. Dozwolone: "
+            f"{' albo '.join(f'„{s}”' for s in _SRODOWISKA_NN)}."
         )
     if izolacja not in _IZOLACJE_NN:
-        raise OdmowaDanychError(f"Nieznany typ izolacji: {izolacja!r}. Dozwolone: {_IZOLACJE_NN}.")
+        raise OdmowaDanychError(
+            f"Nieznany typ izolacji „{izolacja}”. Dozwolone: {' albo '.join(_IZOLACJE_NN)}."
+        )
     if liczba_obwodow < 1:
-        raise OdmowaDanychError("Liczba obwodów musi być >= 1.")
+        raise OdmowaDanychError("Liczba obwodów musi wynosić co najmniej 1.")
     if srodowisko == "grunt" and rezystywnosc_gruntu_km_w is None:
         raise OdmowaDanychError(
-            "Ułożenie w gruncie wymaga rezystywności cieplnej gruntu "
-            "(rezystywnosc_gruntu_km_w, K·m/W)."
+            "Ułożenie w gruncie wymaga podania rezystywności cieplnej gruntu [K·m/W]."
         )
     if srodowisko == "powietrze" and rezystywnosc_gruntu_km_w is not None:
         raise OdmowaDanychError(
-            "Rezystywność cieplna gruntu nie dotyczy ułożenia w powietrzu "
-            "(rezystywnosc_gruntu_km_w musi być None)."
+            "Rezystywność cieplna gruntu nie dotyczy ułożenia w powietrzu — to pole musi "
+            "zostać puste."
         )
 
     wpis_temp = _wpis_tablicy_temperatury_nn(

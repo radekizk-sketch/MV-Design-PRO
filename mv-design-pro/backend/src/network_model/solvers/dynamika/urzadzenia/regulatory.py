@@ -73,9 +73,9 @@ def _sprawdz_wyprzedzenie(nazwa_bloku: str, t_wyprzedzenia_s: float, t_opoznieni
     if t_opoznienia_s <= 0.0 and t_wyprzedzenia_s > 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"{nazwa_bloku}: czlon wyprzedzajacy T={t_wyprzedzenia_s} s bez czlonu "
-            "opozniajacego (T=0) jest rozniczkowaniem idealnym — transmitancja "
-            "niewlasciwa nie ma realizacji stanowej",
+            f"{nazwa_bloku}: człon wyprzedzający T={t_wyprzedzenia_s} s bez członu "
+            "opozniajacego (T=0) jest różniczkowaniem idealnym — transmitancja "
+            "niewłaściwa nie ma realizacji stanowej",
             blok=nazwa_bloku,
             t_wyprzedzenia_s=t_wyprzedzenia_s,
             t_opoznienia_s=t_opoznienia_s,
@@ -182,8 +182,8 @@ def zbuduj_regulator_napiecia(
     if wariant not in WARIANTY_WZBUDZENIA_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Wzbudnica {wariant!r} wymaga parametrow, ktorych kontrakt nie niesie "
-            "(wzbudnica wirujaca: Te, Ke, Se(Ve); sprzezenie stabilizujace: Kf, Tf; "
+            f"Wzbudnica {wariant!r} wymaga parametrów, których kontrakt nie niesie "
+            "(wzbudnica wirująca: Te, Ke, Se(Ve); sprzężenie stabilizujace: Kf, Tf; "
             f"regulacja prostownika: Kc). Zlozalne warianty: {WARIANTY_WZBUDZENIA_ZLOZALNE}",
             wariant=wariant,
             zlozalne=WARIANTY_WZBUDZENIA_ZLOZALNE,
@@ -272,10 +272,10 @@ def zbuduj_regulator_obrotow(
     if wariant not in WARIANTY_TURBINY_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Regulator obrotow {wariant!r} wymaga parametrow, ktorych kontrakt nie niesie "
-            "(turbina wodna: czas rozruchu wody Tw, wzmocnienie At, przeplyw jalowy q_nl, "
-            "serwomotor kierownicy Tg/Tr/Tf/velm, tlumienie Dturb). Zlozalne warianty: "
-            f"{WARIANTY_TURBINY_ZLOZALNE}",
+            f"Regulator obrotów {wariant!r} wymaga parametrów, których kontrakt nie niesie "
+            "(turbina wodna: czas rozruchu wody Tw, wzmocnienie At, przepływ jałowy q_NL, "
+            "serwomotor kierownicy Tg/Tr/Tf, ograniczenie prędkości serwomotoru, tłumienie "
+            f"Dturb). Warianty, które da się złożyć: {', '.join(WARIANTY_TURBINY_ZLOZALNE)}",
             wariant=wariant,
             zlozalne=WARIANTY_TURBINY_ZLOZALNE,
         )
@@ -378,13 +378,13 @@ def zbuduj_stabilizator(
     if wariant not in WARIANTY_STABILIZATORA_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Stabilizator {wariant!r} nie jest zlozalny z pol kontraktu. "
+            f"Stabilizator {wariant!r} nie jest zlozalny z pól kontraktu. "
             f"Zlozalne warianty: {WARIANTY_STABILIZATORA_ZLOZALNE}",
             wariant=wariant,
             zlozalne=WARIANTY_STABILIZATORA_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] czlon 1", t1_s, t2_s)
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] czlon 2", t3_s, t4_s)
+    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] człon 1", t1_s, t2_s)
+    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] człon 2", t3_s, t4_s)
     return StabilizatorPSS1A(
         wariant=wariant,
         ks=ks,

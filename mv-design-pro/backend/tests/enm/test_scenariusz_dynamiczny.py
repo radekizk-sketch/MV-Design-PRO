@@ -134,7 +134,7 @@ class TestTPozaHoryzontem:
         )
 
     def test_zdarzenie_poza_horyzontem_odrzucone(self):
-        with pytest.raises(ValidationError, match="wykracza poza horyzont_s"):
+        with pytest.raises(ValidationError, match="wykracza poza „Horyzont symulacji”"):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,
@@ -142,7 +142,9 @@ class TestTPozaHoryzontem:
             )
 
     def test_zwarcie_usuniecie_poza_horyzontem_odrzucone(self):
-        with pytest.raises(ValidationError, match="t_usuniecia_s=.* poza horyzont_s"):
+        with pytest.raises(
+            ValidationError, match="„Chwila usunięcia zwarcia” .* poza „Horyzont symulacji”"
+        ):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,
@@ -160,7 +162,7 @@ class TestTPozaHoryzontem:
             )
 
     def test_krok_wyjscia_wiekszy_niz_horyzont_odrzucony(self):
-        with pytest.raises(ValidationError, match="krok_wyjscia_s"):
+        with pytest.raises(ValidationError, match="„Krok zapisu przebiegu”"):
             ScenariuszDynamiczny(horyzont_s=1.0, krok_wyjscia_s=2.0, zdarzenia=())
 
     def test_t_s_ujemne_odrzucone(self):
@@ -543,7 +545,7 @@ class TestStanowiskoBadawcze:
                         "czas_trwania_s": 0.1,
                     },
                 ),
-                "nakladaja",
+                "nakładają się",
             ),
             (
                 (
@@ -569,7 +571,7 @@ class TestStanowiskoBadawcze:
             )
 
     def test_segment_poza_horyzontem_odrzucony(self):
-        with pytest.raises(ValidationError, match="poza horyzont"):
+        with pytest.raises(ValidationError, match="poza polem „Horyzont symulacji”"):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,

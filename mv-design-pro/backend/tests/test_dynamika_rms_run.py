@@ -537,7 +537,7 @@ class TestPersystencjaSzeregow:
             )
             session.commit()
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
-        with pytest.raises(KeyError, match="resultset_dynamic_v2"):
+        with pytest.raises(KeyError, match="przed obecnym kontraktem wyniku dynamiki"):
             build_dynamika_time_series(run)
 
     def test_filtr_kanalow(self) -> None:

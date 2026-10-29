@@ -210,9 +210,9 @@ class ShortCircuitConfig:
         """
         if "c_factor" in data:
             raise FaultScenarioValidationError(
-                "Klucz c_factor scenariusza został usunięty — współczynnik c wynika ze "
-                "scenariusza MAX/MIN (IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-                "z uzasadnieniem (nadpisanie_c)."
+                "Płaska liczba współczynnika c w scenariuszu nie jest przyjmowana — "
+                "współczynnik c wynika ze scenariusza MAX/MIN (IEC 60909-0 tab. 1 dla każdego "
+                "węzła) albo z nadpisania c podanego z uzasadnieniem."
             )
         if "scenariusz" not in data:
             raise FaultScenarioValidationError(
@@ -391,18 +391,20 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
 
     if not loc.element_ref or not loc.element_ref.strip():
         raise FaultScenarioValidationError(
-            "Identyfikator węzła zwarcia (element_ref) jest wymagany"
+            "Scenariusz zwarciowy musi wskazywać miejsce zwarcia (węzeł albo gałąź)"
         )
 
     # v1 location rules (BUS, BRANCH)
     if loc.location_type == "BUS" and loc.position is not None:
         raise FaultScenarioValidationError(
-            "Lokalizacja BUS nie może mieć pozycji (position musi być None)"
+            "Zwarcie na szynie nie ma położenia na gałęzi — pozycję należy pozostawić pustą"
         )
 
     if loc.location_type == "BRANCH":
         if loc.position is None:
-            raise FaultScenarioValidationError("Lokalizacja BRANCH wymaga pozycji (position)")
+            raise FaultScenarioValidationError(
+                "Zwarcie na gałęzi wymaga położenia miejsca zwarcia na gałęzi"
+            )
         if not (0.0 < loc.position < 1.0):
             raise FaultScenarioValidationError(
                 f"Pozycja na gałęzi musi być w zakresie (0, 1), otrzymano: {loc.position}"
@@ -411,32 +413,36 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
     # v2 location rules (NODE, BRANCH_POINT) — PR-25
     if loc.location_type == "NODE" and loc.position is not None:
         raise FaultScenarioValidationError(
-            "Lokalizacja NODE nie może mieć pozycji (position musi być None)"
+            "Zwarcie w węźle nie ma położenia na gałęzi — pozycję należy pozostawić pustą"
         )
 
     if loc.location_type == "BRANCH_POINT":
         if loc.position is None:
             raise FaultScenarioValidationError(
-                "Lokalizacja BRANCH_POINT wymaga parametru alpha (position)"
+                "Zwarcie w punkcie gałęzi wymaga położenia miejsca zwarcia α (ułamek długości)"
             )
         if not (0.0 <= loc.position <= 1.0):
             raise FaultScenarioValidationError(
-                f"Parametr alpha musi być w zakresie [0, 1], otrzymano: {loc.position}"
+                f"Położenie miejsca zwarcia α musi być w zakresie [0, 1], otrzymano: "
+                f"{loc.position}"
             )
 
     # v2 fault mode rules — PR-25
     if scenario.fault_mode == FaultMode.METALLIC and scenario.fault_impedance is not None:
         raise FaultScenarioValidationError(
-            "Tryb metaliczny (METALLIC) nie dopuszcza impedancji zwarcia (fault_impedance)"
+            "Zwarcie metaliczne nie dopuszcza impedancji przejścia — pozostaw ją pustą"
         )
 
     if scenario.fault_mode == FaultMode.IMPEDANCE and scenario.fault_impedance is None:
         raise FaultScenarioValidationError(
-            "Tryb impedancyjny (IMPEDANCE) wymaga jawnej impedancji zwarcia (fault_impedance)"
+            "Zwarcie przez impedancję wymaga jawnej impedancji przejścia (R_f, X_f)"
         )
 
     if scenario.config.thermal_time_seconds <= 0:
-        raise FaultScenarioValidationError("Czas cieplny thermal_time_seconds musi być > 0")
+        raise FaultScenarioValidationError(
+            "Czas trwania zwarcia t_k (do oceny cieplnej) musi być > 0 s, otrzymano: "
+            f"{scenario.config.thermal_time_seconds}"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from uuid import UUID
 
+from api.parsowanie_uuid import parsuj_uuid
 from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
@@ -19,19 +19,9 @@ from fastapi import APIRouter, HTTPException, status
 router = APIRouter(tags=["result-contract-v1"])
 
 
-def _parse_uuid(value: str, field_name: str = "id") -> UUID:
-    try:
-        return UUID(value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi być poprawnym UUID",
-        ) from exc
-
-
 @router.get("/api/execution/runs/{run_id}/results/v1")
 def get_resultset_v1(run_id: str) -> dict[str, Any]:
-    parsed_run_id = _parse_uuid(run_id, "run_id")
+    parsed_run_id = parsuj_uuid(run_id, "run_id")
     run = get_canonical_run(parsed_run_id)
     if run is None:
         raise HTTPException(

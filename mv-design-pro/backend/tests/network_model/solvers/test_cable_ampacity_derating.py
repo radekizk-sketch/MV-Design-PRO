@@ -83,8 +83,12 @@ def test_komunikat_bledu_wymienia_dostepne_zestawy_i_powod_krotkiej_listy() -> N
     with pytest.raises(ValueError) as blad:
         zestaw_warunkow("nieistniejacy")
     tresc = str(blad.value)
-    assert NAZWA_WARUNKI_KATALOGOWE in tresc
-    assert NAZWA_ZIEMIA_3_KABLE_200MM in tresc
+    # Dostępne zestawy są nazwane ETYKIETĄ projektanta, nie kluczem zestawu (klasa surowych
+    # kluczy w komunikatach: klucz `warunki_katalogowe` nic projektantowi nie mówi).
+    assert WARUNKI_KATALOGOWE.etykieta_pl in tresc
+    assert ZIEMIA_3_KABLE_200MM.etykieta_pl in tresc
+    assert NAZWA_WARUNKI_KATALOGOWE not in tresc
+    assert NAZWA_ZIEMIA_3_KABLE_200MM not in tresc
     assert "nie interpoluje" in tresc
     assert "IEC 60287" in tresc
 
@@ -378,7 +382,7 @@ class TestWspolczynnikiNNFailClosed:
             )
 
     def test_grunt_bez_rezystywnosci_odrzucony(self) -> None:
-        with pytest.raises(ValueError, match="wymaga rezystywności"):
+        with pytest.raises(ValueError, match="wymaga podania rezystywności"):
             wspolczynniki_nn(
                 srodowisko="grunt", izolacja="PVC", temperatura_c=20.0, liczba_obwodow=1
             )
@@ -412,7 +416,7 @@ class TestWspolczynnikiNNFailClosed:
             )
 
     def test_liczba_obwodow_ponizej_1_odrzucona(self) -> None:
-        with pytest.raises(ValueError, match="Liczba obwodów musi być >= 1"):
+        with pytest.raises(ValueError, match="Liczba obwodów musi wynosić co najmniej 1"):
             wspolczynniki_nn(
                 srodowisko="powietrze", izolacja="PVC", temperatura_c=30.0, liczba_obwodow=0
             )

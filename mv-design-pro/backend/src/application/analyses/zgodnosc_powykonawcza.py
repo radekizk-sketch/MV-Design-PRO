@@ -186,7 +186,8 @@ def _normalize_measurements(pomiary: list[dict[str, Any]]) -> list[dict[str, Any
         jednostka = str(raw.get("jednostka") or "").strip()
         if not element_ref:
             raise OdmowaDanychError(
-                f"Pomiar w wierszu {etykieta}: brak identyfikatora elementu (element_ref)."
+                f"Pomiar w wierszu {etykieta}: pusta kolumna identyfikatora elementu "
+                "„element_ref”."
             )
         if wielkosc not in _WIELKOSCI:
             raise OdmowaDanychError(

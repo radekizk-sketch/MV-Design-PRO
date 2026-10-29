@@ -137,14 +137,14 @@ def check_cable_thermal_aging(data: CableThermalAgingInput) -> CableThermalAging
             status=status,
         ),
         assumptions=(
-            "Regula Montsingera („regula 10 stopni”): kazde +10 °C ponad temperature "
-            "znamionowa PODWAJA szybkosc starzenia izolacji.",
+            "Reguła Montsingera („reguła 10 stopni”): każde +10 °C ponad temperature "
+            "znamionowa PODWAJA szybkość starzenia izolacji.",
             f"Temperatura odniesienia θ_zn = {theta_zn} °C pochodzi z pozycji katalogowej "
-            f"kabla (izolacja {izolacja}), nie z wartosci typowej.",
-            "Wspolczynnik jest WZGLEDNY — opisuje stosunek szybkosci starzenia do "
-            "warunkow znamionowych, nie zywotnosc bezwzgledna w latach.",
-            "Rachunek zaklada stala temperature pracy; praca zmienna wymaga scalkowania "
-            "wspolczynnika po profilu obciazenia.",
+            f"kabla (izolacja {izolacja}), nie z wartości typowej.",
+            "Współczynnik jest WZGLĘDNY — opisuje stosunek szybkości starzenia do "
+            "warunków znamionowych, nie żywotność bezwzględna w latach.",
+            "Rachunek zakłada stała temperature pracy; praca zmienna wymaga scalkowania "
+            "współczynnika po profilu obciążenia.",
         ),
     )
 

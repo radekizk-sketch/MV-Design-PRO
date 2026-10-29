@@ -15,10 +15,6 @@ import pytest
 from api.main import app
 from application.contracts.resultset_dynamic_v2 import TrybScenariusza
 from application.dynamika.opis_scenariusza import (
-    ETYKIETY_POL,
-    ETYKIETY_RODZAJOW,
-    ETYKIETY_WARTOSCI,
-    ETYKIETY_WIELKOSCI_DETEKTORA,
     POLA_TRYBU_STANOWISKA,
     opis_scenariusza_dynamicznego,
 )
@@ -37,6 +33,10 @@ from enm.adapter_dynamiki import (
     nastawy_z_opcji,
 )
 from enm.scenariusze import (
+    ETYKIETY_POL,
+    ETYKIETY_RODZAJOW,
+    ETYKIETY_WARTOSCI,
+    ETYKIETY_WIELKOSCI_DETEKTORA,
     Detektor,
     OperatingScenario,
     RodzajScenariusza,

@@ -166,7 +166,7 @@ def dopasuj_nasycenie(s10: float, s12: float) -> WspolczynnikiNasycenia:
     if s10 < 0.0 or s12 < 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Nasycenie: Se(1,0)={s10} i Se(1,2)={s12} musza byc nieujemne",
+            f"Nasycenie: Se(1,0)={s10} i Se(1,2)={s12} muszą być nieujemne",
             s10=s10,
             s12=s12,
         )
@@ -178,7 +178,7 @@ def dopasuj_nasycenie(s10: float, s12: float) -> WspolczynnikiNasycenia:
     if iloraz <= 1.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Nasycenie: Se(1,2)={s12} wobec Se(1,0)={s10} daje krzywa nierosnaca "
+            f"Nasycenie: Se(1,2)={s12} wobec Se(1,0)={s10} daje krzywą nierosnącą "
             "(1,2*S12 <= S10) — kwadratowa krzywa nasycenia nie ma dopasowania",
             s10=s10,
             s12=s12,
@@ -262,8 +262,8 @@ class MaszynaSynchroniczna:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "uklad",
-            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
-            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+            "układ stanów jest WYPROWADZONY z konfiguracji bloków urządzenia; jego "
+            "nazwy wchodzą do odcisku osobno jako `nazwy_stanow`",
         ),
     )
 
@@ -303,7 +303,7 @@ class MaszynaSynchroniczna:
             powod_pl=(
                 "odniesienie mocy regulatora obrotów TGOV1 (moc mechaniczna w szczelinie)"
                 if turbina is not None
-                else "moc mechaniczna napedu bez regulatora obrotów (moc w szczelinie)"
+                else "moc mechaniczna napędu bez regulatora obrotów (moc w szczelinie)"
             ),
             zakres=None if turbina is None else (turbina.p_min_pu, turbina.p_max_pu),
             mnoznik=1.0,
@@ -434,7 +434,7 @@ class MaszynaSynchroniczna:
         )
         strumien_wektor = napiecie_dq + prad_dq * Zespolona(Dual(self.ra_pu), Dual(self.xl_pu))
         strumien = (
-            modul_niezerowy(strumien_wektor, f"strumien szczeliny maszyny {self.ident}")
+            modul_niezerowy(strumien_wektor, f"strumień szczeliny maszyny {self.ident}")
             if self.nasycenie.aktywne
             else Dual(0.0)
         )
@@ -540,7 +540,7 @@ class MaszynaSynchroniczna:
         efd = stany[STAN_WZBUDZENIA]
         if wzbudzenie is None:
             return efd, {STAN_WZBUDZENIA: Dual(0.0)}
-        napiecie_zaciskow = modul_niezerowy(napiecie, f"napiecie zaciskow maszyny {self.ident}")
+        napiecie_zaciskow = modul_niezerowy(napiecie, f"napięcie zacisków maszyny {self.ident}")
         uchyb = stany[STAN_ODNIESIENIA_WZBUDZENIA] - napiecie_zaciskow + sygnal_pss
         stan_wyprzedzenia = (
             stany[STAN_WYPRZEDZENIA_WZBUDZENIA] if wzbudzenie.ma_wyprzedzenie else None
@@ -584,8 +584,8 @@ class MaszynaSynchroniczna:
         if napiecie_pu == 0:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"Maszyna {self.ident!r}: zerowe napiecie punktu pracy nie wyznacza "
-                "kata wirnika",
+                f"Maszyna {self.ident!r}: zerowe napięcie punktu pracy nie wyznacza "
+                "kąta wirnika",
                 urzadzenie=self.ident,
             )
         prad = moc_pu.conjugate() / napiecie_pu.conjugate()
@@ -636,7 +636,7 @@ class MaszynaSynchroniczna:
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
                 f"Maszyna {self.ident!r}: punkt pracy wymaga wzbudzenia "
                 f"Efd = {wzbudzenie_pu} pu poza granicami regulatora "
-                f"[{wzbudzenie.efd_min_pu}, {wzbudzenie.efd_max_pu}] — rownowaga nie istnieje",
+                f"[{wzbudzenie.efd_min_pu}, {wzbudzenie.efd_max_pu}] — równowaga nie istnieje",
                 urzadzenie=self.ident,
                 efd_pu=wzbudzenie_pu,
                 efd_min_pu=wzbudzenie.efd_min_pu,
@@ -660,7 +660,7 @@ class MaszynaSynchroniczna:
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
                 f"Maszyna {self.ident!r}: punkt pracy wymaga mocy turbiny "
                 f"P_m = {moc_mechaniczna_pu} pu poza granicami regulatora "
-                f"[{turbina.p_min_pu}, {turbina.p_max_pu}] — rownowaga nie istnieje",
+                f"[{turbina.p_min_pu}, {turbina.p_max_pu}] — równowaga nie istnieje",
                 urzadzenie=self.ident,
                 p_mechaniczna_pu=moc_mechaniczna_pu,
                 p_min_pu=turbina.p_min_pu,
@@ -767,16 +767,16 @@ def zbuduj_maszyne_synchroniczna(
     if stabilizator is not None and wzbudzenie is None:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Maszyna {ident!r}: stabilizator systemowy oddaje sygnal na wejscie "
-            "regulatora napiecia, ktorego maszyna nie ma — PSS bez AVR nie ma gdzie "
-            "dzialac",
+            f"Maszyna {ident!r}: stabilizator systemowy oddaje sygnał na wejście "
+            "regulatora napięcia, którego maszyna nie ma — PSS bez AVR nie ma gdzie "
+            "działać",
             urzadzenie=ident,
         )
     if xd_bis_pu <= 0.0 and xq_bis_pu <= 0.0 and ra_pu <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Maszyna {ident!r}: zerowa impedancja podprzejsciowa i zerowa rezystancja "
-            "stojana nie wyznaczaja pradu (wyznacznik rownan stojana rowny zeru)",
+            f"Maszyna {ident!r}: zerowa impedancja podprzejściowa i zerowa rezystancja "
+            "stojana nie wyznaczają prądu (wyznacznik równań stojana równy zeru)",
             urzadzenie=ident,
         )
     turbina_w_bazie = (

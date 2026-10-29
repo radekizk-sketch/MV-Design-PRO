@@ -766,7 +766,7 @@
             "element_refs": [
               "QF-D1_zrodlo"
             ],
-            "message_pl": "Zdolność pracy wyspowej źródła (QF-D1_zrodlo) nie jest zadeklarowana (meta.island_capability / control_mode) — stan zasilania wyspy NIEZNANY.",
+            "message_pl": "Zdolność pracy wyspowej źródła (QF-D1_zrodlo) nie jest zadeklarowana ani w danych źródła, ani przez tryb regulacji — stan zasilania wyspy NIEZNANY.",
             "severity": "IMPORTANT"
           }
         ],
@@ -1430,7 +1430,7 @@
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "3ab3b50c6765bf597315d1b393a87f649e459043232afcbe7dcc2bd935526a61",
+  "projection_hash": "2c1cf54f8067f4008dbe280d83d83c362044051f314cca9b428859c9b7f92cc9",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2709,7 +2709,7 @@
       "element_refs": [
         "QF-D1_zrodlo"
       ],
-      "message_pl": "Zdolność pracy wyspowej źródła (QF-D1_zrodlo) nie jest zadeklarowana (meta.island_capability / control_mode) — stan zasilania wyspy NIEZNANY.",
+      "message_pl": "Zdolność pracy wyspowej źródła (QF-D1_zrodlo) nie jest zadeklarowana ani w danych źródła, ani przez tryb regulacji — stan zasilania wyspy NIEZNANY.",
       "severity": "IMPORTANT"
     }
   ]

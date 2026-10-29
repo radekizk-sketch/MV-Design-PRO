@@ -161,7 +161,7 @@ class McbCurvePointResult:
 # IEC 60269-1, choć to DWIE RÓŻNE normy — zbieżność progu, nie zapożyczenie).
 def _czas_umowny_mcb_s(in_a: float) -> float:
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy I_n musi być dodatni, otrzymano {in_a} A.")
     return 3600.0 if in_a <= 63.0 else 7200.0
 
 
@@ -177,9 +177,9 @@ def compute_mcb_thermal_point(*, i_query_a: float, in_a: float) -> McbCurvePoint
         ValueError: ``i_query_a < 0`` albo ``in_a <= 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy I_n musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     prog_dolny = PROG_CIEPLNY_NIE_WYZWALA_X_IN * in_a
     prog_gorny = PROG_CIEPLNY_WYZWALA_X_IN * in_a
@@ -260,9 +260,9 @@ def compute_mcb_magnetic_point(
             ``in_a <= 0`` (przez `PASMA_MAGNETYCZNE`/walidację lokalną).
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy I_n musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
     if curve_class not in PASMA_MAGNETYCZNE:
         raise OdmowaDanychError(
             f"Nieznana klasa wyzwolenia MCB '{curve_class}' — dozwolone: "
@@ -287,7 +287,7 @@ def compute_mcb_magnetic_point(
             f"I={i_query_a:g} A < {pasmo.min_x_in:g}×In={prog_dolny:g} A — poniżej pasma "
             f"wyzwolenia magnetycznego klasy {curve_class} ({pasmo.min_x_in:g}-"
             f"{pasmo.max_x_in:g}×In) — element magnetyczny NIE zadziała (element cieplny "
-            f"może, patrz `compute_mcb_thermal_point`)."
+            "może — patrz ocena progu cieplnego wyłącznika)."
         )
     else:
         gwarancja = GwarancjaNormy.NIEOKRESLONY
@@ -406,7 +406,7 @@ def compute_mccb_point(
             wymaga zwłoki — jest natychmiastowy z definicji).
     """
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     if ir_a is None or tr_s is None:
         trace_brak: dict[str, Any] = {
@@ -432,20 +432,29 @@ def compute_mccb_point(
             white_box_trace=trace_brak,
         )
     if ir_a <= 0:
-        raise OdmowaDanychError(f"ir_a musi być dodatnie, otrzymano {ir_a}.")
+        raise OdmowaDanychError(f"Nastawa długozwłoczna I_r musi być dodatnia, otrzymano {ir_a} A.")
     if tr_s <= 0:
-        raise OdmowaDanychError(f"tr_s musi być dodatnie, otrzymano {tr_s}.")
+        raise OdmowaDanychError(f"Zwłoka długozwłoczna t_r musi być dodatnia, otrzymano {tr_s} s.")
     if isd_a is not None and tsd_s is None:
-        raise OdmowaDanychError("isd_a podane bez odpowiadającej zwłoki tsd_s.")
+        raise OdmowaDanychError(
+            "Nastawa krótkozwłoczna I_sd podana bez odpowiadającej zwłoki t_sd."
+        )
     if isd_a is not None and isd_a <= ir_a:
-        raise OdmowaDanychError(f"isd_a ({isd_a}) musi być > ir_a ({ir_a}).")
+        raise OdmowaDanychError(
+            f"Nastawa krótkozwłoczna I_sd ({isd_a} A) musi być większa niż I_r ({ir_a} A)."
+        )
     if ii_a is not None and isd_a is not None and ii_a <= isd_a:
-        raise OdmowaDanychError(f"ii_a ({ii_a}) musi być > isd_a ({isd_a}).")
+        raise OdmowaDanychError(
+            f"Nastawa bezzwłoczna I_i ({ii_a} A) musi być większa niż I_sd ({isd_a} A)."
+        )
     if ii_a is not None and isd_a is None and ii_a <= ir_a:
-        raise OdmowaDanychError(f"ii_a ({ii_a}) musi być > ir_a ({ir_a}).")
+        raise OdmowaDanychError(
+            f"Nastawa bezzwłoczna I_i ({ii_a} A) musi być większa niż I_r ({ir_a} A)."
+        )
 
     zalozenie_dlugo = (
-        "Stopień długozwłoczny modelowany jako definite-time przy tr_s (IEC 60947-2 nie "
+        "Stopień długozwłoczny modelowany jako niezależny od prądu przy zwłoce t_r "
+        "(IEC 60947-2 nie "
         "definiuje uniwersalnego kształtu I²t długozwłocznego niezależnie od producenta) — "
         "ZAŁOŻENIE nazwane wprost, nie fabrykacja kształtu krzywej."
     )
@@ -576,16 +585,17 @@ FUSE_GG_TIME_BAND_SOURCE_PL = (
     "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie "
     "techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 "
     "guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — "
-    "1h(In<=63A)/2h(63<In<=160A)/3h(160<In<=400A)/4h(In>400A)."
+    "1 h (In ≤ 63 A) / 2 h (63 A < In ≤ 160 A) / 3 h (160 A < In ≤ 400 A) / 4 h (In > 400 A)."
 )
 
 
 def _czas_umowny_fuse_gg_s(in_a: float) -> float:
     if in_a <= 16.0:
         raise OdmowaDanychError(
-            f"in_a={in_a} A <= 16 A — poza zweryfikowanym zakresem G-D2 tej karty "
-            "(mnożniki bramek dla In<=16 A różnią się: 1,5/1,9/2,1× wg IEC 60269-1, "
-            "nie zaimplementowane bez podwójnej weryfikacji źródłowej)."
+            f"Wkładka gG o prądzie znamionowym I_n = {in_a} A ≤ 16 A jest poza "
+            "zweryfikowanym zakresem charakterystyki (mnożniki prądów umownych dla "
+            "I_n ≤ 16 A różnią się: 1,5/1,9/2,1× wg IEC 60269-1 i nie są wdrożone bez "
+            "podwójnej weryfikacji źródłowej)."
         )
     if in_a <= 63.0:
         return 3600.0
@@ -646,9 +656,9 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
             ``in_a <= 0`` albo ``i_query_a < 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy I_n musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     t_umowny = _czas_umowny_fuse_gg_s(in_a)
     inf_a = FUSE_GG_INF_MULTIPLIER * in_a
@@ -790,7 +800,7 @@ def bramka_t_wymagany_gg_a(*, t_wymagany_s: float, in_a: float) -> float | None:
         ValueError: ``in_a <= 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy I_n musi być dodatni, otrzymano {in_a} A.")
     mnoznik = FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER.get(t_wymagany_s)
     if mnoznik is None:
         return None

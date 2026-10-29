@@ -88,7 +88,7 @@ class UrzadzenieOdlaczone:
             NastawaRegulacji(
                 wielkosc=wielkosc,
                 stan=None,
-                powod_pl=f"urządzenie {self.bazowe.ident} jest odlaczone od sieci — nastawa "
+                powod_pl=f"urządzenie {self.bazowe.ident} jest odłączone od sieci — nastawa "
                 "nie miałaby skutku do ponownego przyłączenia, którego rdzeń nie wykonuje",
                 zakres=None,
                 mnoznik=1.0,

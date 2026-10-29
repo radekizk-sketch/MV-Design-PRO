@@ -99,13 +99,13 @@ class OdcinekLancucha:
     def __post_init__(self) -> None:
         if self.jest_transformatorem and self.odcinek_fizyczny is not None:
             raise ValueError(
-                f"Krok '{self.segment_id}': jest_transformatorem=True, ale "
-                "odcinek_fizyczny podany — niezmiennik pary predykatów naruszony."
+                "Krok łańcucha spadku napięcia oznaczony jako transformator niesie odcinek "
+                "fizyczny — niezmiennik pary predykatów naruszony."
             )
         if not self.jest_transformatorem and self.odcinek_fizyczny is None:
             raise ValueError(
-                f"Krok '{self.segment_id}': jest_transformatorem=False, ale "
-                "odcinek_fizyczny brak — niezmiennik pary predykatów naruszony."
+                "Krok łańcucha spadku napięcia oznaczony jako odcinek nie niesie odcinka "
+                "fizycznego — niezmiennik pary predykatów naruszony."
             )
 
 

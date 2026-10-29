@@ -24,6 +24,7 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import nazwa_elementu
+from enm.slownik_komunikatow import nazwa_rodzaju_generatora
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
@@ -465,8 +466,9 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     severity="ostrzezenie",
                     element_ref=generator.ref_id,
                     message_pl=(
-                        "Generator wiatrowy ma typ legacy 'wind_inverter'. "
-                        "Migracja V12.xx wymaga rozróżnienia PMSG, DFIG albo SCIG."
+                        "Generator wiatrowy ma dawny rodzaj "
+                        f"{nazwa_rodzaju_generatora(generator.gen_type)} bez typu maszyny. "
+                        "Wskaż rodzaj turbiny: PMSG, DFIG albo SCIG."
                     ),
                 )
             )

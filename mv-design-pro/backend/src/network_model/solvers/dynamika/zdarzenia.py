@@ -379,7 +379,7 @@ def sprawdz_tryb_stanowiska(
             "Bieg stanowiska badawczego (sieć zasila źródło testowe) przyjmuje wyłącznie "
             "profil źródła testowego i komendy regulacji badanego urządzenia; zakłócenia "
             f"sieci {sorted(set(obce))} należą do biegu trybu sieci — mieszanie trybów "
-            "daloby wynik dwóch badań naraz",
+            "dałoby wynik dwóch badań naraz",
             zdarzenia=tuple(sorted(set(obce))),
         )
 
@@ -420,7 +420,7 @@ def szablony_akcji_dozorow(
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
             f"Dozory o powtorzonych identyfikatorach {powtorzone} — pobudzenie i przekroczenie "
-            "nie mialyby jednoznacznego adresu",
+            "nie miałyby jednoznacznego adresu",
             dozory=tuple(powtorzone),
         )
     szablony: list[tuple[WpisHarmonogramu, ...]] = []
@@ -448,7 +448,7 @@ def _sprawdz_wielkosc_dozoru(dozor: Dozor, kontekst: KontekstHarmonogramu) -> No
         if wielkosc.zacisk not in ("od", "do"):
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_SPRZECZNE,
-                f"Dozor {dozor.ident!r}: zacisk {wielkosc.zacisk!r} spoza {{od, do}} — prąd "
+                f"Dozór {dozor.ident!r}: zacisk {wielkosc.zacisk!r} spoza {{od, do}} — prąd "
                 "gałęzi czyta się z JAWNIE nazwanego zacisku",
                 dozor=dozor.ident,
             )
@@ -459,7 +459,7 @@ def _sprawdz_wielkosc_dozoru(dozor: Dozor, kontekst: KontekstHarmonogramu) -> No
         if isinstance(wielkosc, StanUrzadzenia) and wielkosc.stan not in urzadzenie.nazwy_stanow:
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_BEZ_ELEMENTU,
-                f"Dozor {dozor.ident!r} wskazuje stan {wielkosc.stan!r} urządzenia "
+                f"Dozór {dozor.ident!r} wskazuje stan {wielkosc.stan!r} urządzenia "
                 f"{wielkosc.urzadzenie!r}, którego urządzenie nie ma "
                 f"(stany: {urzadzenie.nazwy_stanow})",
                 ref=f"{wielkosc.urzadzenie}.{wielkosc.stan}",
@@ -468,7 +468,7 @@ def _sprawdz_wielkosc_dozoru(dozor: Dozor, kontekst: KontekstHarmonogramu) -> No
         if isinstance(wielkosc, MocUrzadzenia) and wielkosc.skladowa not in ("p", "q"):
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_SPRZECZNE,
-                f"Dozor {dozor.ident!r}: składowa mocy {wielkosc.skladowa!r} spoza {{p, q}}",
+                f"Dozór {dozor.ident!r}: składowa mocy {wielkosc.skladowa!r} spoza {{p, q}}",
                 dozor=dozor.ident,
             )
         return
@@ -530,7 +530,7 @@ def wpisy_zdarzenia(
             if zdarzenie.t_usuniecia_s > horyzont_s:
                 raise OdmowaDynamiki(
                     KOD_ZDARZENIE_BEZ_ELEMENTU,
-                    f"Zdjecie zwarcia w t={zdarzenie.t_usuniecia_s} s wykracza poza "
+                    f"Zdjęcie zwarcia w t={zdarzenie.t_usuniecia_s} s wykracza poza "
                     f"horyzont {horyzont_s} s",
                     t_s=zdarzenie.t_usuniecia_s,
                     horyzont_s=horyzont_s,
@@ -596,8 +596,8 @@ def wpisy_zdarzenia(
                 KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
                 f"Częściowa utrata źródła {zdarzenie.zrodlo!r} ({type(urzadzenie).__name__}) "
                 f"w t={zdarzenie.t_s} s: urządzenie nie jest agregatem identycznych jednostek "
-                "o sprzezeniu pradowym (ekwiwalent sieci nadrzednej albo źródło testowe) — "
-                "ubytek czesci jednostek nie opisuje żadnego zjawiska",
+                "o sprzężeniu prądowym (ekwiwalent sieci nadrzędnej albo źródło testowe) — "
+                "ubytek części jednostek nie opisuje żadnego zjawiska",
                 zrodlo=zdarzenie.zrodlo,
                 klasa=type(urzadzenie).__name__,
                 t_s=zdarzenie.t_s,
@@ -705,7 +705,7 @@ def sprawdz_przypisanie(urzadzenie: Urzadzenie, stan: str, wartosc: float, t_s: 
             f"Przypisanie stanu {stan!r} urządzenia {urzadzenie.ident!r} "
             f"({type(urzadzenie).__name__}) w t={t_s} s jest niedozwolone — klasa deklaruje "
             f"jako przypisywalne wyłącznie {urzadzenie.stany_przypisywalne}; skok strumienia, "
-            "kąta, predkosci albo stanu naladowania wymagalby nieskonczonej wielkości fizycznej",
+            "kąta, prędkości albo stanu naładowania wymagałby nieskończonej wielkości fizycznej",
             urzadzenie=urzadzenie.ident,
             stan=stan,
             dozwolone=urzadzenie.stany_przypisywalne,
@@ -716,9 +716,9 @@ def sprawdz_przypisanie(urzadzenie: Urzadzenie, stan: str, wartosc: float, t_s: 
     if granica is not None and not (granica[0] <= wartosc <= granica[1]):
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
-            f"Przypisanie {urzadzenie.ident}.{stan} = {wartosc} w t={t_s} s lezy poza "
+            f"Przypisanie {urzadzenie.ident}.{stan} = {wartosc} w t={t_s} s leży poza "
             f"ogranicznikiem stanu [{granica[0]}, {granica[1]}] — model nie dopuszcza takiego "
-            "stanu, a przyciecie po cichu zmieniloby zadana wartość",
+            "stanu, a przycięcie po cichu zmieniłoby zadana wartość",
             adres=f"{urzadzenie.ident}.{stan}",
             wartosc=wartosc,
             granica=granica,
@@ -735,7 +735,7 @@ def nastawa_regulacji(urzadzenie: Urzadzenie, wielkosc: WielkoscNastawy, t_s: fl
             raise OdmowaDynamiki(
                 KOD_NASTAWA_NIEOBSLUGIWANA,
                 f"Komenda regulacji {wielkosc.upper()} urządzenia {urzadzenie.ident!r} "
-                f"({type(urzadzenie).__name__}) w t={t_s} s jest nieobslugiwana: "
+                f"({type(urzadzenie).__name__}) w t={t_s} s jest nieobsługiwana: "
                 f"{nastawa.powod_pl}",
                 urzadzenie=urzadzenie.ident,
                 klasa=type(urzadzenie).__name__,
@@ -779,8 +779,8 @@ def _sprawdz_utrate(
     if odlaczone:
         raise OdmowaDynamiki(
             KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
-            f"Częściowa utrata źródła {zrodlo!r} w t={t_s} s: źródło jest już odlaczone od "
-            "sieci — nie ma jednostek, które moglyby wypasc",
+            f"Częściowa utrata źródła {zrodlo!r} w t={t_s} s: źródło jest już odłączone od "
+            "sieci — nie ma jednostek, które mogłyby wypaść",
             zrodlo=zrodlo,
             t_s=t_s,
         )
@@ -863,7 +863,7 @@ def _wpisy_zwarcia_galezi(
         if zdarzenie.t_usuniecia_s > kontekst.horyzont_s:
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_BEZ_ELEMENTU,
-                f"Zdjecie zwarcia w t={zdarzenie.t_usuniecia_s} s wykracza poza horyzont "
+                f"Zdjęcie zwarcia w t={zdarzenie.t_usuniecia_s} s wykracza poza horyzont "
                 f"{kontekst.horyzont_s} s",
                 t_s=zdarzenie.t_usuniecia_s,
                 horyzont_s=kontekst.horyzont_s,

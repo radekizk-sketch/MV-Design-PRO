@@ -235,7 +235,9 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.005, x_ohm=0.015),
         )
-        with pytest.raises(ValueError, match="u_nom_v MUSI być > 0"):
+        with pytest.raises(
+            ValueError, match="Napięcie znamionowe sieci w punkcie zwarcia musi być > 0 V"
+        ):
             compute_fault_loop(bad)
 
     def test_negative_impedance_rejected(self) -> None:

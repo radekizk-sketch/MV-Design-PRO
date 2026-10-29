@@ -703,8 +703,8 @@ def nastawy_z_opcji(options: dict[str, Any], scenariusz: ScenariuszDynamiczny) -
     if not isinstance(surowe, dict):
         raise OdmowaWejsciaDynamiki(
             KOD_NASTAWY_BRAK,
-            "Bieg dynamiki czasowej wymaga kompletu nastaw numerycznych w opcjach biegu "
-            f"(`{KLUCZ_NASTAW}`): {', '.join(POLA_NASTAW)}",
+            "Bieg dynamiki czasowej wymaga kompletu nastaw numerycznych solvera w opcjach "
+            f"biegu: {', '.join(f'`{pole}`' for pole in POLA_NASTAW)}",
             elementy=POLA_NASTAW,
         )
     brakujace = tuple(
@@ -757,7 +757,7 @@ def scenariusz_z_opcji(options: dict[str, Any]) -> ScenariuszDynamiczny:
         raise OdmowaWejsciaDynamiki(
             KOD_SCENARIUSZ_BRAK,
             "Bieg dynamiki czasowej wymaga scenariusza dynamicznego w opcjach biegu "
-            f"(`{KLUCZ_SCENARIUSZA}`: horyzont symulacji, krok wyjścia, harmonogram zdarzeń)",
+            "(horyzont symulacji, krok zapisu przebiegu, harmonogram zdarzeń)",
             elementy=(KLUCZ_SCENARIUSZA,),
         )
     return ScenariuszDynamiczny.model_validate(surowy)
@@ -1382,7 +1382,7 @@ def _moce_urzadzen_pu(
             KOD_PODZIAL_MOCY_NIESPOJNY,
             f"Na szynie {szyna!r} pracuje kilku wytwórców ({', '.join(sorted(z_modelu))}), "
             "ale suma ich mocy z modelu nie odtwarza wypadkowej szyny z rozpływu "
-            f"(niezgodność {niezgodnosc_pradu:.3e} pu prądu wobec eps_init {eps_init:.3e}). "
+            f"(niezgodność {niezgodnosc_pradu:.3e} pu prądu wobec `eps_init` {eps_init:.3e}). "
             "Rozpływ przesunął moc węzła (regulacja napięcia, ograniczenie mocy biernej "
             "albo bilans szyny bilansującej), a podziału tego przesunięcia między "
             "wytwórców nie da się wyprowadzić z danych wejściowych",

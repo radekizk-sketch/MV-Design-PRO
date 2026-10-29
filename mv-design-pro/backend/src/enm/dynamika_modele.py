@@ -53,6 +53,25 @@ from typing import Annotated, Literal
 from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel, Field, model_validator
 
+
+def _nazwa_parametru(model: BaseModel, klucz: str) -> str:
+    """Nazwa parametru modelu dynamicznego w cudzysłowie — opis pola kontraktu (``Field``
+    ``description``), ten sam, który niesie schemat formularza. Jedno źródło słów: odmowa
+    spójności parametrów nie powtarza klucza pola (karta klasy surowych kluczy)."""
+    opis = type(model).model_fields[klucz].description
+    if not opis:
+        raise KeyError(f"Pole {klucz} modelu {type(model).__name__} nie ma opisu")
+    return f"„{opis.rstrip('.')}”"
+
+
+def _mniejsze(model: BaseModel, rodzaj: str, dolny: str, gorny: str) -> str:
+    """Odmowa pary granic: dolna granica musi być mniejsza niż górna."""
+    return (
+        f"{rodzaj}: {_nazwa_parametru(model, dolny)} ({getattr(model, dolny):g}) musi być "
+        f"mniejszy niż {_nazwa_parametru(model, gorny)} ({getattr(model, gorny):g})."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Proweniencja bloku (SS0 p. 2)
 # ---------------------------------------------------------------------------
@@ -108,10 +127,7 @@ class RegulatorNapiecia(BaseModel):
     @model_validator(mode="after")
     def _limity_spojne(self) -> RegulatorNapiecia:
         if self.efd_min_pu >= self.efd_max_pu:
-            raise ValueError(
-                f"RegulatorNapiecia: efd_min_pu ({self.efd_min_pu}) musi być mniejsze "
-                f"niż efd_max_pu ({self.efd_max_pu})."
-            )
+            raise ValueError(_mniejsze(self, "Regulator napięcia", "efd_min_pu", "efd_max_pu"))
         return self
 
 
@@ -129,10 +145,7 @@ class RegulatorObrotow(BaseModel):
     @model_validator(mode="after")
     def _limity_spojne(self) -> RegulatorObrotow:
         if self.p_min_pu >= self.p_max_pu:
-            raise ValueError(
-                f"RegulatorObrotow: p_min_pu ({self.p_min_pu}) musi być mniejsze "
-                f"niż p_max_pu ({self.p_max_pu})."
-            )
+            raise ValueError(_mniejsze(self, "Regulator obrotów", "p_min_pu", "p_max_pu"))
         return self
 
 
@@ -153,8 +166,7 @@ class StabilizatorSystemowy(BaseModel):
     def _limity_spojne(self) -> StabilizatorSystemowy:
         if self.limit_min_pu >= self.limit_max_pu:
             raise ValueError(
-                f"StabilizatorSystemowy: limit_min_pu ({self.limit_min_pu}) musi być "
-                f"mniejsze niż limit_max_pu ({self.limit_max_pu})."
+                _mniejsze(self, "Stabilizator systemowy", "limit_min_pu", "limit_max_pu")
             )
         return self
 
@@ -189,26 +201,22 @@ class MaszynaSynchroniczna(BaseModel):
 
     @model_validator(mode="after")
     def _porzadek_reaktancji_i_stalych(self) -> MaszynaSynchroniczna:
-        if not (self.xd_bis_pu <= self.xd_prim_pu <= self.xd_pu):
-            raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xd_bis_pu <= xd_prim_pu <= xd_pu "
-                f"(otrzymano {self.xd_bis_pu} / {self.xd_prim_pu} / {self.xd_pu})."
-            )
-        if not (self.xq_bis_pu <= self.xq_prim_pu <= self.xq_pu):
-            raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xq_bis_pu <= xq_prim_pu <= xq_pu "
-                f"(otrzymano {self.xq_bis_pu} / {self.xq_prim_pu} / {self.xq_pu})."
-            )
-        if self.td0_bis_s > self.td0_prim_s:
-            raise ValueError(
-                "MaszynaSynchroniczna: td0_bis_s musi być <= td0_prim_s "
-                f"(otrzymano {self.td0_bis_s} > {self.td0_prim_s})."
-            )
-        if self.tq0_bis_s > self.tq0_prim_s:
-            raise ValueError(
-                "MaszynaSynchroniczna: tq0_bis_s musi być <= tq0_prim_s "
-                f"(otrzymano {self.tq0_bis_s} > {self.tq0_prim_s})."
-            )
+        for os_maszyny in ("d", "q"):
+            klucze = (f"x{os_maszyny}_bis_pu", f"x{os_maszyny}_prim_pu", f"x{os_maszyny}_pu")
+            wartosci = [getattr(self, klucz) for klucz in klucze]
+            if not (wartosci[0] <= wartosci[1] <= wartosci[2]):
+                raise ValueError(
+                    "Maszyna synchroniczna: wymagany porządek reaktancji "
+                    + " ≤ ".join(_nazwa_parametru(self, klucz) for klucz in klucze)
+                    + f" (otrzymano {' / '.join(f'{w:g}' for w in wartosci)})."
+                )
+        for bis, prim in (("td0_bis_s", "td0_prim_s"), ("tq0_bis_s", "tq0_prim_s")):
+            if getattr(self, bis) > getattr(self, prim):
+                raise ValueError(
+                    f"Maszyna synchroniczna: {_nazwa_parametru(self, bis)} "
+                    f"({getattr(self, bis):g} s) nie może być większa niż "
+                    f"{_nazwa_parametru(self, prim)} ({getattr(self, prim):g} s)."
+                )
         return self
 
 
@@ -267,8 +275,7 @@ class PrzeksztaltnikGFL(BaseModel):
     def _granice_napiecia_spojne(self) -> PrzeksztaltnikGFL:
         if self.u_min_ciagle_pu >= self.u_max_ciagle_pu:
             raise ValueError(
-                "PrzeksztaltnikGFL: u_min_ciagle_pu musi być mniejsze niż u_max_ciagle_pu "
-                f"(otrzymano {self.u_min_ciagle_pu} >= {self.u_max_ciagle_pu})."
+                _mniejsze(self, "Przekształtnik nadążny", "u_min_ciagle_pu", "u_max_ciagle_pu")
             )
         return self
 
@@ -343,13 +350,13 @@ class Magazyn(BaseModel):
     @model_validator(mode="after")
     def _soc_i_moc_spojne(self) -> Magazyn:
         if self.soc_min >= self.soc_max:
-            raise ValueError(
-                f"Magazyn: soc_min ({self.soc_min}) musi być mniejsze niż soc_max ({self.soc_max})."
-            )
+            raise ValueError(_mniejsze(self, "Magazyn energii", "soc_min", "soc_max"))
         if not (self.soc_min <= self.soc_poczatkowy <= self.soc_max):
             raise ValueError(
-                f"Magazyn: soc_poczatkowy ({self.soc_poczatkowy}) musi leżeć w przedziale "
-                f"[soc_min={self.soc_min}, soc_max={self.soc_max}]."
+                f"Magazyn energii: {_nazwa_parametru(self, 'soc_poczatkowy')} "
+                f"({self.soc_poczatkowy:g}) musi leżeć w przedziale od "
+                f"{_nazwa_parametru(self, 'soc_min')} ({self.soc_min:g}) do "
+                f"{_nazwa_parametru(self, 'soc_max')} ({self.soc_max:g})."
             )
         # Skalowanie jednostki (MVA->kVA, x*1000) jest CV-4.3 K4 wielkoscia
         # pochodna, nie formula fizyczna — liczy ja `mva_na_kva` (kontrakt
@@ -357,16 +364,13 @@ class Magazyn(BaseModel):
         # operacja nie miala drugiej, niezaleznej kopii poza pakietem pochodne
         # (backend_no_physics_guard: rodzina J, skalowanie jednostek).
         baza_kw = mva_na_kva(self.przeksztaltnik.s_n_mva)
-        if self.p_rozladowania_max_kw > baza_kw:
-            raise ValueError(
-                f"Magazyn: p_rozladowania_max_kw ({self.p_rozladowania_max_kw}) przekracza "
-                f"bazę mocy przekształtnika s_n_mva*1000 ({baza_kw})."
-            )
-        if self.p_ladowania_max_kw > baza_kw:
-            raise ValueError(
-                f"Magazyn: p_ladowania_max_kw ({self.p_ladowania_max_kw}) przekracza "
-                f"bazę mocy przekształtnika s_n_mva*1000 ({baza_kw})."
-            )
+        for klucz in ("p_rozladowania_max_kw", "p_ladowania_max_kw"):
+            if getattr(self, klucz) > baza_kw:
+                raise ValueError(
+                    f"Magazyn energii: {_nazwa_parametru(self, klucz)} "
+                    f"({getattr(self, klucz):g} kW) przekracza moc znamionową przekształtnika "
+                    f"magazynu ({baza_kw:g} kW)."
+                )
         return self
 
 
@@ -412,26 +416,27 @@ class TurbinaWiatrowa(BaseModel):
     @model_validator(mode="after")
     def _spojnosc_typu(self) -> TurbinaWiatrowa:
         if self.pitch_min_deg >= self.pitch_max_deg:
-            raise ValueError(
-                f"TurbinaWiatrowa: pitch_min_deg ({self.pitch_min_deg}) musi być mniejszy "
-                f"niż pitch_max_deg ({self.pitch_max_deg})."
-            )
+            raise ValueError(_mniejsze(self, "Turbina wiatrowa", "pitch_min_deg", "pitch_max_deg"))
+        # Numer typu IEC 61400-27-1 z wartości rodziny (`wiatr_typ_<n>`) — słowo „typ <n>”
+        # jest zapisem normy, nie kodem wartości.
+        typ = f"typu {self.rodzina.rsplit('_', 1)[-1]}"
         if self.rodzina == "wiatr_typ_3":
             pass  # crowbar opcjonalny (nie kazda instalacja DFIG go ma)
         elif self.crowbar is not None:
             raise ValueError(
-                f"TurbinaWiatrowa: crowbar dotyczy wyłącznie typ_3 (otrzymano {self.rodzina})."
+                "Turbina wiatrowa: ochrona crowbar dotyczy wyłącznie turbiny typu 3 (DFIG), "
+                f"a model jest {typ}."
             )
         if self.rodzina in ("wiatr_typ_3", "wiatr_typ_4"):
             if self.przeksztaltnik is None:
                 raise ValueError(
-                    f"TurbinaWiatrowa: {self.rodzina} wymaga bloku przekształtnik "
-                    "(typ 3/4 ma przekształtnik częściowej/pełnej mocy)."
+                    f"Turbina wiatrowa {typ} wymaga parametrów przekształtnika "
+                    "(typ 3 i 4 mają przekształtnik częściowej albo pełnej mocy)."
                 )
         elif self.przeksztaltnik is not None:
             raise ValueError(
-                f"TurbinaWiatrowa: przekształtnik dotyczy wyłącznie typ_3/typ_4 "
-                f"(otrzymano {self.rodzina})."
+                "Turbina wiatrowa: przekształtnik dotyczy wyłącznie turbin typu 3 i 4, "
+                f"a model jest {typ}."
             )
         return self
 

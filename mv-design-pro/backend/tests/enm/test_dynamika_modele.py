@@ -8,6 +8,8 @@ istnienia solvera W6-2.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from enm.dynamika_modele import (
     RODZINY_PARAMETROW_DYNAMICZNYCH,
@@ -350,20 +352,36 @@ class TestNiespojnoscKrzyzowa:
     def test_sm_xd_bis_wiekszy_niz_xd_prim(self):
         """Wartosci PRZY WLASNYCH granicach pola (xd_bis_pu<=0.35, xd_prim_pu<=0.6)
         — narusza WYLACZNIE porzadek krzyzowy, nie Field(ge=/le=)."""
-        with pytest.raises(ValidationError, match="xd_bis_pu <= xd_prim_pu <= xd_pu"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape(
+                "„Reaktancja podprzejściowa X''d (pu)” ≤ „Reaktancja przejściowa X'd (pu)”"
+            ),
+        ):
             MaszynaSynchroniczna(**_sm_komplet(xd_bis_pu=0.35, xd_prim_pu=0.30, xd_pu=1.8))
 
     def test_sm_xq_bis_wiekszy_niz_xq_prim(self):
         """Symetria klasy (CLAUDE.md KLASA NIE INSTANCJA) — ta sama reguła co xd, os q."""
-        with pytest.raises(ValidationError, match="xq_bis_pu <= xq_prim_pu <= xq_pu"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape(
+                "„Reaktancja podprzejściowa X''q (pu)” ≤ „Reaktancja przejściowa X'q (pu)”"
+            ),
+        ):
             MaszynaSynchroniczna(**_sm_komplet(xq_bis_pu=0.40, xq_prim_pu=0.30, xq_pu=1.7))
 
     def test_sm_td0_bis_wiekszy_niz_td0_prim(self):
-        with pytest.raises(ValidationError, match="td0_bis_s musi być"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape("„Stała czasowa T''d0 (s)” (0.15 s) nie może być większa"),
+        ):
             MaszynaSynchroniczna(**_sm_komplet(td0_prim_s=0.10, td0_bis_s=0.15))
 
     def test_sm_tq0_bis_wiekszy_niz_tq0_prim(self):
-        with pytest.raises(ValidationError, match="tq0_bis_s musi być"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape("„Stała czasowa T''q0 (s)” (0.2 s) nie może być większa"),
+        ):
             MaszynaSynchroniczna(**_sm_komplet(tq0_prim_s=0.10, tq0_bis_s=0.20))
 
     def test_sm_regulator_napiecia_limity_odwrocone(self):
@@ -387,25 +405,39 @@ class TestNiespojnoscKrzyzowa:
     def test_gfl_napiecie_ciagle_rowne_odrzucone(self):
         """Zakresy pol sa rozlaczne (u_min<=1.0, u_max>=1.0) — jedyny sposob na
         naruszenie porzadku BEZ lamania Field(ge=/le=) to rownosc na granicy."""
-        with pytest.raises(ValidationError, match="u_min_ciagle_pu musi być mniejsze"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape("„Dolna granica pracy ciągłej (pu)” (1) musi być mniejszy"),
+        ):
             PrzeksztaltnikGFL(**_gfl_komplet(u_min_ciagle_pu=1.0, u_max_ciagle_pu=1.0))
 
     def test_magazyn_soc_min_wiekszy_niz_soc_max(self):
-        with pytest.raises(ValidationError, match="soc_min .* musi być mniejsze niż soc_max"):
+        with pytest.raises(
+            ValidationError,
+            match=re.escape(
+                "„Dolna granica SOC (pu)” (0.9) musi być mniejszy niż „Górna granica SOC (pu)”"
+            ),
+        ):
             Magazyn(**_magazyn_komplet(soc_min=0.9, soc_max=0.1))
 
     def test_magazyn_soc_poczatkowy_poza_przedzialem(self):
-        with pytest.raises(ValidationError, match="soc_poczatkowy"):
+        with pytest.raises(
+            ValidationError, match=re.escape("„Początkowy SOC (pu)” (0.9) musi leżeć w przedziale")
+        ):
             Magazyn(**_magazyn_komplet(soc_min=0.2, soc_max=0.8, soc_poczatkowy=0.9))
 
     def test_magazyn_moc_rozladowania_przekracza_baze_przeksztaltnika(self):
         gfl = PrzeksztaltnikGFL(**_gfl_komplet(s_n_mva=0.3))
-        with pytest.raises(ValidationError, match="p_rozladowania_max_kw"):
+        with pytest.raises(
+            ValidationError, match=re.escape("„Maks. moc rozładowania (kW)” (500 kW) przekracza")
+        ):
             Magazyn(**_magazyn_komplet(przeksztaltnik=gfl, p_rozladowania_max_kw=500.0))
 
     def test_magazyn_moc_ladowania_przekracza_baze_przeksztaltnika(self):
         gfl = PrzeksztaltnikGFL(**_gfl_komplet(s_n_mva=0.3))
-        with pytest.raises(ValidationError, match="p_ladowania_max_kw"):
+        with pytest.raises(
+            ValidationError, match=re.escape("„Maks. moc ładowania (kW)” (500 kW) przekracza")
+        ):
             Magazyn(
                 **_magazyn_komplet(
                     przeksztaltnik=gfl, p_ladowania_max_kw=500.0, p_rozladowania_max_kw=250.0
@@ -413,11 +445,19 @@ class TestNiespojnoscKrzyzowa:
             )
 
     def test_turbina_pitch_min_wiekszy_niz_pitch_max(self):
-        with pytest.raises(ValidationError, match="pitch_min_deg"):
-            TurbinaWiatrowa(**_wiatr_komplet("wiatr_typ_1", pitch_min_deg=20.0, pitch_max_deg=10.0))
+        """Wartości W GRANICACH pól (pitch_min ≤ 10°, pitch_max > 0°) — narusza WYŁĄCZNIE
+        porządek krzyżowy. Dawny przypadek (pitch_min = 20°) łamał granicę pola i przechodził
+        przez dopasowanie klucza pola w opisie błędu biblioteki, nie przez walidator pary."""
+        with pytest.raises(
+            ValidationError, match=re.escape("„Minimalny kąt pitch (deg)” (8) musi być mniejszy")
+        ):
+            TurbinaWiatrowa(**_wiatr_komplet("wiatr_typ_1", pitch_min_deg=8.0, pitch_max_deg=5.0))
 
     def test_turbina_typ1_z_crowbar_zabroniony(self):
-        with pytest.raises(ValidationError, match="crowbar dotyczy wyłącznie typ_3"):
+        with pytest.raises(
+            ValidationError,
+            match="crowbar dotyczy wyłącznie turbiny typu 3 \\(DFIG\\), a model jest typu 1",
+        ):
             TurbinaWiatrowa(
                 **_wiatr_komplet(
                     "wiatr_typ_1",
@@ -426,7 +466,10 @@ class TestNiespojnoscKrzyzowa:
             )
 
     def test_turbina_typ2_z_przeksztaltnikiem_zabroniony(self):
-        with pytest.raises(ValidationError, match="przekształtnik dotyczy wyłącznie typ_3"):
+        with pytest.raises(
+            ValidationError,
+            match="przekształtnik dotyczy wyłącznie turbin typu 3 i 4, a model jest typu 2",
+        ):
             TurbinaWiatrowa(
                 **_wiatr_komplet("wiatr_typ_2", przeksztaltnik=PrzeksztaltnikGFL(**_gfl_komplet()))
             )
@@ -434,7 +477,7 @@ class TestNiespojnoscKrzyzowa:
     def test_turbina_typ4_bez_przeksztaltnika_zabroniony(self):
         dane = _wiatr_komplet("wiatr_typ_4")
         del dane["przeksztaltnik"]
-        with pytest.raises(ValidationError, match="wymaga bloku przekształtnik"):
+        with pytest.raises(ValidationError, match="typu 4 wymaga parametrów przekształtnika"):
             TurbinaWiatrowa(**dane)
 
 

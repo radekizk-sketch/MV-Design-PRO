@@ -44,6 +44,7 @@ from enm.kompilator_grafu import (
     ZrodloSpec,
 )
 from enm.nazwy_elementow import nazwa_elementu
+from enm.slownik_komunikatow import etykieta_parametru
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import km_na_m
@@ -58,11 +59,15 @@ class OdmowaMigracji(OdmowaDanychError):
 def _liczba(rekord: Mapping[str, Any], klucz: str, *, element: str) -> float:
     wartosc = rekord.get(klucz)
     if wartosc is None:
-        raise OdmowaMigracji(f"{element}: brak wartości '{klucz}' w modelu zastanym")
+        raise OdmowaMigracji(
+            f"{element}: brak wartości {etykieta_parametru(klucz)} w modelu zastanym"
+        )
     try:
         return float(wartosc)
     except (TypeError, ValueError) as blad:
-        raise OdmowaMigracji(f"{element}: '{klucz}' = {wartosc!r} nie jest liczbą") from blad
+        raise OdmowaMigracji(
+            f"{element}: {etykieta_parametru(klucz)} = {wartosc!r} nie jest liczbą"
+        ) from blad
 
 
 def _slug(tekst: str) -> str:

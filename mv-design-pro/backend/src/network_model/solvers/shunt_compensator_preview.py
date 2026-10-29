@@ -43,9 +43,13 @@ def compute_shunt_compensator_preview(
     data: ShuntCompensatorPreviewInput,
 ) -> ShuntCompensatorPreviewResult:
     if data.rated_mvar <= 0.0:
-        raise OdmowaDanychError("rated_mvar musi być dodatnie.")
+        raise OdmowaDanychError(
+            f"Moc znamionowa kompensatora musi być dodatnia, otrzymano {data.rated_mvar} Mvar."
+        )
     if data.rated_kv <= 0.0:
-        raise OdmowaDanychError("rated_kv musi być dodatnie.")
+        raise OdmowaDanychError(
+            f"Napięcie znamionowe kompensatora musi być dodatnie, otrzymano {data.rated_kv} kV."
+        )
 
     q_var = data.rated_mvar * 1_000_000.0
     u_v = data.rated_kv * 1_000.0

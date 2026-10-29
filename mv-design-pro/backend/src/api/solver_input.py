@@ -153,17 +153,20 @@ def get_solver_input(
     try:
         at = SolverAnalysisType(analysis_type)
     except ValueError:
-        valid_types = [t.value for t in SolverAnalysisType]
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid analysis_type '{analysis_type}'. Valid: {valid_types}",
+            detail=(
+                f"Nieznany rodzaj analizy „{analysis_type}” — dane wejściowe solvera "
+                "przygotowuje się dla zwarcia trójfazowego, zwarcia jednofazowego, rozpływu "
+                "mocy albo oceny zabezpieczeń."
+            ),
         )
 
     scenario_normalized = scenario.upper()
     if scenario_normalized not in ("MAX", "MIN"):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid scenario '{scenario}'. Valid: ['MAX', 'MIN']",
+            detail=f"Nieznany scenariusz „{scenario}”. Dozwolone: MAX albo MIN.",
         )
 
     # Phase 17 / CV-4.2b: konfiguracja audytu 2 z bazy RAZ, fabryką UnitOfWork żądania.
@@ -177,7 +180,8 @@ def get_solver_input(
             pid_uuid = UUID(project_id)
         except ValueError as exc:
             raise HTTPException(
-                status_code=400, detail=f"project_id nie jest poprawnym UUID: {project_id!r}"
+                status_code=400,
+                detail=f"Identyfikator projektu „{project_id}” nie jest poprawnym UUID.",
             ) from exc
         with uow_factory() as uow:
             cfg = uow.audit2_station_configs.get(pid_uuid, station_id)

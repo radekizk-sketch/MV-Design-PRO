@@ -112,7 +112,7 @@ def charakterystyka_mocy(
     """
     if odbiory:
         raise UkladNieprzystajeDoWyroczni(
-            "Kryterium rownych pol wymaga sieci o stalych admitancjach; uklad ma "
+            "Kryterium równych pól wymaga sieci o stałych admitancjach; układ ma "
             f"{len(odbiory)} odbiór(ów) — wyrocznia nie redukuje odbiorów "
             f"({', '.join(odbior.ident for odbior in odbiory)})."
         )
@@ -161,8 +161,8 @@ def kat_krytyczny(
     """Katy `(delta_0, delta_krytyczny, delta_max)` z kryterium rownych pol."""
     if p_max_przed_pu <= 0.0 or p_max_po_pu <= 0.0:
         raise UkladNieprzystajeDoWyroczni(
-            "Amplituda charakterystyki mocy przed zwarciem i po jego usunieciu musi "
-            f"byc dodatnia (otrzymano {p_max_przed_pu} i {p_max_po_pu})."
+            "Amplituda charakterystyki mocy przed zwarciem i po jego usunięciu musi "
+            f"być dodatnia (otrzymano {p_max_przed_pu} i {p_max_po_pu})."
         )
     if abs(p_mechaniczna_pu) > p_max_przed_pu or abs(p_mechaniczna_pu) > p_max_po_pu:
         raise UkladNieprzystajeDoWyroczni(
@@ -173,8 +173,8 @@ def kat_krytyczny(
     delta_max = math.pi - math.asin(p_mechaniczna_pu / p_max_po_pu)
     if p_max_po_pu == p_max_w_zwarciu_pu:
         raise UkladNieprzystajeDoWyroczni(
-            "Charakterystyka w zwarciu jest identyczna jak po usunieciu — zwarcie nie "
-            "zmienia ukladu, wiec kat krytyczny nie istnieje."
+            "Charakterystyka w zwarciu jest identyczna jak po usunięciu — zwarcie nie "
+            "zmienia układu, więc kąt krytyczny nie istnieje."
         )
     cos_krytyczny = (
         p_mechaniczna_pu * (delta_max - delta_0)
@@ -183,8 +183,8 @@ def kat_krytyczny(
     ) / (p_max_po_pu - p_max_w_zwarciu_pu)
     if not -1.0 <= cos_krytyczny <= 1.0:
         raise UkladNieprzystajeDoWyroczni(
-            f"Kryterium rownych pol daje cos(delta_c) = {cos_krytyczny} poza [-1, 1]: "
-            "uklad jest stabilny dla dowolnego czasu zwarcia albo niestabilny od razu."
+            f"Kryterium równych pól daje cos δ_kr = {cos_krytyczny} poza [-1, 1]: "
+            "układ jest stabilny dla dowolnego czasu zwarcia albo niestabilny od razu."
         )
     return delta_0, math.acos(cos_krytyczny), delta_max
 
@@ -207,7 +207,7 @@ def czas_z_kata(
     """
     if delta_krytyczny_rad <= delta_0_rad:
         raise UkladNieprzystajeDoWyroczni(
-            f"Kat krytyczny {delta_krytyczny_rad} nie przekracza kata poczatkowego "
+            f"Kąt krytyczny {delta_krytyczny_rad} nie przekracza kąta początkowego "
             f"{delta_0_rad} — zwarcie nie przyspiesza wirnika."
         )
     if p_max_w_zwarciu_pu == 0.0:
@@ -248,7 +248,7 @@ def czas_z_kata(
         czas += KROK_WYROCZNI_S
         if delta <= delta_poprzedni:
             raise UkladNieprzystajeDoWyroczni(
-                "Wirnik nie przyspiesza w zwarciu — kat krytyczny nie zostanie osiagniety."
+                "Wirnik nie przyspiesza w zwarciu — kąt krytyczny nie zostanie osiągnięty."
             )
     return czas
 

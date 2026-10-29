@@ -242,14 +242,15 @@ class SkladnikSekcji(KontraktDziedziny):
             if not self.pola:
                 raise ValueError(
                     naruszenie(
-                        "sekcje.wejscie", f"Składnik '{self.nazwa}' z danymi POLA wymaga listy pól."
+                        "sekcje.wejscie",
+                        f"Składnik '{self.nazwa}' z danymi w postaci pól wymaga listy pól.",
                     )
                 )
             if self.modele:
                 raise ValueError(
                     naruszenie(
                         "sekcje.wejscie",
-                        f"Składnik '{self.nazwa}' z danymi POLA nie niesie modeli.",
+                        f"Składnik '{self.nazwa}' z danymi w postaci pól nie niesie modeli.",
                     )
                 )
             nazwy = [p.nazwa for p in self.pola]
@@ -263,7 +264,8 @@ class SkladnikSekcji(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "sekcje.wejscie",
-                    f"Składnik '{self.nazwa}' z danymi MODELE_WIDMOWE nie niesie pól karty.",
+                    f"Składnik '{self.nazwa}' z danymi w postaci modeli widmowych nie niesie pól "
+                    "karty.",
                 )
             )
         return self

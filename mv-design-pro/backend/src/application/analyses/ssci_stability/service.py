@@ -108,7 +108,9 @@ def build_ssci_stability_view(
         raise OdmowaDanychError("Przebieg SSCI nie zawiera wyniku solvera.")
     payload = solver_result.get("result")
     if not isinstance(payload, Mapping):
-        raise ValueError("Wynik solvera SSCI nie zawiera payloadu analizy (z_grid/z_conv/L).")
+        raise ValueError(
+            "Wynik solvera SSCI nie zawiera danych analizy (impedancji sieci i przekształtnika)."
+        )
 
     converter = _converter_for_provenance(run_record, payload.get("converter_ref"))
     view = SsciStabilityBuilder().build(

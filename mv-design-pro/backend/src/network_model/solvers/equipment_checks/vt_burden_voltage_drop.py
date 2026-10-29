@@ -157,14 +157,14 @@ class VtBurdenResult:
 
 def _zalozenia(*, rezystywnosc: float, kategoria: str, limit: float) -> tuple[str, ...]:
     return (
-        "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
-        f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
-        "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Prad obwodu wyprowadzony z mocy pozornej odbiornikow: I2 = S2obl/U2n.",
-        "Zmiana napiecia liczona na skladowej REZYSTANCYJNEJ przewodow "
-        "(reaktancja obwodu pomiarowego pomijalna przy tych dlugosciach).",
+        "Obwód wtórny DWUPRZEWODOWY: Rp = 2·ρ·L/s (długość L liczona w jedna stronę).",
+        f"Rezystywność żyły ρ = {rezystywnosc} Ω·mm²/m (miedź, 20 °C, IEC 60228) "
+        "— założenie jawne, nie dane katalogu przekładnika.",
+        "Prąd obwodu wyprowadzony z mocy pozornej odbiorników: I2 = S2obl/U2n.",
+        "Zmiana napięcia liczona na składowej REZYSTANCYJNEJ przewodów "
+        "(reaktancja obwodu pomiarowego pomijalna przy tych długościach).",
         f"Limit ΔU = {limit} % dla kategorii „{ETYKIETA_KATEGORII_PL[kategoria]}” "
-        "— wyprowadzony z klasy dokladnosci uzwojenia, nie przyjety domyslnie.",
+        "— wyprowadzony z klasy dokładności uzwojenia, nie przyjęty domyślnie.",
     )
 
 
@@ -269,9 +269,9 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
             _zalozenia(rezystywnosc=rho, kategoria=kategoria, limit=limit)
             if kategoria is not None and limit is not None
             else (
-                "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s.",
-                f"Rezystywnosc zyly ρ = {rho} Ω·mm²/m (miedz, 20 °C, IEC 60228).",
-                "Brak rozpoznanej kategorii uzwojenia — limit ΔU NIE zostal przyjety.",
+                "Obwód wtórny DWUPRZEWODOWY: Rp = 2·ρ·L/s.",
+                f"Rezystywność żyły ρ = {rho} Ω·mm²/m (miedź, 20 °C, IEC 60228).",
+                "Brak rozpoznanej kategorii uzwojenia — limit ΔU NIE został przyjęty.",
             )
         ),
     )
@@ -300,7 +300,7 @@ def _slad_vt(
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe bilansu VT (kanon pieciu pol); slad nie liczy nic od nowa."""
     wykaz = (
-        ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak odbiornikow"
+        ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak odbiorników"
     )
 
     kroki: list[dict[str, Any]] = [

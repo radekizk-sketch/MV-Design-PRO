@@ -314,21 +314,21 @@ def _sprawdz_liczby(segment: SegmentProfilu) -> None:
     for nazwa, wartosc in vars(segment).items():
         if not math.isfinite(wartosc):
             raise _odmowa_profilu(
-                f"pole {nazwa}={wartosc!r} segmentu {type(segment).__name__} nie jest liczbą "
+                f"pole `{nazwa}` = {wartosc!r} segmentu {type(segment).__name__} nie jest liczbą "
                 "skończoną",
                 segment=type(segment).__name__,
                 pole=nazwa,
             )
     if segment.t_s < 0.0:
         raise _odmowa_profilu(
-            f"segment {type(segment).__name__} zaczyna się przed t = 0 (t_s={segment.t_s})",
+            f"segment {type(segment).__name__} zaczyna się przed t = 0 (`t_s` = {segment.t_s} s)",
             segment=type(segment).__name__,
             t_s=segment.t_s,
         )
     if isinstance(segment, RampaNapiecia | RampaCzestotliwosci) and not segment.czas_trwania_s > 0:
         raise _odmowa_profilu(
             f"rampa w t={segment.t_s} s ma czas trwania {segment.czas_trwania_s} s — rampa "
-            "trwa dodatnio dlugo (skok zadaje segment skoku)",
+            "trwa dodatnio długo (skok zadaje segment skoku)",
             segment=type(segment).__name__,
             t_s=segment.t_s,
         )
@@ -378,7 +378,7 @@ def sprawdz_profil(profil: tuple[SegmentProfilu, ...]) -> None:
         ):
             if poczatek_b < koniec_a:
                 raise _odmowa_profilu(
-                    f"rampy {wielkosc} nakladaja się: [{poczatek_a}, {koniec_a}) i rampa od "
+                    f"rampy {wielkosc} nakładają się: [{poczatek_a}, {koniec_a}) i rampa od "
                     f"{poczatek_b} s",
                     wielkosc=wielkosc,
                 )
@@ -386,7 +386,7 @@ def sprawdz_profil(profil: tuple[SegmentProfilu, ...]) -> None:
             for poczatek, koniec in przedzialy:
                 if poczatek < chwila < koniec:
                     raise _odmowa_profilu(
-                        f"skok {wielkosc} w t={chwila} s lezy wewnątrz rampy [{poczatek}, "
+                        f"skok {wielkosc} w t={chwila} s leży wewnątrz rampy [{poczatek}, "
                         f"{koniec}) — rampa i skok tej samej wielkości w jednej chwili",
                         wielkosc=wielkosc,
                         t_s=chwila,

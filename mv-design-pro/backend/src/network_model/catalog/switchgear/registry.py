@@ -163,7 +163,7 @@ def get_manufacturer(manufacturer_ref: str) -> Manufacturer:
     if manufacturer_ref not in MANUFACTURER_REGISTRY:
         available = ", ".join(sorted(MANUFACTURER_REGISTRY.keys()))
         raise BrakZasobuError(
-            f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}"
+            f"Nieznany producent {manufacturer_ref!r}. Dostępni producenci: {available}"
         )
     return MANUFACTURER_REGISTRY[manufacturer_ref]
 

@@ -344,7 +344,7 @@ class TestCreateBatch:
             json={"scenario_ids": [s1["scenario_id"], s1["scenario_id"]]},
         )
         assert response.status_code == 400
-        assert "duplikaty" in response.json()["detail"]
+        assert "ten sam scenariusz więcej niż raz" in response.json()["detail"]
 
     def test_nieznany_scenariusz_404(self):
         response = client.post(

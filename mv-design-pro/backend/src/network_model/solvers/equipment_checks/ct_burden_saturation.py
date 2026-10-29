@@ -174,22 +174,22 @@ class CtBurdenResult:
 
 def _zalozenia(*, rezystywnosc: float, wariant: str) -> tuple[str, ...]:
     podstawa = (
-        "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
-        f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
-        "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Moc przewodow S_przewodow = I2n²·Rp liczona RAZ (nie jest osobnym skladnikiem "
+        "Obwód wtórny DWUPRZEWODOWY: Rp = 2·ρ·L/s (długość L liczona w jedna stronę).",
+        f"Rezystywność żyły ρ = {rezystywnosc} Ω·mm²/m (miedź, 20 °C, IEC 60228) "
+        "— założenie jawne, nie dane katalogu przekładnika.",
+        "Moc przewodów S_przewodow = I2n²·Rp liczona RAZ (nie jest osobnym skladnikiem "
         "obok siebie samej).",
-        "Moc stykow wchodzi do bilansu wylacznie wtedy, gdy podano ja jawnie.",
+        "Moc styków wchodzi do bilansu wyłącznie wtedy, gdy podano ja jawnie.",
     )
     if wariant == WARIANT_ALF_PELNY:
         return podstawa + (
             "ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw) — wariant PELNY (IEC 61869-2 § 5.6), "
-            "Sw = I2n²·Rct z rezystancji uzwojenia wtornego.",
+            "Sw = I2n²·Rct z rezystancji uzwojenia wtórnego.",
         )
     return podstawa + (
         "ALF_eff = ALF·Sn/S2obl — wariant UPROSZCZONY (Sw = 0), bo katalog nie niesie "
-        "rezystancji uzwojenia wtornego Rct.",
-        "Wariant uproszczony przy S2obl < Sn daje ALF_eff WIEKSZY niz pelny — wynik jest "
+        "rezystancji uzwojenia wtórnego Rct.",
+        "Wariant uproszczony przy S2obl < Sn daje ALF_eff WIĘKSZY niż pełny — wynik jest "
         "optymistyczny i wymaga potwierdzenia rezystancja uzwojenia z karty producenta.",
     )
 
@@ -340,7 +340,7 @@ def _slad_ct(
     wyzej w tym samym solverze. Tekst i formatowanie to prezentacja dowodu, fizyka
     zostaje w jednym miejscu.
     """
-    wykaz = ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak aparatow"
+    wykaz = ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak aparatów"
 
     kroki: list[dict[str, Any]] = [
         {

@@ -334,7 +334,9 @@ class TestValidation:
 
     def test_bus_with_position_raises(self):
         """BUS location with position raises."""
-        with pytest.raises(FaultScenarioValidationError, match="BUS nie może mieć pozycji"):
+        with pytest.raises(
+            FaultScenarioValidationError, match="Zwarcie na szynie nie ma położenia na gałęzi"
+        ):
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,
@@ -345,7 +347,9 @@ class TestValidation:
 
     def test_branch_without_position_raises(self):
         """BRANCH location without position raises."""
-        with pytest.raises(FaultScenarioValidationError, match="wymaga pozycji"):
+        with pytest.raises(
+            FaultScenarioValidationError, match="Zwarcie na gałęzi wymaga położenia miejsca zwarcia"
+        ):
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,
@@ -405,7 +409,7 @@ class TestValidation:
 
     def test_zero_thermal_time_raises(self):
         """Zero thermal_time_seconds raises."""
-        with pytest.raises(FaultScenarioValidationError, match="thermal_time"):
+        with pytest.raises(FaultScenarioValidationError, match="Czas trwania zwarcia t_k"):
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,

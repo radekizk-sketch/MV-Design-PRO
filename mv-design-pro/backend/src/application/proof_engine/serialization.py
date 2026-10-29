@@ -134,7 +134,7 @@ def _parse_proof_type(value: Any) -> ProofType:
     try:
         return ProofType(str(value))
     except ValueError as exc:
-        raise ValueError(f"Unsupported proof_type: {value}") from exc
+        raise ValueError(f"Nieobsługiwany rodzaj dowodu: {value}") from exc
 
 
 def _parse_datetime(value: Any) -> datetime:

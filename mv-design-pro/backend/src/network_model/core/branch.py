@@ -48,7 +48,7 @@ class BranchType(Enum):
     TRANSFORMER = "TRANSFORMER"
 
 
-def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> str:
+def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str, *, opis: str) -> str:
     """
     Extract node ID from data with backward compatibility.
 
@@ -56,6 +56,7 @@ def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> s
         data: Dictionary containing branch data.
         preferred_key: Preferred key name (e.g., 'from_node_id').
         legacy_key: Legacy key name (e.g., 'from_node').
+        opis: Węzeł słowami do komunikatu odmowy (np. „węzła początkowego”).
 
     Returns:
         Node ID string.
@@ -67,7 +68,7 @@ def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> s
         return str(data[preferred_key])
     if legacy_key in data:
         return str(data[legacy_key])
-    raise ValueError(f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')")
+    raise ValueError(f"Dane gałęzi nie wskazują {opis}.")
 
 
 @dataclass
@@ -111,7 +112,7 @@ class Branch:
         raw_type = data.get("branch_type")
 
         if raw_type is None:
-            raise ValueError("Missing 'branch_type' in data")
+            raise ValueError("Dane gałęzi nie podają rodzaju gałęzi")
 
         # Handle both string and BranchType enum inputs
         if isinstance(raw_type, BranchType):
@@ -120,14 +121,14 @@ class Branch:
             try:
                 branch_type = BranchType(raw_type)
             except ValueError:
-                valid_types = [bt.value for bt in BranchType]
                 raise ValueError(
-                    f"Unknown branch_type: '{raw_type}'. " f"Valid types are: {valid_types}"
+                    f"Nieznany rodzaj gałęzi {raw_type!r} — dozwolone: linia napowietrzna, "
+                    "kabel albo transformator"
                 )
         else:
             raise ValueError(
-                f"branch_type must be a string or BranchType enum, "
-                f"got {type(raw_type).__name__}"
+                "Rodzaj gałęzi musi być podany tekstem albo wartością słownika rodzajów "
+                f"gałęzi, otrzymano typ {type(raw_type).__name__}"
             )
 
         # Dispatch to appropriate subclass
@@ -136,7 +137,7 @@ class Branch:
         elif branch_type == BranchType.TRANSFORMER:
             return TransformerBranch._from_dict(data)
         else:
-            raise ValueError(f"Unhandled branch_type: {branch_type}")
+            raise ValueError(f"Nieobsłużony rodzaj gałęzi: {branch_type.value}")
 
     def validate(self) -> bool:
         """
@@ -299,8 +300,8 @@ class LineBranch(Branch):
         Raises:
             ValueError: If required node IDs are missing.
         """
-        from_node_id = _get_node_id(data, "from_node_id", "from_node")
-        to_node_id = _get_node_id(data, "to_node_id", "to_node")
+        from_node_id = _get_node_id(data, "from_node_id", "from_node", opis="węzła początkowego")
+        to_node_id = _get_node_id(data, "to_node_id", "to_node", opis="węzła końcowego")
 
         return cls(
             id=str(data.get("id", "")),
@@ -797,8 +798,8 @@ class TransformerBranch(Branch):
         Raises:
             ValueError: If required node IDs are missing.
         """
-        from_node_id = _get_node_id(data, "from_node_id", "from_node")
-        to_node_id = _get_node_id(data, "to_node_id", "to_node")
+        from_node_id = _get_node_id(data, "from_node_id", "from_node", opis="węzła początkowego")
+        to_node_id = _get_node_id(data, "to_node_id", "to_node", opis="węzła końcowego")
 
         return cls(
             id=str(data.get("id", "")),
@@ -908,15 +909,30 @@ class TransformerBranch(Branch):
             ValueError: If any required input is out of range.
         """
         if self.rated_power_mva <= 0:
-            raise OdmowaDanychError("rated_power_mva must be > 0")
+            raise OdmowaDanychError(
+                f"Transformator „{self.name}”: moc znamionowa S_n musi być dodatnia, "
+                f"otrzymano {self.rated_power_mva:g} MVA"
+            )
         if self.uk_percent <= 0:
-            raise OdmowaDanychError("uk_percent must be > 0")
+            raise OdmowaDanychError(
+                f"Transformator „{self.name}”: napięcie zwarcia u_k musi być dodatnie, "
+                f"otrzymano {self.uk_percent:g} %"
+            )
         if self.pk_kw < 0:
-            raise OdmowaDanychError("pk_kw must be >= 0")
+            raise OdmowaDanychError(
+                f"Transformator „{self.name}”: straty obciążeniowe P_k nie mogą być ujemne, "
+                f"otrzymano {self.pk_kw:g} kW"
+            )
         if self.voltage_lv_kv <= 0:
-            raise OdmowaDanychError("voltage_lv_kv must be > 0")
+            raise OdmowaDanychError(
+                f"Transformator „{self.name}”: napięcie znamionowe strony dolnego napięcia "
+                f"musi być dodatnie, otrzymano {self.voltage_lv_kv:g} kV"
+            )
         if self.voltage_hv_kv <= 0:
-            raise OdmowaDanychError("voltage_hv_kv must be > 0")
+            raise OdmowaDanychError(
+                f"Transformator „{self.name}”: napięcie znamionowe strony górnego napięcia "
+                f"musi być dodatnie, otrzymano {self.voltage_hv_kv:g} kV"
+            )
 
     def get_short_circuit_impedance_pu(self) -> complex:
         """

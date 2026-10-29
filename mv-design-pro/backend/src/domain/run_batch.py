@@ -132,8 +132,8 @@ def finalize_batch_status(items: tuple[RunBatchItem, ...]) -> RunBatchStatus:
     statusy = [pozycja.status for pozycja in items]
     if any(s not in ITEM_STATUSES_TERMINALNE for s in statusy):
         raise ValueError(
-            "finalize_batch_status wymaga, żeby każda pozycja była w stanie końcowym "
-            f"(FINISHED/FAILED/CANCELLED); otrzymano: {sorted(set(statusy))}"
+            "Zamknięcie serii biegów wymaga, żeby każda pozycja była w stanie końcowym "
+            f"(FINISHED/FAILED/CANCELLED); otrzymano: {', '.join(sorted(set(statusy)))}"
         )
     if all(s == ITEM_STATUS_FINISHED for s in statusy):
         return RunBatchStatus.FINISHED
@@ -328,9 +328,11 @@ def new_run_batch(
         ValueError: duplikat `scenario_ids` albo niezgodna dlugosc list.
     """
     if len(scenario_ids) != len(scenario_content_hashes):
-        raise ValueError("scenario_ids i scenario_content_hashes muszą mieć tę samą długość")
+        raise ValueError(
+            "Lista scenariuszy serii i lista ich odcisków treści muszą mieć tę samą długość"
+        )
     if len(set(scenario_ids)) != len(scenario_ids):
-        raise OdmowaDanychError("scenario_ids zawiera duplikaty")
+        raise OdmowaDanychError("Seria biegów wskazuje ten sam scenariusz więcej niż raz")
 
     pary = sorted(
         zip(scenario_ids, scenario_content_hashes, strict=False),

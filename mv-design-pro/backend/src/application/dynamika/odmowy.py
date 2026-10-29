@@ -16,7 +16,7 @@ razem z zamianą, bo nazwa ma własny cudzysłów.
 KLUCZE KODU. Komunikat rdzenia cytuje w odwrotnych apostrofach klucz pola kontraktu
 (nastawa solvera, pole zdarzenia) albo wartość wyliczeniową (sposób usunięcia zwarcia). Te
 same klucze projektant widzi w interfejsie jako ETYKIETY z opisu kontraktu scenariusza
-(`opis_scenariusza.ETYKIETY_POL`, `ETYKIETY_RODZAJOW`, `ETYKIETY_WARTOSCI`) — tu klucz zamienia się na tę samą
+(`enm.scenariusze.ETYKIETY_POL`, `ETYKIETY_RODZAJOW`, `ETYKIETY_WARTOSCI`) — tu klucz zamienia się na tę samą
 etykietę (jedno źródło etykiet). Każdy klucz cytowany w komunikatach odmów rdzenia ma etykietę
 — przypina to test skanujący wszystkie miejsca odmów rdzenia.
 """
@@ -27,13 +27,9 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from application.dynamika.opis_scenariusza import (
-    ETYKIETY_POL,
-    ETYKIETY_RODZAJOW,
-    ETYKIETY_WARTOSCI,
-)
 from application.dynamika.opis_wyniku import OPISY_STANOW_PL, komunikat_z_nazwami
 from enm.nazwy_elementow import zbuduj_indeks_nazw
+from enm.scenariusze import ETYKIETY_POL, ETYKIETY_RODZAJOW, ETYKIETY_WARTOSCI
 
 #: Adres stanu po zamianie elementu na nazwę: `„Nazwa”.stan` (stan = identyfikator kodu).
 _ADRES_STANU = re.compile(r"(„[^”]*”)\.([A-Za-z_][A-Za-z0-9_]*)")

@@ -507,7 +507,9 @@ class HvFusePasmoTcc:
             odmowa_twarda("KAT-T-023", "Pasmo wkładki wymaga adresu http(s) tabeli producenta.")
         if not self.punkty:
             odmowa_twarda(
-                "KAT-T-024", "Pasmo bez punktów nie jest pasmem — użyj `pasmo_tcc = None`."
+                "KAT-T-024",
+                "Pasmo bez punktów nie jest pasmem — wkładka bez tabeli producenta nie ma "
+                "pasma wcale (brak pasma zamiast pustej listy punktów).",
             )
 
     def to_dict(self) -> dict:

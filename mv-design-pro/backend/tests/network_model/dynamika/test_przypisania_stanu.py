@@ -355,7 +355,7 @@ def test_komenda_do_urzadzenia_odlaczonego_w_tej_samej_chwili_to_odmowa(kolejnos
     with pytest.raises(OdmowaDynamiki) as blad:
         _bieg(urzadzenie, p_pu, zdarzenia)
     assert blad.value.kod == KOD_NASTAWA_NIEOBSLUGIWANA
-    assert "odlaczone" in blad.value.szczegoly["powod"]
+    assert "odłączone" in blad.value.szczegoly["powod"]
 
 
 # --------------------------------------------------------------------------- czesciowa utrata

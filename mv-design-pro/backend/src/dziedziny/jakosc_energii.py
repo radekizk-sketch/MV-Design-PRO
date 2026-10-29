@@ -121,7 +121,7 @@ class ZakresPasma(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "jakosc.wpis",
-                    f"Pasmo wpisu wymaga f_min < f_max ({self.f_min_hz} ≥ {self.f_max_hz} Hz).",
+                    f"Pasmo wpisu wymaga f_min < f_max ({self.f_min_hz:g} ≥ {self.f_max_hz:g} Hz).",
                 )
             )
         return self

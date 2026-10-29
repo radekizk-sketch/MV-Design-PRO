@@ -174,8 +174,8 @@ class RdzenGFL:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "uklad",
-            "uklad stanow rdzenia jest WYPROWADZONY z jego nastaw (np. opoznienie "
-            "odbudowy dodaje stan); nazwy wchodza do odcisku jako `nazwy_stanow` urzadzenia",
+            "układ stanów rdzenia jest WYPROWADZONY z jego nastaw (np. opóźnienie "
+            "odbudowy dodaje stan); nazwy wchodzą do odcisku jako `nazwy_stanow` urządzenia",
         ),
     )
 
@@ -397,16 +397,16 @@ class RdzenGFL:
         if modul <= 0.0:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{opis}: zerowe napiecie punktu pracy nie wyznacza zadania pradu",
+                f"{opis}: zerowe napięcie punktu pracy nie wyznacza zadania prądu",
             )
         prad_czynny = moc_pu.real / modul
         prad_bierny = moc_pu.imag / modul
         if math.hypot(prad_czynny, prad_bierny) > self.i_max_pu:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{opis}: punkt pracy wymaga pradu "
+                f"{opis}: punkt pracy wymaga prądu "
                 f"{math.hypot(prad_czynny, prad_bierny)} pu ponad ogranicznik "
-                f"{self.i_max_pu} pu — rownowaga nie istnieje",
+                f"{self.i_max_pu} pu — równowaga nie istnieje",
                 i_pu=math.hypot(prad_czynny, prad_bierny),
                 i_max_pu=self.i_max_pu,
             )
@@ -627,7 +627,7 @@ class PrzeksztaltnikGFL:
 
     @property
     def _opis(self) -> str:
-        return f"przeksztaltnik nadazny {self.ident}"
+        return f"przekształtnik nadążny {self.ident}"
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         return self.rdzen.uklad.wektor(

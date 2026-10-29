@@ -126,7 +126,7 @@ def test_voltage_drop_scales_linearly_with_length() -> None:
                 "cos_phi": 0.9,
                 "line_voltage_v": 15000.0,
             },
-            "Prad",
+            "Prąd",
         ),
         (
             {
@@ -137,7 +137,7 @@ def test_voltage_drop_scales_linearly_with_length() -> None:
                 "cos_phi": 0.9,
                 "line_voltage_v": 15000.0,
             },
-            "Dlugosc",
+            "Długość",
         ),
         (
             {
@@ -148,7 +148,7 @@ def test_voltage_drop_scales_linearly_with_length() -> None:
                 "cos_phi": 0.9,
                 "line_voltage_v": 0.0,
             },
-            "Napiecie",
+            "Napięcie",
         ),
         (
             {
@@ -316,5 +316,5 @@ def test_trunk_drop_rejects_empty_and_mixed_voltages() -> None:
 
 
 def test_trunk_drop_propagates_segment_domain_errors() -> None:
-    with pytest.raises(ValueError, match="Prad obciazenia"):
+    with pytest.raises(ValueError, match="Prąd obciążenia"):
         compute_trunk_voltage_drop((_odcinek(1.0, 100.0), _odcinek(1.0, 0.0)))

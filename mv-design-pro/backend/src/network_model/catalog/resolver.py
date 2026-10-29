@@ -163,6 +163,15 @@ def susceptancja_katalogowa_us_per_km(
     return type_data.b_us_per_km
 
 
+# Składowe kompletnego nadpisania impedancji odcinka: klucz pola → nazwa w zdaniu
+# odmowy (kolejność stała — ten sam komunikat dla tego samego wejścia).
+_SKLADOWE_NADPISANIA_IMPEDANCJI_PL: tuple[tuple[str, str], ...] = (
+    ("r_total_ohm", "rezystancja R odcinka [Ω]"),
+    ("x_total_ohm", "reaktancja X odcinka [Ω]"),
+    ("b_total_us", "susceptancja B odcinka [µS]"),
+)
+
+
 def resolve_line_params(
     *,
     type_ref: str | None,
@@ -210,16 +219,16 @@ def resolve_line_params(
         # x cicho zerowane) fabrykowalby brakujace skladowe impedancji pod
         # przykrywka "to przeciez jawna dana".
         brakujace = [
-            pole
-            for pole in ("r_total_ohm", "x_total_ohm", "b_total_us")
+            nazwa
+            for pole, nazwa in _SKLADOWE_NADPISANIA_IMPEDANCJI_PL
             if impedance_override.get(pole) is None
         ]
         if brakujace:
             raise ValueError(
-                "impedance_override.incomplete: nadpisanie impedancji linii/kabla "
-                f"nie niesie pól {brakujace} — override musi podać r_total_ohm, "
-                "x_total_ohm i b_total_us razem, albo nie być podany wcale "
-                "(precedencja spadnie do type_ref/instance)."
+                "Nadpisanie impedancji linii/kabla jest niekompletne — brakuje: "
+                f"{', '.join(brakujace)}. Nadpisanie musi podać razem rezystancję R, "
+                "reaktancję X i susceptancję B całego odcinka albo nie być podane wcale "
+                "(wtedy parametry wynikają z typu katalogowego)."
             )
         if length_km <= 0:
             return ResolvedLineParams(

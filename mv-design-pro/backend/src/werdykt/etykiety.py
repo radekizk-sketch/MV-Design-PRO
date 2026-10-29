@@ -127,7 +127,7 @@ def etykieta(
         if poziom == "W" and kompletnosc != "PELNY":
             raise ValueError(
                 "Na poziomie wymagania status SPELNIA wymaga dowodu pełnego — przy dowodzie "
-                "niepełnym reguła agregacji (§2.3 pkt 9) daje BRAK_DOWODU."
+                "niepełnym reguła agregacji (§2.3 pkt 9) daje status „brak dowodu”."
             )
         klucz: KompletnoscDowodu | None = kompletnosc
     else:

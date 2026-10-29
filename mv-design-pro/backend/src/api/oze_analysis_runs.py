@@ -297,7 +297,10 @@ def _resolve_grid_strength_row(run_id: UUID | None, bus_ref: str | None) -> dict
     if run_id is None or bus_ref is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Kontekst siły sieci wymaga obu parametrów: run_id oraz bus_ref.",
+            detail=(
+                "Kontekst siły sieci wymaga obu parametrów: biegu obliczeniowego i węzła "
+                "przyłączenia."
+            ),
         )
     run = _require_run(run_id)
     view = build_grid_strength_view(run)

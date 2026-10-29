@@ -206,7 +206,7 @@ class TestBranchFromDict:
             "to_node_id": "N2",
         }
 
-        with pytest.raises(ValueError, match="Missing 'branch_type'"):
+        with pytest.raises(ValueError, match="nie podają rodzaju gałęzi"):
             Branch.from_dict(data)
 
     def test_from_dict_invalid_branch_type_string(self):
@@ -219,7 +219,7 @@ class TestBranchFromDict:
             "branch_type": "UNKNOWN_TYPE",
         }
 
-        with pytest.raises(ValueError, match="Unknown branch_type"):
+        with pytest.raises(ValueError, match="Nieznany rodzaj gałęzi"):
             Branch.from_dict(data)
 
 
@@ -403,7 +403,7 @@ class TestBackwardCompatibility:
             "branch_type": "LINE",
         }
 
-        with pytest.raises(ValueError, match="Missing required key"):
+        with pytest.raises(ValueError, match="Dane gałęzi nie wskazują węzła początkowego"):
             Branch.from_dict(data)
 
 

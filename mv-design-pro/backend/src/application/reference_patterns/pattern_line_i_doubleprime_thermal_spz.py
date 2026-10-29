@@ -257,7 +257,10 @@ class LineIDoublePrimeReferencePattern:
 
         if analysis_result is None:
             if input_data is None:
-                raise ValueError("Musisz podać input_data, analysis_result lub fixture_file")
+                raise ValueError(
+                    "Uruchomienie wzorca wymaga danych wejściowych, gotowego wyniku analizy "
+                    "albo pliku danych wzorca"
+                )
 
             trace_steps.append(
                 build_trace_step(
@@ -680,9 +683,9 @@ class LineIDoublePrimeReferencePattern:
         # `_grid_source_shunt_admittance`: brak danych = zgłoszenie, nie liczba).
         if local_generation.udzial_el is None or local_generation.prog_udzialu_zsz is None:
             raise ValueError(
-                "Niespójność silnika: ryzyko_blokady_zsz ustawione, ale udzial_el/"
-                "prog_udzialu_zsz są None — narusza niezmiennik "
-                "ProtectionSettingsEngine._check_local_generation."
+                "Niespójność silnika nastaw: ryzyko blokady SZR wskazane bez udziału generacji "
+                "lokalnej albo bez progu tego udziału — naruszony niezmiennik oceny generacji "
+                "lokalnej silnika nastaw zabezpieczeń."
             )
         udzial = local_generation.udzial_el
         prog = local_generation.prog_udzialu_zsz

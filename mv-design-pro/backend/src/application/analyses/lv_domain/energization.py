@@ -643,8 +643,8 @@ def build_energization_view(
                         message_pl=(
                             "Zdolność pracy wyspowej źródła ("
                             + ", ".join(unknown_ders)
-                            + ") nie jest zadeklarowana (meta.island_capability / "
-                            "control_mode) — stan zasilania wyspy NIEZNANY."
+                            + ") nie jest zadeklarowana ani w danych źródła, ani przez tryb "
+                            "regulacji — stan zasilania wyspy NIEZNANY."
                         ),
                         element_refs=tuple(unknown_ders),
                     )

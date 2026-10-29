@@ -185,7 +185,7 @@ def filter_valid_image_content(
                 url = nested.get("url")
                 if not isinstance(url, str):
                     raise ImageAttachmentError(
-                        "Invalid image_url object. Expected string field 'url'.",
+                        "Niepoprawny obiekt obrazu: brak tekstowego adresu URL obrazu.",
                         location=f"{item_location}.image_url.url",
                     )
                 nested["url"] = validate_image_data_url(
@@ -195,7 +195,8 @@ def filter_valid_image_content(
                 copied["image_url"] = nested
             else:
                 raise ImageAttachmentError(
-                    "Invalid image_url value. Expected string data URL or object with url.",
+                    "Niepoprawny obraz: oczekiwano adresu URL danych obrazu albo obiektu "
+                    "z adresem URL.",
                     location=f"{item_location}.image_url",
                 )
         except ImageAttachmentError as exc:

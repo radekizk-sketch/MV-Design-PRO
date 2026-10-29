@@ -169,6 +169,11 @@ def test_load_flow_run_id_niepoprawny_uuid_daje_422(app_client) -> None:
         params={"station_ref": "stn", "load_flow_run_id": "nie-uuid"},
     )
     assert resp.status_code == 422
+    # Odmowa nazywa parametr słowami (mapa pól słownika komunikatów), nie kluczem.
+    assert (
+        resp.json()["detail"]
+        == "Wskazany bieg rozpływu mocy: identyfikator nie jest poprawnym UUID."
+    )
 
 
 def test_load_flow_run_id_nieistniejacy_daje_404(app_client) -> None:
@@ -179,6 +184,7 @@ def test_load_flow_run_id_nieistniejacy_daje_404(app_client) -> None:
         params={"station_ref": "stn", "load_flow_run_id": str(uuid4())},
     )
     assert resp.status_code == 404
+    assert resp.json()["detail"] == "Wskazany bieg rozpływu mocy nie istnieje."
 
 
 def test_load_flow_run_id_innego_case_daje_422(app_client) -> None:
@@ -198,6 +204,9 @@ def test_load_flow_run_id_innego_case_daje_422(app_client) -> None:
         params={"station_ref": "stn", "load_flow_run_id": str(run.id)},
     )
     assert resp.status_code == 422
+    assert resp.json()["detail"] == (
+        "Wskazany bieg rozpływu mocy należy do innego przypadku obliczeniowego."
+    )
 
 
 def test_short_circuit_run_id_zlego_rodzaju_daje_422(app_client) -> None:
@@ -211,6 +220,9 @@ def test_short_circuit_run_id_zlego_rodzaju_daje_422(app_client) -> None:
         params={"station_ref": "stn", "short_circuit_run_id": str(pf_run.id)},
     )
     assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert detail.startswith("Wskazany bieg zwarciowy jest przebiegiem rodzaju „"), detail
+    assert "short_circuit_run_id" not in detail and "'PF'" not in detail, detail
 
 
 def test_load_flow_run_id_poprawny_daje_ib_z_biegu(app_client) -> None:

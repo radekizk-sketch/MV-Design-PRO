@@ -288,7 +288,7 @@ class _Zamrozony(BaseModel):
 
 def _bez_duplikatow(nazwa: str, elementy: tuple[str, ...]) -> None:
     if len(set(elementy)) != len(elementy):
-        raise ValueError(f"Lista '{nazwa}' zawiera powtórzone pozycje: {list(elementy)}.")
+        raise ValueError(f"Lista {nazwa} zawiera powtórzone pozycje: {list(elementy)}.")
 
 
 # ---------------------------------------------------------------------------
@@ -364,12 +364,13 @@ class StatusDanych(_Zamrozony):
     def _stan_zgodny_z_lista(self) -> Self:
         if self.stan == "UNVALIDATED_INPUT" and not self.dane_przyjete:
             raise ValueError(
-                "Stan UNVALIDATED_INPUT wymaga listy danych przyjętych (wartość i powód każdej)."
+                "Stan danych „przyjęte bez walidacji” wymaga listy danych przyjętych (wartość "
+                "i powód każdej)."
             )
         if self.stan == "ZWALIDOWANE" and self.dane_przyjete:
             raise ValueError(
                 "Stan ZWALIDOWANE nie może nieść danych przyjętych bez walidacji — dana przyjęta "
-                "oznacza stan UNVALIDATED_INPUT."
+                "oznacza stan danych „przyjęte bez walidacji”."
             )
         return self
 
@@ -406,8 +407,8 @@ class StatusDowodu(_Zamrozony):
             )
         if (self.w_domenie_walidacji is None) != (self.domena_pl is None):
             raise ValueError(
-                "Przynależność biegu do domeny walidacji i nazwa domeny (domena_pl) występują "
-                "razem albo wcale."
+                "Przynależność biegu do domeny walidacji i nazwa tej domeny występują razem "
+                "albo wcale."
             )
         return self
 
@@ -494,7 +495,8 @@ class Niepewnosc(_Zamrozony):
             if self.wartosc is None or self.metoda_pl is None or self.powod_pl is not None:
                 raise ValueError(
                     "Niepewność oszacowana wymaga wartości z jednostką i metody oszacowania "
-                    "(bez powodu braku); brak oszacowania zapisz jako nie_dotyczy=True z powodem."
+                    "(bez powodu braku); brak oszacowania zapisz jako niepewność „nie dotyczy” "
+                    "z powodem."
                 )
             if self.wartosc.wartosc < 0.0:
                 raise ValueError(
@@ -624,7 +626,7 @@ class LimitKryterium(_Zamrozony):
             if any(b <= a for a, b in zip(czasy, czasy[1:], strict=False)):
                 raise ValueError(f"Chwile punktów obwiedni muszą rosnąć ściśle ({czasy}).")
             if self.jednostka_obwiedni is None:
-                raise ValueError("Obwiednia wymaga jednostki wartości (jednostka_obwiedni).")
+                raise ValueError("Obwiednia wymaga jednostki wartości.")
         elif self.jednostka_obwiedni is not None:
             raise ValueError("Jednostka obwiedni podana dla limitu, który nie jest obwiednią.")
         return self
@@ -757,8 +759,8 @@ class ZakresWaznosci(_Zamrozony):
                 f"Parametry sieci bez statusu danych (jakości): {bez_jakosci} — zakres ważności "
                 "podaje parametry sieci ze statusem danych."
             )
-        _bez_duplikatow("wykluczenia", self.wykluczenia)
-        _bez_duplikatow("ograniczniki", self.ograniczniki)
+        _bez_duplikatow("wykluczeń", self.wykluczenia)
+        _bez_duplikatow("ograniczników", self.ograniczniki)
         return self
 
 
@@ -785,8 +787,8 @@ class WyjasnienieWerdyktu(_Zamrozony):
 
     @model_validator(mode="after")
     def _bez_powtorzen(self) -> Self:
-        _bez_duplikatow("czego_brakuje", self.czego_brakuje)
-        _bez_duplikatow("zastrzezenia", self.zastrzezenia)
+        _bez_duplikatow("braków", self.czego_brakuje)
+        _bez_duplikatow("zastrzeżeń", self.zastrzezenia)
         return self
 
 
@@ -861,7 +863,7 @@ def _sprawdz_parametry_sieci(zakres: ZakresWaznosci, dowod: StatusDowodu) -> Non
         ):
             raise ValueError(
                 f"Parametr sieci „{parametr.nazwa_pl}” ma jakość {parametr.jakosc} — musi "
-                "figurować w danych przyjętych dowodu (status danych UNVALIDATED_INPUT)."
+                "figurować w danych przyjętych dowodu (stan danych „przyjęte bez walidacji”)."
             )
 
 
@@ -872,11 +874,11 @@ def _sprawdz_braki(
 ) -> None:
     if czego_brakuje[: len(braki_reguly)] != braki_reguly:
         raise ValueError(
-            "Lista 'czego_brakuje' nie zaczyna się od braków wyprowadzonych regułą: "
+            "Lista braków („czego brakuje”) nie zaczyna się od braków wyprowadzonych regułą: "
             f"oczekiwano {list(braki_reguly)}, jest {list(czego_brakuje)}."
         )
     if status in STATUSY_Z_BRAKAMI and not czego_brakuje:
-        raise ValueError(f"Status {status} wymaga niepustej listy 'czego_brakuje'.")
+        raise ValueError(f"Status {status} wymaga niepustej listy braków („czego brakuje”).")
 
 
 class OcenaKryterium(_RekordWerdyktu):
@@ -979,7 +981,7 @@ class OcenaKryterium(_RekordWerdyktu):
         ):
             raise ValueError(
                 f"Kryterium {self.kryterium_id}: niestosowalność z powodu warunku wstępnego "
-                "wymaga warunku wstępnego kryterium (warunek_wstepny_pl)."
+                "wymaga opisu warunku wstępnego w kryterium."
             )
         if relacja == "LOGICZNE":
             if self.limit is not None:
@@ -1012,7 +1014,8 @@ class OcenaKryterium(_RekordWerdyktu):
                     )
                 if wynik.punkt_krytyczny_pl is None:
                     raise ValueError(
-                        f"Kryterium logiczne {self.kryterium_id}: punkt_krytyczny_pl opisuje stan."
+                        f"Kryterium logiczne {self.kryterium_id}: wynik wymaga opisu stanu w punkcie "
+                        "krytycznym."
                     )
             elif not wynik.symbol_latex.strip():
                 raise ValueError(
@@ -1021,12 +1024,12 @@ class OcenaKryterium(_RekordWerdyktu):
             if relacja in RELACJE_OBWIEDNI and wynik.chwila_s is None:
                 raise ValueError(
                     f"Kryterium {self.kryterium_id}: wynik wobec obwiedni wymaga chwili punktu "
-                    "krytycznego (chwila_s)."
+                    "krytycznego."
                 )
             if self.dowod.metoda == "SYMULACJA" and self.dowod.w_domenie_walidacji is None:
                 raise ValueError(
                     f"Kryterium {self.kryterium_id}: wynik symulacji wymaga rozstrzygnięcia, czy "
-                    "bieg należy do zadeklarowanej domeny walidacji silnika (w_domenie_walidacji)."
+                    "bieg należy do zadeklarowanej domeny walidacji silnika."
                 )
             symulacja = wynik.metoda == "SYMULACJA" or self.dowod.metoda == "SYMULACJA"
             if symulacja and self.niepewnosc.wartosc is None:
@@ -1174,17 +1177,17 @@ class WynikWymagania(_RekordWerdyktu):
         if not dotyczy and self.oceny_skladowe:
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: wymaganie nie dotyczy przedmiotu, więc nie ma "
-                "ocen składowych (oceny składowe są puste przy NIE_DOTYCZY)."
+                "ocen składowych (oceny składowe są puste przy statusie „nie dotyczy”)."
             )
         if dotyczy and self.sposob_wykazania != "BRAK_METODY" and not self.oceny_skladowe:
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: oceny składowe są puste wyłącznie przy "
-                "NIE_DOTYCZY albo sposobie wykazania BRAK_METODY — sposób "
+                "statusie „nie dotyczy” albo sposobie wykazania „brak metody” — sposób "
                 f"{self.sposob_wykazania} wymaga co najmniej jednej oceny składowej."
             )
         if self.sposob_wykazania == "BRAK_METODY" and self.podstawa_sposobu_wykazania is not None:
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: sposób wykazania BRAK_METODY nie ma reguły, "
+                f"Wymaganie {self.wymaganie_id}: sposób wykazania „brak metody” nie ma reguły, "
                 "która czyniłaby go właściwym — podstawa sposobu wykazania musi być pusta."
             )
         identyfikatory = [ocena.kryterium_id for ocena in self.oceny_skladowe]
@@ -1224,13 +1227,14 @@ class WynikWymagania(_RekordWerdyktu):
         if not dotyczy and self.pokrycie_programu != "NIE_DOTYCZY":
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: wymaganie nie dotyczy przedmiotu, więc pokrycie "
-                "programu badań jest NIE_DOTYCZY."
+                "programu badań ma status „nie dotyczy”."
             )
         if self.sposob_wykazania in ("DEKLARACJA", "CERTYFIKAT"):
             if self.pokrycie_programu != "NIE_DOTYCZY":
                 raise ValueError(
                     f"Wymaganie {self.wymaganie_id}: wymaganie wykazywane "
-                    f"({self.sposob_wykazania}) nie ma programu badań — pokrycie NIE_DOTYCZY."
+                    f"({self.sposob_wykazania}) nie ma programu badań — pokrycie ma status "
+                    "„nie dotyczy”."
                 )
         symulacja_w_dowodzie = self.sposob_wykazania == "SYMULACJA" or any(
             ocena.status_maszynowy != "NIE_DOTYCZY"

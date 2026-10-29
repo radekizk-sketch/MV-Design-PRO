@@ -135,7 +135,7 @@ class TestModelInvariants:
 
     def test_result_requires_message_pl(self) -> None:
         """message_pl nie moze byc puste."""
-        with pytest.raises(ValueError, match="message_pl"):
+        with pytest.raises(ValueError, match="wymaga treści komunikatu"):
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.ERROR,
                 code=SanityCheckCode.GEN_NEGATIVE_SETPOINT,
@@ -146,7 +146,7 @@ class TestModelInvariants:
 
     def test_result_requires_element_id(self) -> None:
         """element_id nie moze byc puste."""
-        with pytest.raises(ValueError, match="element_id"):
+        with pytest.raises(ValueError, match="wymaga wskazania elementu"):
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.ERROR,
                 code=SanityCheckCode.GEN_NEGATIVE_SETPOINT,
@@ -157,7 +157,7 @@ class TestModelInvariants:
 
     def test_result_requires_element_type(self) -> None:
         """element_type nie moze byc puste."""
-        with pytest.raises(ValueError, match="element_type"):
+        with pytest.raises(ValueError, match="wymaga rodzaju elementu"):
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.ERROR,
                 code=SanityCheckCode.GEN_NEGATIVE_SETPOINT,

@@ -69,5 +69,7 @@ def ia_gwarantowane_a(*, in_a: float, klasa: str) -> float:
             f"{', '.join(_KLASY_DOZWOLONE)} (IEC 60898-1)."
         )
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(
+            f"Prąd znamionowy wyłącznika nadprądowego I_n musi być dodatni, otrzymano {in_a} A."
+        )
     return PASMA_MAGNETYCZNE[klasa].max_x_in * in_a

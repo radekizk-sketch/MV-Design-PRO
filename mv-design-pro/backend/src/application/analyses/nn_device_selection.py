@@ -174,12 +174,17 @@ class KandydatAparatuNn:
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
             raise OdmowaDanychError(
-                f"Nieznany rodzaj kandydata '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
+                "Nieznany rodzaj kandydata doboru — dozwolone: wyłącznik nadprądowy MCB, "
+                "rozłącznik bezpiecznikowy z wkładką albo wyłącznik kompaktowy MCCB."
             )
         if self.in_a <= 0:
-            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(
+                f"Prąd znamionowy kandydata In musi być dodatni, otrzymano {self.in_a:g} A."
+            )
         if self.kind == KIND_MCB and not self.klasa_mcb:
-            raise OdmowaDanychError("Kandydat MCB wymaga klasa_mcb (B/C/D).")
+            raise OdmowaDanychError(
+                "Kandydat MCB wymaga charakterystyki wyzwalania (klasa B, C albo D)."
+            )
         if (
             self.kind == KIND_FUSE_SWITCH
             and self.zdolnosc_wylaczania_ka is not None
@@ -595,11 +600,17 @@ def ocen_kandydatow_nn(
             ``ik1_min_a < 0``.
     """
     if ib_a < 0:
-        raise ValueError(f"ib_a nie może być ujemne, otrzymano {ib_a}.")
+        raise ValueError(f"Prąd obliczeniowy obwodu I_B nie może być ujemny, otrzymano {ib_a:g} A.")
     if iz_prime_a <= 0:
-        raise ValueError(f"iz_prime_a musi być dodatnie, otrzymano {iz_prime_a}.")
+        raise ValueError(
+            f"Obciążalność skorygowana przewodu I_z' musi być dodatnia, otrzymano "
+            f"{iz_prime_a:g} A."
+        )
     if ik1_min_a < 0:
-        raise ValueError(f"ik1_min_a nie może być ujemne, otrzymano {ik1_min_a}.")
+        raise ValueError(
+            f"Minimalny prąd zwarcia jednofazowego Ik1min nie może być ujemny, otrzymano "
+            f"{ik1_min_a:g} A."
+        )
 
     oceny = [
         oceniaj_kandydata(

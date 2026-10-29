@@ -65,9 +65,11 @@ class ReactiveAdequacyBuilder:
         default_u_max_pu: float = DEFAULT_U_MAX_PU,
     ) -> None:
         if saturation_tol_mvar < 0.0:
-            raise ValueError("saturation_tol_mvar nie może być ujemny")
+            raise ValueError("Tolerancja nasycenia mocy biernej [Mvar] nie może być ujemna")
         if default_u_min_pu >= default_u_max_pu:
-            raise ValueError("default_u_min_pu musi być mniejszy niż default_u_max_pu")
+            raise ValueError(
+                "Domyślna dolna granica napięcia [p.u.] musi być mniejsza niż domyślna górna"
+            )
         self.saturation_tol_mvar = float(saturation_tol_mvar)
         self.default_u_min_pu = float(default_u_min_pu)
         self.default_u_max_pu = float(default_u_max_pu)

@@ -44,7 +44,7 @@ def _project_id_przypadku(case_id: str, uow_factory: Callable[[], object]) -> UU
         parsed = UUID(str(case_id))
     except ValueError as exc:
         raise PrzypadekBezProjektuError(
-            f"case_id {case_id!r} nie jest identyfikatorem przypadku (UUID)"
+            f"Identyfikator przypadku obliczeniowego {case_id!r} nie jest poprawnym UUID"
         ) from exc
     with uow_factory() as uow:  # type: ignore[attr-defined]
         study_case = uow.cases.get_study_case(parsed)

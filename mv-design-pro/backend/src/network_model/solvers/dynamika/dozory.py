@@ -200,14 +200,16 @@ class Dozor:
         if not math.isfinite(self.prog):
             raise _odmowa(self, f"próg {self.prog!r} nie jest liczba skończona")
         if self.kierunek not in ("w_dol", "w_gore"):
-            raise _odmowa(self, f"kierunek {self.kierunek!r} spoza {{w_dol, w_gore}}")
+            raise _odmowa(
+                self, f"`kierunek` {self.kierunek!r} spoza dozwolonych: `w_dol` albo `w_gore`"
+            )
         if not (math.isfinite(self.opoznienie_s) and self.opoznienie_s >= 0.0):
             raise _odmowa(self, f"opóźnienie {self.opoznienie_s!r} s nie jest liczba nieujemna")
         if self.kasowanie_przy_powrocie and self.opoznienie_s == 0.0:
             raise _odmowa(
                 self,
                 "kasowanie przy powrocie bez opóźnienia — akcja wykonuje się w chwili "
-                "pobudzenia, więc nie ma czego kasowac",
+                "pobudzenia, więc nie ma czego kasować",
             )
         if self.kasowanie_przy_powrocie and not self.akcje:
             raise _odmowa(self, "kasowanie przy powrocie w detektorze bez akcji")
@@ -221,8 +223,8 @@ class Dozor:
             if akcja.t_s != 0.0:
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} ma t_s={akcja.t_s} — chwila akcji jest "
-                    "WZGLEDNA (0 = chwila wykonania dozoru)",
+                    f"akcja {type(akcja).__name__} ma `t_s` = {akcja.t_s} s — chwila akcji jest "
+                    "WZGLĘDNA (0 = chwila wykonania dozoru)",
                 )
 
     @property
@@ -234,7 +236,7 @@ class Dozor:
 def _odmowa(dozor: Dozor, komunikat: str) -> OdmowaDynamiki:
     return OdmowaDynamiki(
         KOD_ZDARZENIE_SPRZECZNE,
-        f"Dozor {dozor.ident!r}: {komunikat}",
+        f"Dozór {dozor.ident!r}: {komunikat}",
         dozor=dozor.ident,
     )
 
@@ -604,9 +606,9 @@ class NadzorDozorow:
                 if indeks in self._pobudzone_w_chwili:
                     raise OdmowaDynamiki(
                         KOD_PETLA_ZDARZEN_WARUNKOWYCH,
-                        f"Dozor {dozor.ident!r} pobudzil się drugi raz w tej samej chwili "
-                        f"t={t_s} s — akcje dozorow przelaczaja warunek w pętli bez uplywu "
-                        "czasu; taki układ nie ma rozwiazania w dziedzinie czasu",
+                        f"Dozór {dozor.ident!r} pobudzil się drugi raz w tej samej chwili "
+                        f"t={t_s} s — akcje dozorów przełączają warunek w pętli bez uplywu "
+                        "czasu; taki układ nie ma rozwiązania w dziedzinie czasu",
                         dozor=dozor.ident,
                         t_s=t_s,
                     )

@@ -576,20 +576,20 @@ def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
     if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
         odmowa_twarda(
             "KAT-T-011",
-            "Współczynnik emisji migotania flicker_c musi być > 0, "
-            f"otrzymano flicker_c={obiekt.flicker_c} ({kontekst}).",
+            "Współczynnik emisji migotania c (IEC 61400-21) musi być > 0, "
+            f"otrzymano {obiekt.flicker_c} ({kontekst}).",
         )
     _validate_katalogowy_k_sc(obiekt.k_sc, kontekst=kontekst)
     if obiekt.droop_p_f_percent is not None and obiekt.droop_p_f_percent <= 0:
         odmowa_twarda(
             "KAT-T-012",
-            "Statyzm P/f przekształtnika grid-forming (droop_p_f_percent) musi być > 0, "
+            "Statyzm P/f przekształtnika grid-forming [%] musi być > 0, "
             f"otrzymano {obiekt.droop_p_f_percent} ({kontekst}).",
         )
     if obiekt.droop_q_u_percent is not None and obiekt.droop_q_u_percent <= 0:
         odmowa_twarda(
             "KAT-T-013",
-            "Statyzm Q/U przekształtnika grid-forming (droop_q_u_percent) musi być > 0, "
+            "Statyzm Q/U przekształtnika grid-forming [%] musi być > 0, "
             f"otrzymano {obiekt.droop_q_u_percent} ({kontekst}).",
         )
 
@@ -754,26 +754,27 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
         if len(point) != 3:
             odmowa_twarda(
                 "KAT-T-005",
-                "Punkt krzywej P-Q musi mieć 3 wartości (p_mw, q_min_mvar, q_max_mvar), "
-                f"otrzymano: {point!r}.",
+                "Punkt krzywej P-Q musi mieć 3 wartości (moc czynna P [MW], najmniejsza "
+                f"i największa moc bierna Q [Mvar]), otrzymano: {point!r}.",
             )
         p_mw, q_min_mvar, q_max_mvar = point
         if p_mw < 0:
             odmowa_twarda(
                 "KAT-T-006",
-                f"Moc czynna punktu krzywej P-Q musi być >= 0, otrzymano p_mw={p_mw}.",
+                f"Moc czynna P punktu krzywej P-Q musi być ≥ 0, otrzymano {p_mw} MW.",
             )
         if q_min_mvar > q_max_mvar:
             odmowa_twarda(
                 "KAT-T-007",
-                "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
-                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw}).",
+                "Punkt krzywej P-Q wymaga, żeby najmniejsza moc bierna Q nie przekraczała "
+                f"największej, otrzymano Q_min = {q_min_mvar} Mvar > Q_max = {q_max_mvar} Mvar "
+                f"(P = {p_mw} MW).",
             )
         if prev_p is not None and p_mw <= prev_p:
             odmowa_twarda(
                 "KAT-T-008",
-                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po p_mw, "
-                f"otrzymano p_mw={p_mw} po p_mw={prev_p}.",
+                "Punkty krzywej P-Q muszą być uporządkowane rosnąco według mocy czynnej P, "
+                f"otrzymano P = {p_mw} MW po P = {prev_p} MW.",
             )
         prev_p = p_mw
 
@@ -831,7 +832,7 @@ def _validate_float_range(field_name: str, value: tuple[float, float] | None) ->
     if lo > hi:
         odmowa_twarda(
             "KAT-T-010",
-            f"Zakres nastawialności {field_name} wymaga min <= max, "
+            f"Zakres nastawialności {field_name} wymaga min ≤ max, "
             f"otrzymano min={lo} > max={hi}.",
         )
 
@@ -1202,19 +1203,18 @@ class OverheadConductorType:
                 f"{self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
                 f"{', '.join(PRZEZNACZENIA_PRZEWODU)}.",
             )
-        dodatnie = {
-            "cross_section_mm2": self.cross_section_mm2,
-            "srednica_mm": self.srednica_mm,
-            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
-            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
-            "alfa_1_per_k": self.alfa_1_per_k,
-            "max_temperature_c": self.max_temperature_c,
-        }
-        for nazwa, wartosc in dodatnie.items():
+        for opis, wartosc in (
+            ("przekrój części przewodzącej [mm²]", self.cross_section_mm2),
+            ("średnica przewodu [mm]", self.srednica_mm),
+            ("średnica drutu aluminiowego [mm]", self.srednica_drutu_al_mm),
+            ("rezystancja R20 prądu stałego [Ω/km]", self.r20_dc_ohm_per_km),
+            ("temperaturowy współczynnik rezystancji α [1/K]", self.alfa_1_per_k),
+            ("dopuszczalna temperatura pracy [°C]", self.max_temperature_c),
+        ):
             if not (math.isfinite(wartosc) and wartosc > 0):
                 odmowa_twarda(
                     "KAT-T-048",
-                    f"{self.id}: {nazwa} musi być dodatnie i skończone (jest {wartosc}).",
+                    f"{self.id}: {opis} musi być dodatnia i skończona (jest {wartosc}).",
                 )
         if self.gmr_mm is not None and not (0 < self.gmr_mm < self.srednica_mm / 2.0):
             odmowa_twarda(
@@ -1287,7 +1287,7 @@ class OverheadConductorType:
         if not isinstance(warstwy, list | tuple):
             odmowa_twarda(
                 "KAT-T-049",
-                f"{data.get('id')}: brak budowy przewodu (lista `warstwy_al`).",
+                f"{data.get('id')}: brak budowy przewodu (lista warstw drutów aluminiowych).",
             )
 
         def opcjonalny(klucz: str) -> float | None:
@@ -2247,15 +2247,21 @@ class BESSBatteryType:
         if self.capacity_kwh <= 0:
             odmowa_twarda(
                 "KAT-T-018",
-                f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).",
+                f"{self.id}: pojemność magazynu energii musi być > 0 kWh "
+                f"(jest {self.capacity_kwh}).",
             )
         if self.nominal_voltage_dc_v <= 0:
             odmowa_twarda(
                 "KAT-T-019",
-                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v}).",
+                f"{self.id}: napięcie znamionowe DC musi być > 0 V "
+                f"(jest {self.nominal_voltage_dc_v}).",
             )
         if self.c_rate <= 0:
-            odmowa_twarda("KAT-T-020", f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+            odmowa_twarda(
+                "KAT-T-020",
+                f"{self.id}: współczynnik C (moc względem pojemności) musi być > 0 "
+                f"(jest {self.c_rate}).",
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3539,11 +3545,11 @@ class LVApparatusType:
 
     def __post_init__(self) -> None:
         """Validate optional additive nastawialnosc ranges (P0.2)."""
-        _validate_float_range("ir_range", self.ir_range)
-        _validate_float_range("isd_range", self.isd_range)
-        _validate_float_range("ii_range", self.ii_range)
-        _validate_float_range("tr_range", self.tr_range)
-        _validate_float_range("tsd_range", self.tsd_range)
+        _validate_float_range("nastawy długozwłocznej I_r", self.ir_range)
+        _validate_float_range("nastawy krótkozwłocznej I_sd", self.isd_range)
+        _validate_float_range("nastawy bezzwłocznej I_i", self.ii_range)
+        _validate_float_range("zwłoki długozwłocznej t_r", self.tr_range)
+        _validate_float_range("zwłoki krótkozwłocznej t_sd", self.tsd_range)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3761,9 +3767,9 @@ class LVFuseLinkType:
             odmowa_twarda(
                 "KAT-T-022",
                 f"Wkładka topikowa '{self.id}' bez znamionowej zdolności wyłączania "
-                f"(breaking_capacity_ka={self.breaking_capacity_ka!r}) — IEC 60269-1 "
-                "wymaga tej wartości dla każdej wkładki; uzupełnij z karty "
-                "katalogowej/normy z proweniencją (wzorzec G-D2).",
+                f"I_cn (otrzymano {self.breaking_capacity_ka!r} kA) — IEC 60269-1 "
+                "wymaga tej wartości dla każdej wkładki; uzupełnij ją z karty "
+                "katalogowej albo z normy, podając źródło.",
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -3882,14 +3888,14 @@ class LVRcdType:
                 f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
             )
         for nazwa, wartosc in (
-            ("in_a", self.in_a),
-            ("i_delta_n_a", self.i_delta_n_a),
-            ("t_a_s", self.t_a_s),
+            ("prąd znamionowy I_n [A]", self.in_a),
+            ("znamionowy prąd różnicowy I_Δn [A]", self.i_delta_n_a),
+            ("czas zadziałania t_a [s]", self.t_a_s),
         ):
             if wartosc <= 0:
                 odmowa_twarda(
                     "KAT-T-046",
-                    f"RCD '{self.id}': pole {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
+                    f"RCD '{self.id}': {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
                     "bez niego werdykt SWZ TT nie ma z czego liczyć.",
                 )
         if self.selective and self.t_nieczuly_min_s is None:

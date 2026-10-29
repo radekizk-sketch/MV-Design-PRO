@@ -34,6 +34,7 @@ from api.dependencies import get_uow_factory
 from api.fault_scenarios import get_fault_scenario_service
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from api.odmowa_http import OdmowaHttpError
+from api.parsowanie_uuid import parsuj_uuid
 from application.batch_execution_service import (
     BatchExecutionService,
     BatchNotFoundError,
@@ -140,17 +141,6 @@ class BatchListResponse(BaseModel):
 # =============================================================================
 
 
-def _parse_uuid(value: str, field_name: str = "id") -> UUID:
-    """Parsuj i zweryfikuj UUID; 400 z polskim komunikatem przy błędzie."""
-    try:
-        return UUID(value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi być poprawnym UUID",
-        ) from exc
-
-
 def _werdykt_pozycji(run_id: str | None, stan: StanBiezacyModelu) -> FreshnessVerdict:
     """Świeżość WYNIKU jednej pozycji — brak biegu = uczciwe NONE (bieg nigdy
     nie powstał, np. scenariusz zablokowany przed utworzeniem biegu)."""
@@ -221,13 +211,13 @@ def create_batch(
     Zwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,
     scenariusza spoza przypadku albo mieszanych typów analizy.
     """
-    parsed_case_id = _parse_uuid(case_id, "case_id")
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
     if not request.scenario_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Seria przebiegów wymaga co najmniej jednego scenariusza",
         )
-    scenario_ids = [_parse_uuid(sid, "scenario_id") for sid in request.scenario_ids]
+    scenario_ids = [parsuj_uuid(sid, "scenario_id") for sid in request.scenario_ids]
     klucz = klucz_twin_z_sciezki(case_id, http_request)
     service = get_batch_service()
 
@@ -274,7 +264,7 @@ def execute_batch(
     tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do bazy danych —
     patrz `application/batch_execution_service.py`).
     """
-    parsed_batch_id = _parse_uuid(batch_id, "batch_id")
+    parsed_batch_id = parsuj_uuid(batch_id, "batch_id")
     service = get_batch_service()
 
     try:
@@ -316,7 +306,7 @@ def cancel_batch(
     w toku — po bieżącej pozycji (odpowiedź niesie stan bieżący, klient odpytuje do
     CANCELLED). Pozycje policzone zachowują wyniki. 404 dla nieznanej serii, 409 dla
     serii zakończonej (nazwany stan)."""
-    parsed_batch_id = _parse_uuid(batch_id, "batch_id")
+    parsed_batch_id = parsuj_uuid(batch_id, "batch_id")
     service = get_batch_service()
     try:
         batch = service.anuluj_serie(parsed_batch_id)
@@ -337,7 +327,7 @@ def list_batches(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Serie przypadku, najnowsze pierwsze (pusta lista = uczciwe zero)."""
-    parsed_case_id = _parse_uuid(case_id, "case_id")
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
     service = get_batch_service()
 
     batches = service.list_batches(parsed_case_id)
@@ -357,7 +347,7 @@ def get_batch(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Szczegóły serii; 404 dla nieznanego identyfikatora."""
-    parsed_batch_id = _parse_uuid(batch_id, "batch_id")
+    parsed_batch_id = parsuj_uuid(batch_id, "batch_id")
     service = get_batch_service()
 
     try:

@@ -572,7 +572,7 @@ def test_krzywa_nasycenia_bez_rozwiazania_konczy_sie_odmowa() -> None:
     with pytest.raises(OdmowaDynamiki) as blad:
         zbuduj(maszyna_enm(nasycenie_s10=0.5, nasycenie_s12=0.1), punkt(0.8))
     assert blad.value.kod == KOD_PARAMETRY_SPRZECZNE
-    assert "nierosnaca" in str(blad.value)
+    assert "krzywą nierosnącą" in str(blad.value)
 
 
 def test_przeksztaltnik_gfm_o_zerowej_impedancji_wirtualnej_konczy_sie_odmowa() -> None:

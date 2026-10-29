@@ -141,7 +141,7 @@ def wczytaj_karty_statyczne(katalog: Path = KATALOG_KART) -> list[dict[str, Any]
             odmowa_twarda(
                 "KAT-T-041",
                 f"Karta widmowa {plik.name}: brak wyciągu dokumentu producenta "
-                "(`wyciag_dokumentu.plik` i `.sha256`) — karta statyczna bez dokumentu nie "
+                "(plik wyciągu i jego skrót SHA-256) — karta statyczna bez dokumentu nie "
                 "istnieje.",
             )
         sciezka_wyciagu = katalog / str(wyciag["plik"])
@@ -159,7 +159,9 @@ def wczytaj_karty_statyczne(katalog: Path = KATALOG_KART) -> list[dict[str, Any]
             )
         karta = zawartosc.get("karta")
         if not isinstance(karta, dict):
-            odmowa_twarda("KAT-T-009", f"Karta widmowa {plik.name}: brak obiektu `karta`.")
+            odmowa_twarda(
+                "KAT-T-009", f"Karta widmowa {plik.name}: brak opisu karty (parametrów widma)."
+            )
         rekordy.append(karta)
     return rekordy
 

@@ -657,7 +657,7 @@ class XlsxNetworkImporter:
                     kolumna="tolerancja_nN",
                     komunikat=(
                         f"Tolerancja napięcia sieci nN '{tolerancja}' spoza słownika tabeli 1 "
-                        "IEC 60909-0 (dopuszczalne: PLUS_6 dla +6 % albo PLUS_10 dla +10 %)"
+                        "IEC 60909-0 (wpisz „PLUS_6” dla +6 % albo „PLUS_10” dla +10 %)"
                     ),
                 )
             ]
@@ -795,7 +795,7 @@ class XlsxNetworkImporter:
                         kolumna="zaczep_min",
                         komunikat=(
                             "Zakres zaczepów musi obejmować położenie znamionowe 0 "
-                            "(zaczep_min <= 0 <= zaczep_max)"
+                            "(kolumny „zaczep_min” ≤ 0 ≤ „zaczep_max”)"
                         ),
                     )
                 )
@@ -814,7 +814,7 @@ class XlsxNetworkImporter:
                         arkusz=ARKUSZ_TRAFO,
                         wiersz=transformator["_wiersz"],
                         kolumna="szyna_LV",
-                        komunikat="Strona HV i LV wskazują tę samą szynę",
+                        komunikat="Strona górnego i dolnego napięcia wskazują tę samą szynę",
                     )
                 )
         for zrodlo in zrodla:

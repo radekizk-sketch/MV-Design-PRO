@@ -31,7 +31,9 @@ to bodziec badania zgodności modułu, którego wynik nie jest przebiegiem sieci
 Zapis scenariusza tego ekranu odrzuca stanowisko tym samym predykatem (`tryb_sieci`), a lista
 scenariuszy ekranu go nie pokazuje — scenariusz nie traci pola po cichu przy ponownym zapisie.
 
-Etykiety po polsku są jedyną treścią własną modułu (słownik nazw pól i rodzajów). Pole albo
+Etykiety po polsku (słownik nazw pól, rodzajów i wartości) mieszkają przy kontrakcie danych,
+w `enm.scenariusze` — te same słowa nazywają pola w odmowie walidacji scenariusza, w opisie
+edytora i w odmowie biegu (jedno źródło, karta klasy surowych kluczy w komunikatach). Pole albo
 rodzaj spoza słownika dostaje etykietę z nazwy technicznej — nowy rodzaj zdarzenia pojawia
 się w edytorze bez zmiany kodu interfejsu, a brak ładnej etykiety widać w teście słownika.
 """
@@ -50,6 +52,10 @@ from enm.adapter_dynamiki import (
     harmonogram_z_scenariusza,
 )
 from enm.scenariusze import (
+    ETYKIETY_POL,
+    ETYKIETY_RODZAJOW,
+    ETYKIETY_WARTOSCI,
+    ETYKIETY_WIELKOSCI_DETEKTORA,
     Detektor,
     ScenariuszDynamiczny,
     WielkoscDetektora,
@@ -67,92 +73,6 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 KONTRAKT_OPISU = "opis_scenariusza_dynamicznego_v1"
-
-#: Etykiety rodzajów zdarzeń (klucz = wartość dyskryminatora `rodzaj`).
-ETYKIETY_RODZAJOW: dict[str, str] = {
-    "zwarcie": "Zwarcie",
-    "wylaczenie_galezi": "Otwarcie gałęzi lub łącznika",
-    "zalaczenie_galezi": "Zamknięcie gałęzi lub łącznika",
-    "odlaczenie_zrodla": "Odłączenie źródła",
-    "skok_obciazenia": "Skokowa zmiana mocy odbioru",
-    "odlaczenie_odbioru": "Odłączenie odbioru",
-    "zalaczenie_odbioru": "Ponowne załączenie odbioru",
-    "komenda_regulacji": "Zmiana nastawy regulatora źródła",
-    "utrata_czesciowa_zrodla": "Częściowa utrata jednostek źródła",
-    "synchronizacja": "Synchronizacja źródła z siecią",
-}
-
-#: Etykiety wariantów wielkości detektora (klucz = wartość dyskryminatora `rodzaj`); jednostka
-#: progu w nawiasie — próg jest w jednostce kanału, który detektor czyta (kontrakt `Detektor`).
-ETYKIETY_WIELKOSCI_DETEKTORA: dict[str, str] = {
-    "modul_napiecia": "Moduł napięcia szyny [pu]",
-    "czestotliwosc": "Częstotliwość szyny [Hz]",
-    "modul_pradu_zacisku": "Moduł prądu zacisku gałęzi [pu bazy układu]",
-    "stan_urzadzenia": "Zmienna stanu urządzenia [jednostka stanu]",
-    "moc_urzadzenia": "Moc oddawana przez urządzenie [pu bazy układu]",
-}
-
-#: Etykiety pól zdarzeń i scenariusza (klucz = nazwa pola kontraktu).
-ETYKIETY_POL: dict[str, str] = {
-    "t_s": "Chwila zdarzenia",
-    "bus_ref": "Szyna",
-    "element_ref": "Element",
-    "polozenie_wzgledne": "Położenie miejsca zwarcia x (ułamek długości od zacisku początkowego)",
-    "typ": "Rodzaj zwarcia",
-    "r_f_ohm": "Rezystancja przejścia R_f",
-    "x_f_ohm": "Reaktancja przejścia X_f",
-    "t_usuniecia_s": "Chwila usunięcia zwarcia",
-    "sposob_usuniecia": "Sposób usunięcia zwarcia",
-    "ref_id": "Element",
-    "delta_p_mw": "Zmiana mocy czynnej ΔP",
-    "delta_q_mvar": "Zmiana mocy biernej ΔQ",
-    "nastawa": "Nowa nastawa",
-    "p_mw": "Moc czynna P",
-    "q_mvar": "Moc bierna Q",
-    "u_pu": "Napięcie odniesienia U",
-    "udzial_pozostaly": "Udział jednostek pracujących dalej (względem stanu początkowego)",
-    "detektory": "Detektory przekroczeń progu (bez działania na sieć)",
-    "ident": "Nazwa detektora",
-    "wielkosc": "Obserwowana wielkość",
-    "prog": "Próg (w jednostce obserwowanej wielkości)",
-    "kierunek": "Kierunek przekroczenia",
-    "jednorazowy": "Tylko pierwsze przekroczenie",
-    "zacisk": "Zacisk gałęzi",
-    "stan": "Nazwa zmiennej stanu urządzenia",
-    "skladowa": "Składowa mocy",
-    "horyzont_s": "Horyzont symulacji",
-    "krok_wyjscia_s": "Krok zapisu przebiegu",
-    "dt_s": "Krok całkowania",
-    "dt_min_s": "Najmniejszy krok całkowania",
-    "dt_max_s": "Największy krok całkowania",
-    "tolerancja": "Tolerancja residuum równań",
-    "tolerancja_kroku": "Tolerancja błędu lokalnego kroku",
-    "eps_init": "Tolerancja stanu początkowego",
-    "max_iteracji_newtona": "Największa liczba iteracji Newtona w kroku",
-    "max_nawrotow": "Największa liczba nawrotów kroku",
-    "integrator": "Metoda całkowania",
-    "tolerancja_lokalizacji_zdarzen_s": (
-        "Tolerancja lokalizacji chwili przekroczenia (wymagana, gdy są detektory)"
-    ),
-}
-
-#: Etykiety wartości wyliczeniowych (klucz = (pole, wartość)).
-ETYKIETY_WARTOSCI: dict[tuple[str, str], str] = {
-    ("typ", "3F"): "trójfazowe (3F)",
-    ("typ", "2F"): "dwufazowe (2F)",
-    ("typ", "1F"): "jednofazowe doziemne (1F)",
-    ("typ", "2FZ"): "dwufazowe doziemne (2FZ)",
-    ("sposob_usuniecia", "izolacja"): "izolacja miejsca zwarcia aparatami",
-    ("sposob_usuniecia", "samoczynne"): "samoczynne zgaśnięcie (idealizacja)",
-    ("integrator", "trapez_niejawny"): "trapezów, niejawna",
-    ("integrator", "rk4_jawny"): "Rungego-Kutty 4. rzędu, jawna",
-    ("kierunek", "w_dol"): "spadek poniżej progu",
-    ("kierunek", "w_gore"): "wzrost powyżej progu",
-    ("zacisk", "od"): "zacisk początkowy (od)",
-    ("zacisk", "do"): "zacisk końcowy (do)",
-    ("skladowa", "p"): "moc czynna P",
-    ("skladowa", "q"): "moc bierna Q",
-}
 
 #: Pola `ScenariuszDynamiczny` trybu STANOWISKA badawczego — poza opisem edytora ekranu
 #: pracującego w trybie sieci (uzasadnienie w docstringu modułu). Predykat `tryb_sieci`
@@ -542,10 +462,6 @@ def opis_scenariusza_dynamicznego() -> dict[str, Any]:
 
 __all__ = [
     "ETYKIETY_KOLEKCJI",
-    "ETYKIETY_POL",
-    "ETYKIETY_RODZAJOW",
-    "ETYKIETY_WARTOSCI",
-    "ETYKIETY_WIELKOSCI_DETEKTORA",
     "KONTRAKT_OPISU",
     "POLA_TRYBU_STANOWISKA",
     "opis_nastaw_solvera",

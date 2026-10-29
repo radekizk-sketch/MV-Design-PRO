@@ -151,20 +151,35 @@ def _cosphi_p_ratio(c: InverterControl, p_frac: float) -> float:
 def validate_inverter_control(c: InverterControl) -> None:
     """Reject malformed control (no guessing — Rule: physics rejects bad input)."""
     if c.f0_hz <= 0.0:
-        raise OdmowaDanychError(f"inverter f0_hz must be > 0, got {c.f0_hz}")
+        raise OdmowaDanychError(
+            f"Częstotliwość odniesienia falownika f₀ musi być > 0 Hz, otrzymano {c.f0_hz}."
+        )
     if c.lfsm_droop_pct < 0.0:
-        raise OdmowaDanychError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
+        raise OdmowaDanychError(
+            f"Statyzm LFSM falownika nie może być ujemny, otrzymano {c.lfsm_droop_pct} %."
+        )
     if c.mode is InverterMode.Q_U:
         if c.qu_deadband_low_pu > c.qu_deadband_high_pu:
-            raise OdmowaDanychError("Q(U) deadband_low must be <= deadband_high")
+            raise OdmowaDanychError(
+                "Charakterystyka Q(U): dolna granica strefy martwej nie może być większa "
+                "niż górna."
+            )
         if c.qu_slope_pu_per_pu < 0.0:
-            raise OdmowaDanychError("Q(U) slope must be >= 0 (sign is applied by the curve)")
+            raise OdmowaDanychError(
+                "Charakterystyka Q(U): nachylenie nie może być ujemne (znak nadaje kształt "
+                "charakterystyki)."
+            )
         if c.qu_q_min_pu > c.qu_q_max_pu:
-            raise OdmowaDanychError("Q(U) q_min must be <= q_max")
+            raise OdmowaDanychError(
+                "Charakterystyka Q(U): minimalna moc bierna nie może być większa niż " "maksymalna."
+            )
     if c.mode is InverterMode.COSPHI_P:
         xs = [x for x, _ in c.cosphi_p_points]
         if xs != sorted(xs):
-            raise OdmowaDanychError("COSPHI_P points must be ascending in p_frac")
+            raise OdmowaDanychError(
+                "Charakterystyka cos φ(P): punkty muszą być uporządkowane rosnąco według "
+                "względnej mocy czynnej."
+            )
 
 
 @dataclass(frozen=True)
@@ -217,9 +232,9 @@ def source_injection_pu(
     if p_own is None and q_own is None:
         if declares_zip_split(spec) or getattr(spec, "zip_coeffs", None) is not None:
             raise ValueError(
-                f"inverter control on bus {getattr(spec, 'node_id', '?')} without "
-                "inverter_p_mw: the bus also carries a load model, so its power is "
-                "not the source's power and cannot be used as the shaping input"
+                f"Sterowanie falownika w węźle {getattr(spec, 'node_id', '?')} nie ma "
+                "własnej mocy czynnej źródła: w węźle jest też model odbioru, więc moc "
+                "węzła nie jest mocą źródła i nie może kształtować jego charakterystyki."
             )
         return float(p_spec[idx]), float(q_spec[idx])
     return (

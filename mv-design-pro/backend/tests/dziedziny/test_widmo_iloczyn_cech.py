@@ -129,7 +129,7 @@ def oczekiwane_odrzucenia(cechy: dict[str, Any]) -> set[str]:
     if czest == "niedodatnia":
         return {"greater than 0"}
     if ma_zrodlo and cechy["faza"] == "nieznana_bez_powodu":
-        return {"faza nieznana wymaga powodu"}
+        return {"faza nieznana wymaga podania powodu braku fazy"}
     odrzucenia: set[str] = set()
     if czest == "duplikat":
         odrzucenia.add("duplikat częstotliwości")

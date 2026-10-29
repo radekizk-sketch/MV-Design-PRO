@@ -117,7 +117,7 @@ class TestEligibilityBasic:
         assert result.eligible is False
         si_100 = next((b for b in result.blockers if b.code == "SI-100"), None)
         assert si_100 is not None
-        assert "BREAKER" in si_100.message or "RECLOSER" in si_100.message
+        assert "wyłącznika albo reklozera" in si_100.message
 
     def test_protection_eligible_when_breaker_present(self):
         """Protection analysis is ELIGIBLE when graph has at least one BREAKER.

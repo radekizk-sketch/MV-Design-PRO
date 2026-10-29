@@ -129,9 +129,9 @@ def sprawdz_typ_turbiny(typ: str) -> None:
     if typ in TYPY_BEZ_MODELU_ELEKTRYCZNEGO:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Turbina {typ!r} to maszyna indukcyjna przylaczona wprost do sieci. "
-            "Kontrakt nie niesie jej schematu zastepczego (Rs, Xs, Rr, Xr, Xm) ani "
-            "mocy znamionowej, wiec prad wezlowy nie ma z czego powstac. Zlozalne "
+            f"Turbina {typ!r} to maszyna indukcyjna przyłączona wprost do sieci. "
+            "Kontrakt nie niesie jej schematu zastępczego (Rs, Xs, Rr, Xr, Xm) ani "
+            "mocy znamionowej, więc prąd węzłowy nie ma z czego powstać. Zlozalne "
             f"typy: {TYPY_ZLOZALNE}",
             typ=typ,
             zlozalne=TYPY_ZLOZALNE,
@@ -326,8 +326,8 @@ class TurbinaWiatrowa:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "uklad",
-            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
-            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+            "układ stanów jest WYPROWADZONY z konfiguracji bloków urządzenia; jego "
+            "nazwy wchodzą do odcisku osobno jako `nazwy_stanow`",
         ),
     )
 
@@ -347,8 +347,8 @@ class TurbinaWiatrowa:
     def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
         return nastawy_przeksztaltnika(
             self.okno_mocy,
-            powod_p="moc czynna turbiny wiatrowej zależy od mocy dostepnej z wiatru — nastawa "
-            "P wymaga modelu mocy dostepnej (ograniczenie mocy czynnej poniżej dostepnej), "
+            powod_p="moc czynna turbiny wiatrowej zależy od mocy dostępnej z wiatru — nastawa "
+            "P wymaga modelu mocy dostępnej (ograniczenie mocy czynnej poniżej dostępnej), "
             "którego biblioteka urządzeń nie ma",
         )
 
@@ -446,7 +446,7 @@ class TurbinaWiatrowa:
         if moc_pu.real < 0.0:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{self._opis}: punkt pracy z ujemna moca czynna ({moc_pu.real} pu) "
+                f"{self._opis}: punkt pracy z ujemna mocą czynna ({moc_pu.real} pu) "
                 "nie jest praca turbiny wiatrowej",
                 urzadzenie=self.ident,
                 p_pu=moc_pu.real,
@@ -534,21 +534,21 @@ def zbuduj_turbine_wiatrowa(
     if rdzen is None:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Turbina {typ!r} wymaga bloku przeksztaltnika — bez niego nie ma "
-            "sprzezenia z siecia",
+            f"Turbina {typ!r} wymaga bloku przekształtnika — bez niego nie ma "
+            "sprzężenia z siecią",
             typ=typ,
         )
     if crowbar is not None and typ != TYP_Z_CROWBAR:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Crowbar dotyczy wylacznie {TYP_Z_CROWBAR} (obwod wirnika DFIG), "
+            f"Crowbar dotyczy wyłącznie {TYP_Z_CROWBAR} (obwód wirnika DFIG), "
             f"otrzymano {typ!r}",
             typ=typ,
         )
     if pitch_min_deg >= pitch_max_deg:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Zakres kata lopat [{pitch_min_deg}, {pitch_max_deg}] stopni jest pusty",
+            f"Zakres kąta łopat [{pitch_min_deg}, {pitch_max_deg}] stopni jest pusty",
             pitch_min_deg=pitch_min_deg,
             pitch_max_deg=pitch_max_deg,
         )
@@ -576,9 +576,9 @@ def zbuduj_turbine_wiatrowa(
     ):
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Prog crowbar {crowbar_w_bazie.prog_pradu_pu} pu nie lezy ponizej ogranicznika "
-            f"pradu przeksztaltnika {crowbar_w_bazie.prad_pelnego_zadzialania_pu} pu — "
-            "zabezpieczenie o progu na ograniczniku albo powyzej nie moze zadzialac nigdy",
+            f"Próg crowbar {crowbar_w_bazie.prog_pradu_pu} pu nie leży poniżej ogranicznika "
+            f"prądu przekształtnika {crowbar_w_bazie.prad_pelnego_zadzialania_pu} pu — "
+            "zabezpieczenie o progu na ograniczniku albo powyżej nie może zadziałać nigdy",
             urzadzenie=ident,
             prog_pradu_pu=crowbar_w_bazie.prog_pradu_pu,
             i_max_pu=crowbar_w_bazie.prad_pelnego_zadzialania_pu,

@@ -76,11 +76,17 @@ class TestCtVtVariantFields:
         assert m.vt_mounting == "cable"
 
     def test_ct_cores_rejected_on_vt_measurement(self):
-        with pytest.raises(ValueError, match="ct_cores wymaga measurement_type='CT'"):
+        with pytest.raises(
+            ValueError,
+            match="„Liczba rdzeni przekładnika prądowego” dotyczy wyłącznie przekładnika prądowego CT",
+        ):
             Measurement.model_validate(_vt(ct_cores=2))
 
     def test_vt_mounting_rejected_on_ct_measurement(self):
-        with pytest.raises(ValueError, match="vt_mounting wymaga measurement_type='VT'"):
+        with pytest.raises(
+            ValueError,
+            match="„Miejsce montażu przekładnika napięciowego” dotyczy wyłącznie przekładnika napięciowego VT",
+        ):
             Measurement.model_validate(_ct(vt_mounting="bus"))
 
     def test_ct_cores_must_be_positive(self):
@@ -187,7 +193,10 @@ class TestVtUzwojenie:
         assert m2.vt_uzwojenie == "ZABEZPIECZENIOWE"
 
     def test_vt_uzwojenie_rejected_on_ct_measurement(self):
-        with pytest.raises(ValueError, match="vt_uzwojenie wymaga measurement_type='VT'"):
+        with pytest.raises(
+            ValueError,
+            match="„Uzwojenie przekładnika napięciowego” dotyczy wyłącznie przekładnika napięciowego VT",
+        ):
             Measurement.model_validate(_ct(vt_uzwojenie="POMIAROWE"))
 
     def test_vt_uzwojenie_unknown_value_rejected(self):

@@ -32,6 +32,14 @@ def _gen(**overrides) -> Generator:
     return Generator(**base)
 
 
+def _nazwa_bez_klucza(blad: ValidationError, nazwa_pl: str, klucz: str) -> None:
+    """Zdanie dla projektanta nazywa pole po polsku i nie cytuje klucza kontraktu (ładunek
+    wejścia z kluczami siedzi w ``str(blad)`` — dlatego sprawdzamy samo ``msg``)."""
+    komunikat = blad.errors()[0]["msg"]
+    assert nazwa_pl in komunikat, komunikat
+    assert klucz not in komunikat, komunikat
+
+
 class TestVariantNoneAndLegacy:
     def test_variant_none_is_permissive(self) -> None:
         """Brak connection_variant → bez walidacji (dane legacy)."""
@@ -60,7 +68,7 @@ class TestLvBehindStationTransformer:
                 connection_variant="LV_BEHIND_STATION_TRANSFORMER",
                 blocking_transformer_ref="tr_1",
             )
-        assert "station_ref" in str(exc_info.value)
+        _nazwa_bez_klucza(exc_info.value, "wymaga wskazania stacji SN/nN", "station_ref")
 
     def test_missing_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
@@ -68,7 +76,9 @@ class TestLvBehindStationTransformer:
                 connection_variant="LV_BEHIND_STATION_TRANSFORMER",
                 station_ref="sub_1",
             )
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        _nazwa_bez_klucza(
+            exc_info.value, "wymaga pola „Transformator blokowy”", "blocking_transformer_ref"
+        )
 
 
 class TestDedicatedMvConnection:
@@ -91,7 +101,7 @@ class TestDedicatedMvConnection:
                 connection_variant="DEDICATED_MV_CONNECTION",
                 station_ref="sub_1",
             )
-        assert "DEDICATED_MV_CONNECTION" in str(exc_info.value)
+        _nazwa_bez_klucza(exc_info.value, "nie może wskazywać stacji", "station_ref")
 
 
 class TestNnSide:
@@ -106,7 +116,7 @@ class TestNnSide:
     def test_missing_station_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             _gen(connection_variant="nn_side")
-        assert "station_ref" in str(exc_info.value)
+        _nazwa_bez_klucza(exc_info.value, "wymaga wskazania stacji SN/nN", "station_ref")
 
     def test_with_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
@@ -115,7 +125,9 @@ class TestNnSide:
                 station_ref="sub_1",
                 blocking_transformer_ref="tr_1",
             )
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        _nazwa_bez_klucza(
+            exc_info.value, "nie może mieć pola „Transformator blokowy”", "blocking_transformer_ref"
+        )
 
 
 class TestBlockTransformer:
@@ -129,7 +141,9 @@ class TestBlockTransformer:
     def test_missing_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             _gen(connection_variant="block_transformer")
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        _nazwa_bez_klucza(
+            exc_info.value, "wymaga pola „Transformator blokowy”", "blocking_transformer_ref"
+        )
 
     def test_with_optional_station_ref_is_valid(self) -> None:
         gen = _gen(

@@ -245,7 +245,7 @@ def _zrodlo(surowe: object, gdzie: str) -> ZrodloCeny:
 def _pozycja(surowa: object, indeks: int) -> PozycjaCennika:
     gdzie = f"Pozycja {indeks + 1} cennika"
     if not isinstance(surowa, Mapping):
-        raise BladCennika(f"{gdzie}: oczekiwano sekcji z polami type_id, jednostka, ceny.")
+        raise BladCennika(f"{gdzie}: oczekiwano sekcji z kluczami „type_id”, „jednostka” i cenami.")
     type_id = _napis(surowa.get("type_id"))
     if type_id is None:
         raise BladCennika(f"{gdzie}: brak identyfikatora typu katalogowego.")
@@ -309,13 +309,18 @@ def naruszenia_cennika(
 def cennik_z_danych(dane: object, *, nazwa_pliku: str | None = None) -> Cennik:
     """Zbuduj cennik z danych YAML i sprawdź strażnikiem (naruszenie → ``BladCennika``)."""
     if not isinstance(dane, Mapping):
-        raise BladCennika("Cennik: oczekiwano sekcji głównej z polami wersja, waluta, data_cen.")
+        raise BladCennika(
+            "Cennik: oczekiwano sekcji głównej z kluczami „wersja”, „waluta”, „data_cen”."
+        )
     data_cen = _data(dane.get("data_cen"), "Cennik")
     if data_cen is None:
-        raise BladCennika("Cennik: brak daty cen (data_cen).")
+        raise BladCennika("Cennik: brak daty cen (klucz „data_cen”).")
     energia = dane.get("energia_strat")
     if not isinstance(energia, Mapping):
-        raise BladCennika("Cennik: brak sekcji energia_strat (cena null jest dopuszczalna).")
+        raise BladCennika(
+            "Cennik: brak sekcji ceny energii strat (klucz „energia_strat”; cena pusta jest "
+            "dopuszczalna)."
+        )
     pozycje_surowe = dane.get("pozycje")
     if not isinstance(pozycje_surowe, list):
         raise BladCennika("Cennik: sekcja pozycje musi być listą (pusta lista = szablon).")

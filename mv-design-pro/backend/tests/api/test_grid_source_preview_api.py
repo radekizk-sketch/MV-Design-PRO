@@ -44,7 +44,9 @@ def test_grid_source_preview_api_rejects_incomplete_input(app_client) -> None:
     )
 
     assert response.status_code == 422
-    assert "sk3_mva" in response.json()["detail"]
+    # Odmowa nazywa wielkość słowami formularza źródła (moc zwarciowa Sk″), nie kluczem pola.
+    assert "Sk″" in response.json()["detail"]
+    assert "sk3_mva" not in response.json()["detail"]
 
 
 # CV-4.3 K7: blok `min` podglądu (solver FROZEN wołany drugi raz z danymi MIN).
@@ -111,7 +113,8 @@ def test_podglad_api_bez_danych_min_i_odmowy(app_client) -> None:
         "/api/solver/grid-source-preview",
         json={"voltage_kv": 15.0, "sk3_mva": 250.0, "rx_ratio": 0.1, "rx_ratio_min": 0.2},
     )
-    assert odp.status_code == 422 and "rx_ratio_min" in odp.json()["detail"]
+    assert odp.status_code == 422 and "„Stosunek R/X (MIN)”" in odp.json()["detail"]
+    assert "rx_ratio_min" not in odp.json()["detail"]
 
 
 def _podglad_nn(app_client, tolerancja: str | None) -> dict:

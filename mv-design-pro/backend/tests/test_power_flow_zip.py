@@ -637,7 +637,7 @@ def test_declared_split_without_coefficients_is_refused_not_dropped() -> None:
     """§2.3: a bus the load-flow layer cannot carry is an ERROR, never a silent loss."""
     spec = PQSpec(node_id="B", p_mw=0.3, q_mvar=1.0, zip_base_p_mw=3.0, zip_base_q_mvar=1.0)
     p_spec, q_spec = _spec_arrays([spec])
-    with pytest.raises(ValueError, match="without zip_coeffs"):
+    with pytest.raises(ValueError, match="bez współczynników wielomianu"):
         split_zip_constant_part(p_spec, q_spec, [spec], {"B": 0}, 10.0)
 
 

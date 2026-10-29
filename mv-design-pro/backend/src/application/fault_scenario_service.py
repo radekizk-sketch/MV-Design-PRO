@@ -101,7 +101,8 @@ class FaultScenarioDuplicateError(FaultScenarioServiceError):
 
     def __init__(self, content_hash: str) -> None:
         super().__init__(
-            f"Scenariusz o identycznym content_hash już istnieje: {content_hash[:16]}..."
+            "Scenariusz zwarciowy o identycznej treści już istnieje w tym przypadku "
+            "obliczeniowym."
         )
         self.content_hash = content_hash
 

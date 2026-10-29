@@ -134,7 +134,7 @@ class GeneratorSN:
         if voltage_kv <= 0:
             raise ValueError(f"Napięcie musi być > 0, podano: {voltage_kv} kV")
         if self.cos_phi <= 0:
-            raise ValueError(f"cos_phi musi być > 0, podano: {self.cos_phi}")
+            raise ValueError(f"Współczynnik mocy cos φ musi być > 0, podano: {self.cos_phi}")
         if self.rated_power_mw <= 0:
             return 0.0
         # P [MW] -> [W] = P * 1e6, U [kV] -> [V] = U * 1e3

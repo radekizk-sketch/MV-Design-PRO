@@ -150,12 +150,12 @@ def compute_transformer_losses(data: TransformerLossesInput) -> TransformerLosse
             sn_mva=sn,
         ),
         assumptions=(
-            "Straty jalowe P0 nie zaleza od obciazenia (rdzen pod napieciem znamionowym).",
-            "Straty obciazeniowe rosna z kwadratem wspolczynnika obciazenia: β²·Pk.",
-            "P0 i Pk pochodza z pozycji katalogowej transformatora (pomiar wyrobu), "
-            "nie z wartosci typowej dla mocy.",
-            "β_opt minimalizuje straty WZGLEDNE (ΔP/S); w tym punkcie P0 = β²·Pk.",
-            "Rachunek pomija zaleznosc Pk od temperatury uzwojen (odniesienie do "
+            "Straty jałowe P0 nie zależą od obciążenia (rdzeń pod napięciem znamionowym).",
+            "Straty obciążeniowe rosną z kwadratem współczynnika obciążenia: β²·Pk.",
+            "P0 i Pk pochodzą z pozycji katalogowej transformatora (pomiar wyrobu), "
+            "nie z wartości typowej dla mocy.",
+            "β_opt minimalizuje straty WZGLĘDNE (ΔP/S); w tym punkcie P0 = β²·Pk.",
+            "Rachunek pomija zależność Pk od temperatury uzwojeń (odniesienie do "
             "temperatury pomiaru katalogowego).",
         ),
     )

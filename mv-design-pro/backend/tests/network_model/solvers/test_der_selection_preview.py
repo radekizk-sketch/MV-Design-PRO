@@ -376,7 +376,7 @@ def test_kryterium_zwarciowe_jest_wiazace_i_podnosi_przekroj() -> None:
     assert powody["cab-50"] == "wytrzymalosc_zwarciowa_niewystarczajaca"
     # Komunikat musi podac wymagany przekroj, zeby projektant wiedzial, co wybrac.
     komunikat = next(r.reason_pl for r in result.rejected if r.catalog_ref == "cab-50")
-    assert "Wymagany przekroj co najmniej" in komunikat
+    assert "Wymagany przekrój co najmniej" in komunikat
 
 
 def test_brak_danych_cieplnych_w_katalogu_nie_odrzuca_kandydata() -> None:
@@ -519,7 +519,7 @@ def test_oddawanie_mocy_biernej_podnosi_wymagany_przekroj() -> None:
 
 def test_nieznany_przypadek_pracy_jest_odrzucany_takze_bez_kandydatow() -> None:
     """Walidacja kierunkow PRZED petla: literowka nie moze udawac „braku kandydata"."""
-    with pytest.raises(ValueError, match="reactive_character"):
+    with pytest.raises(ValueError, match="Charakter mocy biernej"):
         propose_mv_cable(
             CableSelectionInput(
                 transformer_current_a=140.0,
@@ -530,7 +530,7 @@ def test_nieznany_przypadek_pracy_jest_odrzucany_takze_bez_kandydatow() -> None:
                 reactive_character="pojemnosciowy",
             )
         )
-    with pytest.raises(ValueError, match="flow_direction"):
+    with pytest.raises(ValueError, match="Kierunek przepływu mocy czynnej"):
         propose_mv_cable(
             CableSelectionInput(
                 transformer_current_a=140.0,

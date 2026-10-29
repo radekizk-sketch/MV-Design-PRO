@@ -72,22 +72,22 @@ def test_from_dict_parses_pq_curve_from_list() -> None:
 
 
 def test_pq_curve_unsorted_raises() -> None:
-    with pytest.raises(ValueError, match="rosnąco po p_mw"):
+    with pytest.raises(ValueError, match="rosnąco według mocy czynnej P"):
         _converter(pq_curve=((1.0, -0.6, 0.6), (0.5, -0.6, 0.6)))
 
 
 def test_pq_curve_duplicate_p_raises() -> None:
-    with pytest.raises(ValueError, match="rosnąco po p_mw"):
+    with pytest.raises(ValueError, match="rosnąco według mocy czynnej P"):
         _converter(pq_curve=((0.5, -0.6, 0.6), (0.5, -0.6, 0.6)))
 
 
 def test_pq_curve_negative_p_raises() -> None:
-    with pytest.raises(ValueError, match=">= 0"):
+    with pytest.raises(ValueError, match="Moc czynna P punktu krzywej P-Q musi być ≥ 0"):
         _converter(pq_curve=((-0.1, -0.6, 0.6),))
 
 
 def test_pq_curve_qmin_gt_qmax_raises() -> None:
-    with pytest.raises(ValueError, match="q_min_mvar <= q_max_mvar"):
+    with pytest.raises(ValueError, match="najmniejsza moc bierna Q nie przekraczała największej"):
         _converter(pq_curve=((0.5, 0.6, -0.6),))
 
 

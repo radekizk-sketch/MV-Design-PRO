@@ -286,6 +286,28 @@ def _odmowa_charakterystyki(komunikat: str, **szczegoly: object) -> OdmowaDynami
     return OdmowaDynamiki(KOD_PARAMETRY_ODBIORU_SPRZECZNE, komunikat, **szczegoly)
 
 
+#: Pola liczbowe charakterystyki odbioru: klucz kontraktu → opis wielkości w zdaniu odmowy
+#: (wzory w docstringu `CharakterystykaOdbioru`). Kolejność stała — ta sama odmowa dla tego
+#: samego wejścia; klucz zostaje w maszynowych szczegółach odmowy (`pole`).
+_OPISY_POL_CHARAKTERYSTYKI: tuple[tuple[str, str], ...] = (
+    ("a_p", "udział części stałej impedancji Z w mocy czynnej"),
+    ("b_p", "udział części stałego prądu I w mocy czynnej"),
+    ("c_p", "udział części stałej mocy P w mocy czynnej"),
+    ("a_q", "udział części stałej impedancji Z w mocy biernej"),
+    ("b_q", "udział części stałego prądu I w mocy biernej"),
+    ("c_q", "udział części stałej mocy P w mocy biernej"),
+    ("k_pf", "czułość częstotliwościowa mocy czynnej k_pf"),
+    ("k_qf", "czułość częstotliwościowa mocy biernej k_qf"),
+    ("v0_pu", "napięcie odniesienia U₀ [pu]"),
+    ("f0_hz", "częstotliwość odniesienia f₀ [Hz]"),
+    ("u_min_pu", "napięcie przejścia na gałąź impedancyjną U_min [pu]"),
+    ("t_pomiaru_czestotliwosci_s", "stała czasowa pomiaru częstotliwości [s]"),
+)
+_POLA_OPCJONALNE_CHARAKTERYSTYKI: frozenset[str] = frozenset(
+    {"v0_pu", "f0_hz", "u_min_pu", "t_pomiaru_czestotliwosci_s"}
+)
+
+
 @dataclass(frozen=True)
 class WymaganiaOdbioru:
     """Ktore parametry opcjonalne charakterystyki odbioru SA UZYTE w jego rownaniach.
@@ -414,29 +436,18 @@ class CharakterystykaOdbioru:
     t_pomiaru_czestotliwosci_s: float | None
 
     def __post_init__(self) -> None:
-        liczby = {
-            "a_p": self.a_p,
-            "b_p": self.b_p,
-            "c_p": self.c_p,
-            "a_q": self.a_q,
-            "b_q": self.b_q,
-            "c_q": self.c_q,
-            "k_pf": self.k_pf,
-            "k_qf": self.k_qf,
-        }
-        for opcjonalne in ("v0_pu", "f0_hz", "u_min_pu", "t_pomiaru_czestotliwosci_s"):
-            wartosc = getattr(self, opcjonalne)
-            if wartosc is not None:
-                liczby[opcjonalne] = wartosc
-        for nazwa, wartosc in liczby.items():
+        for nazwa, opis in _OPISY_POL_CHARAKTERYSTYKI:
+            wartosc = getattr(self, nazwa)
+            if wartosc is None and nazwa in _POLA_OPCJONALNE_CHARAKTERYSTYKI:
+                continue
             if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
                 raise _odmowa_charakterystyki(
-                    f"Pole {nazwa} charakterystyki odbioru musi być liczbą, otrzymano {wartosc!r}.",
+                    f"Charakterystyka odbioru: {opis} musi być liczbą, otrzymano {wartosc!r}.",
                     pole=nazwa,
                 )
             if not np.isfinite(wartosc):
                 raise _odmowa_charakterystyki(
-                    f"Pole {nazwa} charakterystyki odbioru nie jest liczbą skończoną ({wartosc}).",
+                    f"Charakterystyka odbioru: {opis} nie jest liczbą skończoną ({wartosc}).",
                     pole=nazwa,
                 )
         for os, udzialy in (
@@ -532,10 +543,13 @@ class OdbiorDynamiki:
     charakterystyka: CharakterystykaOdbioru
 
     def __post_init__(self) -> None:
-        for nazwa, wartosc in (("p_pu", self.p_pu), ("q_pu", self.q_pu)):
+        for nazwa, opis, wartosc in (
+            ("p_pu", "czynna P0", self.p_pu),
+            ("q_pu", "bierna Q0", self.q_pu),
+        ):
             if not np.isfinite(wartosc):
                 raise _odmowa_charakterystyki(
-                    f"Moc bazowa {nazwa} odbioru {self.ident!r} nie jest liczbą skończoną "
+                    f"Moc bazowa {opis} odbioru {self.ident!r} nie jest liczbą skończoną "
                     f"({wartosc}).",
                     odbior=self.ident,
                     pole=nazwa,
@@ -566,9 +580,9 @@ class PunktPracy:
         # (karta SKONCZONOSC-CHWILI-ZERO): straznik skonczonosci biegu dziala od pierwszego
         # kroku, a NaN w napieciu wezla bez urzadzenia przeszedlby porownanie bramki
         # rownowagi z `eps_init`. Odmowa Z ADRESEM przy konstrukcji kontraktu.
-        for kontekst, wartosci in (
-            ("napiecia_punktu_pracy", self.napiecia_pu),
-            ("moce_zrodel_punktu_pracy", self.moce_zrodel_pu),
+        for kontekst, opis_kontekstu, wartosci in (
+            ("napiecia_punktu_pracy", "napięcia węzłów", self.napiecia_pu),
+            ("moce_zrodel_punktu_pracy", "moce źródeł", self.moce_zrodel_pu),
         ):
             zle = tuple(
                 ident for ident, wartosc in wartosci.items() if not np.isfinite(complex(wartosc))
@@ -577,7 +591,7 @@ class PunktPracy:
                 opis = ", ".join(f"{ident}={complex(wartosci[ident])}" for ident in zle)
                 raise OdmowaDynamiki(
                     KOD_WARTOSC_NIESKONCZONA,
-                    f"Wartość nieskończona w punkcie pracy rozpływu ({kontekst}): {opis}",
+                    f"Wartość nieskończona w punkcie pracy rozpływu ({opis_kontekstu}): {opis}",
                     kontekst=kontekst,
                     t_s=0.0,
                     adresy=zle,
@@ -922,7 +936,8 @@ class NastawySolvera:
         if not (self.dt_min_s <= self.dt_s <= self.dt_max_s):
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"dt_s={self.dt_s} poza granicami [{self.dt_min_s}, {self.dt_max_s}]",
+                f"Nastawa `dt_s` = {self.dt_s} s leży poza granicami od `dt_min_s` = "
+                f"{self.dt_min_s} s do `dt_max_s` = {self.dt_max_s} s.",
                 dt_s=self.dt_s,
                 dt_min_s=self.dt_min_s,
                 dt_max_s=self.dt_max_s,
@@ -953,7 +968,8 @@ class NastawySolvera:
         if self.krok_wyjscia_s > self.horyzont_s:
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"krok_wyjscia_s={self.krok_wyjscia_s} > horyzont_s={self.horyzont_s}",
+                f"Nastawa `krok_wyjscia_s` = {self.krok_wyjscia_s} s jest większa niż "
+                f"`horyzont_s` = {self.horyzont_s} s.",
                 krok_wyjscia_s=self.krok_wyjscia_s,
                 horyzont_s=self.horyzont_s,
             )
@@ -963,9 +979,9 @@ class NastawySolvera:
         ):
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                "tolerancja_lokalizacji_zdarzen_s="
-                f"{self.tolerancja_lokalizacji_zdarzen_s} musi być dodatnia (albo None dla "
-                "biegu bez dozorow)",
+                "Nastawa `tolerancja_lokalizacji_zdarzen_s` = "
+                f"{self.tolerancja_lokalizacji_zdarzen_s} s musi być dodatnia (albo pusta dla "
+                "biegu bez dozorów i detektorów).",
                 pole="tolerancja_lokalizacji_zdarzen_s",
                 wartosc=self.tolerancja_lokalizacji_zdarzen_s,
             )

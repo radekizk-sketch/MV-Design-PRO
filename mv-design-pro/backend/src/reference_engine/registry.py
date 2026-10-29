@@ -69,18 +69,21 @@ def _load_packs() -> dict[str, ReferencePack]:
         pack = ReferencePack.model_validate(data)
         if pack.pack_id != pack_file.parent.name:
             raise ValueError(
-                f"Pack id mismatch: katalog '{pack_file.parent.name}' "
-                f"niesie pack_id '{pack.pack_id}' — nazwy muszą być zgodne."
+                f"Niezgodny identyfikator pakietu referencyjnego: katalog "
+                f"„{pack_file.parent.name}” niesie identyfikator „{pack.pack_id}” — nazwy "
+                "muszą być zgodne."
             )
         if pack.pack_id in packs:
-            raise ValueError(f"Duplicate pack_id: {pack.pack_id}")
+            raise ValueError(f"Powtórzony identyfikator pakietu referencyjnego: {pack.pack_id}")
         packs[pack.pack_id] = pack
 
     # Spójność krzyżowa z katalogiem rodzin (jedno źródło danych rodziny).
     for pack in packs.values():
         if pack.kind == "manufacturer":
             if not pack.switchgear_family_ref:
-                raise ValueError(f"Pakiet producencki '{pack.pack_id}' bez switchgear_family_ref.")
+                raise ValueError(
+                    f"Pakiet producencki „{pack.pack_id}” nie wskazuje rodziny rozdzielnicy."
+                )
             if pack.switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
                 raise ValueError(
                     f"Pakiet '{pack.pack_id}' wskazuje nieistniejącą rodzinę "
@@ -122,7 +125,9 @@ def _load_packs() -> dict[str, ReferencePack]:
     profiles = packs[FIELD_PROFILE_PACK_ID].field_profiles
     profile_ids = [p.profile_id for p in profiles]
     if len(profile_ids) != len(set(profile_ids)):
-        raise ValueError(f"Zduplikowane profile_id w pakiecie {FIELD_PROFILE_PACK_ID}.")
+        raise ValueError(
+            f"Powtórzony identyfikator profilu pola w pakiecie {FIELD_PROFILE_PACK_ID}."
+        )
     return packs
 
 

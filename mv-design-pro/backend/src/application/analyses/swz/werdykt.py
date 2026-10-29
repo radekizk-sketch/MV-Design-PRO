@@ -266,10 +266,13 @@ def ocen_swz(
             Tab. 41.1 (``pasmo_dla_u0``).
     """
     if ik1_min_a < 0:
-        raise ValueError(f"ik1_min_a musi być ≥ 0, otrzymano {ik1_min_a}.")
+        raise ValueError(
+            f"Minimalny prąd zwarcia jednofazowego Ik1min musi być ≥ 0, otrzymano {ik1_min_a:g} A."
+        )
     if rodzaj_obwodu not in (None, "odbiorczy", "rozdzielczy"):
         raise ValueError(
-            f"rodzaj_obwodu musi być 'odbiorczy'/'rozdzielczy'/None, otrzymano {rodzaj_obwodu!r}."
+            "Rodzaj obwodu musi być odbiorczy, rozdzielczy albo nieokreślony "
+            "(wtedy wynika z prądu znamionowego aparatu)."
         )
 
     trace: list[dict[str, Any]] = []
@@ -334,8 +337,7 @@ def ocen_swz(
                     przyczyna_pl=(
                         f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
                         "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
-                        "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
-                        "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
+                        "In>16 A wg IEC 60269-1 i nie mają podwójnej weryfikacji źródłowej). "
                         "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
                     ),
                     ik1_min_a=ik1_min_a,

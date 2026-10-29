@@ -8,10 +8,10 @@ Production path:
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from api.odmowa_http import OdmowaHttpError
+from api.parsowanie_uuid import parsuj_uuid
 from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
 from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
@@ -120,16 +120,6 @@ class ResultSetResponse(BaseModel):
     deterministic_signature: str
 
 
-def _parse_uuid(value: str, field_name: str = "id") -> UUID:
-    try:
-        return UUID(value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi być poprawnym UUID",
-        ) from exc
-
-
 def _parse_analysis_type(value: str) -> ExecutionAnalysisType:
     try:
         return ExecutionAnalysisType(value)
@@ -168,11 +158,9 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "Analiza PROTECTION wymaga osobnego endpoint-u "
-                "POST /api/projects/{project_id}/protection-runs "
-                "(wymaga sc_run_id zakończonego biegu zwarciowego 3F albo 2F i "
-                "protection_case_id przypadku, którego model niesie nastawy zabezpieczeń). "
-                "Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
+                "Ocena zabezpieczeń ma osobne polecenie uruchomienia (ścieżka "
+                "…/protection-runs projektu): wymaga zakończonego biegu zwarciowego 3F albo 2F "
+                "i przypadku obliczeniowego, którego model niesie nastawy zabezpieczeń."
             ),
         )
     raise HTTPException(
@@ -201,7 +189,7 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
     uow_factory = getattr(request.app.state, "uow_factory", None)
     if uow_factory is None:
         return None
-    parsed_case_id = _parse_uuid(case_id, "case_id")
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
     with uow_factory() as uow:
         study_case = uow.cases.get_study_case(parsed_case_id)
         if study_case is not None:
@@ -217,7 +205,7 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
 def create_run(
     case_id: str, klucz: KluczTwin, request: CreateRunRequest, http_request: Request
 ) -> dict[str, Any]:
-    _parse_uuid(case_id, "case_id")
+    parsuj_uuid(case_id, "case_id")
     analysis_type = _parse_analysis_type(request.analysis_type)
 
     # Karta AB-P1: scenariusz NAZWANY (np. harmonogram zdarzeń biegu `dynamika_rms`)
@@ -249,7 +237,7 @@ def create_run(
     response_model=RunListResponse,
 )
 def list_runs(case_id: str) -> dict[str, Any]:
-    _parse_uuid(case_id, "case_id")
+    parsuj_uuid(case_id, "case_id")
     runs = list_canonical_runs_for_case(case_id)
     return {
         "runs": [run.to_execution_dict() for run in runs],
@@ -278,7 +266,7 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
     # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
     # budował własne połączenie z `DATABASE_URL` (inna baza niż `app.state`).
     # (Komentarz, nie docstring: opis operacji jest częścią snapshotu OpenAPI.)
-    parsed_run_id = _parse_uuid(run_id, "run_id")
+    parsed_run_id = parsuj_uuid(run_id, "run_id")
 
     try:
         run = wykonawca_biegow.zlec_bieg(
@@ -305,7 +293,7 @@ def cancel_run(run_id: str) -> dict[str, Any]:
     # przerwania wykonawcy (bieg czasowy: po każdym kroku całkowania; zwarcie: między
     # punktami zwarcia) — odpowiedź niesie stan bieżący, klient odpytuje do CANCELLED.
     # Bieg zakończony albo w toku bez punktów przerwania → 409 z nazwanym powodem.
-    parsed_run_id = _parse_uuid(run_id, "run_id")
+    parsed_run_id = parsuj_uuid(run_id, "run_id")
     try:
         run = wykonawca_biegow.anuluj_bieg(parsed_run_id)
     except BiegNieDoAnulowaniaError as exc:
@@ -320,7 +308,7 @@ def cancel_run(run_id: str) -> dict[str, Any]:
     response_model=RunResponse,
 )
 def get_run(run_id: str) -> dict[str, Any]:
-    parsed_run_id = _parse_uuid(run_id, "run_id")
+    parsed_run_id = parsuj_uuid(run_id, "run_id")
     run = get_canonical_run(parsed_run_id)
     if run is None:
         raise HTTPException(
@@ -335,7 +323,7 @@ def get_run(run_id: str) -> dict[str, Any]:
     response_model=ResultSetResponse,
 )
 def get_run_results(run_id: str) -> dict[str, Any]:
-    parsed_run_id = _parse_uuid(run_id, "run_id")
+    parsed_run_id = parsuj_uuid(run_id, "run_id")
     run = get_canonical_run(parsed_run_id)
     if run is None:
         raise HTTPException(

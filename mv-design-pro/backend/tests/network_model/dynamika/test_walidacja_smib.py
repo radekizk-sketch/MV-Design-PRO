@@ -92,7 +92,7 @@ def test_wyrocznia_odmawia_ukladu_z_odbiorem_stalej_mocy() -> None:
     stan_szyny = uklad.szyna.stan_poczatkowy(
         uklad.punkt_pracy.napiecia_pu["SYS"], uklad.punkt_pracy.moce_zrodel_pu["SYS1"]
     )
-    with pytest.raises(UkladNieprzystajeDoWyroczni, match="stalych admitancjach"):
+    with pytest.raises(UkladNieprzystajeDoWyroczni, match="stałych admitancjach"):
         charakterystyka_mocy(
             model, uklad.odbiory, uklad.maszyna, uklad.szyna, stan_maszyny, stan_szyny
         )

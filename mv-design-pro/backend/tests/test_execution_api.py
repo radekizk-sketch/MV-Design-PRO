@@ -215,10 +215,14 @@ class TestCreateRunEndpoint:
         )
         assert response.status_code == 400
         detail = response.json()["detail"]
+        # Wskazanie właściwej ścieżki i jej warunków słowami projektanta — bez kluczy
+        # parametrów (`sc_run_id`, `protection_case_id`) i bez odsyłacza do rejestru
+        # konfliktów dokumentacji (klasa surowych kluczy w komunikatach).
         assert "protection-runs" in detail
-        assert "sc_run_id" in detail
-        assert "protection_case_id" in detail
-        assert "V12K-025" in detail
+        assert "zakończonego biegu zwarciowego 3F albo 2F" in detail
+        assert "nastawy zabezpieczeń" in detail
+        for zakazane in ("sc_run_id", "protection_case_id", "V12K-025", "REJESTR"):
+            assert zakazane not in detail
 
     def test_create_run_without_canonical_enm_snapshot_is_rejected(self, client):
         """Przypadek ISTNIEJACY w bazie, ale BEZ zasianego modelu ENM — 409.

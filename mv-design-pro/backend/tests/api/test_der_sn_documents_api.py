@@ -382,7 +382,9 @@ def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) ->
     assert len(nieocenione) == 1
     assert nieocenione[0]["status"] == "WARN"
     assert nieocenione[0]["code"] == "der_sn.d2.nieoceniono"
-    assert "cross_section_mm2" in nieocenione[0]["message_pl"]
+    # Brakujące pole nazwane słowami z mapy pól (karta klasy surowych kluczy), nie kluczem.
+    assert "„Przekrój”" in nieocenione[0]["message_pl"], nieocenione[0]["message_pl"]
+    assert "cross_section_mm2" not in nieocenione[0]["message_pl"]
 
 
 @pytest.mark.parametrize("typ", [AttributeError, ValueError])

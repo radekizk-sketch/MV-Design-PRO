@@ -92,6 +92,11 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "control_mode": "Tryb regulacji mocy biernej",  # zrodlo-oze/strings.ts regulacja
     "add_nn_load:cos_phi": "Współczynnik mocy cosφ",  # odbior/strings.ts cosPhi
     "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
+    "ct_arrangement": "Układ przekładników prądowych",  # przekładnik CT (bez pola kreatora)
+    "ct_cores": "Liczba rdzeni przekładnika prądowego",  # przekładnik CT (bez pola kreatora)
+    "vt_arrangement": "Układ połączeń przekładników napięciowych",  # przekładnik VT (bez pola kreatora)
+    "vt_mounting": "Miejsce montażu przekładnika napięciowego",  # przekładnik VT (bez pola kreatora)
+    "vt_uzwojenie": "Uzwojenie przekładnika napięciowego",  # przekładnik VT (etykieta edytora obwodu wtórnego pola)
     "data_umowy_przylaczeniowej": "Data umowy przyłączeniowej (wersje warstw profilu)",  # ui2/oze/ncrfg/strings.ts dataUmowy
     "deklaracje_modulu": "Deklaracje modułu (testy T05, T10–T13, T16–T20)",  # ui2/oze/ncrfg/strings.ts deklaracjeTytul
     "der_topology.block_transformer:catalog_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts doborPropTr (krok Dobór toru SN)
@@ -183,6 +188,18 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "screen_bonding": "Uziemienie ekranu kabla",  # magistrala/strings.ts ekranUziemienie
     "sk3_min_mva": "Sk″min",  # zrodlo/strings.ts sk3Min
     "sn_mva": "Moc znamionowa",  # transformator/strings.ts paramMoc
+    "cross_section_mm2": "Przekrój",  # odcinek-nn/strings.ts paramPrzekroj
+    "voltage_hv_kv": "Napięcie GN",  # ui/property-grid/field-definitions.ts voltage_hv_kv
+    "voltage_lv_kv": "Napięcie DN",  # ui/property-grid/field-definitions.ts voltage_lv_kv
+    "tap_min": "Zaczep min.",  # transformator/strings.ts tapMin
+    "tap_max": "Zaczep maks.",  # transformator/strings.ts tapMax
+    "tap_step_percent": "Krok zaczepu",  # transformator/strings.ts tapStep
+    "number_of_cores": "Liczba żył",  # odcinek-nn/strings.ts paramLiczbaZyl
+    # Pola modelu zastanego (migracja legacy) bez własnej etykiety formularza ENM: słowa
+    # inspektora węzła i odbioru (``ui/property-grid/field-definitions.ts``).
+    "base_kv": "Napięcie znamionowe",
+    "p_mw": "Moc czynna P",
+    "q_mvar": "Moc bierna Q",
     "source_name": "Nazwa GPZ",  # zrodlo/strings.ts nazwa
     "source_technology": "Technologia",  # zrodlo-oze/strings.ts technologia
     "split_at_m": "Miejsce podziału [m od początku odcinka]",  # operacja podziału odcinka nN (bez kreatora)
@@ -282,6 +299,18 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "v126_silnik:max_torque_pu": "Moment maksymalny",  # ui2/wyniki/akademickie/parametry.ts max_torque_pu
     "v126_silnik:critical_slip": "Poślizg krytyczny",  # ui2/wyniki/akademickie/parametry.ts critical_slip
     "v126_silnik:load_start_torque_pu": "Moment obciążenia przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts load_start_torque_pu
+    # Parametry żądań API wskazujące obiekty studium (ścieżka albo treść żądania) — nazwy
+    # w odmowie złego zapisu identyfikatora (`api/parsowanie_uuid.py`) i w odmowach
+    # wskazanego biegu (`api/enm.py`).
+    "project_id": "Identyfikator projektu",
+    "case_id": "Identyfikator przypadku obliczeniowego",
+    "case_a_id": "Identyfikator przypadku A porównania",
+    "case_b_id": "Identyfikator przypadku B porównania",
+    "scenario_id": "Identyfikator scenariusza zwarciowego",
+    "batch_id": "Identyfikator serii biegów",
+    "run_id": "Identyfikator biegu obliczeniowego",
+    "load_flow_run_id": "Wskazany bieg rozpływu mocy",
+    "short_circuit_run_id": "Wskazany bieg zwarciowy",
 }
 
 
@@ -356,7 +385,11 @@ _NAZWY_GRANIC: dict[str, str] = {"max_length": "najwiecej", "min_length": "najmn
 _IDENTYFIKATOR_REGULY = re.compile(r"\[[a-z_]+\.[a-z_]+\]\s*")
 
 
-def opis_pozycji_walidacji(pozycja: Mapping[str, Any], operacja: str | None = None) -> str:
+def opis_pozycji_walidacji(
+    pozycja: Mapping[str, Any],
+    operacja: str | None = None,
+    nazwy_pol: Mapping[str, str] | None = None,
+) -> str:
     """Jedna pozycja błędu walidacji kształtu danych po polsku (karta #142).
 
     ``pozycja`` to wpis ``ValidationError.errors()`` (pydantic) albo
@@ -366,6 +399,11 @@ def opis_pozycji_walidacji(pozycja: Mapping[str, Any], operacja: str | None = No
     trafiają do treści — pole spoza słownika to „wartość". Błąd walidatora modelu
     (``value_error``) niesie już zdanie po polsku — idzie wprost, bez identyfikatora reguły.
     Jedno mapowanie dla każdej drogi, którą błąd walidacji dochodzi do odpowiedzi API.
+
+    ``nazwy_pol`` — etykiety pól kontraktu, który ma WŁASNY słownik formularza (scenariusz
+    dynamiki: ``enm.scenariusze.ETYKIETY_POL``, te same słowa co edytor harmonogramu);
+    przeszukiwane przed mapą pól ENM, żeby pole takiego kontraktu nie spadało do „wartość"
+    (bez nazwy) ani nie dostawało drugiej, równoległej nazwy w tej mapie.
     """
     kontekst = pozycja.get("ctx") or {}
     rodzaj = str(pozycja.get("type") or "")
@@ -377,8 +415,10 @@ def opis_pozycji_walidacji(pozycja: Mapping[str, Any], operacja: str | None = No
     nazwa = None
     if klucze:
         klucz = klucze[-1]
-        nazwa = NAZWY_POL_KONTRAKTU_PL.get(f"{operacja}:{klucz}") or (
-            NAZWY_POL_KONTRAKTU_PL.get(klucz)
+        nazwa = (
+            (nazwy_pol or {}).get(klucz)
+            or NAZWY_POL_KONTRAKTU_PL.get(f"{operacja}:{klucz}")
+            or NAZWY_POL_KONTRAKTU_PL.get(klucz)
         )
     szablon = _OPISY_BLEDOW_WALIDACJI.get(rodzaj, "ma niepoprawną wartość")
     granice = {
@@ -394,10 +434,14 @@ def opis_pozycji_walidacji(pozycja: Mapping[str, Any], operacja: str | None = No
     return f"„{nazwa}” {tresc}" if nazwa else f"wartość {tresc}"
 
 
-def opis_bledu_walidacji(blad: ValidationError, operacja: str | None = None) -> str:
+def opis_bledu_walidacji(
+    blad: ValidationError,
+    operacja: str | None = None,
+    nazwy_pol: Mapping[str, str] | None = None,
+) -> str:
     """Błąd walidacji kształtu danych (``pydantic.ValidationError``) po polsku (karta #142):
     pozycje ``opis_pozycji_walidacji`` złączone średnikiem, bez powtórzeń."""
-    opisy = [opis_pozycji_walidacji(pozycja, operacja) for pozycja in blad.errors()]
+    opisy = [opis_pozycji_walidacji(pozycja, operacja, nazwy_pol) for pozycja in blad.errors()]
     return "; ".join(dict.fromkeys(opisy))
 
 

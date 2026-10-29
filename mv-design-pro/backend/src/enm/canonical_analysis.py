@@ -1378,8 +1378,8 @@ def _wykonaj_analize_biegu(
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
-            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy (analysis_type='PF'); "
-            f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
+            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy; dla analizy "
+            f"{run.analysis_type!r} graf buduje wykonawca z migawki biegu."
         )
     if run.analysis_type == "PF":
         _execute_power_flow(run, graf, uow_factory=uow_factory)
@@ -1882,7 +1882,7 @@ def _bieg_rozplywu_punktu_pracy(run: CanonicalRun) -> PunktPracyRozplywu:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_BRAK,
             "Bieg dynamiki czasowej wymaga punktu pracy z rozpływu mocy: wskaż zakończony "
-            f"bieg rozpływu tej samej migawki w opcjach biegu (`{KLUCZ_BIEGU_ROZPLYWU}`). "
+            "bieg rozpływu tej samej migawki w opcjach biegu. "
             "Start od napięć znamionowych byłby wynikiem policzonym z danych, których nikt "
             "nie wyznaczył",
             elementy=(KLUCZ_BIEGU_ROZPLYWU,),
@@ -2081,7 +2081,7 @@ def build_dynamika_time_series(
     os_czasu_s, strona_probki, probki = wynik
     if strona_probki is None:
         raise BrakZasobuError(
-            f"Szeregi biegu {run.id} zapisano przed kontraktem resultset_dynamic_v2 (brak "
+            f"Szeregi biegu {run.id} zapisano przed obecnym kontraktem wyniku dynamiki (brak "
             "strony próbek) — przelicz bieg dynamiki, żeby odczytać przebieg"
         )
     if klucze_kanalow and not probki:
@@ -2384,7 +2384,7 @@ def rozszerzenia_audit2_dla_opcji(
     if not project_id_str or not station_id:
         raise OdmowaDanychError(
             "Opcje biegu wskazują konfigurację audytu 2 połową pary: potrzebne są OBA "
-            "`audit2_project_id` i `audit2_station_id`"
+            "wskazania — projektu i stacji, której konfiguracja dotyczy"
         )
     try:
         project_uuid = UUID(str(project_id_str))

@@ -888,7 +888,7 @@ class SilnikDynamiki:
             raise OdmowaDynamiki(
                 KOD_INICJALIZACJA_NIEZBIEZNA,
                 f"{przedmiot} nie jest równowagą układu: "
-                f"||f|| = {norma_f}, ||g|| = {norma_g}, eps_init = {nastawy.eps_init}",
+                f"||f|| = {norma_f}, ||g|| = {norma_g}, `eps_init` = {nastawy.eps_init}",
                 residuum_f=norma_f,
                 residuum_g=norma_g,
                 eps_init=nastawy.eps_init,
@@ -1680,8 +1680,8 @@ class SilnikDynamiki:
         if tolerancja is None:
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"Harmonogram niesie {len(dozory)} dozorow (zdarzeń warunkowych), a nastawy "
-                "nie podaja tolerancji lokalizacji zdarzeń — chwila przekroczenia nie miałaby "
+                f"Harmonogram niesie {len(dozory)} dozorów (zdarzeń warunkowych), a nastawy "
+                "nie podają tolerancji lokalizacji zdarzeń — chwila przekroczenia nie miałaby "
                 "zadeklarowanej dokładności",
                 pole="tolerancja_lokalizacji_zdarzen_s",
                 dozory=tuple(dozor.ident for dozor in dozory),
@@ -2767,7 +2767,7 @@ def jednostka_stanu(nazwa: str) -> str:
     if nazwa.endswith("_s"):
         return "s"
     raise AssertionError(
-        f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanow wymaga "
+        f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanów wymaga "
         "sufiksu jednostki (_rad, _pu, _pu_na_s, _s)."
     )
 

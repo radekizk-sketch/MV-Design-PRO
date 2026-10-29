@@ -2355,7 +2355,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 596 -> 599 (+3 `enm/bateria_kondensatorow.py`,
         # `network_model/core/bateria_kondensatorow.py`, `network_model/pochodne/
         # bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "Przeskanowano 599 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta klasy surowych kluczy pol (2026-10-29): 599 -> 600 (+1 `api/parsowanie_uuid.py` —
+        # piec kopii `_parse_uuid` zlaczonych w jedno); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "Przeskanowano 600 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2776,7 +2778,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`scenariusze_laczeniowe.py`) + 1 programu (`odmowa_http.py`) = 65. POMIAR guardem.
         # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 65 − 1 (`switchgear_config.py`)
         # = 64. POMIAR guardem na drzewie scalonym.
-        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta klasy surowych kluczy pol (2026-10-29): 64 -> 65 (+1 `api/parsowanie_uuid.py`);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  api: pliki_skanowane=65, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

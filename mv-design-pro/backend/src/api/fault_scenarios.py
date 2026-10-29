@@ -34,6 +34,7 @@ from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from api.odmowa_http import OdmowaHttpError
+from api.parsowanie_uuid import parsuj_uuid
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -287,17 +288,6 @@ class ErrorResponse(BaseModel):
 # =============================================================================
 
 
-def _parse_uuid(value: str, field_name: str = "id") -> UUID:
-    """Parse and validate a UUID string."""
-    try:
-        return UUID(value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi być poprawnym UUID",
-        ) from exc
-
-
 def _parse_fault_type(value: str) -> str:
     """Validate a fault type string."""
     try:
@@ -346,7 +336,7 @@ def create_fault_scenario(
     pozycji, tryb IMPEDANCE wymaga dopuszczalnej Z_f. Impedancje Z0/Z2 pochodzą z modelu sieci
     (brama gotowości ENM w kwalifikowalności i przy tworzeniu biegu), nie ze scenariusza.
     """
-    parsed_case_id = _parse_uuid(case_id, "case_id")
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
     _parse_fault_type(request.fault_type)
     if request.fault_mode is not None:
         _parse_fault_mode(request.fault_mode)
@@ -399,7 +389,7 @@ def list_fault_scenarios(case_id: str, http_request: Request) -> dict[str, Any]:
 
     Posortowane deterministycznie po (fault_type, element_ref).
     """
-    parsed_case_id = _parse_uuid(case_id, "case_id")
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
     klucz = klucz_twin_z_sciezki(case_id, http_request)
     service = get_fault_scenario_service()
 
@@ -418,7 +408,7 @@ def get_fault_scenario(scenario_id: str) -> dict[str, Any]:
     """
     Pobierz szczegóły scenariusza zwarcia.
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:
@@ -444,7 +434,7 @@ def update_fault_scenario(
 
     Waliduje invarianty po aktualizacji. Przelicza content_hash.
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     location_dict = None
@@ -508,7 +498,7 @@ def delete_fault_scenario(scenario_id: str) -> None:
     Blokada usunięcia jeśli scenariusz ma powiązane przebiegi (wyprowadzone
     z koperty biegu — karta C6-PERSIST).
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:
@@ -536,7 +526,7 @@ def get_scenario_eligibility(scenario_id: str) -> dict[str, Any]:
 
     Zwraca status eligibility z listą problemów i sugestii naprawczych (FixActions).
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:
@@ -560,7 +550,7 @@ def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
     Zwraca payload overlay z elementami, legendą i etykietą PL.
     Deterministyczny: ten sam scenario_id -> identyczny payload.
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:
@@ -588,7 +578,7 @@ def create_run_from_scenario(
     Tworzy Run w statusie PENDING powiązany z scenariuszem.
     Sprawdza eligibility przed utworzeniem — blokada jeśli INELIGIBLE.
     """
-    parsed_id = _parse_uuid(scenario_id, "scenario_id")
+    parsed_id = parsuj_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:

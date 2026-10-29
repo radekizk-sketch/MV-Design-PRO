@@ -249,8 +249,8 @@ def _validate_input(data: FaultLoopInput) -> None:
             extra={"fault_node_id": data.fault_node_id, "u_nom_v": data.u_nom_v},
         )
         raise OdmowaDanychError(
-            f"u_nom_v MUSI być > 0 V, otrzymano {data.u_nom_v}. "
-            "Sprawdź wejście — brak nominal voltage z NetworkGraph."
+            f"Napięcie znamionowe sieci w punkcie zwarcia musi być > 0 V, otrzymano "
+            f"{data.u_nom_v} V. Sprawdź napięcie znamionowe węzła w modelu sieci."
         )
     if data.network_type in (NetworkType.TT, NetworkType.IT):
         if data.dane_tt_it is None:
@@ -271,10 +271,10 @@ def _validate_input(data: FaultLoopInput) -> None:
             f"Układ {data.network_type.value}: dane pętli TT/IT nie mają zastosowania do pętli "
             "L-PE/L-PEN układu TN — usuń je z wejścia albo popraw układ sieci."
         )
-    for label, comp in (
-        ("phase_conductor", data.phase_conductor),
-        ("return_conductor", data.return_conductor),
-        ("transformer_impedance", data.transformer_impedance),
+    for label, opis, comp in (
+        ("phase_conductor", "przewód fazowy", data.phase_conductor),
+        ("return_conductor", "przewód powrotny", data.return_conductor),
+        ("transformer_impedance", "impedancja transformatora", data.transformer_impedance),
     ):
         if comp.r_ohm < 0 or comp.x_ohm < 0:
             logger.warning(
@@ -287,7 +287,7 @@ def _validate_input(data: FaultLoopInput) -> None:
                 },
             )
             raise OdmowaDanychError(
-                f"Składowa '{label}' ma ujemną R lub X "
+                f"Składowa pętli zwarcia ({opis}) ma ujemną R lub X "
                 f"(R={comp.r_ohm}, X={comp.x_ohm}). "
                 "Impedancje fizyczne MUSZĄ być nieujemne."
             )

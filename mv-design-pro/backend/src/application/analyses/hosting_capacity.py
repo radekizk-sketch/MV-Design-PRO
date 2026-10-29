@@ -343,7 +343,7 @@ def build_hosting_capacity_view(
         if not candidates:
             raise OdmowaDanychError(
                 "Brak węzłów-kandydatów: w modelu nie ma źródeł OZE (generatorów); "
-                "wskaż węzeł jawnie parametrem candidate_bus_refs."
+                "wskaż jawnie węzły-kandydatów analizy."
             )
     else:
         candidates = sorted(set(candidate_bus_refs))

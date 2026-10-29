@@ -440,13 +440,13 @@
   ],
   "spadek_odcinka": {
     "assumptions": [
-      "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-      "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
+      "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+      "sinφ = √(1 − cos²φ); znak składowej biernej z charakteru Q.",
       "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-      "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-      "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
+      "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnościowy).",
+      "ΔU > 0 = spadek napięcia; ΔU < 0 = WZROST (typowy przy generacji).",
       "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-      "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe)."
+      "ΔU% = ΔU / U_linii · 100 (U_linii międzyfazowe)."
     ],
     "delta_u_pct": 0.321524358545,
     "delta_u_reactive_v": 12.9253165532,
