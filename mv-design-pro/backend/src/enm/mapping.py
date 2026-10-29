@@ -112,6 +112,7 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .skladowa_zerowa_galezi import skladowa_zerowa_galezi
 from .slownik_komunikatow import opis_elementu, opis_obiektu
 from .tolerancja_nn import WyspaNn, wyspy_wezlow_nn
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
@@ -592,9 +593,11 @@ def _assemble_zero_sequence_y0(
     nazwa_szyny = {bus.ref_id: nazwa_elementu(bus, "buses") for bus in enm.buses}
 
     boczniki: dict[int, set[str]] = {}
-    # Gałęzie w ruchu BEZ danych składowej zerowej (R′0/X′0): nie wchodzą do Y0 (zero
-    # fabrykacji), ale węzeł, który odcięły od uziemienia, dostaje przyczynę ``brak_danych``.
+    # Gałęzie w ruchu BEZ danych składowej zerowej (R′0/X′0) i bez podstawy wartości roboczej
+    # (``enm.skladowa_zerowa_galezi.brak_podstawy_pl``): nie wchodzą do Y0 (zero fabrykacji),
+    # ale węzeł, który odcięły od uziemienia, dostaje przyczynę ``brak_danych``.
     galezie_bez_z0: list[tuple[str, str, str]] = []
+    powody_bez_z0: dict[str, str] = {}
     # Źródła spoza pasma SN (sieć 110 kV albo nN za granicą modelu) BEZ danych Z0 i bez opisu
     # „izolowany”: impedancja zerowa sieci zasilającej nieznana — nie wchodzi do Y0 (zero
     # fabrykacji), a każdy węzeł jej składowej sieci zerowej dostaje przyczynę
@@ -606,9 +609,14 @@ def _assemble_zero_sequence_y0(
             continue
         if branch.status != "closed":
             continue
-        if branch.r0_ohm_per_km is None or branch.x0_ohm_per_km is None:
+        # R′0/X′0 z modelu albo wartość robocza (zasada nr 4) — ten sam predykat co bramki
+        # gotowości i dane przyjęte (``enm.skladowa_zerowa_galezi``).
+        skladowa = skladowa_zerowa_galezi(branch, bus_voltage.get(branch.from_bus_ref))
+        if skladowa.r0_ohm_per_km is None or skladowa.x0_ohm_per_km is None:
             galezie_bez_z0.append((branch.ref_id, branch.from_bus_ref, branch.to_bus_ref))
+            powody_bez_z0[branch.ref_id] = skladowa.brak_podstawy_pl or ""
             continue
+        r0_ohm_per_km, x0_ohm_per_km = skladowa.r0_ohm_per_km, skladowa.x0_ohm_per_km
 
         from_id = ref_to_node_id.get(branch.from_bus_ref)
         to_id = ref_to_node_id.get(branch.to_bus_ref)
@@ -619,7 +627,7 @@ def _assemble_zero_sequence_y0(
             continue
         from_idx = node_index[from_id]
         to_idx = node_index[to_id]
-        z0_ohm = complex(branch.r0_ohm_per_km, branch.x0_ohm_per_km) * branch.length_km
+        z0_ohm = complex(r0_ohm_per_km, x0_ohm_per_km) * branch.length_km
         if z0_ohm == 0 and from_idx != to_idx:
             raise OdmowaDanychError(
                 _odmowa_zerowej_impedancji_z0(f"Gałąź {nazwa_elementu(branch, 'branches')}")
@@ -638,8 +646,8 @@ def _assemble_zero_sequence_y0(
             formula_latex=r"Z_{0,line} = (r_0 + jx_0)\cdot \ell",
             inputs={
                 "ref_id": branch.ref_id,
-                "r0_ohm_per_km": branch.r0_ohm_per_km,
-                "x0_ohm_per_km": branch.x0_ohm_per_km,
+                "r0_ohm_per_km": r0_ohm_per_km,
+                "x0_ohm_per_km": x0_ohm_per_km,
                 "length_km": branch.length_km,
             },
             substitution=(
@@ -647,6 +655,16 @@ def _assemble_zero_sequence_y0(
                 f"(szereg {nazwa_szyny[branch.from_bus_ref]}↔{nazwa_szyny[branch.to_bus_ref]})"
             ),
             result={"z0_ohm": z0_ohm},
+            notes=(
+                "Wartość robocza (zasada nr 4): "
+                + "; ".join(
+                    f"{etykieta} = {wartosc:.6g} Ω/km — {zalozenie}"
+                    for _, etykieta, zalozenie, wartosc in skladowa.robocze
+                )
+                + "."
+                if skladowa.robocze
+                else None
+            ),
         )
 
         # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
@@ -850,6 +868,11 @@ def _assemble_zero_sequence_y0(
     # I0. Stamp: SERIES_THROUGH → gałąź HV↔LV; HV/LV_SHUNT_GROUND → bocznik do
     # ziemi na danym zacisku; OPEN → brak wkładu (droga zablokowana, np. trójkąt).
     transformer_trace: list[dict] = []
+    # Transformatory bez grupy połączeń (W004): połączenie uzwojeń w składowej zerowej
+    # nieznane — nie wchodzą do Y0 (zero zgadywania, ``build_transformer_zero_seq_model``),
+    # a węzeł bez innego uziemienia po którejkolwiek stronie dostaje ``brak_danych``
+    # (nie ``brak_drogi``: braku drogi nie da się stwierdzić bez grupy połączeń).
+    transformatory_bez_grupy: list[tuple[str, str, str]] = []
     for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
         hv_id = ref_to_node_id.get(trafo.hv_bus_ref)
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
@@ -862,6 +885,8 @@ def _assemble_zero_sequence_y0(
             continue
         model = build_transformer_zero_seq_model(trafo)
         transformer_trace.extend(model.trace)
+        if not trafo.vector_group:
+            transformatory_bez_grupy.append((trafo.ref_id, trafo.hv_bus_ref, trafo.lv_bus_ref))
         if model.z0_pu is None or model.z0_pu == 0:
             continue
         y_pu = 1.0 / model.z0_pu
@@ -939,11 +964,14 @@ def _assemble_zero_sequence_y0(
         node_index=node_index,
         boczniki=boczniki,
         galezie_bez_z0=galezie_bez_z0,
+        powody_bez_z0=powody_bez_z0,
         zrodla_bez_z0=zrodla_bez_z0,
+        transformatory_bez_grupy=transformatory_bez_grupy,
         ref_to_node_id=ref_to_node_id,
         nazwy={
             **{b.ref_id: nazwa_elementu(b, "branches") for b in enm.branches},
             **{z.ref_id: nazwa_elementu(z, "sources") for z in enm.sources},
+            **{t.ref_id: nazwa_elementu(t, "transformers") for t in enm.transformers},
         },
     )
 
@@ -1017,7 +1045,9 @@ def _przyczyny_braku_zerowej(
     node_index: dict[str, int],
     boczniki: dict[int, set[str]],
     galezie_bez_z0: list[tuple[str, str, str]],
+    powody_bez_z0: dict[str, str],
     zrodla_bez_z0: list[tuple[str, str]],
+    transformatory_bez_grupy: list[tuple[str, str, str]],
     ref_to_node_id: dict[str, str],
     nazwy: dict[str, str],
 ) -> tuple[dict[str, BrakWynikuZerowego], tuple[int, ...]]:
@@ -1026,10 +1056,13 @@ def _przyczyny_braku_zerowej(
 
     Składowa spójna Y0 (elementy szeregowe) z bocznikiem rezystancyjnym (źródło, uzwojenie
     transformatora, zespół z rezystorem / AWSC załączoną / wprost) — liczona. Bez niego:
-    ``brak_danych``, gdy gałąź w ruchu bez R′0/X′0 łączy składową z inną (odcięcie brakiem
-    danych), albo gdy w składowej leży źródło spoza pasma SN bez Z0 (impedancja zerowa sieci
-    zasilającej nieznana — także przy innym boczniku, bo bez bocznika źródła Z0 węzła byłoby
-    zawyżone); ``poza_zakresem_iec60909``, gdy jedyną drogą są pojemności B0 i/lub dławik
+    ``brak_danych``, gdy gałąź w ruchu bez R′0/X′0 i bez podstawy wartości roboczej
+    (``enm.skladowa_zerowa_galezi``) łączy składową z inną (odcięcie brakiem
+    danych); ``brak_danych`` także przy innym boczniku, gdy składowa styka się
+    z transformatorem bez grupy połączeń (W004 — uzwojenie z uziemionym punktem neutralnym
+    możliwe, droga prądu zerowego nieoznaczalna) albo gdy w składowej leży źródło spoza pasma SN
+    bez Z0 (impedancja zerowa sieci zasilającej nieznana) — bez takiego bocznika Z0 węzła byłoby
+    zawyżone; ``poza_zakresem_iec60909``, gdy jedyną drogą są pojemności B0 i/lub dławik
     (sieć izolowana albo skompensowana); ``brak_drogi``, gdy składowa nie ma żadnego bocznika.
     Zwraca też indeksy węzłów składowych bez ŻADNEGO bocznika (blok osobliwy — kotwica).
     """
@@ -1055,6 +1088,12 @@ def _przyczyny_braku_zerowej(
             continue
         brakujace.setdefault(la, []).append(ref)
         brakujace.setdefault(lb, []).append(ref)
+    trafo_bez_grupy: dict[int, list[str]] = {}
+    for ref, a, b in transformatory_bez_grupy:
+        for szyna in (a, b):
+            wezel_trafo = ref_to_node_id.get(szyna)
+            if wezel_trafo in node_index:
+                trafo_bez_grupy.setdefault(int(etykiety[node_index[wezel_trafo]]), []).append(ref)
     zrodla_bez_danych: dict[int, list[str]] = {}
     for ref, szyna in zrodla_bez_z0:
         wezel_zrodla = ref_to_node_id.get(szyna)
@@ -1087,20 +1126,48 @@ def _przyczyny_braku_zerowej(
                 elementy=elementy,
             )
             continue
-        if _BOCZNIK_REZYSTANCYJNY in zbior:
+        uziemiona = _BOCZNIK_REZYSTANCYJNY in zbior
+        # Transformator bez grupy połączeń — jak źródło bez Z0: odmowa także w składowej
+        # uziemionej innym bocznikiem (uzwojenie z uziemionym punktem neutralnym dołożyłoby
+        # bocznik równoległy, więc Z0 węzła bez niego byłoby zawyżone, a prąd zaniżony).
+        if uziemiona and skladowa not in trafo_bez_grupy:
             continue
-        if skladowa in brakujace:
+        if skladowa in brakujace or skladowa in trafo_bez_grupy:
             przyczyna = "brak_danych"
-            elementy = tuple(sorted(set(brakujace[skladowa])))
-            nazwy_galezi = ", ".join(nazwy[ref] for ref in elementy)
-            wyjasnienie = WyjasnienieWerdyktu(
-                zdanie_pl=(
+            galezie = () if uziemiona else tuple(sorted(set(brakujace.get(skladowa, ()))))
+            transformatory = tuple(sorted(set(trafo_bez_grupy.get(skladowa, ()))))
+            elementy = tuple(sorted({*galezie, *transformatory}))
+            zdania: list[str] = []
+            przyczyny_pl: list[str] = []
+            czego_brakuje: list[str] = []
+            if galezie:
+                nazwy_galezi = ", ".join(nazwy[ref] for ref in galezie)
+                powody = "; ".join(f"{nazwy[ref]}: {powody_bez_z0[ref]}" for ref in galezie)
+                zdania.append(
                     "Węzeł odcięty od uziemienia punktu neutralnego brakiem danych składowej "
-                    f"zerowej gałęzi ({nazwy_galezi}): R′0/X′0 nieznane — wynik zwarcia "
-                    "doziemnego nieoznaczalny. Uzupełnij R′0 i X′0 gałęzi."
-                ),
-                przyczyna_pl="Dane składowej zerowej gałęzi w ruchu nieznane.",
-                czego_brakuje=(f"R′0 i X′0 gałęzi: {nazwy_galezi}",),
+                    f"zerowej gałęzi ({nazwy_galezi}): R′0/X′0 nieznane, a wartości roboczej "
+                    f"nie da się przyjąć ({powody}) — wynik zwarcia doziemnego nieoznaczalny. "
+                    "Uzupełnij R′0 i X′0 gałęzi."
+                )
+                przyczyny_pl.append(
+                    "Dane składowej zerowej gałęzi w ruchu nieznane i bez podstawy wartości "
+                    "roboczej."
+                )
+                czego_brakuje.append(f"R′0 i X′0 gałęzi: {nazwy_galezi}")
+            if transformatory:
+                nazwy_trafo = ", ".join(nazwy[ref] for ref in transformatory)
+                zdania.append(
+                    f"Transformator bez grupy połączeń ({nazwy_trafo}): połączenie uzwojeń "
+                    "w składowej zerowej nieznane (punkt neutralny uziemiony albo droga "
+                    "przerwana trójkątem) — wynik zwarcia doziemnego nieoznaczalny. "
+                    "Uzupełnij grupę połączeń transformatora."
+                )
+                przyczyny_pl.append("Grupa połączeń transformatora nieznana.")
+                czego_brakuje.append(f"grupa połączeń transformatora: {nazwy_trafo}")
+            wyjasnienie = WyjasnienieWerdyktu(
+                zdanie_pl=" ".join(zdania),
+                przyczyna_pl=" ".join(przyczyny_pl),
+                czego_brakuje=tuple(czego_brakuje),
             )
         elif zbior:
             przyczyna = "poza_zakresem_iec60909"

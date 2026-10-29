@@ -3307,15 +3307,20 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "grounding"},
     ),
-    # Brak składowej zerowej gałęzi (Z0): ten sam warunek, który walidator ENM zgłasza
-    # jako W001 (most `domain/readiness_bridge.py`). Do W5-D kanon nie miał tego kodu.
+    # Brak składowej zerowej gałęzi (Z0) bez podstawy wartości roboczej: ten sam warunek,
+    # który walidator ENM zgłasza jako W001 (most `domain/readiness_bridge.py`) — predykat
+    # `enm.skladowa_zerowa_galezi`. Odcinek bez R′0/X′0 z podstawą wartości roboczej (SN
+    # z dodatnimi R′1, X′1; kabel nN ze znaną żyłą powrotną PE/PEN) liczy się z wartością
+    # roboczą (kod `branch.z0_wartosc_robocza`, zasada nr 4) i tego kodu nie dostaje.
     "branch.zero_sequence_missing": ReadinessCodeSpec(
         code="branch.zero_sequence_missing",
         area=ReadinessArea.CATALOGS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ "
+            "Gałąź nie ma składowej zerowej (R0/X0), a wartości roboczej nie da się przyjąć "
+            "(SN: R′1 albo X′1 niedodatnie; nN: kabel bez danych żyły powrotnej PE/PEN albo "
+            "linia; WN albo napięcie szyny nieznane) — zwarcia doziemne i rozpływ "
             "niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
@@ -3325,16 +3330,18 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # R′0 = R′1 + R′ żyły powrotnej) — pozycja niesie mapę `wartosci_robocze`, bieg zwarcia
     # doziemnego i rozpływu niesymetrycznego niesie założenie tego kodu
     # (`enm.dane_przyjete_galezi.zalozenia_z0_galezi`), a werdykty — daną przyjętą ESTIMATED.
-    # Brak danej producenta NIE blokuje obliczeń.
+    # Ta sama reguła obejmuje odcinek MODELU bez R′0/X′0 (import, parametry ręczne —
+    # `enm.skladowa_zerowa_galezi`). Brak danej producenta NIE blokuje obliczeń.
     "branch.z0_wartosc_robocza": ReadinessCodeSpec(
         code="branch.z0_wartosc_robocza",
         area=ReadinessArea.CATALOGS,
         priority=3,
         level=ReadinessLevel.INFO,
         message_pl=(
-            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej "
-            "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
-            "i przelicz"
+            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, "
+            "X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; katalog bez danej "
+            "producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty "
+            "producenta albo z pomiaru w parametrach odcinka i przelicz"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
     ),

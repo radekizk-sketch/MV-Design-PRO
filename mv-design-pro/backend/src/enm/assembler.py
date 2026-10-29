@@ -72,6 +72,7 @@ from enm.nazwy_elementow import (
     zbuduj_indeks_nazw,
 )
 from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
@@ -1664,12 +1665,15 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
     # Z0 jest potrzebne WYŁĄCZNIE krawędziom z realnym I0 (droga odbioru faza–N do
     # punktu zamknięcia) — gałąź, którą I0 nie płynie, nie wnosi Z0 do równań.
     bez_z0: list[str] = []
+    napiecia = napiecia_szyn_kv(enm)
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
         if galaz.ref_id not in droga_zerowa.z_realnym_i0:
             continue
-        if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+        # R′0/X′0 z modelu albo wartość robocza (zasada nr 4) — ten sam predykat co sieć
+        # zerowa zwarć i założenia biegu (``enm.skladowa_zerowa_galezi``).
+        if not skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).znana:
             bez_z0.append(galaz.ref_id)
     transformatory_wysp = [
         trafo
@@ -1735,7 +1739,8 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
             OdmowaNiesymetrii(
                 KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                 tuple(bez_z0),
-                "gałęzie bez składowej zerowej R0/X0 (bez podstawiania Z0 = Z1)",
+                "gałęzie bez składowej zerowej R0/X0 i bez podstawy wartości roboczej (R′1 "
+                "albo X′1 nieznane albo niedodatnie; bez podstawiania Z0 = Z1)",
             )
         )
     if bez_grupy:
@@ -1964,6 +1969,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     base_mva, tolerance, max_iterations = _opcje_rozplywu_niesymetrycznego(options)
 
     galaz_enm = {_graph_id_from_ref(g.ref_id): g for g in enm.branches}
+    napiecia_galezi = napiecia_szyn_kv(enm)
     trafo_enm = {_graph_id_from_ref(t.ref_id): t for t in enm.transformers}
     napiecia_kv = {node_id: float(node.voltage_level) for node_id, node in graph.nodes.items()}
     tracer = WhiteBoxTracer()
@@ -2022,17 +2028,26 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 tory = liczba_torow(galaz)
                 z1_ohm = complex(branch.r_ohm_per_km, branch.x_ohm_per_km) * branch.length_km
                 z0_ohm: complex | None
+                skladowa_z0 = skladowa_zerowa_galezi(galaz, napiecia_galezi.get(galaz.from_bus_ref))
                 if galaz.ref_id in droga_zerowa.z_realnym_i0:
-                    if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+                    if skladowa_z0.r0_ohm_per_km is None or skladowa_z0.x0_ohm_per_km is None:
                         raise OdmowaWejsciaRozplywu(
                             KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                             READINESS_CODES[KOD_NIESYMETRIA_BRAK_Z0_GALEZI].message_pl,
                             elementy=(galaz.ref_id,),
                         )
                     z0_ohm = (
-                        complex(galaz.r0_ohm_per_km, galaz.x0_ohm_per_km) * galaz.length_km / tory
+                        complex(skladowa_z0.r0_ohm_per_km, skladowa_z0.x0_ohm_per_km)
+                        * galaz.length_km
+                        / tory
                     )
-                    zrodlo_z0_galezi = "R0, X0 gałęzi z modelu × długość ÷ liczba torów"
+                    zrodlo_z0_galezi = (
+                        "R0, X0 gałęzi (wartość robocza: "
+                        + "; ".join(zalozenie for _, _, zalozenie, _ in skladowa_z0.robocze)
+                        + ") × długość ÷ liczba torów"
+                        if skladowa_z0.robocze
+                        else "R0, X0 gałęzi z modelu × długość ÷ liczba torów"
+                    )
                 else:
                     z0_ohm = None
                     zrodlo_z0_galezi = "Z0 nieużywane (krawędź bez realnego I0)"
@@ -2053,8 +2068,18 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         dane={
                             "r_ohm_per_km": branch.r_ohm_per_km,
                             "x_ohm_per_km": branch.x_ohm_per_km,
-                            "r0_ohm_per_km": galaz.r0_ohm_per_km,
-                            "x0_ohm_per_km": galaz.x0_ohm_per_km,
+                            # Dane krawędzi z realnym I0 — wartości użyte w Z0 (także
+                            # robocze); krawędź bez I0 — pola modelu (Z0 nieużywane).
+                            "r0_ohm_per_km": (
+                                skladowa_z0.r0_ohm_per_km
+                                if z0_ohm is not None
+                                else galaz.r0_ohm_per_km
+                            ),
+                            "x0_ohm_per_km": (
+                                skladowa_z0.x0_ohm_per_km
+                                if z0_ohm is not None
+                                else galaz.x0_ohm_per_km
+                            ),
                             "length_km": galaz.length_km,
                             "n_parallel": tory,
                         },

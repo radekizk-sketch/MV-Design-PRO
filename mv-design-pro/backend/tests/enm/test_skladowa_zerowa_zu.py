@@ -727,10 +727,13 @@ def test_wiersz_odpowiedzi_niesie_nazwana_przyczyne(
     )
 
 
-def test_galaz_bez_z0_odcina_wezel_brak_danych() -> None:
-    """Trzecia przyczyna: gałąź w ruchu bez R′0/X′0 odcina węzeł od zespołu — wynik
-    zerowy węzła za nią nazwany ``brak_danych`` (bezpośrednio na mapowaniu: bieg blokuje
-    W001 wcześniej, bo przy drodze równoległej brak nie byłby widoczny w klasyfikacji)."""
+@pytest.mark.parametrize("r1_ohm_per_km", [0.125, 0.0], ids=["z_podstawa", "bez_podstawy"])
+def test_galaz_bez_z0_odcina_wezel_brak_danych(r1_ohm_per_km: float) -> None:
+    """Trzecia przyczyna: gałąź w ruchu bez R′0/X′0 i bez podstawy wartości roboczej (R′1 = 0)
+    odcina węzeł od zespołu — wynik zerowy węzła za nią nazwany ``brak_danych`` (bezpośrednio
+    na mapowaniu: bieg blokuje W001 wcześniej, bo przy drodze równoległej brak nie byłby
+    widoczny w klasyfikacji). Ta sama gałąź z dodatnimi R′1, X′1 liczy się z wartością roboczą
+    (zasada nr 4, ``enm.skladowa_zerowa_galezi``) — węzeł za nią bez przyczyny."""
     migawka = _siec("rezystor")
     szyna = _szyny(migawka)[0]
     migawka["buses"].append(
@@ -744,17 +747,21 @@ def test_galaz_bez_z0_odcina_wezel_brak_danych() -> None:
             "from_bus_ref": szyna,
             "to_bus_ref": "szyna-za-kablem",
             "length_km": 1.0,
-            "r_ohm_per_km": 0.125,
+            "r_ohm_per_km": r1_ohm_per_km,
             "x_ohm_per_km": 0.086,
             "catalog_ref": "cable-base-xlpe-al-3c-240",
         }
     )
     enm = EnergyNetworkModel.model_validate(migawka)
     siec = mapowanie.zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm))
+    assert _ref_to_uuid(szyna) not in siec.przyczyny
+    if r1_ohm_per_km > 0:
+        assert _ref_to_uuid("szyna-za-kablem") not in siec.przyczyny
+        return
     brak = siec.przyczyny[_ref_to_uuid("szyna-za-kablem")]
     assert brak.przyczyna == "brak_danych"
     assert brak.elementy == ("kabel-bez-z0",)
-    assert _ref_to_uuid(szyna) not in siec.przyczyny
+    assert "R′1 albo X′1 odcinka nieznane albo niedodatnie" in brak.wyjasnienie.zdanie_pl
 
 
 def test_kotwica_1e6_nie_udaje_uziemienia(monkeypatch: pytest.MonkeyPatch) -> None:

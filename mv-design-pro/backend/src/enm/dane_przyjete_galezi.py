@@ -8,7 +8,8 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   i Z′0 policzonymi z wartością roboczą geometrii; wpływa na KAŻDY rodzaj zwarcia w wyspie
   obliczeniowej węzła (składowa spójna grafu po gałęziach, transformatorach i łącznikach);
 * ``branch.z0_wartosc_robocza`` (ten moduł) — linia albo kabel SN z R′0/X′0 z założenia
-  katalogu (``wartosci_robocze`` pozycji); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
+  katalogu (``wartosci_robocze`` pozycji) albo z wartości roboczej odcinka bez składowej
+  zerowej w modelu (``enm.skladowa_zerowa_galezi``, zasada nr 4); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
   w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``);
 * ``zespol_uziemiajacy.wartosc_robocza`` (ten moduł) — zespół uziemiający sieci SN, którego
   bocznik składowej zerowej Z_0,TU + 3·Z_N stoi na wartości roboczej (pozycja typowa katalogu,
@@ -30,7 +31,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from network_model.catalog.wartosci_robocze import dana_przyjeta_z0, pola_z0_robocze
+from network_model.catalog.wartosci_robocze import ZALOZENIA_Z0_ODCINKA, dana_przyjeta_z0
 from network_model.core.graph import NetworkGraph
 from network_model.core.uziemienie import StanAwsc
 from network_model.odmowa_danych import OdmowaDanychError
@@ -41,6 +42,7 @@ from .mapping import map_enm_to_network_graph, ref_to_graph_id, skladowe_sieci_z
 from .models import Cable, EnergyNetworkModel, OverheadLine
 from .nazwy_elementow import nazwa_elementu
 from .parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .uziemienie_sekcji import uziemienie_sieci
 
 #: Klucz wiersza wyniku zwarciowego: dane przyjęte gałęzi, których impedancja wchodzi do prądu
@@ -59,26 +61,25 @@ KOD_ZU_ROBOCZE = "zespol_uziemiajacy.wartosc_robocza"
 #: wiersz składa z nich jedną daną na (pole, założenie, wartość), nie jedną na gałąź.
 _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
-_POLA_Z0 = {"r0_ohm_per_km", "x0_ohm_per_km"}
-
 
 def galezie_z0_robocze(
     enm: EnergyNetworkModel,
 ) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
-    """Załączone linie i kable, których R′0/X′0 są wartością roboczą katalogu (kolejność ref_id).
+    """Załączone linie i kable, których R′0/X′0 są wartością roboczą (kolejność ref_id).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
-    wierszy wyniku. Predykat pola: ``pola_z0_robocze`` (rejestr ``wartosci_robocze``) — pozycja
-    katalogu oznaczyła pole, a projektant go nie zmienił. Gałąź otwarta nie wchodzi do sieci
+    wierszy wyniku. Predykat pola: ``enm.skladowa_zerowa_galezi`` — ten sam, z którego sieć
+    zerowa zwarć i rozpływ niesymetryczny biorą R′0/X′0: wartość robocza katalogu (pozycja
+    oznaczyła pole w ``wartosci_robocze``, projektant go nie zmienił) albo wartość robocza
+    odcinka bez składowej zerowej w modelu (zasada nr 4). Gałąź otwarta nie wchodzi do sieci
     zerowej (``_assemble_zero_sequence_y0``), więc nie daje założenia.
     """
     wynik: list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]] = []
+    napiecia = napiecia_szyn_kv(enm)
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
-        pola = pola_z0_robocze(
-            galaz.materialized_params, galaz.model_dump(mode="json", include=_POLA_Z0)
-        )
+        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze
         if pola:
             wynik.append((galaz, pola))
     return wynik
@@ -87,7 +88,7 @@ def galezie_z0_robocze(
 def zalozenia_z0_galezi(
     enm: EnergyNetworkModel, scenario: str | None, *, galezie: Iterable[str] | None = None
 ) -> tuple[dict[str, Any], ...]:
-    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej katalogu.
+    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej.
 
     ``galezie`` zawęża zbiór (rozpływ niesymetryczny: wyłącznie gałęzie z realnym prądem I0);
     ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu).
@@ -105,12 +106,22 @@ def zalozenia_z0_galezi(
             for _, etykieta, zalozenie, wartosc in pola
         ]
         etykiety = " i ".join(etykieta for _, etykieta, _, _ in pola)
+        z_odcinka = {zalozenie in ZALOZENIA_Z0_ODCINKA for _, _, zalozenie, _ in pola}
+        zrodlo = (
+            "katalogu"
+            if z_odcinka == {False}
+            else (
+                "(odcinek bez składowej zerowej w modelu)"
+                if z_odcinka == {True}
+                else "(katalog i odcinek bez składowej zerowej w modelu)"
+            )
+        )
         zalozenia.append(
             {
                 "code": KOD_Z0_ROBOCZE,
                 "element_ref": galaz.ref_id,
                 "message_pl": (
-                    f"{nazwa}: {etykiety} z wartości roboczej katalogu — "
+                    f"{nazwa}: {etykiety} z wartości roboczej {zrodlo} — "
                     + "; ".join(f"{zalozenie}" for _, _, zalozenie, _ in pola)
                     + f". Zmień wartość: {etykiety} w parametrach odcinka."
                 ),

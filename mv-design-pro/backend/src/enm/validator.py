@@ -94,6 +94,7 @@ from .severity import (
     is_warning_severity,
     severity_rank,
 )
+from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .slownik_komunikatow import (
     NAZWY_RODZAJOW_STACJI_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
@@ -1472,17 +1473,26 @@ class ENMValidator:
                 )
             )
 
-        # W001: Brak Z₀ na linii
+        # W001: składowa zerowa odcinka nieznana i bez podstawy wartości roboczej. Ten sam
+        # predykat co sieć zerowa zwarć i rozpływ niesymetryczny (``enm.skladowa_zerowa_galezi``):
+        # odcinek bez R′0/X′0 w modelu liczy się z wartością roboczą R′0 = 3·R′1, X′0 = 3·X′1
+        # (sieć SN; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE — zasada nr 4, dana przyjęta
+        # ESTIMATED w wyniku). W001 zostaje wyłącznie, gdy wartości roboczej nie da się przyjąć
+        # (``brak_podstawy_pl``: R′1/X′1 niedodatnie, kabel nN bez żyły powrotnej, linia nN,
+        # odcinek WN, napięcie szyny nieznane).
+        napiecia_szyn = napiecia_szyn_kv(enm)
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable):
-                if branch.r0_ohm_per_km is None and branch.x0_ohm_per_km is None:
+                skladowa = skladowa_zerowa_galezi(branch, napiecia_szyn.get(branch.from_bus_ref))
+                if not skladowa.znana:
                     issues.append(
                         ValidationIssue(
                             code="W001",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"{opis_obiektu(branch, 'Gałąź')} nie ma składowej zerowej "
-                                f"(Z₀) — zwarcia 1F/2F-Z niedostępne."
+                                "(Z₀), a wartości roboczej nie da się przyjąć "
+                                f"({skladowa.brak_podstawy_pl}) — zwarcia 1F/2F-Z niedostępne."
                             ),
                             element_refs=[branch.ref_id],
                             wizard_step_hint="K7",
@@ -2570,8 +2580,10 @@ class ENMValidator:
         # zdolności zwarcia doziemnego — o uziemieniu sieci SN źródło nie decyduje; węzły
         # składowej sieci zerowej tego źródła dostają w biegu nazwaną przyczynę ``brak_danych``
         # (``enm.mapping._przyczyny_braku_zerowej``), sieć SN za grupą Yd/Dy liczy się
-        # z zespołu uziemiającego. Gałąź bez R′0/X′0 (W001) blokuje dalej: przy drodze
-        # równoległej jej brak zaniżyłby admitancję zerową bez śladu w klasyfikacji węzłów.
+        # z zespołu uziemiającego. Gałąź bez R′0/X′0 i bez podstawy wartości roboczej (W001)
+        # blokuje dalej: przy drodze równoległej jej brak zaniżyłby admitancję zerową bez śladu
+        # w klasyfikacji węzłów. Gałąź bez R′0/X′0 z podstawą wartości roboczej liczy się z nią
+        # (zasada nr 4) i W001 nie dostaje.
         has_z0_warnings = any(i.code == "W001" for i in issues)
         sc_1f = not has_z0_warnings
 

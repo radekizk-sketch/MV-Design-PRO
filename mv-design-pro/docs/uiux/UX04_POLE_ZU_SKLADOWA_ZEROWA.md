@@ -22,7 +22,7 @@ założenia jawne, bez cytatu numeru wzoru.
 | 4 | V12.6 nie nadpisuje modelu, trzy wartości domyślne znikają | `v126_academic.py` czyta `model.uziemienie_sn` (z `uziemienie_sn_v126`), brak → odmowa `neutral_earthing_no_grounding_model` z przyczyną (`v126_academic.py:1365–1367`); dawne domyślne (:1326, :1752, :1843 w bazie) skasowane. Brak parametru urządzenia, które model ma → wartość robocza ESTIMATED z podstawą (§16: środek zakresu dławika, AWSC 30 A, Z0 TU z pozycji typowej, R z prądu rezystora), wpis `dane_przyjete`, kompletność NIEPELNY. |
 | 5 | Nowe elementy z katalogiem | `enm/models.py:690–748`: `RezystorWymuszajacyAwsc`, `DlawikGaszacy`, `RezystorUziemiajacy`, `ZespolUziemiajacy` (+ `EnergyNetworkModel.zespoly_uziemiajace`, `:2136`). Katalog `network_model/catalog/mv_zespol_uziemiajacy_catalog.py` (pozycje typowe §16, status REFERENCYJNY, „dane robocze"). Uzwojenie potrzeb własnych 400/230 V jako drugi port z przyłączem odbioru PW (W-ZU-03). |
 | 6 | Z_N per wariant w `pochodne/**` | `network_model/pochodne/punkt_neutralny.py`: X_L = U_f/I_L, R = U_f/I_R, Z_a‖Z_b, Z_0,TU + 3·Z_N, I_C = √3·U_n·B_0, v = (I_L − I_C)/I_C. Stan AWSC to parametr przypadku (`OperatingScenario` / konfiguracja zwarcia `stan_awsc`), nie zmiana modelu; ślad White Box niesie oba Z_N (`punkt_neutralny_sn`). |
-| 7 | Kotwica 1e6 i trzy przyczyny | Sonda przed/po (§3): kotwica UDAWAŁA uziemienie bezpośrednie. Teraz kotwica wyłącznie dla bloków bez żadnego bocznika (`mapping.py:866–867`), a każdy taki węzeł dostaje odmowę nazwaną: `fault.zero_sequence_no_path` (brak drogi), `fault.zero_sequence_outside_iec60909` (sieć izolowana z B0 albo skompensowana), `fault.zero_sequence_missing_data` (gałąź bez R′0/X′0 albo źródło spoza SN bez Z0). Przyczyna przechodzi do wiersza odpowiedzi (`non_physical_reason`, `brak_wyniku_zerowego`), do opisu ograniczenia (`reporting_limitations_pl` = zdanie przyczyny), do ekranu składowych i do raportu PDF/DOCX („Ograniczenie wyniku: …"). |
+| 7 | Kotwica 1e6 i trzy przyczyny | Sonda przed/po (§3): kotwica UDAWAŁA uziemienie bezpośrednie. Teraz kotwica wyłącznie dla bloków bez żadnego bocznika (`mapping.py:986`), a każdy taki węzeł dostaje odmowę nazwaną: `fault.zero_sequence_no_path` (brak drogi), `fault.zero_sequence_outside_iec60909` (sieć izolowana z B0 albo skompensowana — prąd doziemienia z pojemności liczy analiza projektu uziemienia, nie kotwica), `fault.zero_sequence_missing_data` (gałąź bez R′0/X′0 i bez podstawy wartości roboczej, transformator bez grupy połączeń albo źródło spoza SN bez Z0). Odcinek bez R′0/X′0 z podstawą wartości roboczej liczy się z nią (zasada nr 4, §3.11); transformator bez grupy połączeń daje `brak_danych` zamiast fałszywego „brak drogi” (§3.12). Przyczyna przechodzi do wiersza odpowiedzi (`non_physical_reason`, `brak_wyniku_zerowego`), do opisu ograniczenia (`reporting_limitations_pl` = zdanie przyczyny), do ekranu składowych i do raportu PDF/DOCX („Ograniczenie wyniku: …"). |
 | 8 | B-01 | Sonda §2–§3, determinizm (`test_determinizm_dwa_biegi_ten_sam_artefakt_i_odcisk`), modele bez zespołu bez nowych kluczy biegu (`test_model_bez_zespolu_bez_nowych_kluczy_biegu`), iniekcje §5. Kontrakty FROZEN nietknięte; nowe pola addytywne. |
 | 9 | Rola pola ZU | `ZU` w jednej liście ról (`enm/rola_pola_sn.py:30`, kanon `ZESPOL_UZIEMIAJACY`, SLD `uziemiajace`). Zespół stoi na zacisku na końcu toru pola ZU (port `transformator_uziemiajacy`), kreator GPZ tworzy pole ZU przez `add_sn_bay` i zespół przez `add_zespol_uziemiajacy_sn`. |
 | 10 | SPZ i wyłączenie od TR | W-ZU-01 (SPZ bez rezystora, Zeszyt 1 §26.9.6), W-ZU-02 (zespół z rezystorem, którego nie wyłącza wyłączenie pola SN TR, IRiESD II.4.5.4.3.5) z wyjaśnieniem: co, kryterium, podstawa, element. Kreator GPZ wiąże zespół sekcji z transformatorem tej sekcji flagą `wylaczenie_od_transformatora_sekcji` (rozwiązywaną w operacji po utworzeniu transformatorów). |
@@ -265,6 +265,102 @@ zmierzone: odcisk katalogu po scaleniu, pola kontraktów wejściowych 4419 → 4
 BKR, +3 `sieci`/`baterie_sieci`/`baterie_b0`), zapadka podstawień 222 → 220 (częstotliwość
 z nagłówka modelu zamiast `enm.buses[0].frequency_hz or 50.0`).
 
+### 3.11 Odcinek bez składowej zerowej: wartość robocza albo nazwana odmowa (zasada nr 4, B-01)
+
+Dyrektywa sesji głównej: brak danych Z0 daje wartość roboczą wg zasady nr 4 z wpisem
+w `dane_przyjete` albo nazwaną odmowę — ciche zero jest niedopuszczalne. Przed zmianą linia
+albo kabel bez R′0/X′0 w modelu (import, parametry ręczne, edycja projektanta po materializacji)
+zatrzymywał zwarcia doziemne: W001 odbierał zdolność 1F, `ELIG_SC1_MISSING_Z0` blokował
+kwalifikowalność, rozpływ niesymetryczny odmawiał, a mapowanie pomijało gałąź (węzeł odcięty →
+`brak_danych`). Trzy bramy i obliczenie miały przy tym różne predykaty (W001 i
+kwalifikowalność: oba pola puste — `and`; mapowanie: którekolwiek — `or`), więc model z jednym
+polem przechodził bramę i dostawał odmowę w biegu.
+
+Jedno źródło: liściowy moduł `enm/skladowa_zerowa_galezi.py` (`skladowa_zerowa_odcinka`,
+`skladowa_zerowa_galezi`, `napiecia_szyn_kv`). Reguła zależy od pasma napięcia szyny początku
+odcinka:
+
+| Pasmo, odcinek | Wartość robocza | Podstawa |
+|---|---|---|
+| SN, linia albo kabel | R′0 = 3·R′1, X′0 = 3·X′1 | ta sama reguła co pozycje katalogu (`wartosci_robocze.wyprowadz_skladowa_zerowa`, karta LINIA-110) |
+| SN, kabel ze znaną żyłą powrotną (ekran każdej żyły) | R′0 = R′1 + R′ żyły powrotnej, X′0 = 3·X′1 | jw. — ekran żyły niesie I0 |
+| nN, kabel ze znaną żyłą PE/PEN | R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE | wspólna żyła powrotna niesie 3·I0; ta sama impedancja pętli co IEC 60364-4-41 (Z_pętli = Z_L + Z_PE ⇔ (2·Z1 + Z0)/3) |
+| nN, kabel bez danych żyły powrotnej | brak — odmowa nazwana | reguła 3·R′1 zaniżałaby R′0 kabla czterożyłowego (R′1 + 3·R′PE ≫ 3·R′1) i zawyżała prąd doziemny — strona niebezpieczna |
+| nN, linia | brak — odmowa nazwana | przewód neutralny nieopisany w modelu |
+| WN albo napięcie szyny nieznane | brak — odmowa nazwana | R′0/X′0 linii WN z geometrii słupa albo od operatora (karta LINIA-110) |
+| R′1 albo X′1 nieznane albo niedodatnie | brak — odmowa nazwana | stosunek typowy wymaga niezerowej impedancji zgodnej |
+
+Wartość robocza nie zmienia modelu (projektant wpisuje R′0/X′0 i przelicza). Bieg niesie
+założenie `branch.z0_wartosc_robocza` ze składnikami, wiersz 1F/2FG — `dane_przyjete_galezi`
+z jakością `ESTIMATED` i nazwą „R′0 wartość robocza (Odcinek …)”, krok śladu `z0_line[…]` —
+wartości użyte i opis wartości roboczej; rozpływ niesymetryczny — źródło Z0 „wartość robocza”.
+Odmowa nazwana niesie treść `brak_podstawy_pl` w W001, w `ELIG_SC1_MISSING_Z0`, w zdaniu
+przyczyny wiersza (`brak_wyniku_zerowego.wyjasnienie`) i w odmowie rozpływu niesymetrycznego.
+Kreator przestał blokować 1F brakiem Z0 źródła („Brak Z0 w źródłach”) — jak walidator ENM
+(§0 pkt 3: Z0 źródła nie decyduje o sieci SN).
+
+Sonda B-01 przed/po (`b6349aeb0` → drzewo karty), sieć SN: system 110 kV (Z0/Z1 = 1,2),
+TR 110/15 kV Dyn11 25 MVA, kabel 4 km R′1 = 0,2, X′1 = 0,1 Ω/km, węzeł stacji S1, 1F:
+
+| Kabel | Przed | Po |
+|---|---|---|
+| R′0 = 0,6, X′0 = 0,3 wpisane | 4311,6 A | 4311,6 A |
+| bez R′0/X′0 | `brak_danych` | 4311,6 A (wartość robocza 0,6 / 0,3, dane przyjęte ESTIMATED) — bit w bit jak wpisane |
+| bez R′0/X′0, żyła powrotna 0,5 Ω/km | `brak_danych` | 4150,6 A (R′0 = 0,7) |
+| bez R′0/X′0, R′1 = 0 | `brak_danych` | `brak_danych` (przyczyna z regułą) |
+
+Sieć nN: sieć SN 15 kV → TR 15/0,42 kV Dyn11 630 kVA → kabel nN 0,1 km R′1 = 0,206,
+X′1 = 0,08 Ω/km → złącze, 1F (2F+Z):
+
+| Odcinek nN | Przed | Po |
+|---|---|---|
+| R′0 = R′1 + 3·0,727, X′0 = X′1 + 3·0,08 wpisane | 2501,3 A (6691,3 A) | 2501,3 A (6691,3 A) |
+| kabel bez R′0/X′0, PE 0,727 / 0,08 Ω/km | `brak_danych` | 2501,3 A (6691,3 A), R′0 = 2,387, X′0 = 0,32 ESTIMATED |
+| kabel bez R′0/X′0, bez danych PE | `brak_danych` | `brak_danych` |
+| linia bez R′0/X′0 | `brak_danych` | `brak_danych` |
+
+Dwanaście wpisów benchmarków liczonych na `1465336df` z kotwicy 1e6 (sześć sieci × {1F, 2F+Z};
+wiersze liczone / największy prąd → przyczyny na `b6349aeb0` → przyczyny po tej zmianie):
+
+| Sieć | `1465336df` (kotwica) | `b6349aeb0` | po zmianie |
+|---|---|---|---|
+| IEEE 4 węzły (132 kV) | 4/4, do 41 222 A (2F+Z 47 599 A) | `brak_danych` 4 | `brak_danych` 4 — „odcinek sieci 132 kV — reguła wartości roboczej obejmuje sieci SN i nN…” |
+| IEEE case9 (345 kV) | 9/9, do 126 539 A (146 111 A) | `brak_danych` 9 | `brak_danych` 9 — reguła WN |
+| IEEE 34 węzły (24,9 kV) | 30/30, do 17 390 A (20 080 A) | `brak_danych` 30 | `brak_drogi` 30 — sieć SN bez zespołu uziemiającego (Z0 źródła SN nie decyduje, §0 pkt 3) |
+| CIGRE MV 14 węzłów | 15/15, do 21 963 A (25 361 A) | `brak_danych` 15 | `brak_drogi` 15 — jw. |
+| CIGRE LV 0,4 kV | 6/6, do 10 942 A (12 635 A) | `brak_danych` 6 | `brak_danych` 6 — „linia nN — droga powrotna prądu zerowego … nieopisana” |
+| pandapower IEC radial | 2/2, do 9,1·10⁹ A (2,5·10¹⁰ A) | `brak_danych` 2 | `brak_drogi` 2 — jw. |
+
+Na `b6349aeb0` brak danych odcinków maskował rzeczywistą przyczynę w sieciach SN; z wartością
+roboczą odcinków przyczyną jest nieuziemiony punkt neutralny. Pozostałe benchmarki (IEEE 13,
+case14, case39, pandapower 4-bus, IEC 60909-4) — żaden wiersz liczony ani przed, ani po; węzły
+po stronie źródła WN bez Z0 zostają `brak_danych` (dana operatora). Węzeł izolowany (sonda
+`sonda_izol`): bez B0 `brak_drogi`, z B0 `poza_zakresem_iec60909` z odesłaniem do projektu
+uziemienia (prąd z pojemności, I_C — §3.3, §3.9) — bez zmian względem `b6349aeb0`; na
+`1465336df` z B0 liczony z kotwicy (28,7 A), bez B0 odmowa macierzy osobliwej.
+
+Złote hashe parytetu assemblera (dowód semantyczny regeneracji): 108 z 366 wpisów zmienionych,
+wyłącznie warianty 1F/2F+Z; 1054 wiersze liczone przed — wszystkie liczby identyczne (0 pól
+zmienionych); 408 wierszy nowych liczonych (548 wierszy `brak_danych` → 408 liczonych
+z wartością roboczą + 140 `brak_drogi`); `brak_danych` 682 → 134 (sieci WN, linie nN,
+źródła WN bez Z0); pozostałe przyczyny bez zmian. Fikstury projekcji nN (`16_stale_result`,
+`17_sc_results`) zregenerowane generatorem: cztery W001 kabli nN z żyłą PE zniknęły.
+
+### 3.12 Transformator bez grupy połączeń w sieci zerowej (B-01)
+
+Transformator bez `vector_group` (W004) nie wchodzi do Y0 (`build_transformer_zero_seq_model`:
+zero zgadywania), ale węzeł za nim dostawał `brak_drogi` — „zwarcie doziemne nie płynie”,
+twierdzenie fizyczne, którego bez grupy połączeń nie da się postawić — a węzeł uziemiony innym
+bocznikiem był liczony tak, jakby uzwojenie było otwarte (uzwojenie YN z uziemionym punktem
+neutralnym dołożyłoby bocznik równoległy: prąd zaniżony). Teraz każda składowa sieci zerowej
+stykająca się z takim transformatorem dostaje `brak_danych` z elementem, zdaniem
+„Transformator bez grupy połączeń (…) … Uzupełnij grupę połączeń transformatora.” i pozycją
+„czego brakuje” — ta sama reguła co źródło bez Z0 i ten sam kanon co blokada
+`transformer.vector_group_missing` kwalifikowalności solvera. Sonda (`sonda_izol`, TR bez grupy,
+kabel i źródło bez Z0): węzły SN `brak_drogi` → `brak_danych`. Sieci rejestru: żadna nie ma
+transformatora bez grupy (statusy wierszy wszystkich 366 wpisów identyczne przed i po tej
+części), więc złote hashe bez zmian.
+
 ## 4. Iloczyn testów
 
 wariant {izolowany, dławik, dławik + AWSC spoczynek, dławik + AWSC załączony, rezystor,
@@ -300,6 +396,18 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 - front SLD ról pól: `enmToCanonicalGpzAdapter.test.ts` (każda rola modelu → rola stosu i predykat pola
   kablowego), `enmToSldAdapter.test.ts` (nośnik roli {`bay_role`, `field_role`} × {ZU, BKR} →
   rola i oznaczenie), `gpz.test.ts` (numeracja liniowe × bateria × zespół, liczniki odrębne);
+- `tests/enm/test_z0_wartosc_robocza_odcinka.py` (125 testów) — pasmo × rodzaj odcinka
+  {SN: linia, kabel, kabel z żyłą powrotną; nN: linia, kabel, kabel z PE/PEN} × stan danych
+  {brak R′0 i X′0, brak R′0, brak X′0, R′1 = 0, X′1 = 0} × konsument {1F, 2F+Z z wyrocznią
+  „ten sam prąd co wpisane wartości”, dane przyjęte, założenie biegu ze składnikami, ślad
+  `z0_line`, przyczyna odmowy w wierszu; bramy parami: W001 z treścią przyczyny, dostępność
+  1F, `ELIG_SC1_MISSING_Z0` z treścią przyczyny, kreator K7 i macierz gotowości; rozpływ
+  niesymetryczny SN i nN}; tożsamość reguły katalogu i odcinka; determinizm SN/nN; odmowy WN
+  i napięcia nieznanego;
+- `tests/enm/test_siec_zerowa_transformator_bez_grupy.py` (29 testów) — grupa {Dyn11, brak} ×
+  transformatory {1, 2 równoległe — drugi bez grupy} × pasmo {SN za GPZ, nN za stacją} × węzeł
+  {strona górna, dolna, za odcinkiem} × odcinek {z Z0, bez podstawy wartości roboczej} ×
+  zwarcie {1F, 2F+Z}; para W004 ⇔ odmowa transformatora; determinizm;
 - `tests/reference_engine/test_profil_pola_zespolu_uziemiajacego.py` — typ stacji {GPZ, SN/nN,
   brak} × stos aparatów pola ZU z kreatora GPZ {kompletny tor, bez wyłącznika, z aparatem
   transformatora, przekładnik przed wyłącznikiem, uziemnik w osi toru, bez aparatów}.
@@ -326,6 +434,20 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | Ferrorezonans: suma Σb·ℓ po sieciach zamiast sieci o największej pojemności | `test_ferrorezonans_ocenia_kazda_siec_osobno[otwarte]` czerwony |
 | Rola `ZU` w adapterze GPZ zwracana jako `LINE_OUT`, gałęzie `ZU`/`ZESPOL_UZIEMIAJACY` zdjęte z adaptera stacji, klasa numeracji `FZ` zdjęta (stan sprzed scalenia) | 4 testy czerwone, dokładnie nowe: rola stosu i pole kablowe GPZ, dwa nośniki roli w stacji, numeracja rysunkowa; na drzewie scalonym rola bez gałęzi to też błąd kompilacji wyczerpującego przełącznika (`TS2366`) |
 | Nazwa sieci z identyfikatora szyny przy szynie bez nazwy (`nazwa or ref`) | 2 testy `test_nazwa_sieci_przy_szynie_bez_nazwy_bez_identyfikatora` czerwone; strażnik `nazwa_bez_identyfikatora_guard` czerwony |
+| Wartość robocza odcinka wyłączona (`skladowa_zerowa_galezi` bez wyprowadzenia z modelu) | 108 testów czerwonych (zestaw 333 testów: nowy plik, walidator, izolacja szkicu, komunikaty kwalifikowalności, akcje naprawcze, rozpływ niesymetryczny, integracja scenariuszy) |
+| Mapowanie: predykat z pól modelu zamiast jednego źródła | 24 czerwone |
+| Diagnoza niesymetrii: predykat z pól modelu | 12 czerwonych |
+| W001: dawny predykat `and` (oba pola puste) | 12 czerwonych |
+| Kwalifikowalność: dawny predykat `and` | 8 czerwonych |
+| Kreator: macierz gotowości z `r0 is not None` | 10 czerwonych |
+| Dane przyjęte tylko z katalogu (wartości robocze odcinka modelu pominięte) | 37 czerwonych |
+| Rozpływ niesymetryczny: Z0 z pól modelu zamiast jednego źródła | 12 czerwonych |
+| nN: reguła SN (3·R′1) zamiast żyły PE/PEN | 33 czerwone |
+| WN i napięcie nieznane: reguła SN zamiast odmowy | 2 czerwone |
+| nN: R′0 = R′1 + R′PE (bez współczynnika 3) | 6 czerwonych |
+| Mapowanie: pusta przyczyna braku wartości roboczej w zdaniu wiersza | 36 czerwonych |
+| Transformator bez grupy: składowa uziemiona innym bocznikiem liczona (dawne pierwszeństwo) | 12 czerwonych (zestaw 259: plik transformatora, plik odcinka, `test_skladowa_zerowa_zu.py`) |
+| Transformator bez grupy pominięty w przyczynach (stan sprzed zmiany) | 18 czerwonych |
 | Rola `ZU` bez profilu referencyjnego (`profile_id_for_bay` → `None`, stan po dopisaniu roli do listy modelu) | 19 testów czerwonych: `test_profile_mapping_covers_all_bay_roles` oraz 18 z 21 testów `test_profil_pola_zespolu_uziemiajacego.py` (pole ZU z aparatami bez żadnej kontroli = cicha zgodność) |
 
 ## 6. Inwentarz klasy (ścieżki opisu punktu neutralnego SN i ich czytelnicy)
@@ -347,6 +469,8 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | (5) `BayEarthFaultPath.grounding_device_ref = None` | `field_read_model.py:292` (`droga_doziemna_pola`), `:1304` | wskazuje zespół sekcji pola |
 | (7) front: SLD GPZ — glif punktu neutralnego SN | `ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts::deriveSnNeutralEarthing` | czytał `Source.neutral_grounding` równoważnika 110 kV i rysował go jako punkt neutralny sieci SN; teraz zespół uziemiający na szynie sekcji SN stacji (kolejność `gpz_sections`), potem uzwojenie SN transformatora (`lv_neutral`), inaczej brak glifu; legenda `neutralEarthingLabelPl` nazywa układ Z.14 („dławik gaszący ‖ rezystor X Ω") |
 | (8) front: ekran składowych symetrycznych (E-29) | `ui2/wyniki/skladowe/model.ts::uziemieniePunktu`, `uziemieniaSieci` | punkt zwarcia na szynie SN dostaje opis zespołu tej szyny (wariant, AWSC, nastawa); źródło opisane jako punkt neutralny sieci 110 kV za granicą modelu; lista sieci: źródła, zespoły, transformatory |
+| (16) R′0/X′0 odcinka bez składowej zerowej — jedno źródło (zasada nr 4) | `enm/skladowa_zerowa_galezi.py:98` (`skladowa_zerowa_odcinka`) i `:157` (`skladowa_zerowa_galezi`); reguła `network_model/catalog/wartosci_robocze.py:1300` (nN) i `:1339` (SN, także katalog `mv_cable_line_catalog.py:211`); konsumenci: `enm/mapping.py:614` (sieć zerowa), `enm/assembler.py:1676` (diagnoza niesymetrii) i `:2031` (wejście rozpływu niesymetrycznego), `enm/dane_przyjete_galezi.py:82` (założenie i dane przyjęte), `enm/validator.py:1486` (W001, dostępność 1F), `application/eligibility_service.py:696` (`ELIG_SC1_MISSING_Z0`), `application/network_wizard/validator.py:296`, `:328`, `:406` (K7, macierz gotowości), `domain/canonical_operations.py` (`branch.zero_sequence_missing`, `branch.z0_wartosc_robocza`) | wartość robocza wg pasma albo odmowa z `brak_podstawy_pl` (§3.11); predykat „składowa znana” jeden dla bram i obliczenia; katalog bajt w bajt (odcisk SHA-256 katalogu kabli i linii identyczny przed i po) |
+| (17) transformator bez grupy połączeń w sieci zerowej | `enm/mapping.py:889` (zbiór), `:1133` (pierwszeństwo przed bocznikiem) | `brak_danych` z elementem i „czego brakuje” zamiast `brak_drogi`; także w składowej uziemionej innym bocznikiem (§3.12). `uziemienie_sekcji._punkty_uzwojen` zostaje: transformator bez grupy nie jest punktem uziemienia (brak modelu połączeń), a analizy doziemne blokuje kod `transformer.vector_group_missing` |
 | (9) brak wyniku zerowego jako rekord werdyktu | `enm/mapping.py::BrakWynikuZerowego` → `canonical_analysis` (opis ograniczenia, wiersz odpowiedzi) | rekord niesie `WyjasnienieWerdyktu` (zdanie z NAZWAMI elementów, przyczyna, czego brakuje dla `BRAK_PODSTAWY`) zamiast gołego opisu; identyfikatory wyłącznie w `elementy` |
 | (10) parametry biegu V12.6 | `solver_input/v126_contracts.py::wiersze_izolacji_projektanta`, `api/v126_academic.py` | parametry `neutral_grounding`, `neutral_earthing_type`, `network_neutral` i kategoria izolacji wiersza projektanta nie nadpisują modelu: odmowa nazwana (`OdmowaDanychError`, 422) z drogą do zespołu sekcji; szyna spoza modelu i wiersz łamiący kontrakt — odmowa nazwana zamiast 500 |
 | (11) rdzeń V12.6 bez napięcia sieci | `network_model/solvers/v126_academic.py` (I_C, NER) | `napiecie_kv` brak → odmowa nazwana `missing_fields = ["nominal_kv"]` zamiast `or 0.0` (ciche zero); prąd dławików w Z.14 bez domysłu; podstawienie śladu NER z nazwą rezystora |
@@ -407,6 +531,17 @@ Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
   także przy zespole uziemiającym, bo solver BFS (FROZEN) nie ma boczników. Sieci SN
   nie zasilają odbiorów faza–N (odbiory SN to transformatory SN/nN i odbiory trójfazowe),
   więc odmowa nazwana jest poprawnym wynikiem, nie liczbą udawaną.
+
+- Dwie pozycje katalogu kabli SN trójżyłowych z żyłą powrotną (ekran wspólny „/16”) dostają
+  R′0 = R′1 + R′ żyły powrotnej (reguła ekranu każdej żyły). Gdy „/16” jest ekranem wspólnym
+  trzech żył, właściwe byłoby R′0 = R′1 + 3·R′ekranu. Semantyka pozycji katalogu jest
+  niejednoznaczna, a reguła katalogu należy do karty LINIA-110 zatwierdzonej przez architekta
+  — zgłoszone do decyzji, katalog bez zmian (odcisk identyczny).
+- Dane przyjęte gałęzi przypinane są do każdego wiersza składowej spójnej sieci zerowej
+  (mechanizm karty LINIA-110), także do węzła, którego prąd od odcinka nie zależy (np. szyna nN
+  przed odcinkiem promieniowym bez bocznika na końcu). Znacznik jest zachowawczy (dowód
+  NIEPELNY zamiast pełnego), nie zawyża pewności; zawężenie do drogi prądu wymaga analizy
+  wrażliwości Z0 węzła i należy do właściciela mechanizmu.
 
 Świadomie bez zmian: `audit2_validation.py` / `validate-vt-grounding` — walidacja
 współczynnika napięciowego przekładnika względem typu punktu neutralnego przyjmuje typ jako

@@ -307,7 +307,15 @@ class TestBlockers:
 
 
 class TestWarnings:
-    def test_w001_line_no_z0(self):
+    @pytest.mark.parametrize(
+        ("r1", "x1", "w001"),
+        [(0.4, 0.3, False), (0.0, 0.3, True), (0.4, 0.0, True)],
+        ids=["wartosc_robocza", "r1_zero", "x1_zero"],
+    )
+    def test_w001_line_no_z0(self, r1: float, x1: float, w001: bool):
+        """Zasada nr 4: linia bez R′0/X′0 z dodatnimi R′1, X′1 liczy się z wartością roboczą
+        (R′0 = 3·R′1, X′0 = 3·X′1) i W001 nie dostaje; W001 zostaje dla odcinka bez podstawy
+        wartości roboczej (R′1 albo X′1 równe zeru)."""
         result = ENMValidator().validate(
             _enm(
                 buses=[
@@ -334,14 +342,14 @@ class TestWarnings:
                         from_bus_ref="b1",
                         to_bus_ref="b2",
                         length_km=5,
-                        r_ohm_per_km=0.4,
-                        x_ohm_per_km=0.3,
+                        r_ohm_per_km=r1,
+                        x_ohm_per_km=x1,
                     ),
                 ],
             )
         )
         codes = [i.code for i in result.issues]
-        assert "W001" in codes
+        assert ("W001" in codes) is w001
 
     def test_w002_source_no_z0(self):
         """W002 dotyczy źródła, którego Z₀ czyta obliczenie — spoza pasma SN (sieć 110 kV
@@ -430,8 +438,20 @@ class TestAnalysisAvailability:
         assert result.analysis_available.short_circuit_1f is False
         assert result.analysis_available.load_flow is False
 
-    def test_sc1f_unavailable_without_z0(self):
+    def test_sc1f_available_with_z0_working_value(self):
+        """Linia bez R′0/X′0 (R′1, X′1 dodatnie): zwarcie doziemne dostępne — wartość robocza
+        R′0 = 3·R′1, X′0 = 3·X′1 (zasada nr 4), dana przyjęta ESTIMATED w wyniku biegu."""
         result = ENMValidator().validate(_minimal_enm())
+        assert result.analysis_available.short_circuit_3f is True
+        assert result.analysis_available.short_circuit_1f is True
+
+    def test_sc1f_unavailable_without_z0_basis(self):
+        """Linia bez R′0/X′0 i bez podstawy wartości roboczej (R′1 = 0): W001 odbiera zdolność."""
+        enm = _minimal_enm()
+        enm = enm.model_copy(
+            update={"branches": [enm.branches[0].model_copy(update={"r_ohm_per_km": 0.0})]}
+        )
+        result = ENMValidator().validate(enm)
         assert result.analysis_available.short_circuit_3f is True
         assert result.analysis_available.short_circuit_1f is False
 

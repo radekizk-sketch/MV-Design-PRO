@@ -34,10 +34,8 @@ from .types import (
 from .wartosci_robocze import (
     KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
     ZALOZENIE_ITH_ZYLY_POWROTNEJ,
-    ZALOZENIE_R0_TRZY_R1,
-    ZALOZENIE_R0_ZYLA_POWROTNA,
     ZALOZENIE_R_ZYLY_POWROTNEJ,
-    ZALOZENIE_X0_TRZY_X1,
+    wyprowadz_skladowa_zerowa,
 )
 
 # =============================================================================
@@ -206,26 +204,21 @@ def _with_zero_sequence_parameters(record: dict[str, Any], *, kind: str) -> dict
 
     # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2): żadna z tych reguł nie ma podstawy
     # w karcie producenta ani w normie — każde wyprowadzone pole dostaje jawne założenie
-    # (``wartosci_robocze``), a konsumenci wyniku daną przyjętą ESTIMATED.
-    if kind == "cable":
-        return_r = _float_param(params, "return_conductor_r_ohm_per_km_20c")
-        if params.get("r0_ohm_per_km") is None:
-            if return_r is not None and return_r > 0:
-                params["r0_ohm_per_km"] = round(r1 + return_r, 6)
-                _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_ZYLA_POWROTNA)
-            else:
-                params["r0_ohm_per_km"] = round(3.0 * r1, 6)
-                _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_TRZY_R1)
-        if params.get("x0_ohm_per_km") is None:
-            params["x0_ohm_per_km"] = round(3.0 * x1, 6)
-            _oznacz_wartosc_robocza(params, "x0_ohm_per_km", ZALOZENIE_X0_TRZY_X1)
-    elif kind == "line":
-        if params.get("r0_ohm_per_km") is None:
-            params["r0_ohm_per_km"] = round(3.0 * r1, 6)
-            _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_TRZY_R1)
-        if params.get("x0_ohm_per_km") is None:
-            params["x0_ohm_per_km"] = round(3.0 * x1, 6)
-            _oznacz_wartosc_robocza(params, "x0_ohm_per_km", ZALOZENIE_X0_TRZY_X1)
+    # (``wartosci_robocze``), a konsumenci wyniku daną przyjętą ESTIMATED. Reguła wyprowadzenia
+    # jest JEDNA dla pozycji katalogu i dla odcinka modelu bez składowej zerowej
+    # (``wyprowadz_skladowa_zerowa``).
+    if kind in ("cable", "line"):
+        for pole, wartosc, zalozenie in wyprowadz_skladowa_zerowa(
+            kabel=kind == "cable",
+            r1=r1,
+            x1=x1,
+            r_zyly_powrotnej=_float_param(params, "return_conductor_r_ohm_per_km_20c"),
+            brak_r0=params.get("r0_ohm_per_km") is None,
+            brak_x0=params.get("x0_ohm_per_km") is None,
+            z_katalogu=True,
+        ):
+            params[pole] = wartosc
+            _oznacz_wartosc_robocza(params, pole, zalozenie)
 
     return {
         "id": record["id"],

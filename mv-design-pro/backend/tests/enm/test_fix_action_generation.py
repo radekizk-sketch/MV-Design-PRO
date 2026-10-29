@@ -375,7 +375,8 @@ class TestFixActionOnWarnings:
     """Warnings (IMPORTANT) should have fix_action where applicable."""
 
     def test_w001_line_no_z0_fix_action(self):
-        """Gałąź bez Z₀ → IMPORTANT + fix_action OPEN_MODAL."""
+        """Gałąź bez Z₀ i bez podstawy wartości roboczej (R′1 = 0; zasada nr 4: przy dodatnich
+        R′1, X′1 obliczenie przyjmuje R′0 = 3·R′1, X′0 = 3·X′1) → IMPORTANT + OPEN_MODAL."""
         result = ENMValidator().validate(
             _enm(
                 buses=[
@@ -402,7 +403,7 @@ class TestFixActionOnWarnings:
                         from_bus_ref="b1",
                         to_bus_ref="b2",
                         length_km=5,
-                        r_ohm_per_km=0.4,
+                        r_ohm_per_km=0.0,
                         x_ohm_per_km=0.3,
                         catalog_ref="CAT-LN-001",
                     ),

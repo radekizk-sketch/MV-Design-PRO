@@ -296,8 +296,9 @@ def test_bieg_oceny_na_zwarciu_doziemnym_odmowiony_jako_odmowa_danych(
     from tests.api.test_pakiet_dowodowy_biegu import _seed_enm
 
     project_id, case_id = _projekt_i_przypadek(app_client)
-    # Sieć G08 nie ma składowej zerowej (bieg doziemny jest na niej niekwalifikowany) — model
-    # przypadku podmieniony na sieć z uziemionym punktem neutralnym (Z0 kompletne).
+    # Sieć G08 nie ma drogi prądu zerowego (punkt neutralny sieci SN nieuziemiony — wiersze
+    # doziemne bez wartości) — model przypadku podmieniony na sieć z uziemionym punktem
+    # neutralnym (Z0 kompletne), żeby bieg doziemny dał wynik.
     _seed_enm(_klucz_modelu(case_id))
     utworzenie = app_client.post(
         f"/api/execution/study-cases/{case_id}/runs",

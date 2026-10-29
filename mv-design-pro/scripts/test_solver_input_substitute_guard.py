@@ -2067,7 +2067,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (4442). Roznica zbiorow +1 `WejscieZwarcia.siec_zerowa_trace` (pelny slad budowy Y0),
     # -1 `WejscieZwarcia.slad_punktu_neutralnego` (kroki punktow neutralnych sa czescia tego
     # samego sladu — jedno zrodlo, bez drugiej kopii). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4442." in wyjscie, wyjscie
+    # Wartosc robocza R'0/X'0 odcinka wg pasma napiecia (2026-10-29): 4442 -> 4444 — POMIAR
+    # `contract_fields()` na `b6349aeb0` (4442) i na drzewie karty (4444). Roznica zbiorow +2,
+    # -0: `SkladowaZerowaOdcinka.robocze` (wartosc wyprowadzona regula pasma, jakosc ESTIMATED)
+    # i `SkladowaZerowaOdcinka.brak_podstawy_pl` (nazwana odmowa, gdy wartosci nie da sie
+    # przyjac) — jedno zrodlo skladowej zerowej odcinka `enm/skladowa_zerowa_galezi.py`.
+    # PASS niezmieniony (zapadka 220, zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4444." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2379,7 +2385,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `network_model/catalog/mv_zespol_uziemiajacy_catalog.py`, +1
         # `network_model/pochodne/punkt_neutralny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie obu kart (2026-10-29): 596 + 3 + 3 = 602. POMIAR guardem na drzewie scalonym.
-        "Przeskanowano 602 plikow w zakresie: network_model, solver_input, enm, "
+        # Wartosc robocza R'0/X'0 odcinka (2026-10-29): 602 -> 603 (+1 `enm/skladowa_zerowa_
+        # galezi.py`, jedno zrodlo skladowej zerowej odcinka); dlug i wykluczenia BEZ ZMIAN.
+        # POMIAR guardem na drzewie karty.
+        "Przeskanowano 603 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2682,7 +2691,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Zespol uziemiajacy SN (2026-10-29): enm 75 -> 76 (+1 `enm/uziemienie_sekcji.py`). POMIAR.
         # Scalenie obu kart (2026-10-29): enm 75 + 1 + 1 = 77. POMIAR guardem.
-        "  enm: pliki_skanowane=77, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Wartosc robocza R'0/X'0 odcinka (2026-10-29): enm 77 -> 78 (+1 `enm/skladowa_zerowa_
+        # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=78, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

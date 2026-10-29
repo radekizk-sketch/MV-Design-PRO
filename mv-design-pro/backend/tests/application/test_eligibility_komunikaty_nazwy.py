@@ -258,10 +258,13 @@ MIEJSCA: dict[str, tuple[str, AnalysisType, Uszkodzenie, tuple[str, str, str], o
         None,
         REF_ZRODLO,
     ),
+    # Zasada nr 4: kabel bez R′0/X′0 liczy się z wartością roboczą (R′0 = 3·R′1, X′0 = 3·X′1)
+    # i nie jest blokowany; blokada zostaje dla odcinka bez podstawy wartości roboczej
+    # (R′1 = 0) — ta sama własność treści: nazwa z modelu, nigdy identyfikator.
     "kabel_bez_z0": (
         "ELIG_SC1_MISSING_Z0",
         AnalysisType.SC_1F,
-        lambda m: m,
+        lambda m: _zmien(m, "branches", REF_KABEL, r_ohm_per_km=0.0),
         ("branches", REF_KABEL, "Kabel"),
         None,
         REF_KABEL,

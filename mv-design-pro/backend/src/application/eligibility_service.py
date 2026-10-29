@@ -45,6 +45,7 @@ from enm.models import (
     Transformer,
 )
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
+from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.uziemienie_sekcji import (
@@ -683,16 +684,26 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        """Odcinek bez składowej zerowej i bez podstawy wartości roboczej — BLOKADA SC_1F.
+
+        Ten sam predykat co walidator ENM (W001), sieć zerowa zwarć i rozpływ niesymetryczny
+        (``enm.skladowa_zerowa_galezi``): odcinek bez R′0/X′0 z podstawą wartości roboczej liczy
+        się z nią (zasada nr 4) i nie blokuje analizy.
+        """
+        napiecia = napiecia_szyn_kv(enm)
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable):
-                if branch.r0_ohm_per_km is None and branch.x0_ohm_per_km is None:
+                skladowa = skladowa_zerowa_galezi(branch, napiecia.get(branch.from_bus_ref))
+                if not skladowa.znana:
                     blockers.append(
                         AnalysisEligibilityIssue(
                             code="ELIG_SC1_MISSING_Z0",
                             severity=IssueSeverity.BLOCKER,
                             message_pl=(
-                                f"{_opis_galezi(branch)} nie ma danych składowej zerowej (Z₀). "
-                                "Zwarcie jednofazowe wymaga R₀/X₀."
+                                f"{_opis_galezi(branch)} nie ma danych składowej zerowej (Z₀), "
+                                "a wartości roboczej nie da się przyjąć "
+                                f"({skladowa.brak_podstawy_pl}). Zwarcie jednofazowe wymaga "
+                                "R₀/X₀."
                             ),
                             element_ref=branch.ref_id,
                             element_type="branch",

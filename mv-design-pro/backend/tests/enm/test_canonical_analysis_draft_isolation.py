@@ -12,7 +12,7 @@ from enm.canonical_analysis import (
     reset_canonical_runs,
 )
 from enm.models import EnergyNetworkModel
-from enm.store import reset_enm_store, set_enm
+from enm.store import get_enm, reset_enm_store, set_enm
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitType
 
 from tests.catalog_test_helpers import gpz_source_record
@@ -341,12 +341,7 @@ def test_short_circuit_type_accepts_sc2fg_alias_from_ui():
     )
 
 
-def test_create_1f_run_blocks_without_committed_z0():
-    """Brak Z0 GAŁĘZI (W001: kabel bez R′0/X′0) odbiera modelowi zdolność zwarcia
-    doziemnego — bieg 1F jest blokowany odmową nazwaną. Brak Z0 samego źródła nie blokuje
-    (węzły jego sieci zerowej dostają nazwaną przyczynę ``brak_danych`` — karta
-    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3, test niżej)."""
-    case_id = "canonical-sc-1f-missing-z0"
+def _payload_kabla_bez_z0(r1_ohm_per_km: float) -> dict:
     payload = _valid_enm_payload("Siec bez Z0")
     payload["buses"].append({"ref_id": "b2", "name": "B2", "voltage_kv": 15, "phase_system": "3ph"})
     payload["branches"].append(
@@ -357,14 +352,64 @@ def test_create_1f_run_blocks_without_committed_z0():
             "from_bus_ref": "b1",
             "to_bus_ref": "b2",
             "length_km": 1.0,
-            "r_ohm_per_km": 0.125,
+            "r_ohm_per_km": r1_ohm_per_km,
             "x_ohm_per_km": 0.086,
             # Pozycja katalogu bez R′0/X′0 — pozycja z danymi zerowymi materializuje je
             # przy zapisie modelu, więc nie dawałaby braku.
             "catalog_ref": "cable-incomplete-test",
         }
     )
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+    return payload
+
+
+def test_create_1f_run_kabel_bez_z0_liczy_sie_z_wartoscia_robocza():
+    """Zasada nr 4: kabel bez R′0/X′0 z dodatnimi R′1, X′1 nie odbiera modelowi zdolności
+    zwarcia doziemnego — bieg 1F biegnie z wartością roboczą R′0 = 3·R′1, X′0 = 3·X′1,
+    a założenie biegu ``branch.z0_wartosc_robocza`` nazywa kabel i wartości. Pozycja
+    ``cable-incomplete-test`` nie ma składowej zerowej, a materializacja daje R′1 = 0,253,
+    X′1 = 0,112 Ω/km: R′0 = 0,759, X′0 = 0,336 Ω/km."""
+    from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE
+
+    case_id = "canonical-sc-1f-z0-robocze"
+    set_enm(case_id, EnergyNetworkModel.model_validate(_payload_kabla_bez_z0(0.125)))
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        options={"fault_type": "1F"},
+    )
+    result = execute_run(run.id)
+    assert result.status == "FINISHED", result.error_message
+    (zalozenie,) = (z for z in result.raw_result["zalozenia"] if z.get("code") == KOD_Z0_ROBOCZE)
+    assert zalozenie["element_ref"] == "kabel-bez-z0"
+    assert "Kabel bez danych zerowych" in zalozenie["message_pl"]
+    assert [d["wartosc"]["wartosc"] for d in zalozenie["dane_przyjete"]] == [0.759, 0.336]
+    assert all(d["jakosc"] == "ESTIMATED" for d in zalozenie["dane_przyjete"])
+
+
+def test_create_1f_run_blocks_without_z0_basis():
+    """Brak Z0 GAŁĘZI bez podstawy wartości roboczej (W001: kabel bez R′0/X′0, R′1 = 0)
+    odbiera modelowi zdolność zwarcia doziemnego — bieg 1F jest blokowany odmową nazwaną.
+    Brak Z0 samego źródła nie blokuje (węzły jego sieci zerowej dostają nazwaną przyczynę
+    ``brak_danych`` — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3, test niżej)."""
+    case_id = "canonical-sc-1f-missing-z0"
+    set_enm(case_id, EnergyNetworkModel.model_validate(_payload_kabla_bez_z0(0.125)))
+    # Projektant zmienia R′1 odcinka na 0 po materializacji pozycji katalogu — wartość
+    # projektanta przeżywa uzupełnienie katalogu, a wartości roboczej nie ma z czego przyjąć.
+    zapisany = get_enm(case_id)
+    kabel = next(b for b in zapisany.branches if b.ref_id == "kabel-bez-z0")
+    set_enm(
+        case_id,
+        zapisany.model_copy(
+            update={
+                "branches": [
+                    b.model_copy(update={"r_ohm_per_km": 0.0}) if b is kabel else b
+                    for b in zapisany.branches
+                ]
+            }
+        ),
+    )
+    assert get_enm(case_id).branches[-1].r_ohm_per_km == 0.0
 
     with pytest.raises(ValueError, match="składowej zerowej Z0"):
         create_run(
