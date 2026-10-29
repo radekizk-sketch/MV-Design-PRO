@@ -103,6 +103,10 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
     case FIELD_ROLE.DER_UNKNOWN:
       return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
+    case FIELD_ROLE.CAPACITOR_BANK:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
+    case FIELD_ROLE.EARTHING_UNIT:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.ZESPOL_UZIEMIAJACY);
     default:
       return 'pole';
   }
@@ -138,7 +142,7 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  *
  * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
  * transformatorowe · `FS1`… sprzęgła · `FP1`… pomiarowe · `FG1`… źródłowe
- * (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * (DER) · `FK1`… baterii kondensatorów (kompensacyjne) · `FZ1`… zespołów uziemiających. Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
  * jednej klasy nie przenumerowuje pozostałych.
  */
 export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
@@ -152,7 +156,11 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
           : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
             || role === FIELD_ROLE.DER_UNKNOWN
             ? 'FG'
-            : 'F';
+            : role === FIELD_ROLE.CAPACITOR_BANK
+              ? 'FK'
+              : role === FIELD_ROLE.EARTHING_UNIT
+                ? 'FZ'
+                : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;

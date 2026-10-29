@@ -851,32 +851,66 @@ def _warunki_niepewnosci(model: V126AcademicInput) -> list[Warunek]:
 def _warunki_punktu_neutralnego(
     model: V126AcademicInput, parametry: dict[str, Any]
 ) -> list[Warunek]:
-    # Zakres sieci i napięcie z TEJ SAMEJ prawdy co solver (`uziemienie_sn.galezie_sieci`,
-    # `uziemienie_sn.napiecie_kv` — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, predykaty parami):
-    # gałęzie 110 kV i nN nie należą do sieci SN, a napięciem sieci nie jest najwyższe napięcie
-    # szyny modelu (w modelu GPZ — 110 kV).
+    # Zakres sieci i napięcie z TEJ SAMEJ prawdy co solver (`uziemienie_sn.sieci[*]` — każda
+    # galwanicznie połączona sieć SN osobno, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, predykaty
+    # parami): gałęzie 110 kV i nN nie należą do sieci SN, sekcja za otwartym sprzęgłem jest
+    # osobną siecią, a napięciem sieci nie jest najwyższe napięcie szyny modelu (w GPZ 110 kV).
     uziemienie = model.uziemienie_sn
-    galezie_sieci = frozenset(uziemienie.galezie_sieci) if uziemienie is not None else frozenset()
-    napiecie_kv = uziemienie.napiecie_kv if uziemienie is not None else None
-    zamkniete = [
-        b
-        for b in model.branches
-        if b.kind in {"line_overhead", "cable"} and not b.is_open and b.ref in galezie_sieci
+    sieci = uziemienie.sieci if uziemienie is not None else []
+    napiecia = [siec.napiecie_kv for siec in sieci]
+    napiecie_kv = napiecia[0] if napiecia and all(napiecia) else None
+    zamkniete_sieci = [
+        [
+            b
+            for b in model.branches
+            if b.kind in {"line_overhead", "cable"}
+            and not b.is_open
+            and b.ref in frozenset(siec.galezie_sieci)
+        ]
+        for siec in sieci
     ]
+    zamkniete = [b for galezie in zamkniete_sieci for b in galezie]
     z_b0 = [b.ref for b in zamkniete if b.b0_siemens_per_km is not None]
     bez_b0 = tuple(b.ref for b in zamkniete if b.b0_siemens_per_km is None)
+    # Baterie kondensatorów w gwieździe uziemionej też niosą pojemność doziemną (karta
+    # UX-04/POLE-BKR-MODEL) — ten sam predykat co suma C0 solvera (`wnosi_pojemnosc_doziemna`
+    # i bateria w `baterie_sieci` tej sieci), inaczej gotowość odmawiałaby biegu, który
+    # solver liczy (albo odwrotnie).
+    baterie_sieci = [
+        [
+            b.ref
+            for b in model.shunt_capacitors
+            if b.wnosi_pojemnosc_doziemna and b.ref in frozenset(siec.baterie_sieci)
+        ]
+        for siec in sieci
+    ]
+    baterie = [ref for refs in baterie_sieci for ref in refs]
+    zrodla_c0 = (*z_b0, *baterie)
+    # Sieć bez żadnego źródła pojemności doziemnej solver melduje jako „dane niekompletne"
+    # (tylko ją); blokuje bieg dopiero brak pojemności we WSZYSTKICH sieciach.
+    sieci_bez_c0 = tuple(
+        siec.szyna_ref
+        for siec, galezie, refs in zip(sieci, zamkniete_sieci, baterie_sieci, strict=True)
+        if not any(b.b0_siemens_per_km is not None for b in galezie) and not refs
+    )
     warunki = [
         Warunek(
             kod="galezie.b0",
             opis_pl=(
                 f"Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): "
                 f"{len(z_b0)} z {len(zamkniete)}"
-                if z_b0
-                else "Żadna linia ani kabel sieci SN nie niesie susceptancji zerowej — "
-                "pojemności doziemnej sieci nie da się wyznaczyć"
+                + (
+                    f"; baterie kondensatorów w gwieździe uziemionej: {len(baterie)}"
+                    if baterie
+                    else ""
+                )
+                if zrodla_c0
+                else "Żadna linia ani kabel sieci SN nie niesie susceptancji zerowej ani żadna "
+                "bateria kondensatorów sieci SN nie jest w gwieździe uziemionej — pojemności "
+                "doziemnej sieci nie da się wyznaczyć"
             ),
-            spelniony=bool(z_b0),
-            elementy=tuple(z_b0),
+            spelniony=bool(zrodla_c0),
+            elementy=zrodla_c0,
         ),
         Warunek(
             kod="model.napiecie_sieci",
@@ -889,7 +923,21 @@ def _warunki_punktu_neutralnego(
         ),
         _warunek_uziemienia_sn(model, projekt_zespolu=True),
     ]
-    if bez_b0 and z_b0:
+    if sieci_bez_c0 and zrodla_c0:
+        warunki.append(
+            Warunek(
+                kod="galezie.siec_bez_c0",
+                opis_pl=(
+                    f"Sieci SN bez pojemności doziemnej (linii, kabli ani baterii w gwieździe "
+                    f"uziemionej z susceptancją zerową): {len(sieci_bez_c0)} z {len(sieci)} — "
+                    "projekt uziemienia tych sieci niewykonany"
+                ),
+                spelniony=False,
+                elementy=sieci_bez_c0,
+                blokujacy=False,
+            )
+        )
+    if bez_b0 and zrodla_c0:
         warunki.append(
             Warunek(
                 kod="galezie.bez_b0",
@@ -975,24 +1023,24 @@ def _dane_z_modelu(
             )
         )
     if rodzaj == V126AnalysisType.NEUTRAL_EARTHING_DESIGN and model.uziemienie_sn is not None:
-        uziemienie = model.uziemienie_sn
-        if uziemienie.napiecie_kv:
-            dane.append(
-                DanaZModeluWartosc(
-                    "Sieć SN (napięcie znamionowe, linie i kable)",
-                    f"{uziemienie.napiecie_kv:g} kV, {len(uziemienie.galezie_sieci)}",
-                    tuple(uziemienie.galezie_sieci),
+        for siec in model.uziemienie_sn.sieci:
+            if siec.napiecie_kv:
+                dane.append(
+                    DanaZModeluWartosc(
+                        f"{siec.nazwa_pl} (napięcie znamionowe, linie i kable)",
+                        f"{siec.napiecie_kv:g} kV, {len(siec.galezie_sieci)}",
+                        tuple(siec.galezie_sieci),
+                    )
                 )
-            )
-        for rezystor in uziemienie.rezystory:
-            dane.append(
-                DanaZModeluWartosc(
-                    f"Rezystor punktu neutralnego ({rezystor.nazwa_pl})",
-                    f"R = {rezystor.r_ohm:g} Ω, I_n = {rezystor.i_n_a:g} A, "
-                    f"t_n = {rezystor.t_n_s:g} s",
-                    (rezystor.ref,),
+            for rezystor in siec.rezystory:
+                dane.append(
+                    DanaZModeluWartosc(
+                        f"Rezystor punktu neutralnego ({rezystor.nazwa_pl})",
+                        f"R = {rezystor.r_ohm:g} Ω, I_n = {rezystor.i_n_a:g} A, "
+                        f"t_n = {rezystor.t_n_s:g} s",
+                        (rezystor.ref,),
+                    )
                 )
-            )
     if rodzaj == V126AnalysisType.INSULATION_COORDINATION:
         dane.append(
             DanaZModeluWartosc(

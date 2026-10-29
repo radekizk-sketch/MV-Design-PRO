@@ -65,6 +65,7 @@ from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
 from werdykt.proweniencja import FieldQuality
 
+from .bateria_kondensatorow import admitancja_zerowa_baterii_s
 from .models import (
     Cable,
     DlawikGaszacy,
@@ -72,6 +73,7 @@ from .models import (
     GroundingConfig,
     OverheadLine,
     RezystorUziemiajacy,
+    ShuntCapacitor,
     Transformer,
     ZespolUziemiajacy,
 )
@@ -406,10 +408,15 @@ class UziemienieSekcji:
     szyny: tuple[str, ...]
     napiecie_kv: float
     punkty: tuple[PunktUziemienia, ...]
-    #: Σ B_0 linii i kabli w ruchu z danymi B_0 [S]; gałęzie bez B_0 wymienione obok.
+    #: Σ B_0 linii i kabli w ruchu z danymi B_0 i baterii kondensatorów w gwieździe uziemionej
+    #: tej sieci [S]; gałęzie bez B_0 wymienione obok.
     b0_s: float
     galezie_bez_b0: tuple[str, ...]
     ostrzezenia: tuple[str, ...] = field(default=())
+    #: Baterie kondensatorów załączone na szynach tej sieci z drogą zerową (gwiazda uziemiona,
+    #: Y0 = Y1) i ich B_0 [S] — składnik ``b0_s`` (karta UX-04/POLE-BKR-MODEL; przynależność
+    #: do sieci tym samym predykatem co gałęzie: szyna baterii w składowej galwanicznej).
+    baterie_b0: tuple[tuple[str, float], ...] = field(default=())
 
     @property
     def punkty_w_ruchu(self) -> tuple[PunktUziemienia, ...]:
@@ -438,7 +445,7 @@ class UziemienieSekcji:
 
     @property
     def prad_pojemnosciowy_a(self) -> float | None:
-        """I_C = √3·U_n·B_0 [A]; ``None`` gdy żadna gałąź nie ma B_0."""
+        """I_C = √3·U_n·B_0 [A]; ``None`` gdy żadna gałąź ani bateria nie wnosi B_0."""
         if self.b0_s <= 0.0:
             return None
         return prad_pojemnosciowy_doziemienia_a(self.napiecie_kv, self.b0_s)
@@ -515,6 +522,7 @@ class UziemienieSekcji:
             "punkty": [p.to_dict(stan_awsc) for p in self.punkty],
             "b0_s": self.b0_s,
             "galezie_bez_b0": list(self.galezie_bez_b0),
+            "baterie_b0": [{"ref": ref, "b0_s": b0} for ref, b0 in self.baterie_b0],
             "prad_pojemnosciowy_a": self.prad_pojemnosciowy_a,
             "prad_dlawikow_a": self.prad_dlawikow_a(),
             "rozstrojenie": self.rozstrojenie,
@@ -938,7 +946,32 @@ def galezie_sieci_sn(
     )
 
 
-def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[float, tuple[str, ...]]:
+def b0_baterii_s(enm: EnergyNetworkModel, bateria: ShuntCapacitor) -> float:
+    """Susceptancja zerowa fazy baterii względem ziemi B_0 [S] przy częstotliwości studium.
+
+    JEDNO źródło B_0 baterii dla prawdy o uziemieniu sieci (I_C, rozstrojenie) i dla wejścia
+    V12.6 (``V126ShuntCapacitorInput.b0_siemens``): gwiazda uziemiona B_0 = B (Y0 = Y1),
+    pozostałe układy 0 (``enm.bateria_kondensatorow.admitancja_zerowa_baterii_s``). Częstotliwość
+    z nagłówka modelu — to samo pole, z którego mapowanie Y0 liczy admitancję baterii."""
+    return admitancja_zerowa_baterii_s(
+        bateria.model_dump(mode="json"), float(enm.header.defaults.frequency_hz)
+    ).imag
+
+
+def baterie_sieci_sn(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[ShuntCapacitor, ...]:
+    """Baterie kondensatorów załączone na szynach połączonej sieci SN o szynach ``szyny``
+    (sortowane po ``ref_id``) — JEDYNY predykat przynależności baterii do sieci (suma B_0 tej
+    prawdy i zakres baterii analiz V12.6)."""
+    return tuple(
+        bateria
+        for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id)
+        if bateria.status == "closed" and bateria.bus_ref in szyny
+    )
+
+
+def _b0_sieci(
+    enm: EnergyNetworkModel, szyny: frozenset[str]
+) -> tuple[float, tuple[str, ...], tuple[tuple[str, float], ...]]:
     b0 = 0.0
     brak: list[str] = []
     for galaz in galezie_sieci_sn(enm, szyny):
@@ -946,7 +979,13 @@ def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[float, tu
             brak.append(galaz.ref_id)
             continue
         b0 += galaz.b0_siemens_per_km * galaz.length_km
-    return b0, tuple(brak)
+    baterie: list[tuple[str, float]] = []
+    for bateria in baterie_sieci_sn(enm, szyny):
+        b0_baterii = b0_baterii_s(enm, bateria)
+        if b0_baterii > 0.0:
+            baterie.append((bateria.ref_id, b0_baterii))
+            b0 += b0_baterii
+    return b0, tuple(brak), tuple(baterie)
 
 
 def _ostrzezenia(sekcja: UziemienieSekcji) -> tuple[str, ...]:
@@ -1005,13 +1044,14 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
             if zu.bus_ref in szyny
         ]
         punkty.extend(_punkty_uzwojen(list(enm.transformers), szyny, u_kv))
-        b0, bez_b0 = _b0_sieci(enm, szyny)
+        b0, bez_b0, baterie_b0 = _b0_sieci(enm, szyny)
         sekcja = UziemienieSekcji(
             szyny=tuple(sorted(szyny)),
             napiecie_kv=u_kv,
             punkty=tuple(punkty),
             b0_s=b0,
             galezie_bez_b0=bez_b0,
+            baterie_b0=baterie_b0,
         )
         wynik.append(
             UziemienieSekcji(
@@ -1021,6 +1061,7 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
                 b0_s=sekcja.b0_s,
                 galezie_bez_b0=sekcja.galezie_bez_b0,
                 ostrzezenia=_ostrzezenia(sekcja),
+                baterie_b0=sekcja.baterie_b0,
             )
         )
     return tuple(wynik)

@@ -91,6 +91,7 @@ from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .dziennik_zmian import sciezka_tymczasowa
 from .hash import compute_enm_hash, hash_migawki_enm
 from .models import EnergyNetworkModel, Generator, ShuntCapacitor
@@ -868,6 +869,12 @@ class SondaKondensatora(BaseModel):
     catalog_ref: str = Field(min_length=1)
     catalog_namespace: str = "KOMPENSATOR_SN"
     id_seed: str = Field(min_length=1)
+    #: Tabliczka typu (pola kontraktu materializacji KOMPENSATOR_SN —
+    #: ``enm.bateria_kondensatorow.tabliczka_baterii_z_rekordu``): sonda niesie parametry
+    #: baterii typu (układ, stopnie, straty, dławik) jak element utworzony operacją — ten sam
+    #: zapisywacz ``zapisz_tabliczke_baterii`` (karta UX-04/POLE-BKR-MODEL). Pusta = sonda
+    #: z samą tabliczką Q_n/U_n (parametry baterii z wartości roboczych rejestru).
+    tabliczka: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -1079,7 +1086,7 @@ def _generator_sondy(wstrzyk: Wstrzyk) -> dict[str, Any]:
 
 
 def _bateria_sondy(sonda: SondaKondensatora) -> dict[str, Any]:
-    return ShuntCapacitor(
+    bateria = ShuntCapacitor(
         id=uuid5(NAMESPACE_URL, sonda.id_seed),
         ref_id=sonda.ref_id,
         name=sonda.name,
@@ -1092,6 +1099,9 @@ def _bateria_sondy(sonda: SondaKondensatora) -> dict[str, Any]:
         parameter_source="CATALOG",
         source_mode="KATALOG",
     ).model_dump(mode="json")
+    if sonda.tabliczka:
+        zapisz_tabliczke_baterii(bateria, sonda.tabliczka)
+    return bateria
 
 
 def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: OperatingScenario) -> None:

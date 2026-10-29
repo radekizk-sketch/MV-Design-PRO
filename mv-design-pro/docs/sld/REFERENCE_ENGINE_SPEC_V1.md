@@ -93,6 +93,8 @@ SLD_CAD_SPEC_V3 i z `bay_templates.py`:
 | `transformer_breaker` | DS, CB, TRANSFORMER_DEVICE | — | jw. |
 | `measurement` | DS, VT | — | DS |
 | `coupler` | DS, CB | — | DS→CB→CT→DS |
+| `capacitor_bank` | DS, CB, CT | — | DS→CB→CT→CABLE_HEAD |
+| `earthing_unit` | DS, CB, CT | — | DS→CB→CT→CABLE_HEAD |
 | `der_source` | DS, CB, CABLE_HEAD | — | DS→CB→CT→DS→CABLE_HEAD |
 | `reserve` | DS | — | DS |
 | `aux` | DS, FUSE | — | DS→FUSE |
@@ -110,6 +112,10 @@ derGenerator) są poza parytetem profili — to symbole źródła, nie stos apar
 
 - `station_type == 'gpz'`: IN/OUT → `line_breaker`; TR → `transformer_breaker`;
   MEASUREMENT → `measurement`; COUPLER → `coupler`; OZE → `der_source`; FEEDER → `reserve`.
+- każda stacja (technologia wyłącznikowa): BKR → `capacitor_bank` (ENEA Zeszyt 1 Zał. 16);
+  ZU → `earthing_unit` (ENEA Zeszyt 1 Zał. 13–15; transformator uziemiający, dławik i rezystor
+  są zespołem uziemiającym modelu na zacisku pola, więc TRANSFORMER_DEVICE w polu ZU jest
+  zakazany).
 - stacje pozostałe (technologia RMU, V12K-031-A): IN/OUT → `rmu_line`;
   TR → `rmu_transformer`; MEASUREMENT → `measurement`; COUPLER → `coupler`;
   OZE → `der_source`.

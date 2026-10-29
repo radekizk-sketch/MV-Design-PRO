@@ -19,7 +19,9 @@ import type {
   ZespolUziemiajacy,
 } from '../../../../../types/enm';
 import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
+import { czyPoleKabloweGpz } from '../canonicalGpzModel';
 import { pole } from '../../../../../test/pola';
+import { BAY_MODEL_ROLES } from '../../../../../types/enm';
 
 type EnmFragment = Pick<
   EnergyNetworkModel,
@@ -1084,16 +1086,8 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
    ze spacją}) × ścieżka (funkcja czysta, adapter end-to-end).
    --------------------------------------------------------------------------- */
 
-const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = [
-  'IN',
-  'OUT',
-  'FEEDER',
-  'TR',
-  'COUPLER',
-  'MEASUREMENT',
-  'OZE',
-  'ZU',
-];
+// Jedna lista ról modelu (`types/enm.ts::BAY_MODEL_ROLES`) — nowa rola wchodzi do iloczynu sama.
+const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = BAY_MODEL_ROLES;
 
 describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)', () => {
   const OCZEKIWANA = {
@@ -1105,6 +1099,7 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
     ZU: 'uziemiajace',
+    BKR: 'kompensacyjne',
   } as const;
 
   for (const rola of ROLE_ENM) {
@@ -1118,6 +1113,34 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
       };
       const props = buildCanonicalGpzProps(enm, 'g');
       expect(props.sections[0].bays[0].rolaPola).toBe(OCZEKIWANA[rola]);
+    });
+  }
+
+  // Rola stosu pola i predykat pola kablowego (wybór pola magistrali i feederów sieci) — iloczyn
+  // po WSZYSTKICH rolach modelu. Pole ZU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) i pole BKR
+  // spadały dawniej w `default: LINE_OUT` — kandydat na pole magistrali sieci.
+  const ROLA_STOSU = {
+    IN: ['LINE_IN', true],
+    OUT: ['LINE_OUT', true],
+    FEEDER: ['LINE_BRANCH', true],
+    TR: ['TRANSFORMER', false],
+    COUPLER: ['COUPLER', false],
+    MEASUREMENT: ['MEASUREMENT', false],
+    OZE: ['SOURCE', true],
+    ZU: ['EARTHING_UNIT', false],
+    BKR: ['CAPACITOR_BANK', false],
+  } as const;
+  for (const rola of ROLE_ENM) {
+    it(`bay_role=${rola} → rola stosu ${ROLA_STOSU[rola][0]}, pole kablowe: ${ROLA_STOSU[rola][1]}`, () => {
+      const enm: EnmFragment = {
+        ...emptyEnm(),
+        substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+        bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1' })],
+        buses: [bus('bus-15', 15)],
+      };
+      const [pole] = buildCanonicalGpzProps(enm, 'g').sections[0].bays;
+      expect(pole.fieldRole).toBe(ROLA_STOSU[rola][0]);
+      expect(czyPoleKabloweGpz(pole.fieldRole)).toBe(ROLA_STOSU[rola][1]);
     });
   }
 

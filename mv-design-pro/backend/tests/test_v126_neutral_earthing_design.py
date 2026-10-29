@@ -17,6 +17,7 @@ from solver_input.v126_contracts import (
     V126BranchInput,
     V126BusInput,
     V126RezystorSnInput,
+    V126SiecSnInput,
     V126UziemienieSnInput,
 )
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
@@ -72,15 +73,28 @@ def _cable_network(
                 wariant=wariant,
                 wariant_awsc_zalaczony=wariant,
                 opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
-                napiecie_kv=nominal_kv,
-                galezie_sieci=["K1"],
-                rezystory=list(
-                    rezystory
-                    if rezystory is not None
-                    else ((REZYSTOR_300A,) if wariant in ("rezystor", "dlawik_rezystor") else ())
-                ),
-                prad_dlawikow_a=prad_dlawikow_a,
-                dane_przyjete=list(dane_przyjete),
+                sieci=[
+                    V126SiecSnInput(
+                        szyna_ref="B1",
+                        nazwa_pl="Sieć SN szyny GPZ",
+                        wariant=wariant,
+                        opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
+                        napiecie_kv=nominal_kv,
+                        szyny=["B1", "B2"],
+                        galezie_sieci=["K1"],
+                        rezystory=list(
+                            rezystory
+                            if rezystory is not None
+                            else (
+                                (REZYSTOR_300A,)
+                                if wariant in ("rezystor", "dlawik_rezystor")
+                                else ()
+                            )
+                        ),
+                        prad_dlawikow_a=prad_dlawikow_a,
+                        dane_przyjete=list(dane_przyjete),
+                    )
+                ],
             )
         ),
     )
@@ -216,7 +230,7 @@ class TestNerResistorSizing:
     def test_z14_without_coil_current_is_named_gap(self) -> None:
         res = _run(_cable_network(wariant="dlawik_rezystor"))["result"]
         assert res["status"] == "dane niekompletne"
-        assert res["missing_fields"] == ["uziemienie_sn.prad_dlawikow_a"]
+        assert res["missing_fields"] == ["uziemienie_sn.sieci.prad_dlawikow_a"]
 
     @pytest.mark.parametrize("wariant", ["dlawik", "rezystor", "dlawik_rezystor"])
     def test_brak_napiecia_sieci_to_odmowa_nazwana_bez_liczby(self, wariant: str) -> None:
@@ -224,7 +238,7 @@ class TestNerResistorSizing:
         policzonego z napięcia podstawionego zerem (każdy wariant projektu)."""
         siec = _cable_network(wariant=wariant, prad_dlawikow_a=50.0)
         assert siec.uziemienie_sn is not None
-        siec.uziemienie_sn.napiecie_kv = None
+        siec.uziemienie_sn.sieci[0].napiecie_kv = None
         res = _run(siec)["result"]
         assert res["status"] == "dane niekompletne"
         assert res["missing_fields"] == ["nominal_kv"]
@@ -297,7 +311,7 @@ class TestIncompleteData:
         model = _cable_network(wariant="rezystor", rezystory=())
         res = _run(model)["result"]
         assert res["status"] == "dane niekompletne"
-        assert res["missing_fields"] == ["uziemienie_sn.rezystory"]
+        assert res["missing_fields"] == ["uziemienie_sn.sieci.rezystory"]
 
     def test_missing_clearing_time_makes_thermal_incomplete(self) -> None:
         model = _cable_network(wariant="rezystor")
@@ -456,8 +470,17 @@ class TestZakresSieciSn:
                 wariant=wariant,
                 wariant_awsc_zalaczony=wariant,
                 opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
-                napiecie_kv=15.0,
-                galezie_sieci=["K1"],
+                sieci=[
+                    V126SiecSnInput(
+                        szyna_ref="B1",
+                        nazwa_pl="Sieć SN szyny GPZ",
+                        wariant=wariant,
+                        opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
+                        napiecie_kv=15.0,
+                        szyny=["B1", "B2"],
+                        galezie_sieci=["K1"],
+                    )
+                ],
             ),
         )
 

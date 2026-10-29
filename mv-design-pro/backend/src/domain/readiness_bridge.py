@@ -60,6 +60,12 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W043": "station.kind_mismatch",
     # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
     "W044": "station.field_role_unknown",
+    # Karta UX-04/POLE-BKR-MODEL: reguły pola BKR == te same warunki (jedno źródło predykatów
+    # `enm/bateria_kondensatorow.py`, emiter `enm/validator.py::_check_baterie_pola_bkr`).
+    "W045": "station.bkr_bay_missing",
+    "W046": "station.bkr_unbalance_ct_missing",
+    "W047": "station.bkr_discharge_vt_missing",
+    "W048": "station.bkr_transformer_trip_incomplete",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",
@@ -161,6 +167,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E040": "Kanon nie ma kodów baterii kondensatorów (referencja katalogowa).",
     "E041": "Kanon nie ma kodów baterii kondensatorów (moc bierna).",
     "E042": "Kanon nie ma kodów baterii kondensatorów (napięcie znamionowe).",
+    "E043": (
+        "Kanon nie ma kodów baterii kondensatorów (stan stopni niezgodny z liczbą stopni) — "
+        "spójność danych elementu, jak E040–E042."
+    ),
     "I001": "Stan łącznika (otwarty) to informacja o topologii, nie brak danych.",
     "I002": (
         "Powtarza warunek E009 na poziomie INFO — jeden warunek ma mieć jeden kod "

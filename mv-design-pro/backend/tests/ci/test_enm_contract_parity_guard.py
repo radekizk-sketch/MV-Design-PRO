@@ -119,15 +119,19 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     ZNyn5 / ZNy11 / ZNy5 / ZN), `DlawikGaszacy.regulacja` (ciagla / zaczepy) i
     `.stan_odlacznika`, `RezystorUziemiajacy.stan_odlacznika` (zamkniety / otwarty)
     i `RezystorWymuszajacyAwsc.strona` (wtorna / pierwotna) — licznik 125 -> 131 (pomiar
-    guardem)."""
+    guardem).
+    Karta UX-04/POLE-BKR-MODEL (2026-10-28): +1 — nowe pole Literal
+    `ShuntCapacitor.uklad_polaczen` (`UkladPolaczenBaterii`, lustro TS `UKLADY_POLACZEN_BATERII`);
+    `Bay.bay_role` czyta teraz alias `RolaKanonicznaPolaSn` — to samo pole, nie nowe. Scalenie obu
+    kart: 131 + 1 = 132 (pomiar guardem na drzewie scalonym)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 131, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 131 — "
+    assert int(dopasowanie.group(1)) == 132, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 132 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

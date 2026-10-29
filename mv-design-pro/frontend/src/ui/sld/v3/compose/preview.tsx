@@ -27,7 +27,14 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type GlyphProps, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import {
+  SYMBOL_GLYPHS,
+  V3_STROKE_APPARATUS,
+  type GlifBaterii,
+  type GlyphProps,
+  type StationDerGlyphKind,
+  type SwitchState,
+} from '../symbols/glyphs';
 import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
@@ -481,6 +488,8 @@ export interface PreviewSymbol {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń transformatora z grupy połączeń
    *  modelu — dla symbolu `transformer2W` (patrz `symbols/uzwojenia.ts`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — dla symbolu `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
   readonly meta?: PreviewElementMeta;
 }
 
@@ -501,6 +510,7 @@ export function daneGlifuSymbolu(
     state: symbol.state,
     earthingKind: symbol.earthingKind,
     uzwojenia: symbol.uzwojenia,
+    bateria: symbol.bateria,
     labelLines: meta?.protectionCodes,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora

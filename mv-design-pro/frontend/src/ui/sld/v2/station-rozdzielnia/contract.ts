@@ -106,7 +106,7 @@ export const FIELD_ROLE_SHORT_TAG: Readonly<Record<StationFieldRole, string>> = 
  * schematic, drawer, context panel, bay-template catalog, exports, results). Mirrored by the
  * backend canon `backend/src/enm/rola_pola_sn.py::NAZWA_ROLI_POLA_SN_PL` (parity pinned by
  * `backend/tests/enm/test_nazwy_pol_bez_kodow.py`). Every other role vocabulary (model
- * `Bay.bay_role` IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE, catalog `BayKind`, SLD roles) maps
+ * `Bay.bay_role` IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE/BKR, catalog `BayKind`, SLD roles) maps
  * to a canonical role FIRST and takes its label from here — no second list of Polish role
  * labels anywhere else (guard: `backend/tests/ci/test_etykiety_rol_pol_sn.py`).
  */
@@ -121,6 +121,7 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
   ZESPOL_UZIEMIAJACY: 'Pole zespołu uziemiającego',
+  BATERIA_KONDENSATOROW: 'Pole baterii kondensatorów',
 };
 
 /** Source field whose technology is not known (model role `OZE`). */
@@ -142,6 +143,7 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
   ZU: 'ZESPOL_UZIEMIAJACY',
+  BKR: 'BATERIA_KONDENSATOROW',
 };
 
 const MODEL_SOURCE_ROLE = 'OZE';

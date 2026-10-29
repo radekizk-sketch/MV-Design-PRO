@@ -36,6 +36,17 @@ Trzy testy:
   usunięciu tego jednego klucza równa się dawnemu złotemu hashowi bit w bit dla wszystkich
   28 kluczy (sprawdzone podmianą ``hash_widoku`` w harnessie). Prądy, nastawy, zaciski,
   c i kolejność bez zmian; pozostałe 24 hashe bez zmian.
+- Karta UX-04/POLE-BKR-MODEL (2026-10-28): cztery hashe rodziny D5 —
+  ``dobor_kompensacji/golden/bus_sn_c_dzien`` ec93313d… → 87067cc0…, ``…/bus_sn_c_noc``
+  2fa79424… → 0d3b9538…, ``dobor_kompensacji/kompensacja/bus_pcc_dzien`` 43286c21… →
+  fbf74ec9…, ``…/bus_pcc_noc`` 89930332… → ab7de201…. Świadoma korekta fizyki: straty
+  czynne baterii z typu katalogowego (``loss_kw``, zapis ``meta.loss_kw`` kandydata) wchodzą
+  do rozpływu jako konduktancja G = P_str·u/U_n² (wcześniej ``g_pu = 0`` — dana katalogu
+  bez konsumenta). Dowód liść po liściu (widoki bazy ``1465336df`` vs drzewo karty): zbiór
+  kluczy identyczny, różnią się WYŁĄCZNIE liście liczbowe kandydatów i doboru — moc czynna
+  punktu przesuwa się dokładnie o P_str·(U/U_n)² kandydata (np. 0,6 Mvar, 0,3 kW,
+  (U/U_n)² = 1,0212: −0,8 → −0,799694 MW), a za nią cos φ i Q (rząd 1e−5 Mvar). Werdykty,
+  wybór kandydata, kolejność i teksty bez zmian; pozostałe 24 hashe bez zmian.
 """
 
 from __future__ import annotations

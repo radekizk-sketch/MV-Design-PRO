@@ -78,6 +78,7 @@ from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
+from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
@@ -164,7 +165,6 @@ from .rola_pola_sn import (
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
     nazwa_roli_pola_sn,
-    rola_modelu_pola_sn,
 )
 from .slownik_komunikatow import (
     NAZWY_KLAS_APARATU_NN_PL,
@@ -1997,15 +1997,21 @@ _KOD_BLEDU_POLA_KATALOGOWEGO = KOD_BLEDU_POLA_KATALOGOWEGO
 
 
 def _normalize_sn_bay_role(payload: dict[str, Any]) -> str | None:
-    """Rola pola z ładunku: brak klucza = rola domyślna operacji ``FEEDER`` (kontrakt
-    `AddSnBayPayload.bay_role`); rola spoza JEDNEJ listy ról modelu
-    (`enm.rola_pola_sn.ROLE_POLA_MODELU`) i spoza aliasów kanonicznych (`LINIA_OUT` → `OUT`)
-    = ``None`` — wołający odmawia z nazwą błędu (dawniej nieznana rola, także alias
-    kanoniczny `LINIA_OUT`, po cichu stawała się polem odgałęźnym)."""
+    """Rola pola z ładunku wg JEDNEJ listy ról modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`).
+
+    Brak roli w ładunku → domyślna rola kontraktu `AddSnBayPayload` (`FEEDER`). Rola podana,
+    ale spoza listy → ``None`` (wołający odmawia operacji kodem `sn.bay_role_unknown`); dawna
+    cicha zamiana nieznanej roli na `FEEDER` budowała pole liniowe z żądania pola innej roli
+    (np. `BKR` przed tą kartą).
+    """
     raw_role = payload.get("bay_role")
     if raw_role is None:
         return "FEEDER"
-    return rola_modelu_pola_sn(raw_role)
+    if isinstance(raw_role, str):
+        normalized = raw_role.strip().upper()
+        if normalized in ROLE_POLA_MODELU:
+            return normalized
+    return None
 
 
 def _default_sn_bay_name(role: str) -> str:
@@ -2122,9 +2128,10 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     bay_role = _normalize_sn_bay_role(payload)
     if bay_role is None:
         return _error_response(
-            f"Pole {pole('bay_role', 'add_sn_bay')}: rola pola spoza listy ról modelu "
-            f"({lista_pl(nazwa_roli_pola_sn(r) for r in ROLE_POLA_MODELU)}).",
-            "sn.bay_role_invalid",
+            "Rola pola podana w żądaniu nie należy do słownika ról pól SN. Dozwolone: "
+            + lista_pl((nazwa_roli_pola_sn(rola) for rola in ROLE_POLA_MODELU), "albo")
+            + ".",
+            "sn.bay_role_unknown",
         )
     pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
     existing_field = pole_modelu(enm, existing_field_ref) if existing_field_ref else None
@@ -7222,7 +7229,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     solver PF (b_pu = Q_rated/S_base, +jB) + analiza reactive_adequacy istnieją;
     ta operacja jest brakującym punktem wejścia. Element trafia do kolekcji
     ENM `shunt_capacitors`, którą solver PF czyta bezpośrednio
-    (`_build_shunt_specs_from_snapshot`). Katalog-first: rated_mvar/rated_kv
+    (`enm/assembler.py::zloz_wejscie_rozplywu`). Katalog-first: rated_mvar/rated_kv
     pochodzą z pozycji katalogowej (nie z payloadu UI) — zero fizyki w UI.
     """
     dry_run = bool(payload.get("dry_run", False))
@@ -7262,6 +7269,17 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             f"{nazwa_kategorii_katalogu('KOMPENSATOR_SN')}.",
             "shunt.catalog_not_found",
         )
+    # Tabliczka z kontraktu materializacji KOMPENSATOR_SN — TA SAMA droga co przypisanie typu
+    # (`assign_catalog_to_element` → `_zastosuj_tabliczke_baterii`), jeden zapisywacz
+    # `zapisz_tabliczke_baterii`.
+    tabliczka, blad_katalogu = _pozycja_katalogu(
+        namespace=przestrzen_katalogu,
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Typ baterii kondensatorów",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
 
     rated_mvar = float(catalog_type.rated_mvar)
     rated_kv = float(catalog_type.rated_kv)
@@ -7279,27 +7297,22 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     shunt_ref = _make_id("shunt", seed, "cap")
 
     new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("shunt_capacitors", []).append(
-        {
-            "ref_id": shunt_ref,
-            "name": nazwa_nadana(payload.get("name"))
-            or nazwa_nadana_pozycji_katalogu(catalog_type)
-            or opis_bez_nazwy("shunt_capacitors"),
-            "bus_ref": bus_ref,
-            "rated_mvar": rated_mvar,
-            "rated_kv": rated_kv,
-            "status": status,
-            "catalog_ref": catalog_ref,
-            "catalog_namespace": przestrzen_katalogu,
-            "source_mode": "KATALOG",
-            "parameter_source": "CATALOG",
-            "tags": [],
-            "meta": {
-                "catalog_binding": copy.deepcopy(binding) if binding else None,
-                "loss_kw": catalog_type.loss_kw,
-            },
-        }
-    )
+    bateria: dict[str, Any] = {
+        "ref_id": shunt_ref,
+        "name": nazwa_nadana(payload.get("name"))
+        or nazwa_nadana_pozycji_katalogu(catalog_type)
+        or opis_bez_nazwy("shunt_capacitors"),
+        "bus_ref": bus_ref,
+        "status": status,
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": przestrzen_katalogu,
+        "source_mode": "KATALOG",
+        "parameter_source": "CATALOG",
+        "tags": [],
+        "meta": {"catalog_binding": copy.deepcopy(binding) if binding else None},
+    }
+    zapisz_tabliczke_baterii(bateria, tabliczka)
+    new_enm.setdefault("shunt_capacitors", []).append(bateria)
 
     return _jako_proba(
         _response(

@@ -1191,8 +1191,17 @@ export interface OgranicznikPrzepiecPola {
  * (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem rekordu — wynika z napięcia
  * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
  */
+/**
+ * Rola pola w modelu (`Bay.bay_role`) — lustro JEDNEJ listy ról backendu
+ * `enm.rola_pola_sn.ROLE_POLA_MODELU` (parytet: `backend/tests/enm/test_rola_pola_bkr.py`).
+ * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
+ * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
+ */
+export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'ZU', 'BKR'] as const;
+export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
+
 export interface Bay extends ENMElement {
-  bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE' | 'ZU';
+  bay_role: BayModelRole;
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
   /** Punkt rozgałęzienia właściciela (pole rozdzielnicy odgałęźnej ZKSN); `null` dla pola stacji. */
@@ -1277,7 +1286,8 @@ export type BayCanonicalRole =
   | 'PV_SN'
   | 'BESS_SN'
   | 'FW_SN'
-  | 'ZESPOL_UZIEMIAJACY';
+  | 'ZESPOL_UZIEMIAJACY'
+  | 'BATERIA_KONDENSATOROW';
 
 export type BayDeviceState =
   | 'zamkniety'
@@ -1335,7 +1345,11 @@ export type BayPrimaryDeviceKind =
   | 'BATTERY'
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
   // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
-  | 'SURGE_ARRESTER';
+  | 'SURGE_ARRESTER'
+  // UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): aparaty pola baterii kondensatorów —
+  // lustro `ui/sld/v3/compose/rodzajeAparatowPolaBkr.ts` (parytet z backendem).
+  | 'UNBALANCE_CT'
+  | 'PHASE_TO_PHASE_VT';
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
@@ -1872,6 +1886,19 @@ export interface ConnectionNode {
  * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
  * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
  */
+/**
+ * Układ połączeń baterii kondensatorów — lustro `backend/src/network_model/core/
+ * bateria_kondensatorow.py::UkladPolaczenBaterii` (równość przypina
+ * `backend/tests/enm/test_bateria_kondensatorow_model.py`; karta UX-04/POLE-BKR-MODEL).
+ */
+export const UKLADY_POLACZEN_BATERII = [
+  'PODWOJNA_GWIAZDA_IZOLOWANA',
+  'GWIAZDA_IZOLOWANA',
+  'GWIAZDA_UZIEMIONA',
+  'TROJKAT',
+] as const;
+export type UkladPolaczenBaterii = (typeof UKLADY_POLACZEN_BATERII)[number];
+
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
@@ -1883,6 +1910,18 @@ export interface ShuntCapacitor extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** Wartości projektanta (pierwszeństwo przed typem; `null` = z typu albo wartość robocza). */
+  uklad_polaczen?: UkladPolaczenBaterii | null;
+  liczba_stopni?: number | null;
+  /** Stan każdego stopnia (`true` = załączony); `null` = wszystkie załączone. */
+  stopnie_zalaczone?: boolean[] | null;
+  tolerancja_pojemnosci_min_proc?: number | null;
+  tolerancja_pojemnosci_max_proc?: number | null;
+  dlawik_ograniczajacy?: boolean | null;
+  dlawik_indukcyjnosc_mh?: number | null;
+  rezystory_rozladowcze_wewnetrzne?: boolean | null;
+  /** Transformatory, których wyłączenie wyłącza baterię (IRiESD II.4.5.4.4.2). */
+  wylaczenie_od_transformatorow?: string[];
 }
 
 /** Stan odłącznika gałęzi punktu neutralnego zespołu uziemiającego (Z.14: każda gałąź). */

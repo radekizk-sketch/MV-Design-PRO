@@ -19,6 +19,7 @@ from solver_input.v126_contracts import (
     V126AnalysisType,
     V126BranchInput,
     V126BusInput,
+    V126SiecSnInput,
     V126UziemienieSnInput,
 )
 
@@ -71,8 +72,17 @@ def _uziemienie(wariant: str, nadazna: bool) -> V126UziemienieSnInput:
         wariant_awsc_zalaczony=wariant,
         regulacja_nadazna=nadazna,
         opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
-        napiecie_kv=15.0,
-        galezie_sieci=["K1"],
+        sieci=[
+            V126SiecSnInput(
+                szyna_ref="B1",
+                nazwa_pl="Sieć SN szyny B1",
+                wariant=wariant,
+                opis_pl=f"sieć z zespołem uziemiającym ({wariant}).",
+                napiecie_kv=15.0,
+                szyny=["B1", "B2"],
+                galezie_sieci=["K1"],
+            )
+        ],
     )
 
 

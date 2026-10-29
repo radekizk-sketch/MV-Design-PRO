@@ -83,6 +83,10 @@ PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
     "CT": "CT",
     "VT": "VT",
     "SURGE_ARRESTER": "OGRANICZNIK_SN",
+    # Aparaty pola baterii kondensatorów (`catalog.rodzaje_aparatury`): przekładnik
+    # niezrównoważenia jest przekładnikiem prądowym, przekładnik międzyfazowy — napięciowym.
+    "UNBALANCE_CT": "CT",
+    "PHASE_TO_PHASE_VT": "VT",
 }
 
 #: Rodzaj aparatu APARAT_SN (``MVApparatusType.device_kind``) dopuszczony dla rodzaju
@@ -123,6 +127,8 @@ NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
     "FUSE": "bezpieczniki",
     "CABLE_HEAD": "głowica kablowa",
     "TRANSFORMER_DEVICE": "transformator pola",
+    "UNBALANCE_CT": "przekładnik niezrównoważenia baterii",
+    "PHASE_TO_PHASE_VT": "przekładnik napięciowy międzyfazowy",
 }
 
 

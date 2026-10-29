@@ -91,7 +91,8 @@ const TEXT_TOKENS = ['baseStroke', 'highlight.resultLabel', 'highlight.resultSta
   'highlight.swzOk', 'highlight.swzFail', 'highlight.swzUnknown',
   // GPZ-PARYTET: nazwa roli w karcie pola GPZ renderowana TEKSTEM w kolorze roli.
   'rolaPola.zasilajace', 'rolaPola.liniowe', 'rolaPola.transformatorowe', 'rolaPola.sprzeglo',
-  'rolaPola.pomiarowe', 'rolaPola.zrodlowe', 'rolaPola.uziemiajace'] as const;
+  'rolaPola.pomiarowe', 'rolaPola.zrodlowe', 'rolaPola.uziemiajace',
+  'rolaPola.kompensacyjne'] as const;
 
 describe('paleta rysunku — parytet motywów', () => {
   it('oba motywy definiują identyczny zbiór kluczy', () => {
@@ -170,13 +171,13 @@ describe('paleta rysunku — role pól GPZ (GPZ-PARYTET)', () => {
       const wartosci = Object.values(p.rolaPola).map((v) => v.toLowerCase());
       expect(new Set(wartosci).size).toBe(wartosci.length);
       expect(Object.keys(p.rolaPola).sort()).toEqual(
-        ['liniowe', 'pomiarowe', 'sprzeglo', 'transformatorowe', 'uziemiajace', 'zasilajace', 'zrodlowe'],
+        ['kompensacyjne', 'liniowe', 'pomiarowe', 'sprzeglo', 'transformatorowe', 'uziemiajace', 'zasilajace', 'zrodlowe'],
       );
     });
   }
 
   it('role zachowują rodzinę barwy między motywami (≤ 30°) — poza sprzęgłem, które jest neutralną szarością', () => {
-    for (const rola of ['zasilajace', 'liniowe', 'transformatorowe', 'pomiarowe', 'zrodlowe', 'uziemiajace'] as const) {
+    for (const rola of ['zasilajace', 'liniowe', 'transformatorowe', 'pomiarowe', 'zrodlowe', 'uziemiajace', 'kompensacyjne'] as const) {
       expect(hueDistance(DARK_SCADA_SLD_PALETTE.rolaPola[rola], LIGHT_TECHNICAL_SLD_PALETTE.rolaPola[rola]), rola)
         .toBeLessThanOrEqual(30);
     }

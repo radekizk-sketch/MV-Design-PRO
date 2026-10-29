@@ -1825,7 +1825,7 @@ Typ spoza rejestru jest błędem kontraktu (`backend/tests/enm/test_rejestr_zdar
 skanuje wszystkie emisje w handlerach).
 
 <!-- GENEROWANE:zdarzenia-domenowe:POCZATEK -->
-Rejestr `DOMAIN_EVENT_TYPES` liczy **66** typów:
+Rejestr `DOMAIN_EVENT_TYPES` liczy **68** typów:
 
 - `AUX_LOAD_CREATED`
 - `BAY_EQUIPMENT_SET`
@@ -1893,6 +1893,8 @@ Rejestr `DOMAIN_EVENT_TYPES` liczy **66** typów:
 - `TR_CREATED`
 - `UPS_CREATED`
 - `VT_CREATED`
+- `ZESPOL_UZIEMIAJACY_CREATED`
+- `ZESPOL_UZIEMIAJACY_UPDATED`
 <!-- GENEROWANE:zdarzenia-domenowe:KONIEC -->
 
 ---

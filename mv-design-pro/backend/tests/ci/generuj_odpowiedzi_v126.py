@@ -123,11 +123,13 @@ if str(Path(__file__).resolve().parents[2] / "src") not in sys.path:
 from application.v126_artifacts import wynik_v126_dla_powierzchni  # noqa: E402
 from network_model.solvers.v126_academic import V126AcademicSolver  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
+    ANALIZY_UZIEMIENIA_SN,
     V126AcademicInput,
     V126AnalysisType,
     V126BranchInput,
     V126BusInput,
     V126HarmonicSourceInput,
+    V126SiecSnInput,
     V126TransformerInput,
     V126UziemienieSnInput,
 )
@@ -252,9 +254,21 @@ def model_wejsciowy() -> V126AcademicInput:
             wariant_awsc_zalaczony="dlawik",
             regulacja_nadazna=True,
             opis_pl="Punkt neutralny sieci 15 kV: sieć skompensowana (Z.13) (Zespół uziemiający sekcji 1).",
-            napiecie_kv=15.0,
-            galezie_sieci=[REF_KABEL],
-            prad_dlawikow_a=15.0,
+            sieci=[
+                V126SiecSnInput(
+                    szyna_ref=REF_GPZ_SZYNA,
+                    nazwa_pl="Sieć SN 15 kV — GPZ Zachód — szyny SN",
+                    wariant="dlawik",
+                    opis_pl=(
+                        "Punkt neutralny sieci 15 kV: sieć skompensowana (Z.13) "
+                        "(Zespół uziemiający sekcji 1)."
+                    ),
+                    napiecie_kv=15.0,
+                    szyny=[REF_GPZ_SZYNA, REF_STACJA_SZYNA],
+                    galezie_sieci=[REF_KABEL],
+                    prad_dlawikow_a=15.0,
+                )
+            ],
         ),
     )
 
@@ -271,9 +285,19 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     # Indeks nazw modelu — w ścieżce API buduje go `enm.nazwy_elementow.zbuduj_indeks_nazw`
     # z migawki biegu; tu źródłem nazw są szyny modelu wejściowego (karta #144).
     nazwy = {szyna.ref: szyna.name for szyna in model.buses}
+    # Uziemienie sieci SN niosą WYŁĄCZNIE analizy zależne od punktu neutralnego — tak jak
+    # w ścieżce API (`build_v126_input_from_enm(analysis_type=...)`); pozostałe rodzaje
+    # dostają wejście bez niego (ich odcisk wejścia, np. ziarno Monte Carlo przepustowości
+    # przyłączeniowej, nie zależy od uziemienia).
+    bez_uziemienia = model.model_copy(update={"uziemienie_sn": None})
     return {
         analysis_type.value: wynik_v126_dla_powierzchni(
-            analysis_type.value, solver.run(analysis_type, model), nazwy=nazwy
+            analysis_type.value,
+            solver.run(
+                analysis_type,
+                model if analysis_type in ANALIZY_UZIEMIENIA_SN else bez_uziemienia,
+            ),
+            nazwy=nazwy,
         )["result"]
         for analysis_type in V126AnalysisType
     }

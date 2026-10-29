@@ -47,7 +47,7 @@ import { STACJA_STRINGS as T } from './strings';
 /** Tor konfiguracji rodziny — kontrakt `SwitchgearFamily.tor_konfiguracji`. */
 export type TorKonfiguracji = 'MODULARNY' | 'BLOK_RMU';
 
-/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (18 wartości). */
+/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (20 wartości). */
 export type RodzajAparatu = BayDeviceInstanceWire['apparatus_kind'];
 
 // ---------------------------------------------------------------- Bloki RMU
@@ -207,6 +207,13 @@ export const ROLA_Z_FUNKCJI_POLA: Readonly<Record<BayKind, SnFieldRole | null>> 
   kablowe: null,
   napowietrzne: null,
   nop_lacznikowe: null,
+  // Pole baterii kondensatorów jest polem rozdzielni GPZ (Zeszyt 1 §13, Zał. 16) — powstaje
+  // operacją pola SN (`add_sn_bay`, rola `BKR`), nie wpisem pól stacji SN/nN.
+  bateria_kondensatorow: null,
+  // Pole zespołu uziemiającego jest polem rozdzielni GPZ (Zeszyt 1 Zał. 13–15) — powstaje
+  // operacją pola SN (`add_sn_bay`, rola `ZU`) i zespołem na jego zacisku, nie wpisem pól
+  // stacji SN/nN.
+  zespol_uziemiajacy: null,
 };
 
 // ------------------------------------------------------- Wyposażenie pola
@@ -257,7 +264,7 @@ export const KLUCZ_WYPOSAZENIA_Z_APARATU: Readonly<
 
 /**
  * Nazwy PL rodzajów aparatu kompozycji pola — KOMPLET słownika kontraktu
- * (18 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
+ * (20 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
  * projektanta.
  */
 export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
@@ -269,6 +276,8 @@ export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
   fuse_set: 'zestaw bezpieczników',
   current_transformer: 'przekładnik prądowy',
   voltage_transformer: 'przekładnik napięciowy',
+  unbalance_current_transformer: 'przekładnik niezrównoważenia baterii',
+  phase_to_phase_voltage_transformer: 'przekładnik napięciowy międzyfazowy',
   surge_arrester: 'ogranicznik przepięć',
   cable_head: 'głowica kablowa',
   busbar: 'szyna zbiorcza',

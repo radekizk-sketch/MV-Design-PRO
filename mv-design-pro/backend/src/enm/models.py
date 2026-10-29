@@ -13,6 +13,10 @@ from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
 from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
+from network_model.core.bateria_kondensatorow import (
+    UkladPolaczenBaterii,
+    sprzecznosc_parametrow_baterii,
+)
 from network_model.core.uziemienie import (
     GrupaTransformatoraUziemiajacego,
     RegulacjaDlawika,
@@ -23,12 +27,12 @@ from network_model.core.uziemienie import (
     UziemienieEkranuKabla,
 )
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StrictBool, StrictInt, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
-from .rola_pola_sn import RolaPolaModelu
+from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
 from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
 
@@ -659,15 +663,36 @@ class Load(ENMElement):
 
 
 class ShuntCapacitor(ENMElement):
-    """Stała bateria kondensatorów (kompensacja mocy biernej) na szynie.
+    """Bateria kondensatorów równoległych SN (kompensacja mocy biernej) na szynie.
 
-    Element FIRST-CLASS ENM: reprezentuje równoległą susceptancję pojemnościową
-    przyłączoną do jednej szyny. W rozpływie mocy mapuje się na istniejący
-    mechanizm shuntów solvera (ShuntSpec) przez susceptancję b_pu liczoną z
-    pierwszych zasad: B = Q_rated / U_rated² → b_pu = Q_rated / S_base.
+    Element FIRST-CLASS ENM: równoległa admitancja pojemnościowa przyłączona do jednej szyny —
+    w GPZ do zacisku pola baterii kondensatorów (`Bay.bay_role == "BKR"`, `terminal_bus_ref`
+    pola = `bus_ref` baterii; ENEA Operator, Zeszyt 1 §13, §17, Zał. 16). W rozpływie mocy
+    mapuje się na mechanizm boczników solvera (`ShuntSpec`) przez admitancję z pierwszych
+    zasad: B = Q_n·(n_zał/n)/U_n² [S], b_pu = B·U_b²/S_b — moc bierna przy napięciu U
+    wynosi Q = Q_n·(n_zał/n)·(U/U_n)² (`network_model.pochodne.bateria_kondensatorow`).
 
-    Przełączanie dyskretne (sterowane napięciem) NIE jest w zakresie —
-    modelujemy stały bank (status in_service: closed/open).
+    Pola karty UX-04/POLE-BKR-MODEL (wszystkie addytywne; `None`/pusta lista = dana
+    nienadana przez projektanta — poza odciskiem `enm/hash.py`). Wartość nadana na elemencie
+    ma pierwszeństwo przed parametrem typu katalogowego (`materialized_params`, kopia przy
+    przypisaniu typu), a brak obu = wartość robocza rejestru
+    (`network_model.catalog.wartosci_robocze`, zasada nr 4) — rozstrzyga
+    `enm.bateria_kondensatorow.parametry_baterii`.
+
+    * `uklad_polaczen` — układ połączeń (`network_model.core.bateria_kondensatorow`);
+    * `liczba_stopni` — liczba jednakowych stopni baterii (≥ 1);
+    * `stopnie_zalaczone` — stan każdego stopnia (`True` = załączony), długość równa liczbie
+      stopni; `None` = wszystkie stopnie załączone. Stan całej baterii (wyłącznik pola) to
+      `status`;
+    * `tolerancja_pojemnosci_min_proc` / `_max_proc` — dopuszczalna odchyłka pojemności od
+      znamionowej [%] (zakres mocy biernej w śladzie rozpływu);
+    * `dlawik_ograniczajacy` / `dlawik_indukcyjnosc_mh` — dławik szeregowy ograniczający prąd
+      załączania (jest / nie ma; indukcyjność [mH], gdy jest);
+    * `rezystory_rozladowcze_wewnetrzne` — jednostki mają wewnętrzne rezystory rozładowcze
+      (gdy nie — pole BKR wymaga przekładników napięciowych rozładowczych);
+    * `wylaczenie_od_transformatorow` — transformatory, których wyłączenie od strony SN wyłącza
+      baterię (IRiESD II.4.5.4.4.2). Dane dla logiki łączeniowej; walidator sprawdza
+      kompletność wobec transformatorów zasilających sekcję baterii.
     """
 
     bus_ref: str
@@ -680,6 +705,34 @@ class ShuntCapacitor(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    uklad_polaczen: UkladPolaczenBaterii | None = None
+    # Typy ścisłe: te same granice co typ katalogowy (KAT-T-052, KAT-T-055) — wartość logiczna
+    # nie jest liczbą stopni, a liczba ani napis („1”, „yes”) nie jest wartością logiczną.
+    liczba_stopni: StrictInt | None = Field(default=None, ge=1)
+    stopnie_zalaczone: list[StrictBool] | None = None
+    tolerancja_pojemnosci_min_proc: float | None = Field(default=None, le=0.0)
+    tolerancja_pojemnosci_max_proc: float | None = Field(default=None, ge=0.0)
+    dlawik_ograniczajacy: StrictBool | None = None
+    dlawik_indukcyjnosc_mh: float | None = Field(default=None, gt=0.0)
+    rezystory_rozladowcze_wewnetrzne: StrictBool | None = None
+    wylaczenie_od_transformatorow: list[str] = []
+
+    @model_validator(mode="after")
+    def _spojnosc_stopni_i_dlawika(self) -> ShuntCapacitor:
+        """Sprzeczność parametrów nadanych na elemencie (stan stopni pusty albo innej długości
+        niż liczba stopni, indukcyjność dławika bez dławika) — JEDNO zdanie z liścia
+        ``sprzecznosc_parametrow_baterii``, to samo, które czyta odmowa zapisu parametrów.
+        Zgodność stanu stopni z liczbą stopni typu (gdy liczba nie jest nadana na elemencie)
+        sprawdza walidator modelu (E043)."""
+        sprzecznosc = sprzecznosc_parametrow_baterii(
+            liczba_stopni=self.liczba_stopni,
+            stopnie_zalaczone=self.stopnie_zalaczone,
+            dlawik_ograniczajacy=self.dlawik_ograniczajacy,
+            dlawik_indukcyjnosc_mh=self.dlawik_indukcyjnosc_mh,
+        )
+        if sprzecznosc is not None:
+            raise ValueError(f"bateria {self.ref_id!r}: {sprzecznosc}")
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -1582,6 +1635,11 @@ class BayPrimaryDevice(BaseModel):
         # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
         # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
         "SURGE_ARRESTER",
+        # UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): przekładnik prądowy
+        # niezrównoważenia baterii (połączenie międzygwiazdowe) i przekładnik napięciowy
+        # międzyfazowy (rozładowanie baterii, U>) — `catalog.rodzaje_aparatury`.
+        "UNBALANCE_CT",
+        "PHASE_TO_PHASE_VT",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -1830,18 +1888,7 @@ class BaySourceEndpoint(BaseModel):
 
 class BayBaseModel(BaseModel):
     bay_ref: str
-    bay_role: Literal[
-        "LINIA_IN",
-        "LINIA_OUT",
-        "TRANSFORMATOROWE",
-        "LINIA_ODG",
-        "SPRZEGLO",
-        "POMIAROWE",
-        "PV_SN",
-        "BESS_SN",
-        "FW_SN",
-        "ZESPOL_UZIEMIAJACY",
-    ]
+    bay_role: RolaKanonicznaPolaSn
     specialization: Literal["BRAK", "POTRZEBY_WLASNE"] = "BRAK"
     substation_ref: str
     gpz_section_id: str | None = None

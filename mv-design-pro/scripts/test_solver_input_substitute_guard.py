@@ -2034,6 +2034,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zadania podpowiedzi katalogu), `dopasowanie`, `certyfikat_ptpiree` (sugestia), `suggestions`,
     # `total_candidates` (odpowiedz). Plik `api/catalog.py` zostaje — liczba plikow bez zmian.
     # PASS niezmieniony.
+    # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 4374 -> 4394 — POMIAR `contract_fields()` na
+    # bazie karty `1465336df` (`git archive`: 4374, pin zgodny) i na drzewie karty (4394).
+    # Roznica zbiorow +20, -0: pola baterii kondensatorow elementu i typu (`uklad_polaczen`,
+    # `liczba_stopni`, `stopnie_zalaczone`, `tolerancja_pojemnosci_min_proc`,
+    # `tolerancja_pojemnosci_max_proc`, `dlawik_ograniczajacy`, `dlawik_indukcyjnosc_mh`,
+    # `rezystory_rozladowcze_wewnetrzne`, `wylaczenie_od_transformatorow`), wielkosci admitancji
+    # baterii (`q_n`, `u_n`, `straty_kw`, `x_dlawika`, `y_sekcji_s`, `liczba_sekcji`,
+    # `sekcje_zalaczone`, `parametry_robocze`, `parametry_robocze_pl`) i wejscie v126
+    # (`baterie`, `b0_siemens`). PASS niezmieniony (zero podstawien).
     # Zespol uziemiajacy SN jedyna prawda punktu neutralnego (2026-10-29): 4374 -> 4419 — POMIAR
     # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
     # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
@@ -2042,7 +2051,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
     # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
     # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4419." in wyjscie, wyjscie
+    # Scalenie obu kart i prad pojemnosciowy kazdej sieci galwanicznej (2026-10-29): 4419 ->
+    # 4442 — POMIAR `contract_fields()` na `280bafcb4` (4419) i na drzewie scalenia (4442).
+    # Roznica zbiorow +23, -0: 20 pol karty UX-04/POLE-BKR-MODEL (jak w jej wpisie wyzej) oraz
+    # `sieci` (wejscie V12.6: jedna pozycja na galwanicznie polaczona siec SN), `baterie_sieci`
+    # (baterie tej sieci) i `baterie_b0` (wklad baterii do B_0 jedynej prawdy uziemienia).
+    # Na `687a2ef65` (4394) roznica -3 (pola skasowanej drugiej prawdy punktu neutralnego),
+    # +51 (pola tej karty). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4442." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2347,10 +2363,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 598 -> 596 (-2
         # `application/validation_problem/{__init__,service}.py` — pakiet bez konsumenta
         # produkcyjnego skasowany); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 596 -> 599 (+3 `enm/bateria_kondensatorow.py`,
+        # `network_model/core/bateria_kondensatorow.py`, `network_model/pochodne/
+        # bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Zespol uziemiajacy SN (2026-10-29): 596 -> 599 (+1 `enm/uziemienie_sekcji.py`, +1
         # `network_model/catalog/mv_zespol_uziemiajacy_catalog.py`, +1
         # `network_model/pochodne/punkt_neutralny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "Przeskanowano 599 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie obu kart (2026-10-29): 596 + 3 + 3 = 602. POMIAR guardem na drzewie scalonym.
+        "Przeskanowano 602 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2433,7 +2453,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 47/225 (UI/UX) -> 47/222 — enm −3:
     # wpis `insert_at.value` (4) zdjety przez MENU-KANON, +1 `line_fields_per_section`;
     # wpis `transformer_count` NIE wraca (GPZ-MODEL odmawia braku liczby). POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 222." in wyjscie, wyjscie
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): 47/222 -> 47/220 — solver_input −2:
+    # wpisy `A:or:enm.frequency_hz` i `B:ifexp:enm.frequency_hz` w `v126_contracts.py` zdjete
+    # (czestotliwosc sieci z naglowka modelu zamiast `enm.buses[0].frequency_hz or 50.0`).
+    # POMIAR guardem na drzewie scalenia.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 220." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2555,8 +2579,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
         # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
         # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): 191 -> 193 (+2 `core/bateria_kondensatorow.py`,
+        # `pochodne/bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Zespol uziemiajacy SN (2026-10-29): 191 -> 193 (+2 jak wyzej). POMIAR guardem.
-        "  network_model: pliki_skanowane=193, dlug=10 plikow/suma 67, "
+        # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
+        "  network_model: pliki_skanowane=195, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2566,7 +2593,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1a Pakiet C (2026-09-23): solver_input 12 -> 11 (-1 skasowany
         # `solver_input/dowod_ncrfg.py` — dowod zgodnosci NC RfG to rekordy `WynikWymagania`);
         # dlug 2/8 i wykluczenia 0/0 BEZ ZMIANY.
-        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): dlug 2/8 -> 2/6 (dwa wpisy
+        # czestotliwosci zastepczej w `v126_contracts.py` zdjete — wpis zapadki wyzej).
+        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 6, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
@@ -2640,8 +2669,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
         # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
+        # Karta UX-04/POLE-BKR-MODEL (2026-10-28): enm 75 -> 76 (+1 `enm/bateria_kondensatorow.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Zespol uziemiajacy SN (2026-10-29): enm 75 -> 76 (+1 `enm/uziemienie_sekcji.py`). POMIAR.
-        "  enm: pliki_skanowane=76, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Scalenie obu kart (2026-10-29): enm 75 + 1 + 1 = 77. POMIAR guardem.
+        "  enm: pliki_skanowane=77, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

@@ -108,6 +108,8 @@ const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>
   COUPLER: 'sprzeglo',
   MEASUREMENT: 'pomiarowe',
   SOURCE: 'zrodlowe',
+  CAPACITOR_BANK: 'kompensacyjne',
+  EARTHING_UNIT: 'uziemiajace',
 };
 
 function lineBay(ref: string, overrides: Partial<CanonicalGpzBay> = {}): CanonicalGpzBay {
@@ -583,6 +585,35 @@ describe('V3 compose/gpz — FIX-A: dedup oznacznika i podpisu pola (bez podwój
     const d2 = composition.labels.fieldDesignations.find((d) => d.ownerRef === 'b-2#designation');
     expect(d1?.text).toBe('F01');
     expect(d2?.text).toBe('F02');
+  });
+
+  it('numeracja rysunkowa per klasa roli: liniowe × bateria kondensatorów × zespół uziemiający — liczniki odrębne', () => {
+    // UX-04/POLE-ZU-SKLADOWA-ZEROWA: pole ZU dostawało numer pola liniowego (F02), bo adapter
+    // zamieniał rolę ZU na pole liniowe odpływowe; teraz klasa FZ, liczona osobno.
+    const bez = { bayNumber: null, destinationLabel: null, feederName: null } as const;
+    const composition = composeGpz(
+      baseProps({
+        sections: [
+          {
+            sectionId: 'sec-1',
+            order: 1,
+            label: 'S1',
+            busVoltageKv: 15,
+            bays: [
+              lineBay('b-zu-1', { ...bez, fieldRole: 'EARTHING_UNIT', rolaPola: 'uziemiajace' }),
+              lineBay('b-1', bez),
+              lineBay('b-bk-1', { ...bez, fieldRole: 'CAPACITOR_BANK', rolaPola: 'kompensacyjne' }),
+              lineBay('b-zu-2', { ...bez, fieldRole: 'EARTHING_UNIT', rolaPola: 'uziemiajace' }),
+              lineBay('b-2', bez),
+            ],
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    const oznacznik = (ref: string) =>
+      composition.labels.fieldDesignations.find((d) => d.ownerRef === `${ref}#designation`)?.text;
+    expect(['b-zu-1', 'b-1', 'b-bk-1', 'b-zu-2', 'b-2'].map(oznacznik)).toEqual(['FZ1', 'F01', 'FK1', 'FZ2', 'F02']);
   });
 
   it('bay Z bayNumber ("05") i feederName, BEZ destinationLabel ⇒ caption = feederName (różni się od oznacznika "05")', () => {
@@ -1407,7 +1438,9 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
 
 describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
   it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
-    expect(ROLE_POL_GPZ).toHaveLength(7);
+    // 7. rola: „uziemiające" — pole zespołu uziemiającego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA);
+    // 8. rola: „kompensacyjne" — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
+    expect(ROLE_POL_GPZ).toHaveLength(8);
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 

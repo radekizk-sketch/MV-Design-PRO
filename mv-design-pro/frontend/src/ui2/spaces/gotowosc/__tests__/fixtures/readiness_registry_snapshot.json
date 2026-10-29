@@ -1137,6 +1137,24 @@
       }
     },
     {
+      "area": "ANALYSIS",
+      "code": "shunt.parametry_robocze",
+      "fix_navigation": {
+        "focus": "parametry_baterii",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "shunt.pominieta_w_skladowej_zgodnej",
+      "fix_navigation": {
+        "focus": "uklad_polaczen",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "SOURCES",
       "code": "source.connection_missing",
       "fix_navigation": {
@@ -1228,6 +1246,39 @@
         "focus": "voltage_kv",
         "panel": "inspector",
         "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_bay_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_discharge_vt_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_transformer_trip_incomplete",
+      "fix_navigation": {
+        "focus": "wylaczenie_od_transformatorow",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.bkr_unbalance_ct_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
       }
     },
     {
@@ -1523,7 +1574,7 @@
       }
     }
   ],
-  "count": 178,
+  "count": 184,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1682,6 +1733,10 @@
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",
     "W044": "station.field_role_unknown",
+    "W045": "station.bkr_bay_missing",
+    "W046": "station.bkr_unbalance_ct_missing",
+    "W047": "station.bkr_discharge_vt_missing",
+    "W048": "station.bkr_transformer_trip_incomplete",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

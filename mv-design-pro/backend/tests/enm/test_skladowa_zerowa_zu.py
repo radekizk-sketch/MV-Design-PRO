@@ -873,8 +873,9 @@ def test_v126_prad_pojemnosciowy_rowny_jedynej_prawdzie(
     assert siec.b0_s > 0.0 and not siec.galezie_bez_b0
     wejscie = build_v126_input_from_enm(enm, analysis_type=V126AnalysisType.NEUTRAL_EARTHING_DESIGN)
     assert wejscie.uziemienie_sn is not None
-    assert wejscie.uziemienie_sn.napiecie_kv == UN_KV
-    assert len(wejscie.uziemienie_sn.galezie_sieci) == len(dlugosci_m)
+    (siec_v126,) = wejscie.uziemienie_sn.sieci
+    assert siec_v126.napiecie_kv == UN_KV
+    assert len(siec_v126.galezie_sieci) == len(dlugosci_m)
     wynik = V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, wejscie)["result"]
     assert wynik["network_line_voltage_kv"] == UN_KV
     assert siec.prad_pojemnosciowy_a is not None
@@ -909,8 +910,8 @@ def test_v126_rezystor_z_modelu_z_danymi_przyjetymi(wariant: str, t_wyl_s: float
         enm, parameters=parametry, analysis_type=V126AnalysisType.NEUTRAL_EARTHING_DESIGN
     )
     wejscie = wejscie.model_copy(update={"parameters": parametry})
-    uziemienie = wejscie.uziemienie_sn
-    assert uziemienie is not None
+    assert wejscie.uziemienie_sn is not None
+    (uziemienie,) = wejscie.uziemienie_sn.sieci
     (rezystor,) = uziemienie.rezystory
     assert rezystor.r_ohm == pytest.approx(R_N, rel=1e-9)
     assert rezystor.i_n_a == pytest.approx(

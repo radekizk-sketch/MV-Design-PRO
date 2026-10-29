@@ -20,9 +20,12 @@ import dataclasses
 import hashlib
 import json
 
+from network_model.catalog.mv_shunt_capacitor_catalog import (
+    _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
+)
 from network_model.catalog.odcisk import _kanon, odcisk_katalogu, zrzut_kanoniczny
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import POLA_KARTY_PROJEKCJI
+from network_model.catalog.types import POLA_BATERII_KONDENSATOROW_TYPU, POLA_KARTY_PROJEKCJI
 
 from tests.dziedziny import fabryki as f
 
@@ -164,19 +167,44 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
+#: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
+#: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
+#: `1465336df` vs drzewo karty): różnią się WYŁĄCZNIE liście `shunt_capacitor_types` — 7 nowych
+#: pól × 6 pozycji i `source_reference` 5 pozycji referencyjnych; wycięcie ich daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
+#: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
+ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+_ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
 #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
 #: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
 #: uziemiające). Dowód w teście niżej: zrzut BEZ tych przestrzeni daje DOKŁADNIE
 #: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna przestrzeń ani liść się nie
 #: zmieniły. Pełny odcisk katalogu domyślnego po karcie:
 #: e1626d8f87c56d793b33657338b5116084618b76e37989896fcec8c0274ce961.
-ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "a071f93d9f357ffaf3e7390a7f8c05b928ca03ecb1a36354e505aedddb715032"
+#: Po scaleniu z kartą UX-04/POLE-BKR-MODEL ogniwo stoi NA ``ODCISK_PO_BATERII_BKR`` (wycięcie
+#: trzech przestrzeni zespołu daje dokładnie odcisk po baterii BKR). Pełny odcisk katalogu
+#: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
+#: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
+ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
 PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
     "earthing_transformer_types": 2,
     "arc_suppression_coil_types": 3,
     "neutral_earthing_resistor_types": 4,
 }
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
+
+
+def _wytnij_pola_baterii_bkr(zrzut: dict[str, object]) -> int:
+    """Cofa zmiany karty UX-04/POLE-BKR-MODEL w zrzucie; zwraca liczbę zmienionych pozycji."""
+    zmienione = 0
+    for postac in zrzut["shunt_capacitor_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_BATERII_KONDENSATOROW_TYPU:
+            postac.pop(nazwa)
+        if postac["source_reference"] == _ZRODLO_BATERII_REFERENCYJNE:
+            postac["source_reference"] = _ZRODLO_BATERII_PRZED_KARTA
+            zmienione += 1
+    return zmienione
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -244,6 +272,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
+    assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
 
     # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.

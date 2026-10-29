@@ -12,6 +12,7 @@ from solver_input.v126_contracts import (
     V126HarmonicSourceInput,
     V126InsulationInput,
     V126MotorInput,
+    V126SiecSnInput,
     V126TransformerInput,
     V126UziemienieSnInput,
 )
@@ -67,8 +68,17 @@ def _input() -> V126AcademicInput:
             wariant_awsc_zalaczony="dlawik",
             regulacja_nadazna=True,
             opis_pl="sieć skompensowana — dławik gaszący (Z.13).",
-            napiecie_kv=15.0,
-            galezie_sieci=["K1"],
+            sieci=[
+                V126SiecSnInput(
+                    szyna_ref="B1",
+                    nazwa_pl="Sieć SN szyny B1",
+                    wariant="dlawik",
+                    opis_pl="sieć skompensowana — dławik gaszący (Z.13).",
+                    napiecie_kv=15.0,
+                    szyny=["B1", "B2"],
+                    galezie_sieci=["K1"],
+                )
+            ],
         ),
     )
 

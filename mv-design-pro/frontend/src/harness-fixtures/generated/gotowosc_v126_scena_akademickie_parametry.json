@@ -551,7 +551,7 @@
           "elementy": []
         },
         {
-          "nazwa_pl": "Sieć SN (napięcie znamionowe, linie i kable)",
+          "nazwa_pl": "Sieć SN 15 kV — Szyna SN (napięcie znamionowe, linie i kable)",
           "wartosc_pl": "15 kV, 3",
           "elementy": [
             "cab_main_b",

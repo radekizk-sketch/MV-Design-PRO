@@ -331,7 +331,7 @@ decyzje podejmuje czlowiek.
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
 | `pv-inverter` | 76 | 9 | 46 | 18,1 | 76 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
-| `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | `manufacturer` | brak |
+| `shunt-capacitor` | 6 | 0 | 9 | 33,3 | 6 | `dlawik_indukcyjnosc_mh`, `manufacturer`, `rezystory_rozladowcze_wewnetrzne`, `tolerancja_pojemnosci_max_proc`, `tolerancja_pojemnosci_min_proc` | brak |
 | `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
 | `spectral-card` | 0 | 0 | 0 | — | 0 | brak | brak |
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |

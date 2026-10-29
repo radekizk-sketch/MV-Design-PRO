@@ -45,7 +45,7 @@ import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/gri
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
-import type { SwitchState } from '../symbols/glyphs';
+import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
@@ -184,6 +184,9 @@ export interface ComposedGpzSymbolInstance {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
    *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE dla symbolu
+   *  `capacitorBank`; przechodzą przez scenę do glifu (układ połączeń, przekładnik). */
+  readonly bateria?: GlifBaterii;
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
    *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
    *  budowany Z rekordów (`specyfikacjaPolaGpz`, GEOMETRIA-STACJI §0 pkt 4), więc każda
@@ -358,6 +361,8 @@ interface FieldApparatusSpec {
    *  (`undefined` = pozycja bez rekordu: sylwetka braku danych, glif źródła, zakończenie
    *  rezerwy). Stan, `deviceRef` i typ symbolu biorą się WYŁĄCZNIE stąd. */
   readonly device?: BayPrimaryDeviceView;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE pozycja `capacitorBank`. */
+  readonly bateria?: GlifBaterii;
 }
 
 /** Klucze parytetu aparatu z rekordu — pierwsze wystąpienie odłącznika to odłącznik
@@ -451,6 +456,19 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
     stos.push({
       symbolId: glifZrodlaPolaGpz(bay.rolaZrodla ?? FIELD_ROLE.DER_UNKNOWN),
       parityKeys: ['gpz.bay.source_kind'],
+    });
+  }
+  if (bay?.bateria) {
+    // UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola — element
+    // modelu zamykający stos (jak w stacjach `elementyModeluPola`); układ połączeń i rekord
+    // przekładnika niezrównoważenia z modelu (`v2/model/bateriaPola.ts`).
+    stos.push({
+      symbolId: 'capacitorBank',
+      parityKeys: ['gpz.bay.capacitor_bank'],
+      bateria: {
+        uklad: bay.bateria.uklad,
+        przekladnikNiezrownowazenia: bay.bateria.przekladnikNiezrownowazenia,
+      },
     });
   }
   if (rezerwa) stos.push(ZAKONCZENIE_REZERWY);
@@ -589,6 +607,7 @@ function buildFieldStack(
       x,
       y,
       ...daneRekordu(spec),
+      ...(spec.bateria ? { bateria: spec.bateria } : {}),
       ports,
       meta: metaPozycji(spec, index),
     };
@@ -750,11 +769,23 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
  *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
  *  fallback = deterministyczny licznik per klasa roli w kolejności
  *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
- *  pomiarowe) — pole bez ŻADNEGO oznacznika w danych przestaje być
+ *  pomiarowe, FK1… baterii kondensatorów, FZ1… zespołów uziemiających — klasa jak w stacjach,
+ *  `directions.ts`) — pole bez ŻADNEGO oznacznika w danych przestaje być
  *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
  *  i geometrię fixtury referencyjnej 1:1. */
 function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, number>): string {
-  const cls = role === 'TRANSFORMER' ? 'FT' : role === 'COUPLER' ? 'FS' : role === 'MEASUREMENT' ? 'FP' : 'F';
+  const cls =
+    role === 'TRANSFORMER'
+      ? 'FT'
+      : role === 'COUPLER'
+        ? 'FS'
+        : role === 'MEASUREMENT'
+          ? 'FP'
+          : role === 'CAPACITOR_BANK'
+            ? 'FK'
+            : role === 'EARTHING_UNIT'
+              ? 'FZ'
+              : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;

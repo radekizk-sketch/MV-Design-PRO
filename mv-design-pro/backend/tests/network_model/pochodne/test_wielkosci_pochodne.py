@@ -23,6 +23,11 @@ import math
 
 import pytest
 from network_model.pochodne import wielkosci_pochodne as wp
+from network_model.pochodne.bateria_kondensatorow import (
+    admitancja_baterii_siemens,
+    admitancja_sekcji_baterii_siemens,
+    moc_z_admitancji_sekcji_mva,
+)
 
 from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
 
@@ -427,14 +432,24 @@ def test_spadek_procentowy_przy_innym_napieciu_tozsamosc(
 @pytest.mark.parametrize("u", _napiecia())
 @pytest.mark.parametrize("q", [0.0, 1e-6, 0.05, 0.123456789, 0.6, 1.2, 7.77, 1.0e3])
 def test_susceptancja_i_moc_bierna_para(q: float, u: float) -> None:
-    """Eksport/import CGMES baterii: B = Q/U², Q = B·U² (para, powrót z dokładnością IEEE)."""
-    b = wp.susceptancja_z_mocy_biernej_s(q, u)
-    assert b == q / (u**2)
-    assert wp.moc_bierna_z_susceptancji_mvar(b, u) == pytest.approx(q, rel=1e-15, abs=0.0)
+    """Eksport/import CGMES baterii (karta UX-04/POLE-BKR-MODEL przeniosła parę do
+    ``pochodne.bateria_kondensatorow``): B = Q/U² jednego stopnia, Q = B·N·U² (para, powrót
+    z dokładnością IEEE)."""
+    y = admitancja_sekcji_baterii_siemens(
+        moc_bierna_mvar=q,
+        napiecie_znamionowe_kv=u,
+        liczba_stopni=1,
+        stopnie_odniesienia=1,
+        straty_kw=None,
+        reaktancja_dlawika_ohm=None,
+    )
+    assert y == complex(0.0, q / (u**2))
+    assert moc_z_admitancji_sekcji_mva(y, 1, u).imag == pytest.approx(q, rel=1e-15, abs=0.0)
 
 
 def test_susceptancja_z_mocy_biernej_s_poprawnie_zaokraglona_czesciej_niz_postac_odwrotna() -> None:
-    """Pomiar wyboru postaci (karta C4): Q/U² vs 1/(U²/Q) wobec wartości dokładnej."""
+    """Pomiar wyboru postaci (karta C4): Q/U² vs 1/(U²/Q) wobec wartości dokładnej — postać
+    admitancji baterii ``pochodne.bateria_kondensatorow.admitancja_baterii_siemens``."""
     from fractions import Fraction
 
     siatka = [
@@ -443,7 +458,14 @@ def test_susceptancja_z_mocy_biernej_s_poprawnie_zaokraglona_czesciej_niz_postac
         for u in (0.23, 0.4, 0.69, 6.0, 10.0, 15.0, 20.0, 30.0, 110.0)
     ]
     zle_bezposrednia = sum(
-        wp.susceptancja_z_mocy_biernej_s(q, u) != float(Fraction(q) / Fraction(u) ** 2)
+        admitancja_baterii_siemens(
+            moc_bierna_mvar=q,
+            napiecie_znamionowe_kv=u,
+            udzial_stopni=1.0,
+            straty_kw=None,
+            reaktancja_dlawika_ohm=None,
+        ).imag
+        != float(Fraction(q) / Fraction(u) ** 2)
         for q, u in siatka
     )
     zle_odwrotna = sum(1.0 / (u**2 / q) != float(Fraction(q) / Fraction(u) ** 2) for q, u in siatka)

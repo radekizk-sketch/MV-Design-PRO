@@ -53,6 +53,8 @@ BayKind = Literal[
     "kablowe",
     "napowietrzne",
     "nop_lacznikowe",
+    "bateria_kondensatorow",
+    "zespol_uziemiajacy",
 ]
 
 #: Rodzaj pola katalogowego (`BayKind`) → rola kanonu ról pól SN z określeniem rodzaju albo
@@ -78,6 +80,8 @@ OPIS_RODZAJU_POLA_KATALOGOWEGO: dict[str, tuple[str, str] | str] = {
     "kablowe": "Pole kablowe",
     "napowietrzne": "Pole napowietrzne",
     "nop_lacznikowe": "Pole łącznikowe NOP",
+    "bateria_kondensatorow": ("BATERIA_KONDENSATOROW", ""),
+    "zespol_uziemiajacy": ("ZESPOL_UZIEMIAJACY", ""),
 }
 
 #: Rodzaj pola katalogowego → nazwa w treści dla projektanta (karta #142).

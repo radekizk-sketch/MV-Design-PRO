@@ -88,6 +88,28 @@
       "notes_pl": "Łącznik dwóch sekcji szyny SN."
     },
     {
+      "profile_id": "capacitor_bank",
+      "name_pl": "Pole baterii kondensatorów równoległych (GPZ)",
+      "required": ["DS", "CB", "CT"],
+      "one_of_groups": [],
+      "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VT", "PHASE_TO_PHASE_VT", "UNBALANCE_CT"],
+      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "CB", "CT", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "PHASE_TO_PHASE_VT", "UNBALANCE_CT"],
+      "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 16: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy → głowica kablowa; ogranicznik przepięć, dwa przekładniki napięciowe międzyfazowe L1-L2 i L2-L3 oraz przekładnik niezrównoważenia w połączeniu międzygwiazdowym stoją przy baterii, poza osią toru. Wymagalność przekładników baterii zależy od układu połączeń i od rezystorów rozładowczych jednostek — ocenia ją walidator modelu (W046, W047), nie profil."
+    },
+    {
+      "profile_id": "earthing_unit",
+      "name_pl": "Pole zespołu uziemiającego (GPZ)",
+      "required": ["DS", "CB", "CT"],
+      "one_of_groups": [],
+      "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VT"],
+      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "CB", "CT", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 13, 14 i 15 oraz §26.9.6: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy (zabezpieczenia I>>, I>, I>T pola) → głowica kablowa mostu do transformatora uziemiającego (§15.2 tab. 10: 1× Al 150 mm² na fazę). Transformator uziemiający, dławik i rezystor punktu neutralnego są zespołem uziemiającym modelu na zacisku pola, nie aparatem celki — aparat transformatora w polu ZU byłby drugą prawdą o tym samym transformatorze, stąd zakaz."
+    },
+    {
       "profile_id": "der_source",
       "name_pl": "Pole źródłowe SN (PV / BESS / FW)",
       "required": ["DS", "CB", "CABLE_HEAD"],

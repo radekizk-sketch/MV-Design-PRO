@@ -3065,10 +3065,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "9b8b7a6b2f1fc2745cbe8dec2cbb481e23359bdd86dc3e1490c40e1d14ca2c74",
-        "proof_id": "proof:v126:earth_fault_detection:c1378b6db716ce82",
+        "proof_hash": "66410cc1c14caea7a09af69d443f22f510c8895f7309bfe0bd08b7e849fd6ca1",
+        "proof_id": "proof:v126:earth_fault_detection:f5f3038a36deafcf",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92",
+        "source_result_hash": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d",
         "steps": [
           {
             "data": {
@@ -3099,7 +3099,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92",
+        "deterministic_hash": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -3112,19 +3112,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "d7237830a9484e7768d7b748d371ef07f351579bd2755f4509480a3d8341f0e7",
-        "report_id": "report:v126:earth_fault_detection:c1378b6db716ce82",
+        "report_hash": "97f20717b075274daff3837297d20878956fe91772aa218850841313f5aa4e68",
+        "report_id": "report:v126:earth_fault_detection:f5f3038a36deafcf",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:c1378b6db716ce82"
+                "value": "proof:v126:earth_fault_detection:f5f3038a36deafcf"
               },
               {
                 "label": "proof_hash",
-                "value": "9b8b7a6b2f1fc2745cbe8dec2cbb481e23359bdd86dc3e1490c40e1d14ca2c74"
+                "value": "66410cc1c14caea7a09af69d443f22f510c8895f7309bfe0bd08b7e849fd6ca1"
               },
               {
                 "label": "trace_step_count",
@@ -3138,7 +3138,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92"
+                "value": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d"
               },
               {
                 "label": "solver_version",
@@ -3146,19 +3146,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "d928f56092d67abd8c6420bc5ab51bbea86db44516e1307960a5658623d776a9"
+                "value": "1fb69cf8d001c79f6ca081cc3eda714b93e75d63912c4145618a8b1b4621771a"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "9b8b7a6b2f1fc2745cbe8dec2cbb481e23359bdd86dc3e1490c40e1d14ca2c74",
-        "source_result_hash": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92"
+        "source_proof_hash": "66410cc1c14caea7a09af69d443f22f510c8895f7309bfe0bd08b7e849fd6ca1",
+        "source_result_hash": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92",
+        "deterministic_hash": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -3193,13 +3193,13 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:c1378b6db716ce82",
-        "report_ref": "report:v126:earth_fault_detection:c1378b6db716ce82",
+        "proof_ref": "proof:v126:earth_fault_detection:f5f3038a36deafcf",
+        "report_ref": "report:v126:earth_fault_detection:f5f3038a36deafcf",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "c1378b6db716ce8285657cab9df08be28da6e8ed53558f060a12ece8d2a76b92",
-          "input_hash": "d928f56092d67abd8c6420bc5ab51bbea86db44516e1307960a5658623d776a9",
+          "deterministic_hash": "f5f3038a36deafcf7237b1bc6d9843ed447d5acc1d61e6a20662fb54f7adc91d",
+          "input_hash": "1fb69cf8d001c79f6ca081cc3eda714b93e75d63912c4145618a8b1b4621771a",
           "result": {
             "alternative_method": "fifth_harmonic",
             "neutral_grounding": "petersen_tuned",
@@ -3253,10 +3253,10 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "062d756a3d986e89c6c33cffde3df8d6d1e795b20d62848dae2c16e8b45bddad",
-        "proof_id": "proof:v126:transient_trv:93521193836fc7fc",
+        "proof_hash": "6947ebfd8c2809ca2a14e6245f9d2c19ca94a04f8dc597e8b0f166d000ddbc40",
+        "proof_id": "proof:v126:transient_trv:d288190620bc63a2",
         "run_id": "run-v126-scena-akademickie-transient_trv",
-        "source_result_hash": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022",
+        "source_result_hash": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd",
         "steps": [
           {
             "data": {
@@ -3283,7 +3283,7 @@
       "koperta": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "deterministic_hash": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022",
+        "deterministic_hash": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
@@ -3296,19 +3296,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "65d2c9219181fc95728f165c32ef20639310af668e50d5ef06c7f10f1b3ff0cd",
-        "report_id": "report:v126:transient_trv:93521193836fc7fc",
+        "report_hash": "568b821ecd4e4c202e49de23b0ebb8c777483cc513236e1323621a6ae88b882c",
+        "report_id": "report:v126:transient_trv:d288190620bc63a2",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:transient_trv:93521193836fc7fc"
+                "value": "proof:v126:transient_trv:d288190620bc63a2"
               },
               {
                 "label": "proof_hash",
-                "value": "062d756a3d986e89c6c33cffde3df8d6d1e795b20d62848dae2c16e8b45bddad"
+                "value": "6947ebfd8c2809ca2a14e6245f9d2c19ca94a04f8dc597e8b0f166d000ddbc40"
               },
               {
                 "label": "trace_step_count",
@@ -3322,7 +3322,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022"
+                "value": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd"
               },
               {
                 "label": "solver_version",
@@ -3330,19 +3330,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "1b5e3b090bfeeb0c503c191f83159fbfeacbcac5fa450612f11322bcc4899bf9"
+                "value": "fbf20ac4f7b5f4c3fb70104ad726e5f1755582332304b63109a9d8090ccfc68d"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "062d756a3d986e89c6c33cffde3df8d6d1e795b20d62848dae2c16e8b45bddad",
-        "source_result_hash": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022"
+        "source_proof_hash": "6947ebfd8c2809ca2a14e6245f9d2c19ca94a04f8dc597e8b0f166d000ddbc40",
+        "source_result_hash": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd"
       },
       "slad": {
         "analysis_type": "transient_trv",
-        "deterministic_hash": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022",
+        "deterministic_hash": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "steps": [
           {
@@ -3373,13 +3373,13 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:transient_trv:93521193836fc7fc",
-        "report_ref": "report:v126:transient_trv:93521193836fc7fc",
+        "proof_ref": "proof:v126:transient_trv:d288190620bc63a2",
+        "report_ref": "report:v126:transient_trv:d288190620bc63a2",
         "result": {
           "analysis_type": "transient_trv",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "93521193836fc7fcfd396a582cfbc53d4d160be8ade76b8681903e8d84560022",
-          "input_hash": "1b5e3b090bfeeb0c503c191f83159fbfeacbcac5fa450612f11322bcc4899bf9",
+          "deterministic_hash": "d288190620bc63a2fd6105a9a1d6926657750be123117fcbb8f3d0ba4041f7fd",
+          "input_hash": "fbf20ac4f7b5f4c3fb70104ad726e5f1755582332304b63109a9d8090ccfc68d",
           "result": {
             "ferroresonance": {
               "recommendation": "brak przesłanek do ferrorezonansu",
@@ -4229,10 +4229,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "ba62c13230cd1eb79f6024074a5fcd3c340fa8dea467bbfc71475a40315c9ed4",
-        "proof_id": "proof:v126:neutral_earthing_design:641c851712f11d9c",
+        "proof_hash": "74e32946e210670c10abc8692e5e10479716d454c2bc0043332b122f4ca60870",
+        "proof_id": "proof:v126:neutral_earthing_design:55cb06b4f00fe42d",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb",
+        "source_result_hash": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b",
         "steps": [
           {
             "data": {
@@ -4262,7 +4262,7 @@
               "omega_rad_s": 314.159265,
               "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
               "u_line_kv": 15.0,
-              "zakres_sieci_pl": "linie i kable sieci SN wszystkich sekcji — dobór zespołu na pracę jednego zespołu uziemiającego na sieć A+B (ENEA Zeszyt 1 §16 s. 29); napięcie sieci SN z modelu"
+              "zakres_sieci_pl": "linie, kable i baterie w gwieździe uziemionej sieci SN połączonej galwanicznie przy stanach łączników modelu (sekcje rozdzielone otwartym sprzęgłem liczone osobno); napięcie sieci SN z modelu"
             },
             "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
             "formula_latex": "C_0 = \\dfrac{1}{\\omega}\\sum b_0 \\cdot \\ell\\text{,}\\quad I_C = 3\\,\\omega\\, C_0\\, U_f = \\sqrt{3}\\,\\omega\\, C_0\\, U_l",
@@ -4326,7 +4326,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb",
+        "deterministic_hash": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -4339,19 +4339,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "2e2d71b14bd03969efabd7c52de60a1ae2a29b62069a0ed92f5c839c4787fa96",
-        "report_id": "report:v126:neutral_earthing_design:641c851712f11d9c",
+        "report_hash": "4764ce87562b357bb1b5b61ad34e609240dee7663a874b2be004cac5b07f8296",
+        "report_id": "report:v126:neutral_earthing_design:55cb06b4f00fe42d",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:641c851712f11d9c"
+                "value": "proof:v126:neutral_earthing_design:55cb06b4f00fe42d"
               },
               {
                 "label": "proof_hash",
-                "value": "ba62c13230cd1eb79f6024074a5fcd3c340fa8dea467bbfc71475a40315c9ed4"
+                "value": "74e32946e210670c10abc8692e5e10479716d454c2bc0043332b122f4ca60870"
               },
               {
                 "label": "trace_step_count",
@@ -4365,7 +4365,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb"
+                "value": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b"
               },
               {
                 "label": "solver_version",
@@ -4373,19 +4373,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "9923b2634375543b3db9e8a1aecd3204733ce69309841c38faf71bf6bacad11c"
+                "value": "202829557d2ecb4ae9b405bd1341ee44e0b20e05396a66e85b54ff35ef05a8be"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "ba62c13230cd1eb79f6024074a5fcd3c340fa8dea467bbfc71475a40315c9ed4",
-        "source_result_hash": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb"
+        "source_proof_hash": "74e32946e210670c10abc8692e5e10479716d454c2bc0043332b122f4ca60870",
+        "source_result_hash": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb",
+        "deterministic_hash": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -4418,7 +4418,7 @@
               "omega_rad_s": 314.159265,
               "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
               "u_line_kv": 15.0,
-              "zakres_sieci_pl": "linie i kable sieci SN wszystkich sekcji — dobór zespołu na pracę jednego zespołu uziemiającego na sieć A+B (ENEA Zeszyt 1 §16 s. 29); napięcie sieci SN z modelu"
+              "zakres_sieci_pl": "linie, kable i baterie w gwieździe uziemionej sieci SN połączonej galwanicznie przy stanach łączników modelu (sekcje rozdzielone otwartym sprzęgłem liczone osobno); napięcie sieci SN z modelu"
             },
             "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
             "formula_latex": "C_0 = \\dfrac{1}{\\omega}\\sum b_0 \\cdot \\ell\\text{,}\\quad I_C = 3\\,\\omega\\, C_0\\, U_f = \\sqrt{3}\\,\\omega\\, C_0\\, U_l",
@@ -4489,13 +4489,13 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:641c851712f11d9c",
-        "report_ref": "report:v126:neutral_earthing_design:641c851712f11d9c",
+        "proof_ref": "proof:v126:neutral_earthing_design:55cb06b4f00fe42d",
+        "report_ref": "report:v126:neutral_earthing_design:55cb06b4f00fe42d",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "641c851712f11d9c3e7634cf833734d167114d9dae1cddd368eb4f41d98533fb",
-          "input_hash": "9923b2634375543b3db9e8a1aecd3204733ce69309841c38faf71bf6bacad11c",
+          "deterministic_hash": "55cb06b4f00fe42d92581e2fd0df5a33bddbb1d84e47e0fd7b6aa88f7e46be8b",
+          "input_hash": "202829557d2ecb4ae9b405bd1341ee44e0b20e05396a66e85b54ff35ef05a8be",
           "result": {
             "branches_contributing": [
               {
@@ -4561,7 +4561,7 @@
                 "omega_rad_s": 314.159265,
                 "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
                 "u_line_kv": 15.0,
-                "zakres_sieci_pl": "linie i kable sieci SN wszystkich sekcji — dobór zespołu na pracę jednego zespołu uziemiającego na sieć A+B (ENEA Zeszyt 1 §16 s. 29); napięcie sieci SN z modelu"
+                "zakres_sieci_pl": "linie, kable i baterie w gwieździe uziemionej sieci SN połączonej galwanicznie przy stanach łączników modelu (sekcje rozdzielone otwartym sprzęgłem liczone osobno); napięcie sieci SN z modelu"
               },
               "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
               "key": "neutral_earthing_capacitive_current",

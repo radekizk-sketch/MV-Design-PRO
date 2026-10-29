@@ -267,6 +267,12 @@ def test_d8_dobor_sterowany_cosfi_punktu_wartosci_po_f98() -> None:
     Wartości odniesienia (pomiar K3): baseline 0,894427; kandydaci 0,6 / 1,2 / 2,4
     Mvar → cosφ 0,995738 / 0,820726 / 0,458843 (0,6 lekko przekompensowuje
     Q_netto=−0,093, ale spełnia próg 0,95; większe baterie przekompensowują mocno).
+
+    Rekalibracja karty UX-04/POLE-BKR-MODEL: bateria-sonda niesie tabliczkę katalogu, a jej
+    straty czynne (0,3 / 0,6 / 1,2 kW) wchodzą do rozpływu jako konduktancja G = P_str/U_n².
+    Wzrost P o P_str podnosi cosφ punktu przekompensowanego o dcosφ/dP = Q²/S³ (np. 1,2 Mvar:
+    Q ≈ −0,695 Mvar, S ≈ 1,218 MVA → 0,267/MW × 0,0006 MW ≈ +1,6·10⁻⁴) → 0,995741 / 0,820890 /
+    0,459292.
     """
     run = _run(_minimal_net(load_q_mvar=0.5))
     view = build_compensation_sizing_view(run, bus_ref="bus_load", cos_phi_min=0.95)
@@ -274,12 +280,12 @@ def test_d8_dobor_sterowany_cosfi_punktu_wartosci_po_f98() -> None:
     assert view["baseline"]["cosfi_przekroju_dzien"] == pytest.approx(0.894427, abs=1e-5)
     przekroj_by_size = [(c["rated_mvar"], c["cosfi_przekroju_dzien"]) for c in view["candidates"]]
     assert przekroj_by_size == [
-        (0.6, pytest.approx(0.995738, abs=1e-5)),
-        (1.2, pytest.approx(0.820726, abs=1e-5)),
-        (2.4, pytest.approx(0.458843, abs=1e-5)),
+        (0.6, pytest.approx(0.995741, abs=1e-5)),
+        (1.2, pytest.approx(0.820890, abs=1e-5)),
+        (2.4, pytest.approx(0.459292, abs=1e-5)),
     ]
     # (2) cosφ PUNKTU kompensowanego — podstawa doboru; 0,6 Mvar spełnia cosφ ≥ 0,95.
-    assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.995738, abs=1e-5)
+    assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.995741, abs=1e-5)
     assert view["candidates"][0]["cosfi_punktu_dzien"] > view["baseline"]["cosfi_punktu_dzien"]
     assert view["candidates"][0]["spelnia"] is True
     assert view["candidates"][1]["spelnia"] is False  # 1,2 Mvar przekompensowuje

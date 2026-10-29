@@ -29,7 +29,9 @@ export type RodzajAparatuPolaSn =
   | 'SURGE_ARRESTER'
   | 'FUSE'
   | 'CABLE_HEAD'
-  | 'TRANSFORMER_DEVICE';
+  | 'TRANSFORMER_DEVICE'
+  | 'UNBALANCE_CT'
+  | 'PHASE_TO_PHASE_VT';
 
 export type PrzestrzenKatalogu = 'APARAT_SN' | 'CT' | 'VT' | 'OGRANICZNIK_SN';
 
@@ -45,6 +47,8 @@ export const PRZESTRZEN_KATALOGU_APARATU: Readonly<Record<RodzajAparatuPolaSn, P
   FUSE: null,
   CABLE_HEAD: null,
   TRANSFORMER_DEVICE: null,
+  UNBALANCE_CT: 'CT',
+  PHASE_TO_PHASE_VT: 'VT',
 };
 
 /** Rodzaj aparatu APARAT_SN (`device_kind` pozycji) dopuszczony dla rodzaju aparatu pola. */
@@ -71,6 +75,8 @@ export const NAZWA_RODZAJU_APARATU_PL: Readonly<Record<RodzajAparatuPolaSn, stri
   FUSE: 'bezpieczniki',
   CABLE_HEAD: 'głowica kablowa',
   TRANSFORMER_DEVICE: 'transformator pola',
+  UNBALANCE_CT: 'przekładnik niezrównoważenia baterii',
+  PHASE_TO_PHASE_VT: 'przekładnik napięciowy międzyfazowy',
 };
 
 export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
@@ -84,6 +90,8 @@ export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
   'FUSE',
   'CABLE_HEAD',
   'TRANSFORMER_DEVICE',
+  'UNBALANCE_CT',
+  'PHASE_TO_PHASE_VT',
 ];
 
 export const UMIEJSCOWIENIE_PL: Readonly<Record<BayPrimaryPlacement, string>> = {

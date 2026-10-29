@@ -42,6 +42,7 @@ import type {
 } from './canonicalGpzModel';
 import { stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import { jedynyTransformatorPola, rolaPolaZrodlowego, wytworcyWgPola } from '../model/polaZModelu';
+import { bateriaWidokuPola } from '../model/bateriaPola';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -93,6 +94,8 @@ export function buildCanonicalGpzProps(
     | 'sources'
     // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN — zespoły uziemiające stacji.
     | 'zespoly_uziemiajace'
+    // UX-04/POLE-BKR-MODEL: baterie kondensatorów na końcu toru pól (`bateriaWidokuPola`).
+    | 'shunt_capacitors'
   >,
   substationRef: string,
 ): CanonicalGpzProps {
@@ -126,6 +129,9 @@ export function buildCanonicalGpzProps(
     // GPZ-PARYTET cz. 3 (pkt 1): rodzaj źródła pola OZE z przyłączonych wytwórców — ta
     // sama relacja i funkcja co pola źródłowe stacji (`v2/model/polaZModelu.ts`).
     generatoryWgPola: wytworcyWgPola(enm),
+    // UX-04/POLE-BKR-MODEL: bateria kondensatorów na końcu toru pola (`bateriaWidokuPola`
+    // — ta sama relacja co pola stacji i backend `pole_baterii`).
+    shunt_capacitors: enm.shunt_capacitors ?? [],
   };
 
   // GPZ-PARYTET cz. 3 (pkt 2): pole TR, którego JEDYNYM transformatorem jest transformator
@@ -382,7 +388,10 @@ export function extractTransformerDesignation(name: string | null | undefined, i
 /** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
  *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
-type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements' | 'substations' | 'branches'> & {
+type ProtectionCtx = Pick<
+  EnergyNetworkModel,
+  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'shunt_capacitors'
+> & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
   /** Wytwórcy wg pola (`Generator.meta.field_ref`) — rodzaj źródła pola OZE. */
@@ -535,6 +544,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     fieldRole,
     rolaPola: rolaPolaGpz(bay.bay_role),
     ...(fieldRole === 'SOURCE' ? { rolaZrodla: rolaPolaZrodlowego(bay, protectionCtx.generatoryWgPola) } : {}),
+    ...bateriaWidokuPola(bay, protectionCtx),
     cbState: stany.cbState,
     dsState: stany.dsState,
     esState: stany.esState,
@@ -603,7 +613,13 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
     // GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe — gramatyka pola kablowego + glif rodzaju
     // źródła (`rolaZrodla`); dawniej zlewane z polem liniowym odpływowym.
     case 'OZE': return 'SOURCE';
-    default: return 'LINE_OUT';
+    // UX-04/POLE-BKR-MODEL: dawne `default: return 'LINE_OUT'` robiło z pola baterii pole
+    // liniowe odpływowe — kandydata na feeder magistrali sieci. Przełącznik jest teraz
+    // wyczerpujący po `Bay.bay_role` (nowa rola bez gałęzi = błąd kompilacji).
+    case 'BKR': return 'CAPACITOR_BANK';
+    // UX-04/POLE-ZU-SKLADOWA-ZEROWA: pole zespołu uziemiającego — dawniej `default` robił
+    // z niego pole liniowe odpływowe (kandydata na pole magistrali sieci).
+    case 'ZU': return 'EARTHING_UNIT';
   }
 }
 
@@ -626,6 +642,9 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
       return { cb: 'Q0', dsBus: 'Q1', ct: 'T1' };
     case 'MEASUREMENT':
       return { dsBus: 'Q1', es: 'Q8' };
+    case 'CAPACITOR_BANK':
+    case 'EARTHING_UNIT':
+      return { cb: 'Q0', dsBus: 'Q1', es: 'Q8', ct: 'T1' };
   }
 }
 
@@ -656,6 +675,7 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'MEASUREMENT': return 'pomiarowe';
     case 'OZE': return 'zrodlowe';
     case 'ZU': return 'uziemiajace';
+    case 'BKR': return 'kompensacyjne';
   }
 }
 

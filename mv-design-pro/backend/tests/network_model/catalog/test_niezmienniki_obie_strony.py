@@ -47,6 +47,7 @@ from network_model.catalog.types import (
     LVFuseLinkType,
     LVRcdType,
     OverheadConductorType,
+    ShuntCapacitorType,
     SwitchEquipmentType,
     _normalize_catalog_status,
     _normalize_verification_status,
@@ -536,7 +537,56 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
             _lacznik(equipment_kind="FUSE", ik_ka=63.0, icw_ka=None, i_cu_ka=63.0),
         ),
     ),
+    # Karta UX-04/POLE-BKR-MODEL — `ShuntCapacitorType`: te same granice co element ENM.
+    "KAT-T-051": (
+        lambda: _bateria_kondensatorow(uklad_polaczen="ZYGZAK"),
+        # Każdy układ słownika, także rzadki trójkąt, jest legalny; brak danej — też.
+        lambda: (
+            _bateria_kondensatorow(uklad_polaczen="TROJKAT"),
+            _bateria_kondensatorow(uklad_polaczen=None),
+        ),
+    ),
+    "KAT-T-052": (
+        lambda: _bateria_kondensatorow(liczba_stopni=0),
+        lambda: (_bateria_kondensatorow(liczba_stopni=1), _bateria_kondensatorow(liczba_stopni=12)),
+    ),
+    "KAT-T-053": (
+        lambda: _bateria_kondensatorow(
+            tolerancja_pojemnosci_min_proc=2.0, tolerancja_pojemnosci_max_proc=10.0
+        ),
+        # Przedział jednostronny (0 %…+15 %) — nietypowy, lecz zawiera wartość znamionową.
+        lambda: _bateria_kondensatorow(
+            tolerancja_pojemnosci_min_proc=0.0, tolerancja_pojemnosci_max_proc=15.0
+        ),
+    ),
+    "KAT-T-054": (
+        lambda: _bateria_kondensatorow(dlawik_ograniczajacy=False, dlawik_indukcyjnosc_mh=2.0),
+        # Bardzo mała, lecz dodatnia indukcyjność przy dławiku i dławik bez podanej L — legalne.
+        lambda: (
+            _bateria_kondensatorow(dlawik_ograniczajacy=True, dlawik_indukcyjnosc_mh=0.01),
+            _bateria_kondensatorow(dlawik_ograniczajacy=True, dlawik_indukcyjnosc_mh=None),
+        ),
+    ),
+    "KAT-T-055": (
+        lambda: _bateria_kondensatorow(rezystory_rozladowcze_wewnetrzne="tak"),
+        lambda: (
+            _bateria_kondensatorow(rezystory_rozladowcze_wewnetrzne=False),
+            _bateria_kondensatorow(dlawik_ograniczajacy=None),
+        ),
+    ),
 }
+
+
+def _bateria_kondensatorow(**zmiany: Any) -> ShuntCapacitorType:
+    """Typ baterii kondensatorów z danymi TESTOWYMI (kształt rekordu, nie wartości katalogowe)."""
+    pola: dict[str, Any] = {
+        "id": "bateria_test",
+        "name": "Bateria testowa",
+        "rated_mvar": 1.2,
+        "rated_kv": 15.0,
+    }
+    pola.update(zmiany)
+    return ShuntCapacitorType(**pola)
 
 
 def _lacznik(**zmiany: Any) -> SwitchEquipmentType:

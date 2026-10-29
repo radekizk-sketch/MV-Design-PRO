@@ -144,7 +144,7 @@ def _payload_sn_bay_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
-        "bay_role": "LINIA_OUT",
+        "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
         "apparatus_kind": "BREAKER",
         "catalog_binding": _wiazanie(REF_APARAT_SN),
     }
@@ -823,7 +823,7 @@ def test_pole_sn_bez_aparatu_nie_deklaruje_pochodzenia_katalogowego() -> None:
         {
             "station_ref": _stacja_ref(snapshot),
             "bus_ref": _szyna_sn_ref(snapshot),
-            "bay_role": "LINIA_OUT",
+            "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
             "apparatus_kind": "BREAKER",
         },
     )

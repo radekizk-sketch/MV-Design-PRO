@@ -16,6 +16,21 @@ from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
 )
+from network_model.catalog.rodzaje_aparatury import (
+    LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII,
+    RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+    RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+)
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE,
+    PARAMETR_BATERII_UKLAD,
+)
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    PODSTAWA_POLA_BKR_PL,
+    PODSTAWA_WYLACZENIA_OD_TR_PL,
+    UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA,
+)
 from network_model.core.topologia import skladowe_spojne
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
@@ -34,6 +49,14 @@ from network_model.pochodne.pasma_napieciowe import (
 )
 from pydantic import BaseModel
 
+from .bateria_kondensatorow import (
+    niezgodnosc_stopni,
+    parametry_baterii,
+    pole_baterii,
+    rodzaje_aparatow_pola,
+    stacja_gpz_baterii,
+    transformatory_zasilajace_baterie,
+)
 from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
@@ -404,6 +427,7 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
+        self._check_baterie_pola_bkr(enm, issues)
         # KATALOG-APARATURA-WN: łącznik topologii zasilania 110 kV bez typu katalogowego
         self._check_lacznik_wn_bez_typu(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
@@ -2222,6 +2246,208 @@ class ENMValidator:
                             element_ref=cap.ref_id,
                             modal_type="ShuntCapacitorModal",
                             payload_hint={"required": "rated_kv"},
+                        ),
+                    )
+                )
+
+    # ------------------------------------------------------------------
+    # Bateria kondensatorów: stopnie i pole BKR (E043, W045–W048) — karta UX-04/POLE-BKR-MODEL
+    # ------------------------------------------------------------------
+
+    def _check_baterie_pola_bkr(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Reguły baterii kondensatorów i pola BKR, każda z wyjaśnieniem (kontrakt werdyktu
+        wyjaśnialnego): co oceniono, kryterium z podstawą, stan modelu, skutek, naprawa.
+
+        E043 (BLOCKER): stan stopni niezgodny z liczbą stopni — ten sam predykat co odmowa
+            assemblera (``enm.bateria_kondensatorow.niezgodnosc_stopni``).
+        W045: bateria w rozdzielni SN GPZ bez pola BKR (Zeszyt 1 §13, §17).
+        W046: podwójna gwiazda izolowana bez przekładnika niezrównoważenia w polu BKR
+            (Zeszyt 1 §17, Zał. 16 — zabezpieczenie Ir>).
+        W047: jednostki bez wewnętrznych rezystorów rozładowczych, a pole BKR ma mniej niż
+            dwa przekładniki napięciowe międzyfazowe (Zeszyt 1 §17).
+        W048: lista transformatorów, których wyłączenie wyłącza baterię, nie obejmuje
+            transformatorów zasilających sekcję baterii albo wskazuje nieistniejące
+            (IRiESD II.4.5.4.4.2). Skutek łączeniowy realizuje logika łączeniowa; tu — dane.
+
+        Poziom W: stan jest legalnym stanem roboczym (koncepcja), nie wpływa na liczby
+        rozpływu ani zwarć — wymagania OSD dotyczą wyposażenia i automatyki pola.
+        """
+        transformatory = {t.ref_id for t in enm.transformers}
+        for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id):
+            opis = opis_obiektu(bateria, "Bateria kondensatorów")
+            dane = parametry_baterii(bateria)
+            niezgodnosc = niezgodnosc_stopni(bateria, dane)
+            if niezgodnosc is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E043",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis}: {niezgodnosc}. Udział stopni załączonych u = n_zał/n "
+                            "wchodzi do mocy biernej baterii w rozpływie i do jej admitancji "
+                            "zerowej, więc bez zgodnego stanu stopni nie da się go policzyć."
+                        ),
+                        element_refs=[bateria.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Podaj stan każdego stopnia (tyle pozycji, ile stopni ma bateria) "
+                            "albo zmień liczbę stopni baterii."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "stopnie_zalaczone"},
+                        ),
+                    )
+                )
+            nieznane = [r for r in bateria.wylaczenie_od_transformatorow if r not in transformatory]
+            stacja = stacja_gpz_baterii(enm, bateria)
+            pole = pole_baterii(enm, bateria)
+            if stacja is not None and (pole is None or pole.bay_role != "BKR"):
+                issues.append(
+                    ValidationIssue(
+                        code="W045",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis} stoi w rozdzielni SN {opis_obiektu(stacja, 'GPZ')} "
+                            + (
+                                "wprost na szynie, bez pola"
+                                if pole is None
+                                else f"na końcu pola {opis_obiektu(pole, 'pole')} roli innej niż "
+                                "pole baterii kondensatorów"
+                            )
+                            + f". Kryterium: bateria GPZ przyłączona przez pole BKR z wyłącznikiem, "
+                            f"zabezpieczeniami i przekładnikami ({PODSTAWA_POLA_BKR_PL}). Liczby "
+                            "rozpływu i zwarć są poprawne; brakuje pola, które baterię łączy, "
+                            "zabezpiecza i rozładowuje."
+                        ),
+                        element_refs=[bateria.ref_id, stacja.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Dodaj do sekcji rozdzielni SN pole baterii kondensatorów (BKR) "
+                            "i przyłącz baterię do jego zacisku."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=stacja.ref_id,
+                            modal_type="add_sn_bay",
+                            payload_hint={"bay_role": "BKR"},
+                        ),
+                    )
+                )
+            if pole is not None and pole.bay_role == "BKR":
+                rodzaje = rodzaje_aparatow_pola(pole)
+                uklad = dane[PARAMETR_BATERII_UKLAD]
+                if (
+                    str(uklad.wartosc) in UKLADY_Z_PRZEKLADNIKIEM_NIEZROWNOWAZENIA
+                    and RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA not in rodzaje
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            code="W046",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[str(uklad.wartosc)]}"
+                                f"” ({uklad.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} nie ma przekładnika "
+                                "niezrównoważenia w połączeniu międzygwiazdowym. Kryterium: "
+                                "zabezpieczenie niezrównoważeniowe Ir> mierzy prąd między "
+                                f"punktami gwiazd ({PODSTAWA_POLA_BKR_PL}). Bez przekładnika "
+                                "uszkodzenie jednostki baterii nie jest wykrywane."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola przekładnik niezrównoważenia "
+                                "baterii (port obwodu międzygwiazdowego)."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+                rezystory = dane[PARAMETR_BATERII_REZYSTORY_ROZLADOWCZE]
+                liczba_vt = rodzaje.count(RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO)
+                if not rezystory.wartosc and liczba_vt < LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII:
+                    issues.append(
+                        ValidationIssue(
+                            code="W047",
+                            severity=SEVERITY_IMPORTANT,
+                            message_pl=(
+                                f"{opis}: jednostki bez wewnętrznych rezystorów rozładowczych "
+                                f"({rezystory.opis_zrodla_pl()}), a pole "
+                                f"{opis_obiektu(pole, 'pole')} ma {liczba_vt} z "
+                                f"{LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII} wymaganych "
+                                "przekładników napięciowych międzyfazowych do rozładowania "
+                                f"baterii (L1-L2 i L2-L3; {PODSTAWA_POLA_BKR_PL}). Bez nich "
+                                "bateria po wyłączeniu zostaje naładowana."
+                            ),
+                            element_refs=[bateria.ref_id, pole.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Dodaj do wyposażenia pola dwa przekładniki napięciowe "
+                                "międzyfazowe albo wskaż typ baterii z wewnętrznymi "
+                                "rezystorami rozładowczymi."
+                            ),
+                            # Wyposażenie pola edytuje karta pola (ekran E-11, jedyny
+                            # dostawca `set_bay_equipment`) — otwiera ją zaznaczenie pola.
+                            fix_action=FixAction(
+                                action_type="NAVIGATE_TO_ELEMENT", element_ref=pole.ref_id
+                            ),
+                        )
+                    )
+            wymagane = transformatory_zasilajace_baterie(enm, bateria) if stacja else []
+            brakujace = [t for t in wymagane if t not in bateria.wylaczenie_od_transformatorow]
+            if brakujace or nieznane:
+                opis_brakujacych = (
+                    "nie obejmuje transformatorów zasilających sekcję baterii: "
+                    + lista_pl((opis_elementu(enm, t, "transformator") for t in brakujace), "i")
+                    if brakujace
+                    else ""
+                )
+                opis_nieznanych = (
+                    f"wskazuje {len(nieznane)} "
+                    + (
+                        "transformator, którego"
+                        if len(nieznane) == 1
+                        else "transformatory, których"
+                    )
+                    + " nie ma w modelu"
+                    if nieznane
+                    else ""
+                )
+                opis_listy = (
+                    f"{opis_brakujacych}; {opis_nieznanych}"
+                    if brakujace and nieznane
+                    else opis_brakujacych or opis_nieznanych
+                )
+                issues.append(
+                    ValidationIssue(
+                        code="W048",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"{opis}: lista transformatorów, których wyłączenie wyłącza baterię, "
+                            + opis_listy
+                            + f". Kryterium: {PODSTAWA_WYLACZENIA_OD_TR_PL}. Logika łączeniowa "
+                            "pola BKR czyta tę listę — bez kompletu bateria zostałaby załączona "
+                            "na sekcji po wyłączeniu jej transformatora."
+                        ),
+                        element_refs=[bateria.ref_id, *brakujace, *nieznane],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Uzupełnij w parametrach baterii listę transformatorów, których "
+                            "wyłączenie ją wyłącza."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bateria.ref_id,
+                            modal_type="ShuntCapacitorModal",
+                            payload_hint={"required": "wylaczenie_od_transformatorow"},
                         ),
                     )
                 )

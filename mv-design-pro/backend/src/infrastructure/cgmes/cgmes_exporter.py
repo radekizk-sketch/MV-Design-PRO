@@ -61,13 +61,13 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
+from enm.bateria_kondensatorow import sekcje_baterii
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     kw_na_mw,
     prad_znamionowy_a,
-    susceptancja_z_mocy_biernej_s,
 )
 
 from .mrid import mrid_for, urn
@@ -827,28 +827,35 @@ def _emit_load(eq: ET.Element, tp: ET.Element, load: Load) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
-    """ShuntCapacitor -> LinearShuntCompensator (D-06c).
+def _emit_shunt(
+    eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor, czestotliwosc_hz: float
+) -> None:
+    """ShuntCapacitor -> LinearShuntCompensator (D-06c, karta UX-04/POLE-BKR-MODEL).
 
-    Susceptancja na sekcję: B = Q_n/U_n² — ``pochodne.susceptancja_z_mocy_biernej_s``
-    (karty C3/C4; stan PRZED liczył ten wzór w infrastrukturze). Napięcie ≤ 0 =
-    nazwana odmowa (stan PRZED zapisywał po cichu B = 0). Jeden stopień
-    (maximumSections=1, sections=1 gdy załączona).
+    Sekcja = stopień baterii: ``maximumSections`` = liczba stopni, ``sections`` = stopnie
+    załączone (0 przy baterii wyłączonej), ``bPerSection``/``gPerSection`` = admitancja jednego
+    stopnia B = Q_n/(n·U_n²), G = P_str/(n·U_n²) z dławikiem szeregowym, gdy jest
+    (``enm.bateria_kondensatorow.sekcje_baterii`` → ``pochodne.admitancja_sekcji_baterii_siemens``;
+    przy jednym stopniu bez dławika i strat wynik jest bit w bit równy dawnemu B = Q_n/U_n²).
+    CGMES nie ma atrybutu dławika szeregowego baterii: zapis liniowy jest dokładny dla stanu
+    zapisanego w pliku, a dla innej liczby stopni odchyłka względna jest rzędu X_L/X_C (opis
+    w ``admitancja_sekcji_baterii_siemens``); pełny model wraca z pliku uzupełniającego.
+    Napięcie ≤ 0 = nazwana odmowa (stan PRZED zapisywał po cichu B = 0).
     """
     if cap.rated_kv <= 0:
         raise OdmowaDanychError(
             f"Bateria kondensatorów „{cap.name}”: napięcie znamionowe {cap.rated_kv} kV musi "
             "być dodatnie — eksport CGMES niemożliwy."
         )
+    sekcje = sekcje_baterii(cap, czestotliwosc_hz)
     mrid = mrid_for("LinearShuntCompensator", cap.ref_id)
     lsc = _obj(eq, "LinearShuntCompensator", mrid)
     _prop(lsc, "IdentifiedObject.name", cap.name)
-    b_per_section = susceptancja_z_mocy_biernej_s(cap.rated_mvar, cap.rated_kv)
-    _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(b_per_section))
-    _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(0.0))
+    _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(sekcje.y_sekcji_s.imag))
+    _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(sekcje.y_sekcji_s.real))
     _prop(lsc, "ShuntCompensator.nomU", fmt_float(kv_to_v(cap.rated_kv)))
-    _prop(lsc, "ShuntCompensator.maximumSections", "1")
-    _prop(lsc, "ShuntCompensator.sections", "0" if cap.status == "open" else "1")
+    _prop(lsc, "ShuntCompensator.maximumSections", str(sekcje.liczba_sekcji))
+    _prop(lsc, "ShuntCompensator.sections", str(sekcje.sekcje_zalaczone))
     t1 = _terminal(eq, owner_ref=cap.ref_id, equipment_mrid=mrid, seq=1)
     _connect_terminal_tp(tp, t1, cap.bus_ref)
 
@@ -919,7 +926,7 @@ def build_eq_tp_trees(enm: EnergyNetworkModel) -> tuple[ET.Element, ET.Element]:
         _emit_load(eq, tp, load)
 
     for cap in sorted(enm.shunt_capacitors, key=lambda c: c.ref_id):
-        _emit_shunt(eq, tp, cap)
+        _emit_shunt(eq, tp, cap, enm.header.defaults.frequency_hz)
 
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
         _emit_substation(eq, sub, bus_kv)

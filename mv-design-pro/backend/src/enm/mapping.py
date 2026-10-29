@@ -25,6 +25,7 @@ import numpy as np
 from network_model.catalog.types import ConverterKind
 from network_model.catalog.wartosci_robocze import (
     OPISY_PARAMETROW_MASZYNY,
+    PARAMETR_BATERII_UKLAD,
     PARAMETR_COS_PHI_MASZYNY,
     PARAMETR_KROTNOSC_I_LR,
     PARAMETR_MOC_POZORNA_MASZYNY,
@@ -44,6 +45,10 @@ from network_model.catalog.wartosci_robocze import (
     rozstrzygnij_parametry_maszyny,
     wartosci_projektanta_maszyny,
     wpis_parametru_maszyny,
+)
+from network_model.core.bateria_kondensatorow import (
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+    PODSTAWA_SKLADOWA_ZEROWA_BATERII_PL,
 )
 from network_model.core.branch import (
     BranchType,
@@ -74,7 +79,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_POZA_DZIEDZINA,
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
-from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
@@ -93,6 +98,7 @@ from network_model.solvers.power_flow_zip import (
 )
 from werdykt.kontrakt import WyjasnienieWerdyktu
 
+from .bateria_kondensatorow import admitancja_baterii, ma_droge_zerowa, parametry_baterii
 from .models import (
     Cable,
     EnergyNetworkModel,
@@ -761,6 +767,67 @@ def _assemble_zero_sequence_y0(
                 f"(bocznik {nazwa_szyny[source.bus_ref]})"
             ),
             result={"z0_ohm": z0_source_ohm},
+        )
+
+    # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów w sieci składowej zerowej. Gwiazda
+    # z uziemionym punktem gwiazdy ma każdą fazę między przewodem a ziemią, więc Y0 = Y1
+    # (ta sama admitancja co w rozpływie: stopnie, straty, dławik — `admitancja_baterii`);
+    # gwiazda izolowana, podwójna gwiazda izolowana i trójkąt nie mają drogi zerowej i NIE
+    # stampują niczego — ślad nazywa oba przypadki z podstawą
+    # (`PODSTAWA_SKLADOWA_ZEROWA_BATERII_PL`). Bateria otwarta nie wchodzi do sieci.
+    for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id):
+        if bateria.status != "closed":
+            continue
+        bus_id = ref_to_node_id.get(bateria.bus_ref)
+        if bus_id is None:
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Bateria kondensatorów", bateria.ref_id, bateria.bus_ref)
+            )
+        if bus_id not in node_index:
+            continue
+        dane_baterii = parametry_baterii(bateria)
+        uklad = str(dane_baterii[PARAMETR_BATERII_UKLAD].wartosc)
+        nazwa_baterii = nazwa_elementu(bateria, "shunt_capacitors")
+        if not ma_droge_zerowa(dane_baterii):
+            tracer.add(
+                key=f"z0_shunt_capacitor[{bateria.ref_id}]",
+                title=f"Bateria {nazwa_baterii}: brak drogi zerowej",
+                formula_latex=r"Y_{0,bat} = 0",
+                inputs={"ref_id": bateria.ref_id, "uklad_polaczen": uklad},
+                substitution=(
+                    f"Układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[uklad]}” bez połączenia z ziemią "
+                    f"— brak wkładu do Y0 ({nazwa_szyny[bateria.bus_ref]})."
+                ),
+                result={"y0_pu": 0j},
+                notes=PODSTAWA_SKLADOWA_ZEROWA_BATERII_PL,
+            )
+            continue
+        admitancja = admitancja_baterii(
+            bateria.model_dump(mode="json"),
+            napiecie_bazy_kv=float(graph.nodes[bus_id].voltage_level),
+            moc_bazy_mva=S_BASE_MVA,
+            czestotliwosc_hz=float(enm.header.defaults.frequency_hz),
+        )
+        idx = node_index[bus_id]
+        y0_bus[idx, idx] += admitancja.y_pu
+        tracer.add(
+            key=f"z0_shunt_capacitor[{bateria.ref_id}]",
+            title=f"Bateria {nazwa_baterii}: admitancja zerowa (bocznik do ziemi)",
+            formula_latex=r"Y_{0,bat} = Y_{1,bat} = g + jb",
+            inputs={
+                "ref_id": bateria.ref_id,
+                "uklad_polaczen": uklad,
+                "q_n_mvar": bateria.rated_mvar,
+                "u_n_kv": bateria.rated_kv,
+                "udzial_stopni": admitancja.zapis["udzial_stopni"],
+            },
+            substitution=(
+                f"Układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[uklad]}”: Y0 = "
+                f"{admitancja.y_pu.real:.6g} + j{admitancja.y_pu.imag:.6g} p.u. "
+                f"(bocznik {nazwa_szyny[bateria.bus_ref]})"
+            ),
+            result={"y0_pu": admitancja.y_pu},
+            notes=PODSTAWA_SKLADOWA_ZEROWA_BATERII_PL,
         )
 
     # SM-3 (V12K-181): transformatory w sieci składowej zerowej wg grupy połączeń.

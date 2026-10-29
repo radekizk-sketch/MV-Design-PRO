@@ -20,6 +20,7 @@ from solver_input.v126_contracts import (
     PROJEKT_UZIEMIENIA_WARIANTU,
     V126AcademicInput,
     V126AnalysisType,
+    V126SiecSnInput,
     brak_uziemienia_sn,
 )
 
@@ -134,6 +135,52 @@ def _odmowa_uziemienia_sn(trace: TraceBuilder, krok: str, powod: str) -> JsonDic
         "missing_fields": ["uziemienie_sn"],
         "sanity": _sanity_block([], has_inputs=False),
     }
+
+
+def _zestawienie_sieci(
+    scheme: str, sieci: list[V126SiecSnInput], wyniki: list[JsonDict]
+) -> JsonDict:
+    """Wynik projektu uziemienia modelu z KILKU galwanicznie połączonych sieci SN.
+
+    Każda sieć ma własny wiersz z pełnym wynikiem (`sieci`) — agregat nie zastępuje wyników
+    składowych (kontrakt werdyktu wyjaśnialnego). Blok wiarygodności: naruszenie w którejkolwiek
+    sieci → „poza zakresem wiarygodności"; sieć bez danych → „dane niekompletne"; inaczej
+    „zweryfikowany". Status całości „dane niekompletne" WYŁĄCZNIE, gdy żadnej sieci nie
+    policzono — wynik policzony dla jednej sieci nie znika za brakiem danych drugiej."""
+    wiersze: list[JsonDict] = [
+        {"szyna_ref": siec.szyna_ref, "nazwa_pl": siec.nazwa_pl, **wynik}
+        for siec, wynik in zip(sieci, wyniki, strict=True)
+    ]
+    bloki = [w["sanity"] for w in wyniki]
+    naruszenia = [
+        {**n, "detail_pl": f"{siec.nazwa_pl}: {n['detail_pl']}"}
+        for siec, blok in zip(sieci, bloki, strict=True)
+        for n in blok["violations"]
+    ]
+    niekompletne = [b for b in bloki if b["status"] == "dane niekompletne"]
+    sanity: JsonDict = {
+        "status": (
+            "poza zakresem wiarygodności"
+            if naruszenia
+            else ("dane niekompletne" if niekompletne else "zweryfikowany")
+        ),
+        "violations": naruszenia,
+        "checks_total": sum(b["checks_total"] for b in bloki),
+        "checks_passed": sum(b["checks_passed"] for b in bloki),
+    }
+    wynik: JsonDict = {
+        "neutral_earthing_type": scheme,
+        "network_count": len(sieci),
+        "sieci": wiersze,
+        "sanity": sanity,
+    }
+    if len(niekompletne) == len(bloki):
+        wynik["status"] = "dane niekompletne"
+        wynik["message_pl"] = " ".join(str(w.get("message_pl", "")) for w in wyniki).strip()
+    kompletnosci = [w.get("kompletnosc_dowodu") for w in wyniki if "kompletnosc_dowodu" in w]
+    if kompletnosci:
+        wynik["kompletnosc_dowodu"] = "NIEPELNY" if "NIEPELNY" in kompletnosci else "PELNY"
+    return wynik
 
 
 # D-14 (K-08): jednolita warstwa sanity-bounds dla analiz V12.6. Status wg §6.1:
@@ -1392,13 +1439,41 @@ class V126AcademicSolver:
             result_pl=f"Uziemienie sieci z modelu: {model.uziemienie_sn.opis_pl}",
         )
 
+        # Każda galwanicznie połączona sieć SN osobno (IEC 60909-0 / PN-EN 50522:
+        # I_C = √3·ω·C_0·U_n sieci połączonej galwanicznie): dwie sekcje GPZ przy otwartym
+        # sprzęgle mają własną pojemność doziemną i własny zespół — suma po całym modelu
+        # zawyżałaby I_C każdej z nich i fałszowała dobór dławika albo rezystora.
+        sieci = model.uziemienie_sn.sieci
+        wiele = len(sieci) > 1
+        wyniki = [
+            self._projekt_uziemienia_sieci(model, trace, siec, scheme, omega, wiele=wiele)
+            for siec in sieci
+        ]
+        if not wiele:
+            return wyniki[0]
+        return _zestawienie_sieci(scheme, sieci, wyniki)
+
+    def _projekt_uziemienia_sieci(
+        self,
+        model: V126AcademicInput,
+        trace: TraceBuilder,
+        siec: V126SiecSnInput,
+        scheme: str,
+        omega: float,
+        *,
+        wiele: bool,
+    ) -> JsonDict:
+        """Projekt uziemienia punktu neutralnego JEDNEJ galwanicznie połączonej sieci SN."""
+        # Kroki śladu niosą sieć, gdy model ma ich kilka (ślad czytelny sieć po sieci).
+        dopisek = {"siec_sn": siec.nazwa_pl} if wiele else {}
+        przedrostek = f"{siec.nazwa_pl}: " if wiele else ""
         # --- Krok 1: zsumuj pojemność doziemną C0 sieci galwanicznie połączonej. ---
         # Tylko linie/kable z jawnym b0 (zero-sequence / line-to-earth). Element bez
         # b0 → "dane niekompletne" (zakaz fabrykacji C0). Łączniki otwarte pomijane.
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01): wyłącznie gałęzie sieci SN z jedynej
-        # prawdy (`galezie_sieci` — wszystkie sekcje, dobór zespołu na pracę jednego ZU na
-        # sieć A+B, ENEA Zeszyt 1 §16 s. 29); linie 110 kV i kable nN nie należą do sieci SN.
-        galezie_sieci = frozenset(model.uziemienie_sn.galezie_sieci)
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01): wyłącznie gałęzie TEJ sieci SN z jedynej
+        # prawdy (`galezie_sieci` składowej galwanicznej przy stanach łączników); linie
+        # 110 kV, kable nN i gałęzie drugiej sekcji przy otwartym sprzęgle do niej nie należą.
+        galezie_sieci = frozenset(siec.galezie_sieci)
         b0_total_s = 0.0
         contributing: list[JsonDict] = []
         missing_b0: list[str] = []
@@ -1425,11 +1500,66 @@ class V126AcademicSolver:
                 }
             )
 
+        # Karta UX-04/POLE-BKR-MODEL (B-01): baterie kondensatorów. Gwiazda z uziemionym
+        # punktem gwiazdy ma każdą fazę między przewodem a ziemią — jej susceptancja fazy
+        # B0 = B (Y0 = Y1, policzona w moście wejścia z pierwszych zasad) dokłada się do
+        # pojemności doziemnej sieci tak samo jak B0 linii; gwiazda izolowana, podwójna
+        # gwiazda izolowana i trójkąt nie mają drogi zerowej (B0 = 0) i nie wnoszą prądu
+        # pojemnościowego. Bateria otwarta pomijana jak łącznik otwarty. Wyłącznie baterie TEJ
+        # sieci (`baterie_sieci` z `enm.uziemienie_sekcji.baterie_sieci_sn` — ten sam
+        # predykat, z którego jedyna prawda dokłada B0 baterii): bateria drugiej sekcji przy
+        # otwartym sprzęgle nie wnosi prądu do tej sieci.
+        baterie_w_sieci = frozenset(siec.baterie_sieci)
+        banks_contributing: list[JsonDict] = []
+        banks_without_zero_path: list[str] = []
+        b0_banks_s = 0.0
+        baterie_sieci = [b for b in model.shunt_capacitors if b.ref in baterie_w_sieci]
+        for bank in baterie_sieci:
+            if bank.is_open:
+                continue
+            if not bank.wnosi_pojemnosc_doziemna:
+                banks_without_zero_path.append(bank.ref)
+                continue
+            b0_banks_s += bank.b0_siemens
+            b0_total_s += bank.b0_siemens
+            banks_contributing.append(
+                {
+                    "shunt_capacitor_ref": bank.ref,
+                    "bus_ref": bank.bus_ref,
+                    "uklad_polaczen": bank.uklad_polaczen,
+                    "b0_total_siemens": _round(bank.b0_siemens, 12),
+                }
+            )
+        if baterie_sieci:
+            trace.add(
+                "neutral_earthing_shunt_capacitors",
+                "B0_bat = B_bat (gwiazda uziemiona, Y0 = Y1); B0_bat = 0 (gwiazda izolowana, "
+                "podwójna gwiazda, trójkąt)",
+                {
+                    "banks_contributing": banks_contributing,
+                    "banks_without_zero_path": banks_without_zero_path,
+                    **dopisek,
+                },
+                "Σ B0_bat = "
+                + (
+                    " + ".join(str(b["b0_total_siemens"]) for b in banks_contributing)
+                    if banks_contributing
+                    else "0"
+                ),
+                {"b0_banks_siemens": _round(b0_banks_s, 12)},
+                "Metoda składowych symetrycznych: admitancja zerowa elementu poprzecznego to "
+                "admitancja trzech faz równolegle z powrotem przez ziemię.",
+                result_pl=(
+                    f"Baterie kondensatorów w gwieździe uziemionej: {len(banks_contributing)}; "
+                    f"bez drogi zerowej: {len(banks_without_zero_path)}"
+                ),
+            )
+
         # Napięcie sieci (linia–linia) SN z jedynej prawdy o uziemieniu sieci (karta
         # UX-04/POLE-ZU-SKLADOWA-ZEROWA, B-01): dawniej najwyższe napięcie szyny MODELU —
         # w modelu GPZ 110 kV, co zawyżało I_C sieci SN 110/15 = 7,3 raza.
         # Brak napięcia sieci to nazwana odmowa niżej — bez podstawionej liczby.
-        u_line_kv = model.uziemienie_sn.napiecie_kv
+        u_line_kv = siec.napiecie_kv
 
         # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
         if b0_total_s <= 0.0 or u_line_kv is None or u_line_kv <= 0.0:
@@ -1446,8 +1576,9 @@ class V126AcademicSolver:
                     "branches_with_b0": len(contributing),
                     "branches_missing_b0": missing_b0,
                     "u_line_kv": u_line_kv,
+                    **dopisek,
                 },
-                reason,
+                przedrostek + reason,
                 {"status": "dane niekompletne"},
                 "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
                 result_pl=("Brak danych do wyznaczenia prądu pojemnościowego doziemienia"),
@@ -1455,7 +1586,7 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "neutral_earthing_type": scheme,
-                "message_pl": reason,
+                "message_pl": przedrostek + reason,
                 "missing_fields": (["b0_siemens_per_km"] if b0_total_s <= 0.0 else ["nominal_kv"]),
                 "branches_missing_b0": missing_b0,
                 "sanity": _sanity_block([], has_inputs=False),
@@ -1473,10 +1604,11 @@ class V126AcademicSolver:
             {
                 "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
                 "zakres_sieci_pl": (
-                    "linie i kable sieci SN wszystkich sekcji — dobór zespołu na pracę "
-                    "jednego zespołu uziemiającego na sieć A+B (ENEA Zeszyt 1 §16 s. 29); "
-                    "napięcie sieci SN z modelu"
+                    "linie, kable i baterie w gwieździe uziemionej sieci SN połączonej "
+                    "galwanicznie przy stanach łączników modelu (sekcje rozdzielone otwartym "
+                    "sprzęgłem liczone osobno); napięcie sieci SN z modelu"
                 ),
+                **dopisek,
                 "omega_rad_s": _round(omega, 6),
                 "b0_total_siemens": _round(b0_total_s, 12),
                 "u_line_kv": u_line_kv,
@@ -1487,11 +1619,11 @@ class V126AcademicSolver:
             f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
             {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
             "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
-            result_pl=(f"Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
+            result_pl=(f"{przedrostek}Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
         )
 
         if scheme == "resistor_grounded" or scheme == "resistor":
-            result = self._ner_design(model, trace, ic_a, u_phase_v)
+            result = self._ner_design(model, trace, siec, ic_a, u_phase_v, wiele=wiele)
         else:
             result = self._petersen_design(model, trace, c0_farad, ic_a, omega)
         result["neutral_earthing_type"] = scheme
@@ -1500,6 +1632,9 @@ class V126AcademicSolver:
         result["network_line_voltage_kv"] = u_line_kv
         result["branches_missing_b0"] = missing_b0
         result["branches_contributing"] = contributing
+        if baterie_sieci:
+            result["shunt_capacitors_contributing"] = banks_contributing
+            result["shunt_capacitors_without_zero_path"] = banks_without_zero_path
         return result
 
     def _petersen_design(
@@ -1614,25 +1749,29 @@ class V126AcademicSolver:
         self,
         model: V126AcademicInput,
         trace: TraceBuilder,
+        siec: V126SiecSnInput,
         ic_a: float,
         u_phase_v: float,
+        *,
+        wiele: bool,
     ) -> JsonDict:
         # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4 (B-01): sprawdzenie REZYSTORA MODELU.
         # Dawne parametry biegu „docelowy prąd doziemienia" (R = U_f/I_ef) i „energia
         # znamionowa rezystora" opisywały inny rezystor niż ten w zespole uziemiającym —
         # nadpisywały model. R, I_n i t_n idą z zespołu (albo z uzwojenia TR uziemionego przez
         # rezystor); wartość robocza urządzenia jest daną przyjętą ESTIMATED (zasada nr 4).
-        assert model.uziemienie_sn is not None
-        uziemienie = model.uziemienie_sn
+        uziemienie = siec
+        dopisek = {"siec_sn": siec.nazwa_pl} if wiele else {}
+        przedrostek = f"{siec.nazwa_pl}: " if wiele else ""
         dane_przyjete = [d.model_dump(mode="json") for d in uziemienie.dane_przyjete]
         kompletnosc = "NIEPELNY" if dane_przyjete else "PELNY"
         rezystory = sorted(uziemienie.rezystory, key=lambda r: r.ref)
         kompensacja = uziemienie.wariant == "dlawik_rezystor"
         brak = (
-            ["uziemienie_sn.rezystory"]
+            ["uziemienie_sn.sieci.rezystory"]
             if not rezystory
             else (
-                ["uziemienie_sn.prad_dlawikow_a"]
+                ["uziemienie_sn.sieci.prad_dlawikow_a"]
                 if kompensacja and uziemienie.prad_dlawikow_a is None
                 else []
             )
@@ -1648,8 +1787,8 @@ class V126AcademicSolver:
             trace.add(
                 "ner_no_resistor",
                 "R_N = R_{zespołu};  I_ef = √(I_R² + (I_C − I_L)²)",
-                {"missing": brak},
-                reason,
+                {"missing": brak, **dopisek},
+                przedrostek + reason,
                 {"status": "dane niekompletne"},
                 "Brak danych urządzenia punktu neutralnego — bez wartości zgadywanej.",
                 result_pl="Brak danych rezystora punktu neutralnego — sprawdzenia nie wykonano",
@@ -1657,7 +1796,7 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "design_mode": "resistor_grounded",
-                "message_pl": reason,
+                "message_pl": przedrostek + reason,
                 "missing_fields": brak,
                 "sanity": _sanity_block([], has_inputs=False),
             }
@@ -1687,6 +1826,7 @@ class V126AcademicSolver:
                 ],
                 "ic_a": _round(ic_a, 4),
                 "i_coil_a": _round(i_coil_a, 4),
+                **dopisek,
             },
             f"R_N={_round(r_ohm, 4)}; I_R={_round(u_phase_v, 4)}/{_round(r_ohm, 4)}; "
             f"I_ef=√({_round(i_resistive_a, 4)}²+({_round(ic_a, 4)}−{_round(i_coil_a, 4)})²)",
@@ -1697,7 +1837,7 @@ class V126AcademicSolver:
             },
             "V/A=Ω; √(A²+A²)=A.",
             result_pl=(
-                f"Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} \u03a9; "
+                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} \u03a9; "
                 f"wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
             ),
         )
@@ -1748,7 +1888,7 @@ class V126AcademicSolver:
             trace.add(
                 "ner_thermal_withstand",
                 "E_k = I_R,k²·R_k·t_wył ≤ E_n,k = I_n,k²·R_k·t_n,k",
-                {"t_clear_s": t_clear_s, "resistors": wiersze},
+                {"t_clear_s": t_clear_s, "resistors": wiersze, **dopisek},
                 "; ".join(
                     f"{w['nazwa_pl']}: E={w['i_resistor_a']}²·{w['r_ohm']}·{t_clear_s} ≤ "
                     f"{w['i_n_a']}²·{w['r_ohm']}·{w['t_n_s']}"
@@ -1757,7 +1897,8 @@ class V126AcademicSolver:
                 {"thermal_ok": thermal_ok},
                 "A²·Ω·s = W·s = J ≤ J.",
                 result_pl=(
-                    f"Energia wydzielona w rezystorze: {rozstrzygajacy['energy_dissipated_j']} J "
+                    f"{przedrostek}Energia wydzielona w rezystorze: "
+                    f"{rozstrzygajacy['energy_dissipated_j']} J "
                     f"(znamionowa: {rozstrzygajacy['energy_rating_j']} J)"
                 ),
             )
@@ -1976,19 +2117,27 @@ class V126AcademicSolver:
         # pkt 4) — dawny domyślny „isolated" zgadywał sieć, której model nie opisał.
         powod_uziemienia = brak_uziemienia_sn(model.uziemienie_sn)
         # Pojemność doczepna SIECI SN (ta sama prawda co punkt neutralny): gałęzie spoza sieci
-        # SN (linie 110 kV, kable nN) nie należą do obwodu ferrorezonansowego sieci SN.
-        galezie_sieci_sn = (
-            frozenset(model.uziemienie_sn.galezie_sieci)
+        # SN (linie 110 kV, kable nN) nie należą do obwodu ferrorezonansowego sieci SN, a każda
+        # galwanicznie połączona sieć SN (sekcje rozdzielone otwartym sprzęgłem) jest osobnym
+        # obwodem — ryzyko rozstrzyga sieć o największej pojemności, nie suma po modelu.
+        sieci_sn = (
+            model.uziemienie_sn.sieci
             if powod_uziemienia is None and model.uziemienie_sn is not None
-            else None
+            else []
         )
-        b_i_dlugosc = [
-            (b, branch.length_km)
-            for branch in model.branches
-            if (b := branch.b_siemens_per_km) is not None
-            and (galezie_sieci_sn is None or branch.ref in galezie_sieci_sn)
+        b_i_dlugosc_sieci = [
+            [
+                (b, branch.length_km)
+                for branch in model.branches
+                if (b := branch.b_siemens_per_km) is not None and branch.ref in galezie
+            ]
+            for galezie in (frozenset(siec.galezie_sieci) for siec in sieci_sn)
         ]
-        suma_b_l = sum(b * length_km for b, length_km in b_i_dlugosc)
+        b_i_dlugosc = [para for pary in b_i_dlugosc_sieci for para in pary]
+        suma_b_l = max(
+            (sum(b * length_km for b, length_km in pary) for pary in b_i_dlugosc_sieci),
+            default=0.0,
+        )
         siec_izolowana = (
             powod_uziemienia is None
             and model.uziemienie_sn is not None

@@ -36,6 +36,8 @@ class BayDeviceTemplate(BaseModel):
         "SURGE_ARRESTER",  # ogranicznik przepięć
         "CABLE_HEAD",  # głowica kablowa (trójkąt)
         "TRANSFORMER_DEVICE",  # transformator pola
+        "UNBALANCE_CT",  # przekładnik niezrównoważenia baterii (połączenie międzygwiazdowe)
+        "PHASE_TO_PHASE_VT",  # przekładnik napięciowy międzyfazowy (rozładowanie baterii)
     ]
     designation_q: str  # oznaczenie Q (Q1, Q2, ...)
     position: int  # 0..n od góry do dołu
@@ -176,6 +178,15 @@ BAY_PROTECTION_CODES_BY_ROLE: dict[str, list[str]] = {
     "MEASUREMENT": [],
     # Pole źródłowe OZE/DER: interfejs przyłączeniowy NC RfG.
     "OZE": list(OZE_INTERFACE_BAY_PROTECTION_CODES),
+    # Pole baterii kondensatorów równoległych SN (ENEA Operator, Stacje 110 kV, Zeszyt 1
+    # §26.9.7 s. 54 i Zał. 16; IRiESD II.4.5.4.4.1 s. 54): zwarciowe I>> (50), przeciążeniowe
+    # I> na wartości skutecznej z harmonicznymi (51), ziemnozwarciowe zerowoprądowe (51N),
+    # nadprądowe różnicowe od uszkodzeń kondensatorów — prąd niezrównoważenia między punktami
+    # gwiazd, Ir> na Zał. 16 (60N), nadnapięciowe U> (59) i pobudzenie lokalnej rezerwy
+    # wyłącznikowej LRW (50BF; IRiESD II.4.5.4.7.1 pkt 3). Blokowanie zabezpieczenia szyn od
+    # I> i sterowanie zegarem nie mają kodu ANSI funkcji — są automatyką rozdzielni, nie
+    # funkcją zabezpieczeniową pola.
+    "BKR": ["51", "50", "51N", "60N", "59", "50BF"],
 }
 
 
@@ -220,6 +231,10 @@ BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE: dict[str, list[str]] = {
     "COUPLER": ["WYLACZNIK", "ROZLACZNIK"],
     "MEASUREMENT": ["ODLACZNIK"],
     "OZE": ["WYLACZNIK", "ROZLACZNIK"],
+    # Pole baterii kondensatorów: wyłącznik (Zeszyt 1 Zał. 16 — pole wyłącznikowe; łączenie
+    # baterii i wyłączanie od zabezpieczeń TR wg IRiESD II.4.5.4.4.2 wymaga łącznika
+    # zdolnego do wyłączania prądu pojemnościowego).
+    "BKR": ["WYLACZNIK"],
 }
 
 
@@ -379,6 +394,8 @@ _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND: dict[str, str] = {
     "SURGE_ARRESTER": "SURGE_ARRESTER",
     "CABLE_HEAD": "CABLE_HEAD",
     "TRANSFORMER_DEVICE": "TRANSFORMER_DEVICE",
+    "UNBALANCE_CT": "UNBALANCE_CT",
+    "PHASE_TO_PHASE_VT": "PHASE_TO_PHASE_VT",
 }
 
 # Aparaty łączeniowe toru (sterowalne, ze stanem otwarty/zamknięty).
@@ -561,6 +578,7 @@ _FUNCTIONAL_GROUP_BY_ROLE: dict[str, str] = {
     "COUPLER": "sprzeglowe",
     "MEASUREMENT": "pomiarowe",
     "OZE": "OZE",
+    "BKR": "kompensacyjne",
 }
 
 # Mapowanie roli pola → rola pola we frontendowym read-modelu (`field_role`,
@@ -575,6 +593,7 @@ _FIELD_ROLE_BY_BAY_ROLE: dict[str, str] = {
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
     "OZE": "OZE",
+    "BKR": "BATERIA_KONDENSATOROW",
 }
 
 
@@ -728,8 +747,11 @@ def enumerate_canonical_configurations() -> list[dict[str, Any]]:
 # Typy pól z uwagi 9 (RECENZJA_MACIERZ_WYPOSAZENIA), które NIE mają szablonu w
 # katalogu — jawny rejestr braków (zero fabrykacji: nie wymyślamy szablonu,
 # którego katalog nie niesie). Bateria kondensatorów i generator synchroniczny
-# (odróżniony od źródła OZE inwerterowego) czekają na decyzję danych/domeny.
+# (odróżniony od źródła OZE inwerterowego) czekają na decyzję danych/domeny; pole zespołu
+# uziemiającego (ENEA Zeszyt 1 Zał. 13–15) powstaje operacją pola SN z wyłącznikiem, a karty
+# celki ZU żaden pakiet producenta nie niesie.
 FIELD_TYPES_WITHOUT_TEMPLATE: list[str] = [
     "bateria_kondensatorow",
     "generator_synchroniczny",
+    "zespol_uziemiajacy",
 ]

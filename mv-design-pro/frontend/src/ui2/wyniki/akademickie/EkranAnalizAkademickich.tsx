@@ -937,7 +937,32 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
   }
 
   let tresc: React.ReactNode;
-  if (w.rodzaj === 'pojedynczy') {
+  const skladowe = w.rodzaj === 'pojedynczy' && w.skladowe !== undefined
+    ? odczytaj(payload, w.skladowe.sciezkaTablicy)
+    : undefined;
+  if (w.rodzaj === 'pojedynczy' && w.skladowe !== undefined && Array.isArray(skladowe) && skladowe.length > 0) {
+    // Wynik złożony z wyników składowych: status KAŻDEGO elementu wg tej samej mapy; element
+    // spoza mapy → brak oceny całości (okno nie zgaduje i nie podstawia werdyktu).
+    const wpisy = skladowe.map((element) => {
+      const surowa = w.sciezki
+        .map((sciezka) => odczytaj(element, sciezka))
+        .find((wartosc) => typeof wartosc === 'string');
+      return typeof surowa === 'string' ? w.mapa[surowa] : undefined;
+    });
+    const ocenione = wpisy.filter((wpis): wpis is NonNullable<typeof wpis> => wpis !== undefined);
+    const spelnione = ocenione.filter((wpis) => wpis.istotnosc === 'ok').length;
+    tresc = ocenione.length === wpisy.length ? (
+      <Chip
+        tekst={S.werdyktZbiorczy(spelnione, wpisy.length, w.skladowe.obiektyDopelniacz)}
+        istotnosc={
+          spelnione === wpisy.length ? 'ok' : ocenione.some((wpis) => wpis.istotnosc === 'err') ? 'err' : 'warn'
+        }
+        testid="mvd-akad-werdykt-chip"
+      />
+    ) : (
+      <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+    );
+  } else if (w.rodzaj === 'pojedynczy') {
     const surowa = w.sciezki
       .map((sciezka) => odczytaj(payload, sciezka))
       .find((wartosc) => typeof wartosc === 'string');
@@ -1103,6 +1128,7 @@ function PanelObiektow({
   };
   const surowa = odczytaj(payload, tabela.sciezka);
   const wiersze = Array.isArray(surowa) ? surowa : [];
+  if (tabela.tylkoGdyObecna && !Array.isArray(surowa)) return null;
   return (
     <section className="mvd-akad-sekcja" data-testid={`mvd-akad-obiekty-${tabela.sciezka}`}>
       <div className="mvd-akad-sekcja-naglowek">

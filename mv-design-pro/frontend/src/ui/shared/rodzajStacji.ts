@@ -79,6 +79,11 @@ export const KATEGORIA_ROLI_POLA: Readonly<Record<string, KategoriaRoli>> = {
   OZE: 'inne',
   ZU: 'inne',
   ZESPOL_UZIEMIAJACY: 'inne',
+  // Pole baterii kondensatorów (UX-04/POLE-BKR-MODEL) — pole odbiorcze, nie liniowe.
+  BATERIA_KONDENSATOROW: 'inne',
+  CAPACITOR_BANK: 'inne',
+  EARTHING_UNIT: 'inne',
+  BKR: 'inne',
 };
 
 /** Rodzaj pola katalogowego, który przesądza przed rolą (lustro `KATEGORIA_RODZAJU_POLA`). */

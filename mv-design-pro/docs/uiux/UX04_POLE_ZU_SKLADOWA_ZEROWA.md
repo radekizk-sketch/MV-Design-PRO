@@ -156,7 +156,7 @@ w ruchu (zespół albo uzwojenie SN transformatora uziemione przez R_N):
 - brak R, I_n albo t_n urządzenia → wartość robocza (pozycja typowa katalogu §16, I_n = U_f/R
   dla uzwojenia TR), wpis `dane_przyjete` ESTIMATED, `kompletnosc_dowodu = NIEPELNY`;
 - brak rezystora w modelu przy wariancie rezystorowym → odmowa nazwana `ner_no_resistor`
-  (`uziemienie_sn.rezystory`), Z.14 bez prądu dławika → `uziemienie_sn.prad_dlawikow_a`.
+  (`uziemienie_sn.sieci.rezystory`), Z.14 bez prądu dławika → `uziemienie_sn.sieci.prad_dlawikow_a`.
 
 Sonda (15 kV, rezystor 43,3 Ω / 200 A / 10 s, kabel 2 km): I_R = 8 660,3/43,3 = 200,0 A;
 t_wył = 1 s → E = 200²·43,3·1 = 1,732 MJ ≤ E_n = 200²·43,3·10 = 17,32 MJ (zapas 10×).
@@ -187,6 +187,83 @@ niesie dokładnie dane robocze, wiersz bez liczby — żadnych), AWSC bez prądu
 nastawa dławika robocza w Z.14, wartości projektanta → brak założenia i I″k1 z wyroczni,
 dwie sekcje × zespoły {obie, jedna} × sprzęgło {zamknięte, otwarte}, `dane_przyjete_wezla`
 z i bez składowej zerowej.
+
+### 3.9 V12.6: prąd pojemnościowy KAŻDEJ sieci galwanicznej (B-01, znalezisko karty BKR)
+
+Defekt klasy jednej prawdy uziemienia: projekt uziemienia V12.6 (dobór dławika, sprawdzenie
+rezystora, AWSC) i ocena ferrorezonansu sumowały B_0 gałęzi WSZYSTKICH sieci SN modelu (po
+tej karcie — sumę ich zbiorów gałęzi), a przed tą kartą wszystkich linii i kabli modelu. Przy
+dwóch sekcjach GPZ z otwartym sprzęgłem (normalny stan GPZ dwutransformatorowego) każda sekcja
+ma własną sieć galwaniczną i własny zespół uziemiający, więc I_C jednej sieci był zawyżony
+o pojemność drugiej. Po scaleniu z kartą UX-04/POLE-BKR-MODEL to samo dotyczyło baterii
+w gwieździe uziemionej (B_0 baterii doliczane z całego modelu) — a jedyna prawda
+(`uziemienie_sieci`, walidator rozstrojenia) baterii w ogóle nie liczyła.
+
+Naprawa u źródła: `UziemienieSekcji.b0_s` dokłada B_0 baterii tej sieci (`baterie_sieci_sn`,
+`b0_baterii_s` — ta sama admitancja z pierwszych zasad co mapowanie składowej zerowej,
+`admitancja_zerowa_baterii_s`, częstotliwość z nagłówka modelu); wejście V12.6 niesie listę
+`V126UziemienieSnInput.sieci` — dla każdej galwanicznie połączonej sieci SN jej szyny, gałęzie
+(`galezie_sieci_sn`), baterie (`baterie_sieci_sn`), rezystory, prąd dławików i dane przyjęte;
+solver liczy I_C, dobór i blok wiarygodności dla KAŻDEJ sieci osobno; gotowość czyta te same
+sieci (blokuje dopiero brak C0 we wszystkich, sieć bez C0 to nieblokujące
+`galezie.siec_bez_c0`). Model z jedną siecią: kształt wyniku bez zmian (fikstura odpowiedzi
+`neutral_earthing_design` bit w bit jak na `280bafcb4`); kilka sieci: tablica `sieci` (wiersz
+na sieć: szyna punktu neutralnego, nazwa, pełny wynik), blok wiarygodności zbiorczy
+z naruszeniami nazwanymi siecią, status „dane niekompletne" całości wyłącznie, gdy żadnej sieci
+nie policzono. Ekran wyniku: tabela „Sieci SN połączone galwanicznie" (tylko przy kilku
+sieciach) i werdykt z wyników składowych tą samą mapą statusów (bez nowej mapy).
+
+Podstawa: IEC 60909-0 pkt 7 i PN-EN 50522 zał. B — I_C = 3·ω·C_0·U_f = √3·ω·C_0·U_n,
+B_0 = ω·C_0 = Σ b_0·ℓ gałęzi sieci + B baterii w gwieździe uziemionej (Y_0 = Y_1,
+B = Q_n/U_n²). Sonda na tym samym modelu (GPZ 110/15 kV, dwie sekcje, zespół z dławikiem
+w każdej, kabel SN 4 km w sekcji 1 i 1,5 km w sekcji 2, b_0 = 122,52 µS/km, kabel 110 kV
+10 km z b_0 = 47,12 µS/km, bateria 1,2 Mvar w gwieździe uziemionej w sekcji 2,
+B = 5,333 mS), skrypt sondy uruchomiony na `git archive` obu drzew:
+
+| Model | przed: `687a2ef65` (karta BKR) | przed: `280bafcb4` (ta karta) | po |
+|---|---|---|---|
+| sprzęgło zamknięte, bez baterii | 218,1729 A (U_l = 110 kV, z kablem 110 kV) | 17,5077 A | 17,5077 A |
+| sprzęgło zamknięte, bateria w sekcji 2 | 1234,3093 A | 17,5077 A (bateria pominięta) | 156,0718 A |
+| sprzęgło otwarte, bez baterii | 218,1729 A (jedna „sieć") | 17,5077 A (jedna „sieć") | sekcja 1: 12,7329 A; sekcja 2: 4,7748 A |
+| sprzęgło otwarte, bateria w sekcji 2 | 1234,3093 A (jedna „sieć") | 17,5077 A | sekcja 1: 12,7329 A; sekcja 2: 143,3389 A |
+
+Sprawdzenie ręczne: √3·15 kV·(122,52 µS/km·4 km) = 12,733 A; √3·15 kV·(122,52 µS/km·1,5 km)
+= 4,775 A; √3·15 kV·5,333 mS = 138,56 A (+ 4,775 A = 143,34 A). Determinizm: dwa biegi sondy po
+naprawie — te same SHA-256 wyniku dla każdego z czterech modeli; `test_determinizm_wyniku_wielu_sieci`.
+
+Przypięte: `tests/enm/test_prad_pojemnosciowy_sieci_galwanicznej.py` — iloczyn sprzęgło
+{zamknięte, otwarte} × liczba transformatorów 110 kV/SN {1, 2} × bateria w gwieździe
+uziemionej {brak, w sekcji 1, w sekcji 2}, stałe: zespół z dławikiem w każdej sekcji, kable
+o różnej długości, kabel 110 kV z B_0; sprawdza jedyną prawdę (B_0, I_C, baterie sieci),
+wejście V12.6 (gałęzie każdej sieci), wynik solvera (I_C z wyroczni, gałęzie i baterie
+wnoszące, dobór dławika), gotowość (`galezie.siec_bez_c0` × sprzęgło × bateria) i ocenę
+ferrorezonansu sieci izolowanej (sprzęgło × próg pojemności doczepnej: każda sekcja poniżej
+10 µS, suma powyżej);
+`tests/enm/test_bateria_kondensatorow_iloczyn.py` (kabel nN za transformatorem SN/nN nie
+należy do sieci SN); front `EkranAnalizAkademickich.test.tsx` (liczba sieci {1, 2} × statusy
+składowe {dostrojone, jedna rozstrojona, status spoza mapy}).
+
+Ograniczenie zostawione świadomie: model z sieciami SN o RÓŻNYM sposobie uziemienia albo
+różnym napięciu dostaje nazwaną odmowę całej analizy (sprzed tej poprawki) — V12.6 ma jeden
+rodzaj uziemienia na bieg (`neutral_earthing_type` wyniku), a rozdzielenie na przypadki
+obliczeniowe jest jawnym następnym krokiem projektanta w treści odmowy.
+
+### 3.10 Scalenie z gałęzią UI/UX (karta UX-04/POLE-BKR-MODEL, `687a2ef65`)
+
+Konflikty rozstrzygnięte: role pól (`ZU` i `BKR` w obu listach, kanoniczne aliasy ról
+odrzucane nazwaną odmową wg testów karty BKR), dane przyjęte gałęzi (zespół i bateria),
+kontrakt V12.6 (jeden serializator pól addytywnych: `uziemienie_sn` None i pusta lista baterii
+poza odciskiem), rejestr kodów gotowości 184 (168 + 10 tej karty + 6 karty BKR), front SLD
+(role, paleta, adnotacje GPZ obu kart). Testy karty BKR wołające projekt uziemienia
+z parametrem `neutral_earthing_type` przepisane do kanonu tej karty (sposób uziemienia z
+zespołu w modelu, wejście z rodzajem analizy). Fikstury zregenerowane generatorami: harness
+(`eksport_fixtur_harnessu.py`), odpowiedzi V12.6 (`generuj_odpowiedzi_v126`, generator podaje
+uziemienie wyłącznie analizom zależnym od punktu neutralnego — jak ścieżka API), złote hashe
+parytetu assemblera, fikstura rejestru gotowości frontu, słownik kodów gotowości, fikstury ENM
+SLD, dokument kontraktów operacji, odciski rdzeni B-01 (`solver_diff_guard --init`). Piny
+zmierzone: odcisk katalogu po scaleniu, pola kontraktów wejściowych 4419 → 4442 (+20 karty
+BKR, +3 `sieci`/`baterie_sieci`/`baterie_b0`), zapadka podstawień 222 → 220 (częstotliwość
+z nagłówka modelu zamiast `enm.buses[0].frequency_hz or 50.0`).
 
 ## 4. Iloczyn testów
 
@@ -220,6 +297,12 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 - front: `ui2/kreatory/zespol-uziemiajacy/**`, `ui2/kreatory/zrodlo/**` (sekcja ZU w kreatorze
   GPZ, granica 110 kV × typ uziemienia × Z0), `StationEarthingPanel.test.tsx` (stan × błąd ×
   przyczyna × dwie sekcje, natywny klik „dodaj zespół"), e2e `kreator-zrodlo-uziemienie.spec.ts`.
+- front SLD ról pól: `enmToCanonicalGpzAdapter.test.ts` (każda rola modelu → rola stosu i predykat pola
+  kablowego), `enmToSldAdapter.test.ts` (nośnik roli {`bay_role`, `field_role`} × {ZU, BKR} →
+  rola i oznaczenie), `gpz.test.ts` (numeracja liniowe × bateria × zespół, liczniki odrębne);
+- `tests/reference_engine/test_profil_pola_zespolu_uziemiajacego.py` — typ stacji {GPZ, SN/nN,
+  brak} × stos aparatów pola ZU z kreatora GPZ {kompletny tor, bez wyłącznika, z aparatem
+  transformatora, przekładnik przed wyłącznikiem, uziemnik w osi toru, bez aparatów}.
 
 ## 5. Iniekcje (test czerwony bez naprawy)
 
@@ -237,6 +320,13 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | Z.14 szeregowo (`impedancja_rownolegla_ohm` → Z_a + Z_b), powtórzone po zmianach | 3 testy sondy czerwone (Z.14, Z.13 z AWSC, wartości bezwzględne) |
 | Kody gotowości zespołu bez wpisu w tablicach frontu / zbieracz emiterów bez zakresu | test fikstury rejestru i `akcjeNaprawcze.klasa.test.ts` czerwone (stan zastany przed naprawą) |
 | Kolekcja `zespoly_uziemiajace` zdjęta z bramki kontraktu pól `update_element_parameters` | `test_parametr_spoza_kontraktu_zespolu_to_nazwana_odmowa` czerwony (operacja meldowała sukces bez skutku) |
+| V12.6: B_0 gałęzi z całego modelu zamiast sieci galwanicznej (filtr `galezie_sieci` wyłączony) | 15 testów czerwonych: 12 z 12 iloczynu sprzęgło × TR × bateria (także przy sprzęgle zamkniętym — kabel 110 kV), 2 gotowości przy otwartym sprzęgle, 1 testu baterii (kabel nN) |
+| V12.6: baterie z całego modelu zamiast baterii sieci | 5 testów czerwonych — dokładnie przypadki z baterią w drugiej sieci |
+| Jedyna prawda: `baterie_sieci_sn` bez filtra szyn sieci | 5 testów czerwonych — te same przypadki |
+| Ferrorezonans: suma Σb·ℓ po sieciach zamiast sieci o największej pojemności | `test_ferrorezonans_ocenia_kazda_siec_osobno[otwarte]` czerwony |
+| Rola `ZU` w adapterze GPZ zwracana jako `LINE_OUT`, gałęzie `ZU`/`ZESPOL_UZIEMIAJACY` zdjęte z adaptera stacji, klasa numeracji `FZ` zdjęta (stan sprzed scalenia) | 4 testy czerwone, dokładnie nowe: rola stosu i pole kablowe GPZ, dwa nośniki roli w stacji, numeracja rysunkowa; na drzewie scalonym rola bez gałęzi to też błąd kompilacji wyczerpującego przełącznika (`TS2366`) |
+| Nazwa sieci z identyfikatora szyny przy szynie bez nazwy (`nazwa or ref`) | 2 testy `test_nazwa_sieci_przy_szynie_bez_nazwy_bez_identyfikatora` czerwone; strażnik `nazwa_bez_identyfikatora_guard` czerwony |
+| Rola `ZU` bez profilu referencyjnego (`profile_id_for_bay` → `None`, stan po dopisaniu roli do listy modelu) | 19 testów czerwonych: `test_profile_mapping_covers_all_bay_roles` oraz 18 z 21 testów `test_profil_pola_zespolu_uziemiajacego.py` (pole ZU z aparatami bez żadnej kontroli = cicha zgodność) |
 
 ## 6. Inwentarz klasy (ścieżki opisu punktu neutralnego SN i ich czytelnicy)
 
@@ -260,6 +350,10 @@ Z0/Ik1, dowód przekładników, ładunek DER, V12.6, BayEarthFaultPath}:
 | (9) brak wyniku zerowego jako rekord werdyktu | `enm/mapping.py::BrakWynikuZerowego` → `canonical_analysis` (opis ograniczenia, wiersz odpowiedzi) | rekord niesie `WyjasnienieWerdyktu` (zdanie z NAZWAMI elementów, przyczyna, czego brakuje dla `BRAK_PODSTAWY`) zamiast gołego opisu; identyfikatory wyłącznie w `elementy` |
 | (10) parametry biegu V12.6 | `solver_input/v126_contracts.py::wiersze_izolacji_projektanta`, `api/v126_academic.py` | parametry `neutral_grounding`, `neutral_earthing_type`, `network_neutral` i kategoria izolacji wiersza projektanta nie nadpisują modelu: odmowa nazwana (`OdmowaDanychError`, 422) z drogą do zespołu sekcji; szyna spoza modelu i wiersz łamiący kontrakt — odmowa nazwana zamiast 500 |
 | (11) rdzeń V12.6 bez napięcia sieci | `network_model/solvers/v126_academic.py` (I_C, NER) | `napiecie_kv` brak → odmowa nazwana `missing_fields = ["nominal_kv"]` zamiast `or 0.0` (ciche zero); prąd dławików w Z.14 bez domysłu; podstawienie śladu NER z nazwą rezystora |
+| (12) zakres sieci prądu pojemnościowego (gałęzie i baterie) | `v126_academic.py::_projekt_uziemienia_sieci`, ocena ferrorezonansu TRV, `v126_gotowosc.py::_warunki_punktu_neutralnego`, `enm/uziemienie_sekcji.py::_b0_sieci` (walidator rozstrojenia, I_C) | każda galwanicznie połączona sieć SN osobno (`V126UziemienieSnInput.sieci`: `galezie_sieci`, `baterie_sieci` z `galezie_sieci_sn`/`baterie_sieci_sn`); B_0 baterii w jedynej prawdzie; ferrorezonans bierze największą Σb·ℓ spośród sieci (najgorszy przypadek, nie sumę); §3.9 |
+| (13) profil referencyjny pola ZU | `reference_engine/registry.py::profile_id_for_bay`, pakiet `iec62271` (backend i kopia frontu `ui/sld/reference/iec62271.pack.json`), `docs/sld/REFERENCE_ENGINE_SPEC_V1.md` §4–§5 | rola `ZU` dostała profil `earthing_unit` (ENEA Zeszyt 1 Zał. 13–15: DS → CB → CT → głowica mostu; transformator uziemiający w polu zakazany — jest zespołem modelu); dotąd pole ZU z aparatami nie podlegało żadnej kontroli. Przy okazji tabela profili specyfikacji dostała brakujący wiersz `capacitor_bank` karty BKR. Lustro frontu `referenceProfileIdForFieldRole`: `EARTHING_UNIT` → `earthing_unit` (wiersz 14) |
+| (15) rola ZU w kreatorze pola SN i rodzaj pola katalogowego | `ui2/kreatory/pole/polaSnModel.ts` (`ROLE_KOLEJNOSC`, `bayKindZRoli`), `network_model/catalog/switchgear/complete_mv_bay_template.py` (`BayKind`, opis rodzaju), `catalog/bay_templates.py::FIELD_TYPES_WITHOUT_TEMPLATE`, `reference_engine/compliance.py::_BAY_ROLE_TO_FAMILY_BAY_KIND`, front `ui/catalog/BayTemplatePicker.tsx`, `ui2/kreatory/stacja/konfiguratorRozdzielnicy.ts::ROLA_Z_FUNKCJI_POLA` | kreator pola SN nie oferował roli ZU (test „każda rola z jednej listy ról modelu” czerwony na drzewie scalonym), a `bayKindZRoli` dawałby dla ZU rodzaj liniowy odpływowy (szablony pól liniowych producentów). Teraz rodzaj pola katalogowego `zespol_uziemiajacy` (rola kanonu `ZESPOL_UZIEMIAJACY`), jawnie bez szablonu w katalogu (rejestr braków, fikstura katalogu konfiguracji pól zregenerowana generatorem `gen_field_configurations_catalog.py`), bez roli operacji stacyjnej SN/nN; kreator oferuje ZU, zespół dodaje kreator zespołu uziemiającego na zacisku pola |
+| (14) rola pola ZU w adapterach SLD | `ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts::mapBayRoleToFieldRole` (GPZ), `enmToSldAdapter.ts::fieldRoleFromBayRole`/`fieldRoleFromCatalogRole`/`stationFieldDesignation` (stacje), `canonicalGpzModel.ts::BayFieldRole`, `domain/apparatusContracts.ts::FIELD_ROLE`, `v3/compose/gpz.ts` i `directions.ts` (numeracja rysunkowa, opis roli), `ui/shared/rodzajStacji.ts` i `enm/rodzaj_stacji.py` (kategoria) | pole ZU spadało w adapterze GPZ w `default: LINE_OUT` (pole liniowe odpływowe — kandydat na pole magistrali sieci i numer pola liniowego), a w adapterze stacji w `?? LINE_BRANCH` (pole odgałęźne); po scaleniu z kartą BKR przełącznik GPZ jest wyczerpujący, więc rola ZU bez gałęzi była błędem kompilacji. Teraz rola stosu `EARTHING_UNIT`: nie jest polem kablowym (`czyPoleKabloweGpz` fałsz), oznaczniki aparatów jak pole baterii (Q0/Q1/Q8/T1), numeracja rysunkowa `FZ1…` (licznik odrębny), oznaczenie stacji „ZU”, opis roli „pole zespołu uziemiającego”, kategoria rodzaju stacji „inne”. Glifu zespołu na końcu toru pola nie dodano — punkt neutralny rysuje glif sekcji (wiersz 7); wygląd pola ZU na schemacie podlega werdyktowi B-02 (rozstrzygnięcie 9) |
 
 Znaleziska uboczne naprawione w tej karcie: kreator GPZ wymuszał uziemienie źródła SN
 (po kasacji odmawiane) — przeprojektowany; wynik 1F złotej sieci (2,8 A z kotwicy) → nazwana

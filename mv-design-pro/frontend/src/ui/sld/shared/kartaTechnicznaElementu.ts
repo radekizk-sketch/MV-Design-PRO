@@ -318,6 +318,8 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   PCS: 'Układ przekształtnikowy PCS',
   BATTERY: 'Bateria',
   SURGE_ARRESTER: 'Ogranicznik przepięć',
+  UNBALANCE_CT: 'Przekładnik niezrównoważenia baterii',
+  PHASE_TO_PHASE_VT: 'Przekładnik napięciowy międzyfazowy',
 };
 
 const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {

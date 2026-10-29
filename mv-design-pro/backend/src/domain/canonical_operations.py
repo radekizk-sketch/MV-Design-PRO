@@ -2225,6 +2225,58 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "modal": "update_element_parameters"},
     ),
+    # Karta UX-04/POLE-BKR-MODEL: reguły pola baterii kondensatorów (BKR) rozdzielni SN GPZ
+    # (ENEA Operator, Zeszyt 1 §13, §17, Zał. 16; IRiESD II.4.5.4.4.2). OSTRZEŻENIA, nie
+    # blokady — stan roboczy legalny (koncepcja), liczby rozpływu i zwarć bez zmian. Emiter:
+    # `enm/validator.py::_check_baterie_pola_bkr` (W045–W048) przez `domain/readiness_bridge.py`.
+    "station.bkr_bay_missing": ReadinessCodeSpec(
+        code="station.bkr_bay_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria kondensatorów w rozdzielni SN GPZ nie jest przyłączona przez pole baterii "
+            "kondensatorów (BKR) — dodaj pole BKR i przyłącz baterię do jego zacisku"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_unbalance_ct_missing": ReadinessCodeSpec(
+        code="station.bkr_unbalance_ct_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria w podwójnej gwieździe nie ma w polu BKR przekładnika niezrównoważenia "
+            "w połączeniu międzygwiazdowym (zabezpieczenie Ir>) — uzupełnij wyposażenie pola"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_discharge_vt_missing": ReadinessCodeSpec(
+        code="station.bkr_discharge_vt_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Bateria bez wewnętrznych rezystorów rozładowczych nie ma w polu BKR dwóch "
+            "przekładników napięciowych międzyfazowych do rozładowania — uzupełnij wyposażenie"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    "station.bkr_transformer_trip_incomplete": ReadinessCodeSpec(
+        code="station.bkr_transformer_trip_incomplete",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Lista transformatorów, których wyłączenie wyłącza baterię kondensatorów, nie "
+            "obejmuje transformatorów zasilających jej sekcję — uzupełnij ją w parametrach baterii"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "wylaczenie_od_transformatorow",
+        },
+    ),
     # Pole rozdzielnicy SN o roli spoza słownika — nie liczy się do rodzaju stacji (W044).
     "station.field_role_unknown": ReadinessCodeSpec(
         code="station.field_role_unknown",
@@ -3389,6 +3441,34 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "parametry",
             "focus": "geometria_slupa",
         },
+    ),
+    # Karta UX-04/POLE-BKR-MODEL: założenia biegu z baterią kondensatorów. Pominięcie baterii
+    # w składowej zgodnej i przeciwnej zwarcia to JAWNE założenie z podstawą IEC 60909-0
+    # (`enm.bateria_kondensatorow.zalozenia_baterii_zwarcia`) — informacja, nie brak danych.
+    "shunt.pominieta_w_skladowej_zgodnej": ReadinessCodeSpec(
+        code="shunt.pominieta_w_skladowej_zgodnej",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji "
+            "zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "uklad_polaczen"},
+    ),
+    # Zasada nr 4: parametr baterii, który wchodzi do wyniku (dławik, liczba stopni, układ
+    # połączeń w zwarciu doziemnym), z wartości roboczej rejestru — bieg biegnie, wynik niesie
+    # daną przyjętą ESTIMATED (`enm.bateria_kondensatorow`).
+    "shunt.parametry_robocze": ReadinessCodeSpec(
+        code="shunt.parametry_robocze",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, "
+            "liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "parametry_baterii"},
     ),
     # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
     # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy

@@ -4,6 +4,9 @@
  * (`KOLEKCJE_ELEMENTOW` vs klucze realnego `EnergyNetworkModel`), oraz
  * `otworzDowodInspektora` (nawigacja „Otwórz dowód" — TODO-UI2 §0.3).
  */
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
@@ -50,6 +53,7 @@ function pustyModel(): EnergyNetworkModel {
     loads: [],
     generators: [],
     shunt_capacitors: [],
+    zespoly_uziemiajace: [],
     substations: [],
     bays: [],
     junctions: [],
@@ -69,6 +73,27 @@ describe('inspectorAdapter — parytet inwentarza klasy (KOLEKCJE_ELEMENTOW)', (
       (k) => k !== 'header' && k !== 'katalog_projektu' && Array.isArray((model as never)[k]),
     );
     expect([...KOLEKCJE_ELEMENTOW].sort()).toEqual([...kluczeModelu].sort());
+  });
+
+  it('KOLEKCJE_ELEMENTOW obejmuje każdą tablicę migawki ŻYWEGO backendu (s92Bieg.enm.json)', () => {
+    // Model ręczny powyżej nie wykryje rodziny, której nikt do niego nie dopisał (tak zgubiono
+    // `zespoly_uziemiajace`: element zespołu uziemiającego nie miał karty inspektora). Kontrakt
+    // migawki z żywego biegu jest drugą, niezależną stroną parytetu.
+    const katalog = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../ui/sld/v3/canvas/__tests__/fixtures',
+    );
+    const migawka = JSON.parse(readFileSync(resolve(katalog, 's92Bieg.enm.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const tablice = Object.keys(migawka).filter(
+      (k) => k !== 'header' && k !== 'katalog_projektu' && Array.isArray(migawka[k]),
+    );
+    expect(tablice).toContain('zespoly_uziemiajace');
+    for (const klucz of tablice) {
+      expect(KOLEKCJE_ELEMENTOW as readonly string[], `kolekcja '${klucz}' bez karty inspektora`).toContain(klucz);
+    }
   });
 });
 
@@ -275,6 +300,47 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     expect(katalogowe?.wiersze.map((w) => w.etykieta)).toEqual(
       expect.arrayContaining(['Moc znamionowa', 'Napięcie znamionowe', 'Stan']),
     );
+  });
+
+  it('zespół uziemiający: dane transformatora uziemiającego, dławika i rezystora z modelu', () => {
+    const model = pustyModel();
+    (model.zespoly_uziemiajace as unknown[]).push(
+      bazowyElement('zu-1', {
+        bus_ref: 'bus-a',
+        grupa_polaczen: 'ZNyn11',
+        u_n_kv: 15,
+        s_n_kva: 250,
+        r0_ohm: 3.1,
+        x0_ohm: 8.2,
+        dlawik: { i_min_a: 20, i_max_a: 200, i_nastawy_a: 110 },
+        rezystor: { r_ohm: 43, i_n_a: 200, t_s: 10 },
+      }),
+    );
+    const obiekt = mapowanieObiektuInspektora(model, 'zu-1');
+    expect(obiekt?.typEtykieta).toBe('Zespół uziemiający');
+    const katalogowe = obiekt?.wlasciwosci.find((s) => s.id === 'katalogowe');
+    expect(katalogowe?.wiersze.map((w) => w.etykieta)).toEqual([
+      'Grupa połączeń',
+      'Napięcie znamionowe',
+      'Moc znamionowa',
+      'Rezystancja zerowa R0',
+      'Reaktancja zerowa X0',
+      'Dławik: prąd minimalny',
+      'Dławik: prąd maksymalny',
+      'Dławik: nastawa',
+      'Rezystor: rezystancja',
+      'Rezystor: prąd znamionowy',
+      'Rezystor: czas przepływu prądu',
+    ]);
+    // Pole nieobecne w modelu = wiersz pominięty (zero fabrykacji); bez dławika i rezystora.
+    const bezUrzadzen = pustyModel();
+    (bezUrzadzen.zespoly_uziemiajace as unknown[]).push(
+      bazowyElement('zu-2', { bus_ref: 'bus-a', grupa_polaczen: 'ZN', uziemienie_bezposrednie: true }),
+    );
+    const wiersze = mapowanieObiektuInspektora(bezUrzadzen, 'zu-2')
+      ?.wlasciwosci.find((s) => s.id === 'katalogowe')
+      ?.wiersze.map((w) => w.etykieta);
+    expect(wiersze).toEqual(['Grupa połączeń', 'Uziemienie bezpośrednie']);
   });
 
   it('stacja: rodzaj + liczniki szyn/transformatorów', () => {

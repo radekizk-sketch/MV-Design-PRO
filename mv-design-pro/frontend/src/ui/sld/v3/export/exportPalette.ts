@@ -136,6 +136,7 @@ const EXPORT_ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   pomiarowe: '#0B6E60',
   zrodlowe: '#3C6E1E',
   uziemiajace: '#6B6400',
+  kompensacyjne: '#9E2A5E',
 };
 
 /** Tabela jasna eksponowana dla testów/dokumentacji (parytet kluczy z
