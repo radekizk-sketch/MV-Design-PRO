@@ -59,6 +59,7 @@ const FUNKCJE_POLA: readonly BayKind[] = [
   'kablowe',
   'napowietrzne',
   'nop_lacznikowe',
+  'bateria_kondensatorow',
 ];
 
 const RODZINA_MODULOWA: SwitchgearFamily = {
@@ -357,13 +358,18 @@ describe('odwzorowanie funkcji pola na rolę operacji (dwustronne)', () => {
     expect(ROLA_Z_FUNKCJI_POLA.napowietrzne).toBeNull();
     expect(ROLA_Z_FUNKCJI_POLA.pomiarowe).toBeNull();
     expect(ROLA_Z_FUNKCJI_POLA.rezerwowe).toBeNull();
+    // Pole baterii kondensatorów powstaje operacją pola SN rozdzielni GPZ (rola `BKR`),
+    // nie wpisem pól stacji SN/nN — jawny brak roli stacji (karta UX-04/POLE-BKR-MODEL).
+    expect(ROLA_Z_FUNKCJI_POLA.bateria_kondensatorow).toBeNull();
   });
 });
 
 describe('słowniki nazw PL (komplet kontraktu)', () => {
   it('nazywa KAŻDY rodzaj aparatu kompozycji — zero kodów backendu na ekranie', () => {
     const rodzaje = Object.keys(NAZWY_APARATU_PL);
-    expect(rodzaje).toHaveLength(18);
+    // Komplet względem `ApparatusKind` backendu przypina dwustronnie
+    // `backend/tests/ci/test_parytet_rodzajow_aparatow_pola_bkr.py`.
+    expect(rodzaje).toHaveLength(20);
     for (const nazwa of Object.values(NAZWY_APARATU_PL)) {
       expect(nazwa).not.toMatch(/[a-z]+_[a-z]+/);
       expect(nazwa.trim()).not.toBe('');

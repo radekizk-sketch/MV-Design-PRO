@@ -76,6 +76,9 @@ _BAY_ROLE_TO_FAMILY_BAY_KIND: dict[str, str] = {
     "MEASUREMENT": "pomiarowe",
     "COUPLER": "sprzeglowe_poprzeczne",
     "OZE": "liniowe_doplywowe",
+    # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL) — rodzaj pola katalogowego
+    # `bateria_kondensatorow` (`CompleteMvBayTemplate.bay_kind`).
+    "BKR": "bateria_kondensatorow",
 }
 
 # Placement aparatów z definicji bocznych (§18.1): poza osią toru.

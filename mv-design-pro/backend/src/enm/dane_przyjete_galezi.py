@@ -9,7 +9,13 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   obliczeniowej węzła (składowa spójna grafu po gałęziach, transformatorach i łącznikach);
 * ``branch.z0_wartosc_robocza`` (ten moduł) — linia albo kabel SN z R′0/X′0 z założenia
   katalogu (``wartosci_robocze`` pozycji); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
-  w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``).
+  w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``);
+* ``shunt.parametry_robocze`` (``enm.bateria_kondensatorow``, karta UX-04/POLE-BKR-MODEL) —
+  element poprzeczny, nie gałąź, ale ten sam mechanizm danych przyjętych: bateria kondensatorów
+  z układem połączeń (albo liczbą stopni gwiazdy uziemionej) z wartości roboczej; w biegu
+  zwarciowym wpływa WYŁĄCZNIE na zwarcia doziemne w składowej sieci zerowej szyny baterii
+  (układ rozstrzyga, czy bateria wnosi admitancję zerową), w biegu rozpływu — na cały bieg
+  (admitancja baterii z dławikiem albo liczbą stopni z wartości roboczej).
 
 Wiersz biegu zwarciowego niesie ``KLUCZ_WIERSZA_DANE_GALEZI`` addytywnie, WYŁĄCZNIE gdy lista
 jest niepusta; konsumenci tłumaczą go przez ``dane_przyjete_galezi_wiersza``.
@@ -25,6 +31,7 @@ from network_model.core.graph import NetworkGraph
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
 
+from .bateria_kondensatorow import KOD_BATERIA_PARAMETRY_ROBOCZE
 from .mapping import map_enm_to_network_graph, ref_to_graph_id, skladowe_sieci_zerowej
 from .models import Cable, EnergyNetworkModel, OverheadLine
 from .nazwy_elementow import nazwa_elementu
@@ -170,9 +177,10 @@ def dane_przyjete_galezi_punktow(
     zapisy = [z for z in zalozenia if isinstance(z, Mapping)]
     linie = [z for z in zapisy if z.get("code") == KOD_GEOMETRIA_ROBOCZA]
     z0 = [z for z in zapisy if z.get("code") == KOD_Z0_ROBOCZE]
-    if not linie and not z0:
+    baterie = [z for z in zapisy if z.get("code") == KOD_BATERIA_PARAMETRY_ROBOCZE]
+    if not linie and not z0 and not baterie:
         return {}
-    if z0 and skladowe_zerowe is None:
+    if (z0 or baterie) and skladowe_zerowe is None:
         raise AssertionError(
             "Założenia składowej zerowej bez składowych sieci zerowej biegu — wołający podaje "
             "`skladowe_sieci_zerowej` z tej samej macierzy Y0 co Z0-bus."
@@ -194,6 +202,15 @@ def dane_przyjete_galezi_punktow(
         if skladowa is not None:
             z0_skladowej.setdefault(skladowa, []).append(zalozenie)
     dane_z0 = {numer: _dane_z0_skladowej(zapisy_z0) for numer, zapisy_z0 in z0_skladowej.items()}
+    # Bateria z układem z wartości roboczej: składowa sieci zerowej SZYNY baterii (zapis
+    # założenia niesie ``bus_ref``) — ta sama składowa, do której bateria wniosłaby Y0.
+    for zalozenie in baterie:
+        skladowa = (skladowe_zerowe or {}).get(ref_to_graph_id(str(zalozenie.get("bus_ref"))))
+        if skladowa is not None:
+            dane_z0.setdefault(skladowa, [])
+            for dana in zalozenie.get("dane_przyjete") or ():
+                if dict(dana) not in dane_z0[skladowa]:
+                    dane_z0[skladowa].append(dict(dana))
     wynik: dict[str, list[dict[str, Any]]] = {}
     for wezel in wezly:
         dane = [
@@ -273,7 +290,7 @@ def dane_przyjete_galezi_wiersza(wiersz: Mapping[str, Any] | None) -> tuple[Dana
 
 #: Kody założeń biegu, których rekordy niosą dane przyjęte gałęzi (jedno źródło dla widoków
 #: liczonych z CAŁEGO biegu — rozpływ, wielkości sieci w węźle przyłączenia).
-_KODY_DANYCH_GALEZI = (KOD_GEOMETRIA_ROBOCZA, KOD_Z0_ROBOCZE)
+_KODY_DANYCH_GALEZI = (KOD_GEOMETRIA_ROBOCZA, KOD_Z0_ROBOCZE, KOD_BATERIA_PARAMETRY_ROBOCZE)
 
 
 def dane_przyjete_biegu(raw_result: Mapping[str, Any] | None) -> tuple[DanaPrzyjeta, ...]:

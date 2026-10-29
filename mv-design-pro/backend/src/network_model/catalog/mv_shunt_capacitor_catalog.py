@@ -5,6 +5,14 @@ Stałe baterie kondensatorów SN do kompensacji mocy biernej. Wartości
 referencyjne (typowe stopnie kompensacji dla sieci 15/20 kV). Susceptancja
 pojemnościowa wynika z pierwszych zasad B = Q_rated / U_rated² i jest
 materializowana do ENM przez MaterializationContract(KOMPENSATOR_SN).
+
+Układ połączeń pozycji referencyjnych (karta UX-04/POLE-BKR-MODEL): podwójna gwiazda
+z izolowanymi punktami gwiazd i jednostkami jednofazowymi — wymóg ENEA Operator, Stacje
+elektroenergetyczne 110 kV, Zeszyt 1 §17 s. 32 i Zał. 16 dla baterii rozdzielni SN GPZ.
+Pozycja referencyjna jest jednostopniowa (Zał. 16 przedstawia jeden stopień). Tolerancji
+pojemności, dławika ograniczającego i rezystorów rozładowczych pozycja referencyjna NIE podaje
+(to dane karty producenta) — obliczenie biegnie z wartością roboczą rejestru
+(``catalog.wartosci_robocze``, zasada nr 4), jawnie w danych przyjętych.
 """
 
 from __future__ import annotations
@@ -15,7 +23,12 @@ from .types import (
     ShuntCapacitorType,
 )
 
-_SOURCE = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+_SOURCE = (
+    "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne; układ połączeń: "
+    "ENEA Operator, Zeszyt 1 §17 s. 32 i Zał. 16"
+)
+#: Układ połączeń pozycji referencyjnych (Zeszyt 1 §17 s. 32: „podwójna gwiazda").
+_UKLAD_WG_ZESZYTU_1 = "PODWOJNA_GWIAZDA_IZOLOWANA"
 
 
 def _record(
@@ -34,6 +47,8 @@ def _record(
             "rated_kv": rated_kv,
             "loss_kw": loss_kw,
             "manufacturer": None,
+            "uklad_polaczen": _UKLAD_WG_ZESZYTU_1,
+            "liczba_stopni": 1,
             "verification_status": CatalogVerificationStatus.REFERENCYJNY.value,
             "source_reference": _SOURCE,
             "catalog_status": CatalogStatus.REFERENCYJNY_V1.value,

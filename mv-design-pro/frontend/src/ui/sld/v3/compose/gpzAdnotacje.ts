@@ -25,6 +25,7 @@ export const ROLE_POL_GPZ: readonly RolaPolaGpz[] = [
   'sprzeglo',
   'pomiarowe',
   'zrodlowe',
+  'kompensacyjne',
 ];
 
 /** Etykiety ról z kanonu nazw pól SN (`FIELD_ROLE_LABEL_PL`) — jedna terminologia ról pól
@@ -38,6 +39,7 @@ export const ETYKIETA_ROLI_POLA_PL: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: FIELD_ROLE_LABEL_PL.SPRZEGLO,
   pomiarowe: FIELD_ROLE_LABEL_PL.POMIAROWE,
   zrodlowe: FIELD_SOURCE_LABEL_PL,
+  kompensacyjne: FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW,
 };
 
 /** Rozwinięcie plakietek automatyki (podpowiedź `<title>` i legenda tabeli). */

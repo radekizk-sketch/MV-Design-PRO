@@ -317,7 +317,12 @@ SANCTIONED_CHANGES = {
         "jako rekord strukturalny. Decyzja B-01 partii integracji 10: brak pol karty "
         "falownika dla Z_conv(f) jako odmowa strukturalna (kod + odwolanie do "
         "przeksztaltnika, tresc PL z nazwami wielkosci, jedno zrodlo listy brakow) zamiast "
-        "golego ValueError z kluczami pol. Wpis do usuniecia po scaleniu do main."
+        "golego ValueError z kluczami pol. Karta UX-04/POLE-BKR-MODEL (B-01, decyzja "
+        "architekta): ADDYTYWNIE udzial baterii kondensatorow w pradzie pojemnosciowym "
+        "doziemienia - gwiazda uziemiona B0 = B (Y0 = Y1), pozostale uklady bez drogi "
+        "zerowej; predykat `wnosi_pojemnosc_doziemna` wspolny z gotowoscia; model bez baterii "
+        "bit w bit jak przed karta (brak pol wyniku i kroku sladu). Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "

@@ -335,7 +335,10 @@ def _resolve_canonical_bay_role(
         if {"WIND_INVERTER", "FW_PMSG", "FW_DFIG", "FW_SCIG"} & generator_types:
             return "FW_SN"
         return "PV_SN"
-    return CANONICAL_BAY_ROLE_MAP.get(bay.bay_role, "LINIA_OUT")
+    # Każda rola modelu poza `OZE` ma rolę kanoniczną (`ROLE_POLA_MODELU` ⊆ aliasy kanonu —
+    # przypina `tests/enm/test_rola_pola_bkr.py`); dawny cichy domysł `LINIA_OUT` dla roli spoza
+    # mapy pokazywał np. pole baterii kondensatorów jako pole liniowe wyjściowe.
+    return CANONICAL_BAY_ROLE_MAP[bay.bay_role]
 
 
 def _build_primary_devices(

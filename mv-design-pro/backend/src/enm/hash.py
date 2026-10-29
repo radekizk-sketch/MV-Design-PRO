@@ -133,6 +133,22 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "nastawy_zabezpieczen",
         "deklaracje_modulu",
     ),
+    # + karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie
+    # (układ połączeń, stopnie, tolerancja pojemności, dławik ograniczający, rezystory
+    # rozładowcze). `None` = parametr nienadany przez projektanta (rozstrzyga typ katalogowy
+    # albo wartość robocza rejestru) — poza odciskiem, żeby bateria sprzed karty haszowała
+    # jak przed nią; podany zmienia wynik rozpływu (stopnie, dławik) albo zwarcia
+    # doziemnego (układ), więc zmienia odcisk.
+    "shunt_capacitors": (
+        "uklad_polaczen",
+        "liczba_stopni",
+        "stopnie_zalaczone",
+        "tolerancja_pojemnosci_min_proc",
+        "tolerancja_pojemnosci_max_proc",
+        "dlawik_ograniczajacy",
+        "dlawik_indukcyjnosc_mh",
+        "rezystory_rozladowcze_wewnetrzne",
+    ),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
@@ -172,6 +188,9 @@ _POLA_SKASOWANE_W_ODCISKU_CIAGOW: tuple[str, ...] = ("nop_station_ref",)
 #: Przypiete testem `tests/enm/test_hash_w5b_bays.py`.
 _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
     "bays": ("surge_arresters",),
+    # Karta UX-04/POLE-BKR-MODEL: transformatory, których wyłączenie wyłącza baterię
+    # (IRiESD II.4.5.4.4.2). Pusta lista = powiązanie nienadane — poza odciskiem.
+    "shunt_capacitors": ("wylaczenie_od_transformatorow",),
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja

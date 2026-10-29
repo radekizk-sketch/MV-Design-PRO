@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **174** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -153,6 +153,10 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
 | `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
+| `station.bkr_bay_missing` | STATIONS | 3 | WARNING | Bateria kondensatorów w rozdzielni SN GPZ nie jest przyłączona przez pole baterii kondensatorów (BKR) — dodaj pole BKR i przyłącz baterię do jego zacisku | panel: `inspector`, tab: `pola` |
+| `station.bkr_discharge_vt_missing` | STATIONS | 3 | WARNING | Bateria bez wewnętrznych rezystorów rozładowczych nie ma w polu BKR dwóch przekładników napięciowych międzyfazowych do rozładowania — uzupełnij wyposażenie | panel: `inspector`, tab: `pola` |
+| `station.bkr_transformer_trip_incomplete` | STATIONS | 3 | WARNING | Lista transformatorów, których wyłączenie wyłącza baterię kondensatorów, nie obejmuje transformatorów zasilających jej sekcję — uzupełnij ją w parametrach baterii | panel: `inspector`, tab: `parametry`, focus: `wylaczenie_od_transformatorow` |
+| `station.bkr_unbalance_ct_missing` | STATIONS | 3 | WARNING | Bateria w podwójnej gwieździe nie ma w polu BKR przekładnika niezrównoważenia w połączeniu międzygwiazdowym (zabezpieczenie Ir>) — uzupełnij wyposażenie pola | panel: `inspector`, tab: `pola` |
 | `station.element_bypasses_field` | STATIONS | 3 | WARNING | Element jest przyłączony do szyny głównej stacji z pominięciem pola rozdzielnicy — aparat pola nie leży w jego torze prądowym | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `station.field_role_unknown` | STATIONS | 3 | WARNING | Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono bez tego pola | panel: `inspector`, tab: `pola` |
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
@@ -219,6 +223,8 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
 | `analysis.as_built_measurement_terminal_missing` | ANALYSIS | 3 | BLOCKER | Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce | panel: `analizy`, tab: `odbior` |
 | `fault.czas_tb_wartosc_robocza` | ANALYSIS | 3 | WARNING | Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej | panel: `analizy`, tab: `zwarciowa` |
+| `shunt.parametry_robocze` | ANALYSIS | 3 | INFO | Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz | panel: `inspector`, tab: `parametry`, focus: `parametry_baterii` |
+| `shunt.pominieta_w_skladowej_zgodnej` | ANALYSIS | 3 | INFO | Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona | panel: `inspector`, tab: `parametry`, focus: `uklad_polaczen` |
 | `swz.limit_tt_it_brak_tekstu_normy` | ANALYSIS | 3 | WARNING | Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy | panel: `analizy`, tab: `zwarciowa` |
 | `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
@@ -232,20 +238,20 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 106 |
-| WARNING | 56 |
-| INFO | 6 |
-| **Razem** | **168** |
+| WARNING | 60 |
+| INFO | 8 |
+| **Razem** | **174** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
 | CATALOGS | 53 |
-| STATIONS | 23 |
+| STATIONS | 27 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
-| ANALYSIS | 27 |
-| **Razem** | **168** |
+| ANALYSIS | 29 |
+| **Razem** | **174** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

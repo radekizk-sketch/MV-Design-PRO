@@ -1353,6 +1353,55 @@ class V126AcademicSolver:
                 }
             )
 
+        # Karta UX-04/POLE-BKR-MODEL (B-01): baterie kondensatorów. Gwiazda z uziemionym
+        # punktem gwiazdy ma każdą fazę między przewodem a ziemią — jej susceptancja fazy
+        # B0 = B (Y0 = Y1, policzona w moście wejścia z pierwszych zasad) dokłada się do
+        # pojemności doziemnej sieci tak samo jak B0 linii; gwiazda izolowana, podwójna
+        # gwiazda izolowana i trójkąt nie mają drogi zerowej (B0 = 0) i nie wnoszą prądu
+        # pojemnościowego. Bateria otwarta pomijana jak łącznik otwarty.
+        banks_contributing: list[JsonDict] = []
+        banks_without_zero_path: list[str] = []
+        b0_banks_s = 0.0
+        for bank in model.shunt_capacitors:
+            if bank.is_open:
+                continue
+            if not bank.wnosi_pojemnosc_doziemna:
+                banks_without_zero_path.append(bank.ref)
+                continue
+            b0_banks_s += bank.b0_siemens
+            b0_total_s += bank.b0_siemens
+            banks_contributing.append(
+                {
+                    "shunt_capacitor_ref": bank.ref,
+                    "bus_ref": bank.bus_ref,
+                    "uklad_polaczen": bank.uklad_polaczen,
+                    "b0_total_siemens": _round(bank.b0_siemens, 12),
+                }
+            )
+        if model.shunt_capacitors:
+            trace.add(
+                "neutral_earthing_shunt_capacitors",
+                "B0_bat = B_bat (gwiazda uziemiona, Y0 = Y1); B0_bat = 0 (gwiazda izolowana, "
+                "podwójna gwiazda, trójkąt)",
+                {
+                    "banks_contributing": banks_contributing,
+                    "banks_without_zero_path": banks_without_zero_path,
+                },
+                "Σ B0_bat = "
+                + (
+                    " + ".join(str(b["b0_total_siemens"]) for b in banks_contributing)
+                    if banks_contributing
+                    else "0"
+                ),
+                {"b0_banks_siemens": _round(b0_banks_s, 12)},
+                "Metoda składowych symetrycznych: admitancja zerowa elementu poprzecznego to "
+                "admitancja trzech faz równolegle z powrotem przez ziemię.",
+                result_pl=(
+                    f"Baterie kondensatorów w gwieździe uziemionej: {len(banks_contributing)}; "
+                    f"bez drogi zerowej: {len(banks_without_zero_path)}"
+                ),
+            )
+
         # Napięcie sieci (linia–linia) z najwyższego węzła SN modelu.
         u_line_kv = max((bus.nominal_kv for bus in model.buses), default=0.0)
         u_line_v = u_line_kv * 1000.0
@@ -1420,6 +1469,9 @@ class V126AcademicSolver:
         result["network_line_voltage_kv"] = u_line_kv
         result["branches_missing_b0"] = missing_b0
         result["branches_contributing"] = contributing
+        if model.shunt_capacitors:
+            result["shunt_capacitors_contributing"] = banks_contributing
+            result["shunt_capacitors_without_zero_path"] = banks_without_zero_path
         return result
 
     def _petersen_design(

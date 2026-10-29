@@ -63,11 +63,19 @@ export const REFERENCE_SYMBOL_ID_BY_KIND: ReadonlyMap<BayPrimaryDeviceKind, stri
   new Map(IEC60617_PACK.symbol_map.map((entry) => [entry.kind, entry.frontend_symbol_id]));
 
 /** Odwrotność słownika symboli: `SymbolId` → kind aparatu. */
-export const REFERENCE_KIND_BY_SYMBOL_ID: ReadonlyMap<string, BayPrimaryDeviceKind> = new Map(
-  IEC60617_PACK.symbol_map
-    .filter((entry) => entry.frontend_symbol_id != null)
-    .map((entry) => [entry.frontend_symbol_id as string, entry.kind]),
-);
+// Symbol → kind PODSTAWOWY: pierwszy wpis pakietu z tym symbolem. Odwzorowanie kind→symbol
+// nie jest różnowartościowe od karty UX-04/POLE-BKR-MODEL (przekładnik międzyfazowy
+// `PHASE_TO_PHASE_VT` dzieli symbol z `VT`), a `new Map(...)` z powtórzonym kluczem
+// zostawiłby OSTATNI wpis — przekładnik napięciowy pola liniowego wracałby jako międzyfazowy.
+export const REFERENCE_KIND_BY_SYMBOL_ID: ReadonlyMap<string, BayPrimaryDeviceKind> = (() => {
+  const wynik = new Map<string, BayPrimaryDeviceKind>();
+  for (const entry of IEC60617_PACK.symbol_map) {
+    if (entry.frontend_symbol_id != null && !wynik.has(entry.frontend_symbol_id)) {
+      wynik.set(entry.frontend_symbol_id, entry.kind);
+    }
+  }
+  return wynik;
+})();
 
 /**
  * Mapowanie rola pola (frontend) → profil referencyjny — lustro backendowego
@@ -97,6 +105,10 @@ export function referenceProfileIdForFieldRole(role: FieldRole): string | null {
     case FIELD_ROLE.DER_FW:
     case FIELD_ROLE.DER_UNKNOWN:
       return null;
+    // Pole baterii kondensatorów (ENEA Zeszyt 1 Zał. 16): lustro backendu
+    // `reference_engine.registry.profile_id_for_bay` (rola `BKR` → `capacitor_bank`).
+    case FIELD_ROLE.CAPACITOR_BANK:
+      return 'capacitor_bank';
     default:
       return null;
   }

@@ -339,6 +339,17 @@ def test_sondy_scenariusza_sa_tymi_samymi_elementami_co_pomocniki_rodzin() -> No
         "source_mode": "KATALOG",
         "materialized_params": None,
         "overrides": [],
+        # Pola baterii z karty UX-04/POLE-BKR-MODEL: sonda bez tabliczki katalogu (rekord
+        # bez pól układu) zostawia je puste — wartości rozstrzyga rejestr wartości roboczych.
+        "uklad_polaczen": None,
+        "liczba_stopni": None,
+        "stopnie_zalaczone": None,
+        "tolerancja_pojemnosci_min_proc": None,
+        "tolerancja_pojemnosci_max_proc": None,
+        "dlawik_ograniczajacy": None,
+        "dlawik_indukcyjnosc_mh": None,
+        "rezystory_rozladowcze_wewnetrzne": None,
+        "wylaczenie_od_transformatorow": [],
     }
     efektywna = apply_scenario(enm, _scenariusz(injections=(hosting, pq), probe_shunts=(bateria,)))
     generatory = efektywna.snapshot["generators"]

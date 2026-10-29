@@ -11,6 +11,8 @@ import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
+import type { UkladPolaczenBaterii } from '../../../../types/enm';
+import { PORTY_APARATOW_POLA_BKR, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatowPolaBkr';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -131,6 +133,16 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
+   *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
+   *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
+  readonly bateria?: GlifBaterii;
+}
+
+/** Dane glifu baterii kondensatorów (`v2/model/bateriaPola.ts BateriaPolaView` bez refu). */
+export interface GlifBaterii {
+  readonly uklad: UkladPolaczenBaterii | null;
+  readonly przekladnikNiezrownowazenia: boolean;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -1200,6 +1212,99 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN na końcu toru pola.
+ *
+ * Kondensator — symbol ogólny PN-EN 60617-4 nr 04-02-01: dwie równoległe okładki z
+ * doprowadzeniami w osi. Geometria okładek przeniesiona w skali 1:2 z elementu
+ * QElectroTech `10_electric/91_en_60617/en_60617_04/en_60617_04_02/en_60617_04_02_01.elmt`
+ * („Capacitor, general symbol": okładki szerokości 40 w odstępie 5, doprowadzenia w osi;
+ * licencja CC BY 3.0, autorzy: zespół QElectroTech) — tu okładki 20 w odstępie 2,5.
+ *
+ * Pod kondensatorem ZNAK UKŁADU POŁĄCZEŃ z modelu (`bateria.uklad`, zero domysłu):
+ *  • `PODWOJNA_GWIAZDA_IZOLOWANA` — dwie gwiazdy z izolowanymi punktami gwiazd połączonymi
+ *    przewodem; przekładnik niezrównoważenia (okrąg na połączeniu, port `obwod`) rysowany
+ *    WYŁĄCZNIE, gdy pole niesie jego rekord (ENEA Operator, Zeszyt 1 §17 s. 32, Zał. 16);
+ *  • `GWIAZDA_IZOLOWANA` — gwiazda bez połączenia z ziemią;
+ *  • `GWIAZDA_UZIEMIONA` — gwiazda z punktem gwiazdy połączonym z uziomem (jedyny układ
+ *    z drogą dla składowej zerowej — `backend/src/network_model/core/bateria_kondensatorow.py`);
+ *  • `TROJKAT` — trójkąt;
+ *  • brak danej — znak „?" (układ nieokreślony w modelu; obliczenie przyjmuje wartość
+ *    roboczą, którą pokazują dane przyjęte, nie rysunek).
+ */
+function gwiazda(cx: number, cy: number, r: number): string {
+  const dx = r * Math.sin(Math.PI / 3);
+  const dy = r * Math.cos(Math.PI / 3);
+  return `M ${cx} ${cy} L ${cx} ${cy - r} M ${cx} ${cy} L ${cx - dx} ${cy + dy} M ${cx} ${cy} L ${cx + dx} ${cy + dy}`;
+}
+
+export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  const s = stroke(props);
+  const uklad = props.bateria?.uklad ?? null;
+  const zPrzekladnikiem = uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && props.bateria?.przekladnikNiezrownowazenia === true;
+  return (
+    <g
+      {...glyphGroupProps('capacitorBank', props)}
+      data-uklad-baterii={uklad ?? 'NIEOKRESLONY'}
+      data-przekladnik-niezrownowazenia={zPrzekladnikiem ? 'tak' : 'nie'}
+    >
+      {/* Kondensator (PN-EN 60617-4 04-02-01): doprowadzenie, dwie okładki, doprowadzenie. */}
+      <line x1={16} y1={0} x2={16} y2={6} stroke={s} strokeWidth={w} />
+      <line x1={6} y1={6} x2={26} y2={6} stroke={s} strokeWidth={w} data-okladka-kondensatora="1" />
+      <line x1={6} y1={8.5} x2={26} y2={8.5} stroke={s} strokeWidth={w} data-okladka-kondensatora="2" />
+      <line x1={16} y1={8.5} x2={16} y2={14} stroke={s} strokeWidth={w} />
+      {uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && (
+        <g data-znak-ukladu="PODWOJNA_GWIAZDA_IZOLOWANA">
+          <path d="M 16 14 L 16 17 M 8 17 L 24 17 M 8 17 L 8 20 M 24 17 L 24 20" fill="none" stroke={s} strokeWidth={w} />
+          <path d={`${gwiazda(8, 25, 5)} ${gwiazda(24, 25, 5)}`} fill="none" stroke={s} strokeWidth={w} />
+          {zPrzekladnikiem ? (
+            <>
+              <line x1={8} y1={25} x2={13} y2={25} stroke={s} strokeWidth={w} />
+              <circle
+                cx={16} cy={25} r={3} fill="none" stroke={s} strokeWidth={w}
+                data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA}
+                data-port={PORTY_APARATOW_POLA_BKR[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA][0]}
+              />
+              <line x1={19} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+            </>
+          ) : (
+            <line x1={8} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
+          )}
+        </g>
+      )}
+      {(uklad === 'GWIAZDA_IZOLOWANA' || uklad === 'GWIAZDA_UZIEMIONA') && (
+        <g data-znak-ukladu={uklad}>
+          <line x1={16} y1={14} x2={16} y2={20} stroke={s} strokeWidth={w} />
+          <path d={gwiazda(16, 25, 5)} fill="none" stroke={s} strokeWidth={w} />
+          {uklad === 'GWIAZDA_UZIEMIONA' && (
+            <>
+              <line x1={16} y1={25} x2={16} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={10} y1={31} x2={22} y2={31} stroke={s} strokeWidth={w} />
+              <line x1={12} y1={34} x2={20} y2={34} stroke={s} strokeWidth={w} />
+              <line x1={14} y1={37} x2={18} y2={37} stroke={s} strokeWidth={w} />
+            </>
+          )}
+        </g>
+      )}
+      {uklad === 'TROJKAT' && (
+        <g data-znak-ukladu="TROJKAT">
+          <line x1={16} y1={14} x2={16} y2={19} stroke={s} strokeWidth={w} />
+          <path d="M 16 19 L 22 29 L 10 29 Z" fill="none" stroke={s} strokeWidth={w} />
+        </g>
+      )}
+      {uklad === null && (
+        <text
+          x={16} y={27} textAnchor="middle" data-znak-ukladu="NIEOKRESLONY"
+          fill={s} fontFamily="sans-serif" fontSize={10} fontWeight={700}
+        >
+          ?
+        </text>
+      )}
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -1239,6 +1344,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
   lvPortal: LvPortalGlyph,
+  capacitorBank: CapacitorBankGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

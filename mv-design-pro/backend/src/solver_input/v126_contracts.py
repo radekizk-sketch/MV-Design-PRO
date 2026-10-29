@@ -4,13 +4,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from enm.bateria_kondensatorow import admitancja_zerowa_baterii_s, parametry_baterii
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
+from network_model.catalog.wartosci_robocze import PARAMETR_BATERII_UKLAD
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SerializerFunctionWrapHandler, model_serializer
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
 
@@ -186,6 +188,33 @@ class V126InsulationInput(BaseModel):
     predicted_energy_kj_per_kv: float = Field(default=2.0, ge=0)
 
 
+class V126ShuntCapacitorInput(BaseModel):
+    """Bateria kondensatorów w projekcie uziemienia punktu neutralnego (karta
+    UX-04/POLE-BKR-MODEL): susceptancja zerowa fazy względem ziemi B0 [S] policzona w moście
+    z pierwszych zasad (``enm.bateria_kondensatorow.admitancja_zerowa_baterii_s``) — niezerowa
+    WYŁĄCZNIE dla gwiazdy z uziemionym punktem gwiazdy (Y0 = Y1); gwiazda izolowana, podwójna
+    gwiazda izolowana i trójkąt mają B0 = 0 (brak drogi zerowej)."""
+
+    ref: str
+    bus_ref: str
+    uklad_polaczen: str
+    b0_siemens: float = Field(ge=0)
+    is_open: bool = False
+
+    @property
+    def wnosi_pojemnosc_doziemna(self) -> bool:
+        """Bateria wchodzi do pojemności doziemnej sieci: załączona i z drogą zerową (B0 > 0).
+        JEDEN predykat solvera (``V126AcademicSolver._neutral_earthing_design``) i gotowości
+        analizy (``application.analyses.v126_gotowosc._warunki_punktu_neutralnego``)."""
+        return not self.is_open and self.b0_siemens > 0.0
+
+
+#: Pola wejścia V12.6 DODANE PO ZAMROŻENIU odcisków ``input_hash`` — w postaci serializowanej
+#: występują WYŁĄCZNIE, gdy niosą treść (pusta lista = model bez takich elementów; odcisk
+#: wejścia bez baterii bit w bit jak przed kartą UX-04/POLE-BKR-MODEL).
+_POLA_V126_POZA_ODCISKIEM_GDY_PUSTE: tuple[str, ...] = ("shunt_capacitors",)
+
+
 class V126AcademicInput(BaseModel):
     base_frequency_hz: float = Field(default=50.0, gt=0)
     buses: list[V126BusInput]
@@ -197,6 +226,17 @@ class V126AcademicInput(BaseModel):
     earthing: V126EarthingInput | None = None
     insulation: list[V126InsulationInput] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
+    shunt_capacitors: list[V126ShuntCapacitorInput] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _bez_pustych_pol_addytywnych(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, object]:
+        dane: dict[str, object] = handler(self)
+        for pole in _POLA_V126_POZA_ODCISKIEM_GDY_PUSTE:
+            if dane.get(pole) == []:
+                del dane[pole]
+        return dane
 
 
 class V126RunRequest(BaseModel):
@@ -1016,8 +1056,9 @@ def build_v126_input_from_enm(
         for transformer in enm.transformers
     ]
 
+    czestotliwosc_hz = enm.buses[0].frequency_hz or 50.0 if enm.buses else 50.0
     return V126AcademicInput(
-        base_frequency_hz=enm.buses[0].frequency_hz or 50.0 if enm.buses else 50.0,
+        base_frequency_hz=czestotliwosc_hz,
         buses=buses,
         branches=branches,
         transformers=transformers,
@@ -1025,4 +1066,18 @@ def build_v126_input_from_enm(
         converters=converters,
         insulation=build_v126_insulation_from_enm(enm),
         parameters=parameters or {},
+        # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów z susceptancją zerową względem
+        # ziemi (gwiazda uziemiona wnosi prąd pojemnościowy doziemienia, pozostałe układy nie).
+        shunt_capacitors=[
+            V126ShuntCapacitorInput(
+                ref=bateria.ref_id,
+                bus_ref=bateria.bus_ref,
+                uklad_polaczen=str(parametry_baterii(bateria)[PARAMETR_BATERII_UKLAD].wartosc),
+                b0_siemens=admitancja_zerowa_baterii_s(
+                    bateria.model_dump(mode="json"), czestotliwosc_hz
+                ).imag,
+                is_open=bateria.status == "open",
+            )
+            for bateria in sorted(enm.shunt_capacitors, key=lambda b: b.ref_id)
+        ],
     )

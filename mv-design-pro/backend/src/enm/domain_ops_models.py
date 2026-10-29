@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from enm.models import PhaseSet
+from enm.rola_pola_sn import RolaPolaModelu
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -1085,7 +1086,7 @@ class AddSnBayPayload(_FrozenBase):
     station_ref: str | None = None
     """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
 
-    bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
+    bay_role: RolaPolaModelu = "FEEDER"
     """Rola pola w kontrakcie ENM."""
 
     funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None

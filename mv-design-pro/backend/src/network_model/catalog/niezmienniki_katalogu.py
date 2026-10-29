@@ -829,6 +829,82 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "rozstrzyga rodzaj; `None` przy wielkości właściwej rodzajowi to brak danej."
         ),
     ),
+    # Karta UX-04/POLE-BKR-MODEL — `ShuntCapacitorType` (bateria kondensatorów SN). Te same
+    # granice co element ENM (`enm.models.ShuntCapacitor`): typ i element niosą jeden zbiór
+    # parametrów, więc rekord typu nie może przyjąć wartości, której element nie przyjmie.
+    RegulaKatalogu(
+        kod="KAT-T-051",
+        nazwa="Układ połączeń baterii ze słownika układów",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Słownik `network_model.core.bateria_kondensatorow.UKLADY_POLACZEN_BATERII` "
+            "(podwójna gwiazda z izolowanymi punktami gwiazd — ENEA Operator, Zeszyt 1 §17 "
+            "s. 32 i Zał. 16; gwiazda izolowana; gwiazda uziemiona; trójkąt)"
+        ),
+        uzasadnienie=(
+            "Układ połączeń rozstrzyga o składowej zerowej baterii (droga zerowa wyłącznie "
+            "w gwieździe uziemionej) i o wymaganym wyposażeniu pola (przekładnik "
+            "niezrównoważenia przy podwójnej gwieździe). Układ spoza słownika nie ma w "
+            "produkcie ani modelu składowej zerowej, ani reguły pola — wynik byłby domysłem."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-052",
+        nazwa="Liczba stopni baterii całkowita i dodatnia",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Stopień baterii to fizyczna grupa jednostek przyłączana jednym łącznikiem — "
+            "udział stopni załączonych u = n_zał/n wymaga n ≥ 1"
+        ),
+        uzasadnienie=(
+            "Bateria bez stopnia albo z ułamkiem stopnia nie istnieje; zero dałoby dzielenie "
+            "przez zero w udziale stopni załączonych, a wartość logiczna zapisana jako liczba "
+            "stopni byłaby cichą jedynką."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-053",
+        nazwa="Tolerancja pojemności baterii: dolna ≤ 0 ≤ górna",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Tolerancja pojemności to odchyłka pojemności zmierzonej od znamionowej "
+            "(IEC 60871-1, kondensatory równoległe do sieci powyżej 1000 V) — przedział "
+            "tolerancji zawiera wartość znamionową"
+        ),
+        uzasadnienie=(
+            "Dodatnia granica dolna albo ujemna granica górna opisuje przedział, który nie "
+            "zawiera pojemności znamionowej — zakres mocy biernej w śladzie rozpływu nie "
+            "obejmowałby wartości, z którą liczony jest rozpływ."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-054",
+        nazwa="Dławik ograniczający baterii: indukcyjność dodatnia i tylko przy dławiku",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Reaktancja dławika szeregowego X_L = 2πfL > 0; indukcyjność opisuje dławik, "
+            "więc bez dławika nie istnieje (ten sam predykat co element ENM: "
+            "`network_model.core.bateria_kondensatorow.sprzecznosc_parametrow_baterii`)"
+        ),
+        uzasadnienie=(
+            "Zerowa albo ujemna indukcyjność odwraca znak reaktancji szeregowej w admitancji "
+            "baterii; indukcyjność przy baterii bez dławika to sprzeczność, której rozpływ "
+            "nie umie rozstrzygnąć bez zgadywania, czy dławik jest."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-055",
+        nazwa="Dane dławika i rezystorów rozładowczych baterii: prawda albo fałsz",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Kontrakt rekordu typu: `dlawik_ograniczajacy` i `rezystory_rozladowcze_wewnetrzne` "
+            "to wartości logiczne albo brak danej (wtedy wartość robocza rejestru, zasada nr 4)"
+        ),
+        uzasadnienie=(
+            "Zapis tekstowy („tak”, „1”) albo liczbowy byłby rozstrzygany zgadywaniem — a od "
+            "tych danych zależą admitancja baterii i reguła przekładników rozładowczych (W047)."
+        ),
+    ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa
     # -----------------------------------------------------------------------

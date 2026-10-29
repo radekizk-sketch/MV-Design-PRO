@@ -23,6 +23,7 @@
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, VtMountingAnnotationView } from '../model/widokPolStacji';
 import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 import type { RolaPolaZrodlowego } from '../model/polaZModelu';
+import type { BateriaPolaView } from '../model/bateriaPola';
 
 /**
  * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
@@ -65,7 +66,8 @@ export interface CanonicalGpzSection {
  * Rola pola rozdzielni GPZ wg modelu (`Bay.bay_role`) — klucz tła pola (`gpz.bay.panel`)
  * i legendy ról. Mapowanie 1:1, bez zlewania ról: `IN` → zasilające, `OUT`/`FEEDER` →
  * liniowe (odpływ magistrali i odgałęzienia), `TR` → transformatorowe, `COUPLER` → sprzęgło,
- * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy). Roli „rezerwowe" model
+ * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy), `BKR` → kompensacyjne (pole
+ * baterii kondensatorów, ENEA Zeszyt 1 §13 i Zał. 16). Roli „rezerwowe" model
  * nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola), więc nie istnieje.
  */
 export type RolaPolaGpz =
@@ -74,7 +76,8 @@ export type RolaPolaGpz =
   | 'transformatorowe'
   | 'sprzeglo'
   | 'pomiarowe'
-  | 'zrodlowe';
+  | 'zrodlowe'
+  | 'kompensacyjne';
 
 /**
  * Plakietka funkcji automatyki pola — WYŁĄCZNIE z kodów funkcji zabezpieczeniowych pola
@@ -112,6 +115,10 @@ export interface CanonicalGpzBay {
    *  przyłączonych wytwórców (`v2/model/polaZModelu.ts rolaPolaZrodlowego`, ta sama funkcja
    *  co pola źródłowe stacji); nierozstrzygnięty = `DER_UNKNOWN`. Brak dla innych ról. */
   readonly rolaZrodla?: RolaPolaZrodlowego;
+  /** UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola
+   *  (`v2/model/bateriaPola.ts bateriaNaKoncuToruPola`, ta sama funkcja co pola stacji);
+   *  kompozycja dokłada glif `capacitorBank` na końcu stosu. Brak = pole bez baterii. */
+  readonly bateria?: BateriaPolaView;
   /** Stan łączników z modelu (`v2/model/stanAparatowPola.ts`; brak danej = nieznany). */
   readonly cbState?: SwitchState;
   readonly dsState?: SwitchState;
@@ -151,7 +158,11 @@ export type BayFieldRole =
   | 'COUPLER'
   | 'MEASUREMENT'
   /** Pole źródłowe (`Bay.bay_role = 'OZE'`): gramatyka pola kablowego + glif źródła. */
-  | 'SOURCE';
+  | 'SOURCE'
+  /** Pole baterii kondensatorów (`Bay.bay_role = 'BKR'`): stos aparatów z rekordów i glif
+   *  baterii na końcu toru pola; NIE jest polem kablowym sieci (bateria stoi w rozdzielni,
+   *  z pola nie wychodzi magistrala — `czyPoleKabloweGpz`). */
+  | 'CAPACITOR_BANK';
 
 /**
  * Karta GPZ-PARYTET cz. 3: pole KABLOWE rozdzielnicy GPZ — pole, z którego wychodzi kabel

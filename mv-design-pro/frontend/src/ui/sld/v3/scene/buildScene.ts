@@ -1704,6 +1704,8 @@ function composeRowStation(
     // GPZ-PARYTET cz. 2 (pkt 1): uzwojenia transformatorów stacji (pole TR, TR bez pola,
     // TR blokowy DER) przepuszczone świadomie — ta sama jawna lista pól co GPZ.
     uzwojenia: s.uzwojenia,
+    // UX-04/POLE-BKR-MODEL: dane baterii kondensatorów pola stacji (glif `capacitorBank`).
+    bateria: s.bateria,
     meta: {
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
@@ -3097,6 +3099,9 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
     // GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń — trzecia dana
     // tej samej jawnej listy pól, przepuszczona świadomie (lekcja V12K-217/219).
     uzwojenia: sym.uzwojenia,
+    // UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — czwarta dana tej samej jawnej
+    // listy pól (lekcja V12K-217/219: nieprzepuszczona dana = glif w wariancie domyślnym).
+    bateria: sym.bateria,
   };
 }
 
@@ -6066,6 +6071,7 @@ const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
   'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE',
   'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+  'UNBALANCE_CT', 'PHASE_TO_PHASE_VT',
 ];
 
 /** Wieloznaczności UDOKUMENTOWANE (DECYZJA architekta, `apparatusSequence.ts`
@@ -6530,6 +6536,8 @@ const SYMBOLE_POLA_BEZ_REKORDU: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'derUnknown',
   'bayReserve',
   'bayNoEquipment',
+  // UX-04/POLE-BKR-MODEL: bateria kondensatorów — element modelu na końcu toru pola.
+  'capacitorBank',
 ]);
 
 export interface BayEquipmentGap {

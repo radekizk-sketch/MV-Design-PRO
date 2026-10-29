@@ -20,9 +20,12 @@ import dataclasses
 import hashlib
 import json
 
+from network_model.catalog.mv_shunt_capacitor_catalog import (
+    _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
+)
 from network_model.catalog.odcisk import _kanon, odcisk_katalogu, zrzut_kanoniczny
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import POLA_KARTY_PROJEKCJI
+from network_model.catalog.types import POLA_BATERII_KONDENSATOROW_TYPU, POLA_KARTY_PROJEKCJI
 
 from tests.dziedziny import fabryki as f
 
@@ -164,7 +167,28 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
+#: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
+#: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
+#: `1465336df` vs drzewo karty): różnią się WYŁĄCZNIE liście `shunt_capacitor_types` — 7 nowych
+#: pól × 6 pozycji i `source_reference` 5 pozycji referencyjnych; wycięcie ich daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
+#: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
+ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+_ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
+
+
+def _wytnij_pola_baterii_bkr(zrzut: dict[str, object]) -> int:
+    """Cofa zmiany karty UX-04/POLE-BKR-MODEL w zrzucie; zwraca liczbę zmienionych pozycji."""
+    zmienione = 0
+    for postac in zrzut["shunt_capacitor_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_BATERII_KONDENSATOROW_TYPU:
+            postac.pop(nazwa)
+        if postac["source_reference"] == _ZRODLO_BATERII_REFERENCYJNE:
+            postac["source_reference"] = _ZRODLO_BATERII_PRZED_KARTA
+            zmienione += 1
+    return zmienione
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -229,6 +253,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
+    assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
 
     # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.

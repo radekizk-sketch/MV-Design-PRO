@@ -126,6 +126,10 @@ export const BAY_PRIMARY_DEVICE_TO_APPARATUS: Readonly<
   FUSE: APPARATUS_KIND.FUSE,
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): SA rysowany WYŁĄCZNIE z danych.
   SURGE_ARRESTER: APPARATUS_KIND.SURGE_ARRESTER,
+  // Aparaty pola baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): przekładnik
+  // niezrównoważenia jest przekładnikiem prądowym, międzyfazowy — napięciowym.
+  UNBALANCE_CT: APPARATUS_KIND.CT,
+  PHASE_TO_PHASE_VT: APPARATUS_KIND.VT,
   // Rodzaje DER: glif źródła (`v3/compose/sourceKind.ts`), nie symbol aparatu pola.
   GENERATOR_PV: null,
   GENERATOR_BESS: null,
@@ -162,6 +166,11 @@ export const FIELD_ROLE = {
    *  przyłączonego wytwórcy albo z wytwórcami różnych rodzajów) — jawny symbol źródła
    *  nieokreślonego, nigdy PV z domysłu (karta GPZ-PARYTET cz. 2, pkt 3). */
   DER_UNKNOWN: 'DER_UNKNOWN',
+  /** Pole baterii kondensatorów równoległych SN (rola modelu `BKR`, kanoniczna
+   *  `BATERIA_KONDENSATOROW`; ENEA Operator, Stacje 110 kV, Zeszyt 1 §13 s. 23 i Zał. 16).
+   *  Do karty UX-04/POLE-BKR-MODEL adapter stacji zamieniał `BKR` po cichu na pole
+   *  odgałęźne, a adapter GPZ — na pole liniowe odpływowe (dobór feedera sieci). */
+  CAPACITOR_BANK: 'CAPACITOR_BANK',
 } as const;
 
 export type FieldRole = (typeof FIELD_ROLE)[keyof typeof FIELD_ROLE];
@@ -183,7 +192,8 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.DER_PV ||
     role === FIELD_ROLE.DER_BESS ||
     role === FIELD_ROLE.DER_FW ||
-    role === FIELD_ROLE.DER_UNKNOWN
+    role === FIELD_ROLE.DER_UNKNOWN ||
+    role === FIELD_ROLE.CAPACITOR_BANK
   );
 }
 

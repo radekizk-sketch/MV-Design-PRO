@@ -52,6 +52,8 @@ FAMILY_APPARATUS_FOR_ENM_KIND: dict[str, str] = {
     "VT": "voltage_transformer",
     "CABLE_HEAD": "cable_head",
     "SURGE_ARRESTER": "surge_arrester",
+    "UNBALANCE_CT": "current_transformer",
+    "PHASE_TO_PHASE_VT": "voltage_transformer",
 }
 
 #: Kanoniczna tożsamość aparatu dla KAŻDEGO rodzaju z `BayDeviceTemplate.kind`
@@ -67,13 +69,19 @@ APPARATUS_KIND_FOR_TEMPLATE_KIND: dict[str, ApparatusKind] = {
     "SURGE_ARRESTER": "surge_arrester",
     "CABLE_HEAD": "cable_head",
     "TRANSFORMER_DEVICE": "transformer",
+    "UNBALANCE_CT": "unbalance_current_transformer",
+    "PHASE_TO_PHASE_VT": "phase_to_phase_voltage_transformer",
 }
 
 #: Zgrubienie tożsamości aparatu do słownika rodziny (rodzina deklaruje
-#: `switch_disconnector`, nie rozróżniając odłącznika szynowego od liniowego).
+#: `switch_disconnector`, nie rozróżniając odłącznika szynowego od liniowego; tak samo
+#: przekładnik niezrównoważenia i międzyfazowy to dla rodziny przekładnik prądowy
+#: i napięciowy — karta UX-04/POLE-BKR-MODEL).
 _ZGRUBIENIE_DO_SLOWNIKA_RODZINY: dict[ApparatusKind, str] = {
     "disconnector_busbar": "switch_disconnector",
     "disconnector_line": "switch_disconnector",
+    "unbalance_current_transformer": "current_transformer",
+    "phase_to_phase_voltage_transformer": "voltage_transformer",
 }
 
 #: Aparaty leżące POZA celką rozdzielnicy — nie podlegają słownikowi rodziny.

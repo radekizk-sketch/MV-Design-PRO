@@ -33,6 +33,7 @@ import type {
 import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
+import { bateriaWidokuPola } from '../model/bateriaPola';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
 import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
 import type { GpzViewModel } from '../model/widokSld';
@@ -1876,6 +1877,8 @@ function buildExplicitStationMiniBays(
       // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH, gdy pole niesie
       // zmaterializowane aparaty; `undefined` → konwencja §12.4.
       primaryDevices: projectBayPrimaryDevices(bay, branchByRef),
+      // UX-04/POLE-BKR-MODEL: bateria na zacisku końca toru pola (ta sama funkcja co GPZ).
+      ...bateriaWidokuPola(bay, snapshot),
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
       // nieprzezroczysty — pin `enmToSldAdapter.configIdOpaque.test.ts`).
       configId: bay.config_id ?? undefined,
@@ -2039,6 +2042,8 @@ function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescript
     case 'FW':
     case 'FARMA_WIATROWA':
       return FIELD_ROLE.DER_FW;
+    case 'BATERIA_KONDENSATOROW':
+      return FIELD_ROLE.CAPACITOR_BANK;
     default:
       return null;
   }
@@ -2065,6 +2070,10 @@ function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['
       return FIELD_ROLE.DER_BESS;
     case 'FW_SN':
       return FIELD_ROLE.DER_FW;
+    // UX-04/POLE-BKR-MODEL: bez tej gałęzi `BKR` spadał w `?? FIELD_ROLE.LINE_BRANCH`
+    // (`stationFieldRole`) — pole baterii rysowane jako odgałęźne.
+    case 'BKR':
+      return FIELD_ROLE.CAPACITOR_BANK;
     default:
       return null;
   }
@@ -2092,6 +2101,10 @@ function stationFieldDesignation(bay: Bay, role: FieldRole, index: number): stri
       return 'FW';
     case FIELD_ROLE.DER_UNKNOWN:
       return 'OZE';
+    // Oznaczenie rysunkowe pola baterii kondensatorów (konwencja rysunku jak „SPR"/„POM",
+    // nie dana modelu; dana `bay_number`/`feeder_short_name` ma pierwszeństwo).
+    case FIELD_ROLE.CAPACITOR_BANK:
+      return 'BK';
     default:
       return getString(bay.name) ?? `Pole SN ${index + 1}`;
   }

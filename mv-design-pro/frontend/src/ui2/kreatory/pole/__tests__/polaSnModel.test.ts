@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../../ui/sld/v2/station-rozdzielnia/contract';
+import { BAY_MODEL_ROLES } from '../../../../types/enm';
 
 import {
   APARAT_OPCJE,
@@ -61,6 +62,15 @@ describe('polaSnModel — nazewnictwo (kod backendu vs polska etykieta)', () => 
     // Mapowanie totalne — dla każdej wartości kontraktu istnieje polska etykieta.
     for (const { value } of ROLE_OPCJE) expect(rolaLabel(value)).not.toBe('');
     for (const { value } of APARAT_OPCJE) expect(aparatLabel(value)).not.toBe('');
+  });
+  it('kreator oferuje KAŻDĄ rolę z jednej listy ról modelu dokładnie raz (karta UX-04/POLE-BKR-MODEL)', () => {
+    // Lista kolejności kreatora jest kopią zbioru ról — bez tej równości nowa rola modelu
+    // (BKR) nie trafiłaby do wyboru projektanta.
+    const role = ROLE_OPCJE.map((o) => o.value);
+    expect(new Set(role).size).toBe(role.length);
+    expect([...role].sort()).toEqual([...BAY_MODEL_ROLES].sort());
+    expect(rolaLabel('BKR')).toBe(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
+    expect(bayKindZRoli('BKR')).toBe('bateria_kondensatorow');
   });
 });
 

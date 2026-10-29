@@ -104,3 +104,45 @@ def wielkosc_zwarciowa_aparatu_sn_dotyczy(device_kind: str, pole: str) -> bool:
 _RODZAJ_LACZNIKA_Z_RODZAJU_APARATU_SN: dict[str, str] = {
     aparat: lacznik for lacznik, aparat in RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.items()
 }
+
+
+# ---------------------------------------------------------------------------
+# Aparaty pola baterii kondensatorów (BKR) — karta UX-04/POLE-BKR-MODEL
+# ---------------------------------------------------------------------------
+#
+# ENEA Operator, Stacje 110 kV, Zeszyt 1, §17 s. 32 i Zał. 16: bateria w układzie podwójnej
+# gwiazdy z izolowanymi punktami gwiazd ma przekładnik prądowy w połączeniu międzygwiazdowym
+# (zabezpieczenie od uszkodzeń kondensatorów Ir>) i dwa przekładniki napięciowe międzyfazowe
+# (L1-L2, L2-L3) do rozładowania baterii i do zabezpieczenia nadnapięciowego U>. Oba rodzaje
+# są aparatami pola (`BayPrimaryDevice.kind`); lustro frontu:
+# `frontend/src/ui/sld/v3/compose/rodzajeAparatowPolaBkr.ts` (równość przypina
+# `tests/ci/test_parytet_rodzajow_aparatow_pola_bkr.py`). Sekcja jest addytywna wobec listy
+# portów aparatów pola (`PORTY_APARATU_POLA`) budowanej równolegle kartą wzorca pola liniowego
+# — scalenie dokłada `PORTY_APARATOW_POLA_BKR` do tej listy bez zmiany wpisów.
+
+#: Przekładnik prądowy niezrównoważenia: obejmuje połączenie między punktami gwiazd baterii
+#: (prąd niezrównoważenia przy uszkodzeniu jednostek kondensatorowych), nie przerywa toru.
+RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA = "UNBALANCE_CT"
+#: Przekładnik napięciowy międzyfazowy (nieuziemiony, PN-EN 61869-3 — zaciski pierwotne A i B):
+#: rozładowanie baterii po wyłączeniu i pomiar napięcia do zabezpieczenia U>.
+RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO = "PHASE_TO_PHASE_VT"
+
+#: Jedyny port przekładnika niezrównoważenia — obwód, który przekładnik OBEJMUJE (połączenie
+#: międzygwiazdowe); przekładnik nie leży w torze pola, więc nie ma pary zacisków toru.
+PORT_OBWODU_MIEDZYGWIAZDOWEGO = "obwod"
+#: Zaciski pierwotne przekładnika nieuziemionego wg PN-EN 61869-3 (oznaczenie A i B).
+PORT_FAZY_A = "A"
+PORT_FAZY_B = "B"
+
+#: Porty aparatów pola BKR wg rodzaju — kolejność stała.
+PORTY_APARATOW_POLA_BKR: dict[str, tuple[str, ...]] = {
+    RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA: (PORT_OBWODU_MIEDZYGWIAZDOWEGO,),
+    RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO: (PORT_FAZY_A, PORT_FAZY_B),
+}
+#: Rodzaje aparatów pola BKR (klucze ``PORTY_APARATOW_POLA_BKR``).
+RODZAJE_APARATOW_POLA_BKR: frozenset[str] = frozenset(PORTY_APARATOW_POLA_BKR)
+
+#: Liczba przekładników napięciowych międzyfazowych rozładowujących baterię (Zeszyt 1 §17
+#: s. 32: „2 PN międzyfazowe do rozładowania"; Zał. 16: L1-L2 i L2-L3 — układ V obejmuje
+#: wszystkie trzy fazy baterii).
+LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII = 2

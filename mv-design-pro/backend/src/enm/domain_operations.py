@@ -58,6 +58,11 @@ from network_model.pochodne.pasma_napieciowe import (
 )
 from pydantic import ValidationError
 
+from .bateria_kondensatorow import (
+    POLA_BATERII_EDYTOWALNE,
+    odmowa_parametrow_baterii,
+    zapisz_tabliczke_baterii,
+)
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
@@ -3492,9 +3497,7 @@ def _zastosuj_tabliczke_baterii(
     odmowa = odmowa_tabliczki_baterii(float(rated_mvar), float(rated_kv), napiecie_szyny)
     if odmowa is not None:
         return odmowa
-    bateria["rated_mvar"] = float(rated_mvar)
-    bateria["rated_kv"] = float(rated_kv)
-    bateria.setdefault("meta", {})["loss_kw"] = dane.get("loss_kw")
+    zapisz_tabliczke_baterii(bateria, dane)
     return None
 
 
@@ -10558,10 +10561,13 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
                 "station_type",
             },
-            # Bateria kondensatorów: nazwa i stan łącznika baterii (stały bank, `status`).
-            # Qn/Un zmienia WYŁĄCZNIE przypisanie innej pozycji katalogu
-            # (`assign_catalog_to_element`) — katalog-first, bez nadpisań ręcznych.
-            "shunt_capacitors": {"name", "status"},
+            # Bateria kondensatorów: nazwa i stan łącznika baterii (`status`). Qn/Un zmienia
+            # WYŁĄCZNIE przypisanie innej pozycji katalogu (`assign_catalog_to_element`) —
+            # katalog-first. Karta UX-04/POLE-BKR-MODEL: wartości projektanta parametrów
+            # baterii (układ, stopnie i ich stan, tolerancja, dławik, rozładowanie) oraz
+            # transformatory, których wyłączenie wyłącza baterię — pierwszeństwo przed typem
+            # (`enm.bateria_kondensatorow.parametry_baterii`), kontrola kształtu modelem niżej.
+            "shunt_capacitors": {"name", "status", *POLA_BATERII_EDYTOWALNE},
         }
         illegal_keys = sorted(
             key
@@ -10585,6 +10591,10 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "kondensatorów przyjmuje wyłącznie wartość „załączona” albo „wyłączona”.",
                 "params.invalid_value",
             )
+    if coll == "shunt_capacitors" and any(k in parameters for k in POLA_BATERII_EDYTOWALNE):
+        odmowa_baterii = odmowa_parametrow_baterii(enm, {**current_element, **parameters})
+        if odmowa_baterii is not None:
+            return _error_response(odmowa_baterii, "params.invalid_value")
 
     # Deklaracja rodzaju stacji: zmiana wyłącznie w obrębie stacji SN/nN (deklaracja funkcji
     # `mv_lv` albo rodzaj topologiczny) — rozdzielnia źródłowa i rozdzielnica nN mają inną

@@ -28,7 +28,7 @@ import hashlib
 import json
 from typing import Literal
 
-from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from enm.rola_pola_sn import RolaPolaModelu, nazwa_roli_pola_sn_z_okresleniem
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,7 @@ BayKind = Literal[
     "kablowe",
     "napowietrzne",
     "nop_lacznikowe",
+    "bateria_kondensatorow",
 ]
 
 #: Rodzaj pola katalogowego (`BayKind`) → rola kanonu ról pól SN z określeniem rodzaju albo
@@ -78,6 +79,7 @@ OPIS_RODZAJU_POLA_KATALOGOWEGO: dict[str, tuple[str, str] | str] = {
     "kablowe": "Pole kablowe",
     "napowietrzne": "Pole napowietrzne",
     "nop_lacznikowe": "Pole łącznikowe NOP",
+    "bateria_kondensatorow": ("BATERIA_KONDENSATOROW", ""),
 }
 
 #: Rodzaj pola katalogowego → nazwa w treści dla projektanta (karta #142).
@@ -117,7 +119,7 @@ class CompleteMvBayTemplate(BaseModel):
     manufacturer_ref: str | None = None
     switchgear_family_ref: str | None = None
     bay_kind: BayKind = "liniowe_odplywowe"
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"] = "OUT"
+    bay_role: RolaPolaModelu = "OUT"
     source_status: SourceStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     # §11A.2 rozszerzenie — szablon pola producenta generuje pełne SLD pole.

@@ -23,7 +23,7 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, cast
@@ -31,6 +31,13 @@ from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
+from enm.bateria_kondensatorow import (
+    KOD_BATERIA_PARAMETRY_ROBOCZE,
+    AdmitancjaBaterii,
+    admitancja_baterii,
+    zalozenia_baterii_rozplywu,
+    zalozenia_baterii_zwarcia,
+)
 from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE, zalozenia_z0_galezi
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
@@ -251,27 +258,37 @@ def _normalize_power_flow_solver_method(raw_method: object) -> str:
     raise OdmowaDanychError(f"Nieznany tryb rozpływu mocy: {raw_method}")
 
 
-def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) -> list[ShuntSpec]:
-    """Map ENM ShuntCapacitor elements onto the EXISTING solver shunt mechanism.
+def _admitancje_baterii_z_migawki(
+    snapshot: dict[str, Any], base_mva: float
+) -> list[AdmitancjaBaterii]:
+    """Admitancje ZAŁĄCZONYCH baterii kondensatorów migawki (kolejność kolekcji) — JEDNO
+    źródło dla boczników solvera (``_boczniki_solvera_z_baterii``) i zapisu White Box
+    biegu rozpływu (``WejscieRozplywu.baterie``).
 
-    NOT-A-SOLVER: this is pure input preparation (mechanical white-box mapping),
-    no physics is computed in the solver layer.
+    NOT-A-SOLVER: przygotowanie wejścia; liczby z ``network_model.pochodne`` przez
+    ``enm.bateria_kondensatorow.admitancja_baterii`` (karta UX-04/POLE-BKR-MODEL):
 
-    First-principles susceptance of a fixed capacitor bank rated Q_rated [Mvar]
-    at U_rated [kV]:
-        B = Q_rated / U_rated²            (because Q = B · U²)
-    In per-unit on the system base S_base [MVA] (the same base the solver uses to
-    build Y_bus from Z_base = U²/S_base):
-        b_pu = B · Z_base = (Q_rated / U_rated²) · (U_rated² / S_base)
-             = Q_rated / S_base
-    A capacitor adds a POSITIVE shunt susceptance (+jB), so b_pu > 0; the solver
-    then delivers Q = B · |V|² automatically, i.e. the actual injected reactive
-    power scales with the square of the operating voltage (correct physics).
+        b = (Q_n·u / S_b)·(U_b/U_n)²,  u = n_zał/n,  g = (P_str·u / S_b)·(U_b/U_n)²,
+        y_d = 1/(jX_L + 1/y) przy dławiku ograniczającym,
 
-    Missing/invalid rated_mvar or rated_kv is NOT guessed — such elements raise a
-    ValueError (the validator surfaces the same condition as a BLOCKER earlier).
+    gdzie U_b to napięcie znamionowe szyny (baza węzła solvera), więc moc oddawana przy
+    napięciu szyny U wynosi Q(U) = Q_n·u·(U/U_n)². Dawny wzór b = Q_n/S_b zakładał U_b = U_n
+    i wszystkie stopnie załączone: bateria 17 kV na szynie 15 kV oddawała w rozpływie moc
+    znamionową przy 15 kV zamiast Q_n·(15/17)² (o 28 % za dużo), a straty ``loss_kw`` nie
+    miały konsumenta. Przy U_b = U_n, u = 1, bez strat i bez dławika wynik jest bit w bit
+    równy dawnemu (parytet złotych wyników).
+
+    Brak szyny, niedodatnie Q_n/U_n albo stan stopni niezgodny z liczbą stopni (E040/E041/E043
+    walidatora) nie są zgadywane — odmowa nazwana (stopnie: ``KOD_BATERIA_STOPNIE_NIEZGODNE``
+    w ``admitancja_baterii``).
     """
-    specs: list[ShuntSpec] = []
+    napiecia_szyn = {
+        str(szyna.get("ref_id")): szyna.get("voltage_kv")
+        for szyna in snapshot.get("buses") or []
+        if isinstance(szyna, dict)
+    }
+    czestotliwosc_hz = czestotliwosc_studium_hz(snapshot)
+    wynik: list[AdmitancjaBaterii] = []
     for raw in snapshot.get("shunt_capacitors") or []:
         if not isinstance(raw, dict):
             continue
@@ -281,9 +298,11 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
         bus_ref = str(raw.get("bus_ref") or "")
         # Partia integracji 10: nazwa baterii z modelu w treści, identyfikator w `dane`.
         bateria = opis_obiektu(raw, "Bateria kondensatorów")
-        if not bus_ref:
+        napiecie_szyny = napiecia_szyn.get(bus_ref)
+        if not bus_ref or not isinstance(napiecie_szyny, int | float) or napiecie_szyny <= 0:
             raise OdmowaNazwana(
-                f"{bateria} nie ma przypisanej szyny przyłączenia.",
+                f"{bateria} nie ma przypisanej szyny przyłączenia o dodatnim napięciu "
+                "znamionowym.",
                 kod=KOD_BATERIA_BEZ_SZYNY,
                 dane={"element_ref": ref_id},
             )
@@ -301,10 +320,28 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
                 kod=KOD_BATERIA_DANE_ZNAMIONOWE,
                 dane={"element_ref": ref_id},
             )
-        # b_pu = Q_rated / S_base (positive susceptance for a capacitor).
-        b_pu = float(rated_mvar) / base_mva
-        specs.append(ShuntSpec(node_id=_graph_id_from_ref(bus_ref), g_pu=0.0, b_pu=b_pu))
-    return specs
+        wynik.append(
+            admitancja_baterii(
+                raw,
+                napiecie_bazy_kv=float(napiecie_szyny),
+                moc_bazy_mva=base_mva,
+                czestotliwosc_hz=czestotliwosc_hz,
+            )
+        )
+    return wynik
+
+
+def _boczniki_solvera_z_baterii(admitancje: Sequence[AdmitancjaBaterii]) -> list[ShuntSpec]:
+    """Baterie kondensatorów ENM → istniejący mechanizm boczników solvera (``ShuntSpec``).
+
+    Admitancje z ``_admitancje_baterii_z_migawki`` (wzór i podstawa tam) — te same, które
+    niesie zapis White Box biegu; kondensator daje DODATNIĄ susceptancję poprzeczną (+jB),
+    a solver oddaje Q = b·|V|²·S_b.
+    """
+    return [
+        ShuntSpec(node_id=_graph_id_from_ref(adm.bus_ref), g_pu=adm.y_pu.real, b_pu=adm.y_pu.imag)
+        for adm in admitancje
+    ]
 
 
 def _oze_opt_float(value: Any) -> float | None:
@@ -530,7 +567,12 @@ class WejscieRozplywu:
     pv_specs: tuple[PVSpec, ...]
     #: Założenia biegu (karta LINIA-110): linie 110 kV liczone z wartością roboczą geometrii
     #: słupa — ten sam kształt co założenia biegu zwarciowego; pusta krotka = brak założeń.
+    #: + karta UX-04/POLE-BKR-MODEL: baterie z admitancją z wartości roboczej parametru.
     zalozenia: tuple[dict[str, Any], ...] = ()
+    #: Karta UX-04/POLE-BKR-MODEL: zapis White Box admitancji każdej załączonej baterii
+    #: kondensatorów (``enm.bateria_kondensatorow.admitancja_baterii``); pusta krotka = sieć bez
+    #: załączonych baterii (wynik biegu bez klucza ``baterie_kondensatorow``).
+    baterie: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -958,9 +1000,11 @@ def zloz_wejscie_rozplywu(
             graph=graph, audit2_extensions=audit2_extensions
         )
 
-    # D-06c: fixed shunt capacitor banks → existing solver shunt mechanism.
-    # ENM ShuntCapacitor -> ShuntSpec(b_pu = Q_rated / S_base). Solver untouched.
-    shunt_specs = _build_shunt_specs_from_snapshot(snapshot, base_mva)
+    # D-06c + karta UX-04/POLE-BKR-MODEL: baterie kondensatorów → istniejący mechanizm
+    # boczników solvera, admitancja Q(U) z pierwszych zasad (stopnie, straty, dławik, baza
+    # szyny); te same admitancje niesie zapis White Box biegu (``baterie``). Solver nietknięty.
+    admitancje_baterii = _admitancje_baterii_z_migawki(snapshot, base_mva)
+    shunt_specs = _boczniki_solvera_z_baterii(admitancje_baterii)
 
     # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
     # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
@@ -1023,7 +1067,9 @@ def zloz_wejscie_rozplywu(
         wyspy=tuple(wyspy),
         pq_specs=tuple(pq_specs),
         pv_specs=tuple(pv_specs),
-        zalozenia=zalozenia_linii_wn(EnergyNetworkModel.model_validate(snapshot), None),
+        zalozenia=zalozenia_linii_wn(EnergyNetworkModel.model_validate(snapshot), None)
+        + zalozenia_baterii_rozplywu(admitancje_baterii),
+        baterie=tuple(adm.zapis for adm in admitancje_baterii),
     )
 
 
@@ -1207,8 +1253,16 @@ def zloz_wejscie_zwarcia(
         if _short_circuit_requires_z0(short_circuit_type)
         else ()
     )
+    zalozenia_baterii = zalozenia_baterii_zwarcia(
+        enm, scenario_c, doziemne=_short_circuit_requires_z0(short_circuit_type)
+    )
+    # Składowe sieci zerowej są potrzebne danym przyjętym wierszy, gdy bieg niesie założenia
+    # składowej zerowej: Z0 gałęzi z katalogu albo układ baterii z wartości roboczej.
     skladowe_zerowe = (
-        skladowe_sieci_zerowej(enm, solve_graph, scenario=scenario_c) if zalozenia_z0 else None
+        skladowe_sieci_zerowej(enm, solve_graph, scenario=scenario_c)
+        if zalozenia_z0
+        or any(z["code"] == KOD_BATERIA_PARAMETRY_ROBOCZE for z in zalozenia_baterii)
+        else None
     )
     zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
     # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc pozostaje
@@ -1249,6 +1303,10 @@ def zloz_wejscie_zwarcia(
         # Karta PODSTAWA-Q (rozstrzygnięcie 3): maszyny wirujące liczone z wartościami roboczymi
         # parametrów (`graph.wartosci_robocze_maszyn`, wypełnione RAZ przez mapowanie ENM).
         + zalozenia_parametrow_maszyn(graph.wartosci_robocze_maszyn, scenario_c)
+        # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów — pominięcie w składowej zgodnej
+        # i przeciwnej jako JAWNE założenie z podstawą IEC 60909-0, a przy zwarciach doziemnych
+        # opis składowej zerowej (droga zerowa wyłącznie w gwieździe uziemionej).
+        + zalozenia_baterii
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.

@@ -106,6 +106,12 @@ KATEGORIA_ROLI_POLA: dict[str, str] = {
     "FW": KATEGORIA_INNE,
     "FARMA_WIATROWA": KATEGORIA_INNE,
     "OZE": KATEGORIA_INNE,
+    # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): pole odbiorcze rozdzielni, nie
+    # wyprowadzenie linii — nie liczy się do pól liniowych rodzaju stacji. Bez tych wpisów
+    # walidator meldował pole BKR jako pole o roli nierozpoznanej (W044).
+    "BATERIA_KONDENSATOROW": KATEGORIA_INNE,
+    "CAPACITOR_BANK": KATEGORIA_INNE,
+    "BKR": KATEGORIA_INNE,
 }
 
 

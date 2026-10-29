@@ -11,6 +11,7 @@
 
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
+import type { BateriaPolaView } from './bateriaPola';
 
 
 /**
@@ -176,6 +177,10 @@ export interface MiniBlockBayDescriptor {
    *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
    *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** UX-04/POLE-BKR-MODEL: bateria kondensatorów na zacisku końca toru pola
+   *  (`bateriaPola.ts bateriaNaKoncuToruPola`, ta sama funkcja co pola GPZ) — element
+   *  MODELU, którego pole jest nośnikiem (`compose/apparatusSequence.ts elementyModeluPola`). */
+  readonly bateria?: BateriaPolaView;
   /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
    *  KONFIGURACJI pola — stabilny, deterministyczny (backend `config_ref`).
    *  Niesiony do meta sceny (`configId`) przez `compose/station.ts`, żeby render

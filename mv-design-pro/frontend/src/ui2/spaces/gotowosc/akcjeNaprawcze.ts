@@ -88,13 +88,17 @@ const POWOD_CZAS_TB =
   'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
   'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
   'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
+const POWOD_WYPOSAZENIE_POLA_BKR =
+  'Aparaty pola baterii kondensatorów (przekładnik niezrównoważenia w połączeniu ' +
+  'międzygwiazdowym, dwa przekładniki napięciowe międzyfazowe do rozładowania) ustawia się na ' +
+  'karcie pola — zaznacz pole baterii kondensatorów na schemacie i uzupełnij wyposażenie.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (162 kody, stan rejestru po nałożeniu GPZ-MODEL na partie
- * 9–13). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * KOMPLETNA tabela kodów kanonu (174 kody, stan rejestru po karcie UX-04/POLE-BKR-MODEL —
+ * pomiar `len(READINESS_CODES)` 2026-10-28). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -158,6 +162,17 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),
+  // Karta UX-04/POLE-BKR-MODEL: pole i aparaty baterii kondensatorów (W045–W048) oraz
+  // założenia biegów z baterią (pominięcie w składowej zgodnej, parametry robocze baterii).
+  'station.bkr_bay_missing': formularz('add_sn_bay'),
+  // Wyposażenie pola edytuje wyłącznie karta pola (ekran E-11, `EdytorWyposazeniaPola`,
+  // jedyny dostawca `set_bay_equipment`) — nie ma formularza operacji, kartę otwiera
+  // zaznaczenie pola na schemacie.
+  'station.bkr_unbalance_ct_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_discharge_vt_missing': przestrzen('schemat', POWOD_WYPOSAZENIE_POLA_BKR),
+  'station.bkr_transformer_trip_incomplete': EDYCJA,
+  'shunt.pominieta_w_skladowej_zgodnej': EDYCJA,
+  'shunt.parametry_robocze': EDYCJA,
   'transformer.connection_missing': TRANSFORMATOR,
   'transformer.loss_data_missing': KATALOG,
   'transformer.no_load_params_missing': KATALOG,

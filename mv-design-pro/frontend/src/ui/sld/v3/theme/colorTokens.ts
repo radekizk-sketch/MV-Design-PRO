@@ -340,6 +340,9 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   sprzeglo: '#9AA4AF',
   pomiarowe: '#3FBFA8',
   zrodlowe: '#7CC85A',
+  // Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): odcień purpurowo-różowy,
+  // wolny od pozostałych ról (bursztyn, błękit, fiolet, szarość, morski, zieleń).
+  kompensacyjne: '#E07AA8',
 };
 
 export const DARK_SCADA_SLD_PALETTE: SldPalette = {

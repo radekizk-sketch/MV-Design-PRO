@@ -57,9 +57,9 @@ from network_model.pochodne import (
     impedancja_odniesiona_do_napiecia_ohm,
     impedancja_z_napiecia_i_mocy_ohm,
     m_na_km,
-    moc_bierna_z_susceptancji_mvar,
     mw_na_kw,
 )
+from network_model.pochodne.bateria_kondensatorow import moc_z_admitancji_sekcji_mva
 
 from .mrid import KLASY_OBIEKTOW_GLOWNYCH, mrid_for
 from .parametry_maszyn import (
@@ -702,14 +702,17 @@ def _importuj_kondensatory(
     endpoint_bus_refs: Callable[[str], tuple[str | None, str | None]],
     ostrzezenia: list[str],
 ) -> list[ShuntCapacitor]:
-    """LinearShuntCompensator -> ShuntCapacitor (bateria stała, wszystkie sekcje razem).
+    """LinearShuntCompensator -> ShuntCapacitor (sekcja = stopień baterii).
 
-    Moc znamionowa Q = B·N·U_n² (U_n = ``nomU``, B = ``bPerSection``, N =
-    ``maximumSections``) — ``pochodne.moc_bierna_z_susceptancji_mvar``, para funkcji
-    eksportu ``susceptancja_z_mocy_biernej_s``. Status z
-    ``sections``: 0 = otwarta, N = załączona. Czego model stałej baterii nie wyrazi
-    (dławik B < 0, częściowe załączenie, brak nomU/bPerSection/sections, straty G ≠ 0),
-    jest NAZWANE; element niewyrażalny pominięty — nigdy liczba zastępcza.
+    Para eksportu (``cgmes_exporter._emit_shunt``): moc przy napięciu znamionowym
+    S = P_str + jQ_n = y_s·N·U_n² (y_s = ``gPerSection`` + j``bPerSection``, N =
+    ``maximumSections``, U_n = ``nomU``) — ``pochodne.moc_z_admitancji_sekcji_mva``. Liczba
+    stopni = N; ``sections`` = stopnie załączone: 0 = bateria wyłączona, N = wszystkie
+    załączone, 0 < m < N = pierwsze m stopni załączone (plik liniowy nie mówi, KTÓRE —
+    numeracja stopni jest konwencją importu, nazwaną w ostrzeżeniu). Straty G > 0 wracają
+    jako ``meta.loss_kw``. Czego model baterii nie wyrazi (dławik zamiast kondensatora B < 0,
+    G < 0, brak nomU/bPerSection/sections, sekcje niecałkowite), jest NAZWANE; element
+    niewyrażalny pominięty — nigdy liczba zastępcza.
     """
     kondensatory: list[ShuntCapacitor] = []
     for elem in by_class.get("LinearShuntCompensator", []):
@@ -721,7 +724,7 @@ def _importuj_kondensatory(
         b_s = _float(_text(elem, "LinearShuntCompensator.bPerSection"))
         u_v = _float(_text(elem, "ShuntCompensator.nomU"))
         sekcje_max = _int(_text(elem, "ShuntCompensator.maximumSections"))
-        sekcje = _float(_text(elem, "ShuntCompensator.sections"))
+        sekcje = _int(_text(elem, "ShuntCompensator.sections"))
         if szyna is None or b_s is None or u_v is None or sekcje_max is None or sekcje is None:
             brak = [
                 etykieta
@@ -742,30 +745,42 @@ def _importuj_kondensatory(
                 f"{sekcje_max} — model przyjmuje wyłącznie baterię kondensatorów; pominięta."
             )
             continue
-        if sekcje not in (0.0, float(sekcje_max)):
+        if not 0 <= sekcje <= sekcje_max:
             ostrzezenia.append(
-                f"Bateria {name}: załączone {sekcje:g} z {sekcje_max} sekcji — model stałej "
-                "baterii nie wyraża załączenia częściowego; pominięta."
+                f"Bateria {name}: załączone {sekcje} z {sekcje_max} sekcji — liczba spoza "
+                "zakresu; pominięta."
             )
             continue
-        g_s = _float(_text(elem, "LinearShuntCompensator.gPerSection"))
-        if g_s:
+        g_s = _float(_text(elem, "LinearShuntCompensator.gPerSection")) or 0.0
+        if g_s < 0:
             ostrzezenia.append(
-                f"Bateria {name}: konduktancja gPerSection={g_s} S pominięta — model baterii "
-                "nie niesie strat."
+                f"Bateria {name}: konduktancja gPerSection={g_s} S ujemna — straty baterii nie "
+                "mogą być ujemne; pominięta."
             )
+            continue
         rated_kv = v_to_kv(u_v)
+        moc = moc_z_admitancji_sekcji_mva(complex(g_s, b_s), sekcje_max, rated_kv)
+        stopnie: list[bool] | None = None
+        if 0 < sekcje < sekcje_max:
+            stopnie = [True] * sekcje + [False] * (sekcje_max - sekcje)
+            ostrzezenia.append(
+                f"Bateria {name}: załączone {sekcje} z {sekcje_max} stopni — plik nie wskazuje, "
+                "które stopnie są załączone; przyjęto pierwsze."
+            )
         kondensatory.append(
             ShuntCapacitor(
                 ref_id=ref_of(mrid, name),
                 name=name,
                 bus_ref=szyna,
                 rated_kv=rated_kv,
-                rated_mvar=moc_bierna_z_susceptancji_mvar(b_s * sekcje_max, rated_kv),
-                status="open" if sekcje == 0.0 else "closed",
+                rated_mvar=moc.imag,
+                status="open" if sekcje == 0 else "closed",
                 catalog_ref=None,
                 source_mode="MIGRACJA",
                 parameter_source="MANUAL_EQUIVALENT",
+                liczba_stopni=sekcje_max,
+                stopnie_zalaczone=stopnie,
+                meta={"loss_kw": mw_na_kw(moc.real)} if g_s > 0 else {},
             )
         )
     return kondensatory

@@ -62,7 +62,7 @@
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
-import type { SwitchState } from '../symbols/glyphs';
+import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
@@ -346,10 +346,23 @@ export interface ComposedSymbolInstance {
    *  dla pozostałych symboli. Brak/nierozpoznana grupa = jawny stan glifu + wpis
    *  `missingData` (`station.transformer.vector_group.*`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów pola (`bay.bateria`) — WYŁĄCZNIE dla
+   *  symbolu `capacitorBank` (`bateriaSymbolu`), ta sama dana co GPZ. */
+  readonly bateria?: GlifBaterii;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
   readonly ports: Readonly<Record<string, RoutePort>>;
+}
+
+/** UX-04/POLE-BKR-MODEL: dane glifu baterii — wyłącznie dla `capacitorBank`. */
+function bateriaSymbolu(
+  symbolId: SymbolId,
+  bateria: MiniBlockBayDescriptor['bateria'],
+): GlifBaterii | undefined {
+  return symbolId === 'capacitorBank' && bateria
+    ? { uklad: bateria.uklad, przekladnikNiezrownowazenia: bateria.przekladnikNiezrownowazenia }
+    : undefined;
 }
 
 /** GPZ-PARYTET cz. 2 (pkt 1): uzwojenia symbolu stosu pola — wyłącznie dla
@@ -608,6 +621,7 @@ function buildBayStack(
       // BEZ identyfikatora w tej fazie (CT/VT/SA/cableHead/...).
       designationSource: stackIdentifierSources[index] ?? undefined,
       uzwojenia: uzwojeniaSymbolu(symbolId, bay.transformerVectorGroup),
+      bateria: bateriaSymbolu(symbolId, bay.bateria),
       x,
       y,
       state: item.state,
@@ -691,6 +705,7 @@ function buildBayStack(
         bayReserve: bay.reserve,
         designationSource: identifierSource ?? undefined,
         uzwojenia: uzwojeniaSymbolu(item.symbolId, bay.transformerVectorGroup),
+        bateria: bateriaSymbolu(item.symbolId, bay.bateria),
         x,
         y: lateralY,
         state: item.state,

@@ -19,6 +19,33 @@ Moduł-LIŚĆ: bez importów spoza biblioteki standardowej — czytają go opera
 
 from __future__ import annotations
 
+from typing import Literal, get_args
+
+#: Rola pola w modelu (`Bay.bay_role`) — JEDNA lista ról modelu (karta UX-04/POLE-BKR-MODEL).
+#: Do tej karty ten sam literał żył w pięciu kopiach (`enm.models.Bay.bay_role`,
+#: `catalog.bay_templates.BayTemplate.bay_role`, `catalog.switchgear.complete_mv_bay_template`,
+#: `enm.domain_ops_models` i zbiór w `domain_operations_v2._normalize_sn_bay_role`); teraz
+#: każda z nich czyta ten typ. `BKR` — pole baterii kondensatorów równoległych SN (ENEA
+#: Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "BKR"]
+ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
+
+#: Rola KANONICZNA pola SN (read-model pola `BayBaseModel.bay_role`, `field_role`) — klucze
+#: `NAZWA_ROLI_POLA_SN_PL` (równość przypina test `tests/enm/test_rola_pola_bkr.py`).
+RolaKanonicznaPolaSn = Literal[
+    "LINIA_IN",
+    "LINIA_OUT",
+    "TRANSFORMATOROWE",
+    "LINIA_ODG",
+    "SPRZEGLO",
+    "POMIAROWE",
+    "PV_SN",
+    "BESS_SN",
+    "FW_SN",
+    "BATERIA_KONDENSATOROW",
+]
+ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
+
 #: Rola pola podana aliasem modelu (`Bay.bay_role`, skróty kreatorów i szablonów) albo rolą
 #: kanoniczną (`field_role`) → rola kanoniczna. JEDEN słownik dla operacji budujących stację
 #: (`insert_station_on_segment_sn`, `append_station_on_endpoint`) i dla nazw ról — ta sama
@@ -32,12 +59,14 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    "BKR": "BATERIA_KONDENSATOROW",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
     "LINIA_ODG": "LINIA_ODG",
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+    "BATERIA_KONDENSATOROW": "BATERIA_KONDENSATOROW",
 }
 
 #: Polska nazwa pola SN wg roli kanonicznej. Kod roli (`LINIA_IN`, `TR`) jest wartością pola
@@ -53,6 +82,7 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "PV_SN": "Pole źródłowe PV",
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",
+    "BATERIA_KONDENSATOROW": "Pole baterii kondensatorów",
 }
 
 #: Pole źródłowe bez rozpoznanej technologii (rola modelu `OZE`).

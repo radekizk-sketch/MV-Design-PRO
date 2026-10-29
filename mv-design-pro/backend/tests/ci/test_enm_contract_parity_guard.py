@@ -111,15 +111,18 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`.
     Karta GPZ-MODEL podniosla ten sam pin na swojej bazie 122 -> 123 (ta sama korekta W5-C,
     bez nowego pola Literal); po jej nalozeniu na drzewo scalone pomiar guardem = 125, bez
-    zmiany."""
+    zmiany. Karta UX-04/POLE-BKR-MODEL (2026-10-28): +1 — nowe pole Literal
+    `ShuntCapacitor.uklad_polaczen` (`UkladPolaczenBaterii`, lustro TS `UKLADY_POLACZEN_BATERII`);
+    `Bay.bay_role` czyta teraz alias `RolaPolaModelu` — to samo pole, nie nowe. Pomiar guardem
+    na drzewie karty = 126."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 125, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 125 — "
+    assert int(dopasowanie.group(1)) == 126, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 126 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

@@ -219,7 +219,19 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
             ),
         ),
         "ShuntCapacitorType": _mapa(
-            identyfikacja=_META, fundamental=("rated_mvar", "rated_kv", "loss_kw")
+            identyfikacja=_META,
+            fundamental=(
+                "rated_mvar",
+                "rated_kv",
+                "loss_kw",
+                "uklad_polaczen",
+                "liczba_stopni",
+                "tolerancja_pojemnosci_min_proc",
+                "tolerancja_pojemnosci_max_proc",
+                "dlawik_ograniczajacy",
+                "dlawik_indukcyjnosc_mh",
+                "rezystory_rozladowcze_wewnetrzne",
+            ),
         ),
         "LoadType": _mapa(
             identyfikacja=(*_META, "profile_id"),
@@ -534,6 +546,15 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
             "fundamental": (
                 _s("parametry_znamionowe", True, "rated_mvar", "rated_kv"),
                 _s("straty", False, "loss_kw"),
+                _s("uklad_polaczen", False, "uklad_polaczen", "liczba_stopni"),
+                _s(
+                    "tolerancja_pojemnosci",
+                    False,
+                    "tolerancja_pojemnosci_min_proc",
+                    "tolerancja_pojemnosci_max_proc",
+                ),
+                _s("dlawik_ograniczajacy", False, "dlawik_ograniczajacy", "dlawik_indukcyjnosc_mh"),
+                _s("rozladowanie", False, "rezystory_rozladowcze_wewnetrzne"),
             ),
         },
         "LoadType": {
