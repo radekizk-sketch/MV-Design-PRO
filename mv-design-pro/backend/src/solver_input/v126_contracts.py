@@ -6,12 +6,25 @@ from typing import Any
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from enm.nazwy_elementow import nazwa_elementu
-from enm.tor_pola import szyny_stacji
+from enm.uziemienie_sekcji import (
+    UziemienieSekcji,
+    galezie_sieci_sn,
+    uziemienie_sieci,
+    uziemienie_szyny,
+)
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
-from pydantic import BaseModel, Field
+from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv, pasmo_napieciowe
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializerFunctionWrapHandler,
+    ValidationError,
+    model_serializer,
+)
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+from werdykt.kontrakt import DanaPrzyjeta
 
 
 class V126AnalysisType(StrEnum):
@@ -179,11 +192,101 @@ class V126EarthingInput(BaseModel):
 class V126InsulationInput(BaseModel):
     location_bus_ref: str
     u_m_kv: float = Field(gt=0)
-    network_neutral: str = "isolated"
+    # Kategoria TOV sieci („isolated"/„earthed") — WYŁĄCZNIE z modelu (`_kategoria_tov_szyny`,
+    # jedyna prawda `enm.uziemienie_sekcji`). Dawna wartość domyślna „isolated" (czwarta
+    # domyślna uziemienia V12.6 obok trzech w solverze) skasowana kartą
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA: wiersz projektanta dostaje kategorię z modelu.
+    network_neutral: str
     arrester_mcov_kv: float | None = Field(default=None, gt=0)
     arrester_residual_10ka_kv: float | None = Field(default=None, gt=0)
     predicted_tov_kv: float | None = Field(default=None, gt=0)
     predicted_energy_kj_per_kv: float = Field(default=2.0, ge=0)
+
+
+class V126RezystorSnInput(BaseModel):
+    """Rezystor punktu neutralnego sieci SN w ruchu (z modelu — zespół uziemiający albo
+    uzwojenie TR uziemione przez rezystor): R [Ω], prąd znamionowy I_n [A], dopuszczalny czas
+    przepływu prądu znamionowego t_n [s]. Wartości robocze niesie ``dane_przyjete`` wejścia."""
+
+    ref: str
+    nazwa_pl: str
+    r_ohm: float
+    i_n_a: float
+    t_n_s: float
+
+
+class V126UziemienieSnInput(BaseModel):
+    """Sposób uziemienia punktu neutralnego sieci SN z MODELU (karta UX-04/POLE-ZU-SKLADOWA-
+    ZEROWA §0 pkt 4) — wejście analiz V12.6 zależnych od punktu neutralnego (projekt
+    uziemienia, metoda detekcji doziemień, ferrorezonans). Parametry biegu nie nadpisują go.
+
+    ``wariant`` — `WariantUziemieniaSekcji` w stanie normalnym (AWSC w spoczynku);
+    ``przyczyna_braku_pl`` — nazwana przyczyna, gdy sposobu nie da się ustalić (zespół bez
+    elementu w punkcie neutralnym, sieci SN modelu różnie uziemione, model bez sieci SN).
+    """
+
+    wariant: str | None = None
+    wariant_awsc_zalaczony: str | None = None
+    regulacja_nadazna: bool = False
+    opis_pl: str = ""
+    przyczyna_braku_pl: str | None = None
+    #: Napięcie znamionowe sieci SN [kV] z tej samej prawdy — podstawa I_C = √3·U_n·B_0
+    #: (dawniej solver brał najwyższe napięcie szyny modelu, czyli 110 kV w modelu GPZ).
+    napiecie_kv: float | None = None
+    #: Linie i kable sieci SN (wszystkich sekcji — dobór zespołu na pracę jednego ZU na sieć
+    #: A+B, Zeszyt 1 §16 s. 29): jedyne gałęzie, których pojemność doziemna wchodzi do I_C
+    #: i do oceny ferrorezonansu (gałęzie sieci 110 kV i nN nie należą do sieci SN).
+    galezie_sieci: list[str] = Field(default_factory=list)
+    #: Rezystory punktów neutralnych w ruchu (stan normalny) — projekt uziemienia rezystorowego
+    #: sprawdza REZYSTOR MODELU (dawny parametr biegu „docelowy prąd doziemienia" i „energia
+    #: znamionowa rezystora" nadpisywały model — §0 pkt 4).
+    rezystory: list[V126RezystorSnInput] = Field(default_factory=list)
+    #: Σ I_L dławików w ruchu [A] (nastawa albo wartość robocza) — kompensacja składowej
+    #: pojemnościowej w układzie dławik ‖ rezystor (Z.14).
+    prad_dlawikow_a: float | None = None
+    #: Dane przyjęte ESTIMATED parametrów urządzeń punktu neutralnego, które wchodzą do analizy
+    #: (zasada nr 4) — wynik na nich ma kompletność dowodu NIEPELNY.
+    dane_przyjete: list[DanaPrzyjeta] = Field(default_factory=list)
+
+
+#: Wariant uziemienia sekcji SN → typ projektu uziemienia punktu neutralnego V12.6 (D-06a/b):
+#: dławik (także z AWSC — w spoczynku sieć skompensowana) → projekt dławika; rezystor
+#: i dławik‖rezystor (Z.14 — składowa czynna prądu doziemienia) → projekt rezystora.
+#: Warianty `izolowany` i `bezposrednie` nie mają czego projektować.
+PROJEKT_UZIEMIENIA_WARIANTU: dict[str, str] = {
+    "dlawik": "petersen_coil",
+    "dlawik_awsc": "petersen_coil",
+    "rezystor": "resistor_grounded",
+    "dlawik_rezystor": "resistor_grounded",
+}
+
+
+def brak_uziemienia_sn(
+    uziemienie: V126UziemienieSnInput | None, *, projekt_zespolu: bool = False
+) -> str | None:
+    """Nazwana przyczyna, gdy wejście nie niesie sposobu uziemienia sieci SN z modelu.
+
+    JEDYNY predykat dla solvera (odmowa „dane niekompletne") i gotowości (warunek
+    `model.uziemienie_sn`) — predykaty parami. ``projekt_zespolu``: projekt uziemienia
+    wymaga dławika gaszącego albo rezystora w punkcie neutralnym sieci (zespół uziemiający
+    albo uzwojenie SN transformatora); jego brak to brak MODELU, nie wartość proponowana.
+    """
+    if uziemienie is None:
+        return (
+            "Wejście analizy nie niesie sposobu uziemienia punktu neutralnego sieci SN z "
+            "modelu — analiza zależna od punktu neutralnego niewykonana."
+        )
+    if uziemienie.przyczyna_braku_pl is not None:
+        return uziemienie.przyczyna_braku_pl
+    if uziemienie.wariant is None:
+        return "Sposób uziemienia punktu neutralnego sieci SN modelu nieustalony."
+    if projekt_zespolu and uziemienie.wariant not in PROJEKT_UZIEMIENIA_WARIANTU:
+        return (
+            f"Sieć SN modelu: {uziemienie.opis_pl} Projekt uziemienia punktu neutralnego "
+            "dotyczy dławika gaszącego albo rezystora w punkcie neutralnym sieci — zamodeluj "
+            "zespół uziemiający w polu sekcji SN."
+        )
+    return None
 
 
 class V126AcademicInput(BaseModel):
@@ -197,10 +300,178 @@ class V126AcademicInput(BaseModel):
     earthing: V126EarthingInput | None = None
     insulation: list[V126InsulationInput] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
+    #: Uziemienie sieci SN z modelu — wyłącznie dla analiz z `ANALIZY_UZIEMIENIA_SN`.
+    uziemienie_sn: V126UziemienieSnInput | None = None
+
+    @model_serializer(mode="wrap")
+    def _bez_pustego_uziemienia(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        # Klucz obecny WYŁĄCZNIE, gdy analiza czyta uziemienie — zapis wejścia, `input_hash`
+        # i ziarno losowania (hosting capacity) pozostałych analiz bajtowo bez zmian.
+        dane: dict[str, Any] = handler(self)
+        if dane.get("uziemienie_sn") is None:
+            dane.pop("uziemienie_sn", None)
+        return dane
+
+
+#: Analizy V12.6, których wynik zależy od sposobu uziemienia punktu neutralnego sieci SN.
+ANALIZY_UZIEMIENIA_SN: frozenset[V126AnalysisType] = frozenset(
+    {
+        V126AnalysisType.NEUTRAL_EARTHING_DESIGN,
+        V126AnalysisType.EARTH_FAULT_DETECTION,
+        V126AnalysisType.TRANSIENT_TRV,
+    }
+)
+
+
+def uziemienie_sn_v126(enm: EnergyNetworkModel) -> V126UziemienieSnInput:
+    """Uziemienie sieci SN modelu dla V12.6 z JEDYNEJ funkcji (`enm.uziemienie_sekcji`).
+
+    Analizy V12.6 opisują jedną sieć SN; model z kilkoma sieciami SN o RÓŻNYM sposobie
+    uziemienia (np. dwie sekcje przy otwartym sprzęgle, każda z innym zespołem) dostaje
+    nazwaną przyczynę zamiast wyboru jednej z nich.
+    """
+    sekcje = uziemienie_sieci(enm)
+    if not sekcje:
+        return V126UziemienieSnInput(
+            przyczyna_braku_pl="Model nie ma sieci SN — sposobu uziemienia punktu neutralnego "
+            "sieci SN nie ma czego ustalić."
+        )
+    odmowy = [o for s in sekcje for o in s.odmowy]
+    if odmowy:
+        return V126UziemienieSnInput(przyczyna_braku_pl=" ".join(odmowy))
+    napiecia = sorted({s.napiecie_kv for s in sekcje})
+    if len(napiecia) > 1:
+        return V126UziemienieSnInput(
+            przyczyna_braku_pl=(
+                "Sieci SN modelu mają różne napięcia znamionowe ("
+                + ", ".join(f"{u:g} kV" for u in napiecia)
+                + ") — analiza V12.6 dotyczy jednej sieci; rozdziel przypadki obliczeniowe."
+            )
+        )
+    warianty = sorted({s.wariant("spoczynek") for s in sekcje})
+    if len(warianty) > 1:
+        return V126UziemienieSnInput(
+            przyczyna_braku_pl=(
+                "Sieci SN modelu mają różny sposób uziemienia punktu neutralnego ("
+                + "; ".join(s.opis_pl() for s in sekcje)
+                + ") — analiza V12.6 dotyczy jednej sieci; rozdziel przypadki obliczeniowe "
+                "albo ujednolić uziemienie."
+            )
+        )
+    return _wejscie_uziemienia(enm, sekcje)
+
+
+def _wejscie_uziemienia(
+    enm: EnergyNetworkModel, sekcje: tuple[UziemienieSekcji, ...]
+) -> V126UziemienieSnInput:
+    szyny_sn = frozenset(szyna for s in sekcje for szyna in s.szyny)
+    rezystory = [r for s in sekcje for r in s.rezystory_w_ruchu("spoczynek")]
+    prady_dlawikow = [i for s in sekcje if (i := s.prad_dlawikow_a()) is not None]
+    return V126UziemienieSnInput(
+        wariant=sekcje[0].wariant("spoczynek"),
+        wariant_awsc_zalaczony=sekcje[0].wariant("zalaczony"),
+        regulacja_nadazna=all(s.regulacja_nadazna for s in sekcje),
+        opis_pl=" ".join(s.opis_pl() for s in sekcje),
+        napiecie_kv=sekcje[0].napiecie_kv,
+        galezie_sieci=[g.ref_id for g in galezie_sieci_sn(enm, szyny_sn)],
+        rezystory=[
+            V126RezystorSnInput(
+                ref=r.element_ref,
+                nazwa_pl=r.nazwa_pl,
+                r_ohm=r.r.wartosc,
+                i_n_a=r.i_n.wartosc,
+                t_n_s=r.t_n.wartosc,
+            )
+            for r in rezystory
+        ],
+        prad_dlawikow_a=sum(prady_dlawikow) if prady_dlawikow else None,
+        dane_przyjete=[
+            *(d for r in rezystory for d in r.dane_przyjete()),
+            *(
+                d
+                for s in sekcje
+                if s.wariant("spoczynek") == "dlawik_rezystor"
+                for d in s.dane_przyjete_dlawikow()
+            ),
+        ],
+    )
 
 
 class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+def _kategoria_tov_szyny(enm: EnergyNetworkModel, bus_ref: str) -> str | None:
+    """Kategoria TOV IEC 60071 szyny („isolated"/„earthed") z modelu albo ``None``.
+
+    Szyna SN: sposób uziemienia jej sieci z jedynej prawdy (`enm.uziemienie_sekcji`, stan
+    normalny — AWSC w spoczynku: sieć skompensowana widzi przy doziemieniu napięcie
+    ~międzyfazowe); sieć z zespołem o nieokreślonym punkcie neutralnym → ``None``. Szyna
+    poza SN (WN, nN): punkt neutralny źródła NA tej szynie (sieć 110 kV za granicą modelu)
+    albo uzwojenia transformatora na tej szynie; brak opisu → ``None`` (W5-D p. 12).
+    """
+    szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+    if szyna is None:
+        return None
+    if pasmo_napieciowe(szyna.voltage_kv) == "SN":
+        sekcja = uziemienie_szyny(enm, bus_ref)
+        if sekcja is None or sekcja.odmowy:
+            return None
+        return _grounding_type_to_network_neutral(sekcja.typ_punktu_neutralnego("spoczynek"))
+    for source in enm.sources:
+        if source.bus_ref == bus_ref and source.neutral_grounding is not None:
+            mapped = _grounding_type_to_network_neutral(source.neutral_grounding.type)
+            if mapped is not None:
+                return mapped
+    for transformer in enm.transformers:
+        for strona_szyny, konfiguracja in (
+            (transformer.lv_bus_ref, transformer.lv_neutral),
+            (transformer.hv_bus_ref, transformer.hv_neutral),
+        ):
+            if strona_szyny == bus_ref and konfiguracja is not None:
+                mapped = _grounding_type_to_network_neutral(konfiguracja.type)
+                if mapped is not None:
+                    return mapped
+    return None
+
+
+def wiersze_izolacji_projektanta(
+    enm: EnergyNetworkModel, wiersze: list[dict[str, Any]]
+) -> list[V126InsulationInput]:
+    """Wiersze koordynacji izolacji z parametrów projektanta z kategorią TOV Z MODELU.
+
+    Projektant podaje dane ogranicznika; kategorii TOV (sposobu uziemienia sieci) nie podaje
+    — parametr biegu nie nadpisuje modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4).
+
+    Raises:
+        OdmowaDanychError: wiersz niesie ``network_neutral``, szyna wiersza nie ma w modelu
+            sposobu uziemienia (komunikat po polsku nazywa szynę) albo wiersz jest niezgodny
+            z kontraktem wejścia (komunikat walidacji).
+    """
+    wynik: list[V126InsulationInput] = []
+    for wiersz in wiersze:
+        if "network_neutral" in wiersz:
+            raise OdmowaDanychError(
+                "Kategoria uziemienia sieci wiersza koordynacji izolacji wynika z modelu "
+                "(zespół uziemiający albo punkt neutralny uzwojenia) — parametr "
+                "„network_neutral” nie jest przyjmowany."
+            )
+        bus_ref = str(wiersz.get("location_bus_ref", ""))
+        kategoria = _kategoria_tov_szyny(enm, bus_ref)
+        if kategoria is None:
+            szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+            nazwa = nazwa_elementu(szyna, "buses") if szyna is not None else "spoza modelu"
+            raise OdmowaDanychError(
+                f"Szyna {nazwa}: model nie określa uziemienia punktu neutralnego sieci — "
+                "kategorii przepięć dorywczych nie da się przyjąć."
+            )
+        try:
+            wynik.append(
+                V126InsulationInput.model_validate({**wiersz, "network_neutral": kategoria})
+            )
+        except ValidationError as exc:
+            raise OdmowaDanychError(str(exc)) from exc
+    return wynik
 
 
 def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
@@ -208,8 +479,9 @@ def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None
 
     IEC 60071: sieć izolowana/skompensowana (Petersen) — ogranicznik widzi
     napięcie ~międzyfazowe przy doziemieniu → "isolated"; sieć skutecznie
-    uziemiona (rezystor/bezpośrednio) → "earthed". None gdy brak danych
-    (bez fabrykacji — solver użyje własnej udokumentowanej wartości domyślnej).
+    uziemiona (rezystor/bezpośrednio) → "earthed". ``None`` gdy typ nieznany — wołający
+    nie buduje wtedy wiersza (szyna trafia do ``ograniczniki_bez_uziemienia_sieci``), bez
+    podstawionej wartości (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4).
     """
     if grounding_type in ("isolated", "petersen_coil"):
         return "isolated"
@@ -231,8 +503,9 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
     - U_m z karty katalogowej ogranicznika albo — bez karty — napięcie najwyższe sieci U_s
       szyny (IEC 60038, `pasma_napieciowe.napiecie_najwyzsze_sieci_kv`);
-    - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego
-      źródła GPZ (W5-A) albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
+    - ``network_neutral`` ZAWSZE z modelu (`_kategoria_tov_szyny`: szyna SN — jedyna prawda
+      `enm.uziemienie_sekcji`, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA; szyna WN/nN — punkt
+      neutralny źródła albo uzwojenia NA tej szynie) — karta W5-D p. 12
       (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
       dostaje wiersza z podstawioną wartością ``"isolated"`` (do W5-D most
       fabrykował tu ``neutral or "isolated"``); taka szyna trafia do
@@ -306,37 +579,6 @@ def _wejscia_izolacji(
     bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
     bez_uziemienia: list[str] = []
 
-    def _stacja_szyny(bus_ref: str) -> str | None:
-        # POLA-W-TORZE: ogranicznik na zacisku pola należy do stacji tego pola.
-        return next(
-            (s.ref_id for s in enm.substations if bus_ref in szyny_stacji(enm, s)),
-            None,
-        )
-
-    def _resolve_network_neutral(bus_ref: str) -> str | None:
-        # W5-A: opis punktu neutralnego sieci SN niesie ZRODLO (GPZ) — na tej szynie
-        # albo w tej samej stacji (zrodlo po stronie 110 kV nie stoi na szynie SN).
-        stacja = _stacja_szyny(bus_ref)
-        for source in enm.sources:
-            if source.neutral_grounding is None:
-                continue
-            if source.bus_ref == bus_ref or (
-                stacja is not None and source.substation_ref == stacja
-            ):
-                mapped = _grounding_type_to_network_neutral(source.neutral_grounding.type)
-                if mapped is not None:
-                    return mapped
-        for transformer in enm.transformers:
-            if transformer.lv_bus_ref == bus_ref and transformer.lv_neutral is not None:
-                mapped = _grounding_type_to_network_neutral(transformer.lv_neutral.type)
-                if mapped is not None:
-                    return mapped
-            if transformer.hv_bus_ref == bus_ref and transformer.hv_neutral is not None:
-                mapped = _grounding_type_to_network_neutral(transformer.hv_neutral.type)
-                if mapped is not None:
-                    return mapped
-        return None
-
     rows: list[V126InsulationInput] = []
     seen: set[tuple[str, str | None]] = set()
 
@@ -359,7 +601,7 @@ def _wejscia_izolacji(
             # fabrykować U_m.
             return
         seen.add(dedup_key)
-        neutral = _resolve_network_neutral(bus_ref)
+        neutral = _kategoria_tov_szyny(enm, bus_ref)
         if neutral is None:
             # W5-D p. 12: brak uziemienia w modelu = brak wiersza, nie „isolated".
             if bus_ref not in bez_uziemienia:
@@ -815,7 +1057,10 @@ def build_v126_input_from_enm(
     enm: EnergyNetworkModel,
     *,
     parameters: dict[str, Any] | None = None,
+    analysis_type: V126AnalysisType | None = None,
 ) -> V126AcademicInput:
+    """Wejście solvera V12.6 z modelu. ``analysis_type`` z `ANALIZY_UZIEMIENIA_SN` dokłada
+    uziemienie sieci SN z modelu (`uziemienie_sn_v126`); pozostałe analizy go nie niosą."""
     load_by_bus: dict[str, tuple[float, float]] = {}
     for load in enm.loads:
         p, q = load_by_bus.get(load.bus_ref, (0.0, 0.0))
@@ -1025,4 +1270,5 @@ def build_v126_input_from_enm(
         converters=converters,
         insulation=build_v126_insulation_from_enm(enm),
         parameters=parameters or {},
+        uziemienie_sn=(uziemienie_sn_v126(enm) if analysis_type in ANALIZY_UZIEMIENIA_SN else None),
     )

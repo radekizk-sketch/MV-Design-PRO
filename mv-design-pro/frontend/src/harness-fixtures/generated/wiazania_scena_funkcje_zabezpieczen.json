@@ -8,9 +8,9 @@
         "skutek_pl": "Wskaż sumę prądów fazowych albo przekładnik ziemnozwarciowy — bez tego zwarcie doziemne pozostaje niewykrywane."
       },
       {
-        "kod": "protection.neutral_grounding_unknown",
-        "opis_pl": "Sposób uziemienia punktu neutralnego sieci nie jest w modelu określony, więc potrzeby kryterium kierunkowego nie da się rozstrzygnąć.",
-        "skutek_pl": "Uzupełnij tryb uziemienia (izolowana / kompensowana / rezystor / bezpośrednio uziemiona) w danych pola."
+        "kod": "protection.zero_sequence_voltage_missing",
+        "opis_pl": "Sieć izolowana wymaga kierunkowego kryterium ziemnozwarciowego (67N), ale pole nie ma toru napięcia zerowego (otwarty trójkąt VT albo uzwojenie resztkowe).",
+        "skutek_pl": "Bez napięcia polaryzującego funkcja 67N jest niewykonalna — uzupełnij tor napięciowy albo udokumentuj inne kryterium."
       },
       {
         "kod": "protection.osd_requirements_not_modelled",
@@ -37,7 +37,7 @@
   },
   "fakty": {
     "connection_side": "dedicated_transformer",
-    "neutral_grounding_mode": null,
+    "neutral_grounding_mode": "isolated",
     "zero_sequence_current_source": "brak",
     "zero_sequence_voltage_source": "brak"
   },

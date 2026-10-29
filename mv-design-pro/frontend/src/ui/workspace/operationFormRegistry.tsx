@@ -16,6 +16,7 @@ import type { CanonicalOpName } from '../../types/domainOps';
 import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
 import { KreatorOdgalezienia } from '../../ui2/kreatory/odgalezienie';
 import { KreatorOgranicznikaSn } from '../../ui2/kreatory/ogranicznik';
+import { KreatorZespoluUziemiajacegoSn } from '../../ui2/kreatory/zespol-uziemiajacy';
 import { KreatorLacznikaSekcyjnego } from '../../ui2/kreatory/lacznik';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorOdbioruNn, KreatorOdbioruSn } from '../../ui2/kreatory/odbior';
@@ -73,6 +74,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_ups_nn: KreatorZrodloDyspozycyjne,
   add_shunt_compensator_sn: KreatorKompensatoraSn,
   add_surge_arrester_sn: KreatorOgranicznikaSn,
+  add_zespol_uziemiajacy_sn: KreatorZespoluUziemiajacegoSn,
   add_nn_load: KreatorOdbioruNn,
   add_load_sn: KreatorOdbioruSn,
   add_generator_sn: KreatorGeneratoraSn,

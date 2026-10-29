@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **178** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -73,6 +73,7 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
+| `source.sn_neutral_data_ignored` | SOURCES | 2 | WARNING | Źródło na szynie SN niesie opis punktu neutralnego albo impedancję zerową — dane pominięte; uziemienie sieci SN wynika z zespołu uziemiającego albo uzwojenia transformatora | panel: `inspector`, tab: `parametry`, focus: `zero_sequence` |
 | `connection.cos_phi_required_missing` | SOURCES | 3 | WARNING | Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik mocy w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `wymagany_cos_phi` |
 | `fault.parametry_maszyny_robocze` | SOURCES | 3 | INFO | Maszyna wirująca liczona z wartością roboczą parametru zwarciowego (propozycja rejestru — założenie inżynierskie, nie dana producenta) — wpisz wartość z tabliczki maszyny w parametrach generatora, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `overrides` |
 | `nn.measurement.required_missing` | SOURCES | 3 | WARNING | Źródło nN nie ma przypisanego punktu pomiaru energii | panel: `inspector`, tab: `pomiary`, focus: `measurement_point` |
@@ -114,6 +115,7 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `conductor.fault_current_missing` | CATALOGS | 2 | WARNING | Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić wytrzymałość zwarciową przekroju | panel: `analizy`, tab: `zwarciowa` |
 | `conductor.thermal_data_missing` | CATALOGS | 2 | WARNING | Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
 | `ct.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej przekładnika prądowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `ct`, focus: `burden_va` |
+| `earthing.zespol_voltage_mismatch` | CATALOGS | 2 | WARNING | Napięcie znamionowe typu zespołu uziemiającego inne niż napięcie sieci | panel: `inspector`, tab: `parametry`, focus: `catalog_ref` |
 | `protection.curve_library_ref_broken` | CATALOGS | 2 | WARNING | Powiązanie pozycji katalogowej z biblioteką charakterystyk wskazuje wpis, którego w bibliotece nie ma — dane katalogu wymagają poprawy | panel: `katalog`, tab: `zabezpieczenia` |
 | `transformer.neutral_grounding_not_accessible` | CATALOGS | 2 | BLOCKER | Uzwojenie transformatora nie ma wyprowadzonego punktu neutralnego, a konfiguracja deklaruje jego uziemienie — zmień grupę połączeń (N/n) albo usuń konfigurację uziemienia tej strony | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
 | `transformer.vector_group_invalid` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz grupę z listy (np. Dyn11, YNd11, Yzn5) | panel: `inspector`, tab: `parametry`, focus: `vector_group` |
@@ -136,8 +138,12 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.winding_voltage_off_nominal` | CATALOGS | 3 | WARNING | Napięcie znamionowe uzwojenia transformatora różni się od napięcia szyny w tym samym paśmie — rozpływ i zwarcia liczą się z przekładnią nieznamionową z napięć uzwojeń (IEC 60909-0 §6.3.3); przypisz typ o napięciach szyn albo zostaw przekładnię, jeśli tabliczka urządzenia ją ma | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `trunk.catalog_missing` | CATALOGS | 3 | BLOCKER | Odcinek SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `select_catalog` |
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
+| `zespol_uziemiajacy.wartosc_robocza` | CATALOGS | 3 | INFO | Impedancja zerowa zespołu uziemiającego z wartości roboczej (pozycja typowa katalogu albo środek zakresu dławika) — wpisz dane producenta albo nastawę w parametrach zespołu i przelicz | panel: `inspector`, tab: `parametry`, focus: `dlawik` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
+| `earthing.zespol_bus_invalid` | STATIONS | 1 | BLOCKER | Zespół uziemiający bez szyny SN w modelu — przyłącz go do szyny SN | panel: `inspector`, tab: `parametry`, focus: `bus_ref` |
+| `earthing.zespol_neutral_undefined` | STATIONS | 1 | BLOCKER | Zespół uziemiający bez określonego elementu punktu neutralnego albo ze sprzeczną deklaracją — wskaż dławik, rezystor albo uziemienie bezpośrednie | panel: `inspector`, tab: `parametry`, focus: `dlawik` |
 | `nn.voltage_missing` | STATIONS | 1 | BLOCKER | Napięcie szyny nN nie jest określone | panel: `inspector`, tab: `parametry`, focus: `voltage_nn_kv` |
+| `earthing.network_grounding_warning` | STATIONS | 2 | WARNING | Uziemienie sieci SN poza zasadami §16: kilka zespołów na połączonej sieci albo nastawa dławików w punkcie rezonansu | panel: `inspector`, tab: `parametry`, focus: `dlawik` |
 | `nn.brak_pojemnosci_doziemnej` | STATIONS | 2 | BLOCKER | Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — prąd pierwszego zwarcia doziemnego nie jest liczony | panel: `inspector`, tab: `parametry`, focus: `b0_siemens_per_km` |
 | `nn.brak_r_a` | STATIONS | 2 | BLOCKER | Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — pętla doziemna i napięcie dotykowe nie są liczone | panel: `inspector`, tab: `parametry`, focus: `earth_electrode_r_ohm` |
 | `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu stacji | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
@@ -150,6 +156,8 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
+| `earthing.zespol_auxiliary_load_missing` | STATIONS | 3 | WARNING | Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu | panel: `inspector`, tab: `parametry`, focus: `odbior_pw_ref` |
+| `earthing.zespol_direct_earthing` | STATIONS | 3 | WARNING | Uziemienie bezpośrednie punktu neutralnego sieci SN poza rozwiązaniami §16 | panel: `inspector`, tab: `parametry`, focus: `uziemienie_bezposrednie` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
 | `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
@@ -188,6 +196,8 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `inverter.k_sc_default_forbidden` | GENERATORS | 4 | WARNING | Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo certyfikatu jednostki wytwórczej | panel: `inspector`, tab: `katalog` |
 | `conductor.fault_duration_missing` | PROTECTION | 2 | WARNING | Brak czasu wyłączenia zabezpieczenia — bez niego nie da się sprawdzić, czy przekrój wytrzyma zwarcie | panel: `analizy`, tab: `zabezpieczenia` |
 | `ct.secondary_circuit_missing` | PROTECTION | 2 | WARNING | Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej | panel: `wizard`, tab: `pomiary`, focus: `ct_obwod_wtorny` |
+| `earthing.zespol_spz_without_resistor` | PROTECTION | 2 | WARNING | SPZ zespołu uziemiającego dopuszczone wyłącznie przy rezystorze (§26.9.6) | panel: `inspector`, tab: `parametry`, focus: `spz` |
+| `earthing.zespol_transformer_trip_missing` | PROTECTION | 2 | WARNING | Zespół z rezystorem bez wyłączenia od transformatorów WN/SN sieci (IRiESD II.4.5.4.3.5) | panel: `inspector`, tab: `parametry`, focus: `wylaczenie_od_transformatorow_refs` |
 | `vt.secondary_circuit_missing` | PROTECTION | 2 | WARNING | Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — uzupełnij, by policzyć zmianę napięcia obwodu | panel: `wizard`, tab: `pomiary`, focus: `vt_obwod_wtorny` |
 | `ct.required_alf_missing` | PROTECTION | 3 | WARNING | Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — bez niego kryterium nasycenia nie ma odniesienia | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.ct_required` | PROTECTION | 3 | BLOCKER | Przekaźnik wymaga przekładnika prądowego (CT) | panel: `inspector`, tab: `zabezpieczenia` |
@@ -231,21 +241,21 @@ Wszystkie **168** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 106 |
-| WARNING | 56 |
-| INFO | 6 |
-| **Razem** | **168** |
+| BLOCKER | 108 |
+| WARNING | 63 |
+| INFO | 7 |
+| **Razem** | **178** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 19 |
+| SOURCES | 20 |
 | TOPOLOGY | 7 |
-| CATALOGS | 53 |
-| STATIONS | 23 |
+| CATALOGS | 55 |
+| STATIONS | 28 |
 | GENERATORS | 26 |
-| PROTECTION | 13 |
+| PROTECTION | 15 |
 | ANALYSIS | 27 |
-| **Razem** | **168** |
+| **Razem** | **178** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

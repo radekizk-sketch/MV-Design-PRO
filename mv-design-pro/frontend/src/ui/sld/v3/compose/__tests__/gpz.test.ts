@@ -1407,7 +1407,7 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
 
 describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
   it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
-    expect(ROLE_POL_GPZ).toHaveLength(6);
+    expect(ROLE_POL_GPZ).toHaveLength(7);
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 

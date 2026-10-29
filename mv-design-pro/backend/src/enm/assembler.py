@@ -24,14 +24,18 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
-from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE, zalozenia_z0_galezi
+from enm.dane_przyjete_galezi import (
+    KOD_Z0_ROBOCZE,
+    zalozenia_z0_galezi,
+    zalozenia_zespolow_uziemiajacych,
+)
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
     jest_odbiorem_zip,
@@ -39,10 +43,11 @@ from enm.load_zip_model import (
     opis_odmowy_agregatu_zip,
 )
 from enm.mapping import (
+    BrakWynikuZerowego,
     build_grid_source_trace,
-    build_zero_sequence_zbus,
     map_enm_to_network_graph,
     skladowe_sieci_zerowej,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     FAZY_ODBIORU_JEDNOFAZOWEGO,
@@ -77,6 +82,7 @@ from network_model.core.impedancja_przejscia import (
 )
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC, StanAwsc, stan_awsc_z_danych
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.core.ybus import S_BASE_MVA
 from network_model.nazwy import opis_rodzaju_i_nazwy
@@ -600,6 +606,16 @@ class WejscieZwarcia:
     #: — wyłącznie dla zwarć doziemnych z założeniem ``branch.z0_wartosc_robocza``; ``None`` =
     #: Z0 nie wchodzi do biegu albo żadna gałąź nie ma R′0/X′0 z wartości roboczej.
     skladowe_zerowe: Mapping[str, int] | None = None
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC przypadku (opcja ``stan_awsc``
+    #: scenariusza; brak = ``spoczynek``) — Z_N zespołów uziemiających w ``z0_bus``.
+    stan_awsc: StanAwsc = "spoczynek"
+    #: Nazwane przyczyny braku wyniku zerowego per węzeł ``solve_graph``
+    #: (``enm.mapping.zbuduj_siec_zerowa``): zwarcie doziemne w takim węźle NIE jest liczone
+    #: rdzeniem — wiersz niesie przyczynę (``brak_drogi`` / ``poza_zakresem_iec60909`` /
+    #: ``brak_danych``). Pusty = zwarcie bez Z0 albo każdy węzeł ma drogę przez małą impedancję.
+    brak_wyniku_zerowego: Mapping[str, BrakWynikuZerowego] = field(default_factory=dict)
+    #: Ślad WHITE BOX punktów neutralnych SN (``WynikSieciZerowej.slad_punktu_neutralnego``).
+    slad_punktu_neutralnego: tuple[dict[str, Any], ...] = ()
 
 
 def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
@@ -1142,12 +1158,18 @@ def zloz_wejscie_zwarcia(
 
     # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
-    # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
-    z0_bus = (
-        build_zero_sequence_zbus(enm, solve_graph, scenario=scenario_c)
-        if _short_circuit_requires_z0(short_circuit_type)
-        else None
-    )
+    # pływających macierz jest tożsama z liczoną dotąd z ``graph``. Karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA: Z_N zespołów uziemiających w stanie AWSC przypadku,
+    # przyczyny braku wyniku zerowego per węzeł (wiersz bez rdzenia).
+    stan_awsc = stan_awsc_z_danych(options.get(KLUCZ_OPCJI_STANU_AWSC))
+    z0_bus = None
+    brak_wyniku_zerowego: dict[str, BrakWynikuZerowego] = {}
+    slad_punktu_neutralnego: tuple[dict[str, Any], ...] = ()
+    if _short_circuit_requires_z0(short_circuit_type):
+        siec_zerowa = zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc)
+        z0_bus = siec_zerowa.z0_bus
+        brak_wyniku_zerowego = siec_zerowa.przyczyny
+        slad_punktu_neutralnego = siec_zerowa.slad_punktu_neutralnego
 
     reportable_fault_node_ids = [
         node_id
@@ -1202,8 +1224,12 @@ def zloz_wejscie_zwarcia(
             )
         else:
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: bocznik zespołu uziemiającego z wartości
+    # roboczej (stan AWSC przypadku) — ten sam mechanizm i ten sam predykat składowej sieci
+    # zerowej co R′0/X′0 gałęzi z założenia katalogu.
     zalozenia_z0 = (
         zalozenia_z0_galezi(enm, scenario_c)
+        + zalozenia_zespolow_uziemiajacych(enm, scenario_c, stan_awsc)
         if _short_circuit_requires_z0(short_circuit_type)
         else ()
     )
@@ -1277,6 +1303,9 @@ def zloz_wejscie_zwarcia(
         k_sc_znaczniki=k_sc_znaczniki,
         impedancja_zwarcia=impedancja_zwarcia,
         skladowe_zerowe=skladowe_zerowe,
+        stan_awsc=stan_awsc,
+        brak_wyniku_zerowego=brak_wyniku_zerowego,
+        slad_punktu_neutralnego=slad_punktu_neutralnego,
     )
 
 

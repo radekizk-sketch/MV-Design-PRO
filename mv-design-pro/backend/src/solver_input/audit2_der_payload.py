@@ -1,13 +1,18 @@
 """
 Solver-input mapping dla pol audytu 2 w DER (Phase 3 backend integration).
 
-Mapuje pola DER (BESS modes, block-trafo, P(f) curve, tap-changer, MV grounding)
+Mapuje pola DER (BESS modes, block-trafo, P(f) curve, tap-changer)
 na deterministyczny payload uzywany przez solver_input/proof_engine/report.
 
 INVARIANTS:
 - Identyczny DER spec + identyczny catalog -> identyczny payload (deterministic).
 - Wszystkie pola maja catalog_ref + catalog_version (provenance).
 - Brak heurystyki, brak fallback'ow.
+- Sposobu uziemienia punktu neutralnego SN payload NIE niesie (karta
+  UX-04/POLE-ZU-SKLADOWA-ZEROWA): dawny wybor wariantu z konfiguracji stacji byl druga
+  prawda obok modelu, a jego rozszerzenia (klucz uziemienia w `sc_iec60909_extensions`
+  i `protection_extensions.grounding_type`) nie mialy ani jednego czytelnika. Uziemienie
+  sekcji SN czytaja solvery i analizy wprost z modelu (`enm.uziemienie_sekcji`).
 """
 
 from __future__ import annotations
@@ -18,7 +23,6 @@ from typing import Any, Protocol
 from network_model.catalog.audit2_catalogs import (
     get_bess_operation_mode,
     get_block_transformer,
-    get_mv_neutral_grounding,
     get_pf_curve,
     get_tap_changer,
 )
@@ -51,7 +55,6 @@ class StationAudit2Payload:
     """Deterministyczny payload audytu 2 dla stacji."""
 
     station_id: str
-    mv_neutral_grounding: dict[str, Any] | None = None
     tap_changers: list[dict[str, Any]] = field(default_factory=list)
     der_payloads: list[DerAudit2Payload] = field(default_factory=list)
     # Phase 22: per-transformer mapping (transformer_id -> tap_changer_dict).
@@ -60,7 +63,6 @@ class StationAudit2Payload:
     def to_dict(self) -> dict[str, Any]:
         return {
             "station_id": self.station_id,
-            "mv_neutral_grounding": self.mv_neutral_grounding,
             "tap_changers": self.tap_changers,
             "der_payloads": [d.to_dict() for d in self.der_payloads],
             "transformer_to_tap_changer": dict(self.transformer_to_tap_changer),
@@ -138,7 +140,6 @@ def build_der_audit2_payload(
 def build_station_audit2_payload(
     *,
     station_id: str,
-    mv_neutral_grounding_ref: str | None = None,
     tap_changer_refs: list[str] | None = None,
     der_specs: list[dict[str, Any]] | None = None,
     transformer_tap_changers: dict[str, str] | None = None,
@@ -147,22 +148,12 @@ def build_station_audit2_payload(
     Buduje deterministyczny payload audytu 2 dla stacji + DERs.
 
     Naprawy:
-      - B.1: mv_neutral_grounding -> rozwija typ uziemienia (isolated/petersen/etc.)
       - eng.13: tap_changers -> rozwija przelaczniki zaczepow per transformator
       - delegacja do build_der_audit2_payload dla kazdego DER
       - Phase 22: transformer_tap_changers (Dict[transformer_id, tap_changer_ref])
         rozwijany do `transformer_to_tap_changer` mapping (id -> full dict).
     """
     issues_global: list[str] = []
-
-    # B.1: MV neutral grounding.
-    grounding_payload: dict[str, Any] | None = None
-    if mv_neutral_grounding_ref:
-        grounding = get_mv_neutral_grounding(mv_neutral_grounding_ref)
-        if grounding is None:
-            issues_global.append(f"Nieznany typ uziemienia: {mv_neutral_grounding_ref}")
-        else:
-            grounding_payload = grounding.to_dict()
 
     # eng.13: tap-changers (lista, jeden per transformator).
     tap_changers_payload: list[dict[str, Any]] = []
@@ -199,7 +190,6 @@ def build_station_audit2_payload(
 
     payload = StationAudit2Payload(
         station_id=station_id,
-        mv_neutral_grounding=grounding_payload,
         tap_changers=tap_changers_payload,
         der_payloads=der_payloads,
         transformer_to_tap_changer=tr_to_tc_payload,
@@ -221,18 +211,13 @@ def extract_solver_extensions_from_payload(
     Ekstraktuje rozszerzenia dla solver-ow z payloadu audytu 2.
 
     Zwraca dict z kluczami:
-      - sc_iec60909_extensions: dane potrzebne dla short-circuit (uziemienie, withstand)
+      - sc_iec60909_extensions: dane potrzebne dla short-circuit (block-trafo)
       - power_flow_extensions: dane dla NR PF (tap-changer settings, BESS modes)
       - protection_extensions: dane dla IEC 60255 (P(f) droop, anti-islanding)
     """
     sc_extensions: dict[str, Any] = {}
     pf_extensions: dict[str, Any] = {}
     protection_extensions: dict[str, Any] = {}
-
-    # Short-circuit IEC 60909: typ uziemienia neutralnego wplywa na Z0.
-    if payload.mv_neutral_grounding:
-        sc_extensions["mv_neutral_grounding"] = payload.mv_neutral_grounding
-        protection_extensions["grounding_type"] = payload.mv_neutral_grounding.get("grounding_type")
 
     # Power Flow Newton-Raphson: tap-changer settings.
     if payload.tap_changers:
@@ -292,7 +277,6 @@ class KonfiguracjaAudit2Stacji(Protocol):
     """
 
     station_id: str
-    mv_neutral_grounding_ref: str | None
     tap_changer_refs: list[Any]
     der_specs: list[dict[str, Any]]
     transformer_tap_changers: dict[str, Any]
@@ -310,7 +294,6 @@ def rozszerzenia_audit2_z_konfiguracji(cfg: KonfiguracjaAudit2Stacji) -> dict[st
     """
     payload = build_station_audit2_payload(
         station_id=cfg.station_id,
-        mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
         tap_changer_refs=[str(ref) for ref in (cfg.tap_changer_refs or [])],
         der_specs=list(cfg.der_specs or []),
         transformer_tap_changers={

@@ -100,8 +100,8 @@ const SNAPSHOT_ODPOWIEDZ = {
         phase_system: '3ph',
       },
     ],
-    // W5-A: uziemienie punktu neutralnego sieci SN żyje na ŹRÓDLE stojącym na szynie
-    // (`Source.neutral_grounding`), nie na szynie — `Bus.grounding` skasowane.
+    // Karta UX-04/POLE-ZU: uziemienie punktu neutralnego sieci SN niesie zespół uziemiający
+    // na szynie SN (źródło opisuje punkt neutralny wyłącznie sieci 110 kV za granicą modelu).
     sources: [
       {
         id: 's1',
@@ -111,7 +111,17 @@ const SNAPSHOT_ODPOWIEDZ = {
         meta: {},
         bus_ref: 'bus/gpz/sn',
         model: 'short_circuit_power',
-        neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
+      },
+    ],
+    zespoly_uziemiajace: [
+      {
+        id: 'z1',
+        ref_id: 'zu/gpz/1',
+        name: 'Zespół uziemiający sekcji 1',
+        tags: [],
+        meta: {},
+        bus_ref: 'bus/gpz/sn',
+        dlawik: { i_min_a: 40, i_max_a: 400 },
       },
     ],
     transformers: [],
@@ -219,8 +229,10 @@ describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () =
   it('uziemienie punktu neutralnego z zamrożonej wersji układu przebiegu', async () => {
     render(<EkranSkladowych />);
     const sekcja = await screen.findByTestId('mvd-skladowe-uziemienie-punktu');
-    expect(sekcja).toHaveTextContent('cewka Petersena');
-    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent('Zasilanie GPZ');
+    expect(sekcja).toHaveTextContent('dławik gaszący');
+    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent(
+      'Zespół uziemiający sekcji 1',
+    );
   });
 
   it('werdykt raportowalności wybranego punktu (PL z backendu)', async () => {

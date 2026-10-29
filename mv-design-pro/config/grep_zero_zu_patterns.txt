@@ -1,0 +1,13 @@
+# version: UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28) — kasacja DRUGIEJ prawdy o uziemieniu
+# punktu neutralnego SN: kolumna ORM konfiguracji audytu 2 stacji z wyborem wariantu
+# uziemienia, katalog wariantow audytu 2 (piec pozycji `mng_*`), koncowka katalogu,
+# pole kontraktu zapisu, rozszerzenia solverow i konfigurator we froncie. Pomiar PRZED
+# kasacja: 10 plikow backendu src, 12 testow backendu, 16 plikow frontu src, 4 specy e2e,
+# 1 migracja SQL, 1 migawka OpenAPI. Sposob uziemienia sekcji SN wynika WYLACZNIE z
+# elementow modelu (`backend/src/enm/uziemienie_sekcji.py`). Postaci UZYCIA (Python,
+# TS, sciezka koncowki, identyfikatory pozycji) — nowe miejsce = wskrzeszenie.
+mv_neutral_grounding
+[mM]vNeutralGrounding
+MV_NEUTRAL_GROUNDING
+mv-neutral-grounding
+\bmng_(isolated|petersen|resistor_low|resistor_medium|directly)\b

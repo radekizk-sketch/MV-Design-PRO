@@ -28,7 +28,7 @@ import hashlib
 import json
 from typing import Literal
 
-from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from enm.rola_pola_sn import RolaPolaModelu, nazwa_roli_pola_sn_z_okresleniem
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
@@ -117,7 +117,7 @@ class CompleteMvBayTemplate(BaseModel):
     manufacturer_ref: str | None = None
     switchgear_family_ref: str | None = None
     bay_kind: BayKind = "liniowe_odplywowe"
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"] = "OUT"
+    bay_role: RolaPolaModelu = "OUT"
     source_status: SourceStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     # §11A.2 rozszerzenie — szablon pola producenta generuje pełne SLD pole.

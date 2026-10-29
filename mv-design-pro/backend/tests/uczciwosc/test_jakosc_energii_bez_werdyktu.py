@@ -26,6 +26,7 @@ from tests.uczciwosc.pomocnicze import (
     bieg_sceny_akademickiej,
     braki_tekstem,
     eksport_fixtur,
+    enm_sceny_akademickiej,
     model_sceny_akademickiej,
     sprawdz_ocene_niewykonana,
 )
@@ -161,7 +162,7 @@ def test_nadpisanie_zrodel_harmonicznych_z_parametrow_jest_skasowane() -> None:
         ]
     }
     with pytest.raises(ValueError, match="harmonic_sources"):
-        _with_parameter_payloads(model, wstrzykniete)
+        _with_parameter_payloads(model, wstrzykniete, enm_sceny_akademickiej())
     assert [zrodlo.model_dump() for zrodlo in model.harmonic_sources] == przed
 
 

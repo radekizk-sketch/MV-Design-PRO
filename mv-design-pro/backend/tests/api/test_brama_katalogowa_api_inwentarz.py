@@ -635,6 +635,147 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         },
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    # Iloczyn {transformator uziemiający, dławik, rezystor} × {referencja, wiązanie}.
+    # Ten sam iloczyn w zespołach sekcji GPZ (`add_grid_source_sn.zespoly_uziemiajace[]`).
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[{"sekcja": 1, "catalog_ref": "TU_ZNYN11_15KV_PW160"}]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_binding": _wiazanie(
+                        "TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"
+                    ),
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+                }
+            ]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "dlawik", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "dlawik": {
+                        "catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")
+                    },
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "dlawik"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+                }
+            ]
+        ),
+        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "rezystor", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        lambda: _payload_zrodla(
+            zespoly_uziemiajace=[
+                {
+                    "sekcja": 1,
+                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "rezystor": {
+                        "catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")
+                    },
+                }
+            ]
+        ),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "rezystor"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "catalog_ref",
+        lambda: {"bus_ref": "bus-1", "catalog_ref": "TU_ZNYN11_15KV_PW160"},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_binding": _wiazanie("TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_ref",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+        },
+        lambda p: _zepsuj_klucz(p, "dlawik", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "dlawik": {"catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")},
+        },
+        lambda p: _zepsuj_wiazanie(p, "dlawik"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_ref",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+        },
+        lambda p: _zepsuj_klucz(p, "rezystor", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "rezystor": {"catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")},
+        },
+        lambda p: _zepsuj_wiazanie(p, "rezystor"),
+    ),
     # --- CV-4.3 K1: odbior i generator synchroniczny WPROST na szynie SN --------
     IniekcjaBramy(
         "add_load_sn",

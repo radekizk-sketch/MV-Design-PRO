@@ -48,7 +48,6 @@ test.describe('Audit2 Station Config Persistence (full lifecycle)', () => {
     // 1. PUT pierwsza konfiguracja.
     const putRes1 = await request.put(`${baseUrl}/station-A`, {
       data: {
-        mv_neutral_grounding_ref: 'mng_petersen',
         tap_changer_refs: ['tc_oltc_110sn_19_125'],
         der_specs: [
           {
@@ -62,7 +61,7 @@ test.describe('Audit2 Station Config Persistence (full lifecycle)', () => {
     });
     expect(putRes1.ok()).toBeTruthy();
     const created = await putRes1.json();
-    expect(created.mv_neutral_grounding_ref).toBe('mng_petersen');
+    expect(created.tap_changer_refs).toEqual(['tc_oltc_110sn_19_125']);
     const initialId = created.id;
 
     // 2. GET zwraca zapisana konfiguracje.
@@ -76,7 +75,6 @@ test.describe('Audit2 Station Config Persistence (full lifecycle)', () => {
     // 3. PUT update — ten sam id.
     const putRes2 = await request.put(`${baseUrl}/station-A`, {
       data: {
-        mv_neutral_grounding_ref: 'mng_resistor_low',
         tap_changer_refs: [],
         der_specs: [],
       },
@@ -84,13 +82,12 @@ test.describe('Audit2 Station Config Persistence (full lifecycle)', () => {
     expect(putRes2.ok()).toBeTruthy();
     const updated = await putRes2.json();
     expect(updated.id).toBe(initialId); // ID niezmieniony
-    expect(updated.mv_neutral_grounding_ref).toBe('mng_resistor_low');
+    expect(updated.tap_changer_refs).toEqual([]);
     expect(updated.der_specs).toEqual([]);
 
     // 4. PUT konfiguracja innej stacji.
     const putRes3 = await request.put(`${baseUrl}/station-B`, {
       data: {
-        mv_neutral_grounding_ref: 'mng_isolated',
         tap_changer_refs: [],
         der_specs: [
           {
@@ -134,7 +131,7 @@ test.describe('Audit2 Station Config Persistence (full lifecycle)', () => {
     const pid2 = await createProject(request);
 
     await request.put(`${BACKEND_BASE}/api/v1/projects/${pid1}/audit2-station-config/X`, {
-      data: { mv_neutral_grounding_ref: 'mng_petersen', tap_changer_refs: [], der_specs: [] },
+      data: { tap_changer_refs: [], der_specs: [] },
     });
 
     const list1 = await (

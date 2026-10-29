@@ -72,7 +72,6 @@ function basicFetchStub(url: string | URL): Promise<Response> {
         device_withstand: [],
         pf_curves: [],
         block_transformers: [],
-        mv_neutral_groundings: [],
       }),
     } as never);
   }
@@ -149,7 +148,6 @@ describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () =
             json: async () => ({
               bess_operation_modes: [], tap_changers: [], hv_fuses: [],
               device_withstand: [], pf_curves: [], block_transformers: [],
-              mv_neutral_groundings: [],
             }),
           } as never);
         }
@@ -159,7 +157,6 @@ describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () =
             json: async () => [
               {
                 id: 'cfg-1', project_id: 'proj-1', station_id: 'station-A',
-                mv_neutral_grounding_ref: 'mng_petersen',
                 tap_changer_refs: [], der_specs: [],
                 transformer_tap_changers: {}, bay_hv_fuses: {},
                 bay_vts: {}, bay_device_withstand: {},

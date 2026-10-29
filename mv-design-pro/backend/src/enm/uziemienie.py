@@ -11,10 +11,14 @@ CO TU JEST (moduł-liść: wyłącznie stdlib, importowany przez ``enm/models.py
 * ``migruj_uziemienie_slownika`` — migracja przy wczytaniu (Pydantic
   ``model_validator(mode="before")`` na ``EnergyNetworkModel``): skasowane
   reprezentacje zastanego zapisu przenoszone do jedynych nośników:
-    - ``Bus.grounding`` → ``Source.neutral_grounding`` źródła na tej szynie
-      (albo źródła tej samej stacji — źródło GPZ po stronie 110 kV nie stoi na
-      szynie SN, którą dawny kreator uziemiał); brak źródła = utrata NAZWANA
-      w raporcie (wpis dziennika zmian robi magazyn ``enm/store.py``),
+    - ``Bus.grounding`` szyny spoza pasma SN → ``Source.neutral_grounding`` źródła
+      NA TEJ SZYNIE (sieć za granicą modelu, np. 110 kV); brak źródła = utrata NAZWANA
+      w raporcie (wpis dziennika zmian robi magazyn ``enm/store.py``). ``Bus.grounding``
+      szyny SN to utrata NAZWANA zawsze (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, §0 pkt 1
+      i 3): uziemienie punktu neutralnego sieci SN opisuje wyłącznie zespół uziemiający
+      (element katalogowy, którego dawny zapis nie zawiera) albo punkt neutralny
+      uzwojenia transformatora — dawne przeniesienie na źródło tej samej stacji (źródło
+      GPZ po stronie 110 kV) robiło z opisu sieci 110 kV nośnik uziemienia sieci SN,
     - ``substation.meta["nn_earthing_system"]`` → ``Transformer.lv_earthing_system``
       każdego transformatora stacji; stacja bez transformatora = utrata nazwana,
     - ``substation.meta["grounding"]`` / ``["zero_sequence"]`` — trzecia kopia
@@ -28,6 +32,8 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
+
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 KLUCZ_META_UKLAD_NN = "nn_earthing_system"
 KLUCZE_META_STACJI_USUWANE: tuple[str, ...] = ("grounding", "zero_sequence")
@@ -100,13 +106,6 @@ def _lista(data: dict[str, Any], klucz: str) -> list[Any]:
     return wartosc if isinstance(wartosc, list) else []
 
 
-def _stacja_szyny(substations: list[Any], bus_ref: str) -> dict[str, Any] | None:
-    for sub in substations:
-        if isinstance(sub, dict) and bus_ref in (sub.get("bus_refs") or []):
-            return sub
-    return None
-
-
 def _przenies_bus_grounding(data: dict[str, Any], stan: _Stan, kopie: dict[str, list[Any]]) -> None:
     buses = _lista(data, "buses")
     if not any(isinstance(b, dict) and "grounding" in b for b in buses):
@@ -114,7 +113,6 @@ def _przenies_bus_grounding(data: dict[str, Any], stan: _Stan, kopie: dict[str, 
     sources = kopie.setdefault(
         "sources", [dict(s) if isinstance(s, dict) else s for s in _lista(data, "sources")]
     )
-    substations = _lista(data, "substations")
     nowe_szyny: list[Any] = []
     for bus in buses:
         if not isinstance(bus, dict) or "grounding" not in bus:
@@ -126,15 +124,15 @@ def _przenies_bus_grounding(data: dict[str, Any], stan: _Stan, kopie: dict[str, 
         if wartosc is None:
             continue
         bus_ref = str(bus.get("ref_id") or "")
+        napiecie = bus.get("voltage_kv")
+        if isinstance(napiecie, int | float) and pasmo_napieciowe(float(napiecie)) == "SN":
+            stan.utracone.append(
+                f"szyna {bus_ref}: uziemienie {wartosc!r} szyny SN — uziemienie punktu "
+                "neutralnego sieci SN opisuje wyłącznie zespół uziemiający albo punkt "
+                "neutralny uzwojenia transformatora; zamodeluj zespół uziemiający"
+            )
+            continue
         cele = [s for s in sources if isinstance(s, dict) and s.get("bus_ref") == bus_ref]
-        if not cele:
-            stacja = _stacja_szyny(substations, bus_ref)
-            if stacja is not None:
-                cele = [
-                    s
-                    for s in sources
-                    if isinstance(s, dict) and s.get("substation_ref") == stacja.get("ref_id")
-                ]
         if not cele:
             stan.utracone.append(
                 f"szyna {bus_ref}: uziemienie {wartosc!r} bez źródła na szynie ani w stacji"

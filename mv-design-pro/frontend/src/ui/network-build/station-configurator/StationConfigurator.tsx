@@ -47,6 +47,8 @@ import {
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
 import type { MeasurementRow } from './przekladnikiStacji';
+import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
+import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
   canonicalFieldRole,
@@ -87,6 +89,19 @@ export interface StationMeasurementsProps {
 
 export type StationConfigCardId = StationConfigVisibleCardId | 'topology';
 
+/**
+ * Uziemienie punktu neutralnego sieci SN stacji — fakty MODELU z backendu (karta
+ * UX-04/POLE-ZU-SKLADOWA-ZEROWA, `enm.uziemienie_sekcji`); konfigurator niczego nie wybiera
+ * i niczego nie liczy. `onDodajZespol` otwiera kreator zespołu uziemiającego dla szyn sekcji.
+ */
+export interface StationEarthingProps {
+  readonly stan: 'brak_kontekstu' | 'ladowanie' | 'blad' | 'gotowe';
+  readonly sekcje: readonly UziemienieSekcjiSn[];
+  readonly przyczynaBraku: string | null;
+  readonly bladPl: string | null;
+  readonly onDodajZespol?: (szyny: readonly string[]) => void;
+}
+
 export interface StationConfiguratorProps {
   readonly basic: StationConfigBasicCardProps;
   readonly topology: StationConfigTopologyCardProps;
@@ -98,6 +113,8 @@ export interface StationConfiguratorProps {
   readonly protection: StationConfigProtectionCardProps;
   readonly measurements: StationMeasurementsProps;
   readonly readiness: StationConfigReadinessCardProps;
+  /** Brak = konfigurator poza kontekstem projektu (uziemienia nie ma skąd odczytać). */
+  readonly earthing?: StationEarthingProps;
   readonly defaultCard?: StationConfigCardId;
   readonly onOpenCalculations?: () => void;
 }
@@ -122,7 +139,7 @@ const STEPS: readonly StepDefinition[] = [
   { id: 'vt', n: 6, label: 'Przekładniki napięciowe', sub: 'Układ napięciowy i współczynnik napięciowy', group: 'Pomiary', code: 'PM-2' },
   { id: 'measurements', n: 7, label: ETYKIETA_POL_POMIAROWYCH, sub: 'Układy pomiarowe energii i pomiar napięcia szyn', group: 'Pomiary', code: 'PM-3' },
   { id: 'transformer', n: 8, label: 'Transformator', sub: 'Moc, grupa, zaczepy i poziomy nN', group: 'Stacja', code: 'ST-1' },
-  { id: 'earthing', n: 9, label: 'Uziemienie', sub: 'Neutralny SN, siatka i wymagania 67N', group: 'Stacja', code: 'ST-2' },
+  { id: 'earthing', n: 9, label: 'Uziemienie', sub: 'Punkt neutralny sieci SN z modelu', group: 'Stacja', code: 'ST-2' },
   { id: 'nn-switchgear', n: 10, label: 'Strona nN', sub: 'Rozdzielnice, odpływy i odbiory', group: 'Stacja', code: 'ST-3' },
   { id: 'der-sources', n: 11, label: 'PV, BESS i FW', sub: 'Warianty przyłączenia i PCC', group: 'OZE', code: 'OZE-1' },
   { id: 'power-quality', n: 12, label: 'Jakość energii', sub: 'Regulacja, bilans i wpływ źródeł', group: 'OZE', code: 'OZE-2' },
@@ -192,6 +209,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
     protection,
     measurements,
     readiness,
+    earthing,
     defaultCard = 'basic',
     onOpenCalculations,
   } = props;
@@ -279,10 +297,10 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
             {activeCard === 'bays' && <StationBayTechnicalPanel bays={bays} />}
             {activeCard === 'apparatus' && <StationApparatusPanel bays={bays} protection={protection} />}
             {activeCard === 'ct' && <MeasurementPackagePanel mode="ct" measurements={measurements} />}
-            {activeCard === 'vt' && <MeasurementPackagePanel mode="vt" measurements={measurements} protection={protection} />}
+            {activeCard === 'vt' && <MeasurementPackagePanel mode="vt" measurements={measurements} />}
             {activeCard === 'measurements' && <MeasurementPackagePanel mode="meters" measurements={measurements} />}
             {activeCard === 'transformer' && <StationConfigTransformerCard {...transformer} />}
-            {activeCard === 'earthing' && <StationEarthingPanel basic={basic} />}
+            {activeCard === 'earthing' && <StationEarthingPanel earthing={earthing} />}
             {activeCard === 'nn-switchgear' && <StationConfigNnSwitchgearCard {...nnSwitchgear} />}
             {activeCard === 'der-sources' && <StationConfigDerSourcesCard {...derSources} />}
             {activeCard === 'power-quality' && (
@@ -485,11 +503,9 @@ function StationApparatusPanel({
 function MeasurementPackagePanel({
   mode,
   measurements,
-  protection,
 }: {
   readonly mode: 'ct' | 'vt' | 'meters';
   readonly measurements: StationMeasurementsProps;
-  readonly protection?: StationConfigProtectionCardProps;
 }): JSX.Element {
   if (mode === 'ct') {
     return (
@@ -509,14 +525,14 @@ function MeasurementPackagePanel({
   }
   if (mode === 'vt') {
     return (
-      <TechnicalPanel title="Przekładniki napięciowe VT" subtitle="Układ napięciowy, klasa i zgodność z uziemieniem neutralnym SN.">
+      <TechnicalPanel title="Przekładniki napięciowe VT" subtitle="Układ napięciowy, klasa i moc; zgodność ze sposobem uziemienia sieci SN sprawdza karta zabezpieczeń.">
         <MeasurementTable
           rows={measurements.vts.map((row) => ({
             id: row.id,
             bay: row.bayDesignation,
             ratio: `${row.ratioPrimary} / ${row.ratioSecondary} V`,
             classPl: row.accuracyClassPl,
-            extra: protection?.mvNeutralGroundingType ?? 'typ uziemienia z karty stacji',
+            extra: row.burdenVa != null ? `${row.burdenVa} VA` : 'moc znamionowa nieustalona w modelu',
           }))}
           emptyText="Dobierz przekładniki VT z wariantu rozdzielni albo pakietu zabezpieczeniowego."
         />
@@ -597,49 +613,97 @@ function MeasurementTable({
   );
 }
 
+const ETYKIETA_KOMPLETNOSCI: Record<UziemienieSekcjiSn['kompletnosc'], string> = {
+  PELNY: 'dane potwierdzone',
+  NIEPELNY: 'część danych to wartości robocze (do potwierdzenia kartą producenta)',
+};
+
+function fmtPrad(wartosc: number | null): string {
+  return wartosc === null ? 'brak danych susceptancji zerowej gałęzi' : `${wartosc.toFixed(1)} A`;
+}
+
 function StationEarthingPanel({
-  basic,
+  earthing,
 }: {
-  readonly basic: StationConfigBasicCardProps;
+  readonly earthing: StationEarthingProps | undefined;
 }): JSX.Element {
-  const selected = basic.mvNeutralGroundings.find((item) => item.id === basic.mvNeutralGroundingRef);
-  const requires67N = selected
-    ? selected.grounding_type === 'isolated' || selected.grounding_type === 'petersen_coil'
-    : false;
-  return (
-    <div className="space-y-4">
-      <TechnicalPanel title="Uziemienie punktu neutralnego SN" subtitle="Wariant z katalogu wpływa na zabezpieczenia ziemnozwarciowe i dobór VT.">
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-scada-muted">Wariant katalogowy</span>
-          <select
-            data-testid="station-earthing-select"
-            value={basic.mvNeutralGroundingRef ?? ''}
-            onChange={(event) => basic.onChange?.({ mvNeutralGroundingRef: event.target.value || null })}
-            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-          >
-            <option value="">wybierz wariant z katalogu</option>
-            {basic.mvNeutralGroundings.map((item) => (
-              <option key={item.id} value={item.id}>{item.label_pl}</option>
-            ))}
-          </select>
-        </label>
-        {selected ? (
-          <div className="mt-3 rounded border border-scada-border bg-scada-bg p-3 text-xs">
-            <div className="font-semibold text-scada-text">{selected.label_pl}</div>
-            {/*
-              Karta K-O: „I_k1 typowo X-Y A" pochodziło z tabeli bez źródła i
-              konkurowało z wynikiem SC1F. Zostaje to, co wynika z samego
-              wariantu uziemienia — wymagalność zabezpieczenia kierunkowego.
-            */}
-            <div className="mt-1 text-scada-muted">
-              I_k1 dla tej sieci: z obliczeń zwarcia doziemnego (SC1F) · 67N:
-              {' '}{requires67N ? 'wymagane' : 'według projektu zabezpieczeń'}
-            </div>
-          </div>
-        ) : (
-          <GuidanceBox>Wybierz katalogowy wariant uziemienia neutralnego SN dla tej stacji.</GuidanceBox>
-        )}
+  const tytul = 'Uziemienie punktu neutralnego SN';
+  const podtytul =
+    'Z modelu sieci: zespół uziemiający sekcji albo uziemiony punkt neutralny uzwojenia transformatora.';
+  if (!earthing || earthing.stan === 'brak_kontekstu') {
+    return (
+      <TechnicalPanel title={tytul} subtitle={podtytul}>
+        <GuidanceBox>Wybierz aktywny projekt i stację — sposób uziemienia czytany jest z modelu projektu.</GuidanceBox>
       </TechnicalPanel>
+    );
+  }
+  if (earthing.stan === 'ladowanie') {
+    return (
+      <TechnicalPanel title={tytul} subtitle={podtytul}>
+        <GuidanceBox>Odczyt uziemienia sieci SN z modelu…</GuidanceBox>
+      </TechnicalPanel>
+    );
+  }
+  if (earthing.stan === 'blad') {
+    return (
+      <TechnicalPanel title={tytul} subtitle={podtytul}>
+        <div data-testid="station-earthing-blad" className="text-xs text-scada-alarm">
+          {earthing.bladPl ?? 'Nie udało się odczytać uziemienia sieci SN z modelu.'}
+        </div>
+      </TechnicalPanel>
+    );
+  }
+  return (
+    <div className="space-y-4" data-testid="station-earthing">
+      {earthing.sekcje.length === 0 ? (
+        <TechnicalPanel title={tytul} subtitle={podtytul}>
+          <GuidanceBox>{earthing.przyczynaBraku ?? 'Stacja nie ma sieci SN w modelu.'}</GuidanceBox>
+        </TechnicalPanel>
+      ) : null}
+      {earthing.sekcje.map((sekcja) => (
+        <TechnicalPanel key={sekcja.szyny.join('|')} title={tytul} subtitle={podtytul}>
+          <div data-testid="station-earthing-sekcja" data-wariant={sekcja.wariant} className="space-y-2 text-xs">
+            <div className="font-semibold text-scada-text">{sekcja.opis_pl}</div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Fact label="Prąd pojemnościowy sieci" value={fmtPrad(sekcja.prad_pojemnosciowy_a)} />
+              <Fact
+                label="Prąd dławików w ruchu"
+                value={sekcja.prad_dlawikow_a === null ? 'brak dławika w ruchu' : `${sekcja.prad_dlawikow_a.toFixed(1)} A`}
+              />
+              <Fact
+                label="Stopień rozstrojenia kompensacji"
+                value={sekcja.rozstrojenie === null ? 'nie dotyczy' : `${(sekcja.rozstrojenie * 100).toFixed(1)} %`}
+              />
+              <Fact label="Kompletność danych" value={ETYKIETA_KOMPLETNOSCI[sekcja.kompletnosc]} />
+            </div>
+            {sekcja.wariant_awsc_zalaczony !== sekcja.wariant ? (
+              <div className="text-scada-muted" data-testid="station-earthing-awsc">
+                Po załączeniu automatyki AWSC punkt neutralny pracuje jak układ dławik‖rezystor —
+                zwarcie doziemne liczy się w obu stanach automatyki.
+              </div>
+            ) : null}
+            {sekcja.galezie_bez_b0.length > 0 ? (
+              <div className="text-scada-grounded">
+                {`Gałęzie bez susceptancji zerowej (prąd pojemnościowy zaniżony): ${sekcja.galezie_bez_b0.length}.`}
+              </div>
+            ) : null}
+            {[...sekcja.odmowy, ...sekcja.ostrzezenia].map((tekst) => (
+              <div key={tekst} className="text-scada-alarm">{tekst}</div>
+            ))}
+            {earthing.onDodajZespol ? (
+              <button
+                type="button"
+                data-testid="station-earthing-dodaj-zespol"
+                onClick={() => earthing.onDodajZespol?.(sekcja.szyny)}
+                {...atrybutRoliAkcji('drugorzedna')}
+                className={klasaAkcji('drugorzedna')}
+              >
+                Dodaj zespół uziemiający
+              </button>
+            ) : null}
+          </div>
+        </TechnicalPanel>
+      ))}
     </div>
   );
 }

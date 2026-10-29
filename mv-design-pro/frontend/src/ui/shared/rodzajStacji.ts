@@ -77,6 +77,8 @@ export const KATEGORIA_ROLI_POLA: Readonly<Record<string, KategoriaRoli>> = {
   FW: 'inne',
   FARMA_WIATROWA: 'inne',
   OZE: 'inne',
+  ZU: 'inne',
+  ZESPOL_UZIEMIAJACY: 'inne',
 };
 
 /** Rodzaj pola katalogowego, który przesądza przed rolą (lustro `KATEGORIA_RODZAJU_POLA`). */

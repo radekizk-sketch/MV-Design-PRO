@@ -215,7 +215,8 @@ class FaultScenarioService:
             location: {"element_ref": str, "location_type": ..., "position": float|None}
             config: Short-circuit config — `scenariusz` (MAX/MIN) wymagany, opcjonalne
                 `nadpisanie_c` {wartosc, uzasadnienie}, `thermal_time_seconds`,
-                `breaking_time_seconds` (t_b [s], opcjonalny).
+                `breaking_time_seconds` (t_b [s], opcjonalny), `stan_awsc` (stan AWSC
+                sieci skompensowanej: `spoczynek` albo `zalaczony`, domyślnie `spoczynek`).
             fault_mode: "METALLIC" or "IMPEDANCE" (v2, default METALLIC).
             fault_impedance: {"r_f_ohm": float, "x_f_ohm": float} (required for IMPEDANCE).
 

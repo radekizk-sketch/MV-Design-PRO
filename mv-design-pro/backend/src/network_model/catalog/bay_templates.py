@@ -13,7 +13,11 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from enm.rola_pola_sn import nazwa_roli_pola_sn, nazwa_roli_pola_sn_z_okresleniem
+from enm.rola_pola_sn import (
+    RolaPolaModelu,
+    nazwa_roli_pola_sn,
+    nazwa_roli_pola_sn_z_okresleniem,
+)
 from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field
 
@@ -70,7 +74,7 @@ class BayTemplate(BaseModel):
 
     template_id: str
     name: str  # PL: nazwa roli z kanonu `enm.rola_pola_sn` (karta #141) albo nazwa funkcji
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
+    bay_role: RolaPolaModelu
     description: str
     devices: list[BayDeviceTemplate] = Field(default_factory=list)
     ports: list[BayPortTemplate] = Field(default_factory=list)

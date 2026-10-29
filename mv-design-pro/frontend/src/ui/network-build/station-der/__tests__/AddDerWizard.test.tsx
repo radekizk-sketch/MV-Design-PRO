@@ -151,7 +151,6 @@ const AUDIT2_SNAPSHOT_BODY = {
   device_withstand: [],
   pf_curves: PF_CURVE_FIXTURES,
   block_transformers: BLOCK_TRANSFORMER_FIXTURES,
-  mv_neutral_groundings: [],
 };
 
 // Karta FAB-J: operatorzy NC RfG — identyfikatory REALNE (`pse`/`enea`, nie

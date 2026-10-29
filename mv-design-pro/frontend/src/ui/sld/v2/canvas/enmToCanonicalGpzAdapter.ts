@@ -25,6 +25,7 @@ import type {
   Source,
   Substation,
   Transformer,
+  ZespolUziemiajacy,
 } from '../../../../types/enm';
 import type {
   BayFieldRole,
@@ -90,6 +91,8 @@ export function buildCanonicalGpzProps(
     // puste czyta `snapshot.sources` (źródło systemowe na szynie GPZ) —
     // addytywne, `buildScene.ts` przekazuje PEŁNY `EnergyNetworkModel`.
     | 'sources'
+    // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN — zespoły uziemiające stacji.
+    | 'zespoly_uziemiajace'
   >,
   substationRef: string,
 ): CanonicalGpzProps {
@@ -172,11 +175,16 @@ export function buildCanonicalGpzProps(
     name: substation.name?.trim() ? substation.name.trim() : null,
     transformers,
     sections: lvSections,
-    // V12K-219 / W5-A: sposób pracy punktu neutralnego sieci SN — z
-    // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
-    // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
-    // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
+    // V12K-219 / karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN — zainstalowany
+    // w modelu (zespół uziemiający na szynie SN stacji albo uzwojenie SN transformatora),
+    // zero domysłu: brak aparatu daje `null`, a schemat wtedy nie rysuje aparatu.
+    snNeutralEarthing: deriveSnNeutralEarthing(
+      enm,
+      substation,
+      enm.buses ?? [],
+      allTransformers,
+      enm.zespoly_uziemiajace ?? [],
+    ),
     couplers,
     hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -647,47 +655,66 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'COUPLER': return 'sprzeglo';
     case 'MEASUREMENT': return 'pomiarowe';
     case 'OZE': return 'zrodlowe';
+    case 'ZU': return 'uziemiajace';
   }
 }
 
 /**
- * Sposób pracy punktu neutralnego sieci SN z modelu (V12K-219).
+ * Aparat punktu neutralnego sieci SN stacji — ZAINSTALOWANY w modelu (V12K-219, karta
+ * UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1).
  *
- * Szukamy szyny SN tej stacji (pasmo SN: powyżej 1 kV i poniżej 110 kV — `wPasmieSn`,
- * to samo lustro granic co `hvBusRef` powyżej) i przepisujemy jej
- * `Source.neutral_grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
- * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
- * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
- * się między konfiguracjami o rzędy wielkości.
+ * Nośniki uziemienia sieci SN są dwa i tylko dwa: zespół uziemiający na szynie SN stacji
+ * (`zespoly_uziemiajace`: uziemienie bezpośrednie, dławik gaszący, rezystor) i punkt neutralny
+ * uzwojenia SN transformatora stacji (`Transformer.lv_neutral`). Schemat rysuje ZAINSTALOWANY
+ * aparat — wariantu pracy sieci (stany odłączników, AWSC) ani Z_N nie wyprowadza; to robi
+ * backend (`enm.uziemienie_sekcji`). Źródło 110 kV nie jest nośnikiem uziemienia sieci SN:
+ * dawne odczytanie `Source.neutral_grounding` źródła GPZ rysowało opis sieci 110 kV jako
+ * punkt neutralny sieci SN.
+ *
+ * Kolejność: zespół pierwszej sekcji (porządek `gpz_sections`), potem zespół na innej szynie SN
+ * stacji (po `ref_id`), potem uzwojenie SN transformatora stacji (po `ref_id`). Zespół bez
+ * elementu w punkcie neutralnym niczego nie rysuje (brak modelu nazywa walidator). Brak aparatu
+ * = `null` (zero domysłu — brak to nie „izolowana").
  */
 function deriveSnNeutralEarthing(
   enm: ModelSzyn,
   substation: Substation,
   buses: readonly Bus[],
-  sources: readonly Source[],
+  transformers: readonly Transformer[],
+  zespoly: readonly ZespolUziemiajacy[],
 ): CanonicalGpzProps['snNeutralEarthing'] {
-  // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
+  // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra.
   const stationBusRefs = szynyStacji(enm, substation);
-  const source = sources.find(
-    (s) =>
-      Boolean(s.neutral_grounding)
-      && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
+  const szynySn = new Set(
+    buses.filter((b) => stationBusRefs.has(b.ref_id) && wPasmieSn(b.voltage_kv)).map((b) => b.ref_id),
   );
-  const g = source?.neutral_grounding;
-  if (!g) return null;
-  // Rysowany przy szynie SN (transformator Yd11 nie ma punktu neutralnego SN) —
-  // szyna SN stacji istnieje niezależnie od tego, czy źródło stoi po stronie 110 kV.
-  const snBus = buses.find(
-    (b) => stationBusRefs.has(b.ref_id) && wPasmieSn(b.voltage_kv),
+  if (szynySn.size === 0) return null;
+  const kolejnoscSekcji = new Map(
+    [...(substation.gpz_sections ?? [])]
+      .sort((a, b) => a.order - b.order)
+      .map((sekcja, indeks) => [sekcja.bus_ref, indeks] as const),
   );
-  if (!snBus) return null;
+  const pozycja = (busRef: string) => kolejnoscSekcji.get(busRef) ?? Number.MAX_SAFE_INTEGER;
+  const zespolyStacji = zespoly
+    .filter((z) => szynySn.has(z.bus_ref))
+    .sort((a, b) => pozycja(a.bus_ref) - pozycja(b.bus_ref) || a.ref_id.localeCompare(b.ref_id));
+  for (const zespol of zespolyStacji) {
+    if (zespol.uziemienie_bezposrednie) return { kind: 'direct' };
+    const rOhm = zespol.rezystor?.r_ohm ?? undefined;
+    if (zespol.dlawik) return { kind: 'coil', ...(zespol.rezystor ? { rOhm } : {}) };
+    if (zespol.rezystor) return { kind: 'resistor', rOhm };
+  }
+  const uzwojenie = [...transformers]
+    .filter((tr) => szynySn.has(tr.lv_bus_ref) && tr.lv_neutral)
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id))[0]?.lv_neutral;
+  if (!uzwojenie) return null;
   const kind =
-    g.type === 'resistor_grounded'
+    uzwojenie.type === 'resistor_grounded'
       ? 'resistor'
-      : g.type === 'petersen_coil'
+      : uzwojenie.type === 'petersen_coil'
         ? 'coil'
-        : g.type === 'directly_grounded'
+        : uzwojenie.type === 'directly_grounded'
           ? 'direct'
           : 'isolated';
-  return { kind, rOhm: g.r_ohm ?? undefined, xOhm: g.x_ohm ?? undefined };
+  return { kind, rOhm: uzwojenie.r_ohm ?? undefined, xOhm: uzwojenie.x_ohm ?? undefined };
 }

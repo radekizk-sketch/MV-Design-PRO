@@ -189,6 +189,15 @@ def _blokady(enm: EnergyNetworkModel, rodzaj_analizy: AnalysisType):
     return next(r for r in macierz.matrix if r.analysis_type == rodzaj_analizy).blockers
 
 
+def _problemy(enm: EnergyNetworkModel, rodzaj_analizy: AnalysisType):
+    """Blokady i ostrzeżenia analizy — treść każdego nazywa element tą samą regułą."""
+    walidator = ENMValidator()
+    gotowosc = walidator.readiness(walidator.validate(enm))
+    macierz = EligibilityService().compute_matrix(enm=enm, readiness=gotowosc, case_id="c-nazwy")
+    wiersz = next(r for r in macierz.matrix if r.analysis_type == rodzaj_analizy)
+    return [*wiersz.blockers, *wiersz.warnings]
+
+
 #: Miejsce blokady: (kod, rodzaj analizy, uszkodzenie modelu, element w treści
 #: (kolekcja, ref, słowo rodzaju), drugi element w treści albo None, element_ref blokady).
 Uszkodzenie = Callable[[EnergyNetworkModel], EnergyNetworkModel]
@@ -257,13 +266,16 @@ MIEJSCA: dict[str, tuple[str, AnalysisType, Uszkodzenie, tuple[str, str, str], o
         None,
         REF_KABEL,
     ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: Z₀ niesie wyłącznie źródło spoza pasma SN
+    # (tu przyłącze nN z sieci sąsiedniej) — źródło GPZ na szynach SN nie ma czego zgłaszać.
+    # Ostrzeżenie, nie blokada (węzły sieci zerowej źródła: przyczyna ``brak_danych``).
     "zrodlo_bez_z0": (
         "ELIG_SC1_MISSING_Z0",
         AnalysisType.SC_1F,
-        lambda m: m,
-        ("sources", REF_ZRODLO, "Źródło"),
+        lambda m: _ze_zrodlem_nn(m, "PLUS_6"),
+        ("sources", REF_ZRODLO_NN, "Źródło"),
         None,
-        REF_ZRODLO,
+        REF_ZRODLO_NN,
     ),
     "transformator_bez_ukladu_nn": (
         "ELIG_FLNN_MISSING_EARTHING_SYSTEM",
@@ -335,9 +347,9 @@ def test_blokada_nazywa_element_nazwa_z_modelu_nigdy_identyfikatorem(
     if not nazwane:
         enm = _bez_nazw(enm, *elementy_tresci)
     blokady = [
-        b for b in _blokady(enm, rodzaj_analizy) if b.code == kod and b.element_ref == element_ref
+        b for b in _problemy(enm, rodzaj_analizy) if b.code == kod and b.element_ref == element_ref
     ]
-    assert len(blokady) == 1, [(b.code, b.element_ref) for b in _blokady(enm, rodzaj_analizy)]
+    assert len(blokady) == 1, [(b.code, b.element_ref) for b in _problemy(enm, rodzaj_analizy)]
     tresc = blokady[0].message_pl
     for e in elementy_tresci:
         assert _oczekiwany_opis(enm, e) in tresc, tresc  # type: ignore[arg-type]

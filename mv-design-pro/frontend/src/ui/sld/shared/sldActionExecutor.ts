@@ -369,6 +369,8 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
       return 'Otwieram formularz generatora synchronicznego SN.';
     case 'add_surge_arrester_sn':
       return 'Otwieram formularz ogranicznika przepięć SN.';
+    case 'add_zespol_uziemiajacy_sn':
+      return 'Otwieram formularz zespołu uziemiającego SN.';
     case 'set_nn_cable_laying_conditions':
       return 'Otwieram formularz warunków ułożenia kabla nN.';
     case 'split_nn_segment':
@@ -525,6 +527,7 @@ const AKCJE_SEKCJI_NA_SZYNIE_KANONICZNEJ: ReadonlySet<string> = new Set([
   'add-arrester',
   'add-load-sn',
   'add-sync-generator',
+  'add-earthing-set',
 ]);
 
 /** Akcje menu kanwy i paska działań inspektora → operacja domenowa formularza. */
@@ -552,6 +555,7 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   'add-load-sn': 'add_load_sn',
   'add-sync-generator': 'add_generator_sn',
   'add-arrester': 'add_surge_arrester_sn',
+  'add-earthing-set': 'add_zespol_uziemiajacy_sn',
   'add-genset': 'add_genset_nn',
   'add-ups': 'add_ups_nn',
   // V12K-352: dane modułu wytwórczego NC RfG generatora — kreator „Edycja parametrów

@@ -47,6 +47,11 @@ from enm.models import (
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
+from enm.uziemienie_sekcji import (
+    czesci_zespolu_bez_katalogu,
+    impedancja_zerowa_zrodla_dozwolona,
+    uziemienie_sieci,
+)
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
@@ -226,8 +231,8 @@ class EligibilityService:
         # C1: Z0 on branches
         self._check_branch_z0(enm, blockers)
 
-        # C2: Z0 on sources
-        self._check_source_z0(enm, blockers)
+        # C2: Z0 on sources — ostrzeżenie (węzły sieci zerowej źródła: przyczyna brak danych)
+        self._check_source_z0(enm, warnings)
 
         # C3: Earthing/grounding model availability
         self._check_earthing_model(enm, blockers)
@@ -567,6 +572,28 @@ class EligibilityService:
                     )
                 )
 
+        poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").walidacja
+        for zu in sorted(enm.zespoly_uziemiajace, key=lambda z: z.ref_id):
+            czesci = czesci_zespolu_bez_katalogu(zu, poziom_zespolu)
+            if czesci:
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_CATALOG_REF",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"{opis_obiektu(zu, 'Zespół uziemiający')} nie ma typu z katalogu "
+                            f"({', '.join(czesci)}). Wybierz typy z katalogu."
+                        ),
+                        element_ref=zu.ref_id,
+                        element_type="zespol_uziemiajacy",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=zu.ref_id,
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
     @staticmethod
     def _check_branch_impedance(
         enm: EnergyNetworkModel,
@@ -681,17 +708,34 @@ class EligibilityService:
     @staticmethod
     def _check_source_z0(
         enm: EnergyNetworkModel,
-        blockers: list[AnalysisEligibilityIssue],
+        warnings: list[AnalysisEligibilityIssue],
     ) -> None:
+        """Źródło bez Z₀ (gdy jego Z₀ wchodzi do obwodu zerowego) — OSTRZEŻENIE SC_1F.
+
+        Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: Z₀ źródła opisuje sieć za granicą modelu
+        po stronie WN (albo nN); źródło w paśmie SN nie niesie składowej zerowej (mapowanie ją
+        pomija, walidator zgłasza jej obecność jako W-W5-02). Ten sam predykat co mapowanie
+        (`impedancja_zerowa_zrodla_dozwolona`) — inaczej gotowość żądałaby danej, której
+        obliczenie nie czyta. Brak Z₀ źródła nie blokuje analizy (ten sam warunek co
+        `ENMValidator._compute_availability` i brama biegu `canonical_analysis`): węzły
+        składowej sieci zerowej źródła dostają w wyniku nazwaną przyczynę ``brak_danych``,
+        a sieć SN za transformatorem Yd/Dy liczy się z zespołu uziemiającego sekcji.
+        """
+        napiecia = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
         for source in enm.sources:
+            napiecie = napiecia.get(source.bus_ref)
+            if napiecie is not None and not impedancja_zerowa_zrodla_dozwolona(napiecie):
+                continue
             if not dane_zwarciowe_zrodla(source).z0:
-                blockers.append(
+                warnings.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC1_MISSING_Z0",
-                        severity=IssueSeverity.BLOCKER,
+                        severity=IssueSeverity.WARNING,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło')} nie ma danych składowej zerowej "
-                            "(Z₀). Zwarcie jednofazowe wymaga R₀/X₀ lub stosunku Z₀/Z₁."
+                            "(Z₀) — zwarcia doziemne w węzłach sieci składowej zerowej tego "
+                            "źródła nie będą liczone (brak danych). Podaj R₀/X₀ lub stosunek "
+                            "Z₀/Z₁ sieci zasilającej."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",
@@ -735,14 +779,43 @@ class EligibilityService:
         zapowiadał blokadę. Stan sprzed poprawki dopuszczał uruchomienie SC_1F
         bez podstawy fizycznej — to fabrykacja wyniku, nie ułatwienie.
 
-        Model uziemienia uznajemy za obecny, gdy niesie go ZRODLO
-        (``Source.neutral_grounding`` — punkt neutralny sieci SN zasilanej z
-        rownowaznika GPZ) ALBO punkt neutralny transformatora
-        (``hv_neutral``/``lv_neutral``) — w praktyce krajowej punkt neutralny
-        sieci SN uziemia sie po stronie dolnej transformatora GPZ albo
-        transformatorem uziemiajacym na szynie, wiec obie drogi sa rownoprawne.
-        W5-A: `Bus.grounding` skasowane — szyna nie jest nosnikiem uziemienia.
+        JEDNA PRAWDA (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1). Sposób uziemienia sieci
+        SN wyprowadza ``enm.uziemienie_sekcji`` z elementów fizycznych: zespołu uziemiającego
+        i punktu neutralnego uzwojenia transformatora. Sieć SN bez żadnego punktu uziemienia
+        jest siecią IZOLOWANĄ wyprowadzoną z modelu (zwarcie jednofazowe dostaje nazwaną
+        przyczynę braku drogi zerowej — to wynik, nie brak danych). Brakiem MODELU jest
+        sekcja z odmową nazwaną: zespół uziemiający bez elementu w punkcie neutralnym albo
+        z deklaracją sprzeczną — wtedy blokada wskazuje zespół.
+
+        Model bez sieci SN (wyłącznie WN albo nN): punkt neutralny opisuje źródło
+        (``Source.neutral_grounding`` — sieć za granicą modelu) albo uzwojenie
+        transformatora (``hv_neutral``/``lv_neutral``). W5-A: `Bus.grounding` skasowane.
         """
+        sekcje = uziemienie_sieci(enm)
+        for sekcja in sekcje:
+            if not sekcja.odmowy:
+                continue
+            nieokreslone = [p for p in sekcja.punkty if p.odmowa_pl is not None]
+            ref = nieokreslone[0].element_ref if nieokreslone else None
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC1_EARTHING_MODEL_INCOMPLETE",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Dane niekompletne: sposób uziemienia punktu neutralnego sieci SN "
+                        "nieokreślony — " + " ".join(sekcja.odmowy)
+                    ),
+                    element_ref=ref,
+                    element_type="zespol_uziemiajacy" if ref is not None else None,
+                    fix_action=(
+                        FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=ref)
+                        if ref is not None
+                        else None
+                    ),
+                )
+            )
+        if sekcje:
+            return
         has_grounding = any(source.neutral_grounding is not None for source in enm.sources)
         has_trafo_neutral = any(
             trafo.hv_neutral is not None or trafo.lv_neutral is not None
@@ -757,8 +830,8 @@ class EligibilityService:
                     message_pl=(
                         "Dane niekompletne: brak modelu uziemienia. "
                         "Zwarcie jednofazowe wymaga sposobu uziemienia punktu "
-                        "neutralnego — uzupełnij punkt neutralny źródła (GPZ) lub "
-                        "transformatora, aby uruchomić obliczenie."
+                        "neutralnego — uzupełnij punkt neutralny źródła sieci zewnętrznej "
+                        "lub transformatora, aby uruchomić obliczenie."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",

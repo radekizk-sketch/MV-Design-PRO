@@ -259,6 +259,13 @@ SANCTIONED_CHANGES = {
         "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
         "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
         "tests/network_model/test_modul_zespolony_platformy.py."
+        " Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (zakres B-01 karty: skladowa zerowa i Z_N, B-01 "
+        "do przyjecia przez architekta): `skladowa_nieokresowa` przy wykladniku < -700 (R/X < 0 "
+        "petli doziemnej pojemnosciowej sieci z rezystorem i B0) daje wspolczynnik inf zamiast "
+        "OverflowError wywracajacego bieg - ta sama regula co `_thermal_mn_factors`; wiersz "
+        "niefinitowy oznacza bramka `canonical_analysis`. Dla wykladnika >= -700 liczby bit w "
+        "bit. Sonda: docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md. Wpis do usuniecia po scaleniu "
+        "do main."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
@@ -318,6 +325,17 @@ SANCTIONED_CHANGES = {
         "falownika dla Z_conv(f) jako odmowa strukturalna (kod + odwolanie do "
         "przeksztaltnika, tresc PL z nazwami wielkosci, jedno zrodlo listy brakow) zamiast "
         "golego ValueError z kluczami pol. Wpis do usuniecia po scaleniu do main."
+        " Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (zakres B-01 karty: skladowa zerowa i Z_N, B-01 "
+        "do przyjecia przez architekta): uziemienie sieci SN WYLACZNIE z modelu "
+        "(`V126UziemienieSnInput` z `enm.uziemienie_sekcji`) - trzy domyslne uziemienia "
+        "solvera i parametry biegu nadpisujace model skasowane; I_C liczone z napieciem sieci "
+        "SN i galeziami jej sekcji (dawniej najwyzsze napiecie szyny modelu, w GPZ 110 kV - "
+        "I_C zawyzone 110/15 = 7,3 raza); dobor NER zastapiony sprawdzeniem rezystora z modelu "
+        "(R, I_n, t_n; E_k = I_R,k^2*R_k*t_wyl <= I_n,k^2*R_k*t_n,k, uklad Z.14 z I_L dlawika); "
+        "brak napiecia sieci i pradu dlawika Z.14 to nazwane odmowy bez podstawionej liczby; "
+        "dane przyjete ESTIMATED -> kompletnosc NIEPELNY (zasada nr 4). Sonda liczbowa i "
+        "fikstury odpowiedzi: docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md par. 3.6-3.7. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "

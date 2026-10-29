@@ -334,7 +334,18 @@ def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> Skla
     if tb_s <= 0.0:
         raise ValueError("tb_s must be > 0")
     wykladnik = OMEGA_50HZ * tb_s * rx_ratio
-    wspolczynnik = 0.0 if wykladnik > 700.0 else math.exp(-wykladnik)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01, sonda w docs/uiux/UX04_POLE_ZU_SKLADOWA_
+    # ZEROWA.md): R/X < 0 — pętla zwarcia doziemnego pojemnościowa (pojemność doziemna B0
+    # sieci uziemionej przez rezystor przeważa nad reaktancją Z1 + Z2 + Z0) — daje wykładnik
+    # ujemny; e^(−ω·t_b·R/X) przekraczało zakres liczby (OverflowError wywracał cały bieg).
+    # Ta sama reguła co ``_thermal_mn_factors``: nadmiar → ∞, a wiersz z wartością niefinitową
+    # bramka ``canonical_analysis`` oznacza jako niefizyczny (nieraportowalny z wykazem pól).
+    if wykladnik > 700.0:
+        wspolczynnik = 0.0
+    elif wykladnik < -700.0:
+        wspolczynnik = math.inf
+    else:
+        wspolczynnik = math.exp(-wykladnik)
     return SkladowaNieokresowa(
         tb_s=tb_s,
         ikss_a=ikss_a,

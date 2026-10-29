@@ -35,6 +35,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   append_station_on_endpoint: 'Dodano stację na końcu segmentu SN',
   add_shunt_compensator_sn: 'Dodano kompensator bocznikowy SN',
   add_surge_arrester_sn: 'Dodano ogranicznik przepięć SN',
+  add_zespol_uziemiajacy_sn: 'Zapisano zespół uziemiający SN',
   add_load_sn: 'Dodano odbiór SN',
   add_generator_sn: 'Dodano generator synchroniczny SN',
   add_gpz_section: 'Dodano sekcję GPZ',

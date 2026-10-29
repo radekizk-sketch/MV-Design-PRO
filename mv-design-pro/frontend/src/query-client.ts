@@ -34,4 +34,8 @@ export const audit2QueryKeys = {
     [...audit2QueryKeys.all, 'station-config-list', projectId] as const,
   projectProofPack: (projectId: string) =>
     [...audit2QueryKeys.all, 'project-proof-pack', projectId] as const,
+  // Karta UX-04/POLE-ZU: uziemienie sieci SN stacji z modelu — klucz niesie rewizję modelu,
+  // więc każda zmiana modelu (np. nowy zespół uziemiający) odczytuje stan na nowo.
+  uziemienieSn: (projectId: string, stationId: string, rewizja: number | null) =>
+    [...audit2QueryKeys.all, 'uziemienie-sn', projectId, stationId, rewizja] as const,
 };

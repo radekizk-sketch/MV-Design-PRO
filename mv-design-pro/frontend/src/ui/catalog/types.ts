@@ -657,6 +657,44 @@ export interface SurgeArresterCatalogType extends CatalogType {
   standard?: string;
 }
 
+/** Mapa „pole → podstawa” wartości roboczych pozycji typowej (zasada nr 4, `ESTIMATED`). */
+export type WartosciRoboczeKatalogu = Readonly<Record<string, string>>;
+
+/**
+ * Transformator uziemiający ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — backend
+ * `EarthingTransformerType.to_dict` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+ */
+export interface EarthingTransformerCatalogType extends CatalogType {
+  u_n_kv: number;
+  s_n_kva: number;
+  grupa_polaczen: string;
+  r0_ohm: number;
+  x0_ohm: number;
+  s_pw_kva: number | null;
+  u_pw_kv: number | null;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
+/** Dławik gaszący (DLAWIK_GASZACY) — backend `ArcSuppressionCoilType.to_dict`. */
+export interface ArcSuppressionCoilCatalogType extends CatalogType {
+  u_n_kv: number;
+  i_min_a: number;
+  i_max_a: number;
+  regulacja: 'ciagla' | 'zaczepy';
+  liczba_zaczepow: number | null;
+  u_wtorne_v: number | null;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
+/** Rezystor uziemiający (REZYSTOR_UZIEMIAJACY) — backend `NeutralEarthingResistorType.to_dict`. */
+export interface NeutralEarthingResistorCatalogType extends CatalogType {
+  u_n_kv: number;
+  r_ohm: number;
+  i_n_a: number;
+  t_s: number;
+  wartosci_robocze?: WartosciRoboczeKatalogu | null;
+}
+
 /**
  * Shunt capacitor bank type (KOMPENSATOR_SN).
  * Source: backend ShuntCapacitorType dataclass.
@@ -753,6 +791,9 @@ export type CatalogNamespace =
   | 'VT'
   | 'OGRANICZNIK_SN'
   | 'KOMPENSATOR_SN'
+  | 'TRANSFORMATOR_UZIEMIAJACY'
+  | 'DLAWIK_GASZACY'
+  | 'REZYSTOR_UZIEMIAJACY'
   | 'OBCIAZENIE'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
@@ -769,7 +810,8 @@ export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFO
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN'
+  | 'EARTHING_TRANSFORMER' | 'ARC_SUPPRESSION_COIL' | 'NEUTRAL_EARTHING_RESISTOR';
 
 /**
  * Type reference in element (points to catalog).

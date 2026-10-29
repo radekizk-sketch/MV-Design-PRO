@@ -85,6 +85,10 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   cap: 'bateria kondensatorów',
   spd: 'ochrona przepięciowa',
   arrester: 'ogranicznik przepięć',
+  // Zespół uziemiający SN (`zu/<ziarno>/zespol`, `add_zespol_uziemiajacy_sn`) — oba człony
+  // nazywają ten sam element, więc etykieta zapasowa zwija je do jednego.
+  zu: 'zespół uziemiający',
+  zespol: 'zespół uziemiający',
   ups: 'zasilacz UPS',
   genset: 'zespół prądotwórczy',
   pv: 'instalacja PV',

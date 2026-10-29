@@ -160,9 +160,11 @@ from .pole_katalogowe import (
     rozwiaz_plan_pola,
 )
 from .rola_pola_sn import (
+    ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
     nazwa_roli_pola_sn,
+    rola_modelu_pola_sn,
 )
 from .slownik_komunikatow import (
     NAZWY_KLAS_APARATU_NN_PL,
@@ -1994,13 +1996,16 @@ def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
 _KOD_BLEDU_POLA_KATALOGOWEGO = KOD_BLEDU_POLA_KATALOGOWEGO
 
 
-def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
+def _normalize_sn_bay_role(payload: dict[str, Any]) -> str | None:
+    """Rola pola z ładunku: brak klucza = rola domyślna operacji ``FEEDER`` (kontrakt
+    `AddSnBayPayload.bay_role`); rola spoza JEDNEJ listy ról modelu
+    (`enm.rola_pola_sn.ROLE_POLA_MODELU`) i spoza aliasów kanonicznych (`LINIA_OUT` → `OUT`)
+    = ``None`` — wołający odmawia z nazwą błędu (dawniej nieznana rola, także alias
+    kanoniczny `LINIA_OUT`, po cichu stawała się polem odgałęźnym)."""
     raw_role = payload.get("bay_role")
-    if isinstance(raw_role, str):
-        normalized = raw_role.strip().upper()
-        if normalized in {"IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"}:
-            return normalized
-    return "FEEDER"
+    if raw_role is None:
+        return "FEEDER"
+    return rola_modelu_pola_sn(raw_role)
 
 
 def _default_sn_bay_name(role: str) -> str:
@@ -2115,6 +2120,12 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
 
     bay_role = _normalize_sn_bay_role(payload)
+    if bay_role is None:
+        return _error_response(
+            f"Pole {pole('bay_role', 'add_sn_bay')}: rola pola spoza listy ról modelu "
+            f"({lista_pl(nazwa_roli_pola_sn(r) for r in ROLE_POLA_MODELU)}).",
+            "sn.bay_role_invalid",
+        )
     pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
     existing_field = pole_modelu(enm, existing_field_ref) if existing_field_ref else None
     if existing_field_ref and not isinstance(existing_field, dict):
@@ -7304,6 +7315,377 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
 
 
+#: Przestrzenie katalogu elementów zespołu uziemiającego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)
+#: — przesądzone rodzajem elementu, nie ładunkiem (ta sama zasada co bateria kondensatorów).
+PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO = "TRANSFORMATOR_UZIEMIAJACY"
+PRZESTRZEN_DLAWIKA_GASZACEGO = "DLAWIK_GASZACY"
+PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO = "REZYSTOR_UZIEMIAJACY"
+
+_STANY_ODLACZNIKA_PUNKTU_NEUTRALNEGO = ("zamkniety", "otwarty")
+_STRONY_REZYSTORA_AWSC = ("pierwotna", "wtorna")
+
+
+def _liczba_dodatnia(wartosc: object) -> float | None | str:
+    """Liczba > 0, ``None`` (brak) albo ``"niepoprawna"``."""
+    if wartosc is None:
+        return None
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return "niepoprawna"
+    if not math.isfinite(float(wartosc)) or float(wartosc) <= 0:
+        return "niepoprawna"
+    return float(wartosc)
+
+
+def _urzadzenie_punktu_neutralnego(
+    surowe: object,
+    *,
+    sciezka_odlacznika: str,
+    przestrzen: str,
+    opis_pl: str,
+    napiecie_kv: float,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Dławik albo rezystor zespołu z ładunku: pozycja katalogu (Catalog Binding Rule)
+    + stan odłącznika gałęzi. Zwraca ``(rekord, None)`` albo ``(None, odpowiedź_błędu)``."""
+    if surowe is None:
+        return None, None
+    if not isinstance(surowe, dict):
+        return None, _error_response(
+            f"{opis_pl}: oczekiwano opisu urządzenia (pozycja katalogu i stan odłącznika).",
+            "zu.payload_invalid",
+        )
+    binding = _catalog_binding_from_payload(surowe, przestrzen)
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return None, _error_response(
+            f"{opis_pl} wymaga pozycji katalogu — wybierz typ urządzenia z katalogu.",
+            "zu.catalog_required",
+        )
+    parametry, blad = _pozycja_katalogu(
+        namespace=przestrzen, catalog_ref=catalog_ref, catalog_binding=binding, opis_pl=opis_pl
+    )
+    if blad is not None:
+        return None, blad
+    u_typu = parametry.get("u_n_kv")
+    if isinstance(u_typu, int | float) and not to_samo_napiecie_znamionowe(
+        float(u_typu), napiecie_kv
+    ):
+        return None, _error_response(
+            f"{opis_pl}: typ na napięcie {float(u_typu):g} kV nie pasuje do sieci "
+            f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
+            "zu.voltage_mismatch",
+        )
+    stan = surowe.get("stan_odlacznika", "zamkniety")
+    if stan not in _STANY_ODLACZNIKA_PUNKTU_NEUTRALNEGO:
+        return None, _error_response(
+            f"{pole(sciezka_odlacznika, 'add_zespol_uziemiajacy_sn')}: dozwolone "
+            "„zamknięty” albo „otwarty”.",
+            "zu.payload_invalid",
+        )
+    return {
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": przestrzen,
+        "materialized_params": copy.deepcopy(parametry),
+        "stan_odlacznika": stan,
+    }, None
+
+
+def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj (albo przekonfiguruj) zespół uziemiający sieci SN — ENEA Z.13 / Z.14 / Z.15.
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający jest JEDYNYM nośnikiem uziemienia
+    punktu neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora
+    (``enm.uziemienie_sekcji``). Element fizyczny stoi na końcu toru pola ZU: ``bay_ref``
+    wskazuje pole o roli ``ZU`` (``add_sn_bay``), a zespół przyłącza się do zacisku tego pola
+    — stan łącznika ZU wynika wtedy z aparatu pola (gałąź ``SwitchBranch``), nie z kopii.
+    Bez pola (``bus_ref``) zespół stoi wprost na szynie.
+
+    Katalog-first (Catalog Binding Rule): transformator uziemiający, dławik i rezystor wiążą
+    się z pozycjami trzech przestrzeni katalogu; ładunek nie niesie liczb urządzenia poza
+    nastawą dławika (stan dostrojenia) i prądem wymuszanym AWSC — te są daną projektu,
+    nie tabliczki. Brak nastawy = wartość robocza w funkcji pochodnej (zasada nr 4).
+
+    ``zespol_ref`` — przekonfigurowanie istniejącego zespołu tym samym pisarzem (identyfikator
+    bez zmian). Odmowy nazwane: brak elementu w punkcie neutralnym, uziemienie bezpośrednie
+    razem z dławikiem/rezystorem, napięcie typu inne niż sieci, szyna spoza pasma SN.
+    """
+    dry_run = bool(payload.get("dry_run", False))
+    zespoly = [z for z in enm.get("zespoly_uziemiajace", []) if isinstance(z, dict)]
+    zespol_ref = payload.get("zespol_ref")
+    istniejacy: dict[str, Any] | None = None
+    if zespol_ref is not None:
+        istniejacy = next((z for z in zespoly if z.get("ref_id") == zespol_ref), None)
+        if istniejacy is None:
+            return _error_response(
+                "Wskazany zespół uziemiający nie istnieje w modelu.", "zu.not_found"
+            )
+
+    bay_ref = payload.get("bay_ref")
+    bus_ref = payload.get("bus_ref")
+    if bay_ref is not None:
+        pole_zu = pole_modelu(enm, bay_ref) if isinstance(bay_ref, str) else None
+        if not isinstance(pole_zu, dict):
+            return _error_response("Wskazane pole ZU nie istnieje w modelu.", "zu.bay_not_found")
+        if pole_zu.get("bay_role") != "ZU":
+            return _error_response(
+                "Zespół uziemiający przyłącza się w polu zespołu uziemiającego (rola pola "
+                "„Pole zespołu uziemiającego”) — wskazane pole ma inną rolę.",
+                "zu.bay_role_mismatch",
+            )
+        zacisk = pole_zu.get("terminal_bus_ref")
+        if not isinstance(zacisk, str) or not zacisk:
+            return _error_response(
+                "Pole ZU nie ma zacisku toru pierwotnego — utwórz pole z aparatem głównym.",
+                "zu.bay_terminal_missing",
+            )
+        if bus_ref is not None and bus_ref != zacisk:
+            return _error_response(
+                "Wskazana szyna nie jest zaciskiem pola ZU — podaj pole albo szynę, nie oba "
+                "sprzeczne.",
+                "zu.bay_bus_mismatch",
+            )
+        bus_ref = zacisk
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response(
+            "Zespół uziemiający wymaga pola ZU albo szyny SN — wybierz je na schemacie.",
+            "zu.bus_missing",
+        )
+    bus_ref = bus_ref.strip()
+    napiecie_kv = _bus_voltage_kv(enm, bus_ref)
+    if napiecie_kv is None:
+        return _error_response(
+            "Wskazana szyna nie istnieje w modelu albo nie ma napięcia znamionowego.",
+            "zu.bus_not_found",
+        )
+    if pasmo_napieciowe(napiecie_kv) != "SN":
+        return _error_response(
+            f"Zespół uziemiający uziemia punkt neutralny sieci SN — szyna {napiecie_kv:g} kV "
+            "leży poza pasmem SN.",
+            "zu.bus_not_sn",
+        )
+
+    binding = _catalog_binding_from_payload(payload, PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO)
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return _error_response(
+            "Wybierz typ transformatora uziemiającego w polu "
+            f"{pole('catalog_ref', 'add_zespol_uziemiajacy_sn')}.",
+            "zu.catalog_required",
+        )
+    parametry_tu, blad_tu = _pozycja_katalogu(
+        namespace=PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Transformator uziemiający",
+    )
+    if blad_tu is not None:
+        return blad_tu
+    u_tu = parametry_tu.get("u_n_kv")
+    if isinstance(u_tu, int | float) and not to_samo_napiecie_znamionowe(float(u_tu), napiecie_kv):
+        return _error_response(
+            f"Transformator uziemiający na napięcie {float(u_tu):g} kV nie pasuje do sieci "
+            f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
+            "zu.voltage_mismatch",
+        )
+
+    dlawik, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("dlawik"),
+        sciezka_odlacznika="dlawik.stan_odlacznika",
+        przestrzen=PRZESTRZEN_DLAWIKA_GASZACEGO,
+        opis_pl="Dławik gaszący",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return blad
+    rezystor, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("rezystor"),
+        sciezka_odlacznika="rezystor.stan_odlacznika",
+        przestrzen=PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO,
+        opis_pl="Rezystor uziemiający",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return blad
+
+    if dlawik is not None:
+        surowy = cast(dict[str, Any], payload["dlawik"])
+        nastawa = _liczba_dodatnia(surowy.get("i_nastawy_a"))
+        if nastawa == "niepoprawna":
+            return _error_response(
+                f"{pole('dlawik.i_nastawy_a', 'add_zespol_uziemiajacy_sn')}: oczekiwano prądu nastawy > 0 A.",
+                "zu.payload_invalid",
+            )
+        if nastawa is not None:
+            i_min = dlawik["materialized_params"].get("i_min_a")
+            i_max = dlawik["materialized_params"].get("i_max_a")
+            if (isinstance(i_min, int | float) and float(nastawa) < float(i_min)) or (
+                isinstance(i_max, int | float) and float(nastawa) > float(i_max)
+            ):
+                return _error_response(
+                    f"Nastawa dławika {float(nastawa):g} A leży poza zakresem regulacji typu "
+                    f"({float(i_min):g}–{float(i_max):g} A) — dobierz nastawę w zakresie albo "
+                    "inny typ dławika.",
+                    "zu.coil_setting_out_of_range",
+                )
+            dlawik["i_nastawy_a"] = float(nastawa)
+        awsc = surowy.get("awsc")
+        if awsc is not None:
+            if not isinstance(awsc, dict):
+                return _error_response(
+                    f"{pole('dlawik.awsc', 'add_zespol_uziemiajacy_sn')}: oczekiwano opisu rezystora AWSC.",
+                    "zu.payload_invalid",
+                )
+            rekord_awsc: dict[str, Any] = {}
+            for klucz_awsc, sciezka_awsc in (
+                ("i_wymuszany_a", "dlawik.awsc.i_wymuszany_a"),
+                ("czas_zalaczenia_s", "dlawik.awsc.czas_zalaczenia_s"),
+            ):
+                liczba = _liczba_dodatnia(awsc.get(klucz_awsc))
+                if liczba == "niepoprawna":
+                    return _error_response(
+                        f"{pole(sciezka_awsc, 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby > 0.",
+                        "zu.payload_invalid",
+                    )
+                if liczba is not None:
+                    rekord_awsc[klucz_awsc] = liczba
+            zwloka = awsc.get("czas_zwloki_s")
+            if zwloka is not None:
+                if (
+                    isinstance(zwloka, bool)
+                    or not isinstance(zwloka, int | float)
+                    or not math.isfinite(float(zwloka))
+                    or float(zwloka) < 0
+                ):
+                    return _error_response(
+                        f"{pole('dlawik.awsc.czas_zwloki_s', 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby ≥ 0.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["czas_zwloki_s"] = float(zwloka)
+            strona = awsc.get("strona")
+            if strona is not None:
+                if strona not in _STRONY_REZYSTORA_AWSC:
+                    return _error_response(
+                        f"{pole('dlawik.awsc.strona', 'add_zespol_uziemiajacy_sn')}: dozwolone „pierwotna” "
+                        "albo „wtórna”.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["strona"] = strona
+            dlawik["awsc"] = rekord_awsc
+
+    bezposrednie = payload.get("uziemienie_bezposrednie", False)
+    if not isinstance(bezposrednie, bool):
+        return _error_response(
+            f"{pole('uziemienie_bezposrednie', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    if bezposrednie and (dlawik is not None or rezystor is not None):
+        return _error_response(
+            "Uziemienie bezpośrednie punktu neutralnego wyklucza dławik i rezystor — punkt "
+            "połączony wprost z ziemią zwiera element w punkcie neutralnym.",
+            "zu.direct_with_element",
+        )
+    if not bezposrednie and dlawik is None and rezystor is None:
+        return _error_response(
+            "Zespół uziemiający wymaga elementu w punkcie neutralnym: dławika gaszącego "
+            "(Z.13), dławika i rezystora równolegle (Z.14), rezystora (Z.15) albo jawnej "
+            "deklaracji uziemienia bezpośredniego.",
+            "zu.neutral_element_missing",
+        )
+
+    spz = payload.get("spz", False)
+    if not isinstance(spz, bool):
+        return _error_response(
+            f"{pole('spz', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    trafo_refs_surowe = payload.get("wylaczenie_od_transformatorow_refs") or []
+    if not isinstance(trafo_refs_surowe, list) or not all(
+        isinstance(r, str) and r for r in trafo_refs_surowe
+    ):
+        return _error_response(
+            f"{pole('wylaczenie_od_transformatorow_refs', 'add_zespol_uziemiajacy_sn')}: oczekiwano listy "
+            "transformatorów.",
+            "zu.payload_invalid",
+        )
+    trafo_refs = sorted(set(trafo_refs_surowe))
+    znane_trafo = {t.get("ref_id") for t in enm.get("transformers", []) if isinstance(t, dict)}
+    nieznane = [r for r in trafo_refs if r not in znane_trafo]
+    if nieznane:
+        return _error_response(
+            "Wyłączenie zespołu wskazuje transformatory spoza modelu — wybierz transformatory "
+            "WN/SN stacji.",
+            "zu.transformer_not_found",
+        )
+    odbior_pw_ref = payload.get("odbior_pw_ref")
+    if odbior_pw_ref is not None:
+        odbior = next(
+            (
+                o
+                for o in enm.get("loads", [])
+                if isinstance(o, dict) and o.get("ref_id") == odbior_pw_ref
+            ),
+            None,
+        )
+        if odbior is None:
+            return _error_response(
+                "Wskazany odbiór potrzeb własnych nie istnieje w modelu.", "zu.load_not_found"
+            )
+
+    if istniejacy is not None:
+        ref = str(istniejacy["ref_id"])
+    else:
+        seed = _wolne_ziarno(
+            enm,
+            _compute_seed({"op": "zespol_uziemiajacy_sn", "bus": bus_ref, "cat": catalog_ref}),
+            lambda ziarno: [_make_id("zu", ziarno, "zespol")],
+        )
+        ref = _make_id("zu", seed, "zespol")
+    rekord: dict[str, Any] = {
+        "ref_id": ref,
+        "name": nazwa_nadana(payload.get("name"))
+        or (nazwa_nadana(istniejacy.get("name")) if istniejacy else None)
+        or opis_bez_nazwy("zespoly_uziemiajace"),
+        "bus_ref": bus_ref,
+        "bay_ref": bay_ref if isinstance(bay_ref, str) else None,
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        "parameter_source": "CATALOG",
+        "materialized_params": copy.deepcopy(parametry_tu),
+        "odbior_pw_ref": odbior_pw_ref,
+        "dlawik": dlawik,
+        "rezystor": rezystor,
+        "uziemienie_bezposrednie": bezposrednie,
+        "spz": spz,
+        "wylaczenie_od_transformatorow_refs": trafo_refs,
+        "tags": [],
+        "meta": {"catalog_binding": copy.deepcopy(binding) if binding else None},
+    }
+    new_enm = kopia_graniczna_enm(enm)
+    lista = new_enm.setdefault("zespoly_uziemiajace", [])
+    if istniejacy is not None:
+        indeks = next(i for i, z in enumerate(lista) if z.get("ref_id") == ref)
+        lista[indeks] = rekord
+    else:
+        lista.append(rekord)
+    return _jako_proba(
+        _response(
+            new_enm,
+            created=[] if istniejacy is not None else [ref],
+            selection_id=ref,
+            selection_type="zespol_uziemiajacy",
+            events=[
+                {
+                    "event_seq": 1,
+                    "event_type": (
+                        "ZESPOL_UZIEMIAJACY_UPDATED" if istniejacy else "ZESPOL_UZIEMIAJACY_CREATED"
+                    ),
+                    "element_id": ref,
+                }
+            ],
+        ),
+        dry_run,
+    )
+
+
 def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj odbiór WPROST na wskazaną szynę (SN albo dowolnego innego pasma).
 
@@ -8461,6 +8843,33 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
     ),
     PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego.
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_ref", "REZYSTOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn",
+        "dlawik.catalog_binding",
+        "DLAWIK_GASZACY",
+        True,
+        "materializacja przez `_urzadzenie_punktu_neutralnego`",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_zespol_uziemiajacy_sn",
+        "rezystor.catalog_binding",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+        "materializacja przez `_urzadzenie_punktu_neutralnego`",
+    ),
     PozycjaBramyKatalogowejV2(
         "set_der_catalog_bindings", "protection_catalog_ref", "ZABEZPIECZENIE", True
     ),
@@ -8614,6 +9023,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_genset_nn",
         "add_ups_nn",
         "add_shunt_compensator_sn",
+        "add_zespol_uziemiajacy_sn",
         "add_surge_arrester_sn",
         "set_source_operating_mode",
         "set_der_catalog_bindings",
@@ -8655,6 +9065,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
     "add_shunt_compensator_sn": add_shunt_compensator_sn,
+    "add_zespol_uziemiajacy_sn": add_zespol_uziemiajacy_sn,
     "add_surge_arrester_sn": add_surge_arrester_sn,
     "set_source_operating_mode": set_source_operating_mode,
     "set_der_catalog_bindings": set_der_catalog_bindings,

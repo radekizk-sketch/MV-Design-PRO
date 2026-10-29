@@ -82,8 +82,10 @@ const SNAPSHOT = {
       phase_system: '3ph',
     },
     { id: 'b2', ref_id: 'bus/st1/sn', name: 'Szyna ST-1', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+    { id: 'b3', ref_id: 'bus/gpz/wn', name: 'Szyna 110 kV', tags: [], meta: {}, voltage_kv: 110, phase_system: '3ph' },
   ],
-  // W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie (nie szyna).
+  // Karta UX-04/POLE-ZU: opis punktu neutralnego niesie źródło WYŁĄCZNIE dla sieci 110 kV za
+  // granicą modelu; uziemienie sieci SN — zespół uziemiający na szynie SN.
   sources: [
     {
       id: 's1',
@@ -91,9 +93,20 @@ const SNAPSHOT = {
       name: 'GPZ',
       tags: [],
       meta: {},
-      bus_ref: 'bus/gpz/sn',
+      bus_ref: 'bus/gpz/wn',
       model: 'short_circuit_power',
-      neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
+      neutral_grounding: { type: 'directly_grounded' },
+    },
+  ],
+  zespoly_uziemiajace: [
+    {
+      id: 'z1',
+      ref_id: 'zu/gpz/1',
+      name: 'ZU sekcji 1',
+      tags: [],
+      meta: {},
+      bus_ref: 'bus/gpz/sn',
+      dlawik: { i_min_a: 40, i_max_a: 400, awsc: { i_wymuszany_a: 30 } },
     },
   ],
   transformers: [
@@ -230,25 +243,53 @@ describe('fmtZespolona — format prezentacji R ± jX (przecinek PL)', () => {
 });
 
 describe('uziemienie punktu neutralnego — z zamrożonej wersji układu', () => {
-  it('uziemieniePunktu znajduje źródło na szynie punktu (po ref_id szyny) i mapuje typ na PL', () => {
+  it('uziemieniePunktu na szynie SN wypisuje zespół uziemiający z zainstalowanych elementów', () => {
     const wpis = uziemieniePunktu(SNAPSHOT, 'bus/gpz/sn');
-    expect(wpis?.element).toBe('GPZ');
-    expect(wpis?.strona).toBe('punkt neutralny sieci SN (źródło)');
-    expect(wpis?.opis).toContain('Petersena');
-    expect(wpis?.xOhm).toBe(120);
+    expect(wpis?.element).toBe('ZU sekcji 1');
+    expect(wpis?.strona).toBe('zespół uziemiający sieci SN');
+    expect(wpis?.opis).toBe('dławik gaszący z rezystorem wymuszającym AWSC');
+    expect(wpis?.rOhm).toBeNull();
   });
 
-  it('szyna bez źródła z neutral_grounding → null (uczciwy brak)', () => {
+  it('uziemieniePunktu na szynie 110 kV wypisuje punkt neutralny sieci za granicą modelu', () => {
+    const wpis = uziemieniePunktu(SNAPSHOT, 'bus/gpz/wn');
+    expect(wpis?.element).toBe('GPZ');
+    expect(wpis?.strona).toBe('punkt neutralny sieci 110 kV za granicą modelu (źródło)');
+    expect(wpis?.opis).toContain('bezpośrednio');
+  });
+
+  it('szyna bez zespołu i bez źródła z opisem punktu neutralnego → null (uczciwy brak)', () => {
     expect(uziemieniePunktu(SNAPSHOT, 'bus/st1/sn')).toBeNull();
   });
 
-  it('uziemieniaSieci zbiera źródła i obie strony transformatora', () => {
+  // Iloczyn cech: element zespołu × opis (dane modelu, bez wyprowadzania wariantu pracy).
+  const ZESPOLY: ReadonlyArray<readonly [string, Record<string, unknown>, string, number | null]> = [
+    ['dławik', { dlawik: { i_min_a: 40, i_max_a: 400 } }, 'dławik gaszący', null],
+    ['dławik + AWSC', { dlawik: { awsc: { i_wymuszany_a: 30 } } }, 'dławik gaszący z rezystorem wymuszającym AWSC', null],
+    ['rezystor', { rezystor: { r_ohm: 43.3 } }, 'rezystor uziemiający', 43.3],
+    ['dławik ‖ rezystor', { dlawik: {}, rezystor: { r_ohm: 50 } }, 'dławik gaszący ‖ rezystor uziemiający', 50],
+    ['bezpośrednie', { uziemienie_bezposrednie: true }, 'uziemienie bezpośrednie', null],
+    ['bez elementu', {}, 'bez elementu w punkcie neutralnym (brak modelu)', null],
+  ];
+  for (const [nazwa, elementy, opis, rOhm] of ZESPOLY) {
+    it(`zespół „${nazwa}" → opis z elementów i R rezystora z modelu`, () => {
+      const snapshot = {
+        ...SNAPSHOT,
+        zespoly_uziemiajace: [{ ref_id: 'zu/x', name: 'ZU X', bus_ref: 'bus/st1/sn', ...elementy }],
+      } as unknown as EnergyNetworkModel;
+      const wpis = uziemieniePunktu(snapshot, 'bus/st1/sn');
+      expect(wpis?.opis).toBe(opis);
+      expect(wpis?.rOhm).toBe(rOhm);
+      expect(uziemieniaSieci(snapshot).filter((w) => w.strona === 'zespół uziemiający sieci SN')).toHaveLength(1);
+    });
+  }
+
+  it('uziemieniaSieci zbiera źródło 110 kV, zespoły uziemiające i obie strony transformatora', () => {
     const wpisy = uziemieniaSieci(SNAPSHOT);
-    expect(wpisy).toHaveLength(3);
-    expect(wpisy.map((w) => w.element)).toEqual(['GPZ', 'TR-1 GPZ', 'TR-1 GPZ']);
-    expect(wpisy[1].strona).toBe('strona GN');
-    expect(wpisy[1].rOhm).toBe(30);
-    expect(wpisy[2].opis).toContain('izolowany');
+    expect(wpisy.map((w) => w.element)).toEqual(['GPZ', 'ZU sekcji 1', 'TR-1 GPZ', 'TR-1 GPZ']);
+    expect(wpisy[2].strona).toBe('strona GN');
+    expect(wpisy[2].rOhm).toBe(30);
+    expect(wpisy[3].opis).toContain('izolowany');
   });
 
   it('brak snapshotu → pusta lista', () => {

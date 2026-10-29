@@ -1125,6 +1125,7 @@
         "transformer_refs": []
       }
     ],
-    "transformers": []
+    "transformers": [],
+    "zespoly_uziemiajace": []
   }
 }

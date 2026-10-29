@@ -75,7 +75,7 @@
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.8,
+        "hosting_capacity_mw": 7.7,
         "monte_carlo_n": 64
       }
     ],
@@ -105,21 +105,35 @@
     }
   },
   "neutral_earthing_design": {
-    "branches_missing_b0": [
-      "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001"
+    "branches_contributing": [
+      {
+        "b0_siemens_per_km": 0.00012,
+        "b0_total_siemens": 0.00048,
+        "branch_ref": "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001",
+        "kind": "cable",
+        "length_km": 4.0
+      }
     ],
-    "message_pl": "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli sieci SN — C0 nieoznaczalne (zakaz fabrykacji).",
-    "missing_fields": [
-      "b0_siemens_per_km"
-    ],
-    "neutral_earthing_type": "petersen_tuned",
+    "branches_missing_b0": [],
+    "c0_farad": 1.527887e-06,
+    "capacitive_earth_fault_current_a": 12.4708,
+    "coil_current_rating_a": 12.4708,
+    "coil_inductance_h": 2.21048532,
+    "coil_reactance_ohm": 694.4444,
+    "design_mode": "petersen_coil",
+    "detuning_assumed": 0.05,
+    "network_line_voltage_kv": 15.0,
+    "neutral_earthing_type": "petersen_coil",
+    "residual_current_at_detuning_a": 0.623538,
+    "residual_current_at_resonance_a": 0.0,
+    "residual_damping_assumed": 0.0,
     "sanity": {
-      "checks_passed": 0,
-      "checks_total": 0,
-      "status": "dane niekompletne",
+      "checks_passed": 4,
+      "checks_total": 4,
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
-    "status": "dane niekompletne"
+    "tuning_status": "dostrojony"
   },
   "opf_loss_lcc": {
     "annual_co2_kg": 119225.92,

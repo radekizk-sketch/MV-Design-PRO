@@ -89,6 +89,22 @@ zmian (solver FROZEN nietknięty); zmienia się kształt i etykiety:
   power_quality_harmonics: violated_limits       lista „limitów"          usunięte (werdykty)
   power_quality_harmonics / ssci_impedance       —                        `ocena` (NIE_OCENIONO)
   reliability_contingency: contingency_ranking   obecny                   zdjęty + `ranking_n1`
+
+2026-10-28, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (rodzaje `earth_fault_detection`,
+`neutral_earthing_design`, `transient_trv`). Parametr biegu `neutral_grounding` przestał
+nadpisywać model (skasowany); sposób uziemienia przychodzi z modelu (`uziemienie_sn`:
+dławik o regulacji nadążnej, sieć SN = kabel fixtury, U_n = 15 kV), a kabel dostał jawną
+pojemność zerową b0 = 120 µS/km (dawniej brak → „C0 nieoznaczalne").
+
+  rodzaj / wielkość                              PRZED                         PO
+  ---------------------------------------------- ----------------------------- ---------------
+  earth_fault_detection.neutral_grounding        petersen_tuned (z parametru)  petersen_tuned (z modelu)
+  neutral_earthing_design                        dane niekompletne (brak B0)   projekt dławika, I_C = √3·15 kV·0,48 mS = 12,47 A
+  transient_trv.ferroresonance                   z parametru                   z modelu (sieć skompensowana)
+
+Skutek uboczny UJAWNIONY (ten sam mechanizm co 2026-09-05): `hosting_capacity_mw` szyny stacji
+7,8 → 7,7 MW — ziarno Monte Carlo pochodzi ze skrótu całego ładunku wejściowego, a ładunek
+zmienił się (b0 kabla, `uziemienie_sn`); przesunięcie próbki losowej, nie zmiana merytoryczna.
 """
 
 from __future__ import annotations
@@ -113,6 +129,7 @@ from solver_input.v126_contracts import (  # noqa: E402
     V126BusInput,
     V126HarmonicSourceInput,
     V126TransformerInput,
+    V126UziemienieSnInput,
 )
 
 # Ścieżka fixtury czytanej przez strażnika frontu.
@@ -164,6 +181,9 @@ def model_wejsciowy() -> V126AcademicInput:
                 r_ohm_per_km=0.206,
                 x_ohm_per_km=0.118,
                 b_siemens_per_km=2.5e-6,
+                # Pojemność zerowa kabla ekranowanego indywidualnie (C0 = C ≈ 0,38 µF/km,
+                # b0 = ω·C0) — dana projektanta odcinka; bez niej I_C nieoznaczalne.
+                b0_siemens_per_km=1.2e-4,
                 ampacity_a=260.0,
             )
         ],
@@ -223,9 +243,19 @@ def model_wejsciowy() -> V126AcademicInput:
                     "tolerance_percent": 0.5,
                 }
             ],
-            "neutral_grounding": "petersen_tuned",
             "hosting_monte_carlo_n": 64,
         },
+        # Uziemienie sieci SN z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4): zespół
+        # z dławikiem gaszącym o regulacji nadążnej — w API buduje je `uziemienie_sn_v126`.
+        uziemienie_sn=V126UziemienieSnInput(
+            wariant="dlawik",
+            wariant_awsc_zalaczony="dlawik",
+            regulacja_nadazna=True,
+            opis_pl="Punkt neutralny sieci 15 kV: sieć skompensowana (Z.13) (Zespół uziemiający sekcji 1).",
+            napiecie_kv=15.0,
+            galezie_sieci=[REF_KABEL],
+            prad_dlawikow_a=15.0,
+        ),
     )
 
 

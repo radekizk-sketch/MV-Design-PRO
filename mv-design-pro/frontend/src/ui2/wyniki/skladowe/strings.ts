@@ -83,11 +83,12 @@ export const SKLADOWE_STRINGS = {
   // Sekcja uziemienia punktu neutralnego.
   uziemienieTytul: 'Sposób uziemienia punktu neutralnego',
   uziemienieOpis: 'Konfiguracja uziemienia z zamrożonej wersji układu tego przebiegu '
-    + '(sposób uziemienia szyn oraz punktów neutralnych górnego i dolnego napięcia '
-    + 'transformatorów modelu).',
-  uziemieniePunktu: 'Uziemienie wybranego punktu (źródło na szynie)',
-  uziemienieBrakPunktu: 'Model nie określa konfiguracji uziemienia dla szyny wybranego punktu.',
-  uziemienieSiec: 'Punkty neutralne w sieci (źródła i transformatory)',
+    + '(zespoły uziemiające sieci SN, punkt neutralny sieci 110 kV za granicą modelu '
+    + 'oraz punkty neutralne górnego i dolnego napięcia transformatorów modelu).',
+  uziemieniePunktu: 'Uziemienie na szynie wybranego punktu (zespół uziemiający albo źródło)',
+  uziemienieBrakPunktu: 'Na szynie wybranego punktu model nie ma zespołu uziemiającego ani '
+    + 'źródła z opisem punktu neutralnego — uziemienie sieci tej szyny pokazuje lista niżej.',
+  uziemienieSiec: 'Punkty neutralne w sieci (zespoły uziemiające, źródła i transformatory)',
   uziemienieBrakSieci: 'Zamrożona wersja układu nie zawiera żadnej jawnej konfiguracji '
     + 'uziemienia punktu neutralnego. Uzupełnij dane uziemienia w modelu sieci, '
     + 'aby raport sieci zerowej był kompletny.',
@@ -96,7 +97,13 @@ export const SKLADOWE_STRINGS = {
   uziemienieAkcjaModel: 'Przejdź do modelu sieci',
   uziemienieStronaGN: 'strona GN',
   uziemienieStronaDN: 'strona DN',
-  uziemienieZrodlo: 'punkt neutralny sieci SN (źródło)',
+  uziemienieZrodlo: 'punkt neutralny sieci 110 kV za granicą modelu (źródło)',
+  uziemienieZespol: 'zespół uziemiający sieci SN',
+  zespolBezposrednie: 'uziemienie bezpośrednie',
+  zespolDlawik: 'dławik gaszący',
+  zespolDlawikAwsc: 'dławik gaszący z rezystorem wymuszającym AWSC',
+  zespolRezystor: 'rezystor uziemiający',
+  zespolBezElementu: 'bez elementu w punkcie neutralnym (brak modelu)',
   uziemienieRezystancja: 'R',
   uziemienieReaktancja: 'X',
 

@@ -31,6 +31,7 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 from tests.utils.biegi import wykonaj_bieg
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 BASE_URL = "/api/execution"
 UN_KV = 15.0
@@ -153,10 +154,16 @@ def _zasiej_siec(case_id: str) -> None:
                             voltage_kv=UN_KV,
                             sk3_mva=SK_MVA,
                             rx_ratio=RX_Q,
-                            # Z0 źródła (Z0/Z1 = 3) — zwarcie doziemne dostępne w modelu.
-                            extra={"z0_z1_ratio": 3.0},
                         ),
                     }
+                ],
+                # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół
+                # uziemiający szyny zasilania (bocznik Z0 = 3·Z_Q — wartość, którą dawniej
+                # udawał Z0/Z1 = 3 równoważnika SN); zwarcie doziemne dostępne w modelu.
+                "zespoly_uziemiajace": [
+                    zespol_o_impedancji_zerowej(
+                        "zu-gpz", "bus-main", r0_ohm=3 * Z_Q.real, x0_ohm=3 * Z_Q.imag
+                    )
                 ],
                 "transformers": [],
                 "loads": [],

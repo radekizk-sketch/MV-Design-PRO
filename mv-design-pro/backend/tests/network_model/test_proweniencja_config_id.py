@@ -267,7 +267,6 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                     ],
                 }
             ],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
         }
         if rodzina_ref:
             payload["switchgear_family_ref"] = rodzina_ref

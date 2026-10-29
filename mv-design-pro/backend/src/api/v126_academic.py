@@ -18,6 +18,7 @@ from domain.execution import StanBiegu, stan_biegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
+from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import zbuduj_indeks_nazw
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
@@ -28,12 +29,12 @@ from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
     V126EarthingInput,
-    V126InsulationInput,
     V126MotorInput,
     V126RunRequest,
     braki_poziomu_izolacji,
     build_v126_input_from_enm,
     pominiete_zrodla_v126,
+    wiersze_izolacji_projektanta,
 )
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
@@ -189,11 +190,23 @@ _SKASOWANE_NADPISANIA_WEJSCIA: dict[str, str] = {
         "Nadpisanie przekształtników parametrem „converters” zostało usunięte — przekształtnik "
         "wchodzi do analizy wyłącznie przez powiązanie katalogowe generatora w modelu."
     ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: sposób uziemienia punktu neutralnego
+    # sieci SN wynika WYŁĄCZNIE z modelu (zespół uziemiający, punkt neutralny uzwojenia) —
+    # parametr biegu nie nadpisuje modelu.
+    "neutral_grounding": (
+        "Sposób uziemienia punktu neutralnego sieci SN wynika z modelu (zespół uziemiający "
+        "w polu ZU albo punkt neutralny uzwojenia transformatora) — parametr "
+        "„neutral_grounding” nie jest przyjmowany."
+    ),
+    "neutral_earthing_type": (
+        "Schemat uziemienia punktu neutralnego (dławik albo rezystor) wynika z zespołu "
+        "uziemiającego w modelu — parametr „neutral_earthing_type” nie jest przyjmowany."
+    ),
 }
 
 
 def _with_parameter_payloads(
-    model: V126AcademicInput, parameters: dict[str, Any]
+    model: V126AcademicInput, parameters: dict[str, Any], enm: EnergyNetworkModel
 ) -> V126AcademicInput:
     """Dołóż do wejścia solvera dane PROJEKTANTA z `parameters` (uziom, izolacja, silniki).
 
@@ -211,12 +224,6 @@ def _with_parameter_payloads(
     try:
         if isinstance(parameters.get("earthing"), dict):
             update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
-        if isinstance(parameters.get("insulation"), list):
-            update["insulation"] = [
-                V126InsulationInput.model_validate(item)
-                for item in parameters["insulation"]
-                if isinstance(item, dict)
-            ]
         if isinstance(parameters.get("motors"), list):
             update["motors"] = [
                 V126MotorInput.model_validate(item)
@@ -225,6 +232,12 @@ def _with_parameter_payloads(
             ]
     except ValidationError as exc:
         raise OdmowaDanychError(str(exc)) from exc
+    if isinstance(parameters.get("insulation"), list):
+        # Kategoria TOV wiersza z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4);
+        # niezgodny wiersz to `OdmowaDanychError` nazwana przez samą funkcję.
+        update["insulation"] = wiersze_izolacji_projektanta(
+            enm, [item for item in parameters["insulation"] if isinstance(item, dict)]
+        )
     return model.model_copy(update=update)
 
 
@@ -287,7 +300,9 @@ def run_v126_analysis(
             detail=gotowosc.komunikat_odmowy(),
         )
     model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry), parametry
+        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
+        parametry,
+        enm,
     )
     # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
     # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,

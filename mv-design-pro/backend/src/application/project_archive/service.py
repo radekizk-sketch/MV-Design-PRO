@@ -71,6 +71,7 @@ from enm.store import (
     restore_enm,
     set_enm,
 )
+from enm.uziemienie_sekcji import czesci_zespolu_bez_katalogu
 from infrastructure.persistence.repositories.canonical_run_repository import (
     CanonicalRunRepository,
 )
@@ -1148,6 +1149,11 @@ def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str
         poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
         if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             elements_no_catalog.append(source.ref_id)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający — ten sam predykat części co E009.
+    poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").import_
+    for zu in model.zespoly_uziemiajace:
+        if czesci_zespolu_bez_katalogu(zu, poziom_zespolu):
+            elements_no_catalog.append(zu.ref_id)
     return elements_no_catalog
 
 

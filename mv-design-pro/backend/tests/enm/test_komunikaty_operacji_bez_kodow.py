@@ -386,6 +386,9 @@ _INTERPOLACJE_DOZWOLONE: dict[str, str] = {
 _KOLEKCJE_TEKSTOW: dict[str, str] = {
     "enm/validator.py:braki": "opisy braków danych regulacji napięcia generatora z `pole()`",
     "enm/validator.py:sprzeczne": "porównania Sk''/Ik'' min–max w zapisie symboli wielkości",
+    "enm/validator.py:czesci": (
+        "polskie nazwy części zespołu uziemiającego z `czesci_zespolu_bez_katalogu`"
+    ),
     "enm/domain_operations_v2.py:rozbieznosci": (
         "rozbieżności tabliczki z `rozbieznosci_tabliczki` (nazwy z `etykieta_parametru`)"
     ),
@@ -858,6 +861,15 @@ def test_kazde_wywolanie_pola_ma_wpis_w_mapie() -> None:
         ((*KLUCZE_ZIP_ODBIORU, *KLUCZE_ODNIESIENIA_ZIP), None),
         (("u_set_pu", "q_min_mvar", "q_max_mvar", "control_mode", "lv_earthing_system"), None),
         (("grounding.r_ohm", "grounding.x_ohm"), None),
+        (
+            (
+                "dlawik.stan_odlacznika",
+                "dlawik.awsc.i_wymuszany_a",
+                "dlawik.awsc.czas_zalaczenia_s",
+                "rezystor.stan_odlacznika",
+            ),
+            "add_zespol_uziemiajacy_sn",
+        ),
     ],
 )
 def test_klucze_dynamiczne_maja_wpis_w_mapie(klucze: tuple[str, ...], operacja: str | None) -> None:

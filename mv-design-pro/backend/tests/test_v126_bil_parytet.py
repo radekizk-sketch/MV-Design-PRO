@@ -42,7 +42,9 @@ def _wiersze_solvera(um_wartosci: tuple[float, ...]) -> dict[float, dict[str, fl
     model = V126AcademicInput(
         buses=[],
         insulation=[
-            V126InsulationInput(location_bus_ref=f"B{indeks}", u_m_kv=um)
+            V126InsulationInput(
+                location_bus_ref=f"B{indeks}", u_m_kv=um, network_neutral="isolated"
+            )
             for indeks, um in enumerate(um_wartosci)
         ],
     )

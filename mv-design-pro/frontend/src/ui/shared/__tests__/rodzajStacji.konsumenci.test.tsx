@@ -136,14 +136,13 @@ describe('rodzaj stacji — każdy konsument czyta jedną regułę (iloczyn dekl
         snVoltageKv={15}
         nnVoltageLevels={[0.4]}
         completeness="complete"
-        mvNeutralGroundings={[]}
       />,
     );
     expect(screen.getByTestId('station-topological-type')).toHaveTextContent('odgałęźna');
     expect(screen.getByTestId('station-topological-reason')).toHaveTextContent('3 pola liniowe');
     unmount();
     render(
-      <StationConfigBasicCard stationName="S01" topologicalType={null} snVoltageKv={15} nnVoltageLevels={[0.4]} completeness="missing" mvNeutralGroundings={[]} />,
+      <StationConfigBasicCard stationName="S01" topologicalType={null} snVoltageKv={15} nnVoltageLevels={[0.4]} completeness="missing" />,
     );
     expect(screen.getByTestId('station-topological-type')).toHaveTextContent('nieustalony');
   });

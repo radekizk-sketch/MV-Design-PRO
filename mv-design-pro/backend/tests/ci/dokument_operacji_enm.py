@@ -696,6 +696,20 @@ KROKI: tuple[Krok, ...] = (
         },
     ),
     Krok(
+        "zespol_uziemiajacy",
+        "add_zespol_uziemiajacy_sn",
+        "zespół uziemiający z dławikiem gaszącym i rezystorem równolegle (ENEA Z.14) na szynie GPZ",
+        lambda k: {
+            "bus_ref": next(s for s in k.enm["substations"] if s.get("station_type") == "gpz")[
+                "bus_refs"
+            ][0],
+            "name": "Zespół uziemiający GPZ",
+            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY", "i_nastawy_a": 120.0},
+            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+        },
+    ),
+    Krok(
         "ogranicznik",
         "add_surge_arrester_sn",
         "ogranicznik przepięć w polu liniowym stacji S01",

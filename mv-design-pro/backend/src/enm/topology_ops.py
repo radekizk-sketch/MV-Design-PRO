@@ -48,6 +48,7 @@ from .slownik_komunikatow import (
     opis_elementu,
     opis_obiektu,
 )
+from .uziemienie_sekcji import impedancja_zerowa_zrodla_dozwolona
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu
 
 # ---------------------------------------------------------------------------
@@ -822,6 +823,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         ):
             if opt in data:
                 src_data[opt] = data[opt]
+        odmowa_uziemienia = _odmowa_uziemienia_zrodla_sn(enm, src_data)
+        if odmowa_uziemienia is not None:
+            return TopologyOpResult(False, enm, "create_device", [*issues, odmowa_uziemienia])
         enm.setdefault("sources", []).append(src_data)
         return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
@@ -835,6 +839,34 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             )
         )
         return TopologyOpResult(False, enm, "create_device", issues)
+
+
+_POLA_UZIEMIENIA_ZRODLA = ("neutral_grounding", "r0_ohm", "x0_ohm", "z0_z1_ratio")
+
+
+def _odmowa_uziemienia_zrodla_sn(enm: dict[str, Any], zrodlo: dict[str, Any]) -> OpIssue | None:
+    """Odmowa dla źródła na szynie SN niosącego opis punktu neutralnego albo Z0 (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3) — ten sam predykat co walidator W-W5-02,
+    mapowanie składowej zerowej i operacja ``add_grid_source_sn``
+    (``impedancja_zerowa_zrodla_dozwolona``): uziemienie sieci SN niesie wyłącznie zespół
+    uziemiający sekcji albo punkt neutralny uzwojenia transformatora."""
+    if all(zrodlo.get(pole) in (None, {}) for pole in _POLA_UZIEMIENIA_ZRODLA):
+        return None
+    szyna = next(
+        (b for b in enm.get("buses", []) if b.get("ref_id") == zrodlo.get("bus_ref")), None
+    )
+    napiecie = szyna.get("voltage_kv") if szyna is not None else None
+    if not isinstance(napiecie, int | float) or impedancja_zerowa_zrodla_dozwolona(napiecie):
+        return None
+    return OpIssue(
+        "OP_SN_SOURCE_NEUTRAL",
+        "BLOCKER",
+        "Źródło zasilania na szynie SN nie opisuje uziemienia punktu neutralnego sieci SN — "
+        "usuń typ uziemienia i impedancję zerową źródła, a uziemienie sieci SN zamodeluj "
+        "zespołem uziemiającym sekcji albo uziemieniem punktu neutralnego uzwojenia SN "
+        "transformatora.",
+        zrodlo.get("ref_id"),
+    )
 
 
 def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
@@ -878,6 +910,8 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     # Stan końcowy generatora (rodzaj i lista po zmianie): zmiana samego `gen_type` przy
     # zapisanych wartościach projektanta sprawdza je względem rodziny NOWEGO rodzaju.
     odmowa = _odmowa_wartosci_projektanta(coll, {**items[idx], **zmiany}, "Źródło")
+    if odmowa is None and coll == "sources":
+        odmowa = _odmowa_uziemienia_zrodla_sn(enm, {**items[idx], **zmiany})
     if odmowa is not None:
         return TopologyOpResult(False, enm, "update_device", [odmowa])
     enm[coll][idx].update(zmiany)

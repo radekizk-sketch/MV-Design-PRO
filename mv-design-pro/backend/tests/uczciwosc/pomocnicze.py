@@ -82,7 +82,9 @@ def model_sceny_akademickiej(rodzaj: Any) -> Any:
     set_enm("c-akademicka", enm)
     parametry = uzupelnij_parametry_z_modelu(enm, rodzaj, parametry_sceny(rodzaj.value))
     assert ocen_gotowosc_v126(enm, rodzaj, parametry).potwierdzona
-    return _with_parameter_payloads(build_v126_input_from_enm(enm, parameters=parametry), parametry)
+    return _with_parameter_payloads(
+        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=rodzaj), parametry, enm
+    )
 
 
 def bieg_sceny_akademickiej(rodzaj: Any) -> tuple[Any, Any]:

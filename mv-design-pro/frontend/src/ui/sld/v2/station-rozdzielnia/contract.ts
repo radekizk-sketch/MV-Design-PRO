@@ -120,6 +120,7 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   PV_SN: 'Pole źródłowe PV',
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
+  ZESPOL_UZIEMIAJACY: 'Pole zespołu uziemiającego',
 };
 
 /** Source field whose technology is not known (model role `OZE`). */
@@ -140,6 +141,7 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   TR: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
+  ZU: 'ZESPOL_UZIEMIAJACY',
 };
 
 const MODEL_SOURCE_ROLE = 'OZE';

@@ -795,6 +795,13 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
                 if isinstance(wpis, dict)
             ),
         )
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (werdykt wyjaśnialny): ograniczenie raportowe
+    # punktu jako zdanie z backendu (`reporting_limitations_pl`) — wiersz bez liczb niesie
+    # DLACZEGO (np. nazwana przyczyna braku wyniku zerowego), nie same kreski; wiersz bez
+    # ograniczeń — raport bez zmian.
+    ograniczenia = row_data.get("reporting_limitations_pl")
+    if isinstance(ograniczenia, list):
+        linie = (*linie, *(f"Ograniczenie wyniku: {zdanie}" for zdanie in ograniczenia if zdanie))
     return linie
 
 

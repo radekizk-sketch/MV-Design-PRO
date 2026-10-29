@@ -1,7 +1,9 @@
 """W5-A: migracja zastanego zapisu uziemienia do jednej reprezentacji.
 
-Iloczyn cech (KLASA NIE INSTANCJA): {szyna z wartością × źródło na szynie /
-źródło w stacji / brak źródła / źródło już opisane / konflikt} × {meta stacji:
+Iloczyn cech (KLASA NIE INSTANCJA): {szyna SN z wartością (utrata nazwana zawsze — karta
+UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie sieci SN opisuje wyłącznie zespół uziemiający albo
+uzwojenie transformatora) / szyna WN z wartością × źródło na szynie / źródło tylko w stacji /
+brak źródła / źródło już opisane / konflikt} × {meta stacji:
 układ nN z transformatorem / bez transformatora / spoza słownika / klucze
 grounding+zero_sequence} × {droga wczytania: funkcja / model_validate}.
 """
@@ -29,7 +31,12 @@ def _dane() -> dict:
                 "voltage_kv": 15.0,
                 "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             },
-            {"ref_id": "b_hv", "name": "WN", "voltage_kv": 110.0, "grounding": None},
+            {
+                "ref_id": "b_hv",
+                "name": "WN",
+                "voltage_kv": 110.0,
+                "grounding": {"type": "directly_grounded"},
+            },
             {"ref_id": "b_nn", "name": "nN", "voltage_kv": 0.4},
         ],
         "sources": [
@@ -78,23 +85,40 @@ def _dane() -> dict:
     }
 
 
-def test_szyna_bez_zrodla_na_szynie_trafia_do_zrodla_tej_samej_stacji_i_meta_jest_czyszczone():
+def test_szyna_wn_trafia_do_zrodla_na_szynie_szyna_sn_to_utrata_nazwana_meta_czyszczone():
     dane = _dane()
     kopia = copy.deepcopy(dane)
     wynik, raport = migruj_uziemienie_slownika(dane, uklady_nn=UKLADY_SIECI_NN)
     assert dane == kopia, "migracja nie mutuje słownika wołającego"
-    assert wynik["sources"][0]["neutral_grounding"] == {"type": "resistor_grounded", "r_ohm": 12.0}
+    # Szyna 110 kV: opis punktu neutralnego sieci 110 kV trafia do źródła na tej szynie.
+    assert wynik["sources"][0]["neutral_grounding"] == {"type": "directly_grounded"}
     assert all("grounding" not in b for b in wynik["buses"])
     assert wynik["substations"][0]["meta"] == {"inne": 1}
     assert wynik["transformers"][0]["lv_earthing_system"] == "TN-S"
     assert "nn_earthing_system" not in wynik["substations"][1]["meta"]
-    assert raport.zmieniono and not raport.utracone
+    # Szyna SN: uziemienie NIE trafia do źródła 110 kV tej samej stacji (dawna droga
+    # robiła z opisu sieci 110 kV nośnik uziemienia SN) — utrata nazwana z akcją.
+    assert raport.zmieniono
+    assert raport.utracone == (
+        "szyna b_sn: uziemienie {'type': 'resistor_grounded', 'r_ohm': 12.0} szyny SN — "
+        "uziemienie punktu neutralnego sieci SN opisuje wyłącznie zespół uziemiający albo "
+        "punkt neutralny uzwojenia transformatora; zamodeluj zespół uziemiający",
+    )
     assert len(raport.przeniesione) == 2
     assert set(raport.usuniete_klucze_meta) == {
         "stacja gpz: meta.grounding",
         "stacja gpz: meta.zero_sequence",
     }
-    assert "UTRACONE" not in raport.opis_pl()
+    assert "UTRACONE" in raport.opis_pl()
+
+
+def test_szyna_wn_bez_zrodla_na_szynie_nie_trafia_do_zrodla_innej_szyny_stacji():
+    dane = _dane()
+    dane["sources"][0]["bus_ref"] = "b_sn"
+    wynik, raport = migruj_uziemienie_slownika(dane, uklady_nn=UKLADY_SIECI_NN)
+    assert "neutral_grounding" not in wynik["sources"][0]
+    assert any("b_hv" in u and "bez źródła" in u for u in raport.utracone)
+    assert any("b_sn" in u and "szyny SN" in u for u in raport.utracone)
 
 
 def test_migracja_jest_idempotentna_i_bez_zmian_zwraca_ten_sam_obiekt():
@@ -109,7 +133,7 @@ def test_szyna_bez_zadnego_zrodla_to_utrata_nazwana_nie_cicha():
     dane["sources"] = []
     wynik, raport = migruj_uziemienie_slownika(dane, uklady_nn=UKLADY_SIECI_NN)
     assert all("grounding" not in b for b in wynik["buses"])
-    assert any("b_sn" in u and "bez źródła" in u for u in raport.utracone)
+    assert any("b_hv" in u and "bez źródła" in u for u in raport.utracone)
     assert "UTRACONE" in raport.opis_pl()
 
 
@@ -137,7 +161,7 @@ def test_model_validate_migruje_ta_sama_funkcja_i_raport_z_nosnika_jest_zgodny()
     dane = _dane()
     model = EnergyNetworkModel.model_validate(dane)
     assert model.sources[0].neutral_grounding is not None
-    assert model.sources[0].neutral_grounding.type == "resistor_grounded"
+    assert model.sources[0].neutral_grounding.type == "directly_grounded"
     assert model.transformers[0].lv_earthing_system == "TN-S"
     assert "grounding" not in model.substations[0].meta
     assert not hasattr(model.buses[0], "grounding")

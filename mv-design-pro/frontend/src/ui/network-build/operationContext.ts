@@ -148,6 +148,20 @@ export function buildOperationContext({
       }
       break;
     }
+    case 'add_zespol_uziemiajacy_sn': {
+      // Karta UX-04/POLE-ZU: zespół w polu ZU (bay_ref) albo wprost na szynie SN (bus_ref);
+      // rolę pola i pasmo szyny ocenia operacja. Zero fabrykacji — refy z selekcji.
+      if (elementType === 'BaySN') {
+        context.bay_ref = elementId;
+      } else if (elementType === 'Bus') {
+        context.bus_ref = elementId;
+        const bus = snapshot?.buses?.find(
+          (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+        );
+        if (bus) context.bus_name = bus.name ?? undefined;
+      }
+      break;
+    }
     case 'add_surge_arrester_sn': {
       // G-STK-8: ogranicznik stawiamy w polu SN; launch z pola (bay) lub z szyny
       // (backend dobiera pierwsze pole na szynie). Zero fabrykacji — refy z selekcji.

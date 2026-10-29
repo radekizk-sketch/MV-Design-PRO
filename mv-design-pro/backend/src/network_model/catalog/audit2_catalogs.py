@@ -1,14 +1,19 @@
 """
 Katalogi audytu 2 — pozycje, ktore projektant wybiera w konfiguracji stacji.
 
-7 katalogow:
+6 katalogow:
   - BESS_OPERATION_MODES (eng.10): tryby pracy magazynu (peak shaving / FCR / aFRR / etc.)
   - TAP_CHANGERS (eng.13): przelaczniki zaczepow OLTC/DETC
   - HV_FUSES (eng.17): wkladki topikowe SN
   - DEVICE_WITHSTAND (eng.18): wytrzymalosc zwarciowa aparatury (IEC 62271-1 / IEC 60909)
   - PF_CURVES (eng.9): nastawy trybu czestotliwosciowego LFSM-O / FSM (NC RfG)
   - BLOCK_TRANSFORMERS (B.5): transformatory dedykowane DER (PV/BESS/FW)
-  - MV_NEUTRAL_GROUNDINGS (B.1): warianty uziemienia punktu neutralnego SN
+
+Dawny siodmy katalog — warianty uziemienia punktu neutralnego SN wybierane w konfiguracji
+stacji (B.1) — skasowano na amen kartą UX-04/POLE-ZU-SKLADOWA-ZEROWA: była to DRUGA prawda
+o punkcie neutralnym SN obok elementów modelu. Sposób uziemienia sekcji SN wynika wyłącznie
+z zespołów uziemiających i punktów neutralnych uzwojeń transformatorów w ENM
+(`enm/uziemienie_sekcji.py`); wskrzeszeniu pilnuje `scripts/uziemienie_sn_druga_prawda_guard.py`.
 
 AUTORYTET DANYCH I PROWENIENCJA (karta K-Q, 2026-08-14) — REGULA TEGO PLIKU
 ==========================================================================
@@ -1158,130 +1163,6 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 
 
 # =============================================================================
-# 7. MV Neutral Grounding Catalog (B.1)
-# =============================================================================
-#
-# PROWENIENCJA (karta K-Q, 2026-08-14) — domkniecie klasy po stronie autorytetu.
-# Karta K-O usunela z frontendu dwa pola tego katalogu; backend niosl je dalej i
-# serwowal przez `/api/v1/catalog/audit2/mv-neutral-groundings`:
-#
-#   * `typical_ik1_a_range` — ZAKRES PRADU ZWARCIA DOZIEMNEGO bez zrodla.
-#     Prad I_k1 konkretnej sieci wylicza solver SC1F z realnej impedancji Z0
-#     modelu; tabela „typowych" zakresow konkurowala z wynikiem obliczen i nie
-#     miala czym wygrac. Gorzej: warstwa ENM brala z tego zakresu MEDIANE i
-#     podawala ja solverowi `phase_state_sn` jako domyslny prad zwarcia
-#     (`_phase_state_default_fault_current_from_grounding`) — zmyslona liczba
-#     wchodzila do fizyki. Usuniete razem z tym konsumentem.
-#   * `typical_operators_pl` — przypisanie praktyki ruchowej imiennie wskazanym
-#     operatorom bez cytatu z IRiESD; czesc byla wprost nieprawdziwa (PSE jest
-#     operatorem systemu przesylowego, nie prowadzi rozdzielni SN). Imiona
-#     operatorow usuniete takze z `description_pl`.
-#
-# Wartosc I_k1 znikla rowniez z `label_pl` — nazwa wariantu jest widoczna w
-# rozwijanej liscie, wiec fabrykacja w nazwie jest GORZEJ widoczna niz w polu
-# danych, nie lepiej. Zostaje `r_ohm` / `x_ohm`: to parametr DEFINIUJACY wariant
-# (widnieje w jego nazwie), czyli wybor projektanta, a nie cudza zmierzona
-# wlasnosc. Teksty sa dokladnym odpowiednikiem stanu frontendu po karcie K-O —
-# parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
-
-
-@dataclass(frozen=True)
-class MvNeutralGroundingItem:
-    id: str
-    catalog_namespace: str
-    catalog_version: str
-    grounding_type: TypPunktuNeutralnego
-    label_pl: str
-    description_pl: str
-    #: Rezystancja uziemienia [Ohm] definiujaca wariant (gdy resistor_grounded).
-    r_ohm: float | None = None
-    #: Reaktancja uziemienia [Ohm] definiujaca wariant (petersen_coil).
-    x_ohm: float | None = None
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "catalog_namespace": self.catalog_namespace,
-            "catalog_version": self.catalog_version,
-            "grounding_type": self.grounding_type,
-            "label_pl": self.label_pl,
-            "description_pl": self.description_pl,
-            "r_ohm": self.r_ohm,
-            "x_ohm": self.x_ohm,
-        }
-
-
-MV_NEUTRAL_GROUNDING_CATALOG: tuple[MvNeutralGroundingItem, ...] = (
-    MvNeutralGroundingItem(
-        id="mng_isolated",
-        catalog_namespace="mv_neutral_grounding",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        grounding_type="isolated",
-        label_pl="Sieć izolowana (bez uziemienia neutralnego)",
-        description_pl=(
-            "Punkt neutralny transformatora 110/SN nie jest uziemiony. Prąd zwarcia "
-            "1-fazowego doziemnego jest ograniczony tylko pojemnością sieci."
-        ),
-    ),
-    MvNeutralGroundingItem(
-        id="mng_petersen",
-        catalog_namespace="mv_neutral_grounding",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        grounding_type="petersen_coil",
-        label_pl="Sieć skompensowana (cewka Petersena PCK)",
-        description_pl=(
-            "Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). "
-            "Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie kompensacji "
-            "prąd zwarcia doziemnego jest bliski zeru."
-        ),
-    ),
-    MvNeutralGroundingItem(
-        id="mng_resistor_low",
-        catalog_namespace="mv_neutral_grounding",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        grounding_type="resistor_grounded",
-        label_pl="Sieć uziemiona przez rezystor — niski (R≈7 Ω)",
-        description_pl=(
-            "Punkt neutralny uziemiony przez rezystor 7 Ω — ogranicza prąd zwarcia "
-            "doziemnego na tyle, by pozostał wykrywalny przez 51N. Stosowane "
-            "w sieciach kablowych miejskich."
-        ),
-        r_ohm=7,
-    ),
-    MvNeutralGroundingItem(
-        id="mng_resistor_medium",
-        catalog_namespace="mv_neutral_grounding",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        grounding_type="resistor_grounded",
-        label_pl="Sieć uziemiona przez rezystor — średni (R≈40 Ω)",
-        description_pl=(
-            "Punkt neutralny uziemiony przez rezystor 40 Ω. Kompromis między "
-            "wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach "
-            "mieszanych kabel/napowietrzna."
-        ),
-        r_ohm=40,
-    ),
-    MvNeutralGroundingItem(
-        id="mng_directly",
-        catalog_namespace="mv_neutral_grounding",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        grounding_type="directly_grounded",
-        label_pl="Sieć uziemiona bezpośrednio (Z=0)",
-        description_pl=(
-            "Punkt neutralny uziemiony bezpośrednio. Prąd zwarcia doziemnego jest "
-            "porównywalny z prądem zwarcia 3-fazowego. Rzadko stosowane w SN — "
-            "głównie w przemysłowych sieciach specjalnych. Zwiększa wymagania na "
-            "zabezpieczenia i sprzęt."
-        ),
-    ),
-)
-
-
-def get_mv_neutral_grounding(grounding_id: str) -> MvNeutralGroundingItem | None:
-    return next((g for g in MV_NEUTRAL_GROUNDING_CATALOG if g.id == grounding_id), None)
-
-
-# =============================================================================
 # Helpers — selektory uzywane przez solver_input + proof_engine
 # =============================================================================
 
@@ -1607,9 +1488,6 @@ class Audit2CatalogSnapshot:
     device_withstand: tuple[DeviceWithstandItem, ...] = field(default=DEVICE_WITHSTAND_CATALOG)
     pf_curves: tuple[PfCurveItem, ...] = field(default=PF_CURVE_CATALOG)
     block_transformers: tuple[BlockTransformerItem, ...] = field(default=BLOCK_TRANSFORMER_CATALOG)
-    mv_neutral_groundings: tuple[MvNeutralGroundingItem, ...] = field(
-        default=MV_NEUTRAL_GROUNDING_CATALOG
-    )
 
     def to_dict(self) -> dict:
         return {
@@ -1619,7 +1497,6 @@ class Audit2CatalogSnapshot:
             "device_withstand": [d.to_dict() for d in self.device_withstand],
             "pf_curves": [c.to_dict() for c in self.pf_curves],
             "block_transformers": [b.to_dict() for b in self.block_transformers],
-            "mv_neutral_groundings": [g.to_dict() for g in self.mv_neutral_groundings],
         }
 
 

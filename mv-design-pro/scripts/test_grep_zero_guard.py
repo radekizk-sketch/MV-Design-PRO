@@ -104,6 +104,53 @@ def test_czerwona_iniekcja_w61() -> None:
         plik.unlink()
 
 
+INIEKCJE_ZU: tuple[tuple[str, str], ...] = (
+    # Przywrócona kolumna ORM konfiguracji stacji (bramka wskrzeszenia ścieżki ORM).
+    (
+        "backend/src/infrastructure/persistence/models.py",
+        "    mv_neutral_grounding_ref: Mapped[str | None] = mapped_column(String(64))\n",
+    ),
+    (
+        "backend/migrations/audit2_station_configs.sql",
+        "    mv_neutral_grounding_ref VARCHAR(64),\n",
+    ),
+    ("backend/src/api/audit2_catalogs.py", '@router.get("/mv-neutral-groundings")\n'),
+    ("backend/src/network_model/catalog/audit2_catalogs.py", "MV_NEUTRAL_GROUNDING_CATALOG = ()\n"),
+    ("backend/schemas/openapi_snapshot.json", '{"mv_neutral_grounding_ref": null}\n'),
+    (
+        "frontend/src/ui/network-build/station-der/catalogs.ts",
+        "export const mvNeutralGroundings = [];\n",
+    ),
+    ("frontend/e2e/audit2.spec.ts", "await wybierz('mng_petersen');\n"),
+)
+
+
+def test_czerwona_iniekcja_zu() -> None:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: każda postać skasowanej drugiej prawdy o uziemieniu
+    SN (kolumna ORM, migracja, końcówka, katalog, migawka kontraktu, front, e2e) jest czerwona."""
+    with tempfile.TemporaryDirectory() as katalog:
+        tmp = Path(katalog)
+        _drzewo_z_konfiguracja(tmp)
+        for rel in (
+            (ROOT / "config" / "grep_zero_zu_active_paths.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ):
+            rel = rel.strip()
+            if rel and not rel.startswith("#"):
+                (tmp / rel).mkdir(parents=True, exist_ok=True)
+        assert sprawdz(tmp, "zu_") == [], "czyste drzewo ma być zielone"
+        for rel, tresc in INIEKCJE_ZU:
+            plik = tmp / rel
+            plik.parent.mkdir(parents=True, exist_ok=True)
+            plik.write_text(tresc, encoding="utf-8")
+            naruszenia = sprawdz(tmp, "zu_")
+            assert any(
+                rel in n for n in naruszenia
+            ), f"iniekcja {rel!r} nie została wykryta: {naruszenia}"
+            plik.unlink()
+
+
 def test_realne_drzewo_jest_zielone() -> None:
     for grupa in GRUPY:
         naruszenia = sprawdz(ROOT, grupa)
@@ -113,5 +160,6 @@ def test_realne_drzewo_jest_zielone() -> None:
 if __name__ == "__main__":
     test_czerwona_iniekcja_kazdego_wzorca()
     test_czerwona_iniekcja_w61()
+    test_czerwona_iniekcja_zu()
     test_realne_drzewo_jest_zielone()
     print("test_grep_zero_guard: OK")

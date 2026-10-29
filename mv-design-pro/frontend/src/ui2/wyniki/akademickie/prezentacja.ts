@@ -714,6 +714,16 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       },
       { sciezka: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca punktu neutralnego', jednostka: 'Ω' },
       {
+        sciezka: 'resistive_component_a',
+        etykieta: 'Składowa czynna prądu doziemienia (prąd rezystora)',
+        jednostka: 'A',
+      },
+      {
+        sciezka: 'coil_current_a',
+        etykieta: 'Prąd dławika w układzie dławik ‖ rezystor',
+        jednostka: 'A',
+      },
+      {
         sciezka: 'resultant_earth_fault_current_a',
         etykieta: 'Wynikowy prąd zwarcia doziemnego',
         jednostka: 'A',
@@ -728,8 +738,9 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
     ],
     tabele: [],
     nastepnyKrok:
-      'Po doborze wprowadź dławik albo rezystor do modelu punktu neutralnego GPZ '
-      + 'i przelicz analizę „Detekcja doziemień" — metoda detekcji zależy od tego doboru.',
+      'Gdy dobór różni się od zespołu uziemiającego w modelu, zmień dławik albo rezystor '
+      + 'zespołu w polu ZU stacji i przelicz analizę „Detekcja doziemień" — metoda detekcji '
+      + 'zależy od sposobu uziemienia.',
   },
 };
 
@@ -810,7 +821,8 @@ export const NAZWY_BRAKUJACYCH_POL: Readonly<Record<string, string>> = {
   b0_siemens_per_km: 'susceptancja doziemna gałęzi (b₀)',
   nominal_kv: 'napięcie znamionowe sieci',
   ner_clearing_time_s: 'czas wyłączenia zwarcia doziemnego',
-  ner_energy_rating_j: 'energia znamionowa rezystora uziemiającego',
+  'uziemienie_sn.rezystory': 'rezystor punktu neutralnego zespołu uziemiającego (R, I_n, t_n)',
+  'uziemienie_sn.prad_dlawikow_a': 'prąd dławika gaszącego w układzie dławik ‖ rezystor',
   converter_control_bandwidth_hz: 'pasmo pętli regulacji prądu przekształtnika',
   converter_ref: 'przekształtnik do zbadania',
   benchmark_references: 'wartości referencyjne sieci odniesienia',

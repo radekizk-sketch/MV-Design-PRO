@@ -143,6 +143,7 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     const migawka = fixtura('skladowe_scena_migawka').snapshot;
     const nazwyElementow: string[] = [
       ...(migawka.sources ?? []),
+      ...(migawka.zespoly_uziemiajace ?? []),
       ...(migawka.transformers ?? []),
     ]
       .map((element: { name?: string }) => element.name)

@@ -1,6 +1,6 @@
 {
   "case_id": "case-demo",
-  "model_hash": "02e101b5af54ab4305f7de8789ecf934f0fc8b90acbd4d1cef8df1e937f4503b",
+  "model_hash": "58004f8d217723cc75620090437c130a464f52a7fa01ec06c46d420924a2aef4",
   "przedmiot": {
     "liczba_szyn": 8,
     "liczba_galezi": 6,
@@ -529,7 +529,7 @@
     },
     {
       "kod": "insulation_coordination",
-      "gotowosc": "NIEPOTWIERDZONA",
+      "gotowosc": "POTWIERDZONA",
       "warunki": [
         {
           "kod": "model.wezly",
@@ -541,44 +541,96 @@
         },
         {
           "kod": "model.ograniczniki",
-          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
-          "spelniony": false,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": null
-        },
-        {
-          "kod": "ograniczniki.uziemienie_sieci_nieznane",
-          "opis_pl": "1 miejsc z ogranicznikiem bez uziemienia punktu neutralnego sieci w modelu (szyna ani transformator nie deklarują) — kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie",
-          "spelniony": false,
+          "opis_pl": "Miejsca zainstalowania ograniczników przepięć w modelu: 1",
+          "spelniony": true,
           "elementy": [
             "bus_sn_b"
           ],
           "blokujacy": true,
           "klucz_parametru": null
-        }
-      ],
-      "braki": [
-        {
-          "kod": "model.ograniczniki",
-          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
-          "spelniony": false,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": null
         },
         {
-          "kod": "ograniczniki.uziemienie_sieci_nieznane",
-          "opis_pl": "1 miejsc z ogranicznikiem bez uziemienia punktu neutralnego sieci w modelu (szyna ani transformator nie deklarują) — kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie",
+          "kod": "ograniczniki.poziom_izolacji_z_karty",
+          "opis_pl": "1 z 1 miejsc bez poziomu izolacji udarowej chronionych aparatów z karty producenta — margines ochrony informacyjnie wobec poziomu normowego IEC 60071-1",
           "spelniony": false,
           "elementy": [
             "bus_sn_b"
           ],
-          "blokujacy": true,
+          "blokujacy": false,
+          "klucz_parametru": null,
+          "braki_pakietow": [
+            {
+              "kod": "BRAK_KARTY_PRODUCENTA:poziom_izolacji_udarowej",
+              "rodzaj": "BRAK_KARTY_PRODUCENTA",
+              "pakiet": "P2",
+              "identyfikator": "poziom_izolacji_udarowej",
+              "nazwa_elementu": "Stacja B SN",
+              "status_maszynowy": "BRAK_PODSTAWY",
+              "komunikat_pl": "Szyna z ogranicznikiem przepięć „Stacja B SN”: brak danych karty producenta — znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów. Margines ochrony ogranicznika liczony jest informacyjnie wobec poziomu normowego IEC 60071-1 dla napięcia najwyższego urządzeń, a nie wobec poziomu izolacji zainstalowanych aparatów. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+              "wyjasnienie": {
+                "zdanie_pl": "Szyna z ogranicznikiem przepięć „Stacja B SN”: brak danych karty producenta — znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów. Margines ochrony ogranicznika liczony jest informacyjnie wobec poziomu normowego IEC 60071-1 dla napięcia najwyższego urządzeń, a nie wobec poziomu izolacji zainstalowanych aparatów. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+                "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet kart katalogowych producentów, dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+                "czego_brakuje": [
+                  "dane karty producenta: znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów"
+                ],
+                "zastrzezenia": []
+              }
+            }
+          ]
+        },
+        {
+          "kod": "ograniczniki.bez_karty",
+          "opis_pl": "1 z 1 miejsc bez karty katalogowej ogranicznika — parametry z doboru wstępnego solvera (reguły IEC 60071)",
+          "spelniony": false,
+          "elementy": [
+            "bus_sn_b"
+          ],
+          "blokujacy": false,
           "klucz_parametru": null
         }
       ],
-      "uwagi": [],
+      "braki": [],
+      "uwagi": [
+        {
+          "kod": "ograniczniki.poziom_izolacji_z_karty",
+          "opis_pl": "1 z 1 miejsc bez poziomu izolacji udarowej chronionych aparatów z karty producenta — margines ochrony informacyjnie wobec poziomu normowego IEC 60071-1",
+          "spelniony": false,
+          "elementy": [
+            "bus_sn_b"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null,
+          "braki_pakietow": [
+            {
+              "kod": "BRAK_KARTY_PRODUCENTA:poziom_izolacji_udarowej",
+              "rodzaj": "BRAK_KARTY_PRODUCENTA",
+              "pakiet": "P2",
+              "identyfikator": "poziom_izolacji_udarowej",
+              "nazwa_elementu": "Stacja B SN",
+              "status_maszynowy": "BRAK_PODSTAWY",
+              "komunikat_pl": "Szyna z ogranicznikiem przepięć „Stacja B SN”: brak danych karty producenta — znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów. Margines ochrony ogranicznika liczony jest informacyjnie wobec poziomu normowego IEC 60071-1 dla napięcia najwyższego urządzeń, a nie wobec poziomu izolacji zainstalowanych aparatów. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+              "wyjasnienie": {
+                "zdanie_pl": "Szyna z ogranicznikiem przepięć „Stacja B SN”: brak danych karty producenta — znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów. Margines ochrony ogranicznika liczony jest informacyjnie wobec poziomu normowego IEC 60071-1 dla napięcia najwyższego urządzeń, a nie wobec poziomu izolacji zainstalowanych aparatów. Dane dostarcza pakiet kart katalogowych producentów, dostarczany przez właściciela systemu.",
+                "przyczyna_pl": "brak danych zewnętrznych — dostarcza je pakiet kart katalogowych producentów, dostarczany przez właściciela systemu; brak danych nie oznacza spełnienia ani niespełnienia wymagania",
+                "czego_brakuje": [
+                  "dane karty producenta: znamionowy poziom izolacji udarowej piorunowej (BIL/LIWL) chronionych aparatów"
+                ],
+                "zastrzezenia": []
+              }
+            }
+          ]
+        },
+        {
+          "kod": "ograniczniki.bez_karty",
+          "opis_pl": "1 z 1 miejsc bez karty katalogowej ogranicznika — parametry z doboru wstępnego solvera (reguły IEC 60071)",
+          "spelniony": false,
+          "elementy": [
+            "bus_sn_b"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
@@ -621,8 +673,10 @@
         },
         {
           "nazwa_pl": "Miejsca zainstalowania ograniczników",
-          "wartosc_pl": "0",
-          "elementy": []
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_sn_b"
+          ]
         },
         {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
@@ -648,12 +702,12 @@
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-          "spelniony": false,
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "spelniony": true,
           "elementy": [],
           "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
+          "klucz_parametru": null
         },
         {
           "kod": "parametr.relay_methods",
@@ -665,14 +719,6 @@
         }
       ],
       "braki": [
-        {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-          "spelniony": false,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
-        },
         {
           "kod": "parametr.relay_methods",
           "opis_pl": "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku",
@@ -721,6 +767,11 @@
         {
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "elementy": []
         },
         {
@@ -771,12 +822,12 @@
           "klucz_parametru": "inrush_multiple_in"
         },
         {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-          "spelniony": false,
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "spelniony": true,
           "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
+          "blokujacy": false,
+          "klucz_parametru": null
         }
       ],
       "braki": [
@@ -803,14 +854,6 @@
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": "inrush_multiple_in"
-        },
-        {
-          "kod": "parametr.neutral_grounding",
-          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
-          "spelniony": false,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_grounding"
         }
       ],
       "uwagi": [],
@@ -852,6 +895,11 @@
         {
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
           "elementy": []
         },
         {
@@ -1115,7 +1163,7 @@
     },
     {
       "kod": "neutral_earthing_design",
-      "gotowosc": "NIEPOTWIERDZONA",
+      "gotowosc": "POTWIERDZONA",
       "warunki": [
         {
           "kod": "model.wezly",
@@ -1127,7 +1175,7 @@
         },
         {
           "kod": "galezie.b0",
-          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 3",
+          "opis_pl": "Linie i kable sieci SN z susceptancją zerową (pojemność doziemna): 1 z 3",
           "spelniony": true,
           "elementy": [
             "cab_main_b"
@@ -1137,19 +1185,19 @@
         },
         {
           "kod": "model.napiecie_sieci",
-          "opis_pl": "Napięcie znamionowe sieci znane (najwyższe napięcie szyny modelu)",
+          "opis_pl": "Napięcie znamionowe sieci SN znane (15 kV)",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
           "klucz_parametru": null
         },
         {
-          "kod": "parametr.neutral_earthing_type",
-          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
-          "spelniony": false,
+          "kod": "model.uziemienie_sn",
+          "opis_pl": "Sposób uziemienia punktu neutralnego sieci SN z modelu: Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "spelniony": true,
           "elementy": [],
           "blokujacy": true,
-          "klucz_parametru": "neutral_earthing_type"
+          "klucz_parametru": null
         },
         {
           "kod": "galezie.bez_b0",
@@ -1163,16 +1211,7 @@
           "klucz_parametru": null
         }
       ],
-      "braki": [
-        {
-          "kod": "parametr.neutral_earthing_type",
-          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
-          "spelniony": false,
-          "elementy": [],
-          "blokujacy": true,
-          "klucz_parametru": "neutral_earthing_type"
-        }
-      ],
+      "braki": [],
       "uwagi": [
         {
           "kod": "galezie.bez_b0",
@@ -1225,6 +1264,20 @@
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
           "elementy": []
+        },
+        {
+          "nazwa_pl": "Uziemienie punktu neutralnego sieci SN",
+          "wartosc_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający GPZ: sieć skompensowana — dławik gaszący).",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Sieć SN (napięcie znamionowe, linie i kable)",
+          "wartosc_pl": "15 kV, 3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+          ]
         },
         {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",

@@ -339,7 +339,8 @@
         "x0_ohm",
         "x_ohm",
         "z0_z1_ratio",
-        "zero_sequence"
+        "zero_sequence",
+        "zespoly_uziemiajace"
       ],
       "zagniezdzone": {
         "catalog_binding": {
@@ -944,6 +945,93 @@
             "snapshot_mapping_version"
           ],
           "zagniezdzone": {}
+        }
+      }
+    },
+    "add_zespol_uziemiajacy_sn": {
+      "pola": [
+        "bay_ref",
+        "bus_ref",
+        "catalog_binding",
+        "catalog_item_id",
+        "catalog_item_version",
+        "catalog_ref",
+        "dlawik",
+        "dry_run",
+        "name",
+        "odbior_pw_ref",
+        "rezystor",
+        "spz",
+        "uziemienie_bezposrednie",
+        "wylaczenie_od_transformatorow_refs",
+        "zespol_ref"
+      ],
+      "zagniezdzone": {
+        "catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "catalog_ref",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "dlawik": {
+          "pola": [
+            "awsc",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "i_nastawy_a",
+            "stan_odlacznika"
+          ],
+          "zagniezdzone": {
+            "awsc": {
+              "pola": [
+                "czas_zalaczenia_s",
+                "czas_zwloki_s",
+                "i_wymuszany_a",
+                "strona"
+              ],
+              "zagniezdzone": {}
+            },
+            "catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "catalog_ref",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            }
+          }
+        },
+        "rezystor": {
+          "pola": [
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "stan_odlacznika"
+          ],
+          "zagniezdzone": {
+            "catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "catalog_ref",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            }
+          }
         }
       }
     },
@@ -3835,6 +3923,265 @@
       },
       "obce": [
         "catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "bay_ref": 1
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "klucz_obcy": 1
+      },
+      "obce": [
+        "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "awsc": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "dlawik.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "dlawik[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "awsc": {
+            "czas_zalaczenia_s": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "awsc": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "dlawik.awsc.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "awsc": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "dlawik.awsc[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "dlawik.catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "dlawik": {
+          "catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "dlawik.catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": {
+          "catalog_binding": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "rezystor.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "rezystor[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": {
+          "catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": {
+          "catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "rezystor.catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_zespol_uziemiajacy_sn",
+      "ladunek": {
+        "rezystor": {
+          "catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "rezystor.catalog_binding[1].klucz_obcy"
       ]
     },
     {

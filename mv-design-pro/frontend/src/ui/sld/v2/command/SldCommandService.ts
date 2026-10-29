@@ -164,6 +164,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
      * realne operacje `add_load_sn` i `add_generator_sn` (bus_ref = kliknięta szyna). */
     { id: 'add-load-sn', labelPl: 'Dodaj odbiór SN', section: 'Dodaj' },
     { id: 'add-sync-generator', labelPl: 'Dodaj generator synchroniczny', section: 'Dodaj' },
+    /* Karta UX-04/POLE-ZU: zespół uziemiający sekcji — realna operacja
+     * add_zespol_uziemiajacy_sn (bus_ref = kliknięta szyna sekcji). */
+    { id: 'add-earthing-set', labelPl: 'Dodaj zespół uziemiający', section: 'Dodaj' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', section: 'Analizuj' },
   ],
   bay: [

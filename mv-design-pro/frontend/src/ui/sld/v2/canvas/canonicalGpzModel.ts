@@ -65,7 +65,8 @@ export interface CanonicalGpzSection {
  * Rola pola rozdzielni GPZ wg modelu (`Bay.bay_role`) — klucz tła pola (`gpz.bay.panel`)
  * i legendy ról. Mapowanie 1:1, bez zlewania ról: `IN` → zasilające, `OUT`/`FEEDER` →
  * liniowe (odpływ magistrali i odgałęzienia), `TR` → transformatorowe, `COUPLER` → sprzęgło,
- * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy). Roli „rezerwowe" model
+ * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy), `ZU` → uziemiające (pole
+ * zespołu uziemiającego, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Roli „rezerwowe" model
  * nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola), więc nie istnieje.
  */
 export type RolaPolaGpz =
@@ -74,7 +75,8 @@ export type RolaPolaGpz =
   | 'transformatorowe'
   | 'sprzeglo'
   | 'pomiarowe'
-  | 'zrodlowe';
+  | 'zrodlowe'
+  | 'uziemiajace';
 
 /**
  * Plakietka funkcji automatyki pola — WYŁĄCZNIE z kodów funkcji zabezpieczeniowych pola
@@ -243,8 +245,10 @@ export interface CanonicalGpzHvSystemSource {
 }
 
 export interface CanonicalGpzProps {
-  /** Sposób pracy punktu neutralnego sieci SN z `Source.neutral_grounding` źródła GPZ.
-   *  `null`/brak = model uziemienia nieokreślony (schemat nic nie rysuje). */
+  /** Aparat punktu neutralnego sieci SN zainstalowany w modelu: element zespołu
+   *  uziemiającego na szynie SN stacji albo punkt neutralny uzwojenia SN transformatora
+   *  (karta UX-04/POLE-ZU). `rOhm` przy dławiku = rezystor równoległy zespołu (Z.14).
+   *  `null`/brak = brak aparatu w modelu (schemat nic nie rysuje). */
   readonly snNeutralEarthing?: {
     readonly kind: 'resistor' | 'coil' | 'direct' | 'isolated';
     readonly rOhm?: number;

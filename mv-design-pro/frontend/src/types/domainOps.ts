@@ -52,6 +52,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ups_nn',
   'add_shunt_compensator_sn',
   'add_surge_arrester_sn',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający sekcji SN (Z.13/Z.14/Z.15).
+  'add_zespol_uziemiajacy_sn',
   // Odbiór i generator synchroniczny wprost na szynie SN — menu sekcji na schemacie.
   'add_load_sn',
   'add_generator_sn',

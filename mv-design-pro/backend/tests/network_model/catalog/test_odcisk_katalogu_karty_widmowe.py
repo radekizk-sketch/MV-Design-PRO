@@ -164,6 +164,18 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
+#: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
+#: uziemiające). Dowód w teście niżej: zrzut BEZ tych przestrzeni daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna przestrzeń ani liść się nie
+#: zmieniły. Pełny odcisk katalogu domyślnego po karcie:
+#: e1626d8f87c56d793b33657338b5116084618b76e37989896fcec8c0274ce961.
+ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "a071f93d9f357ffaf3e7390a7f8c05b928ca03ecb1a36354e505aedddb715032"
+PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
+    "earthing_transformer_types": 2,
+    "arc_suppression_coil_types": 3,
+    "neutral_earthing_resistor_types": 4,
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -229,6 +241,9 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
+    for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
+        assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110
 
     # Droga 1 — wycięcie zmian karty LINIA-110 odtwarza łańcuch gałęzi UI/UX.

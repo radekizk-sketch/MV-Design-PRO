@@ -35,6 +35,7 @@ def _model():
         Load,
         Substation,
         Transformer,
+        ZespolUziemiajacy,
     )
 
     return EnergyNetworkModel(
@@ -46,7 +47,10 @@ def _model():
         ],
         substations=[
             Substation(
-                ref_id="stn/1", name="Stacja Łąkowa", station_type="mv_lv", bus_refs=["bus-nn-1"]
+                ref_id="stn/1",
+                name="Stacja Łąkowa",
+                station_type="mv_lv",
+                bus_refs=["bus-sn", "bus-nn-1"],
             ),
             Substation(
                 ref_id="stn/2", name="Stacja Polna", station_type="mv_lv", bus_refs=["bus-nn-2"]
@@ -76,6 +80,16 @@ def _model():
             ),
             Generator(ref_id="gen/pv-2", name="PV Polna", bus_ref="bus-nn-2", p_mw=0.1),
         ],
+        # Sposób uziemienia SN dowodu przekładników z modelu (karta UX-04/POLE-ZU-SKLADOWA-
+        # ZEROWA): zespół uziemiający z dławikiem gaszącym na szynie SN stacji.
+        zespoly_uziemiajace=[
+            ZespolUziemiajacy(
+                ref_id="zu/1",
+                name="ZU Łąkowa",
+                bus_ref="bus-sn",
+                dlawik={"i_nastawy_a": 100.0},
+            )
+        ],
         loads=[
             Load(ref_id="ld-1", name="Odbiór 1", bus_ref="bus-nn-1", p_mw=0.5, q_mvar=0.0),
             Load(ref_id="ld-2", name="Odbiór 2", bus_ref="bus-nn-2", p_mw=0.1, q_mvar=0.0),
@@ -84,7 +98,6 @@ def _model():
 
 
 KONFIGURACJA_LAKOWA = {
-    "mv_neutral_grounding_ref": "mng_petersen",
     "tap_changer_refs": [],
     "der_specs": [
         {
@@ -153,6 +166,8 @@ def test_pakiet_projektu_piec_rodzajow_nazwy_z_modelu_kazda_stacja(app_client, p
     for identyfikator in ("gen/bess-1", "tr/1", "stn/1", "stn/2"):
         assert identyfikator not in teksty
     assert all(d["rodzaj_pl"] for s in body["per_station"] for d in s["proofs"])
+    vt = next(d for d in lakowa["proofs"] if d["proof_type"] == "AUDIT2_VT_GROUNDING_VALIDATION")
+    assert vt["details"]["grounding_type"] == "petersen_coil"
 
 
 def test_pakiet_projektu_deterministyczny_bajtowo(app_client, projekt):
@@ -204,3 +219,66 @@ def test_dawna_koncowka_surowych_specyfikacji_nie_istnieje(app_client):
         json={"station_id": "s", "bess_modes_specs": [{"der_id": "d"}]},
     )
     assert res.status_code == 404
+
+
+def test_uziemienie_sn_pol_stacji_z_modelu_i_nazwane_braki(app_client, projekt):
+    """Konfigurator stacji czyta sposób uziemienia SN z modelu (karta UX-04/POLE-ZU):
+    stacja z zespołem uziemiającym z dławikiem → ``petersen_coil``; stacja bez szyn SN
+    i stacja spoza modelu → typ ``None`` z nazwaną przyczyną (nigdy domysł)."""
+    from application.proof_engine.packs.audit2_skladanie import (
+        STACJA_BEZ_SZYN_SN,
+        STACJA_SPOZA_MODELU_UZIEMIENIE,
+    )
+
+    odpowiedzi: dict[str, dict] = {}
+
+    def zapytaj(stacja: str, pola: list[str]) -> list[dict]:
+        res = app_client.post(
+            f"/api/v1/projects/{projekt}/audit2-station-config/"
+            f"{stacja.replace('/', '%2F')}/_uziemienie-sn",
+            json={"pola": pola},
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["station_id"] == stacja
+        odpowiedzi[stacja] = res.json()
+        return res.json()["pola"]
+
+    assert zapytaj("stn/1", ["Pole 02", "Pole 01", "Pole 01"]) == [
+        {
+            "oznaczenie": "Pole 01",
+            "typ_punktu_neutralnego": "petersen_coil",
+            "przyczyna_braku": None,
+        },
+        {
+            "oznaczenie": "Pole 02",
+            "typ_punktu_neutralnego": "petersen_coil",
+            "przyczyna_braku": None,
+        },
+    ]
+    assert zapytaj("stn/2", ["Pole 01"]) == [
+        {
+            "oznaczenie": "Pole 01",
+            "typ_punktu_neutralnego": None,
+            "przyczyna_braku": STACJA_BEZ_SZYN_SN,
+        }
+    ]
+    assert zapytaj("stn/obca", ["Pole 01"]) == [
+        {
+            "oznaczenie": "Pole 01",
+            "typ_punktu_neutralnego": None,
+            "przyczyna_braku": STACJA_SPOZA_MODELU_UZIEMIENIE,
+        }
+    ]
+
+    # Opis sieci SN stacji: jedna sekcja z dławikiem (nastawa 100 A), opis po polsku.
+    lakowa = odpowiedzi["stn/1"]
+    assert lakowa["przyczyna_braku"] is None
+    (sekcja,) = lakowa["sekcje"]
+    assert sekcja["szyny"] == ["bus-sn"]
+    assert (sekcja["wariant"], sekcja["typ_punktu_neutralnego"]) == ("dlawik", "petersen_coil")
+    assert sekcja["prad_dlawikow_a"] == 100.0
+    assert [p["element_ref"] for p in sekcja["punkty"]] == ["zu/1"]
+    assert "ZU Łąkowa" in sekcja["opis_pl"]
+    assert odpowiedzi["stn/2"]["sekcje"] == []
+    assert odpowiedzi["stn/2"]["przyczyna_braku"] == STACJA_BEZ_SZYN_SN
+    assert odpowiedzi["stn/obca"]["przyczyna_braku"] == STACJA_SPOZA_MODELU_UZIEMIENIE

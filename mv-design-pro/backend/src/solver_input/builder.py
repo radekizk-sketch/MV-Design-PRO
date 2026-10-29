@@ -533,7 +533,6 @@ def build_solver_input(
 
         ap = build_station_audit2_payload(
             station_id=audit2_station_payload.get("station_id", "unknown"),
-            mv_neutral_grounding_ref=audit2_station_payload.get("mv_neutral_grounding_ref"),
             tap_changer_refs=audit2_station_payload.get("tap_changer_refs", []),
             der_specs=audit2_station_payload.get("der_specs", []),
             transformer_tap_changers=audit2_station_payload.get("transformer_tap_changers"),

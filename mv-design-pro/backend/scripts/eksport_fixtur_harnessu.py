@@ -1184,17 +1184,20 @@ PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
             "surface_layer_derating": 0.7,
         }
     },
+    # Sposób uziemienia punktu neutralnego sieci SN NIE jest parametrem projektanta (karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4): analizy czytają go z zespołu uziemiającego
+    # sceny (`_enm_sceny_akademickiej` — dławik gaszący na szynie SN GPZ).
     "earth_fault_detection": {
-        "neutral_grounding": "petersen_tuned",
         "relay_methods": ["wattmetric", "admittance"],
     },
-    "neutral_earthing_design": {"neutral_earthing_type": "petersen_coil"},
+    # Rozstrojenie dławika 5 % — dana projektanta (ENEA Zeszyt 1 §16 s. 30: praca w punkcie
+    # rezonansowym zakazana); schemat projektu (dławik) wynika z zespołu uziemiającego sceny.
+    "neutral_earthing_design": {"petersen_detuning": 0.05},
     "transient_trv": {
         "breaker_rated_voltage_kv": 17.5,
         "trv_natural_frequency_hz": 12000,
         "trv_tau_s": 0.00018,
         "inrush_multiple_in": 8,
-        "neutral_grounding": "petersen_tuned",
     },
     "motor_starting": {
         "motors": [
@@ -3957,6 +3960,11 @@ _APARAT_POLA_SN_SCENY_V126 = "sw-cb-abb-vd4-17kv-630a"
 _KABEL_SN_SCENY_V126 = "cable-base-epr-al-1c-240"
 
 
+#: Pozycje katalogu typowego zespołu uziemiającego (ENEA Zeszyt 1 §16) sceny akademickiej.
+_TRANSFORMATOR_UZIEMIAJACY_SCENY_V126 = "TU_ZNYN11_15KV_PW160"
+_DLAWIK_SCENY_V126 = "DL_40_400A_15KV_CIAGLY"
+
+
 def _wiazanie_katalogowe_sceny(przestrzen: str, pozycja: str) -> dict[str, Any]:
     return {
         "catalog_namespace": przestrzen,
@@ -4049,6 +4057,24 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
     )
     if wynik.get("error"):
         raise SystemExit(f"[fixtury] scena akademicka: {wynik['error']}")
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sieć SN GPZ uziemiona zespołem uziemiającym
+    # (transformator ZNyn11 + dławik gaszący z płynną regulacją, Z.13) — KANONICZNĄ operacją,
+    # pozycjami katalogu typowego §16. Analizy V12.6 zależne od punktu neutralnego (projekt
+    # uziemienia, metoda detekcji doziemień, ferrorezonans) czytają sposób uziemienia z tego
+    # zespołu; nastawy dławika scena nie podaje — wartość robocza funkcji pochodnej (zasada
+    # nr 4, jakość ESTIMATED).
+    wynik = execute_domain_operation(
+        wynik["snapshot"],
+        "add_zespol_uziemiajacy_sn",
+        {
+            "bus_ref": "bus_sn_main",
+            "name": "Zespół uziemiający GPZ",
+            "catalog_ref": _TRANSFORMATOR_UZIEMIAJACY_SCENY_V126,
+            "dlawik": {"catalog_ref": _DLAWIK_SCENY_V126},
+        },
+    )
+    if wynik.get("error"):
+        raise SystemExit(f"[fixtury] scena akademicka (zespół uziemiający): {wynik['error']}")
     enm = EnergyNetworkModel.model_validate(wynik["snapshot"])
     falowniki = [g.ref_id for g in enm.generators if g.gen_type != "synchronous"]
     if falowniki != [REF_FALOWNIKA_SCENY_AKADEMICKIEJ]:
@@ -4392,7 +4418,9 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
             if not ocen_gotowosc_v126(enm, rodzaj, parametry).potwierdzona:
                 continue
             model = _with_parameter_payloads(
-                build_v126_input_from_enm(enm, parameters=parametry), parametry
+                build_v126_input_from_enm(enm, parameters=parametry, analysis_type=rodzaj),
+                parametry,
+                enm,
             )
             stabilny = f"{RUN_ID_SCENY_AKADEMICKIEJ}-{rodzaj.value}"
             with _zamrozona_tozsamosc_biegu(

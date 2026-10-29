@@ -57,6 +57,10 @@ class TestCatalogNamespace:
             "PTPIREE_CERTYFIKAT_GENERATORA",
             "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
             "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — elementy zespołu uziemiającego SN.
+            "TRANSFORMATOR_UZIEMIAJACY",
+            "DLAWIK_GASZACY",
+            "REZYSTOR_UZIEMIAJACY",
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected

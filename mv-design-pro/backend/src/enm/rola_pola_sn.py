@@ -19,6 +19,20 @@ Moduł-LIŚĆ: bez importów spoza biblioteki standardowej — czytają go opera
 
 from __future__ import annotations
 
+from typing import Literal, get_args
+
+#: Rola pola w MODELU (`Bay.bay_role`) — JEDNA lista ról dla modelu ENM, szablonów pól
+#: (`network_model.catalog.bay_templates.BayTemplate`, `CompleteMvBayTemplate`), ładunku
+#: `add_sn_bay` i normalizacji roli w operacjach (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: dawniej
+#: cztery kopie literałów). ``ZU`` — pole zespołu uziemiającego (ENEA Zeszyt 1 §16, rys.
+#: Z.13/Z.14/Z.15): tor pola kończy się transformatorem uziemiającym (port
+#: ``transformator_uziemiajacy``; element fizyczny ``EnergyNetworkModel.zespoly_uziemiajace``).
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "ZU"]
+ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
+
+#: Port końca toru pola zespołu uziemiającego — element fizyczny wskazywany przez szablon pola.
+PORT_TRANSFORMATORA_UZIEMIAJACEGO = "transformator_uziemiajacy"
+
 #: Rola pola podana aliasem modelu (`Bay.bay_role`, skróty kreatorów i szablonów) albo rolą
 #: kanoniczną (`field_role`) → rola kanoniczna. JEDEN słownik dla operacji budujących stację
 #: (`insert_station_on_segment_sn`, `append_station_on_endpoint`) i dla nazw ról — ta sama
@@ -32,12 +46,14 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    "ZU": "ZESPOL_UZIEMIAJACY",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
     "LINIA_ODG": "LINIA_ODG",
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+    "ZESPOL_UZIEMIAJACY": "ZESPOL_UZIEMIAJACY",
 }
 
 #: Polska nazwa pola SN wg roli kanonicznej. Kod roli (`LINIA_IN`, `TR`) jest wartością pola
@@ -50,6 +66,7 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "TRANSFORMATOROWE": "Pole transformatorowe",
     "SPRZEGLO": "Pole sprzęgła",
     "POMIAROWE": "Pole pomiarowe",
+    "ZESPOL_UZIEMIAJACY": "Pole zespołu uziemiającego",
     "PV_SN": "Pole źródłowe PV",
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",
@@ -105,6 +122,27 @@ def kanoniczna_rola_pola_sn(raw: object) -> str:
         return ""
     normalized = raw.strip().upper()
     return ROLA_POLA_SN_Z_ALIASU.get(normalized, normalized)
+
+
+#: Rola kanoniczna → rola MODELU (`Bay.bay_role`) — odwrotność aliasów modelu powyżej,
+#: wyprowadzona z tej samej tablicy (predykaty parami: alias i jego odwrotność z jednego
+#: źródła).
+ROLA_MODELU_Z_KANONICZNEJ: dict[str, str] = {
+    kanoniczna: alias
+    for alias, kanoniczna in ROLA_POLA_SN_Z_ALIASU.items()
+    if alias in ROLE_POLA_MODELU
+}
+
+
+def rola_modelu_pola_sn(raw: object) -> str | None:
+    """Rola modelu pola SN z roli modelu albo aliasu kanonicznego (``LINIA_OUT`` → ``OUT``);
+    rola spoza obu list — ``None`` (wołający odmawia z nazwą błędu, nie zgaduje roli)."""
+    if not isinstance(raw, str):
+        return None
+    normalized = raw.strip().upper()
+    if normalized in ROLE_POLA_MODELU:
+        return normalized
+    return ROLA_MODELU_Z_KANONICZNEJ.get(normalized)
 
 
 def nazwa_roli_pola_sn(rola: object) -> str:

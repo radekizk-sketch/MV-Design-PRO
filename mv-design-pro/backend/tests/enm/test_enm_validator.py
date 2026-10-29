@@ -344,9 +344,25 @@ class TestWarnings:
         assert "W001" in codes
 
     def test_w002_source_no_z0(self):
-        result = ENMValidator().validate(_minimal_enm())
+        """W002 dotyczy źródła, którego Z₀ czyta obliczenie — spoza pasma SN (sieć 110 kV
+        za granicą modelu). Źródło na szynach SN nie niesie Z₀ (karta
+        UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3), więc jego brak nie jest ostrzeżeniem; brak Z₀
+        źródła WN nie odbiera zdolności zwarcia doziemnego (przyczyna per węzeł w biegu)."""
+        siec_sn = ENMValidator().validate(_minimal_enm())
+        assert "W002" not in [i.code for i in siec_sn.issues]
+        zrodlo = _minimal_enm().sources[0].model_copy(update={"bus_ref": "bus_wn"})
+        model_wn = _minimal_enm().model_copy(
+            update={
+                "buses": [Bus(ref_id="bus_wn", name="Szyna 110 kV", voltage_kv=110.0)],
+                "sources": [zrodlo],
+                "branches": [],
+            }
+        )
+        result = ENMValidator().validate(model_wn)
         codes = [i.code for i in result.issues]
         assert "W002" in codes
+        assert "W001" not in codes
+        assert result.analysis_available.short_circuit_1f is True
 
     def test_w003_no_loads(self):
         result = ENMValidator().validate(_minimal_enm())

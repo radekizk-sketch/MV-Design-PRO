@@ -111,7 +111,6 @@ const AUDIT2_SNAPSHOT_BODY = {
   device_withstand: [],
   pf_curves: PF_CURVE_FIXTURES,
   block_transformers: BLOCK_TRANSFORMER_FIXTURES,
-  mv_neutral_groundings: [],
 };
 
 // Naprawa FAB-I (2026-09-05): katalog urządzeń DER pochodzi WYŁĄCZNIE z backendu

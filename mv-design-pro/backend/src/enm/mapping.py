@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -60,6 +61,7 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.uziemienie import ETYKIETA_PL_WARIANTU_UZIEMIENIA, StanAwsc
 from network_model.core.voltage_factor import (
     Scenario,
     TolerancjaNapieciaNn,
@@ -89,6 +91,7 @@ from network_model.solvers.power_flow_zip import (
     aggregate_zip,
     zip_coeffs_from_materialized_params,
 )
+from werdykt.kontrakt import WyjasnienieWerdyktu
 
 from .models import (
     Cable,
@@ -478,21 +481,80 @@ def _add_series_admittance(
     y_bus[to_idx, to_idx] += y_series_pu
 
 
+@dataclass(frozen=True)
+class BrakWynikuZerowego:
+    """Nazwana przyczyna braku wyniku składowej zerowej w węźle (karta UX-04/POLE-ZU-
+    SKLADOWA-ZEROWA, §0 pkt 7): kod, przyczyna, status maszynowy ZWIĄZANY z wyjaśnieniem
+    (kontrakt werdyktu wyjaśnialnego — zdanie, przyczyna, czego brakuje, zastrzeżenia).
+    ``elementy`` — identyfikatory elementów modelu (dana maszynowa); zdanie niesie nazwy."""
+
+    przyczyna: str
+    kod: str
+    status: str
+    wyjasnienie: WyjasnienieWerdyktu
+    elementy: tuple[str, ...] = ()
+
+    @property
+    def opis_pl(self) -> str:
+        """Zdanie przyczyny dla projektanta (opis ograniczenia raportowego wiersza)."""
+        return self.wyjasnienie.zdanie_pl
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "przyczyna": self.przyczyna,
+            "kod": self.kod,
+            "status": self.status,
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
+            "elementy": list(self.elementy),
+        }
+
+
+@dataclass(frozen=True)
+class SiecZerowa:
+    """Złożona sieć składowej zerowej: macierz Y0, ślad WHITE BOX i przyczyny braku wyniku
+    zerowego per węzeł grafu (węzły składowych bez uziemienia przez małą impedancję)."""
+
+    builder: AdmittanceMatrixBuilder
+    node_index: dict[str, int]
+    size: int
+    y0_bus: np.ndarray
+    trace: list[dict]
+    przyczyny: dict[str, BrakWynikuZerowego]
+
+
+#: Rodzaj bocznika składowej zerowej w węźle — klasyfikacja przyczyn braku wyniku zerowego.
+#: ``rezystancyjny`` — droga przez małą impedancję z udziałem rezystancji albo bezpośrednia
+#: (źródło WN/nN z Z0, uzwojenie transformatora, zespół z rezystorem / AWSC załączoną /
+#: uziemieniem bezpośrednim); ``dlawik`` — zespół z samym dławikiem; ``pojemnosc`` — B0.
+_BOCZNIK_REZYSTANCYJNY = "rezystancyjny"
+_BOCZNIK_DLAWIK = "dlawik"
+_BOCZNIK_POJEMNOSC = "pojemnosc"
+
+
 def _assemble_zero_sequence_y0(
-    enm: EnergyNetworkModel, graph: NetworkGraph, scenario: Scenario = "MAX"
-) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    scenario: Scenario = "MAX",
+    *,
+    stan_awsc: StanAwsc = "spoczynek",
+) -> SiecZerowa:
     """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
     Rozbicie po elementach (linie/kable, źródła, transformatory wg grupy
-    połączeń) — kolejność deterministyczna (sort po ref_id). Transformatory
-    stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
+    połączeń, zespoły uziemiające) — kolejność deterministyczna (sort po ref_id).
+    Transformatory stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
     grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
-    przerwie / boczniku do ziemi prądu zerowego.
+    przerwie / boczniku do ziemi prądu zerowego. Zespoły uziemiające SN (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA) — bocznik Z_0,TU + 3·Z_N z ``enm.uziemienie_sekcji``
+    w stanie AWSC przypadku (``stan_awsc``). Źródło w paśmie SN nie wnosi Z0 (uziemienie
+    sieci SN opisuje wyłącznie zespół albo uzwojenie transformatora —
+    ``impedancja_zerowa_zrodla_dozwolona``).
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
 
     tolerancje_nn = _tolerancje_nn(wyspy_wezlow_nn(enm))
 
+    from .uziemienie_sekcji import impedancja_zerowa_zrodla_dozwolona, uziemienie_sieci
     from .zero_sequence_transformer import (
         ZeroSeqConnection,
         build_transformer_zero_seq_model,
@@ -512,12 +574,23 @@ def _assemble_zero_sequence_y0(
     # Teksty śladu nazywają szyny nazwą z modelu (karta #144), nie identyfikatorem węzła grafu.
     nazwa_szyny = {bus.ref_id: nazwa_elementu(bus, "buses") for bus in enm.buses}
 
+    boczniki: dict[int, set[str]] = {}
+    # Gałęzie w ruchu BEZ danych składowej zerowej (R′0/X′0): nie wchodzą do Y0 (zero
+    # fabrykacji), ale węzeł, który odcięły od uziemienia, dostaje przyczynę ``brak_danych``.
+    galezie_bez_z0: list[tuple[str, str, str]] = []
+    # Źródła spoza pasma SN (sieć 110 kV albo nN za granicą modelu) BEZ danych Z0 i bez opisu
+    # „izolowany”: impedancja zerowa sieci zasilającej nieznana — nie wchodzi do Y0 (zero
+    # fabrykacji), a każdy węzeł jej składowej sieci zerowej dostaje przyczynę
+    # ``brak_danych`` (wynik bez bocznika źródła byłby zawyżonym Z0, nie wynikiem).
+    zrodla_bez_z0: list[tuple[str, str]] = []
+
     for branch in sorted(enm.branches, key=lambda b: b.ref_id):
         if not isinstance(branch, OverheadLine | Cable):
             continue
         if branch.status != "closed":
             continue
         if branch.r0_ohm_per_km is None or branch.x0_ohm_per_km is None:
+            galezie_bez_z0.append((branch.ref_id, branch.from_bus_ref, branch.to_bus_ref))
             continue
 
         from_id = ref_to_node_id.get(branch.from_bus_ref)
@@ -583,6 +656,8 @@ def _assemble_zero_sequence_y0(
             y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
             y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
             y0_bus[to_idx, to_idx] += y0_shunt_per_end_pu
+            boczniki.setdefault(from_idx, set()).add(_BOCZNIK_POJEMNOSC)
+            boczniki.setdefault(to_idx, set()).add(_BOCZNIK_POJEMNOSC)
             tracer.add(
                 key=f"z0_line_shunt[{branch.ref_id}]",
                 title=(
@@ -635,6 +710,28 @@ def _assemble_zero_sequence_y0(
         bus_voltage_kv = bus_voltage[source.bus_ref]
         if bus_voltage_kv <= 0:
             continue
+        if not impedancja_zerowa_zrodla_dozwolona(bus_voltage_kv):
+            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): źródło w paśmie SN nie opisuje
+            # uziemienia sieci SN — Z0 źródła na szynie SN nie wchodzi do Y0 (walidator
+            # E-W5-01 zgłasza takie dane jako sprzeczne z jedyną prawdą: zespół uziemiający
+            # albo punkt neutralny uzwojenia transformatora).
+            if source.r0_ohm is not None or source.x0_ohm is not None or source.z0_z1_ratio:
+                tracer.add(
+                    key=f"z0_source_sn_pominiete[{source.ref_id}]",
+                    title=(
+                        f"Źródło {nazwa_elementu(source, 'sources')}: impedancja zerowa "
+                        "pominięta (szyna SN)"
+                    ),
+                    formula_latex=r"Y_{0,src} = 0",
+                    inputs={"ref_id": source.ref_id, "bus_voltage_kv": bus_voltage_kv},
+                    substitution=(
+                        "Uziemienie punktu neutralnego sieci SN opisuje zespół uziemiający "
+                        "albo punkt neutralny uzwojenia transformatora — nie źródło."
+                    ),
+                    result={},
+                    notes="Z0 źródła na szynie SN nie jest drogą prądu zerowego modelu.",
+                )
+            continue
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
@@ -642,6 +739,8 @@ def _assemble_zero_sequence_y0(
             source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
         )
         if z0_source_ohm is None:
+            if source.neutral_grounding is None or source.neutral_grounding.type != "isolated":
+                zrodla_bez_z0.append((source.ref_id, source.bus_ref))
             continue
         if z0_source_ohm == 0:
             raise ZeroDivisionError(
@@ -649,6 +748,7 @@ def _assemble_zero_sequence_y0(
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
+        boczniki.setdefault(idx, set()).add(_BOCZNIK_REZYSTANCYJNY)
         tracer.add(
             key=f"z0_source[{source.ref_id}]",
             title=(
@@ -693,22 +793,284 @@ def _assemble_zero_sequence_y0(
                 y0_bus[lv_idx, lv_idx] += y_pu
         elif model.connection == ZeroSeqConnection.HV_SHUNT_GROUND:
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
+            boczniki.setdefault(node_index[hv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
+            boczniki.setdefault(node_index[lv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
 
-    # Zero-sequence paths can be intentionally blocked by transformer vector
-    # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
-    # calculations singular; adding a local numerical reference keeps them
-    # isolated from the solved SN network.
-    for idx in range(size):
-        if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
-            y0_bus[idx, idx] += complex(1e6, 0.0)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające sieci SN — bocznik
+    # Z_0 = Z_0,TU + 3·Z_N (IEC 60909-0: impedancja punktu neutralnego wchodzi do obwodu
+    # zerowego jako 3·Z_N) z JEDYNEJ prawdy o uziemieniu sekcji (``uziemienie_sieci``).
+    # Ślad niesie OBA stany AWSC (Z.13: jX w spoczynku, R‖jX po załączeniu), Y0 — stan
+    # przypadku obliczeniowego.
+    for sekcja in uziemienie_sieci(enm) if enm.zespoly_uziemiajace else ():
+        for punkt in sekcja.punkty:
+            if punkt.rodzaj != "zespol_uziemiajacy":
+                continue
+            zu_id = ref_to_node_id.get(punkt.bus_ref)
+            if zu_id is None or zu_id not in node_index:
+                continue
+            z0_zu_ohm = punkt.z0_bocznika_ohm(stan_awsc)
+            idx = node_index[zu_id]
+            z_base_zu = builder.get_zbase_ohm(zu_id)
+            z_n_spoczynek = punkt.z_n_ohm("spoczynek")
+            z_n_zalaczony = punkt.z_n_ohm("zalaczony")
+            tracer.add(
+                key=f"z0_zespol_uziemiajacy[{punkt.element_ref}]",
+                title=(
+                    f"Zespół uziemiający {punkt.nazwa_pl}: bocznik składowej zerowej "
+                    f"({ETYKIETA_PL_WARIANTU_UZIEMIENIA[punkt.wariant(stan_awsc)]})"
+                ),
+                formula_latex=r"Z_{0,ZU} = Z_{0,TU} + 3 Z_N;\quad Y_{0,ZU} = Z_{base}/Z_{0,ZU}",
+                inputs={
+                    "ref_id": punkt.element_ref,
+                    "stan_awsc": stan_awsc,
+                    "z0_tu_ohm": _z_sladu(punkt.z0_tu_ohm),
+                    "z_n_spoczynek_ohm": _z_sladu(z_n_spoczynek),
+                    "z_n_awsc_zalaczony_ohm": _z_sladu(z_n_zalaczony),
+                    "z_base_ohm": z_base_zu,
+                    "galezie": [g.to_dict() for g in punkt.galezie],
+                    "parametry": [p.to_dict() for p in punkt.parametry],
+                },
+                substitution=(
+                    f"Z0,TU = {_opis_z(punkt.z0_tu_ohm)}; Z_N(spoczynek) = "
+                    f"{_opis_z(z_n_spoczynek)}; Z_N(AWSC załączona) = {_opis_z(z_n_zalaczony)}; "
+                    f"Z0,ZU({stan_awsc}) = {_opis_z(z0_zu_ohm)} (bocznik "
+                    f"{nazwa_szyny[punkt.bus_ref]})"
+                ),
+                result={"z0_ohm": _z_sladu(z0_zu_ohm), "wariant": punkt.wariant(stan_awsc)},
+                notes=punkt.odmowa_pl,
+            )
+            if z0_zu_ohm is None:
+                continue
+            if z0_zu_ohm == 0:
+                raise ZeroDivisionError(
+                    "Cannot compute earthing set zero-sequence admittance: impedance is zero"
+                )
+            y0_bus[idx, idx] += 1.0 / (z0_zu_ohm / z_base_zu)
+            boczniki.setdefault(idx, set()).add(
+                _BOCZNIK_REZYSTANCYJNY
+                if punkt.bocznik_rezystancyjny(stan_awsc)
+                else _BOCZNIK_DLAWIK
+            )
 
-    return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
+    przyczyny, kotwice = _przyczyny_braku_zerowej(
+        y0_bus=y0_bus,
+        node_index=node_index,
+        boczniki=boczniki,
+        galezie_bez_z0=galezie_bez_z0,
+        zrodla_bez_z0=zrodla_bez_z0,
+        ref_to_node_id=ref_to_node_id,
+        nazwy={
+            **{b.ref_id: nazwa_elementu(b, "branches") for b in enm.branches},
+            **{z.ref_id: nazwa_elementu(z, "sources") for z in enm.sources},
+        },
+    )
+
+    # Kotwica numeryczna WYŁĄCZNIE dla węzłów składowych bez żadnego bocznika (droga prądu
+    # zerowego zablokowana grupą połączeń, podsieć pływająca): ich blok Y0 jest osobliwy,
+    # a każdy ich węzeł ma przyczynę braku wyniku zerowego (``brak_drogi`` / ``brak_danych``)
+    # — zwarcie doziemne w nim NIE jest liczone (wiersz bez rdzenia, ``canonical_analysis``),
+    # więc kotwica nie udaje uziemienia bezpośredniego. Blok jest rozprzężony z resztą Y0
+    # (składowa spójna — brak elementów szeregowych do innych składowych), więc kotwica nie
+    # zmienia Z0 żadnego węzła liczonego. Przypięte testem
+    # ``tests/enm/test_skladowa_zerowa_zu.py``.
+    for idx in kotwice:
+        y0_bus[idx, idx] += complex(1e6, 0.0)
+
+    return SiecZerowa(
+        builder=builder,
+        node_index=node_index,
+        size=size,
+        y0_bus=y0_bus,
+        trace=tracer.to_list() + transformer_trace,
+        przyczyny=przyczyny,
+    )
+
+
+def _z_sladu(z: complex | None) -> dict[str, float] | None:
+    """Liczba zespolona w śladzie WHITE BOX (JSON) — ten sam kształt co ``z_q_ohm``."""
+    return None if z is None else {"re": z.real, "im": z.imag}
+
+
+def _opis_z(z: complex | None) -> str:
+    if z is None:
+        return "brak drogi"
+    return f"{z.real:.6g} + j{z.imag:.6g} Ω"
+
+
+def _przyczyny_braku_zerowej(
+    *,
+    y0_bus: np.ndarray,
+    node_index: dict[str, int],
+    boczniki: dict[int, set[str]],
+    galezie_bez_z0: list[tuple[str, str, str]],
+    zrodla_bez_z0: list[tuple[str, str]],
+    ref_to_node_id: dict[str, str],
+    nazwy: dict[str, str],
+) -> tuple[dict[str, BrakWynikuZerowego], tuple[int, ...]]:
+    """Przyczyna braku wyniku zerowego każdego węzła składowej sieci zerowej bez uziemienia
+    przez małą impedancję (trzy przyczyny nazwane — ``enm.uziemienie_sekcji``).
+
+    Składowa spójna Y0 (elementy szeregowe) z bocznikiem rezystancyjnym (źródło, uzwojenie
+    transformatora, zespół z rezystorem / AWSC załączoną / wprost) — liczona. Bez niego:
+    ``brak_danych``, gdy gałąź w ruchu bez R′0/X′0 łączy składową z inną (odcięcie brakiem
+    danych), albo gdy w składowej leży źródło spoza pasma SN bez Z0 (impedancja zerowa sieci
+    zasilającej nieznana — także przy innym boczniku, bo bez bocznika źródła Z0 węzła byłoby
+    zawyżone); ``poza_zakresem_iec60909``, gdy jedyną drogą są pojemności B0 i/lub dławik
+    (sieć izolowana albo skompensowana); ``brak_drogi``, gdy składowa nie ma żadnego bocznika.
+    Zwraca też indeksy węzłów składowych bez ŻADNEGO bocznika (blok osobliwy — kotwica).
+    """
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    from .uziemienie_sekcji import KOD_PRZYCZYNY_BRAKU_ZEROWEJ, STATUS_PRZYCZYNY_BRAKU_ZEROWEJ
+
+    size = y0_bus.shape[0]
+    if size == 0:
+        return {}, ()
+    _, etykiety = connected_components(csr_matrix(y0_bus != 0), directed=False)
+    rodzaje: dict[int, set[str]] = {}
+    for idx, zbior in boczniki.items():
+        rodzaje.setdefault(int(etykiety[idx]), set()).update(zbior)
+    brakujace: dict[int, list[str]] = {}
+    for ref, a, b in galezie_bez_z0:
+        ida, idb = ref_to_node_id.get(a), ref_to_node_id.get(b)
+        if ida not in node_index or idb not in node_index:
+            continue
+        la, lb = int(etykiety[node_index[ida]]), int(etykiety[node_index[idb]])
+        if la == lb:
+            continue
+        brakujace.setdefault(la, []).append(ref)
+        brakujace.setdefault(lb, []).append(ref)
+    zrodla_bez_danych: dict[int, list[str]] = {}
+    for ref, szyna in zrodla_bez_z0:
+        wezel_zrodla = ref_to_node_id.get(szyna)
+        if wezel_zrodla not in node_index:
+            continue
+        zrodla_bez_danych.setdefault(int(etykiety[node_index[wezel_zrodla]]), []).append(ref)
+    wynik: dict[str, BrakWynikuZerowego] = {}
+    kotwice = tuple(idx for idx in range(size) if not rodzaje.get(int(etykiety[idx])))
+    for wezel, idx in sorted(node_index.items()):
+        skladowa = int(etykiety[idx])
+        zbior = rodzaje.get(skladowa, set())
+        if skladowa in zrodla_bez_danych:
+            przyczyna = "brak_danych"
+            elementy = tuple(sorted(set(zrodla_bez_danych[skladowa])))
+            nazwy_zrodel = ", ".join(nazwy[ref] for ref in elementy)
+            wynik[wezel] = BrakWynikuZerowego(
+                przyczyna=przyczyna,
+                kod=KOD_PRZYCZYNY_BRAKU_ZEROWEJ[przyczyna],
+                status=STATUS_PRZYCZYNY_BRAKU_ZEROWEJ[przyczyna],
+                wyjasnienie=WyjasnienieWerdyktu(
+                    zdanie_pl=(
+                        "Węzeł w sieci składowej zerowej źródła bez impedancji zerowej "
+                        f"({nazwy_zrodel}): Z0 sieci zasilającej nieznane — wynik zwarcia "
+                        "doziemnego nieoznaczalny. Podaj R0/X0 albo Z0/Z1 źródła (dane "
+                        "operatora sieci zasilającej)."
+                    ),
+                    przyczyna_pl="Impedancja zerowa sieci zasilającej nieznana.",
+                    czego_brakuje=(f"R0/X0 albo Z0/Z1 źródła: {nazwy_zrodel}",),
+                ),
+                elementy=elementy,
+            )
+            continue
+        if _BOCZNIK_REZYSTANCYJNY in zbior:
+            continue
+        if skladowa in brakujace:
+            przyczyna = "brak_danych"
+            elementy = tuple(sorted(set(brakujace[skladowa])))
+            nazwy_galezi = ", ".join(nazwy[ref] for ref in elementy)
+            wyjasnienie = WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    "Węzeł odcięty od uziemienia punktu neutralnego brakiem danych składowej "
+                    f"zerowej gałęzi ({nazwy_galezi}): R′0/X′0 nieznane — wynik zwarcia "
+                    "doziemnego nieoznaczalny. Uzupełnij R′0 i X′0 gałęzi."
+                ),
+                przyczyna_pl="Dane składowej zerowej gałęzi w ruchu nieznane.",
+                czego_brakuje=(f"R′0 i X′0 gałęzi: {nazwy_galezi}",),
+            )
+        elif zbior:
+            przyczyna = "poza_zakresem_iec60909"
+            elementy = ()
+            wyjasnienie = WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez "
+                    "pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest "
+                    "prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; "
+                    "założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu "
+                    "neutralnego."
+                ),
+                przyczyna_pl=("Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję."),
+            )
+        else:
+            przyczyna = "brak_drogi"
+            elementy = ()
+            wyjasnienie = WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    "Brak drogi prądu zerowego do ziemi (punkt neutralny nieuziemiony, droga "
+                    "przerwana grupą połączeń transformatora, brak pojemności doziemnej) — "
+                    "zwarcie doziemne nie płynie."
+                ),
+                przyczyna_pl="Składowa sieci zerowej bez żadnego połączenia z ziemią.",
+            )
+        wynik[wezel] = BrakWynikuZerowego(
+            przyczyna=przyczyna,
+            kod=KOD_PRZYCZYNY_BRAKU_ZEROWEJ[przyczyna],
+            status=STATUS_PRZYCZYNY_BRAKU_ZEROWEJ[przyczyna],
+            wyjasnienie=wyjasnienie,
+            elementy=elementy,
+        )
+    return wynik, kotwice
+
+
+@dataclass(frozen=True)
+class WynikSieciZerowej:
+    """Z0-bus sieci składowej zerowej i nazwane przyczyny braku wyniku zerowego per węzeł
+    grafu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Węzeł z przyczyną NIE jest liczony w zwarciu
+    doziemnym — jego wiersz Z0-bus pochodzi z kotwicy numerycznej albo z sieci izolowanej
+    / skompensowanej i nie jest wynikiem IEC 60909."""
+
+    z0_bus: np.ndarray
+    przyczyny: dict[str, BrakWynikuZerowego]
+    #: Kroki śladu WHITE BOX punktów neutralnych SN (bocznik zespołu z OBOMA stanami AWSC,
+    #: pominięte Z0 źródeł na szynie SN) — pusta krotka dla sieci bez zespołu i bez źródła
+    #: SN z Z0 (artefakt biegu bajt w bajt jak przed kartą).
+    slad_punktu_neutralnego: tuple[dict, ...] = ()
+
+
+def zbuduj_siec_zerowa(
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    *,
+    scenario: Scenario = "MAX",
+    stan_awsc: StanAwsc = "spoczynek",
+) -> WynikSieciZerowej:
+    """Z0-bus (``build_zero_sequence_zbus``) razem z przyczynami braku wyniku zerowego."""
+    siec = _assemble_zero_sequence_y0(enm, graph, scenario, stan_awsc=stan_awsc)
+    return WynikSieciZerowej(
+        z0_bus=_odwroc_y0(siec.size, siec.y0_bus),
+        przyczyny=dict(siec.przyczyny),
+        slad_punktu_neutralnego=tuple(
+            krok
+            for krok in siec.trace
+            if str(krok.get("key", "")).startswith(_KLUCZE_SLADU_PUNKTU_NEUTRALNEGO)
+        ),
+    )
+
+
+_KLUCZE_SLADU_PUNKTU_NEUTRALNEGO: tuple[str, ...] = (
+    "z0_zespol_uziemiajacy[",
+    "z0_source_sn_pominiete[",
+)
 
 
 def build_zero_sequence_zbus(
-    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    *,
+    scenario: Scenario = "MAX",
+    stan_awsc: StanAwsc = "spoczynek",
 ) -> np.ndarray:
     """
     Build the zero-sequence Z-bus from ENM fields without mutating the graph.
@@ -730,8 +1092,16 @@ def build_zero_sequence_zbus(
     bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. To byłoby CICHĄ
     fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: składowe bez żadnego bocznika dostają kotwicę
+    numeryczną i nazwaną przyczynę braku wyniku (``zbuduj_siec_zerowa``) — sprawdzenie rangi
+    zostaje siatką bezpieczeństwa (blok osobliwy, którego klasyfikacja nie objęła).
     """
-    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    siec = _assemble_zero_sequence_y0(enm, graph, scenario, stan_awsc=stan_awsc)
+    return _odwroc_y0(siec.size, siec.y0_bus)
+
+
+def _odwroc_y0(size: int, y0_bus: np.ndarray) -> np.ndarray:
     if size == 0:
         # Graf bez węzłów (sieć pusta albo bez węzła z odniesieniem) — macierz 0x0 jest
         # odwrotnością samej siebie. ``matrix_rank`` na tablicy zerowego rozmiaru rzucał
@@ -767,18 +1137,20 @@ def skladowe_sieci_zerowej(
     from scipy.sparse import csr_matrix
     from scipy.sparse.csgraph import connected_components
 
-    _, node_index, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
-    if size == 0:
+    siec = _assemble_zero_sequence_y0(enm, graph, scenario)
+    if siec.size == 0:
         return {}
-    _, etykiety = connected_components(csr_matrix(y0_bus != 0), directed=False)
-    return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(node_index.items())}
+    _, etykiety = connected_components(csr_matrix(siec.y0_bus != 0), directed=False)
+    return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(siec.node_index.items())}
 
 
-def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
+def build_zero_sequence_trace(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, stan_awsc: StanAwsc = "spoczynek"
+) -> list[dict]:
     """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
-    (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""
-    _, _, _, _, trace = _assemble_zero_sequence_y0(enm, graph)
-    return trace
+    (linie/kable, źródła, transformatory z decyzją grupy połączeń, zespoły uziemiające
+    z OBOMA stanami AWSC). ADDYTYWNE."""
+    return _assemble_zero_sequence_y0(enm, graph, stan_awsc=stan_awsc).trace
 
 
 # G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909

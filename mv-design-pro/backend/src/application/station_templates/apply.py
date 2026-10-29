@@ -235,9 +235,9 @@ def _zastosuj_gpz_pod_blokada(
             "catalog_ref": apparatus_ref,
             "apparatus_kind": "BREAKER",
         },
-        # Sieć izolowana — najczęstszy wybór polskich sieci SN 15/20 kV, bez
-        # fabrykowanego R/X rezystora/dławika (katalog produkcyjny go nie niesie).
-        "grounding": {"type": "isolated"},
+        # Bez opisu uziemienia na równoważniku SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0
+        # pkt 3): sieć bez zespołu uziemiającego jest izolowana z MODELU
+        # (`enm.uziemienie_sekcji`); uziemienie sekcji dodaje się zespołem uziemiającym.
     }
     result = execute_domain_operation(
         enm_dict=enm_dict, op_name="add_grid_source_sn", payload=payload

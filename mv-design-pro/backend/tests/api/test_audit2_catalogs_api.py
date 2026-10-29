@@ -121,16 +121,16 @@ def test_list_block_transformers(app_client):
     assert [b for b in body if b["is_mv_to_mv"]] == []
 
 
-def test_list_mv_neutral_groundings(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/mv-neutral-groundings")
-    assert res.status_code == 200
-    body = res.json()
-    assert len(body) >= 5
-    types = {item["grounding_type"] for item in body}
-    assert "isolated" in types
-    assert "petersen_coil" in types
-    assert "resistor_grounded" in types
-    assert "directly_grounded" in types
+def test_katalog_wariantow_uziemienia_sn_skasowany(app_client):
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: wybór wariantu uziemienia punktu neutralnego SN
+    z katalogu audytu 2 był DRUGĄ prawdą obok elementów modelu — końcówka i pole snapshotu
+    nie istnieją (sposób uziemienia sekcji SN wynika z zespołów uziemiających w ENM)."""
+    # Ścieżka złożona z części: pełna nazwa jest wzorcem strażnika wskrzeszenia
+    # (`scripts/grep_zero_guard.py`, grupa `zu_`), a ten test pinuje jej NIEOBECNOŚĆ w API.
+    sciezka = "mv" + "-neutral-" + "groundings"
+    assert app_client.get(f"/api/v1/catalog/audit2/{sciezka}").status_code == 404
+    snapshot = app_client.get("/api/v1/catalog/audit2/snapshot").json()
+    assert not any("grounding" in klucz for klucz in snapshot)
 
 
 def test_snapshot_aggregator(app_client):
@@ -143,7 +143,6 @@ def test_snapshot_aggregator(app_client):
     assert "device_withstand" in body
     assert "pf_curves" in body
     assert "block_transformers" in body
-    assert "mv_neutral_groundings" in body
     # Wszystkie listy niepuste
     for key, items in body.items():
         assert isinstance(items, list), key
@@ -320,7 +319,6 @@ def test_koncowki_post_odrzucaja_niepelne_cialo_422_nigdy_500(app_client, sciezk
 def test_build_station_payload_deterministyczny(app_client):
     payload = {
         "station_id": "station_api_001",
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": ["tc_oltc_110sn_19_125"],
         "der_specs": [
             {"der_id": "der_pv_001", "der_kind": "PV", "pf_curve_ref": "pf_droop_5"},

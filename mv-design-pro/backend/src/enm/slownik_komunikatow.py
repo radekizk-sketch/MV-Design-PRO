@@ -79,6 +79,19 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_nn_section_coupler:catalog_ref": "Typ aparatu sprzęgła",  # rozdzielnica-nn/strings.ts sprzegloTyp
     "add_shunt_compensator_sn:catalog_ref": "Typ baterii z katalogu",  # kompensator/strings.ts typKatalog
     "add_surge_arrester_sn:catalog_ref": "Typ ogranicznika z katalogu",  # ogranicznik/strings.ts typKatalog
+    "add_zespol_uziemiajacy_sn:catalog_ref": "Typ transformatora uziemiającego",  # zespol-uziemiajacy/strings.ts typTransformatora
+    "add_zespol_uziemiajacy_sn:dlawik.stan_odlacznika": "Odłącznik dławika",  # zespol-uziemiajacy/strings.ts odlacznikDlawika
+    "add_zespol_uziemiajacy_sn:dlawik.i_nastawy_a": "Nastawa dławika [A]",  # zespol-uziemiajacy/strings.ts nastawaDlawika
+    "add_zespol_uziemiajacy_sn:dlawik.awsc": "Rezystor wymuszający AWSC",  # zespol-uziemiajacy/strings.ts awsc
+    "add_zespol_uziemiajacy_sn:dlawik.awsc.i_wymuszany_a": "Prąd wymuszany AWSC [A]",  # zespol-uziemiajacy/strings.ts pradAwsc
+    "add_zespol_uziemiajacy_sn:dlawik.awsc.czas_zalaczenia_s": "Czas załączenia AWSC [s]",  # zespol-uziemiajacy/strings.ts czasZalaczeniaAwsc
+    "add_zespol_uziemiajacy_sn:dlawik.awsc.czas_zwloki_s": "Zwłoka załączenia AWSC [s]",  # zespol-uziemiajacy/strings.ts zwlokaAwsc
+    "add_zespol_uziemiajacy_sn:dlawik.awsc.strona": "Strona przyłączenia rezystora AWSC",  # zespol-uziemiajacy/strings.ts stronaAwsc
+    "add_zespol_uziemiajacy_sn:rezystor.stan_odlacznika": "Odłącznik rezystora",  # zespol-uziemiajacy/strings.ts odlacznikRezystora
+    "add_zespol_uziemiajacy_sn:uziemienie_bezposrednie": "Uziemienie bezpośrednie punktu neutralnego",  # zespol-uziemiajacy/strings.ts bezposrednie
+    "add_zespol_uziemiajacy_sn:spz": "SPZ zespołu",  # zespol-uziemiajacy/strings.ts spz
+    "add_zespol_uziemiajacy_sn:wylaczenie_od_transformatorow_refs": "Wyłączenie od transformatorów WN/SN",  # zespol-uziemiajacy/strings.ts wylaczenieOdTr
+    "add_sn_bay:bay_role": "Rola pola",  # pole/strings.ts rola
     "catalog_ref": "Typ z katalogu",  # magistrala/strings.ts typKatalog
     "connect_secondary_ring_sn:catalog_ref": "Typ odcinka pierścienia",  # pierscien/strings.ts typKatalog
     "insert_branch_pole_on_segment_sn:catalog_ref": "Typ słupa z katalogu",  # slup-odgalezny/strings.ts typKatalog
@@ -124,7 +137,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "gpz_section.right_coupler_ref": "Sprzęgło z prawej",  # sekcja GPZ (bez pola w edytorze)
     "gpz_section.section_id": "ID sekcji",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "grounding.r_ohm": "R uziemienia",  # zrodlo/strings.ts uziemienieR
-    "add_grid_source_sn:grounding.type": "Uziemienie punktu neutralnego",  # zrodlo/strings.ts uziemienie
+    "add_grid_source_sn:grounding.type": "Punkt neutralny sieci 110 kV",  # zrodlo/strings.ts uziemienie
     "grounding.x_ohm": "X cewki",  # zrodlo/strings.ts uziemienieX
     "harmonic_thdu_percent": "Współczynnik THD napięcia [%]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "has_disturbance_recorder": "Rejestrator zakłóceń",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
@@ -400,6 +413,7 @@ NAZWY_KOLEKCJI_PL: dict[str, str] = {
     "loads": "odbiór",
     "generators": "wytwórca",
     "shunt_capacitors": "bateria kondensatorów",
+    "zespoly_uziemiajace": "zespół uziemiający",
     "substations": "stacja",
     "bays": "pole rozdzielnicy",
     "junctions": "węzeł rozgałęźny",

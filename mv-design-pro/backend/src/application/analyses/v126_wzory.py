@@ -30,7 +30,7 @@ pola, nie fabrykowana wartość.
 
 KOMPLETNOŚĆ. Rejestr niesie WPIS DLA KAŻDEGO `step.key`, jaki solver V12.6
 kiedykolwiek nadaje (`grep -n 'trace\\.add(' network_model/solvers/
-v126_academic.py`, 24 unikatowe klucze — dwa wywołania `benchmark_regression`
+v126_academic.py`, 27 unikatowych kluczy — dwa wywołania `benchmark_regression`
 dzielą jeden wpis, bo niosą IDENTYCZNY zapis wzoru). Test kompletności
 (`backend/tests/application/analyses/test_v126_wzory.py`) uruchamia WSZYSTKIE
 PREZENTOWANE rodzaje V12.6 na sieci złotej (parametry `scripts/
@@ -150,33 +150,46 @@ def _podstawienie_petersen_resztkowy(dane: Mapping[str, Any]) -> str | None:
 
 
 def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> str | None:
-    """`_ner_design`, linie 1552-1562: `data={"u_phase_v":…, "i_ef_target_a":…,
-    "ic_a":…}`."""
+    """`_ner_design` (krok „ner_resistance_sizing"): `data={"u_phase_v":…, "resistors":
+    [{"r_ohm":…}, …], "ic_a":…, "i_coil_a":…}` — rezystory punktu neutralnego z MODELU."""
     u_f = _liczba(dane, "u_phase_v")
-    i_ef = _liczba(dane, "i_ef_target_a")
     ic = _liczba(dane, "ic_a")
-    if u_f is None or i_ef is None or ic is None:
+    i_l = _liczba(dane, "i_coil_a")
+    rezystory = dane.get("resistors")
+    if u_f is None or ic is None or i_l is None or not isinstance(rezystory, list):
         return None
+    surowe = [r.get("r_ohm") for r in rezystory if isinstance(r, Mapping)]
+    opory = [float(r) for r in surowe if isinstance(r, int | float) and r > 0]
+    if not opory or len(opory) != len(surowe):
+        return None
+    suma = " + ".join(rf"\dfrac{{1}}{{{_pl(r)}\ \Omega}}" for r in opory)
     return (
-        rf"R = \dfrac{{{_pl(u_f)}\ \mathrm{{V}}}}{{{_pl(i_ef)}\ \mathrm{{A}}}}\text{{,}}\quad "
-        rf"I_{{\mathrm{{ef}}}}^{{\mathrm{{wyp}}}} = \sqrt{{\left(\dfrac{{{_pl(u_f)}}}{{R}}\right)^2 "
-        rf"+ {_pl(ic)}^2}}"
+        rf"R_N = \left({suma}\right)^{{-1}}\text{{,}}\quad "
+        rf"I_R = \dfrac{{{_pl(u_f)}\ \mathrm{{V}}}}{{R_N}}\text{{,}}\quad "
+        rf"I_{{\mathrm{{ef}}}} = \sqrt{{I_R^2 + ({_pl(ic)} - {_pl(i_l)})^2}}"
     )
 
 
 def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
-    """`_ner_design`, linie 1602-1610: `data={"i_ef_a":…, "r_ohm":…,
-    "t_clear_s":…, "e_rating_j":…}`."""
-    i_ef = _liczba(dane, "i_ef_a")
-    r = _liczba(dane, "r_ohm")
+    """`_ner_design` (krok „ner_thermal_withstand"): `data={"t_clear_s":…, "resistors":
+    [{"i_resistor_a":…, "r_ohm":…, "i_n_a":…, "t_n_s":…}, …]}`."""
     t = _liczba(dane, "t_clear_s")
-    e_n = _liczba(dane, "e_rating_j")
-    if i_ef is None or r is None or t is None or e_n is None:
+    rezystory = dane.get("resistors")
+    if t is None or not isinstance(rezystory, list) or not rezystory:
         return None
-    return (
-        rf"E = {_pl(i_ef)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot {_pl(t)}\ \mathrm{{s}}"
-        rf" \leq E_n = {_pl(e_n)}\ \mathrm{{J}}"
-    )
+    czlony: list[str] = []
+    for rez in rezystory:
+        if not isinstance(rez, Mapping):
+            return None
+        i_k, r, i_n, t_n = (_liczba(rez, k) for k in ("i_resistor_a", "r_ohm", "i_n_a", "t_n_s"))
+        if i_k is None or r is None or i_n is None or t_n is None:
+            return None
+        czlony.append(
+            rf"E = {_pl(i_k)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot {_pl(t)}\ \mathrm{{s}}"
+            rf" \leq E_n = {_pl(i_n)}^2\ \mathrm{{A}}^2 \cdot {_pl(r)}\ \Omega \cdot "
+            rf"{_pl(t_n)}\ \mathrm{{s}}"
+        )
+    return r";\quad ".join(czlony)
 
 
 # ---------------------------------------------------------------------------
@@ -218,8 +231,9 @@ def _metody_pl(kody: Any) -> str | None:
 
 
 def _podstawienie_detekcji_doziemnej(dane: Mapping[str, Any]) -> str | None:
-    """`_earth_fault_detection`, linie 1748-1757: `data={"neutral_grounding":…,
-    "relay_methods":[…]}` — polskie nazwy zamiast kodów tabeli decyzyjnej."""
+    """`_earth_fault_detection`: `data={"neutral_grounding":…, "wariant_uziemienia_sn":…,
+    "relay_methods":[…]}` — polskie nazwy zamiast kodów tabeli decyzyjnej (kategoria sieci
+    wyprowadzona z wariantu zespołu uziemiającego modelu, karta UX-04/POLE-ZU)."""
     uziemienie = UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL.get(str(dane.get("neutral_grounding")))
     metody = _metody_pl(dane.get("relay_methods"))
     if uziemienie is None or metody is None:
@@ -242,8 +256,8 @@ def _wynik_detekcji_doziemnej(dane: Mapping[str, Any], wynik: Mapping[str, Any])
 
 # ---------------------------------------------------------------------------
 # Rejestr — KAŻDY `step.key` nadawany przez `trace.add(...)` w
-# `network_model/solvers/v126_academic.py` (24 unikatowe klucze, pomiar
-# `grep -c 'trace\.add('` == 25 wywołań, `benchmark_regression` dzieli wpis).
+# `network_model/solvers/v126_academic.py` (27 unikatowych kluczy, pomiar
+# `grep -c 'trace\.add('` == 28 wywołań, `benchmark_regression` dzieli wpis).
 # `formula_latex` jest ZAPISEM ASCII/Unicode `formula` solvera W LATEX — cytat
 # przy każdym wpisie wskazuje linię solvera, z której wzór pochodzi.
 # ---------------------------------------------------------------------------
@@ -292,6 +306,19 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
         r"\left(1 + \dfrac{1}{1+h\sqrt{20/A}}\right)\right]",
         podstawienie=_podstawienie_sverak,
     ),
+    # _neutral_earthing_design — typ projektu z wariantu zespołu uziemiającego modelu
+    # (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4; decyzja logiczna, bez jednostek).
+    "neutral_earthing_scheme_from_model": WzorKroku(
+        r"\text{Projekt} = f(\text{wariant zespołu uziemiającego sekcji SN})"
+    ),
+    # _neutral_earthing_design / _earth_fault_detection — model nie opisuje uziemienia sieci SN
+    # (`brak_uziemienia_sn`: nazwana przyczyna, bez wartości zastępczej).
+    "neutral_earthing_no_grounding_model": WzorKroku(
+        r"\text{brak sposobu uziemienia w modelu} \Rightarrow \text{projekt niewykonany}"
+    ),
+    "earth_fault_no_grounding_model": WzorKroku(
+        r"\text{brak sposobu uziemienia w modelu} \Rightarrow \text{metoda niewyznaczana}"
+    ),
     # _neutral_earthing_design, linia 1349-1361 (brak C0 — dane niekompletne).
     "neutral_earthing_no_c0": WzorKroku(
         r"C_0 = \dfrac{1}{\omega}\sum_i b_{0,i}\cdot \ell_i\text{,}\quad "
@@ -314,23 +341,27 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
         r"v = \dfrac{I_L - I_C}{I_C}\text{,}\quad I_{\mathrm{res}} = I_C\sqrt{d^2+v^2}",
         podstawienie=_podstawienie_petersen_resztkowy,
     ),
-    # _ner_design, linia 1522-1535 (brak I_ef docelowego).
-    "ner_no_target": WzorKroku(r"R \approx \dfrac{U_f}{I_{\mathrm{ef}}}"),
-    # _ner_design, linia 1546-1562.
+    # _ner_design — brak danych rezystora punktu neutralnego (albo prądu dławika Z.14).
+    "ner_no_resistor": WzorKroku(
+        r"R_N = R_{\mathrm{zespołu}}\text{,}\quad "
+        r"I_{\mathrm{ef}} = \sqrt{I_R^2 + (I_C - I_L)^2}"
+    ),
+    # _ner_design — rezystory punktu neutralnego z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
     "ner_resistance_sizing": WzorKroku(
-        r"R = \dfrac{U_f}{I_{\mathrm{ef}}}\text{,}\quad "
-        r"I_{\mathrm{ef}}^{\,\mathrm{wyp}} = \sqrt{\left(\dfrac{U_f}{R}\right)^2 + I_C^2}",
+        r"R_N = \left(\sum_k \dfrac{1}{R_k}\right)^{-1}\text{,}\quad "
+        r"I_R = \dfrac{U_f}{R_N}\text{,}\quad "
+        r"I_{\mathrm{ef}} = \sqrt{I_R^2 + (I_C - I_L)^2}",
         podstawienie=_podstawienie_ner_dobor,
     ),
-    # _ner_design, linia 1571-1591 (brak t_clear/E_rating — sprawdzenie niewykonane).
+    # _ner_design — brak czasu wyłączenia (sprawdzenie cieplne niewykonane).
     "ner_thermal_incomplete": WzorKroku(
-        r"E_{\mathrm{dissipated}} = I_{\mathrm{ef}}^2 \cdot R \cdot t_{\mathrm{clear}} "
-        r"\leq E_{\mathrm{rating}}"
+        r"E_k = I_{R,k}^2 \cdot R_k \cdot t_{\text{wył}} "
+        r"\leq E_{n,k} = I_{n,k}^2 \cdot R_k \cdot t_{n,k}"
     ),
-    # _ner_design, linia 1597-1620.
+    # _ner_design — sprawdzenie cieplne każdego rezystora w ruchu.
     "ner_thermal_withstand": WzorKroku(
-        r"E_{\mathrm{dissipated}} = I_{\mathrm{ef}}^2 \cdot R \cdot t_{\mathrm{clear}} "
-        r"\leq E_{\mathrm{rating}}",
+        r"E_k = I_{R,k}^2 \cdot R_k \cdot t_{\text{wył}} "
+        r"\leq E_{n,k} = I_{n,k}^2 \cdot R_k \cdot t_{n,k}",
         podstawienie=_podstawienie_ner_cieplo,
     ),
     # _insulation, linia 1695-1707 (IEC 60071 — margines BIL).

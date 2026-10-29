@@ -48,7 +48,6 @@ class StationAudit2ConfigRepository:
         project_id: UUID,
         station_id: str,
         *,
-        mv_neutral_grounding_ref: str | None,
         tap_changer_refs: list[Any],
         der_specs: list[dict[str, Any]],
         transformer_tap_changers: dict[str, Any],
@@ -67,7 +66,6 @@ class StationAudit2ConfigRepository:
                 id=uuid4(),
                 project_id=project_id,
                 station_id=station_id,
-                mv_neutral_grounding_ref=mv_neutral_grounding_ref,
                 tap_changer_refs=list(tap_changer_refs),
                 der_specs=list(der_specs),
                 transformer_tap_changers=dict(transformer_tap_changers),
@@ -77,7 +75,6 @@ class StationAudit2ConfigRepository:
             )
             self._session.add(row)
         else:
-            row.mv_neutral_grounding_ref = mv_neutral_grounding_ref
             row.tap_changer_refs = list(tap_changer_refs)
             row.der_specs = list(der_specs)
             row.transformer_tap_changers = dict(transformer_tap_changers)

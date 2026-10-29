@@ -157,6 +157,7 @@ _ALIASY_RODZAJU: dict[str, str] = {
     "measurement": "measurement",
     "protection": "protection",
     "shunt_capacitor": "shunt_capacitor",
+    "zespol_uziemiajacy": "zespol_uziemiajacy",
 }
 
 #: Rodzaje galezi normalizujace do rodziny „odcinek SN" (linia/kabel) —
@@ -345,6 +346,17 @@ def wymagalnosc_katalogu(
         # dzis wyrobem katalogowym wymaganym z definicji. Walidacja/import
         # NIE — brak kodu E0xx, brak sprawdzenia w ZIP/CGMES/XLSX.
         return WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)
+
+    if znormalizowany == "zespol_uziemiajacy":
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający sieci SN (transformator
+        # uziemiający + dławik gaszący / rezystor). Tworzenie BLOCKER — operacja
+        # `add_zespol_uziemiajacy_sn` odmawia bez typu transformatora (`zu.catalog_required`)
+        # i wiąże dławik/rezystor z pozycjami ich przestrzeni katalogu. Walidacja BLOCKER E009
+        # (`enm/validator.py`, pętla zespołów), gotowość zwarciowa (`eligibility_service`)
+        # i import BLOCKER (ZIP `project_archive/service.py::_find_elements_without_catalog`,
+        # CGMES `_elements_without_catalog`) — ten sam predykat części zespołu
+        # (`enm.uziemienie_sekcji.czesci_zespolu_bez_katalogu`).
+        return WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, _KOD_E009)
 
     # Rodzaj nierozpoznany (w tym pusty/None) — zero fabrykacji wymogu.
     return WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)

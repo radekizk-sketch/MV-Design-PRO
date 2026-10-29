@@ -206,6 +206,16 @@ def _payload_kompensator_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _payload_zespol_uziemiajacy_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Zespół Z.14 (dławik ‖ rezystor) — każda z trzech pozycji pod CUDZĄ kategorią."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "catalog_binding": _wiazanie("TU_ZNYN11_15KV_PW160"),
+        "dlawik": {"catalog_binding": _wiazanie("DL_40_400A_15KV_CIAGLY")},
+        "rezystor": {"catalog_binding": _wiazanie("REZ_200A_15KV")},
+    }
+
+
 def _payload_ogranicznik_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
@@ -362,6 +372,18 @@ def _znaczniki_kompensatora(snapshot: dict[str, Any]) -> dict[str, str | None]:
     }
 
 
+def _znaczniki_zespolu_uziemiajacego(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    zespol = _jedyny(snapshot.get("zespoly_uziemiajace") or [], "zespol_uziemiajacy")
+    return {
+        "element": _znacznik(zespol),
+        "meta.catalog_binding": (zespol.get("meta") or {})
+        .get("catalog_binding", {})
+        .get("catalog_namespace"),
+        "dlawik": (zespol.get("dlawik") or {}).get("catalog_namespace"),
+        "rezystor": (zespol.get("rezystor") or {}).get("catalog_namespace"),
+    }
+
+
 def _znaczniki_ogranicznika(snapshot: dict[str, Any]) -> dict[str, str | None]:
     for spec in pola(snapshot):
         for ogranicznik in spec.get("surge_arresters") or []:
@@ -496,6 +518,21 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
         _payload_kompensator_obca,
         _znaczniki_kompensatora,
         {"element": "KOMPENSATOR_SN", "meta.catalog_binding": "KOMPENSATOR_SN"},
+    ),
+    ZnacznikPochodzenia(
+        "add_zespol_uziemiajacy_sn",
+        "add_zespol_uziemiajacy_sn",
+        # Transformator uziemiający w operacji, dławik i rezystor w pisarzu urządzenia punktu
+        # neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+        ("add_zespol_uziemiajacy_sn", "_urzadzenie_punktu_neutralnego"),
+        _payload_zespol_uziemiajacy_obca,
+        _znaczniki_zespolu_uziemiajacego,
+        {
+            "element": "TRANSFORMATOR_UZIEMIAJACY",
+            "meta.catalog_binding": "TRANSFORMATOR_UZIEMIAJACY",
+            "dlawik": "DLAWIK_GASZACY",
+            "rezystor": "REZYSTOR_UZIEMIAJACY",
+        },
     ),
     ZnacznikPochodzenia(
         "add_surge_arrester_sn",

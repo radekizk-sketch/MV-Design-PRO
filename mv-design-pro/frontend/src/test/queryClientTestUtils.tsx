@@ -25,7 +25,6 @@ const EMPTY_AUDIT2_SNAPSHOT = {
   device_withstand: [],
   pf_curves: [],
   block_transformers: [],
-  mv_neutral_groundings: [],
 };
 
 /**

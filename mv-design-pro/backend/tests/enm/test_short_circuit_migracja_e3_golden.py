@@ -36,10 +36,12 @@ from enm.models import (
     ENMHeader,
     Source,
     Transformer,
+    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
 
 N0 = "N0_GPZ_SN"
 N1 = "N1_SZYNA_SN"
@@ -149,9 +151,17 @@ def _build_golden_enm(name: str) -> EnergyNetworkModel:
                     voltage_kv=_UN_SN_KV,
                     sk3_mva=_SK3_MVA,
                     rx_ratio=_RX_SOURCE,
-                    extra={"r0_ohm": _R0_SOURCE_OHM, "x0_ohm": _X0_SOURCE_OHM},
                 )
             ),
+        ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół uziemiający
+        # na szynie GPZ (równoważnik SN nie opisuje Z0) — ten sam bocznik R0 + jX0.
+        zespoly_uziemiajace=[
+            ZespolUziemiajacy.model_validate(
+                zespol_o_impedancji_zerowej(
+                    "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
+                )
+            )
         ],
     )
 

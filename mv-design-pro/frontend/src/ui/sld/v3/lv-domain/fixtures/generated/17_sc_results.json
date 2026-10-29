@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "941931c269d1c89de493df54adb70d8f2e7c7f386383974734ac399f888dac59",
+  "projection_hash": "3a0a2b6858f5752993b253febd8d0efc153ad2459ea6324a3722cc6f63c492cd",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -1373,12 +1373,6 @@
           "code": "W001",
           "element_ref": null,
           "message": "Gałąź „Kabel QF-03” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W002",
-          "element_ref": null,
-          "message": "Źródło zasilania „GPZ” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {

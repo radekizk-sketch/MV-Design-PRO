@@ -167,7 +167,7 @@ function stubCatalogFetch(): void {
           ok: true,
           json: async () => ({
             bess_operation_modes: [], tap_changers: [], hv_fuses: [], device_withstand: [],
-            pf_curves: [], block_transformers: BLOCK_TRANSFORMER_FIXTURES, mv_neutral_groundings: [],
+            pf_curves: [], block_transformers: BLOCK_TRANSFORMER_FIXTURES,
           }),
         } as unknown as Response;
       }

@@ -2034,7 +2034,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zadania podpowiedzi katalogu), `dopasowanie`, `certyfikat_ptpiree` (sugestia), `suggestions`,
     # `total_candidates` (odpowiedz). Plik `api/catalog.py` zostaje — liczba plikow bez zmian.
     # PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4374." in wyjscie, wyjscie
+    # Zespol uziemiajacy SN jedyna prawda punktu neutralnego (2026-10-29): 4374 -> 4419 — POMIAR
+    # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
+    # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
+    # w konfiguracji stacji — druga prawda punktu neutralnego, pilnowana przez grep-zero), +48 (pola encji
+    # `ZespolUziemiajacy` i jej aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
+    # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
+    # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
+    # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4419." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2339,7 +2347,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Napiecie urzadzenia wobec sieci z jednego zrodla (2026-10-28): 598 -> 596 (-2
         # `application/validation_problem/{__init__,service}.py` — pakiet bez konsumenta
         # produkcyjnego skasowany); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "Przeskanowano 596 plikow w zakresie: network_model, solver_input, enm, "
+        # Zespol uziemiajacy SN (2026-10-29): 596 -> 599 (+1 `enm/uziemienie_sekcji.py`, +1
+        # `network_model/catalog/mv_zespol_uziemiajacy_catalog.py`, +1
+        # `network_model/pochodne/punkt_neutralny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "Przeskanowano 599 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2544,7 +2555,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
         # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
         # Scalenie galezi UI/UX z programem (2026-10-28): 187 + 190 − 186 = 191. POMIAR.
-        "  network_model: pliki_skanowane=191, dlug=10 plikow/suma 67, "
+        # Zespol uziemiajacy SN (2026-10-29): 191 -> 193 (+2 jak wyzej). POMIAR guardem.
+        "  network_model: pliki_skanowane=193, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2628,7 +2640,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
         # Scalenie galezi UI/UX z programem (2026-10-28): enm 71 + 69 − 65 = 75, dlug 7/64
         # (UI/UX; program bez zmian dlugu enm). POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=75, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Zespol uziemiajacy SN (2026-10-29): enm 75 -> 76 (+1 `enm/uziemienie_sekcji.py`). POMIAR.
+        "  enm: pliki_skanowane=76, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

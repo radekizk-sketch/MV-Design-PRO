@@ -27,6 +27,9 @@ import type {
   SourceSystemCatalogType,
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
+  EarthingTransformerCatalogType,
+  ArcSuppressionCoilCatalogType,
+  NeutralEarthingResistorCatalogType,
   SurgeArresterCatalogType,
   SynchronousGeneratorCatalogType,
   TapChangerCatalogType,
@@ -89,6 +92,9 @@ export type CatalogListItem =
   | BranchPointCatalogType
   | SurgeArresterCatalogType
   | ShuntCapacitorCatalogType
+  | EarthingTransformerCatalogType
+  | ArcSuppressionCoilCatalogType
+  | NeutralEarthingResistorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
@@ -367,6 +373,23 @@ export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogTyp
 
 export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogType[]> {
   return fetchCatalogJson<ShuntCapacitorCatalogType[]>('/api/catalog/shunt-capacitor-types');
+}
+
+/** Transformatory uziemiające ZNyn11 — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchEarthingTransformerTypes(): Promise<EarthingTransformerCatalogType[]> {
+  return fetchCatalogJson<EarthingTransformerCatalogType[]>('/api/catalog/earthing-transformer-types');
+}
+
+/** Dławiki gaszące — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchArcSuppressionCoilTypes(): Promise<ArcSuppressionCoilCatalogType[]> {
+  return fetchCatalogJson<ArcSuppressionCoilCatalogType[]>('/api/catalog/arc-suppression-coil-types');
+}
+
+/** Rezystory uziemiające — katalog operacji `add_zespol_uziemiajacy_sn`. */
+export async function fetchNeutralEarthingResistorTypes(): Promise<NeutralEarthingResistorCatalogType[]> {
+  return fetchCatalogJson<NeutralEarthingResistorCatalogType[]>(
+    '/api/catalog/neutral-earthing-resistor-types',
+  );
 }
 
 export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGeneratorCertificateCatalogType[]> {
@@ -755,6 +778,15 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SHUNT_CAPACITOR':
       types = await fetchShuntCapacitorTypes();
+      break;
+    case 'EARTHING_TRANSFORMER':
+      types = await fetchEarthingTransformerTypes();
+      break;
+    case 'ARC_SUPPRESSION_COIL':
+      types = await fetchArcSuppressionCoilTypes();
+      break;
+    case 'NEUTRAL_EARTHING_RESISTOR':
+      types = await fetchNeutralEarthingResistorTypes();
       break;
     case 'PTPIREE_CERTIFICATE':
       types = await fetchPtpireeGeneratorCertificates();

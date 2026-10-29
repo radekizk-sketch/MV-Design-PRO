@@ -2803,9 +2803,11 @@ function neutralEarthingLabelPl(
       : 'Punkt neutralny: rezystor';
   }
   if (e.kind === 'coil') {
+    // Zespół Z.14: dławik gaszący z rezystorem równoległym — opis niesie oba aparaty.
+    const rezystor = e.rOhm != null ? ` ‖ rezystor ${liczbaPl(e.rOhm)} Ω` : '';
     return e.xOhm != null
-      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω`
-      : 'Punkt neutralny: dławik gaszący';
+      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω${rezystor}`
+      : `Punkt neutralny: dławik gaszący${rezystor}`;
   }
   if (e.kind === 'direct') return 'Punkt neutralny: uziemiony bezpośrednio';
   return 'Punkt neutralny: izolowany';

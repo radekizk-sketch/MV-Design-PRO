@@ -59,6 +59,7 @@ NAZWA_ELEMENTU_BEZ_NAZWY: dict[str, str] = {
     "loads": "Odbiór bez nazwy",
     "generators": "Generator bez nazwy",
     "shunt_capacitors": "Bateria kondensatorów bez nazwy",
+    "zespoly_uziemiajace": "Zespół uziemiający bez nazwy",
     "substations": "Stacja bez nazwy",
     "bays": "Pole bez nazwy",
     "junctions": "Węzeł rozgałęźny bez nazwy",

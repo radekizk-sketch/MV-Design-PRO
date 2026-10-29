@@ -159,23 +159,6 @@ def test_apply_audit2_to_real_network_graph_pf_droop():
     assert "der_pv_001" in applied["pf_droop_changes"]
 
 
-def test_etykieta_uziemienia_nie_dopisuje_z0_z1_do_realnego_grafu():
-    """Karta K-Q na REALNYM grafie — PIN KLASY po wszystkich wariantach."""
-    pytest.importorskip("network_model")
-    from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
-
-    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
-        graph = _make_real_graph_with_transformer_and_inverter()
-        extensions = {
-            "sc_iec60909_extensions": {
-                "mv_neutral_grounding": {"grounding_type": grounding_type},
-            },
-        }
-        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
-        assert "grounding_z0_z1_ratio" not in applied, grounding_type
-        assert not hasattr(graph, "z0_z1_ratio"), grounding_type
-
-
 def test_apply_audit2_to_real_network_graph_full_combination():
     """Pelna kombinacja na real graph — trzy tory z pokryciem w danych."""
     pytest.importorskip("network_model")
@@ -201,9 +184,6 @@ def test_apply_audit2_to_real_network_graph_full_combination():
                     },
                 },
             ],
-        },
-        "sc_iec60909_extensions": {
-            "mv_neutral_grounding": {"grounding_type": "isolated"},
         },
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)

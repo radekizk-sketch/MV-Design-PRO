@@ -51,7 +51,6 @@ describe('audit2 React Query hooks', () => {
         device_withstand: [],
         pf_curves: [],
         block_transformers: [],
-        mv_neutral_groundings: [],
       }),
     });
 
@@ -98,8 +97,7 @@ describe('audit2 React Query hooks', () => {
           id: 'cfg-1',
           project_id: 'proj-1',
           station_id: 'station-1',
-          mv_neutral_grounding_ref: 'mng_isolated',
-          tap_changer_refs: [],
+          tap_changer_refs: ['oltc-stan-a'],
           der_specs: [],
           created_at: '2026-04-01T00:00:00Z',
           updated_at: '2026-04-01T00:00:00Z',
@@ -113,8 +111,7 @@ describe('audit2 React Query hooks', () => {
         id: 'cfg-1',
         project_id: 'proj-1',
         station_id: 'station-1',
-        mv_neutral_grounding_ref: 'mng_petersen',
-        tap_changer_refs: [],
+        tap_changer_refs: ['oltc-stan-b'],
         der_specs: [],
         created_at: '2026-04-01T00:00:00Z',
         updated_at: '2026-04-01T00:00:01Z',
@@ -127,22 +124,21 @@ describe('audit2 React Query hooks', () => {
       { wrapper },
     );
     await waitFor(() => expect(queryHook.result.current.data).toBeTruthy());
-    expect(queryHook.result.current.data?.mv_neutral_grounding_ref).toBe('mng_isolated');
+    expect(queryHook.result.current.data?.tap_changer_refs).toEqual(['oltc-stan-a']);
 
     const mutationHook = renderHook(() => useUpdateStationAudit2Config(), { wrapper });
     mutationHook.result.current.mutate({
       projectId: 'proj-1',
       stationId: 'station-1',
       body: {
-        mv_neutral_grounding_ref: 'mng_petersen',
-        tap_changer_refs: [],
+        tap_changer_refs: ['oltc-stan-b'],
         der_specs: [],
       },
     });
 
-    // Po onMutate cache optimistic == 'mng_petersen'.
+    // Po onMutate cache optimistic == nowa lista przełączników zaczepów.
     await waitFor(() => {
-      expect(queryHook.result.current.data?.mv_neutral_grounding_ref).toBe('mng_petersen');
+      expect(queryHook.result.current.data?.tap_changer_refs).toEqual(['oltc-stan-b']);
     });
   });
 
@@ -155,8 +151,7 @@ describe('audit2 React Query hooks', () => {
           id: 'cfg-1',
           project_id: 'proj-1',
           station_id: 'station-1',
-          mv_neutral_grounding_ref: 'mng_isolated',
-          tap_changer_refs: [],
+          tap_changer_refs: ['oltc-stan-a'],
           der_specs: [],
           created_at: null,
           updated_at: null,
@@ -176,22 +171,21 @@ describe('audit2 React Query hooks', () => {
       { wrapper },
     );
     await waitFor(() => expect(queryHook.result.current.data).toBeTruthy());
-    expect(queryHook.result.current.data?.mv_neutral_grounding_ref).toBe('mng_isolated');
+    expect(queryHook.result.current.data?.tap_changer_refs).toEqual(['oltc-stan-a']);
 
     const mutationHook = renderHook(() => useUpdateStationAudit2Config(), { wrapper });
     mutationHook.result.current.mutate({
       projectId: 'proj-1',
       stationId: 'station-1',
       body: {
-        mv_neutral_grounding_ref: 'mng_petersen',
-        tap_changer_refs: [],
+        tap_changer_refs: ['oltc-stan-b'],
         der_specs: [],
       },
     });
 
     await waitFor(() => expect(mutationHook.result.current.isError).toBe(true));
     // Rollback do initial state.
-    expect(queryHook.result.current.data?.mv_neutral_grounding_ref).toBe('mng_isolated');
+    expect(queryHook.result.current.data?.tap_changer_refs).toEqual(['oltc-stan-a']);
   });
 
   it('useDeleteStationAudit2Config usuwa cache po sukcesie', async () => {
@@ -203,8 +197,7 @@ describe('audit2 React Query hooks', () => {
           id: 'cfg-1',
           project_id: 'proj-1',
           station_id: 'station-1',
-          mv_neutral_grounding_ref: 'mng_isolated',
-          tap_changer_refs: [],
+          tap_changer_refs: ['oltc-stan-a'],
           der_specs: [],
           created_at: null,
           updated_at: null,

@@ -89,6 +89,7 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     sprzeglo: '#56626F',
     pomiarowe: '#0B6E60',
     zrodlowe: '#3C6E1E',
+    uziemiajace: '#6B6400',
   },
 };
 

@@ -33,7 +33,6 @@ def _projekt(uow_factory):
 
 def _pola(**nadpisania):
     pola = {
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": ["tc_oltc_110sn_19_125"],
         "der_specs": [{"der_id": "der_001", "der_kind": "PV"}],
         "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
@@ -59,13 +58,13 @@ def test_upsert_wstawia_a_powtorny_upsert_nadpisuje_zachowujac_id(uow_factory) -
         id_pierwszego = pierwszy.id
     with uow_factory() as uow:
         drugi = uow.audit2_station_configs.upsert(
-            project_id, "st-A", **_pola(mv_neutral_grounding_ref="mng_resistor_low")
+            project_id, "st-A", **_pola(tap_changer_refs=["tc_detc_snnn_5_25"])
         )
         assert drugi.id == id_pierwszego
-        assert drugi.mv_neutral_grounding_ref == "mng_resistor_low"
+        assert drugi.tap_changer_refs == ["tc_detc_snnn_5_25"]
     with uow_factory() as uow:
         wiersz = uow.audit2_station_configs.get(project_id, "st-A")
-        assert wiersz is not None and wiersz.mv_neutral_grounding_ref == "mng_resistor_low"
+        assert wiersz is not None and wiersz.tap_changer_refs == ["tc_detc_snnn_5_25"]
         assert wiersz.transformer_tap_changers == {"tr_001": "tc_oltc_110sn_19_125"}
 
 
@@ -113,7 +112,7 @@ def test_rozszerzenia_z_konfiguracji_rozwijaja_wiersz_repozytorium(uow_factory) 
         "power_flow_extensions",
         "protection_extensions",
     }
-    assert rozszerzenia["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == (
-        "petersen_coil"
-    )
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: wiersz nie niesie sposobu uziemienia SN.
+    assert rozszerzenia["sc_iec60909_extensions"] == {}
+    assert "grounding_type" not in rozszerzenia["protection_extensions"]
     assert "tr_001" in rozszerzenia["power_flow_extensions"]["transformer_to_tap_changer"]

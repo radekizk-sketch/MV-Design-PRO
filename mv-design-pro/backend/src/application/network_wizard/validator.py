@@ -13,6 +13,7 @@ from typing import Any
 
 from enm.load_zip_model import zip_odbioru_z_parametrow_materializacji
 from enm.nazwy_elementow import nazwa_elementu
+from enm.uziemienie_sekcji import impedancja_zerowa_zrodla_dozwolona
 from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
 from network_model.nazwy import jest_nazwa
 
@@ -264,11 +265,26 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
     return StepState(step_id="K6", status=status, completion_percent=completion, issues=issues)
 
 
+def _zrodla_z_impedancja_zerowa(enm: dict[str, Any]) -> list[dict[str, Any]]:
+    """Źródła, od których obliczenia czytają Z0 — poza pasmem SN (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3; ten sam predykat co walidator W002/W-W5-02
+    i mapowanie składowej zerowej). Drogę zerową sieci SN niesie zespół uziemiający sekcji
+    albo punkt neutralny uzwojenia transformatora, nie źródło na szynach SN."""
+    napiecia = {b.get("ref_id"): b.get("voltage_kv") for b in enm.get("buses", [])}
+    wynik = []
+    for zrodlo in enm.get("sources", []):
+        napiecie = napiecia.get(zrodlo.get("bus_ref"))
+        if isinstance(napiecie, int | float) and not impedancja_zerowa_zrodla_dozwolona(napiecie):
+            continue
+        wynik.append(zrodlo)
+    return wynik
+
+
 def _eval_k7(enm: dict[str, Any]) -> StepState:
     """K7: Uziemienia i składowe zerowe."""
     issues: list[WizardIssue] = []
     branches = enm.get("branches", [])
-    sources = enm.get("sources", [])
+    sources = _zrodla_z_impedancja_zerowa(enm)
     lines = [b for b in branches if b.get("type") in ("line_overhead", "cable")]
     lines_no_z0 = [
         line
@@ -347,7 +363,7 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
             dane_zerowe(
                 r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
             )
-            for s in sources
+            for s in _zrodla_z_impedancja_zerowa(enm)
         )
         if sources
         else True
