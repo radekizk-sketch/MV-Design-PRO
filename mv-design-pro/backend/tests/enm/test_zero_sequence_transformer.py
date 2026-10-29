@@ -18,8 +18,8 @@ import math
 import pytest
 from enm.assembler import zloz_wejscie_zwarcia
 from enm.mapping import (
-    build_zero_sequence_trace,
     build_zero_sequence_zbus,
+    build_zero_sequence_zbus_with_trace,
     map_enm_to_network_graph,
 )
 from enm.models import (
@@ -37,6 +37,7 @@ from enm.zero_sequence_transformer import (
     build_transformer_zero_seq_model,
 )
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 S_BASE_MVA = 100.0
@@ -451,7 +452,7 @@ class TestLineShuntCapacitanceZ0:
         Y0 osobliwą — brak jakiejkolwiek drogi do ziemi. To potwierdza, że
         obserwowana naprawa (test niżej) faktycznie WYMAGA bocznika B0."""
         enm, graph, _, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=0.0)
-        with pytest.raises(ValueError, match="singular"):
+        with pytest.raises(OdmowaDanychError, match="nie ma drogi powrotu prądu zerowego"):
             build_zero_sequence_zbus(enm, graph)
 
     def test_isolated_network_z0_matches_hand_calc_series_shunt_circuit(self):
@@ -552,11 +553,14 @@ class TestHandCalc2FZ:
 class TestZeroSequenceTrace:
     def test_trace_breaks_down_by_element(self):
         enm, graph, _ = _build_network()
-        trace = build_zero_sequence_trace(enm, graph)
+        trace = build_zero_sequence_zbus_with_trace(enm, graph)[1]
         keys = [s["key"] for s in trace]
         assert any(k.startswith("z0_source[") for k in keys)
         assert any("tr_z0_conn[" in k for k in keys)
 
     def test_trace_deterministic(self):
         enm, graph, _ = _build_network()
-        assert build_zero_sequence_trace(enm, graph) == build_zero_sequence_trace(enm, graph)
+        assert (
+            build_zero_sequence_zbus_with_trace(enm, graph)[1]
+            == build_zero_sequence_zbus_with_trace(enm, graph)[1]
+        )

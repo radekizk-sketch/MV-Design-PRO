@@ -25,7 +25,8 @@ i f-stringach modułów komunikatów operacji + wykonanie operacji w iloczynie c
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from network_model.catalog.types import etykieta_pola_katalogu_pl, nazwa_kategorii_katalogu_pl
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
@@ -253,6 +254,34 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "x_ohm_per_km": "Reaktancja X",  # magistrala/strings.ts paramX
     "deklaracje_modulu:zrodlo_pl": "Źródło deklaracji",  # ui2/oze/ncrfg/strings.ts deklaracjeZrodlo
     "nastawy_zabezpieczen:zrodlo_pl": "Źródło nastaw",  # ui2/oze/ncrfg/strings.ts nastawyZrodlo
+    "protection_codes": "Kody zabezpieczeń pola",  # stacja/strings.ts pomiarKody
+    # Formularz danych analizy akademickiej (uziom stacji, silniki) — kontekst sekcji
+    # ``parameters`` wejścia solvera v126 (`api/v126_academic._with_parameter_payloads`).
+    "v126_uziom:gpz_ref": "Oznaczenie stacji",  # ui2/wyniki/akademickie/parametry.ts gpz_ref
+    "v126_uziom:rho1_ohm_m": "Rezystywność warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts rho1_ohm_m
+    "v126_uziom:rho2_ohm_m": "Rezystywność warstwy dolnej",  # ui2/wyniki/akademickie/parametry.ts rho2_ohm_m
+    "v126_uziom:h1_m": "Grubość warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts h1_m
+    "v126_uziom:length_m": "Długość uziomu",  # ui2/wyniki/akademickie/parametry.ts length_m
+    "v126_uziom:width_m": "Szerokość uziomu",  # ui2/wyniki/akademickie/parametry.ts width_m
+    "v126_uziom:mesh_spacing_m": "Rozstaw oczek siatki",  # ui2/wyniki/akademickie/parametry.ts mesh_spacing_m
+    "v126_uziom:buried_depth_m": "Głębokość ułożenia",  # ui2/wyniki/akademickie/parametry.ts buried_depth_m
+    "v126_uziom:rods_total_length_m": "Sumaryczna długość prętów",  # ui2/wyniki/akademickie/parametry.ts rods_total_length_m
+    "v126_uziom:split_factor": "Współczynnik podziału prądu",  # ui2/wyniki/akademickie/parametry.ts split_factor
+    "v126_uziom:fault_current_ka": "Prąd zwarcia doziemnego",  # ui2/wyniki/akademickie/parametry.ts fault_current_ka
+    "v126_uziom:fault_clearing_time_s": "Czas wyłączenia zwarcia",  # ui2/wyniki/akademickie/parametry.ts fault_clearing_time_s
+    "v126_uziom:surface_layer_rho_ohm_m": "Rezystywność warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_rho_ohm_m
+    "v126_uziom:surface_layer_derating": "Współczynnik redukcji warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_derating
+    "v126_silnik:ref": "Oznaczenie",  # ui2/wyniki/akademickie/parametry.ts ref
+    "v126_silnik:bus_ref": "Szyna przyłączenia",  # ui2/wyniki/akademickie/parametry.ts bus_ref
+    "v126_silnik:rated_kw": "Moc znamionowa",  # ui2/wyniki/akademickie/parametry.ts rated_kw
+    "v126_silnik:rated_voltage_kv": "Napięcie znamionowe",  # ui2/wyniki/akademickie/parametry.ts rated_voltage_kv
+    "v126_silnik:locked_rotor_multiplier": "Krotność prądu rozruchowego",  # ui2/wyniki/akademickie/parametry.ts locked_rotor_multiplier
+    "v126_silnik:start_power_factor": "Współczynnik mocy przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts start_power_factor
+    "v126_silnik:start_time_s": "Czas rozruchu",  # ui2/wyniki/akademickie/parametry.ts start_time_s
+    "v126_silnik:allowable_locked_rotor_time_s": "Dopuszczalny czas utyku",  # ui2/wyniki/akademickie/parametry.ts allowable_locked_rotor_time_s
+    "v126_silnik:max_torque_pu": "Moment maksymalny",  # ui2/wyniki/akademickie/parametry.ts max_torque_pu
+    "v126_silnik:critical_slip": "Poślizg krytyczny",  # ui2/wyniki/akademickie/parametry.ts critical_slip
+    "v126_silnik:load_start_torque_pu": "Moment obciążenia przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts load_start_torque_pu
 }
 
 
@@ -302,7 +331,24 @@ _OPISY_BLEDOW_WALIDACJI: dict[str, str] = {
     "dict_type": "ma niepoprawny kształt danych",
     "model_type": "ma niepoprawny kształt danych",
     "model_attributes_type": "ma niepoprawny kształt danych",
+    "int_from_float": "musi być liczbą całkowitą",
+    "string_too_long": "nie może być dłuższe niż {najwiecej} znaków",
+    "too_short": "musi mieć co najmniej {najmniej} pozycji",
+    "too_long": "może mieć najwyżej {najwiecej} pozycji",
+    "literal_error": "ma wartość spoza dozwolonej listy",
+    "enum": "ma wartość spoza dozwolonej listy",
+    "uuid_type": "musi być identyfikatorem UUID",
+    "uuid_parsing": "musi być identyfikatorem UUID",
+    "json_invalid": "nie jest poprawnym zapisem JSON",
+    "json_type": "nie jest poprawnym zapisem JSON",
+    "union_tag_invalid": "ma nieznany rodzaj",
+    "union_tag_not_found": "nie wskazuje rodzaju",
+    "none_required": "musi pozostać puste",
 }
+
+
+#: Granica długości z kontekstu błędu (``ctx`` pydantic) → nazwa wstawki szablonu wyżej.
+_NAZWY_GRANIC: dict[str, str] = {"max_length": "najwiecej", "min_length": "najmniej"}
 
 
 #: Identyfikator reguły kontraktu dziedziny w treści odmowy (``[widmo.niepuste] …``) —
@@ -310,41 +356,48 @@ _OPISY_BLEDOW_WALIDACJI: dict[str, str] = {
 _IDENTYFIKATOR_REGULY = re.compile(r"\[[a-z_]+\.[a-z_]+\]\s*")
 
 
-def opis_bledu_walidacji(blad: ValidationError, operacja: str | None = None) -> str:
-    """Błąd walidacji kształtu danych (``pydantic.ValidationError``) po polsku (karta #142).
+def opis_pozycji_walidacji(pozycja: Mapping[str, Any], operacja: str | None = None) -> str:
+    """Jedna pozycja błędu walidacji kształtu danych po polsku (karta #142).
 
-    Każda pozycja: nazwa pola formularza (słownik pól; ``operacja`` wybiera nazwę
-    kontekstową) i opis rodzaju błędu. Surowa ścieżka pola, angielski opis biblioteki
-    i klucz spoza słownika nie trafiają do treści — pole spoza słownika to „wartość".
-    Błąd walidatora modelu (``value_error``) niesie już zdanie po polsku — idzie wprost.
+    ``pozycja`` to wpis ``ValidationError.errors()`` (pydantic) albo
+    ``RequestValidationError.errors()`` (FastAPI — ten sam kształt). Treść: nazwa pola
+    formularza (słownik pól; ``operacja`` wybiera nazwę kontekstową) i opis rodzaju błędu.
+    Surowa ścieżka pola, angielski opis biblioteki (``msg``) i klucz spoza słownika nie
+    trafiają do treści — pole spoza słownika to „wartość". Błąd walidatora modelu
+    (``value_error``) niesie już zdanie po polsku — idzie wprost, bez identyfikatora reguły.
+    Jedno mapowanie dla każdej drogi, którą błąd walidacji dochodzi do odpowiedzi API.
     """
-    opisy: list[str] = []
-    for pozycja in blad.errors():
-        kontekst = pozycja.get("ctx") or {}
-        rodzaj = str(pozycja.get("type") or "")
-        if rodzaj == "value_error" and "error" in kontekst:
-            # Identyfikator reguły kontraktu (``[widmo.niepuste]``, ``dziedziny.kanon``)
-            # jest kodem dla opiekuna kontraktu — zdanie reguły idzie bez niego.
-            zdanie = _IDENTYFIKATOR_REGULY.sub("", str(kontekst["error"])).strip()
-            opisy.append(zdanie.rstrip("."))
-            continue
-        klucze = [str(czesc) for czesc in pozycja.get("loc", ()) if not isinstance(czesc, int)]
-        nazwa = None
-        if klucze:
-            klucz = klucze[-1]
-            nazwa = NAZWY_POL_KONTRAKTU_PL.get(f"{operacja}:{klucz}") or (
-                NAZWY_POL_KONTRAKTU_PL.get(klucz)
-            )
-        szablon = _OPISY_BLEDOW_WALIDACJI.get(rodzaj, "ma niepoprawną wartość")
-        granice = {
-            nazwa_granicy: f"{wartosc:g}" if isinstance(wartosc, int | float) else str(wartosc)
-            for nazwa_granicy, wartosc in kontekst.items()
-        }
-        try:
-            tresc = szablon.format(**granice)
-        except (KeyError, IndexError):
-            tresc = "ma niepoprawną wartość"
-        opisy.append(f"„{nazwa}” {tresc}" if nazwa else f"wartość {tresc}")
+    kontekst = pozycja.get("ctx") or {}
+    rodzaj = str(pozycja.get("type") or "")
+    if rodzaj == "value_error" and "error" in kontekst:
+        # Identyfikator reguły kontraktu (``[widmo.niepuste]``, ``dziedziny.kanon``)
+        # jest kodem dla opiekuna kontraktu — zdanie reguły idzie bez niego.
+        return _IDENTYFIKATOR_REGULY.sub("", str(kontekst["error"])).strip().rstrip(".")
+    klucze = [str(czesc) for czesc in pozycja.get("loc", ()) if not isinstance(czesc, int)]
+    nazwa = None
+    if klucze:
+        klucz = klucze[-1]
+        nazwa = NAZWY_POL_KONTRAKTU_PL.get(f"{operacja}:{klucz}") or (
+            NAZWY_POL_KONTRAKTU_PL.get(klucz)
+        )
+    szablon = _OPISY_BLEDOW_WALIDACJI.get(rodzaj, "ma niepoprawną wartość")
+    granice = {
+        _NAZWY_GRANIC.get(nazwa_granicy, nazwa_granicy): (
+            f"{wartosc:g}" if isinstance(wartosc, int | float) else str(wartosc)
+        )
+        for nazwa_granicy, wartosc in kontekst.items()
+    }
+    try:
+        tresc = szablon.format(**granice)
+    except (KeyError, IndexError):
+        tresc = "ma niepoprawną wartość"
+    return f"„{nazwa}” {tresc}" if nazwa else f"wartość {tresc}"
+
+
+def opis_bledu_walidacji(blad: ValidationError, operacja: str | None = None) -> str:
+    """Błąd walidacji kształtu danych (``pydantic.ValidationError``) po polsku (karta #142):
+    pozycje ``opis_pozycji_walidacji`` złączone średnikiem, bez powtórzeń."""
+    opisy = [opis_pozycji_walidacji(pozycja, operacja) for pozycja in blad.errors()]
     return "; ".join(dict.fromkeys(opisy))
 
 

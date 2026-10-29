@@ -26,7 +26,7 @@ from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.catalog_completion import complete_branch_catalog_materialization
 from enm.domain_operations import _copy_split_segment_fields, execute_domain_operation
 from enm.hash import compute_enm_hash, compute_input_hash, compute_semantic_hash, hash_migawki_enm
-from enm.mapping import build_zero_sequence_trace, map_enm_to_network_graph
+from enm.mapping import build_zero_sequence_zbus_with_trace, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.parametry_linii_wn import (
     KOD_GEOMETRIA_BEZ_PRZEWODU_WN,
@@ -399,7 +399,7 @@ def test_graf_solvera_i_skladowa_zerowa_niosa_parametry_z_geometrii() -> None:
     assert galaz.r_ohm_per_km == linia["r_ohm_per_km"]
     assert galaz.x_ohm_per_km == linia["x_ohm_per_km"]
     assert galaz.b_us_per_km == pytest.approx(linia["b_siemens_per_km"] * 1e6, rel=1e-12)
-    slad = {w["key"]: w for w in build_zero_sequence_trace(enm, graf)}
+    slad = {w["key"]: w for w in build_zero_sequence_zbus_with_trace(enm, graf)[1]}
     z0 = slad["z0_line[L1]"]["inputs"]
     assert z0["r0_ohm_per_km"] == linia["r0_ohm_per_km"]
     assert z0["x0_ohm_per_km"] == linia["x0_ohm_per_km"]

@@ -107,10 +107,11 @@ describe('naWierszeZwarc — zachowanie kolejności i kompletność', () => {
 });
 
 describe('rodzajZwarciaPL — słownik rodzajów zwarcia', () => {
-  it('mapuje tokeny backendu 3F/2F/2F+Z/1F na polskie nazwy', () => {
+  it('mapuje tokeny backendu 3F/2F/2F+G/1F na polskie nazwy', () => {
     expect(rodzajZwarciaPL('3F')).toBe('zwarcie trójfazowe');
     expect(rodzajZwarciaPL('2F')).toBe('zwarcie dwufazowe');
-    expect(rodzajZwarciaPL('2F+Z')).toBe('zwarcie dwufazowe z ziemią');
+    // Token kontraktu wiersza wyniku (`ShortCircuitType.TWO_PHASE_GROUND.value`).
+    expect(rodzajZwarciaPL('2F+G')).toBe('zwarcie dwufazowe z ziemią');
     expect(rodzajZwarciaPL('1F')).toBe('zwarcie jednofazowe (doziemne)');
   });
 

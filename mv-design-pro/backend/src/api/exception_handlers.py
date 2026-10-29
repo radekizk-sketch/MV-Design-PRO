@@ -6,7 +6,9 @@ import logging
 import traceback
 
 from api.odmowa_http import OdmowaHttpError, pola_odmowy
+from enm.slownik_komunikatow import opis_pozycji_walidacji
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.odmowa_danych import OdmowaDanychError
@@ -34,6 +36,41 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "detail": "Wewnętrzny błąd serwera",
                 "request_id": request_id,
                 "error_type": type(exc).__name__,
+            },
+            headers={"X-Request-Id": request_id},
+        )
+
+    # Błąd walidacji żądania (ciało, zapytanie, ścieżka) — domyślny handler FastAPI oddawał
+    # w `detail[].msg` angielski opis biblioteki pydantic („Field required", „Input should be
+    # a valid number") i echo wejścia z kontekstem biblioteki. Treść idzie teraz z jednego
+    # mapowania komunikatów (`enm.slownik_komunikatow.opis_pozycji_walidacji`); kształt pozycji
+    # zgodny ze schematem `HTTPValidationError` OpenAPI (`loc`, `msg`, `type` — `loc` i `type`
+    # to klucze maszynowe dla klienta, nie treść dla projektanta).
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", "unknown")
+        pozycje = [
+            {
+                "type": str(pozycja.get("type") or ""),
+                "loc": list(pozycja.get("loc", ())),
+                "msg": opis_pozycji_walidacji(pozycja),
+            }
+            for pozycja in exc.errors()
+        ]
+        logger.warning(
+            "RequestValidationError rid=%s path=%s: %s",
+            request_id,
+            request.url.path,
+            [(p["loc"], p["type"]) for p in pozycje],
+        )
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": pozycje,
+                "request_id": request_id,
+                "error_type": "RequestValidationError",
             },
             headers={"X-Request-Id": request_id},
         )

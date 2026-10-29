@@ -453,7 +453,7 @@ def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc() -> None:
     migawka, _ = _siec("kabel_500nF", "promieniowa")
     for galaz in migawka["branches"]:
         galaz["b0_siemens_per_km"] = None
-    with pytest.raises(Exception, match="Zero-sequence Y-bus is singular"):
+    with pytest.raises(Exception, match="nie ma drogi powrotu prądu zerowego"):
         _bieg(migawka, "SC_1F")
 
 

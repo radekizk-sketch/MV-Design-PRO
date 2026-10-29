@@ -435,3 +435,28 @@ def test_inny_typ_zwarcia_kandydata_odrzucony_dolicza_wariant(client: TestClient
     assert pasmo["min"]["run_id"] != str(run_min_2f)
     for row in pasmo["min"]["wynik"]["rows"]:
         assert row["fault_type"] == "3F"
+
+
+@pytest.mark.parametrize(
+    ("pisownia_kotwicy", "pisownia_kandydata"),
+    [("2F+Z", "2FG"), ("2FG", "SC_2F_G"), ("2F+G", "2F+Z")],
+)
+def test_typ_zwarcia_doziemnego_jeden_token_niezaleznie_od_pisowni(
+    client: TestClient, pisownia_kotwicy: str, pisownia_kandydata: str
+) -> None:
+    """{pisownia opcji kotwicy} × {inna pisownia u kandydata} tego samego rodzaju 2F+G —
+    typ kotwicy to token wiersza wyniku (`ShortCircuitType.value`, ten sam parser opcji co
+    bieg), a kandydat zapisany inną pisownią PARUJE się (do tej poprawki porównywano surowe
+    napisy opcji). Obie strony pasma niosą ślad sieci składowej zerowej swojego scenariusza."""
+    run_max = uuid4()
+    run_min = uuid4()
+    _zapisz_bieg(run_max, scenario="max", fault_type=pisownia_kotwicy)
+    _zapisz_bieg(run_min, scenario="min", fault_type=pisownia_kandydata)
+
+    pasmo = _pasmo(client, run_max)
+    assert pasmo["typ_zwarcia_kotwicy"] == "2F+G"
+    assert pasmo["min"]["zrodlo"] == "biegu_zapisanego"
+    assert pasmo["min"]["run_id"] == str(run_min)
+    for strona in ("max", "min"):
+        assert {row["fault_type"] for row in pasmo[strona]["wynik"]["rows"]} == {"2F+G"}
+        assert pasmo[strona]["wynik"]["siec_zerowa"]

@@ -887,7 +887,8 @@ def _front_plik(sciezka: str) -> Path | None:
 
 def _wartosc_frontu(tresc: str, tsklucz: str, klucz_kontraktu: str) -> str | tuple[str, ...] | None:
     """Etykieta frontu: ``tsklucz: '…'``, ``tsklucz: warunek ? '…' : '…'`` (etykieta zależna
-    od rodzaju — obie warianty), definicja pola ``{ key: 'tsklucz', label: '…' }`` albo wpis
+    od rodzaju — obie warianty), definicja pola ``{ key: 'tsklucz', label: '…' }`` (także
+    ``{ klucz: 'tsklucz', etykieta: '…' }``) albo wpis
     ``klucz_kontraktu: '…'`` w stałej ``tsklucz`` (etykiety kluczowane polem kontraktu)."""
     prosty = re.search(rf"\b{re.escape(tsklucz)}: '([^']*)'", tresc)
     if prosty:
@@ -898,6 +899,11 @@ def _wartosc_frontu(tresc: str, tsklucz: str, klucz_kontraktu: str) -> str | tup
     definicja = re.search(rf"key: '{re.escape(tsklucz)}', label: '([^']*)'", tresc)
     if definicja:
         return definicja.group(1)
+    # Definicja pola formularza parametrów analizy (``{ klucz: 'x', etykieta: '…' }``,
+    # ``ui2/wyniki/akademickie/parametry.ts``) — także rozpisana na kilka wierszy.
+    definicja_pl = re.search(rf"klucz: '{re.escape(tsklucz)}',\s*etykieta: '([^']*)'", tresc)
+    if definicja_pl:
+        return definicja_pl.group(1)
     blok = re.search(rf"\b{re.escape(tsklucz)}\b[^=]*=\s*\{{(.*?)\n\}}", tresc, re.S)
     if blok:
         wpis = re.search(rf"\b{re.escape(klucz_kontraktu)}: '([^']*)'", blok.group(1))

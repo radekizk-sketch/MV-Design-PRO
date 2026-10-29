@@ -10250,9 +10250,12 @@ def _zmien_parametry_pola(
     try:
         zmien_pole(new_enm, field_ref, **zmiany)
     except BladPola as blad:
+        # Treść dla projektanta wyłącznie z ``przyczyna_pl`` (polskie nazwy pól z jednego
+        # mapowania); odmowa bez niej to błąd programu wołającego — bez tekstu technicznego.
+        przyczyna = f" ({blad.przyczyna_pl})" if blad.przyczyna_pl else ""
         return _error_response(
-            f"{_nazwa_pola_w_modelu(enm, field_ref)}: parametry niezgodne z kontraktem pola "
-            f"({blad}).",
+            f"{_nazwa_pola_w_modelu(enm, field_ref)}: parametry niezgodne z kontraktem pola"
+            f"{przyczyna}.",
             "params.invalid_value",
         )
     return _response(

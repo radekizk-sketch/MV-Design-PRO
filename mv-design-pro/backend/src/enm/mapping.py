@@ -135,6 +135,19 @@ def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
     )
 
 
+def _odmowa_zerowej_impedancji_z0(element_pl: str) -> str:
+    """Odmowa dla zerowej impedancji składowej zerowej elementu (Y0 = 1/Z0 nie istnieje).
+
+    Dawniej goły `ZeroDivisionError` z angielskim tekstem (bez nazwy elementu, 500 w API).
+    Zerowe R0 i X0 to stan danych, który projektant poprawia w modelu — stąd nazwana
+    odmowa danych z nazwą elementu.
+    """
+    return (
+        f"{element_pl}: impedancja składowej zerowej Z0 jest równa zeru — admitancji Y0 = 1/Z0 "
+        "nie da się wyznaczyć. Podaj niezerową rezystancję lub reaktancję zerową (R0, X0)."
+    )
+
+
 def _odmowa_elementu_bez_szyny(rodzaj: str, ref_id: str, bus_ref: str) -> str:
     """Odmowa assemblera dla elementu wskazujacego nieistniejaca szyne.
 
@@ -474,8 +487,6 @@ def _add_series_admittance(
 ) -> None:
     if from_idx == to_idx:
         return
-    if z_ohm == 0:
-        raise ZeroDivisionError("Cannot compute zero-sequence admittance: impedance is zero")
     z_pu = z_ohm / z_base_ohm
     y_series_pu = 1.0 / z_pu
     y_bus[from_idx, to_idx] -= y_series_pu
@@ -536,6 +547,10 @@ def _assemble_zero_sequence_y0(
         from_idx = node_index[from_id]
         to_idx = node_index[to_id]
         z0_ohm = complex(branch.r0_ohm_per_km, branch.x0_ohm_per_km) * branch.length_km
+        if z0_ohm == 0 and from_idx != to_idx:
+            raise OdmowaDanychError(
+                _odmowa_zerowej_impedancji_z0(f"Gałąź {nazwa_elementu(branch, 'branches')}")
+            )
         z_base_ohm = builder.get_zbase_ohm(from_id)
         _add_series_admittance(
             y0_bus,
@@ -604,8 +619,8 @@ def _assemble_zero_sequence_y0(
                 },
                 substitution=(
                     f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
-                    f"{y0_shunt_total_s:.6g} S; Y0_sh,end(pu) = "
-                    f"j{y0_shunt_per_end_pu.imag:.6g} (na {nazwa_szyny[branch.from_bus_ref]} "
+                    f"{y0_shunt_total_s:.6g} S; Y0 na każdym końcu = "
+                    f"j{y0_shunt_per_end_pu.imag:.6g} pu (na {nazwa_szyny[branch.from_bus_ref]} "
                     f"i {nazwa_szyny[branch.to_bus_ref]})"
                 ),
                 result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
@@ -650,8 +665,8 @@ def _assemble_zero_sequence_y0(
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
-            raise ZeroDivisionError(
-                "Cannot compute source zero-sequence admittance: impedance is zero"
+            raise OdmowaDanychError(
+                _odmowa_zerowej_impedancji_z0(f"Źródło {nazwa_elementu(source, 'sources')}")
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
@@ -663,8 +678,8 @@ def _assemble_zero_sequence_y0(
             formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
             inputs={"ref_id": source.ref_id, "z0_ohm": z0_source_ohm},
             substitution=(
-                f"Z0(src) = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
-                f"(bocznik {nazwa_szyny[source.bus_ref]})"
+                f"Z0 źródła = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
+                f"(bocznik do ziemi na szynie {nazwa_szyny[source.bus_ref]})"
             ),
             result={"z0_ohm": z0_source_ohm},
         )
@@ -723,7 +738,7 @@ def _assemble_zero_sequence_y0(
             },
             substitution=(
                 f"Układ „{NAZWY_UKLADOW_POLACZEN_BATERII_PL[uklad]}”: Y0 = "
-                f"{admitancja.y_pu.real:.6g} + j{admitancja.y_pu.imag:.6g} p.u. "
+                f"{admitancja.y_pu.real:.6g} + j{admitancja.y_pu.imag:.6g} pu "
                 f"(bocznik {nazwa_szyny[bateria.bus_ref]})"
             ),
             result={"y0_pu": admitancja.y_pu},
@@ -767,18 +782,77 @@ def _assemble_zero_sequence_y0(
     # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
     # calculations singular; adding a local numerical reference keeps them
     # isolated from the solved SN network.
+    wezly_odniesienia_numerycznego: list[int] = []
+    slad_odniesienia = WhiteBoxTracer()
     for idx in range(size):
         if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
             y0_bus[idx, idx] += complex(1e6, 0.0)
+            wezly_odniesienia_numerycznego.append(idx)
+    if wezly_odniesienia_numerycznego:
+        # WHITE BOX: odniesienie numeryczne jest korektą macierzy — ślad sieci zerowej
+        # (publikowany w wyniku 1F/2FG) nazywa węzły, w których Z0 pochodzi z niej, a nie
+        # z elementów sieci.
+        indeksy = set(wezly_odniesienia_numerycznego)
+        nazwy_wezlow = sorted(
+            nazwa_elementu(graph.nodes[wezel], "buses")
+            for wezel, idx in node_index.items()
+            if idx in indeksy
+        )
+        slad_odniesienia.add(
+            key="z0_numerical_reference",
+            title="Węzły bez drogi prądu zerowego: odniesienie numeryczne",
+            formula_latex=(
+                r"Y_{0,ii} = 10^{6}\ \text{pu} \Rightarrow " r"Z_{0,ii} \approx 10^{-6}\ \text{pu}"
+            ),
+            inputs={"wezly": nazwy_wezlow},
+            substitution=(
+                f"{', '.join(nazwy_wezlow)}: żaden element sieci nie tworzy w tych węzłach drogi "
+                "prądu zerowego; macierz Y0 dostaje odniesienie numeryczne 10⁶ pu."
+            ),
+            result={"liczba_wezlow": len(nazwy_wezlow)},
+            notes=(
+                "OSTRZEŻENIE: Z0 w tych węzłach nie pochodzi z elementów sieci — zwarcie "
+                "doziemne liczone w nich nie odzwierciedla fizyki (bez drogi prądu zerowego "
+                "prąd doziemny jest bliski zeru). Uzupełnij dane składowej zerowej: Z0 "
+                "źródła, R0/X0 i B0 linii i kabli, grupę połączeń transformatora."
+            ),
+        )
 
-    return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
+    return (
+        builder,
+        node_index,
+        size,
+        y0_bus,
+        tracer.to_list() + transformer_trace + slad_odniesienia.to_list(),
+    )
+
+
+#: Odmowa zwarcia doziemnego bez drogi powrotu prądu zerowego (macierz Y0 osobliwa) — jedno
+#: zdanie dla obu dróg wykrycia (ranga SVD i ``LinAlgError`` inwersji).
+KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA = (
+    "Sieć składowej zerowej nie ma drogi powrotu prądu zerowego do ziemi — impedancji Z0 "
+    "w miejscu zwarcia nie da się wyznaczyć: brak uziemionego punktu neutralnego i brak "
+    "pojemności doziemnej B0 linii i kabli. Dla sieci izolowanej podaj susceptancję doziemną "
+    "linii i kabli (B0), by uwzględnić prąd pojemnościowy doziemienia."
+)
 
 
 def build_zero_sequence_zbus(
     enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
 ) -> np.ndarray:
+    """Z0-bus sieci składowej zerowej — ``build_zero_sequence_zbus_with_trace`` bez śladu."""
+    return build_zero_sequence_zbus_with_trace(enm, graph, scenario=scenario)[0]
+
+
+def build_zero_sequence_zbus_with_trace(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+) -> tuple[np.ndarray, list[dict]]:
     """
-    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+    Build the zero-sequence Z-bus from ENM fields without mutating the graph — together
+    with the WHITE BOX trace of the SAME Y0 matrix (one assembly, one source of truth):
+    the per-element breakdown (lines/cables Z0 and B0, sources, capacitor banks, transformers
+    with the vector-group decision) that the short-circuit run publishes for 1F/2F+G
+    (``raw_result.siec_zerowa``).
 
     The returned matrix uses the same merged node order as
     ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
@@ -798,25 +872,19 @@ def build_zero_sequence_zbus(
     fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
-    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    _, _, size, y0_bus, trace = _assemble_zero_sequence_y0(enm, graph, scenario)
     if size == 0:
         # Graf bez węzłów (sieć pusta albo bez węzła z odniesieniem) — macierz 0x0 jest
         # odwrotnością samej siebie. ``matrix_rank`` na tablicy zerowego rozmiaru rzucał
         # surowy ``ValueError`` numpy (pomiar partii integracji 11: koperta wejścia zwarcia
         # 1F pustego przypadku kończyła się 500 zamiast kopertą z pustym payloadem, jak 3F).
-        return np.zeros((0, 0), dtype=complex)
+        return np.zeros((0, 0), dtype=complex), trace
     if np.linalg.matrix_rank(y0_bus) < size:
-        raise OdmowaDanychError(
-            "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
-            "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
-            "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
-            "dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd "
-            "pojemnościowy doziemienia)"
-        )
+        raise OdmowaDanychError(KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA)
     try:
-        return np.linalg.inv(y0_bus)
+        return np.linalg.inv(y0_bus), trace
     except np.linalg.LinAlgError as exc:
-        raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+        raise OdmowaDanychError(KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA) from exc
 
 
 def skladowe_sieci_zerowej(
@@ -839,13 +907,6 @@ def skladowe_sieci_zerowej(
         return {}
     _, etykiety = connected_components(csr_matrix(y0_bus != 0), directed=False)
     return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(node_index.items())}
-
-
-def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
-    """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
-    (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""
-    _, _, _, _, trace = _assemble_zero_sequence_y0(enm, graph)
-    return trace
 
 
 # G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909
@@ -1280,7 +1341,7 @@ def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
 def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
     """Ślad WHITE BOX zarejestrowanych założeń k_sc (udziału zwarciowego falownika).
 
-    Karta FAB-H — ten sam wzorzec co ``build_zero_sequence_trace`` powyżej: funkcja
+    Karta FAB-H — ten sam wzorzec co ślad ``build_zero_sequence_zbus_with_trace`` powyżej: funkcja
     publiczna, wywoływalna niezależnie od pełnego biegu SC, do wglądu/testów w ślad
     założeń bez konieczności uruchamiania solvera. Pusta lista, gdy każdy konwerter
     ma jawne ``k_sc`` w karcie katalogowej (albo gdy sieć nie ma konwerterów).

@@ -2043,7 +2043,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # baterii (`q_n`, `u_n`, `straty_kw`, `x_dlawika`, `y_sekcji_s`, `liczba_sekcji`,
     # `sekcje_zalaczone`, `parametry_robocze`, `parametry_robocze_pl`) i wejscie v126
     # (`baterie`, `b0_siemens`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4394." in wyjscie, wyjscie
+    # Slad sieci zerowej w wyniku zwarcia 1F/2FG (2026-10-29): 4394 -> 4395 — POMIAR
+    # `contract_fields()` na HEAD karty (`git archive`: 4394, pin zgodny) i na drzewie karty
+    # (4395). Roznica zbiorow +1, -0: `WejscieZwarcia.siec_zerowa_trace` (slad WHITE BOX budowy
+    # Y0/Z0 przekazywany do `raw_result["siec_zerowa"]`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4395." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

@@ -40,7 +40,7 @@ from enm.bateria_kondensatorow import (
     admitancja_baterii,
 )
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
-from enm.mapping import build_zero_sequence_trace, map_enm_to_network_graph
+from enm.mapping import build_zero_sequence_zbus_with_trace, map_enm_to_network_graph
 from enm.models import (
     Bus,
     Cable,
@@ -388,9 +388,18 @@ def test_zwarcie_1f_droga_zerowa_wylacznie_gwiazdy_uziemionej(
         assert {d["jakosc"] for d in robocze[0]["dane_przyjete"]} == {"ESTIMATED"}
     # Ślad budowy macierzy Y0: wpis baterii z decyzją o drodze zerowej.
     enm = _siec_zwarcia(bat, 1.0)
-    slad = {w["key"]: w for w in build_zero_sequence_trace(enm, map_enm_to_network_graph(enm))}
+    slad = {
+        w["key"]: w
+        for w in build_zero_sequence_zbus_with_trace(enm, map_enm_to_network_graph(enm))[1]
+    }
     wpis = slad["z0_shunt_capacitor[BAT]"]
     assert (wpis["result"]["y0_pu"] == 0) is not uziemiona
+    # Ten sam krok trafia do wyniku biegu 1F (`raw_result.siec_zerowa`) — decyzja o drodze
+    # zerowej baterii jest audytowalna w wyniku, nie tylko w funkcji budującej macierz.
+    [wpis_biegu] = [w for w in raw["siec_zerowa"] if w["key"] == "z0_shunt_capacitor[BAT]"]
+    assert wpis_biegu["title"] == wpis["title"]
+    assert wpis_biegu["substitution"] == wpis["substitution"]
+    assert (_zespolona(wpis_biegu["result"]["y0_pu"]) == 0) is not uziemiona
 
 
 # ---------------------------------------------------------------------------

@@ -135,7 +135,7 @@ function zamontujBackend(
         if ('c_factor' in config || !('scenariusz' in config)) {
           return new Response(
             JSON.stringify({
-              detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'Field required', type: 'missing' }],
+              detail: [{ loc: ['body', 'config', 'scenariusz'], msg: 'wartość jest wymagana', type: 'missing' }],
             }),
             { status: 422, headers: { 'Content-Type': 'application/json' } },
           );

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, TypeVar
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
@@ -19,6 +19,7 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.nazwy_elementow import zbuduj_indeks_nazw
+from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -179,6 +180,9 @@ def _require_canonical_run(
 #: katalogową przekształtnika albo formularzem `harmonic_spectra` (proweniencja `RECZNE`),
 #: przekształtnik — powiązaniem katalogowym generatora w modelu. Interfejs nigdy tych kluczy
 #: nie wysyłał; żądanie, które je niesie, dostaje jawną odmowę, nie ciche pominięcie.
+#: Kontrakt jednej sekcji ``parameters`` wejścia solvera (uziom, izolacja, silnik).
+_SekcjaWejscia = TypeVar("_SekcjaWejscia", bound=BaseModel)
+
 _SKASOWANE_NADPISANIA_WEJSCIA: dict[str, str] = {
     "harmonic_sources": (
         "Nadpisanie źródeł harmonicznych parametrem „harmonic_sources” zostało usunięte — "
@@ -192,6 +196,18 @@ _SKASOWANE_NADPISANIA_WEJSCIA: dict[str, str] = {
 }
 
 
+def _waliduj_sekcje(
+    kontrakt: type[_SekcjaWejscia], dane: dict[str, Any], operacja: str | None, sekcja_pl: str
+) -> _SekcjaWejscia:
+    """Sekcja ``parameters`` jako kontrakt wejścia solvera albo odmowa danych po polsku."""
+    try:
+        return kontrakt.model_validate(dane)
+    except ValidationError as exc:
+        raise OdmowaDanychError(
+            f"{sekcja_pl} niezgodne z kontraktem: {opis_bledu_walidacji(exc, operacja)}."
+        ) from exc
+
+
 def _with_parameter_payloads(
     model: V126AcademicInput, parameters: dict[str, Any]
 ) -> V126AcademicInput:
@@ -200,31 +216,32 @@ def _with_parameter_payloads(
     Raises:
         OdmowaDanychError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
             (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz — albo
-            nadpisanie niezgodne z kontraktem wejścia (komunikat walidacji pydantic).
+            nadpisanie niezgodne z kontraktem wejścia (komunikat po polsku z jednego mapowania
+            `enm.slownik_komunikatow.opis_bledu_walidacji`).
     """
     skasowane = [klucz for klucz in _SKASOWANE_NADPISANIA_WEJSCIA if klucz in parameters]
     if skasowane:
         raise OdmowaDanychError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
     update: dict[str, Any] = {"parameters": parameters}
     # Parametry pochodzą z żądania projektanta: niezgodność z kontraktem wejścia to odmowa
-    # danych z tym samym komunikatem walidacji (karta ODMOWA-DANYCH-422).
-    try:
-        if isinstance(parameters.get("earthing"), dict):
-            update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
-        if isinstance(parameters.get("insulation"), list):
-            update["insulation"] = [
-                V126InsulationInput.model_validate(item)
-                for item in parameters["insulation"]
-                if isinstance(item, dict)
-            ]
-        if isinstance(parameters.get("motors"), list):
-            update["motors"] = [
-                V126MotorInput.model_validate(item)
-                for item in parameters["motors"]
-                if isinstance(item, dict)
-            ]
-    except ValidationError as exc:
-        raise OdmowaDanychError(str(exc)) from exc
+    # danych (karta ODMOWA-DANYCH-422) z komunikatem po polsku z jednego mapowania — sekcja
+    # formularza (uziom, silniki) wybiera nazwy pól tak, jak widzi je projektant.
+    if isinstance(parameters.get("earthing"), dict):
+        update["earthing"] = _waliduj_sekcje(
+            V126EarthingInput, parameters["earthing"], "v126_uziom", "Dane uziomu stacji"
+        )
+    if isinstance(parameters.get("insulation"), list):
+        update["insulation"] = [
+            _waliduj_sekcje(V126InsulationInput, item, None, "Dane koordynacji izolacji")
+            for item in parameters["insulation"]
+            if isinstance(item, dict)
+        ]
+    if isinstance(parameters.get("motors"), list):
+        update["motors"] = [
+            _waliduj_sekcje(V126MotorInput, item, "v126_silnik", "Dane silnika")
+            for item in parameters["motors"]
+            if isinstance(item, dict)
+        ]
     return model.model_copy(update=update)
 
 

@@ -63,6 +63,7 @@ from domain.project_archive import (
 from enm.canonical_analysis import odtworz_bieg_z_archiwum
 from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego, kompiluj_graf
 from enm.models import EnergyNetworkModel
+from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.store import (
     ZrodloZmiany,
     get_enm,
@@ -848,7 +849,14 @@ class ProjectArchiveService:
                 ) as blad:
                     # Odmowa nazwana — projekt/przypadki/biegi ZOSTAJĄ przywrócone,
                     # projekt zostaje bez modelu (zero cichego pomijania, §0.2).
-                    warnings.append(f"Model sieci z archiwum 2.x nie został odtworzony: {blad}")
+                    # Błąd kształtu modelu (pydantic) po polsku z jednego mapowania — surowy
+                    # tekst biblioteki nie trafia do ostrzeżeń importu.
+                    przyczyna = (
+                        opis_bledu_walidacji(blad) if isinstance(blad, ValidationError) else blad
+                    )
+                    warnings.append(
+                        f"Model sieci z archiwum 2.x nie został odtworzony: {przyczyna}"
+                    )
                 else:
                     set_enm(
                         klucz_projektu_docelowy,

@@ -47,7 +47,7 @@ from enm.load_zip_model import (
 )
 from enm.mapping import (
     build_grid_source_trace,
-    build_zero_sequence_zbus,
+    build_zero_sequence_zbus_with_trace,
     map_enm_to_network_graph,
     skladowe_sieci_zerowej,
 )
@@ -70,7 +70,11 @@ from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
-from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+from enm.zero_sequence_transformer import (
+    NAZWY_POLACZEN_ZEROWYCH_PL,
+    ZeroSeqConnection,
+    build_transformer_zero_seq_model,
+)
 from network_model.catalog.wartosci_robocze import zalozenia_parametrow_maszyn
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
@@ -642,6 +646,10 @@ class WejscieZwarcia:
     #: — wyłącznie dla zwarć doziemnych z założeniem ``branch.z0_wartosc_robocza``; ``None`` =
     #: Z0 nie wchodzi do biegu albo żadna gałąź nie ma R′0/X′0 z wartości roboczej.
     skladowe_zerowe: Mapping[str, int] | None = None
+    #: Ślad WHITE BOX budowy sieci składowej zerowej biegu doziemnego (1F, 2F+G) — rozbicie
+    #: macierzy Y0 po elementach (``enm.mapping.build_zero_sequence_zbus_with_trace``, ta sama
+    #: macierz co ``z0_bus``, graf solvera, scenariusz biegu). Pusta krotka = bieg bez Z0.
+    siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
 
 
 def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
@@ -1189,11 +1197,13 @@ def zloz_wejscie_zwarcia(
     # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
     # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
-    z0_bus = (
-        build_zero_sequence_zbus(enm, solve_graph, scenario=scenario_c)
-        if _short_circuit_requires_z0(short_circuit_type)
-        else None
-    )
+    # Ślad WHITE BOX budowy sieci składowej zerowej (rozbicie po elementach, decyzja grupy
+    # połączeń transformatora, droga zerowa baterii) z TEJ SAMEJ macierzy Y0 co ``z0_bus``.
+    z0_bus: Any = None
+    siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
+    if _short_circuit_requires_z0(short_circuit_type):
+        z0_bus, slad_y0 = build_zero_sequence_zbus_with_trace(enm, solve_graph, scenario=scenario_c)
+        siec_zerowa_trace = tuple(slad_y0)
 
     reportable_fault_node_ids = [
         node_id
@@ -1335,6 +1345,7 @@ def zloz_wejscie_zwarcia(
         k_sc_znaczniki=k_sc_znaczniki,
         impedancja_zwarcia=impedancja_zwarcia,
         skladowe_zerowe=skladowe_zerowe,
+        siec_zerowa_trace=siec_zerowa_trace,
     )
 
 
@@ -1994,7 +2005,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     z0_ohm = (
                         complex(galaz.r0_ohm_per_km, galaz.x0_ohm_per_km) * galaz.length_km / tory
                     )
-                    zrodlo_z0_galezi = "ENM r0_ohm_per_km/x0_ohm_per_km × length_km / n_parallel"
+                    zrodlo_z0_galezi = "R0, X0 gałęzi z modelu × długość ÷ liczba torów"
                 else:
                     z0_ohm = None
                     zrodlo_z0_galezi = "Z0 nieużywane (krawędź bez realnego I0)"
@@ -2039,7 +2050,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 if trafo.ref_id not in droga_zerowa.z_realnym_i0:
                     z0_ohm_tr = None
                     zrodlo_z0 = (
-                        f"Z0 nieużywane (połączenie {model_z0.connection.value}; "
+                        f"Z0 nieużywane ({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}; "
                         "transformator poza drogą realnego I0)"
                     )
                 elif model_z0.z0_pu is None:
@@ -2055,7 +2066,8 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         model_z0.z0_pu, base_kv_ll, S_BASE_MVA
                     )
                     zrodlo_z0 = (
-                        f"enm/zero_sequence_transformer ({model_z0.connection.value}, "
+                        f"model składowej zerowej transformatora "
+                        f"({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}, "
                         f"Z0 = {_fmt_z(model_z0.z0_pu)} pu @ {S_BASE_MVA:g} MVA)"
                     )
                 branch_specs.append(

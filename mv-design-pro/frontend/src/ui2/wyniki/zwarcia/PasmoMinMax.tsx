@@ -38,6 +38,7 @@ import {
   swiezoscParyPasma,
   typZwarciaNaAnalysisType,
 } from './pasmoModel';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { ZWARCIA_STRINGS } from './strings';
 
@@ -124,6 +125,13 @@ function BlokStronyPasma({
         zrodlaSieciowe={strona.wynik.zrodla_sieciowe}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
+      />
+      {/* Z0 źródła (Z0/Z1)·Z_Q zależy od scenariusza — każda strona pasma ma własny ślad Y0. */}
+      <SladSieciZerowej
+        siecZerowa={strona.wynik.siec_zerowa}
+        rodzajZwarcia={strona.wynik.rows[0]?.fault_type ?? null}
+        szczegolyAudytowe={szczegolyAudytowe}
+        testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-siec-zerowa`}
       />
     </div>
   );
