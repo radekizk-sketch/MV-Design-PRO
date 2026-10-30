@@ -35,11 +35,11 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     stats = get_catalog_statistics()
     summary = get_cable_catalog_quality_summary()
 
-    # +3 aktualne kable NKT ENEA 2026; 4 stare etykiety operatora
+    # +6 aktualnych kabli NKT ENEA 2026; 4 stare etykiety operatora
     # nie sa juz bezpodstawnie oznaczone jako PRODUKCYJNY_V1.
-    assert stats["liczba_kabli_ogolem"] == 66
-    assert stats["liczba_kabli_produkcyjnych"] == 53
-    assert summary["liczba_kabli_produkcyjnych"] == 53
+    assert stats["liczba_kabli_ogolem"] == 69
+    assert stats["liczba_kabli_produkcyjnych"] == 56
+    assert summary["liczba_kabli_produkcyjnych"] == 56
     assert summary["liczba_kabli_testowych"] == 1
     # K30-22: + POLISH family (YHAKXS, YHKXS)
     assert "POLISH" in summary["rodziny_kabli"] or any(
@@ -49,7 +49,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     assert 50 in summary["przekroje_kabli_mm2"]
     assert 95 in summary["przekroje_kabli_mm2"]
     # 33 + 8 Polish 1C = 41
-    assert summary["liczba_typow_1z"] == 44
+    assert summary["liczba_typow_1z"] == 47
     assert summary["liczba_typow_3z"] == 22
     assert summary["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
@@ -97,16 +97,20 @@ def test_standard_enea_2026_kable_sn_z_kart_nkt_sa_zgodne_z_tablica_3() -> None:
     }
     records = [
         item for item in get_all_cable_types()
-        if item["id"].startswith("cable-enea-2026-nkt-xruhakxs1-")
+        if item["id"].startswith("cable-enea-2026-nkt-")
     ]
-    assert len(records) == 3
+    assert len(records) == 6
     assert {int(item["params"]["cross_section_mm2"]) for item in records} == set(expected)
+    assert {item["params"]["trade_name"].split(" ")[0] for item in records} == {
+        "XUHAKXS1", "XRUHAKXS1"
+    }
     for item in records:
         p = item["params"]
         section = int(p["cross_section_mm2"])
         r, c, iz, ith = expected[section]
         assert p["manufacturer"] == "NKT"
-        assert p["trade_name"] == f"XRUHAKXS1 1x{section}/25"
+        rodzina = p["trade_name"].split(" ")[0]
+        assert p["trade_name"] == f"{rodzina} 1x{section}/25"
         assert p["r_ohm_per_km"] == r
         assert p["c_nf_per_km"] == c
         assert p["rated_current_a"] == iz
@@ -116,7 +120,7 @@ def test_standard_enea_2026_kable_sn_z_kart_nkt_sa_zgodne_z_tablica_3() -> None:
         assert p["r0_ohm_per_km"] > 0
         assert p["x0_ohm_per_km"] > 0
         assert "03.2026" in p["source_reference"]
-        assert "CTL00109" in p["source_reference"]
+        assert ("CTL00109" if rodzina == "XRUHAKXS1" else "CTL00352") in p["source_reference"]
         assert p["catalog_status"] == "PRODUKCYJNY_V1"
         assert "gruntu 20" in p["verification_note"]
 
