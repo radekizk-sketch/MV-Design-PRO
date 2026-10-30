@@ -450,10 +450,10 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     """Źródło domyślne typu (`_catalog_metadata_kwargs(default_source_reference=…)`) nie
     może zastępować źródła pozycji: każdy rekord danych niesie `source_reference` jawnie
     (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy").
-    Pomiar 2026-10-30: 7986 = 7851 + 6 kabli ENEA/NKT + 13 kabli NKT odbiorcy + 60 NKT nN + 54 TFK SN + 2 profile CT ENEA; dawniej 7851 (po 18 transformatorach blokowych 0,65 kV + 4 wariantach
+    Pomiar 2026-10-30: 8005 = 7851 + 6 kabli ENEA/NKT + 13 kabli NKT odbiorcy + 79 NKT nN + 54 TFK SN + 2 profile CT ENEA; dawniej 7851 (po 18 transformatorach blokowych 0,65 kV + 4 wariantach
     Vestas V112, karta KATALOG-TURBINY-TOR-V112)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7986
+    assert len(rekordy) == 8005
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 
