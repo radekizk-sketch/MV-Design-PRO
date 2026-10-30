@@ -41,7 +41,9 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
                     "analytical_library_ref": None,
                     "notes_pl": note,
                     "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-                    "source_reference": row["zrodlo"]["wydanie"] + "; " + row["zrodlo"]["url"],
+                    "source_reference": (
+                        row["zrodlo"]["wydanie"] + "; " + row["zrodlo"]["url"]
+                    ),
                     "catalog_status": "REFERENCYJNY_V1",
                     "contract_version": "2.0",
                     "verification_note": (
