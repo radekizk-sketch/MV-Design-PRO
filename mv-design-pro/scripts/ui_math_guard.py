@@ -140,7 +140,8 @@ IDENTYFIKATOR_STALEJ = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+")
 #: Właściwość obiektu TS, której wartością jest tekst pokazywany projektantowi.
 KLUCZ_TEKSTU_UI_RE = re.compile(
     r"\b(?:etykieta|jednostka|naglowek|tytul|opis|nazwa|label|title|placeholder|tekst|"
-    r"komunikat|message|wiersz|kol|param|pomoc|podpowiedz|prefix|prefiks)\w*\s*:\s*$",
+    r"komunikat|message|wiersz|kol|param|pomoc|podpowiedz|prefix|prefiks|oznaczenie|warunek)"
+    r"\w*\s*:\s*$",
     re.IGNORECASE,
 )
 #: Moduł tekstów UI — każdy literał w nim jest tekstem ekranu.
@@ -266,20 +267,25 @@ def _dopasowania(wartosc: str, *, stala_kodu_dozwolona: bool = False) -> list[st
 #: (4) `cos φ`/`cosφ`/`cos phi`/`tg φ`. Etykieta rewizji dokumentu (`rewizja R0`) nie jest rezystancja.
 #: Oznaczenia reguly (`R1`) i pasma (`B1`) nie sa na liscie — `R` i `B` tylko z indeksem 0;
 #: (5) ten sam znak z cyfra po nazwie wielkosci (`Rezystancja R1`, `Susceptancja B1`,
-#: `Impedancja Z2`) jest symbolem, nie oznaczeniem; `Uzad` i `sin φ` jak w (3)/(4).
+#: `Impedancja Z2`) jest symbolem, nie oznaczeniem; `Uzad` i `sin φ` jak w (3)/(4);
+#: (6) granica zapisana ze spacja (`Q min`, `U max`, `P min`) i sklejona z indeksem Unicode
+#: po kilku literach (`Ik₁min`, `Ik₃`) jest tym samym symbolem z indeksem; `Ia`, `Iq`, `Id`,
+#: `twym` jak w (1). Wzor chemiczny gazu (`SF₆`, `CO₂`) nie jest symbolem wielkosci —
+#: indeks Unicode jest jego wlasciwym zapisem tekstowym.
 WZORZEC_SPLASZCZONY = re.compile(
     r"""(?x)
     (?<![\w\\])(?:
-        [^\W\d_][₀-₉ₐ-ₜᵢ-ᵪ]+
+        (?!SF₆|CO₂|N₂|H₂)[^\W\d_]{1,3}[₀-₉ₐ-ₜᵢ-ᵪ]+
       | [A-Z][a-z]{0,2}\d?(?:″|′|'')\w*
       | [A-Z]k"\w*
-      | I(?:k|p|b|th|dyn|cw|cu|cs|ma|n|r|e|max|min|sc|nom|k1|k2|k3|kmax|kmin|0|1|2)(?!\w)
+      | I(?:k|p|b|th|dyn|cw|cu|cs|ma|n|r|e|q|d|a|max|min|sc|nom|k1|k2|k3|kmax|kmin|0|1|2)(?!\w)
       | U(?:n|r|m|k|max|min|nom|c|zad|0|1|2)(?!\w)
       | u(?:k|kr)(?![\w%])
       | i(?:p|b|DC)(?!\w)
-      | t(?:k|b)(?!\w)
+      | t(?:k|b|wym|wył|wyl)(?!\w)
       | P(?:k|0|max|min|n|zainst|gen|load)(?!\w)
       | Q(?:max|min|n)(?!\w)
+      | [PQSIU]\ (?:min|max)(?!\w)
       | S(?:n|k|k3|kmax|kmin|r)(?!\w)
       | (?:[XZ][012]|[RXZ]k|Zn|(?<!rewizja\ )R0|B0)(?!\w)
       | IΔ\w*

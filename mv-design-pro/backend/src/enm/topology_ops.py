@@ -573,9 +573,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
                 )
             )
         if data.get("sn_mva", 0) <= 0:
-            issues.append(OpIssue("OP_SN_INVALID", "BLOCKER", "Moc znamionowa Sn musi być > 0 MVA"))
+            issues.append(OpIssue("OP_SN_INVALID", "BLOCKER", "Moc znamionowa musi być > 0 MVA"))
         if data.get("uk_percent", 0) <= 0:
-            issues.append(OpIssue("OP_UK_INVALID", "BLOCKER", "Napięcie zwarcia uk% musi być > 0"))
+            issues.append(OpIssue("OP_UK_INVALID", "BLOCKER", "Napięcie zwarcia musi być > 0 %"))
         # Karta RATCHET-DICT-READ (2026-08-13): `uhv_kv`/`ulv_kv`/`pk_kw` sa polami
         # WYMAGANYMI kontraktu `Transformer` (enm/models.py: `uhv_kv: float`,
         # `ulv_kv: float`, `pk_kw: float` — bez domyslnej wartosci, w
@@ -607,11 +607,11 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         # transformator), nie fikcyjną tabliczką.
         if data.get("pk_kw") is None:
             issues.append(
-                OpIssue("OP_PK_INVALID", "BLOCKER", "Brak strat obciążeniowych Pk transformatora")
+                OpIssue("OP_PK_INVALID", "BLOCKER", "Brak strat obciążeniowych transformatora")
             )
         elif data["pk_kw"] < 0:
             issues.append(
-                OpIssue("OP_PK_INVALID", "BLOCKER", "Straty obciążeniowe Pk nie mogą być ujemne")
+                OpIssue("OP_PK_INVALID", "BLOCKER", "Straty obciążeniowe nie mogą być ujemne")
             )
 
         if any(i.severity == "BLOCKER" for i in issues):

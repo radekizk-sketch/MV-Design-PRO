@@ -450,7 +450,9 @@ def test_rejects_unfinished_run() -> None:
 def test_rejects_cos_phi_out_of_range() -> None:
     run = _golden_run()
     for cos_phi_min in (1.5, 0.0):
-        with pytest.raises(ValueError, match=r"^Wymagany cosφ musi być w przedziale \(0, 1\]\.$"):
+        with pytest.raises(
+            ValueError, match=r"^Wymagany współczynnik mocy musi być w przedziale \(0, 1\]\.$"
+        ):
             build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=cos_phi_min)
 
 

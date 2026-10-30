@@ -4,7 +4,7 @@
  * wyłączona `isAnimationActive={false}`, dane wprost z wyniku — zero losowości,
  * zero `Date.now`). Warstwa prezentacji: rysuje napięcie U(t) modułu na tle
  * OBWIEDNI profilu operatora (łamana z punktów krzywej odpowiedzi) oraz serie
- * P(t)/Iq(t) przełączalne przyciskami. Legenda PL. Bez fizyki i bez korekt.
+ * P(t)/I_q(t) przełączalne przyciskami. Legenda PL. Bez fizyki i bez korekt.
  * Wzór: `ui2/oze/krzywe/WykresPQChart`.
  */
 
@@ -18,6 +18,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
 import type { PunktObwiedniWykresu, PunktTrajektoriiWykresu } from './frtModel';
 import { FRT_STRINGS, fmtPuFrt, fmtSFrt } from './strings';
 
@@ -44,7 +47,8 @@ function DymekFrt({ active, payload, label }: TooltipProps) {
       </div>
       {payload.map((wpis) => (
         <div key={wpis.name} style={{ color: wpis.color }}>
-          {wpis.name}: <span className="mvd-num">{fmtPuFrt(wpis.value ?? 0)}</span>
+          <TekstZWzorami tekst={String(wpis.name)} />:{' '}
+          <span className="mvd-num">{fmtPuFrt(wpis.value ?? 0)}</span>
         </div>
       ))}
     </div>
@@ -82,7 +86,7 @@ export function WykresTrajektoriiChart({
           onClick={() => setPokazIq((s) => !s)}
           data-testid="mvd-frt-serie-iq"
         >
-          {FRT_STRINGS.seriaIq}
+          <TekstZWzorami tekst={FRT_STRINGS.seriaIq} />
         </button>
       </div>
 
@@ -124,7 +128,7 @@ export function WykresTrajektoriiChart({
         />
         <Tooltip content={<DymekFrt />} />
         {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
-        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
+        <Legend formatter={legendaZWzorami} verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         <Line
           data={obwiednia}
           type="stepAfter"

@@ -224,8 +224,8 @@ function WynikSweep({ wynik }: { wynik: NonNullable<WynikBadania['sweep']> }) {
               <th>{T.sweepTabelaPrzekladnia}</th>
               <th>{T.sweepTabelaU}</th>
               <th>{T.sweepTabelaStraty}</th>
-              <th>{T.sweepTabelaUmin}</th>
-              <th>{T.sweepTabelaUmax}</th>
+              <th><TekstZWzorami tekst={T.sweepTabelaUmin} /></th>
+              <th><TekstZWzorami tekst={T.sweepTabelaUmax} /></th>
             </tr>
           </thead>
           <tbody>

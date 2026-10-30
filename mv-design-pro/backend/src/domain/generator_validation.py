@@ -361,7 +361,8 @@ def blad_wejsc_kontroli_mocy(wejscia: JawneWejsciaKontroliMocy) -> OdmowaKontrol
     definicja dla operacji domenowych i podglądu doboru toru DER-SN (decyzja O-53)."""
     if wejscia.cos_phi is not None and not 0.0 < wejscia.cos_phi <= 1.0:
         return OdmowaKontroliMocy(
-            KOD_WEJSCIE_KONTROLI_MOCY, f"cosφ musi należeć do (0; 1] (podano {wejscia.cos_phi:g})."
+            KOD_WEJSCIE_KONTROLI_MOCY,
+            f"Współczynnik mocy musi należeć do (0; 1] (podano {wejscia.cos_phi:g}).",
         )
     k_j = wejscia.wspolczynnik_jednoczesnosci
     if k_j is not None and not 0.0 < k_j <= 1.0:
@@ -534,7 +535,8 @@ def sprawdz_moc_transformatora(
         KOD_MOC_TRANSFORMATORA,
         (
             f"{opis_wymagania} przekracza dopuszczalną moc transformatora "
-            f"({mva_na_kva(dopuszczalna):.0f} kVA = S_n,TR · k_obc, k_obc = {k_obc:g}). "
+            f"({mva_na_kva(dopuszczalna):.0f} kVA — moc znamionowa transformatora pomnożona "
+            f"przez przeciążalność {k_obc:g}). "
             "Wybierz mniejszy wariant źródła albo transformator o większej mocy."
         ),
     )

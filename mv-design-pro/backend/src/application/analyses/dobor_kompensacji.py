@@ -420,7 +420,7 @@ def build_compensation_sizing_view(
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):
-        raise OdmowaDanychError("Wymagany cosφ musi być w przedziale (0, 1].")
+        raise OdmowaDanychError("Wymagany współczynnik mocy musi być w przedziale (0, 1].")
 
     snapshot = run.snapshot or {}
     buses = _bus_index(snapshot)

@@ -95,10 +95,10 @@ export const FRT_STRINGS = {
   legendaNapiecie: 'Napięcie U(t)',
   legendaObwiednia: 'Obwiednia wymagana (informacja)',
   legendaP: 'Moc czynna P(t)',
-  legendaIq: 'Prąd bierny Iq(t)',
+  legendaIq: 'Prąd bierny $I_{q}(t)$',
   serieTytul: 'Serie dodatkowe:',
   seriaP: 'Pokaż P(t)',
-  seriaIq: 'Pokaż Iq(t)',
+  seriaIq: 'Pokaż $I_{q}(t)$',
 
   // Status biegu solvera (etykiety PL, sekcja audytowa) — opis meldunku modelu
   // uproszczonego, nie ocena zdolności modułu.

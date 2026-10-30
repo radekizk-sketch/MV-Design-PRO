@@ -17,6 +17,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
 import type { PunktObszaru } from './obszarModel';
 import { OBSZAR_STRINGS, fmtMWObszar, fmtMvarObszar } from './strings';
 
@@ -98,7 +100,7 @@ export function WykresObszaruChart({
         />
         <Tooltip content={<DymekObszaru />} />
         {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
-        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
+        <Legend formatter={legendaZWzorami} verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         <Line
           type="monotone"
           dataKey="qMax"

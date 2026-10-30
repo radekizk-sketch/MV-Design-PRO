@@ -51,13 +51,13 @@ from .nazwy_elementow import (
 #: rozstrzygnięcie deterministyczne: najpierw wpis kontekstu, potem wpis ogólny.
 #: Słowa = etykiety kreatorów ``frontend/src/ui2/kreatory``.
 NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
-    "a_p": "Udział stałoimpedancyjny P (a_P)",  # odbior/strings.ts zipAP
-    "a_q": "Udział stałoimpedancyjny Q (a_Q)",  # odbior/strings.ts zipAQ
+    "a_p": "Udział stałoimpedancyjny mocy czynnej",  # odbior/strings.ts zipAP
+    "a_q": "Udział stałoimpedancyjny mocy biernej",  # odbior/strings.ts zipAQ
     "accuracy_class": "Klasa dokładności",  # pomiar/strings.ts klasa
     "active_power_control_enabled": "Regulacja mocy czynnej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "apparatus_catalog_ref": "Aparat pola",  # stacja/strings.ts aparatPola
-    "b_p": "Udział stałoprądowy P (b_P)",  # odbior/strings.ts zipBP
-    "b_q": "Udział stałoprądowy Q (b_Q)",  # odbior/strings.ts zipBQ
+    "b_p": "Udział stałoprądowy mocy czynnej",  # odbior/strings.ts zipBP
+    "b_q": "Udział stałoprądowy mocy biernej",  # odbior/strings.ts zipBQ
     "bay_ref": "Pole SN",  # pomiar/strings.ts poleSn; przekaznik/strings.ts poleSn
     "bess_operation_mode_refs": "Tryb pracy magazynu",  # zrodlo-oze/strings.ts bessTryb
     "black_start_capable": "Zdolność rozruchu autonomicznego",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
@@ -65,8 +65,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "blocking_transformer_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts transformator
     "burden_va": "Moc obciążeniowa",  # pomiar/strings.ts burden
     "bus_nn_ref": "Szyna nN",  # pole-nn/strings.ts szyna
-    "c_p": "Udział stałomocowy P (c_P)",  # odbior/strings.ts zipCP
-    "c_q": "Udział stałomocowy Q (c_Q)",  # odbior/strings.ts zipCQ
+    "c_p": "Udział stałomocowy mocy czynnej",  # odbior/strings.ts zipCP
+    "c_q": "Udział stałomocowy mocy biernej",  # odbior/strings.ts zipCQ
     "cable_laying_conditions": "Warunki ułożenia kabla",  # zrodlo-oze/strings.ts doborWarunkiUlozenia
     "cable_laying_conditions.ambient_temperature_c": "Temperatura otoczenia",  # odcinek-nn/strings.ts temperatura
     "cable_laying_conditions.circuit_count": "Liczba obwodów w wiązce/wykopie",  # odcinek-nn/strings.ts liczbaObwodow
@@ -103,7 +103,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "complete_bay_template_ref": "Katalogowe pole rodziny",  # stacja/strings.ts polaSzablon
     "connection_variant": "Sposób przyłączenia",  # zrodlo-oze/strings.ts wariant
     "control_mode": "Tryb regulacji mocy biernej",  # zrodlo-oze/strings.ts regulacja
-    "add_nn_load:cos_phi": "Współczynnik mocy cosφ",  # odbior/strings.ts cosPhi
+    "add_nn_load:cos_phi": "Współczynnik mocy",  # odbior/strings.ts cosPhi
     "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
     "data_umowy_przylaczeniowej": "Data umowy przyłączeniowej (wersje warstw profilu)",  # ui2/oze/ncrfg/strings.ts dataUmowy
     "deklaracje_modulu": "Deklaracje modułu (testy T05, T10–T13, T16–T20)",  # ui2/oze/ncrfg/strings.ts deklaracjeTytul
@@ -137,22 +137,22 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "gpz_section.order": "Porządek",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.right_coupler_ref": "Sprzęgło z prawej",  # sekcja GPZ (bez pola w edytorze)
     "gpz_section.section_id": "ID sekcji",  # ui/network-build/cards/GpzSectionsEditor.tsx
-    "grounding.r_ohm": "R uziemienia",  # zrodlo/strings.ts uziemienieR
+    "grounding.r_ohm": "Rezystancja uziemienia",  # zrodlo/strings.ts uziemienieR
     "add_grid_source_sn:grounding.type": "Punkt neutralny sieci 110 kV",  # zrodlo/strings.ts uziemienie
-    "grounding.x_ohm": "X cewki",  # zrodlo/strings.ts uziemienieX
+    "grounding.x_ohm": "Reaktancja cewki",  # zrodlo/strings.ts uziemienieX
     "harmonic_thdu_percent": "Współczynnik THD napięcia [%]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "has_disturbance_recorder": "Rejestrator zakłóceń",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "has_scada_communication": "Łączność SCADA operatora",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "add_transformer_sn_nn:hv_bus_ref": "Szyna SN (górne napięcie)",  # transformator/strings.ts hvBus
     "add_grid_source_sn:hv_voltage_kv": "Napięcie szyny 110 kV",  # zrodlo/strings.ts napiecieHv
     "hvrt_curve_ref": "Charakterystyka HVRT (przepięcie)",  # zrodlo-oze/strings.ts frtHvrt
-    "ik3_min_ka": "Ik″min",  # zrodlo/strings.ts ik3Min
+    "ik3_min_ka": "Minimalny prąd zwarciowy",  # zrodlo/strings.ts ik3Min
     "insert_station_on_segment_sn:insert_at": "Odległość stacji od początku odcinka [m]",  # stacja/strings.ts insertAt
     "insert_at": "Położenie na odcinku",  # lacznik|slup-odgalezny|zksn/strings.ts polozenie
     "island_operation_capable": "Zdolność pracy wyspowej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "island_operation_required": "Wymagana praca wyspowa",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
-    "k_pf": "Wrażliwość częstotliwościowa P (k_pf)",  # odbior/strings.ts zipKPf
-    "k_qf": "Wrażliwość częstotliwościowa Q (k_qf)",  # odbior/strings.ts zipKQf
+    "k_pf": "Wrażliwość częstotliwościowa mocy czynnej",  # odbior/strings.ts zipKPf
+    "k_qf": "Wrażliwość częstotliwościowa mocy biernej",  # odbior/strings.ts zipKQf
     "karty_widmowe_ref": "Karty widmowe urządzenia",  # karty widmowe wytwórcy (wiązanie katalogowe)
     "length_km": "Długość",  # odcinek-nn/strings.ts dlugosc
     "add_nn_cable_segment:length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
@@ -170,15 +170,15 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "p_recovery_time_s": "Czas odbudowy mocy czynnej po zwarciu [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "update_element_parameters:parameters": "Klucz",  # edycja-parametrow/strings.ts klucz
     "pf_curve_ref": "Statyzm P(f) / LFSM",  # zrodlo-oze/strings.ts statyzmPf
-    "pk_kw": "Straty obciążeniowe Pk",  # ui/property-grid/field-definitions.ts pk_kw
+    "pk_kw": "Straty obciążeniowe",  # ui/property-grid/field-definitions.ts pk_kw
     "power_factor": "Współczynnik mocy",  # zrodlo-dyspozycyjne/strings.ts cosfi
     "power_oscillation_damping_enabled": "Tłumienie kołysań mocy aktywne",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "power_oscillation_damping_required": "Wymagane tłumienie kołysań mocy",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "power_setpoint_mw": "Moc robocza P (nastawa)",  # zrodlo-oze/strings.ts mocRobocza
     "protection_catalog_ref": "Zabezpieczenie pola wytwórcy",  # zrodlo-oze/strings.ts aparaturaZabezpieczenie
     "przesuniecie_fazy_deg": "Skok wektora — próg [°]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
-    "q_max_mvar": "Q max (oddawanie, nadwzbudzenie)",  # zrodlo-oze/strings.ts qMax
-    "q_min_mvar": "Q min (pobór, podwzbudzenie)",  # zrodlo-oze/strings.ts qMin
+    "q_max_mvar": "Moc bierna maksymalna (oddawanie, nadwzbudzenie)",  # zrodlo-oze/strings.ts qMax
+    "q_min_mvar": "Moc bierna minimalna (pobór, podwzbudzenie)",  # zrodlo-oze/strings.ts qMin
     "r_ohm_per_km": "Rezystancja R",  # magistrala/strings.ts paramR
     "ramp_rate_pct_per_min": "Szybkość zmiany mocy [%/min]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "rated_power_kw": "Moc znamionowa",  # zrodlo-dyspozycyjne/strings.ts moc
@@ -194,7 +194,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "rodzaj_pomiaru": "Rodzaj pomiaru",  # pole/strings.ts rodzajPomiaru
     "rx_ratio_min": "Stosunek R/X (MIN)",  # zrodlo/strings.ts rxMin
     "screen_bonding": "Uziemienie ekranu kabla",  # magistrala/strings.ts ekranUziemienie
-    "sk3_min_mva": "Sk″min",  # zrodlo/strings.ts sk3Min
+    "sk3_min_mva": "Minimalna moc zwarciowa",  # zrodlo/strings.ts sk3Min
     "sn_mva": "Moc znamionowa",  # transformator/strings.ts paramMoc
     "source_name": "Nazwa GPZ",  # zrodlo/strings.ts nazwa
     "source_technology": "Technologia",  # zrodlo-oze/strings.ts technologia
@@ -202,7 +202,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "station.construction_type": "Typ konstrukcji stacji",  # stacja/strings.ts konstrukcja
     "station.nn_voltage_kv": "Napięcie nN odbioru",  # stacja/strings.ts nnVoltage
     "station.station_type": "Rodzaj stacji",  # stacja/strings.ts typStacji
-    "station_auxiliary.cos_phi": "cosφ potrzeb własnych",  # stacja/strings.ts potrzebyWlasneCosphi
+    "station_auxiliary.cos_phi": "Współczynnik mocy potrzeb własnych",  # stacja/strings.ts potrzebyWlasneCosphi
     "add_nn_section_coupler:station_ref": "Rozdzielnica nN",  # rozdzielnica-nn/strings.ts stacja
     "stop_generation_enabled": "Zaprzestanie generacji na polecenie",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "przepnij_element_na_pole:element_ref": "Element do przepięcia",  # przepiecie-na-pole/strings.ts element
@@ -228,16 +228,16 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
     "insert_station_on_segment_sn:transformer_catalog_ref": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
     "transformer_catalog_ref": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog
-    "transformer_sn_mva": "Moc znamionowa Sn",  # zrodlo/strings.ts transformatorSn
+    "transformer_sn_mva": "Moc znamionowa",  # zrodlo/strings.ts transformatorSn
     "tryb_pracy": "Tryb pracy przyłącza",  # ui2/spaces/projekt/strings.ts osdTrybPracy
     "u_max_czas_s": "U> — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
-    "u_max_pu": "U> — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
+    "u_max_pu": "U> — próg [p.u. napięcia znamionowego]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "u_min_czas_s": "U< — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
-    "u_min_pu": "U< — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
+    "u_min_pu": "U< — próg [p.u. napięcia znamionowego]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "add_grid_source_sn:u_set_pu": "Napięcie zadane szyny bilansującej",  # zrodlo/strings.ts uSetPu
     "u_set_pu": "Nastawa napięcia U",  # zrodlo-oze/strings.ts uSetPu
     "uhv_kv": "Napięcie GN",  # ui/property-grid/field-definitions.ts voltage_hv_kv
-    "uk_percent": "Napięcie zwarcia uk",  # transformator/strings.ts paramUk
+    "uk_percent": "Napięcie zwarcia",  # transformator/strings.ts paramUk
     "ulv_kv": "Napięcie DN",  # ui/property-grid/field-definitions.ts voltage_lv_kv
     "v0_pu": "Napięcie odniesienia modelu obciążenia [p.u.]",  # wielkość odniesienia ZIP (bez pola w kreatorze)
     "add_grid_source_sn:voltage_kv": "Napięcie SN",  # zrodlo/strings.ts napiecieSn
@@ -263,7 +263,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "update_element_parameters:overrides": "Wartości parametrów nadane przez projektanta",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
     "vt_catalog_ref": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
-    "wymagany_cos_phi": "Wymagany cosφ (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi
+    "wymagany_cos_phi": "Wymagany współczynnik mocy (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi
     "x_ohm_per_km": "Reaktancja X",  # magistrala/strings.ts paramX
     "deklaracje_modulu:zrodlo_pl": "Źródło deklaracji",  # ui2/oze/ncrfg/strings.ts deklaracjeZrodlo
     "nastawy_zabezpieczen:zrodlo_pl": "Źródło nastaw",  # ui2/oze/ncrfg/strings.ts nastawyZrodlo

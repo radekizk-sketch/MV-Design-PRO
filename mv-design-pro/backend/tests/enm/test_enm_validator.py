@@ -781,7 +781,7 @@ class TestGeneratorVoltageControlIncomplete:
         assert issue.element_refs == ["gen_1"]
         # Karta #142: pola formularza generatora słowami, bez kluczy kontraktu.
         assert "„Nastawa napięcia U”" in issue.message_pl
-        assert "„Q min (pobór, podwzbudzenie)”" in issue.message_pl
+        assert "„Moc bierna minimalna (pobór, podwzbudzenie)”" in issue.message_pl
         assert "u_set_pu" not in issue.message_pl
         assert "q_min_mvar" not in issue.message_pl
         assert issue.fix_action is not None

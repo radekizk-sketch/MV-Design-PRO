@@ -16,6 +16,9 @@
 
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
+
 import { fmtLiczba, symbolJednostki, type WierszWykresu } from './model';
 import { DYNAMIKA_STRINGS as T } from './strings';
 
@@ -62,7 +65,7 @@ function Dymek({ active, payload, label, jednostka }: DymekProps) {
       </div>
       {payload.map((wpis) => (
         <div key={wpis.name} style={{ color: wpis.color }}>
-          {wpis.name}:{' '}
+          <TekstZWzorami tekst={String(wpis.name)} />:{' '}
           <span className="mvd-num">
             {wpis.value === null || wpis.value === undefined
               ? T.brakProbki
@@ -159,7 +162,7 @@ export function WykresPrzebiegow({
           />
         ))}
         <Tooltip content={<Dymek jednostka={jednostka} />} isAnimationActive={false} />
-        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
+        <Legend formatter={legendaZWzorami} verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         {serie.map((seria, i) => (
           <Line
             key={seria.klucz}

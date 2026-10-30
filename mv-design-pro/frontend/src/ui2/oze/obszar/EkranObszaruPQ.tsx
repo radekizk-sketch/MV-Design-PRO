@@ -326,7 +326,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
           </div>
 
           <div className="mvd-obszar-param">
-            <label htmlFor="mvd-obszar-limity-qmin">{OBSZAR_STRINGS.limityQMin}</label>
+            <label htmlFor="mvd-obszar-limity-qmin"><TekstZWzorami tekst={OBSZAR_STRINGS.limityQMin} /></label>
             <div className="mvd-obszar-param-pole">
               <input
                 id="mvd-obszar-limity-qmin"
@@ -341,7 +341,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
           </div>
 
           <div className="mvd-obszar-param">
-            <label htmlFor="mvd-obszar-limity-qmax">{OBSZAR_STRINGS.limityQMax}</label>
+            <label htmlFor="mvd-obszar-limity-qmax"><TekstZWzorami tekst={OBSZAR_STRINGS.limityQMax} /></label>
             <div className="mvd-obszar-param-pole">
               <input
                 id="mvd-obszar-limity-qmax"

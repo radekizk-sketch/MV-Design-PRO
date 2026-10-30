@@ -55,13 +55,13 @@ def blad_konfiguracji_uziemienia(
     """
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (
-            "uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω] w polu "
-            "„R uziemienia” — nie wolno przyjąć R_N = 0"
+            "uziemienie przez rezystor wymaga dodatniej wartości [Ω] w polu "
+            "„Rezystancja uziemienia” — nie wolno przyjąć zera"
         )
     if typ == "petersen_coil" and (x_ohm is None or x_ohm <= 0):
         return (
-            "cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω] w polu "
-            "„X cewki” — nie wolno przyjąć X_N = 0"
+            "cewka Petersena wymaga dodatniej wartości [Ω] w polu "
+            "„Reaktancja cewki” — nie wolno przyjąć zera"
         )
     return None
 

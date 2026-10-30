@@ -1461,5 +1461,25 @@ wyłącznie w generowanych towarzyszach archetypów stacji
 (`ui/sld/v2/station-rozdzielnia/companions/shortCircuit.ts`, `ozeArchetypes2a.ts`) — ich źródłem
 jest ślad FROZEN `short_circuit_iec60909.py`; usuwa je punkt 4 (zmiana tekstowa B-01
 i przegenerowanie generatorem), do tego czasu pin strażnika jest czerwony.
-Punkt 3 (nazwy pól w komunikatach operacji słowami) — kod zrobiony, w drzewie, bez commitu.
-Punkt 4 — w kolejce.
+Punkt 3 (nazwy pól w komunikatach operacji słowami) — zrobiony. Odpowiedź API niesie klucz pola
+(część maszynowa), komunikat nazywa pole słowami ze słownika `enm/slownik_komunikatow.py`
+(`NAZWY_POL_KONTRAKTU_PL`: `a_p` → „Udział stałoimpedancyjny mocy czynnej”, `ik3_min_ka` →
+„Minimalny prąd zwarciowy”, `q_min_mvar` → „Moc bierna minimalna (pobór, podwzbudzenie)”), a symbol
+niesie etykieta kreatora jako wzór (`$a_{P}$`, `$Q_{\min}$`). Drugie źródło nazw pól komunikatów —
+etykiety tabliczki `MaterializationContract.ui_fields` (`etykieta_pola_katalogu_pl`) — przepisane na
+słowa (100 etykiet; jednostka w osobnym polu). Komunikaty z symbolem w treści przepisane słowami
+(`dobor_kompensacji`, `canonical_operations`, `generator_validation`, `domain_operations(_v2)`,
+`topology_ops`, `uziemienie`, `validator`, `family_validation`, `assembler`); słownik kodów
+gotowości przegenerowany generatorem (`generuj_slownik_kodow_gotowosci.py`, dokument był nieaktualny
+już przed zmianą). Parytet: `test_nazwy_pol_sa_slowami_frontu` porównuje słowa etykiety frontu bez
+segmentów `$…$`; `test_nazwy_pol_komunikatow_sa_slowami_bez_symboli`
+i `test_etykiety_pol_tabliczki_katalogu_sa_slowami_bez_symboli` przypinają brak symbolu z indeksem
+(iniekcje dawnych nazw czerwienią). Pojedyncza litera bez indeksu (`Moc czynna P`, `Stosunek R/X`)
+czyta się tak samo w tekście i we wzorze — poza kryterium. Przy okazji: strażnik `ui_math_guard`
+widzi granice zapisane ze spacją (`Q min`), indeks Unicode po kilku literach (`Ik₁min`), `Ia`, `Iq`,
+`Id`, `twym`, klucze `oznaczenie`/`warunek`, nazwę serii wykresu Recharts przy legendzie lub dymku
+bez składania (nowy wspólny formatter `ui2/shared/legendaZWzorami.tsx` we wszystkich sześciu
+wykresach z legendą) i zawężenie typu (`typeof tekst !== 'string'`) w komponencie składającym;
+wzór chemiczny gazu (`SF₆`) nie jest symbolem wielkości. Pomiar po zmianie: 250 = tylko
+towarzysze archetypów (punkt 4).
+Punkt 4 — w toku.

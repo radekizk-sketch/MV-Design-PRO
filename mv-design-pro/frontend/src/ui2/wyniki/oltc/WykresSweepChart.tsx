@@ -13,6 +13,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
 import type { PunktSweep } from './oltcBadaniaModel';
 import { OLTC_BADANIA_STRINGS as T } from './strings';
 
@@ -60,7 +62,7 @@ export function WykresSweepChart({ punkty, szerokosc = 720, wysokosc = 280 }: Wy
           contentStyle={{ background: 'var(--mvd-panel)', border: '1px solid var(--mvd-line)', color: 'var(--mvd-ink)' }}
         />
         {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
-        <Legend verticalAlign="top" wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
+        <Legend formatter={legendaZWzorami} verticalAlign="top" wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
         <Line
           yAxisId="u"
           type="monotone"

@@ -188,7 +188,7 @@ def opis_napiec_rodziny_pl(family: SwitchgearFamily) -> str:
         return f"karta deklaruje napięcia sieci: {wartosci} kV"
     if family.um_classes_kv:
         wartosci = ", ".join(f"{klasa:g}" for klasa in family.um_classes_kv)
-        return f"karta deklaruje klasy napięciowe urządzenia (Um): {wartosci} kV"
+        return f"karta deklaruje klasy napięciowe urządzenia: {wartosci} kV"
     return "karta nie deklaruje ani napięć sieci, ani klas napięciowych urządzenia"
 
 

@@ -1503,8 +1503,8 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
   const linie = [
     `SWZ ${symbol}`,
     `${entry.oznaczeniePradu} ${plFixed(entry.ik1MinA, entry.ik1MinA < 10 ? 2 : 0)} A`,
-    ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
-    ...(entry.tWymaganyS != null ? [`t ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
+    ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`$I_{a}$ wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
+    ...(entry.tWymaganyS != null ? [`$t$ ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
   ];
   const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
   const step = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
@@ -1514,7 +1514,7 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
       <text x={xText} y={y0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={tone} fontFamily="monospace">
         {linie.map((linia, i) => (
-          <tspan key={i} x={xText} dy={i === 0 ? 0 : step} fontWeight={i === 0 ? 700 : 400}>{linia}</tspan>
+          <tspan key={i} x={xText} dy={i === 0 ? 0 : step} fontWeight={i === 0 ? 700 : 400}><TekstSvgZWzorami tekst={linia} /></tspan>
         ))}
       </text>
     </g>

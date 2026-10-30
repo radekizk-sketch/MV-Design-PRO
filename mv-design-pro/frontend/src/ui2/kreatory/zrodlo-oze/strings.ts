@@ -92,7 +92,7 @@ export const OZE_STRINGS = {
     + 'zadanego $\\cos\\varphi$; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
     + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
     + 'regulacja napięcia (U = const) — falownik trzyma zadany moduł napięcia szyny, Q jest '
-    + 'WYNIKIEM rozpływu w granicach Q min/Q max (węzeł PV, nie PQ); '
+    + 'WYNIKIEM rozpływu w granicach $Q_{\\min}$/$Q_{\\max}$ (węzeł PV, nie PQ); '
     + '„Bez regulacji" — źródło pasywne ($Q = 0$).',
   cosPhiCel: 'Docelowy współczynnik mocy $\\cos\\varphi$',
   cosPhiCelPomoc:
@@ -113,11 +113,11 @@ export const OZE_STRINGS = {
   uSetPuPomoc:
     'Po co: wartość rządząca trybem regulacji napięcia — moduł napięcia [pu], który falownik '
     + 'ma trzymać na swojej szynie (węzeł PV rozpływu). Solver oddaje Q wynikowe w granicach '
-    + 'Q min/Q max poniżej; przy nasyceniu granic falownik traci regulację i pracuje dalej jako '
+    + '$Q_{\\min}$/$Q_{\\max}$ poniżej; przy nasyceniu granic falownik traci regulację i pracuje dalej jako '
     + 'źródło o stałej mocy biernej (przełączenie na węzeł obciążeniowy, widoczne w wyniku). '
     + 'Pasmo dopuszczalne: 0,9–1,1 pu.',
-  qMin: 'Q min (pobór, podwzbudzenie)',
-  qMax: 'Q max (oddawanie, nadwzbudzenie)',
+  qMin: 'Moc bierna minimalna $Q_{\\min}$ (pobór, podwzbudzenie)',
+  qMax: 'Moc bierna maksymalna $Q_{\\max}$ (oddawanie, nadwzbudzenie)',
   qPomoc:
     'Zakres mocy biernej falownika [Mvar] — klamra dla trybu regulacji. Puste = zakres z '
     + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej $\\pm 0{,}3287 \\cdot P_n$ ($\\cos\\varphi$ 0,95).',

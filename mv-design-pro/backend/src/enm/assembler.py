@@ -867,7 +867,8 @@ def zloz_wejscie_rozplywu(
         if qmin is None or qmax is None or qmin >= qmax:
             raise OdmowaNazwana(
                 f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia nie ma "
-                "kompletnych i spójnych granic mocy biernej (Q_min < Q_max) — walidator "
+                "kompletnych i spójnych granic mocy biernej (minimalna mniejsza od maksymalnej) "
+                "— walidator "
                 "modelu odrzuca ten stan przed uruchomieniem rozpływu.",
                 kod=KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q,
                 dane={"element_ref": str(gen.get("ref_id") or "")},

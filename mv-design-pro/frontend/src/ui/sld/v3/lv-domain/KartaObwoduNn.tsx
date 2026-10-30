@@ -246,7 +246,7 @@ function SekcjaSwzTn({ swz, paleta }: { readonly swz: SwzTnVerdict; readonly pal
         wiersze={[
           {
             klucz: 'swz.tn',
-            warunek: 'Ik₁min ≥ Ia (t ≤ twym)',
+            warunek: <MathInline latex={'I_{k1,\\min} \\geq I_{a} \\quad (t \\leq t_{wym})'} />,
             wynik: `${plFixed(swz.ik1_min_a, 0)} A`,
             limit: swz.ia_wymagane_a != null ? `${plFixed(swz.ia_wymagane_a, 0)} A` : '—',
             przypis: 1,

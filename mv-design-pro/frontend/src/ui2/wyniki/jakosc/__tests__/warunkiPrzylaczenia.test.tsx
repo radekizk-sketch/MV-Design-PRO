@@ -147,7 +147,7 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
 
     // Kryteria po polsku, nie klucze techniczne.
     expect(screen.getByText(JAKOSC_STRINGS.kryteriumMoc)).toBeTruthy();
-    expect(screen.getByText(JAKOSC_STRINGS.kryteriumCosPhi)).toBeTruthy();
+    expect(screen.getByText(poTekscieZWzorami(JAKOSC_STRINGS.kryteriumCosPhi))).toBeTruthy();
     // Werdykty: naruszone i spełnione obok siebie.
     expect(screen.getByText(JAKOSC_STRINGS.ocenaNaruszone)).toBeTruthy();
     expect(screen.getByText(JAKOSC_STRINGS.ocenaSpelnione)).toBeTruthy();

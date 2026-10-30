@@ -96,10 +96,10 @@ export function walidujFormularz(data: GeneratorSnFormData): BladPola[] {
     if (data.tryb_tabliczki === 'reczna' && (qMin === null || qMax === null)) {
       bledy.push({
         field: 'q_min_mvar',
-        message: 'Regulacja napięcia wymaga granic mocy biernej Q min i Q max (z formularza albo z tabliczki).',
+        message: 'Regulacja napięcia wymaga granic mocy biernej $Q_{\\min}$ i $Q_{\\max}$ (z formularza albo z tabliczki).',
       });
     } else if (qMin !== null && qMax !== null && qMin >= qMax) {
-      bledy.push({ field: 'q_min_mvar', message: 'Q min musi być mniejsze od Q max.' });
+      bledy.push({ field: 'q_min_mvar', message: '$Q_{\\min}$ musi być mniejsze od $Q_{\\max}$.' });
     }
   }
   return bledy;

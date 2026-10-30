@@ -677,7 +677,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "set_connection_conditions": OperationSpec(
         canonical_name="set_connection_conditions",
         category=OperationCategory.UNIVERSAL,
-        description_pl="Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy)",
+        description_pl="Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, współczynnik mocy, tryb pracy)",
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
@@ -1885,7 +1885,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.SOURCES,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Nieprawidłowa moc zwarciowa źródła Sk3",
+        message_pl="Nieprawidłowa moc zwarciowa źródła",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_mva"},
     ),
     # W5-A: konfiguracja punktu neutralnego niespojna (walidator E-W5-01 — zrodlo
@@ -1896,7 +1896,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N "
+            "Konfiguracja punktu neutralnego niespójna: rezystor bez rezystancji uziemienia, dławik bez reaktancji "
             "albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "neutral_grounding"},
@@ -2247,7 +2247,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl=(
             "Bateria w podwójnej gwieździe nie ma w polu BKR przekładnika niezrównoważenia "
-            "w połączeniu międzygwiazdowym (zabezpieczenie Ir>) — uzupełnij wyposażenie pola"
+            "w połączeniu międzygwiazdowym (zabezpieczenie niezrównoważeniowe) — uzupełnij wyposażenie pola"
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
@@ -2495,7 +2495,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Generator w trybie regulacji napięcia nie ma kompletnej nastawy — "
             "wymagana „Nastawa napięcia U” w paśmie [0,9; 1,1] pu oraz granice mocy "
-            "biernej „Q min (pobór, podwzbudzenie)” < „Q max (oddawanie, nadwzbudzenie)”"
+            "biernej „Moc bierna minimalna (pobór, podwzbudzenie)” mniejsza od „Moc bierna "
+            "maksymalna (oddawanie, nadwzbudzenie)”"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "u_set_pu"},
     ),
@@ -2546,10 +2547,10 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie "
+            "Udział zwarciowy falownika nie ma miarodajnej deklaracji w karcie "
             "katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik "
             "ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw "
-            "zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo "
+            "zabezpieczeń ani pakietu dowodowego — uzupełnij udział zwarciowy z karty producenta albo "
             "certyfikatu jednostki wytwórczej"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
@@ -2632,9 +2633,10 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; "
-            "P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora "
-            "zasilającego · przeciążalność"
+            "Moc wymagana źródła przekształtnikowego — większa z wartości: moc znamionowa "
+            "jednostki razy liczba jednostek albo moc czynna podzielona przez współczynnik "
+            "mocy, pomnożona przez współczynnik jednoczesności — przekracza moc transformatora "
+            "zasilającego pomnożoną przez jego przeciążalność"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
@@ -2655,7 +2657,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Jawne wejście kontroli mocy źródła poza zakresem: cosφ i współczynnik "
+            "Jawne wejście kontroli mocy źródła poza zakresem: współczynnik mocy i współczynnik "
             "jednoczesności z przedziału (0; 1], przeciążalność transformatora dodatnia"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry"},
@@ -2815,7 +2817,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik "
+            "Brak wymaganego współczynnika mocy z warunków OSD — uzupełnij, by ocenić współczynnik "
             "mocy w punkcie przyłączenia"
         ),
         fix_navigation={
@@ -2868,7 +2870,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — "
+            "Brak wytrzymałości cieplnej przewodu w katalogu (prąd albo gęstość prądu jednosekundowego) — "
             "uzupełnij pozycję katalogową"
         ),
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
@@ -2985,7 +2987,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl=(
             "Zamodelowany układ uziemienia ekranu kabla różni się od układu, dla "
-            "którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy "
+            "którego katalog podaje impedancję zerową — składowa zerowa z katalogu dotyczy "
             "innego układu uziemienia ekranu"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "screen_bonding"},
@@ -3023,7 +3025,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — "
+            "Brak prądu jałowego lub strat jałowych transformatora — "
             "gałąź magnesująca nie jest uwzględniona w rozpływie mocy"
         ),
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "i0_percent"},
@@ -3228,7 +3230,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — "
+            "Założenie biegu: gałąź magnesująca transformatora (straty jałowe, prąd jałowy) pominięta — "
             "solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia"
         ),
         fix_navigation={"panel": "inspector", "tab": "transformator"},
@@ -3257,7 +3259,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się w uziemionym "
             "uzwojeniu transformatora; krawędzie powyżej liczone bez sprzężenia faz "
-            "(Z_m = 0) — solver BFS nie odwzorowuje izolacji składowej zerowej przez "
+            "(impedancja wzajemna równa zeru) — solver BFS nie odwzorowuje izolacji składowej zerowej przez "
             "trójkąt/gwiazdę nieuziemioną"
         ),
         fix_navigation={"panel": "inspector", "tab": "transformator", "focus": "vector_group"},
@@ -3288,8 +3290,9 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Gałąź nie ma składowej zerowej (R0/X0), a wartości roboczej nie da się przyjąć "
-            "(SN: R′1 albo X′1 niedodatnie; nN: kabel bez danych żyły powrotnej PE/PEN albo "
+            "Gałąź nie ma składowej zerowej (rezystancji i reaktancji zerowej), a wartości "
+            "roboczej nie da się przyjąć (SN: jednostkowa rezystancja albo reaktancja zgodna "
+            "niedodatnia; nN: kabel bez danych żyły powrotnej PE/PEN albo "
             "linia; WN albo napięcie szyny nieznane) — zwarcia doziemne i rozpływ "
             "niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog"
         ),
@@ -3308,9 +3311,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.INFO,
         message_pl=(
-            "Składowa zerowa (R′0, X′0, B′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, "
-            "X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; pojemność doziemna "
-            "SN: kabel B′0 = B′1, linia napowietrzna B′0 = 0,4·B′1; katalog bez danej "
+            "Składowa zerowa odcinka (jednostkowa rezystancja, reaktancja i susceptancja zerowa) "
+            "z wartości roboczej (SN: rezystancja i reaktancja zerowa równe trzykrotności "
+            "zgodnych; kabel nN: zgodna powiększona o trzykrotność rezystancji i reaktancji "
+            "żyły ochronnej PE/PEN; susceptancja doziemna SN: kabel równa zgodnej, linia "
+            "napowietrzna 0,4 zgodnej; katalog bez danej "
             "producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty "
             "producenta albo z pomiaru w parametrach odcinka i przelicz"
         ),
@@ -3498,9 +3503,10 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ "
+            "Czas wyłączenia w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ "
             "IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — "
-            "prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb "
+            "prąd wyłączeniowy i składowa nieokresowa policzone na założeniu; podaj czas "
+            "wyłączenia "
             "w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej"
         ),
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
@@ -3510,7 +3516,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.ANALYSIS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Czas wyłączenia tb musi być skończoną liczbą dodatnią w sekundach",
+        message_pl="Czas wyłączenia musi być skończoną liczbą dodatnią w sekundach",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
@@ -4185,7 +4191,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl=(
             "Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego "
-            "z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
+            "z katalogu — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
         ),
         fix_navigation={"panel": "inspector", "tab": "nn", "modal": "add_nn_rcd"},
     ),

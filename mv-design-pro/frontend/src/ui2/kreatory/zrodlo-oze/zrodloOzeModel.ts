@@ -320,7 +320,7 @@ export function walidujFormularz(
   const qMin = data.q_min_mvar;
   const qMax = data.q_max_mvar;
   if (qMin !== null && qMax !== null && qMin > qMax) {
-    errors.push({ field: 'q_max_mvar', message: 'Zakres mocy biernej: Q min nie może przekraczać Q max.' });
+    errors.push({ field: 'q_max_mvar', message: 'Zakres mocy biernej: $Q_{\\min}$ nie może przekraczać $Q_{\\max}$.' });
   }
   // V12K-063 (kontrola po code-review): cosφ musi mieścić się w (0; 1] — poza tym zakresem
   // solver zaokrągla wartość (cosφ>1 → 1 = tryb pasywny), więc kontrolka byłaby phantomem.
@@ -350,12 +350,12 @@ export function walidujFormularz(
     if (qMin === null || qMax === null) {
       errors.push({
         field: 'q_max_mvar',
-        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej (Q min i Q max).',
+        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej ($Q_{\\min}$ i $Q_{\\max}$).',
       });
     } else if (qMin >= qMax) {
       errors.push({
         field: 'q_max_mvar',
-        message: 'Tryb regulacji napięcia wymaga Q min ściśle mniejszego od Q max.',
+        message: 'Tryb regulacji napięcia wymaga $Q_{\\min}$ ściśle mniejszego od $Q_{\\max}$.',
       });
     }
   }

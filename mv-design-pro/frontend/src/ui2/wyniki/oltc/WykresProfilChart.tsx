@@ -13,6 +13,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
 import type { KrokProfilu } from './oltcBadaniaModel';
 import { OLTC_BADANIA_STRINGS as T } from './strings';
 
@@ -64,7 +66,7 @@ export function WykresProfilChart({
         <Tooltip
           contentStyle={{ background: 'var(--mvd-panel)', border: '1px solid var(--mvd-line)', color: 'var(--mvd-ink)' }}
         />
-        <Legend wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
+        <Legend formatter={legendaZWzorami} wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
         <Line
           yAxisId="poz"
           type="stepAfter"

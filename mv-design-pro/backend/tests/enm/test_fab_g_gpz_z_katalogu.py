@@ -82,7 +82,7 @@ class TestBrakTypuIBrakParyOdrzucone:
         # Karta #142: pola kreatora GPZ słowami, bez kluczy kontraktu.
         tresc = str(wynik.get("error"))
         assert "„Napięcie szyny 110 kV”" in tresc, tresc
-        assert "„Moc znamionowa Sn”" in tresc, tresc
+        assert "„Moc znamionowa”" in tresc, tresc
         assert "hv_voltage_kv" not in tresc and "transformer_sn_mva" not in tresc, tresc
 
     def test_napiecie_wn_bez_mocy_odrzucone(self) -> None:

@@ -5,7 +5,7 @@
  * — PODŁĄCZONE, nie zduplikowane). Interakcje przez render pełnego ekranu
  * (EkranZwarc), zgodnie z wzorcem `rozplywZwarciowy.test.tsx`.
  */
-import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
+import { poTekscieZWzorami, tekstZrodlowy } from '../../../../test/tekstZWzorami';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 
@@ -59,8 +59,8 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
     expect(tabela.getByText('maksymalny')).toBeInTheDocument();
     expect(tabela.getByText('minimalny')).toBeInTheDocument();
     expect(tabela.queryByText('MAX')).not.toBeInTheDocument();
-    expect(tabela.getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA'))).toBeInTheDocument();
-    expect(tabela.getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'))).toBeInTheDocument();
+    expect(tabela.getByText(poTekscieZWzorami(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA')))).toBeInTheDocument();
+    expect(tabela.getByText(poTekscieZWzorami(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN')))).toBeInTheDocument();
   });
 
   it('brak śladu (starszy wynik / bez źródła sieciowego) → uczciwy komunikat, zero fabrykacji', async () => {
@@ -88,7 +88,7 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
     // 1. Ślad Z_Q: tryb nazywa wprost "dane MAX — brak własnych danych MIN".
     const sekcjaZrodel = screen.getByTestId('mvd-zwarcia-zrodla');
     expect(
-      within(sekcjaZrodel).getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MAX_JAKO_MIN')),
+      within(sekcjaZrodel).getByText(poTekscieZWzorami(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MAX_JAKO_MIN'))),
     ).toBeInTheDocument();
 
     // 2. Założenia: WSPÓLNA sekcja SekcjaZalozen (wzorzec) niesie wiersz źródła

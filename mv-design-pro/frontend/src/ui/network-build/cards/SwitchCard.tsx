@@ -276,7 +276,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
         label: 'Wyniki analizy',
         fields: [
           { key: 'i_through', label: 'Prąd przepływający I', value: null, unit: 'A', source: 'calculated' },
-          { key: 'ik3_through', label: 'Prąd zwarciowy Ik₃', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik3_through', label: 'Prąd zwarciowy $I_{k3}$', value: null, unit: 'kA', source: 'calculated' },
           { key: 'breaking_capacity', label: 'Zdolność wyłączalna', value: null, unit: '%', source: 'calculated' },
           { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],

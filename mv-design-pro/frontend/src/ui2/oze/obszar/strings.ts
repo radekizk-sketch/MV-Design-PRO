@@ -56,8 +56,8 @@ export const OBSZAR_STRINGS = {
   kolMoc: 'Moc czynna P',
   kolQMin: 'Q dop. min',
   kolQMax: 'Q dop. max',
-  kolGranicaDol: 'Granica dolna (Q min)',
-  kolGranicaGor: 'Granica górna (Q max)',
+  kolGranicaDol: 'Granica dolna ($Q_{\\min}$)',
+  kolGranicaGor: 'Granica górna ($Q_{\\max}$)',
   kolStatus: 'Status',
   tagPasmo: 'Pasmo pracy',
   tagBrakPasma: 'Brak pasma',
@@ -77,8 +77,8 @@ export const OBSZAR_STRINGS = {
   wykresOsY: 'Moc bierna Q',
   legendaQMax: 'Sieć: Q dop. max',
   legendaQMin: 'Sieć: Q dop. min',
-  legendaProdMax: 'Producent: Q max',
-  legendaProdMin: 'Producent: Q min',
+  legendaProdMax: 'Producent: $Q_{\\max}$',
+  legendaProdMin: 'Producent: $Q_{\\min}$',
 
   // Założenia (część wyniku)
   zalozeniaTytul: 'Założenia',
@@ -119,8 +119,8 @@ export const OBSZAR_STRINGS = {
   limityBrakGeneratorow:
     'W analizowanym węźle nie ma modułu wytwórczego — ograniczenia Q nie mają '
     + 'gdzie spłynąć. Przyłącz źródło w tym węźle i wróć do zapisu.',
-  limityQMin: 'Q min',
-  limityQMax: 'Q max',
+  limityQMin: 'Moc bierna minimalna $Q_{\\min}$',
+  limityQMax: 'Moc bierna maksymalna $Q_{\\max}$',
   limityZapisz: 'Zapisz ograniczenia Q do modelu',
   limityBrakPrzypadku:
     'Brak aktywnego przypadku obliczeniowego — zapis do modelu niemożliwy.',

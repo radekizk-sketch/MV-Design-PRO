@@ -299,12 +299,102 @@ function parametryKomponentu(funkcja) {
   return null;
 }
 
-/** Miejsce wyświetlenia wyrażenia JSX: dziecko elementu (`tekst`) albo atrybut opisowy. */
-function miejsceWyswietlenia(wyrazenie, zrodlo) {
+/**
+ * Czy warunek to `typeof <nazwa> === 'string'` (`rowne`) albo `!==` (`rozne`) — `null`, gdy nie.
+ */
+function porownanieTypuTekstu(warunek, nazwa) {
+  if (!ts.isBinaryExpression(warunek)) return null;
+  const op = warunek.operatorToken.kind;
+  const rowne = op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken;
+  const rozne =
+    op === ts.SyntaxKind.ExclamationEqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsToken;
+  if (!rowne && !rozne) return null;
+  const jestTypeof = (w) =>
+    ts.isTypeOfExpression(w) && ts.isIdentifier(w.expression) && w.expression.text === nazwa;
+  const jestString = (w) => ts.isStringLiteral(w) && w.text === 'string';
+  const pasuje =
+    (jestTypeof(warunek.left) && jestString(warunek.right)) ||
+    (jestString(warunek.left) && jestTypeof(warunek.right));
+  if (!pasuje) return null;
+  return rowne ? 'rowne' : 'rozne';
+}
+
+/**
+ * Czy wyrażenie leży w gałęzi, w której `nazwa` NIE jest tekstem (zawężenie typu:
+ * `if (typeof tekst !== 'string') return <>{tekst}</>;`, gałąź `else` po `=== 'string'`,
+ * odpowiednio w wyrażeniu warunkowym). Taka wartość nie niesie zapisu `$…$`, więc jej
+ * wstawienie do JSX nie jest wyświetleniem wzoru wprost.
+ */
+function zawezonyDoNieTekstu(wezel, nazwa, granica) {
+  let dziecko = wezel;
+  for (let rodzic = wezel.parent; rodzic && dziecko !== granica; dziecko = rodzic, rodzic = rodzic.parent) {
+    if (ts.isIfStatement(rodzic) || ts.isConditionalExpression(rodzic)) {
+      const warunek = ts.isIfStatement(rodzic) ? rodzic.expression : rodzic.condition;
+      const tak = ts.isIfStatement(rodzic) ? rodzic.thenStatement : rodzic.whenTrue;
+      const nie = ts.isIfStatement(rodzic) ? rodzic.elseStatement : rodzic.whenFalse;
+      const porownanie = porownanieTypuTekstu(warunek, nazwa);
+      if ((porownanie === 'rozne' && dziecko === tak) || (porownanie === 'rowne' && dziecko === nie)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Serie wykresu Recharts — atrybut `name` jest tekstem legendy i domyślnego dymka. */
+const SERIE_WYKRESU = new Set(['Line', 'Area', 'Bar', 'Scatter', 'Pie', 'Radar', 'RadialBar']);
+
+/**
+ * Lokalne nazwy importów z `recharts` (`Legend`, `Tooltip`, serie) i to, czy plik pokazuje
+ * nazwy serii wprost: `<Legend>` bez `formatter` albo `<Tooltip>` bez `content`/`formatter`
+ * wstawiają `name` serii do HTML bez składania wzoru.
+ */
+function wykresPliku(zrodlo) {
+  const lokalne = {};
+  for (const instrukcja of zrodlo.statements) {
+    if (!ts.isImportDeclaration(instrukcja) || instrukcja.moduleSpecifier.text !== 'recharts') continue;
+    const wiazania = instrukcja.importClause?.namedBindings;
+    if (!wiazania || !ts.isNamedImports(wiazania)) continue;
+    for (const element of wiazania.elements) {
+      lokalne[element.name.text] = (element.propertyName ?? element.name).text;
+    }
+  }
+  let nazwyWprost = false;
+  const atrybuty = (otwarcie) =>
+    new Set(otwarcie.attributes.properties.filter(ts.isJsxAttribute).map((a) => a.name.getText(zrodlo)));
+  const odwiedz = (wezel) => {
+    if ((ts.isJsxOpeningElement(wezel) || ts.isJsxSelfClosingElement(wezel)) && ts.isIdentifier(wezel.tagName)) {
+      const nazwa = lokalne[wezel.tagName.text];
+      const ma = atrybuty(wezel);
+      if (nazwa === 'Legend' && !ma.has('formatter') && !ma.has('content')) nazwyWprost = true;
+      if (nazwa === 'Tooltip' && !ma.has('formatter') && !ma.has('content')) nazwyWprost = true;
+    }
+    ts.forEachChild(wezel, odwiedz);
+  };
+  odwiedz(zrodlo);
+  return { lokalne, nazwyWprost };
+}
+
+/**
+ * Miejsce wyświetlenia wyrażenia JSX: dziecko elementu (`tekst`), atrybut opisowy albo nazwa
+ * serii wykresu, którą legenda lub domyślny dymek pokazują wprost (`wykres` z `wykresPliku`).
+ */
+function miejsceWyswietlenia(wyrazenie, zrodlo, wykres = null) {
   const rodzic = wyrazenie.parent;
   if (rodzic && (ts.isJsxElement(rodzic) || ts.isJsxFragment(rodzic))) return 'tekst';
   if (rodzic && ts.isJsxAttribute(rodzic) && ATRYBUTY_OPISOWE.has(rodzic.name.getText(zrodlo))) {
     return `atrybut ${rodzic.name.getText(zrodlo)}`;
+  }
+  if (wykres?.nazwyWprost && rodzic && ts.isJsxAttribute(rodzic) && rodzic.name.getText(zrodlo) === 'name') {
+    const otwarcie = rodzic.parent?.parent;
+    if (
+      otwarcie &&
+      (ts.isJsxOpeningElement(otwarcie) || ts.isJsxSelfClosingElement(otwarcie)) &&
+      ts.isIdentifier(otwarcie.tagName) &&
+      SERIE_WYKRESU.has(wykres.lokalne[otwarcie.tagName.text])
+    ) {
+      return 'nazwa serii wykresu (legenda/dymek bez składania wzoru)';
+    }
   }
   return null;
 }
@@ -322,6 +412,7 @@ for (const plik of pliki) {
   );
   const pozycja = (offset) => zrodlo.getLineAndCharacterOfPosition(offset);
   const aliasy = aliasyPliku(zrodlo);
+  const wykres = wykresPliku(zrodlo);
   // Importy nazwane pliku: nazwa lokalna → { nazwa eksportu, plik modułu }.
   const importyPliku = {};
   for (const instrukcja of zrodlo.statements) {
@@ -364,9 +455,10 @@ for (const plik of pliki) {
       if (parametry) {
         const surowe = new Set();
         const przegladaj = (dziecko) => {
-          if (ts.isJsxExpression(dziecko) && dziecko.expression && miejsceWyswietlenia(dziecko, zrodlo)) {
+          if (ts.isJsxExpression(dziecko) && dziecko.expression && miejsceWyswietlenia(dziecko, zrodlo, wykres)) {
             for (const sciezka of lisciWyrazenia(dziecko.expression, [])) {
               if (sciezka.length === 1 && parametry.lokalne[sciezka[0]] !== undefined) {
+                if (zawezonyDoNieTekstu(dziecko, sciezka[0], funkcja.cialo)) continue;
                 surowe.add(parametry.lokalne[sciezka[0]]);
               } else if (sciezka.length === 2 && sciezka[0] === parametry.obiekt) {
                 surowe.add(sciezka[1]);
@@ -421,7 +513,7 @@ for (const plik of pliki) {
       }
     }
     if (ts.isJsxExpression(wezel) && wezel.expression) {
-      const miejsce = miejsceWyswietlenia(wezel, zrodlo);
+      const miejsce = miejsceWyswietlenia(wezel, zrodlo, wykres);
       if (miejsce !== null) {
         const start = pozycja(wezel.getStart(zrodlo));
         for (const sciezka of lisciWyrazenia(wezel.expression, []).flatMap((s) => rozwinAlias(s, aliasy))) {

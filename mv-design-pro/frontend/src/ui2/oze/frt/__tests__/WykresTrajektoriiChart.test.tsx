@@ -12,6 +12,7 @@ import { WykresTrajektoriiChart } from '../WykresTrajektoriiChart';
 import { punktyObwiedniFrt, punktyTrajektoriiFrt } from '../frtModel';
 import { FRT_STRINGS } from '../strings';
 import { widokLvrtFixture } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 function renderWykres() {
   const widok = widokLvrtFixture();
@@ -39,7 +40,7 @@ describe('WykresTrajektoriiChart', () => {
   it('serie P(t)/Iq(t) są domyślnie ukryte', () => {
     renderWykres();
     expect(screen.queryByText(FRT_STRINGS.legendaP)).not.toBeInTheDocument();
-    expect(screen.queryByText(FRT_STRINGS.legendaIq)).not.toBeInTheDocument();
+    expect(screen.queryByText(poTekscieZWzorami(FRT_STRINGS.legendaIq))).not.toBeInTheDocument();
   });
 
   it('przycisk P(t) dodaje serię mocy czynnej do legendy', () => {
@@ -52,7 +53,7 @@ describe('WykresTrajektoriiChart', () => {
   it('przycisk Iq(t) dodaje serię prądu biernego do legendy', () => {
     renderWykres();
     fireEvent.click(screen.getByTestId('mvd-frt-serie-iq'));
-    expect(screen.getByText(FRT_STRINGS.legendaIq)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(FRT_STRINGS.legendaIq))).toBeInTheDocument();
   });
 
   it('jest deterministyczny — ten sam markup dla tych samych danych', () => {

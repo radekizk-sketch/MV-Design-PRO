@@ -775,6 +775,17 @@ PODWOJNY = "podwojnym ukosnikiem"
         "Impedancję Z2 składowej",
         "Napięcie Uzad szyny",
         "Przy cos φ = 1 sin φ = 0",
+        # Granica zapisana ze spacja i indeks Unicode po kilku literach (punkt 6 wzorca).
+        "Moc bierna Q min (pobór)",
+        "Granice Q min/Q max",
+        "U max w sieci",
+        "Moc P min",
+        "Prąd Ik₁min 61 A",
+        "Prąd zwarciowy Ik₃",
+        "Ia wym. 630 A",
+        "Prąd bierny Iq(t)",
+        "Prąd Id min",
+        "t ≤ twym",
     ],
 )
 def test_splaszczony_wykryty_w_prozie(tekst: str) -> None:
@@ -791,6 +802,11 @@ def test_splaszczony_wykryty_w_prozie(tekst: str) -> None:
         "Inne dane i Unikat",
         "Napięcie zwarcia uk% transformatora",
         "Impedancja $|Z_{k}|$ (max)",
+        # Wzor chemiczny gazu izolacyjnego nie jest symbolem wielkosci.
+        "GIS / SF₆",
+        "Emisja CO₂",
+        "Moc bierna $Q_{\\min}$ (pobór)",
+        "Identyfikator",
     ],
 )
 def test_splaszczony_nie_wykryty_we_wzorze_i_w_slowach(tekst: str) -> None:
@@ -1106,6 +1122,107 @@ def test_iniekcja_drogi_danych_w_kopii_realnych_plikow_czerwieni_main(
 # ---------------------------------------------------------------------------
 # Pomiar realny — dokumentuje intencje PIN (zapadka, nie liczba magiczna).
 # ---------------------------------------------------------------------------
+
+
+PANEL_ZAWEZONY = (
+    "export function Panel({ komunikat }: { komunikat: string | number | null }) {\n"
+    "  if (typeof komunikat !== 'string') return <>{komunikat}</>;\n"
+    "  return <p><TekstZWzorami tekst={komunikat} /></p>;\n"
+    "}\n"
+)
+PANEL_ZAWEZONY_ODWROTNIE = (
+    "export function Panel({ komunikat }: { komunikat: string | number }) {\n"
+    "  return typeof komunikat === 'string' ? <TekstZWzorami tekst={komunikat} /> : <>{komunikat}</>;\n"
+    "}\n"
+)
+PANEL_ZAWEZONY_ZLE = (
+    "export function Panel({ komunikat }: { komunikat: string | number }) {\n"
+    "  if (typeof komunikat === 'string') return <>{komunikat}</>;\n"
+    "  return <p>{String(komunikat)}</p>;\n"
+    "}\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("panel", "oczekiwane"),
+    [
+        # Galaz zawezona do nie-tekstu (`typeof !== 'string'`) nie niesie `$...$`.
+        (PANEL_ZAWEZONY, False),
+        (PANEL_ZAWEZONY_ODWROTNIE, False),
+        # Wstawienie wprost w galezi, w ktorej wlasciwosc JEST tekstem — wykryte.
+        (PANEL_ZAWEZONY_ZLE, True),
+    ],
+)
+def test_zawezenie_typu_w_komponencie_skladajacym(
+    tmp_path: Path, panel: str, oczekiwane: bool
+) -> None:
+    """`TekstZWzorami`/`TekstSvgZWzorami` przyjmuja liczbe i `null` i wstawiaja je wprost
+    (`if (typeof tekst !== 'string') return <>{tekst}</>;`) — to nie jest wyswietlenie wzoru
+    wprost; bez zawezenia kazde uzycie skladajacego komponentu byloby naruszeniem."""
+    uzycie = (
+        "import { T } from './strings';\n"
+        "import { Panel } from './Panel';\n"
+        "export const E = () => <Panel komunikat={T.opis} />;\n"
+    )
+    wyniki = _skan_drzewa(
+        tmp_path, {"strings.ts": STALE_ZE_WZOREM, "Panel.tsx": panel, "Ekran.tsx": uzycie}
+    )
+    assert any(nazwa == "Ekran.tsx" for nazwa, _n in wyniki) is oczekiwane, wyniki
+
+
+def _wykres(legenda: str, dymek: str, nazwa: str) -> str:
+    return (
+        "import { Legend, Line, LineChart, Tooltip } from 'recharts';\n"
+        "import { T } from './strings';\n"
+        "export const W = () => (\n"
+        "  <LineChart data={[]}>\n"
+        f"    {dymek}\n"
+        f"    {legenda}\n"
+        f'    <Line dataKey="q" name={{{nazwa}}} />\n'
+        "  </LineChart>\n"
+        ");\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("legenda", "dymek", "nazwa", "oczekiwane"),
+    [
+        # Legenda bez `formatter` pokazuje nazwe serii jako tekst HTML — dolary.
+        ("<Legend />", "<Tooltip content={<D />} />", "T.opis", True),
+        # Domyslny dymek pokazuje nazwe serii wprost.
+        ("<Legend formatter={legendaZWzorami} />", "<Tooltip />", "T.opis", True),
+        # Legenda sklada, dymek wlasny — czysto.
+        ("<Legend formatter={legendaZWzorami} />", "<Tooltip content={<D />} />", "T.opis", False),
+        # Nazwa bez wzoru — czysto mimo domyslnej legendy.
+        ("<Legend />", "<Tooltip />", "T.zwykly", False),
+    ],
+)
+def test_nazwa_serii_wykresu_jest_wyswietleniem(
+    tmp_path: Path, legenda: str, dymek: str, nazwa: str, oczekiwane: bool
+) -> None:
+    """`name` serii Recharts trafia do legendy i domyslnego dymka jako tekst HTML."""
+    wyniki = _skan_drzewa(
+        tmp_path,
+        {"strings.ts": STALE_ZE_WZOREM, "Wykres.tsx": _wykres(legenda, dymek, nazwa)},
+    )
+    assert any(nazwa_pliku == "Wykres.tsx" for nazwa_pliku, _n in wyniki) is oczekiwane, wyniki
+
+
+@pytest.mark.parametrize(
+    ("zrodlo", "oczekiwane"),
+    [
+        # Oznaczenie pradu plakietki i warunek tabeli sa tekstem ekranu takze jako jeden token.
+        ("const E = { oznaczeniePradu: 'Ik₁min' };\n", True),
+        ("const E = { oznaczeniePradu: '$I_{k1,\\\\min}$' };\n", False),
+        ("const W = { warunek: 'Ik₁min' };\n", True),
+    ],
+)
+def test_skanuj_ts_oznaczenie_i_warunek_sa_tekstem_ui(
+    tmp_path: Path, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / "overlay.ts"
+    plik.write_text(zrodlo, encoding="utf-8")
+    assert bool(guard.skanuj_ts(plik)) is oczekiwane
 
 
 def test_pin_odzwierciedla_biezacy_pomiar_na_tym_drzewie() -> None:

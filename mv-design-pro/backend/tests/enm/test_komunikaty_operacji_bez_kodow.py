@@ -156,35 +156,6 @@ SKROTY_INZYNIERSKIE: frozenset[str] = frozenset(
     }
 )
 
-#: Symbole wielkości fizycznych z indeksem dolnym — zapis inżynierski, nie pole kontraktu
-#: (``R_N`` rezystancja uziemienia punktu neutralnego, ``k_j`` współczynnik jednoczesności).
-SYMBOLE_INZYNIERSKIE: frozenset[str] = frozenset(
-    {
-        "R_N",
-        "X_N",
-        "Z_N",
-        "Z_T",
-        "Z_T0",
-        "Z_E",
-        "U_n",
-        "P_n",
-        "S_n",
-        "k_j",
-        "k_obc",
-        "k_sc",
-        "k_pf",
-        "k_qf",
-        "R_s",
-        "Z_m",
-        "a_P",
-        "b_P",
-        "c_P",
-        "a_Q",
-        "b_Q",
-        "c_Q",
-    }
-)
-
 
 def _znane_kody_wartosci() -> frozenset[str]:
     """Kody wartości bez podkreślnika, które mogłyby udawać słowo (rola pola, rodzaj
@@ -213,8 +184,7 @@ def kody_w_tekscie(tekst: str) -> list[str]:
     """Tokeny kodu w tekście dla projektanta (pusta lista = tekst czysty)."""
     znalezione: list[str] = []
     for token in (*_SNAKE.findall(tekst), *_WIELKIE_KODY.findall(tekst)):
-        if token not in SYMBOLE_INZYNIERSKIE:
-            znalezione.append(token)
+        znalezione.append(token)
     znalezione.extend(_ODWROCONE.findall(tekst))
     for slowo in _WIELKIE_SLOWO.findall(tekst):
         if slowo in ZNANE_KODY_WARTOSCI and slowo not in SKROTY_INZYNIERSKIE:
@@ -223,9 +193,18 @@ def kody_w_tekscie(tekst: str) -> list[str]:
 
 
 def test_skroty_i_symbole_nie_sa_kodami_wartosci_zabronionymi() -> None:
-    """Lista skrótów jest jawna i rozłączna z kodami ról pól (rola nie jest skrótem)."""
+    """Lista skrótów jest jawna i rozłączna z kodami ról pól (rola nie jest skrótem).
+
+    Symbol z indeksem (``R_N``, ``k_j``) nie ma już przepustki: tekst komunikatu nie przechodzi
+    przez KaTeX, więc nazywa wielkość słowami (punkt 3 decyzji architekta 2026-10-30) —
+    strażnik zgłasza go i jako kod, i jako symbol."""
     assert not ({"IN", "OUT", "COUPLER", "FEEDER", "MEASUREMENT"} & SKROTY_INZYNIERSKIE)
-    assert kody_w_tekscie("Pole liniowe wejściowe w stacji SN/nN, R_N [Ω], k_j = 0,8") == []
+    slowami = "Pole liniowe wejściowe w stacji SN/nN, współczynnik jednoczesności 0,8 [Ω]"
+    assert kody_w_tekscie(slowami) == []
+    assert not _SYMBOL_W_NAZWIE.search(slowami)
+    symbolami = "Pole liniowe wejściowe w stacji SN/nN, R_N [Ω], k_j = 0,8"
+    assert sorted(kody_w_tekscie(symbolami)) == ["R_N", "k_j"]
+    assert [m.group(0) for m in _SYMBOL_W_NAZWIE.finditer(symbolami)] == ["R_N", "k_j"]
     assert kody_w_tekscie("Pole IN nie ma aparatu") == ["IN"]
     assert kody_w_tekscie("wymagane apparatus_catalog_ref") == ["apparatus_catalog_ref"]
     assert kody_w_tekscie("rola LINIA_IN") == ["LINIA_IN"]
@@ -712,6 +691,10 @@ def naruszenia_modulu(zakres: ZakresModulu, plik: Path | None = None) -> list[Na
             continue
         for token in kody_w_tekscie(tekst):
             wynik.append(Naruszenie(zakres.sciezka, wezel.lineno, f"kod {token}", tekst))
+        for symbol in _SYMBOL_W_NAZWIE.finditer(tekst):
+            wynik.append(
+                Naruszenie(zakres.sciezka, wezel.lineno, f"symbol {symbol.group(0)}", tekst)
+            )
         for wstawka in wstawki:
             zrodlo = _interpolacja_identyfikatora(wstawka)
             if zrodlo is not None:
@@ -917,6 +900,15 @@ def _jedyna(wartosci: list[str]) -> str | None:
     return rozne[0] if len(rozne) == 1 else NIEJEDNOZNACZNA
 
 
+#: Literał TS w apostrofach z ucieczkami (``'Moc $S_{k,\\min}\'\'$'``) — grupa niesie
+#: zapis źródła; ``_rozwin_literal_ts`` zamienia go na wartość, którą widzi ekran.
+_LITERAL_TS = r"'((?:[^'\\\n]|\\.)*)'"
+
+
+def _rozwin_literal_ts(zapis: str) -> str:
+    return re.sub(r"\\(.)", r"\1", zapis)
+
+
 def _wartosc_frontu(
     tresc: str, tsklucz: str, klucz_kontraktu: str, stala: str | None = None
 ) -> str | tuple[str, ...] | None:
@@ -931,27 +923,42 @@ def _wartosc_frontu(
         if blok_stalej is None:
             return None
         tresc = blok_stalej
-    prosty = _jedyna(re.findall(rf"\b{re.escape(tsklucz)}: '([^']*)'", tresc))
+    prosty = _jedyna(
+        [
+            _rozwin_literal_ts(z)
+            for z in re.findall(rf"\b{re.escape(tsklucz)}: {_LITERAL_TS}", tresc)
+        ]
+    )
     if prosty:
         return prosty
-    warunkowy = re.search(rf"\b{re.escape(tsklucz)}: [^?\n]+\? '([^']*)' : '([^']*)'", tresc)
+    warunkowy = re.search(
+        rf"\b{re.escape(tsklucz)}: [^?\n]+\? {_LITERAL_TS} : {_LITERAL_TS}", tresc
+    )
     if warunkowy:
-        return (warunkowy.group(1), warunkowy.group(2))
-    definicja = _jedyna(re.findall(rf"key: '{re.escape(tsklucz)}', label: '([^']*)'", tresc))
+        return (_rozwin_literal_ts(warunkowy.group(1)), _rozwin_literal_ts(warunkowy.group(2)))
+    definicja = _jedyna(
+        [
+            _rozwin_literal_ts(z)
+            for z in re.findall(rf"key: '{re.escape(tsklucz)}', label: {_LITERAL_TS}", tresc)
+        ]
+    )
     if definicja:
         return definicja
     # Definicja pola formularza parametrów analizy (``{ klucz: 'x', etykieta: '…' }``,
     # ``ui2/wyniki/akademickie/parametry.ts``) — także rozpisana na kilka wierszy.
     definicja_pl = _jedyna(
-        re.findall(rf"klucz: '{re.escape(tsklucz)}',\s*etykieta: '([^']*)'", tresc)
+        [
+            _rozwin_literal_ts(z)
+            for z in re.findall(rf"klucz: '{re.escape(tsklucz)}',\s*etykieta: {_LITERAL_TS}", tresc)
+        ]
     )
     if definicja_pl:
         return definicja_pl
     blok = re.search(rf"\b{re.escape(tsklucz)}\b[^=]*=\s*\{{(.*?)\n\}}", tresc, re.S)
     if blok:
-        wpis = re.search(rf"\b{re.escape(klucz_kontraktu)}: '([^']*)'", blok.group(1))
+        wpis = re.search(rf"\b{re.escape(klucz_kontraktu)}: {_LITERAL_TS}", blok.group(1))
         if wpis:
-            return wpis.group(1)
+            return _rozwin_literal_ts(wpis.group(1))
     return None
 
 
@@ -968,42 +975,113 @@ def test_wartosc_frontu_niejednoznaczny_klucz_wymaga_stalej() -> None:
     assert _wartosc_frontu(tresc, "bus_ref", "bus_ref", "POLA_C") is None
 
 
-_SEGMENT_WZORU = re.compile(r"\$([^$]+)\$")
+_SEGMENT_WZORU = re.compile(r"\$[^$]+\$")
+_PUSTE_NAWIASY = re.compile(r"\(\s*\)|\[\s*\]")
 
 
-def _odczyt_bez_wzorow(etykieta: str) -> str:
-    """Postać tekstowa etykiety frontu z wzorami ``$…$``, w jakiej słowa tej etykiety niesie
-    komunikat operacji: ograniczniki ``$`` i klamry grupujące znikają, indeks zostaje po
-    podkreślniku (``$k_{pf}$`` → ``k_pf``).
+def _slowa_etykiety(etykieta: str) -> str:
+    """Słowa etykiety frontu bez wzorów — postać, w jakiej komunikat operacji nazywa pole.
 
-    Etykieta pola formularza niesie symbole jako wzory KaTeX (``$a_P$``, ``ui_math_guard``);
-    komunikat operacji jest zwykłym tekstem w odpowiedzi API (proza backendu), więc niesie te
-    same słowa i symbol w postaci tekstowej. Segment z poleceniem LaTeX (``\\cos``) nie ma
-    jednoznacznej postaci tekstowej — zostaje nietknięty, a porównanie z nazwą backendu
-    jawnie się rozjeżdża (wymaga świadomej decyzji, nie cichej zgody)."""
-
-    def odczyt(segment: re.Match[str]) -> str:
-        wzor = segment.group(1)
-        if "\\" in wzor:
-            return segment.group(0)
-        return wzor.replace("{", "").replace("}", "")
-
-    return _SEGMENT_WZORU.sub(odczyt, etykieta)
+    Etykieta pola formularza = słowa + symbol jako wzór KaTeX (``Napięcie zwarcia $u_{k}$``,
+    ``Udział stałoimpedancyjny mocy czynnej ($a_{P}$)``). Komunikat operacji jest zwykłym
+    tekstem odpowiedzi API, więc niesie WYŁĄCZNIE słowa (decyzja architekta 2026-10-30, punkt 3):
+    symbol należy do etykiety frontu, a pole wskazuje maszynowa część odpowiedzi. Segment
+    ``$…$`` znika razem z nawiasem, który po nim zostaje pusty; spacje są normalizowane."""
+    bez_wzorow = _PUSTE_NAWIASY.sub("", _SEGMENT_WZORU.sub("", etykieta))
+    return " ".join(bez_wzorow.split())
 
 
-def test_odczyt_bez_wzorow_zdejmuje_proste_wzory_a_zostawia_polecenia_latex() -> None:
-    assert _odczyt_bez_wzorow("Udział stałoimpedancyjny $P$ ($a_P$)") == (
-        "Udział stałoimpedancyjny P (a_P)"
+def test_slowa_etykiety_zdejmuja_wzory_i_puste_nawiasy() -> None:
+    assert _slowa_etykiety("Udział stałoimpedancyjny mocy czynnej ($a_{P}$)") == (
+        "Udział stałoimpedancyjny mocy czynnej"
     )
-    assert _odczyt_bez_wzorow("Wrażliwość $P$ ($k_{pf}$)") == "Wrażliwość P (k_pf)"
-    assert _odczyt_bez_wzorow("Współczynnik $\\cos\\varphi$") == "Współczynnik $\\cos\\varphi$"
-    assert _odczyt_bez_wzorow("Moc znamionowa") == "Moc znamionowa"
+    assert _slowa_etykiety("Współczynnik mocy $\\cos\\varphi$ potrzeb własnych") == (
+        "Współczynnik mocy potrzeb własnych"
+    )
+    assert _slowa_etykiety("Wymagany współczynnik mocy $\\cos\\varphi$ (OSD)") == (
+        "Wymagany współczynnik mocy (OSD)"
+    )
+    assert _slowa_etykiety("Moc znamionowa") == "Moc znamionowa"
+
+
+#: Zapis symbolu w nazwie pola komunikatu — wzór, goły indeks, symbol spłaszczony do Unicode
+#: albo sklejony z indeksem (ten sam zamknięty zbiór wielkości co ``scripts/ui_math_guard.py``).
+#: Pojedyncza litera bez indeksu (``Moc czynna P``, ``Stosunek R/X``) czyta się tak samo
+#: w tekście i we wzorze — kryterium kontraktu prezentacji dotyczy symbolu z indeksem.
+_SYMBOL_W_NAZWIE = re.compile(
+    r"""(?x)
+    \$ | \\ | (?<![\w])[^\W\d_]_\w | [″′φ₀-₉] | IΔ
+    | (?<![\w])(?:
+        I(?:k|p|b|th|dyn|cw|n|r|max|min|k3|kmax|kmin|0|1|2)
+      | U(?:n|r|m|k|max|min|0|1|2) | u(?:k|kr) | i(?:p|b|DC) | t(?:k|b)
+      | P(?:k|0|max|min|n) | Q(?:max|min|n) | S(?:n|k|k3|kmax|kmin|r)
+      | [XZ][012] | [RXZ]k | Zn | R0 | B0 | cos | tg
+      | [PQSIU]\ (?:min|max)
+    )(?!\w)
+    """
+)
+
+
+def test_nazwy_pol_komunikatow_sa_slowami_bez_symboli() -> None:
+    """Komunikat operacji nazywa pole SŁOWAMI (punkt 3 decyzji architekta 2026-10-30): tekst API
+    nie przechodzi przez KaTeX, więc symbol w nim (``(a_P)``, ``k_pf``, ``cosφ``, ``Ik″min``,
+    ``U_n``) projektant widziałby spłaszczony. Symbol ma etykieta pola frontu
+    (``test_nazwy_pol_sa_slowami_frontu``)."""
+    z_symbolem = {
+        klucz: nazwa
+        for klucz, nazwa in slownik.NAZWY_POL_KONTRAKTU_PL.items()
+        if _SYMBOL_W_NAZWIE.search(nazwa)
+    }
+    assert not z_symbolem, z_symbolem
+
+
+def test_etykiety_pol_tabliczki_katalogu_sa_slowami_bez_symboli() -> None:
+    """Etykieta pola tabliczki (``MaterializationContract.ui_fields``) jest drugim źródłem nazw
+    pól komunikatów (``slownik_komunikatow.nazwa_parametru_katalogu`` →
+    ``etykieta_pola_katalogu_pl``) — ten sam warunek co słownik nazw pól: słowa, bez symbolu
+    z indeksem (dawniej ``Sn [MVA]``, ``Ik3 min [kA]``, ``uk%``, ``k_sc (udział zwarciowy)``)."""
+    from network_model.catalog.types import MATERIALIZATION_CONTRACTS
+
+    z_symbolem = {
+        (kategoria, pole): etykieta
+        for kategoria, kontrakt in MATERIALIZATION_CONTRACTS.items()
+        for pole, etykieta, _jednostka in kontrakt.ui_fields
+        if _SYMBOL_W_NAZWIE.search(etykieta)
+    }
+    assert not z_symbolem, z_symbolem
+
+
+@pytest.mark.parametrize(
+    "nazwa",
+    [
+        "Udział stałoimpedancyjny P (a_P)",
+        "Wrażliwość częstotliwościowa P (k_pf)",
+        "Współczynnik mocy cosφ",
+        "Ik″min",
+        "U> — próg [p.u. U_n]",
+        "Napięcie zwarcia uk",
+        "Moc znamionowa Sn",
+        "Wymagany $\\cos\\varphi$",
+        "Impedancja Zk",
+        "Q min (pobór, podwzbudzenie)",
+        "Ik3 min",
+        "Sn [MVA]",
+        "uk%",
+        "k_sc (udział zwarciowy)",
+        "Ik3 min [kA]",
+        "IΔn [A]",
+    ],
+)
+def test_wzorzec_symbolu_w_nazwie_wykrywa_dawne_nazwy(nazwa: str) -> None:
+    """Iniekcja: każda dawna nazwa z symbolem (stan sprzed punktu 3) czerwieni strażnik."""
+    assert _SYMBOL_W_NAZWIE.search(nazwa), nazwa
 
 
 def test_nazwy_pol_sa_slowami_frontu() -> None:
     """Każdy wpis mapy ze wskazanym źródłem etykiety frontu (``plik.ts klucz``) ma DOKŁADNIE
     słowa tej etykiety — projektant widzi w komunikacie to, co w formularzu. Etykieta z wzorami
-    ``$…$`` jest porównywana w odczycie tekstowym (``_odczyt_bez_wzorow``)."""
+    ``$…$`` jest porównywana bez wzorów (``_slowa_etykiety``): symbol ma etykieta frontu,
+    komunikat operacji niesie słowa."""
     zrodlo = (SRC / "enm" / "slownik_komunikatow.py").read_text(encoding="utf-8")
     sprawdzone = 0
     rozjazdy = []
@@ -1023,9 +1101,9 @@ def test_nazwy_pol_sa_slowami_frontu() -> None:
             dopasowanie["stala"],
         )
         if isinstance(front, tuple):
-            front = tuple(_odczyt_bez_wzorow(wariant) for wariant in front)
+            front = tuple(_slowa_etykiety(wariant) for wariant in front)
         elif front is not None:
-            front = _odczyt_bez_wzorow(front)
+            front = _slowa_etykiety(front)
         sprawdzone += 1
         zgodna = (
             dopasowanie["nazwa"] in front
