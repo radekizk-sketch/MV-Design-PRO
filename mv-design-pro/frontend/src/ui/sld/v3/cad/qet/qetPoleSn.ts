@@ -8,13 +8,14 @@
  * (kolekcja `qelectrotech-elements`, autor: The QElectroTech team, licencja CC BY 3.0,
  * https://creativecommons.org/licenses/by/3.0/). Współrzędne w jednostkach świata
  * schematu SLD v3 względem lewego górnego rogu gabarytu (skala 0,4 jednostki QET).
- * Prymitywy noża = rysunek źródła; każde położenie (otwarte, zamknięte, uziemione, nieznane) —
- * kąt obrotu noża (`noz.katy`, stopnie, konwencja SVG `rotate`; otwarte 0° albo jawny kierunek
- * manifestu) wokół przegubu (`noz.cx`, `noz.cy`) i zasięg noża (`noz.zasiegi`: w położeniu
- * zamkniętym i uziemionym koniec noża leży na styku stałym).
- * Jednokładność rysunku (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
- * (kreska przewodu toru), `stale` i `noz` (rysunek aparatu — kreska glifu `QET_KRESKA_GLIFU`),
- * `osprzet` (napęd — kreska glifu).
+ * Prymitywy noża = ostrze źródła ułożone w kaflu; każde położenie (zamknięte, otwarte, uziemione,
+ * nieznane) — kąt obrotu noża (`noz.katy`, stopnie, konwencja SVG `rotate`; zamknięte 0°, otwarte
+ * i nieznane z `kafelStanu.uklad.noz` manifestu, uziemione — kąt na zestyk uziemiający) wokół
+ * przegubu (`noz.cx`, `noz.cy`) i zasięg noża (`noz.zasiegi`: w położeniu zamkniętym
+ * i uziemionym koniec noża leży na styku stałym).
+ * Role prymitywów: `przewody` (kreska przewodu toru), `stale` (rysunek symbolu toru; jednokładność
+ * `skalaRysunku` manifestu przenosi kształt elementu bez zmian), `noz`, `znaczniki`, `ziemia`
+ * i `osprzet` (napęd — atrybut łącznika) — kreska glifu `QET_KRESKA_GLIFU`.
  * Łącznik z położeniem (kafel stanu, `kafelStanu.uklad` manifestu, wzorzec HMI e²TANGO): zawias noża
  * u dołu, styk stały u góry, nóż pionowy = zamknięty; przy styku stałym `znaczniki` rodzaju aparatu
  * (`QET_ZNACZNIK_STYKU`, kotwice `QET_KOTWICE_ZNACZNIKOW`) i `ziemia` — symbol uziemienia skierowany
@@ -107,9 +108,9 @@ export interface QetSymbolPolaSn {
   readonly szerokosc: number;
   readonly wysokosc: number;
   readonly porty: readonly SymbolPort[];
-  /** Porty OBWODU WTÓRNEGO (zacisk uzwojenia wtórnego, koniec doprowadzenia rdzenia, cewka
-   *  wyłączająca i napęd wyłącznika) — zaczepienie linii pomiarowych i linii wyłączania;
-   *  nie są portami toru pola. */
+  /** Porty OBWODU WTÓRNEGO (zacisk uzwojenia wtórnego, koniec doprowadzenia rdzenia, koniec
+   *  linii wyłączania na krawędzi kafla wyłącznika) — zaczepienie linii pomiarowych i linii
+   *  wyłączania; nie są portami toru pola. */
   readonly portyWtorne: readonly SymbolPort[];
   /** Odcinki przewodu od zacisku źródła leżącego wewnątrz gabarytu do portu na krawędzi
    *  (z powodem) — przewód, nie geometria elementu QET. */
@@ -117,8 +118,8 @@ export interface QetSymbolPolaSn {
   /** Obwiednia rysunku we WSZYSTKICH położeniach noża, przewodów, osprzętu i portów
    *  (względem gabarytu). */
   readonly obrys: QetProstokat;
-  /** Obwiednia rysunku APARATU (glifu: `stale` i `noz` we wszystkich położeniach, bez
-   *  przewodów i osprzętu) — miara stopnia symbolu (`stopienSymboli` manifestu). */
+  /** Obwiednia rysunku APARATU (glifu: `stale`, `noz` we wszystkich położeniach i `znaczniki`,
+   *  bez przewodów, ziemi i osprzętu) — miara stopnia symbolu (`stopienSymboli` manifestu). */
   readonly glif: QetProstokat;
   /** Jednolity kafel stanu łącznika z nożem (jeden rozmiar dla wszystkich łączników) albo
    *  `null` dla symbolu bez położenia. */

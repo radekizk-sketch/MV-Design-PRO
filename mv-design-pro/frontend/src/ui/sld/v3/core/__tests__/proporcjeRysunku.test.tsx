@@ -59,6 +59,7 @@ import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS } from '../../symbols/glyphs';
+import { QET_KRESKA_GLIFU } from '../../cad/qet/qetPoleSn';
 import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
 import { fieldCaptionAt } from '../../compose/directions';
 import { bayColumnRequiredWidth } from '../../layout/measure';
@@ -84,10 +85,16 @@ const ZRODLO_GLIFOW = resolve(
  * siebie i dla swoich pól (`sw.path`), więc nowy glif liczący wagi tym samym
  * lejkiem przechodzi BEZ dopisywania czegokolwiek do tego testu; przepustki nie
  * dostaje ani liczba, ani goła stała świata (`V3_STROKE_APPARATUS`).
+ *
+ * Trzeci lejek, `kreskaPiktogramuKafla(…)`, jest JEDYNYM wyjątkiem od kompensacji: piktogram
+ * kafla stanu łącznika QET (nóż, znaczniki rodzaju, ziemia, napęd) ma stałą kreskę świata
+ * (decyzja właściciela 2026-10-30, wiersz UX04-KRESKA-PIKTOGRAMU-KAFLA rejestru konfliktów);
+ * symbol bez kafla przechodzi przez ten lejek z kompensacją. Oba zachowania przypina test
+ * „piktogram kafla stanu: stała kreska świata…" niżej.
  */
 function kreskiPozaLejkiem(zrodlo: string): readonly string[] {
   const przezLejek = new Set<string>();
-  for (const m of zrodlo.matchAll(/const\s+(\w+)\s*=\s*(?:grubosc|skalujWagi)\s*\(/g)) {
+  for (const m of zrodlo.matchAll(/const\s+(\w+)\s*=\s*(?:grubosc|skalujWagi|kreskaPiktogramuKafla)\s*\(/g)) {
     przezLejek.add(m[1]);
   }
   const winne: string[] = [];
@@ -341,6 +348,32 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     for (const zla of [0, -1, Number.NaN]) {
       expect(renderToStaticMarkup(<Glyph x={0} y={0} strokeScale={zla} />), `@${zla}`).toBe(bez);
     }
+  });
+
+  it('piktogram kafla stanu: stała kreska świata (nóż, znaczniki, ziemia, napęd); przewody kafla i symbol toru QET — z kompensacją', () => {
+    // Decyzja właściciela 2026-10-30 (wiersz UX04-KRESKA-PIKTOGRAMU-KAFLA rejestru konfliktów):
+    // proporcje piktogramu względem kafla te same na każdej skali — kompensacja nie dotyka
+    // kreski noża, znacznika, ziemi i napędu; przewody toru w kaflu i symbol bez kafla
+    // (przekładnik prądowy) przechodzą przez `grubosc` jak każdy inny glif.
+    const szer = (markup: string, grupa: string) => {
+      const doc = new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`, 'image/svg+xml');
+      return [...doc.querySelectorAll(`[data-qet="${grupa}"] [stroke-width]`)].map((n) => Number(n.getAttribute('stroke-width')));
+    };
+    for (const id of ['qetThreePositionSwitchZNapedem', 'qetBreakerZNapedem', 'qetEarthSwitch'] as const) {
+      const Glyph = SYMBOL_GLYPHS[id];
+      const zTrzy = renderToStaticMarkup(<Glyph x={0} y={0} state="closed" strokeScale={3} />);
+      for (const grupa of ['noz', 'znacznik', 'glif', 'osprzet', 'ziemia']) {
+        for (const w of szer(zTrzy, grupa)) expect(w, `${id} ${grupa}`).toBe(QET_KRESKA_GLIFU);
+      }
+      expect(szer(zTrzy, 'znacznik').length, `${id}: znacznik rysowany`).toBeGreaterThan(0);
+      const przewody = szer(zTrzy, 'przewody');
+      expect(przewody.length, `${id}: przewody kafla`).toBeGreaterThan(0);
+      for (const w of przewody) expect(w, `${id} przewody`).toBeCloseTo(V3_STROKE_APPARATUS * 3, 9);
+    }
+    const Przekladnik = SYMBOL_GLYPHS.qetCurrentTransformer;
+    const tor = szer(renderToStaticMarkup(<Przekladnik x={0} y={0} strokeScale={3} />), 'glif');
+    expect(tor.length).toBeGreaterThan(0);
+    for (const w of tor) expect(w, 'symbol toru QET').toBeCloseTo(QET_KRESKA_GLIFU * 3, 9);
   });
 
   it('KANWA podaje glifom TĘ SAMĄ kompensację, którą stosuje do torów (drugi koniec pary)', () => {

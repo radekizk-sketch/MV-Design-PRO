@@ -1519,16 +1519,23 @@ margines, kolizja z nożem, rozróżnienie rodzajów), ziemia w dół, iniekcje 
 duży, brak, przy krawędzi, na nożu, ziemia w górę, ziemia poza osią, prymityw bez roli lub z
 dwiema rolami) — `backend/tests/ci/test_qet_pole_sn_import.py`, 83 zielone.
 
-**W toku (polecenia sesji głównej 2026-10-30).** (1) Testy frontendu iloczynu znaczników
-{rodzaj × stan × motyw × LOD1/LOD2} i detektor kierunku ziemi w całej klasie glifów (v3, QET,
-CAD, v2, SVG kanoniczne). (2) Dokument: tabela rozmiarów znacznika, „Wzorzec HMI e²TANGO —
-wnioski", tabela stan → kolor → geometria (§11.13), luka modelu członu wysuwnego. (3) Zrzuty ux04
-i tablica rodzajów × stanów w obu motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep
-w modelu i u konsumentów. (5) Decyzje 1–3 (Ferranti i koniec toru, opisy przy symbolach, blok
-przekaźnika i zakładka inspektora).
+Testy frontendu znaczników (commit kroku frontendu): `symbols/__tests__/znacznikRodzajuLacznika.test.tsx`
+— iloczyn {wyłącznik, odłącznik, rozłącznik, uziemnik, trójpołożeniowy, wysuwny} × {zamknięty,
+otwarty, uziemiony, nieustalony} × {jasny, ciemny} × {LOD1 0,69, LOD2 1,02}, 210 zielonych, z
+iniekcjami (×0,8, ×1,25, brak znacznika, znacznik na nożu, kreska ×1,5, obcy kolor, zamiana rodzaju,
+kompensacja kreski kamery na piktogramie); `kafelStanu.test.tsx` (443) i `nozQetNaStyku.test.tsx` (42)
+przepisane na układ kafla. Kreska piktogramu kafla stała w świecie (`glyphs.tsx::kreskaPiktogramuKafla`),
+kompensacja kamery zostaje dla przewodów — bez tego margines i odstęp od noża łamały się na LOD1
+(iniekcja: 99 czerwonych).
 
-**Znane czerwone.** `symbols/__tests__/kafelStanu.test.tsx` (oczekiwania sprzed układu kafla)
-i `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (2 — wariant Z.10 bez przekładnika Ferrantiego,
-kolizja tabliczki przekładnika) — przepisywane w pkt (1) i (5).
+**W toku (polecenia sesji głównej 2026-10-30).** (1) Detektor kierunku ziemi w całej klasie glifów
+(v3, QET, CAD, v2, SVG kanoniczne). (2) Dokument: tabela rozmiarów znacznika, „Wzorzec HMI
+e²TANGO — wnioski", tabela stan → kolor → geometria (§11.13), luka modelu członu wysuwnego, wpis
+rejestru konfliktów o kresce piktogramu. (3) Zrzuty ux04 i tablica rodzajów × stanów w obu
+motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u konsumentów. (5) Decyzje
+1–3 (Ferranti i koniec toru, opisy przy symbolach, blok przekaźnika i zakładka inspektora).
 
-**Pierwszy krok następcy.** Pkt (1): testy frontendu znaczników i ziemi na glifie QET kanwy.
+**Znane czerwone.** `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (2 — wariant Z.10 bez
+przekładnika Ferrantiego: oznaczenie P1 znika z warstwy etykiet) — naprawa w pkt (5).
+
+**Pierwszy krok następcy.** Pkt (1): detektor kierunku ziemi.

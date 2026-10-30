@@ -9,11 +9,14 @@
  * Ta sama klasa: wyłącznik (nóż dalej niż „×”), a nóż krótszy od odległości do styku
  * (łącznik trójpołożeniowy, uziemnik, rozłącznik z bezpiecznikami) nie dochodził do styku.
  *
+ * W układzie kafla wg wzorca HMI e²TANGO (decyzja właściciela 2026-10-30) styk stały to ZNACZNIK
+ * rodzaju aparatu (`znaczniki`, styk `closed` i — w łączniku trójpołożeniowym — `earthed`).
+ *
  * Przypina na iloczynie KAŻDY łącznik QET z nożem × KAŻDE położenie (open, closed, earthed,
  * unknown, w tym stan „bad” rysowany jak nieustalony): (1) w położeniu stykowym (zamknięty,
- * uziemiony) koniec noża leży NA rysunku styku stałego (odcinek albo okrąg rysunku stałego,
- * tolerancja 0,01), a nóż nie przecina rysunku stałego nigdzie poza końcem — nie „przechodzi”
- * przez styk; (2) w położeniu otwartym koniec noża nie dotyka rysunku stałego; (3) render
+ * uziemiony) koniec noża leży NA znaczniku styku tego położenia (odcinek albo okrąg, tolerancja
+ * 0,01), a nóż nie przecina znacznika nigdzie poza końcem — nie „przechodzi” przez styk;
+ * (2) w położeniu otwartym i nieustalonym koniec noża nie dotyka żadnego znacznika; (3) render
  * (`SYMBOL_GLYPHS`, grupa `data-qet="noz"`) rysuje DOKŁADNIE nóż z `prymitywyNozaQet` — ta sama
  * reguła co importer (`noz_w_zasiegu`), który z niej liczy obwiednię i stopień glifu.
  */
@@ -68,9 +71,9 @@ function nozWPolozeniu(id: QetSymbolPolaSnId, polozenie: QetPolozenieNoza): { a:
   return Math.hypot(p1[0] - c[0], p1[1] - c[1]) <= Math.hypot(p2[0] - c[0], p2[1] - c[1]) ? { a: p1, b: p2 } : { a: p2, b: p1 };
 }
 
-/** Rysunek stały aparatu (styki, znaki rodzaju) — bez przewodów i osprzętu. */
-function rysunekStaly(id: QetSymbolPolaSnId): readonly CadPrimitive[] {
-  return QET_SYMBOLE_POLA_SN[id].stale;
+/** Znacznik styku stałego położenia (zamknięty, uziemiony) albo wszystkie znaczniki. */
+function znacznikStyku(id: QetSymbolPolaSnId, styk?: QetPolozenieNoza): readonly CadPrimitive[] {
+  return QET_SYMBOLE_POLA_SN[id].znaczniki.filter((z) => styk === undefined || z.styk === styk).flatMap((z) => z.prymitywy);
 }
 
 function odlegloscOdRysunku(p: P, prims: readonly CadPrimitive[]): number {
@@ -94,10 +97,11 @@ describe('nóż łącznika QET — koniec na styku w położeniu stykowym, bez p
       const polozenie = polozenieNozaQet(id, stan);
       it(`${id} × ${stan} (położenie ${polozenie})`, () => {
         const { a, b } = nozWPolozeniu(id, polozenie);
-        const stale = rysunekStaly(id);
         const naStyku = polozenie === 'closed' || polozenie === 'earthed';
+        const stale = naStyku ? znacznikStyku(id, polozenie) : znacznikStyku(id);
+        expect(stale.length, 'znacznik styku stałego istnieje').toBeGreaterThan(0);
         if (naStyku) {
-          expect(odlegloscOdRysunku(b, stale), 'koniec noża na rysunku styku stałego').toBeLessThan(0.01);
+          expect(odlegloscOdRysunku(b, stale), 'koniec noża na znaczniku styku stałego').toBeLessThan(0.01);
           // Nóż nie przecina rysunku stałego między przegubem a końcem (nie „przechodzi” przez
           // styk); styk przy przegubie (doprowadzenie uziemnika do przegubu) nie jest przejściem.
           for (const q of stale) {
@@ -106,8 +110,8 @@ describe('nóż łącznika QET — koniec na styku w położeniu stykowym, bez p
             if (t !== null && t > 0.005) expect(t, `przecięcie z (${q.x1}; ${q.y1})–(${q.x2}; ${q.y2})`).toBeGreaterThan(0.995);
           }
         }
-        if (polozenie === 'open') {
-          expect(odlegloscOdRysunku(b, stale), 'koniec noża otwartego z dala od styku').toBeGreaterThan(1);
+        if (!naStyku) {
+          expect(odlegloscOdRysunku(b, stale), 'koniec noża poza stykiem z dala od znaczników').toBeGreaterThan(1);
         }
         // Render rysuje nóż z tej samej funkcji.
         const Glif = SYMBOL_GLYPHS[id];
@@ -125,12 +129,22 @@ describe('nóż łącznika QET — koniec na styku w położeniu stykowym, bez p
     }
   }
 
-  it('odłącznik zamknięty: nóż kończy się na kresce styku, nad kreską zostaje sam przewód (zero krzyżyka)', () => {
+  it('odłącznik zamknięty: nóż kończy się na dole okręgu „○”, wnętrze okręgu puste, przewód kończy się na górze okręgu (zero krzyżyka)', () => {
     const s = QET_SYMBOLE_POLA_SN.qetDisconnector;
-    const kreskaStyku = s.stale.find((p): p is Linia => p.k === 'line' && p.y1 === p.y2)!;
+    const [okrag] = znacznikStyku('qetDisconnector', 'closed').filter((p): p is Extract<CadPrimitive, { k: 'circle' }> => p.k === 'circle');
     const { b } = nozWPolozeniu('qetDisconnector', 'closed');
     // Współrzędne pliku TS zaokrąglone do 1e-4 (importer, `zaokr`).
-    expect(b[1]).toBeCloseTo(kreskaStyku.y1, 3);
-    expect(b[0]).toBeCloseTo((kreskaStyku.x1 + kreskaStyku.x2) / 2, 3);
+    expect(b[0]).toBeCloseTo(okrag.cx, 3);
+    expect(b[1]).toBeCloseTo(okrag.cy + okrag.r, 3);
+    // Żadna kreska symbolu nie wchodzi do wnętrza okręgu (przewód od portu górnego kończy się na
+    // górze okręgu; nóż — na dole).
+    const linie = [...s.przewody, ...s.noz!.prymitywy].filter((p): p is Linia => p.k === 'line');
+    for (const l of linie) {
+      for (let i = 0; i <= 50; i += 1) {
+        const x = l.x1 + ((l.x2 - l.x1) * i) / 50;
+        const y = l.y1 + ((l.y2 - l.y1) * i) / 50;
+        expect(Math.hypot(x - okrag.cx, y - okrag.cy), `(${x}; ${y})`).toBeGreaterThanOrEqual(okrag.r - 1e-3);
+      }
+    }
   });
 });

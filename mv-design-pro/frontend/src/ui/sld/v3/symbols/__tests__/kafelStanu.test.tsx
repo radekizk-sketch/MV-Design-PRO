@@ -73,8 +73,10 @@ function oczekiwanyKafel(id: SymbolId, state: SwitchState | undefined): StanKafl
   if (state === 'open') return 'otwarty';
   if (state === 'bad') return 'bledny';
   // Uziemiony: tylko łącznik trójpołożeniowy (dwa XSWI wg IEC 61850-7-4 — zestyk uziemiający
-  // ZAMKNIĘTY); na każdym innym symbolu to stan bez znaczenia → nieustalony.
-  if (state === 'earthed') return TROJPOLOZENIOWE.has(id) ? 'zamkniety' : 'nieustalony';
+  // zamknięty, tor główny OTWARTY). Kolor kafla mówi o torze głównym (uwaga właściciela
+  // 2026-10-30), nóż na zestyku uziemiającym mówi, że pole jest uziemione; na każdym innym
+  // symbolu „uziemiony" to stan bez znaczenia → nieustalony.
+  if (state === 'earthed') return TROJPOLOZENIOWE.has(id) ? 'otwarty' : 'nieustalony';
   return 'nieustalony';
 }
 
@@ -240,29 +242,35 @@ describe('kafel stanu — geometria i sąsiedztwo', () => {
   });
 
   for (const id of ['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem'] as const) {
-    it(`${id}: trzy różne położenia noża; „uziemiony" = kafel zamknięty (zestyk uziemiający)`, () => {
+    it(`${id}: trzy różne położenia noża; „uziemiony" = nóż na zestyku uziemiającym, kafel otwarty (tor główny otwarty)`, () => {
       const katy = QET_SYMBOLE_POLA_SN[id].noz!.katy;
       expect(new Set([katy.closed, katy.open, katy.earthed]).size).toBe(3);
       const doc = rysuj(id, 'earthed');
       expect(doc.querySelector('[data-qet-polozenie]')!.getAttribute('data-qet-polozenie')).toBe('earthed');
-      expect(doc.querySelector('[data-kafel-stanu]')!.getAttribute('data-kafel-stanu')).toBe('zamkniety');
+      expect(doc.querySelector('[data-qet="noz"]')!.getAttribute('data-qet-kat')).toBe(String(katy.earthed));
+      expect(doc.querySelector('[data-kafel-stanu]')!.getAttribute('data-kafel-stanu')).toBe('otwarty');
     });
   }
 
-  it('łącznik trójpołożeniowy ze znakiem napędu = ten sam łącznik: nóż, położenia i zestyki jak bez napędu', () => {
-    const a = QET_SYMBOLE_POLA_SN.qetThreePositionSwitch;
-    const b = QET_SYMBOLE_POLA_SN.qetThreePositionSwitchZNapedem;
-    expect(b.noz!.katy).toEqual(a.noz!.katy);
-    expect(b.noz!.zasiegi).toEqual(a.noz!.zasiegi);
-    // Rysunek łącznika przesunięty jako całość (kafel wyśrodkowany na treści ze znakiem napędu).
-    const dy = b.noz!.cy - a.noz!.cy;
-    expect(b.noz!.cx).toBe(a.noz!.cx);
-    const przesun = (p: CadPrimitive): CadPrimitive =>
-      p.k === 'line' ? { ...p, y1: p.y1 + dy, y2: p.y2 + dy } : p.k === 'circle' ? { ...p, cy: p.cy + dy } : p;
-    expect(b.stale).toEqual(a.stale.map(przesun));
-    expect(b.porty).toEqual(a.porty);
-    expect(a.osprzet).toEqual([]);
-  });
+  for (const [bez, z] of [
+    ['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem'],
+    ['qetBreaker', 'qetBreakerZNapedem'],
+  ] as const) {
+    it(`${z} = ${bez} + napęd (atrybut): nóż, położenia, znaczniki, ziemia, przewody i porty bez zmian`, () => {
+      // Decyzja właściciela 2026-10-30: „Napęd M zostaje jako atrybut" — układ kafla (zawias,
+      // styk stały, znacznik, ziemia) wynika z rodzaju łącznika, nie z napędu.
+      const a = QET_SYMBOLE_POLA_SN[bez];
+      const b = QET_SYMBOLE_POLA_SN[z];
+      expect(b.noz).toEqual(a.noz);
+      expect(b.znaczniki).toEqual(a.znaczniki);
+      expect(b.ziemia).toEqual(a.ziemia);
+      expect(b.przewody).toEqual(a.przewody);
+      expect(b.stale).toEqual(a.stale);
+      expect(b.porty).toEqual(a.porty);
+      expect(a.osprzet).toEqual([]);
+      expect(b.osprzet.length).toBeGreaterThan(0);
+    });
+  }
 
   it('bez tabeli kafli (miniatury, harness mono) symbol rysuje się bez kafla', () => {
     const Glyph = SYMBOL_GLYPHS.qetBreaker;
@@ -275,6 +283,29 @@ describe('kafel stanu — geometria i sąsiedztwo', () => {
     expect(markup).toContain('data-symbol-canon="qetBreaker"');
   });
 });
+
+/** Punkty noża w KAŻDYM położeniu (zasięg położenia, obrót SVG wokół przegubu) — wyrocznia
+ *  niezależna od renderu; przegub pominięty (sprzężenie napędu zaczyna się w przegubie). */
+function punktyNoza(s: (typeof QET_SYMBOLE_POLA_SN)[QetSymbolPolaSnId]): Record<string, Array<readonly [number, number]>> {
+  const noz = s.noz!;
+  const wynik: Record<string, Array<readonly [number, number]>> = {};
+  for (const [polozenie, kat] of Object.entries(noz.katy)) {
+    const r = ((kat ?? 0) * Math.PI) / 180;
+    const zasieg = noz.zasiegi[polozenie as keyof typeof noz.zasiegi] ?? 1;
+    const punkty: Array<readonly [number, number]> = [];
+    for (const n of noz.prymitywy) {
+      if (n.k !== 'line') throw new Error('nóż QET wyłącznie z linii');
+      for (let i = 0; i <= 40; i += 1) {
+        const px = (n.x1 + ((n.x2 - n.x1) * i) / 40 - noz.cx) * zasieg;
+        const py = (n.y1 + ((n.y2 - n.y1) * i) / 40 - noz.cy) * zasieg;
+        if (Math.hypot(px, py) < QET_KRESKA_GLIFU) continue;
+        punkty.push([noz.cx + px * Math.cos(r) - py * Math.sin(r), noz.cy + px * Math.sin(r) + py * Math.cos(r)]);
+      }
+    }
+    wynik[polozenie] = punkty;
+  }
+  return wynik;
+}
 
 /**
  * Litera na kaflu łącznika (kwalifikator „M" napędu silnikowego, EN 60617 02-13-26) jest częścią
@@ -315,7 +346,8 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     expect(okregi).toHaveLength(1);
     const [o] = okregi;
     const [m] = litery(s.osprzet);
-    // Napęd po LEWEJ stronie osi (prawą zajmuje cewka wyłączająca — koniec linii wyłączania).
+    // Napęd po LEWEJ stronie osi: prawą stronę zajmuje nóż otwarty (ukośny w prawo), a prawa
+    // krawędź kafla przyjmuje linię wyłączania (port `wylacz`).
     expect(o.cx - o.r).toBeGreaterThan(0);
     expect(o.cx).toBeLessThan(s.noz!.cx);
     expect(o.cy - o.r).toBeGreaterThan(0);
@@ -330,9 +362,20 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     // Linia sprzężenia mechanicznego zaczepiona w przegubie noża i kończy się na okręgu napędu.
     expect([Math.max(l.x1, l.x2), l.y1, l.y2]).toEqual([noz.cx, noz.cy, noz.cy]);
     expect(Math.min(l.x1, l.x2)).toBeCloseTo(o.cx + o.r, 6);
+    // Nóż w żadnym położeniu nie wchodzi na okrąg napędu (tusz z marginesem kreski).
+    for (const [polozenie, punkty] of Object.entries(punktyNoza(s))) {
+      for (const [x, y] of punkty) {
+        expect(Math.hypot(x - o.cx, y - o.cy), `${polozenie}: punkt noża (${x.toFixed(2)}, ${y.toFixed(2)})`).toBeGreaterThan(
+          o.r + QET_KRESKA_GLIFU,
+        );
+      }
+    }
   });
 
-  it('napęd zasobnikowy łącznika trójpołożeniowego (osprzęt kafla): kwadrat na sprzężeniu od przegubu, znak obsługi ręcznej pod kwadratem, całość w kaflu z marginesem, nóż w żadnym położeniu nie wchodzi na kwadrat', () => {
+  it('napęd zasobnikowy łącznika trójpołożeniowego (osprzęt kafla): kwadrat po lewej osi na sprzężeniu do przegubu, znak obsługi ręcznej pod kwadratem, całość w kaflu z marginesem, nóż w żadnym położeniu nie wchodzi na kwadrat', () => {
+    // Układ kafla wg wzorca HMI e²TANGO (decyzja właściciela 2026-10-30): prawą stronę osi
+    // zajmuje nóż (otwarty — ukośny w prawo, uziemiony — poziomo na zestyk uziemiający z ziemią
+    // w dół), więc napęd zasobnikowy stoi po LEWEJ, na wysokości przegubu.
     const s = QET_SYMBOLE_POLA_SN.qetThreePositionSwitchZNapedem;
     const noz = s.noz!;
     const margines = QET_KRESKA_GLIFU; // margines kafla 5 jednostek QET × 0,4 = kreska glifu
@@ -342,24 +385,22 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     const xs = liczby.filter((_, i) => i % 2 === 0);
     const ys = liczby.filter((_, i) => i % 2 === 1);
     const kw = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-    // Kwadrat (EN 60617 02-13-20): bok ≥ podłoga 8 px przy wejściu w LOD2, po prawej osi,
+    // Kwadrat (EN 60617 02-13-20): bok ≥ podłoga 8 px przy wejściu w LOD2, po lewej osi,
     // w kaflu z marginesem, środek na wysokości przegubu.
     expect(kw.x1 - kw.x0).toBeCloseTo(kw.y1 - kw.y0, 6);
     expect((kw.x1 - kw.x0) * SKALA_MIN_L2).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
-    expect(kw.x0).toBeGreaterThan(noz.cx);
-    expect(kw.x1).toBeLessThanOrEqual(QET_BOK_KAFLA_STANU - margines);
+    expect(kw.x1).toBeLessThan(noz.cx);
+    expect(kw.x0).toBeGreaterThanOrEqual(margines);
     expect((kw.y0 + kw.y1) / 2).toBeCloseTo(noz.cy, 6);
     const linie = s.osprzet.filter((p): p is Extract<CadPrimitive, { k: 'line' }> => p.k === 'line');
     const kreskowane = linie.filter((l) => l.kreskowana);
     expect(kreskowane).toHaveLength(2);
-    // Sprzężenie mechaniczne: poziomo od okręgu przegubu (styk odłączający ○) do kwadratu.
-    const przegub = s.stale.find((p): p is Extract<CadPrimitive, { k: 'circle' }> => p.k === 'circle' && p.cx === noz.cx && p.cy === noz.cy)!;
-    expect(przegub).toBeDefined();
+    // Sprzężenie mechaniczne: poziomo od prawego boku kwadratu do przegubu noża.
     const sprzezenie = kreskowane.find((l) => l.y1 === l.y2)!;
     expect([sprzezenie.y1, Math.min(sprzezenie.x1, sprzezenie.x2), Math.max(sprzezenie.x1, sprzezenie.x2)]).toEqual([
       noz.cy,
-      noz.cx + przegub.r,
-      kw.x0,
+      kw.x1,
+      noz.cx,
     ]);
     // Obsługa ręczna (EN 60617 02-13-01): kreskowany pion ze środka dolnego boku kwadratu
     // zakończony poprzeczką, w kaflu z marginesem.
@@ -373,16 +414,9 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     expect([poprzeczka.y1, poprzeczka.y2]).toEqual([dol, dol]);
     expect((poprzeczka.x1 + poprzeczka.x2) / 2).toBeCloseTo(pion.x1, 6);
     expect(dol).toBeLessThanOrEqual(QET_BOK_KAFLA_STANU - margines);
-    // Nóż w każdym położeniu (obrót wokół przegubu, zasięg położenia) nie wchodzi na kwadrat.
-    const [n] = noz.prymitywy.filter((p): p is Extract<CadPrimitive, { k: 'line' }> => p.k === 'line');
-    for (const [polozenie, kat] of Object.entries(noz.katy)) {
-      const r = ((kat ?? 0) * Math.PI) / 180;
-      const zasieg = noz.zasiegi[polozenie as keyof typeof noz.zasiegi] ?? 1;
-      for (let i = 0; i <= 20; i += 1) {
-        const px = n.x1 + ((n.x2 - n.x1) * zasieg * i) / 20 - noz.cx;
-        const py = n.y1 + ((n.y2 - n.y1) * zasieg * i) / 20 - noz.cy;
-        const x = noz.cx + px * Math.cos(r) - py * Math.sin(r);
-        const y = noz.cy + px * Math.sin(r) + py * Math.cos(r);
+    // Nóż w każdym położeniu (zasięg, obrót wokół przegubu) nie wchodzi na kwadrat.
+    for (const [polozenie, punkty] of Object.entries(punktyNoza(s))) {
+      for (const [x, y] of punkty) {
         const wKwadracie = x >= kw.x0 - margines && x <= kw.x1 + margines && y >= kw.y0 - margines && y <= kw.y1 + margines;
         expect(wKwadracie, `${polozenie}: punkt noża (${x.toFixed(2)}, ${y.toFixed(2)})`).toBe(false);
       }
@@ -404,8 +438,10 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
 /**
  * Uwaga właściciela 2026-10-29 pkt 1 (glify miniaturowe): glif aparatu na kaflu zajmuje 55–70 %
  * boku kafla w KAŻDYM położeniu noża, kreska glifu jest proporcjonalna do kafla (bok/24), a
- * przewody toru mają kreskę przewodu. Wyrocznia NIEZALEŻNA od pola `glif` importera: obwiednia
- * liczona tu z prymitywów (`stale` + nóż obrócony o kąt położenia wokół przegubu). Iloczyn:
+ * przewody toru mają kreskę przewodu. W układzie kafla (decyzja właściciela 2026-10-30) glif =
+ * nóż + znaczniki rodzaju aparatu przy stykach stałych; ziemia i napęd są poza miarą stopnia.
+ * Wyrocznia NIEZALEŻNA od pola `glif` importera: obwiednia liczona tu z prymitywów (znaczniki
+ * + nóż w zasięgu położenia, obrócony o kąt położenia wokół przegubu). Iloczyn:
  * łącznik QET z kaflem × stan (położenie noża) × motyw (rysunek z kaflem). Pomiar przed
  * naprawą: wyłącznik 0,20, odłącznik 0,19–0,20, uziemnik 0,23 boku kafla (rysunek w skali
  * źródła), kreska glifu 1,2 = bok/40. Iniekcja w e2e: glif w skali źródła → czerwony pomiar
@@ -418,12 +454,13 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
     const r = (kat * Math.PI) / 180;
     return [cx + (x - cx) * Math.cos(r) - (y - cy) * Math.sin(r), cy + (x - cx) * Math.sin(r) + (y - cy) * Math.cos(r)];
   }
-  function obwiedniaY(prims: readonly CadPrimitive[], kat = 0, cx = 0, cy = 0): [number, number] {
+  function obwiedniaY(prims: readonly CadPrimitive[], kat = 0, cx = 0, cy = 0, zasieg = 1): [number, number] {
     let lo = Infinity;
     let hi = -Infinity;
+    const z = (x: number, y: number) => obrot(cx + (x - cx) * zasieg, cy + (y - cy) * zasieg, kat, cx, cy)[1];
     for (const p of prims) {
       const ys: number[] = [];
-      if (p.k === 'line') ys.push(obrot(p.x1, p.y1, kat, cx, cy)[1], obrot(p.x2, p.y2, kat, cx, cy)[1]);
+      if (p.k === 'line') ys.push(z(p.x1, p.y1), z(p.x2, p.y2));
       else if (p.k === 'circle') ys.push(p.cy - p.r, p.cy + p.r);
       else if (p.k === 'path' || p.k === 'arc') {
         const liczby = p.d.match(/-?\d+(\.\d+)?/g)!.map(Number);
@@ -447,9 +484,10 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
   for (const id of KAFLOWE) {
     const s = QET_SYMBOLE_POLA_SN[id];
     for (const [polozenie, kat] of Object.entries(s.noz!.katy)) {
-      it(`${id} · położenie ${polozenie}: wysokość glifu w [0,55; 0,70] boku kafla`, () => {
-        const [a, b] = obwiedniaY(s.stale);
-        const [c, d] = obwiedniaY(s.noz!.prymitywy, kat ?? 0, s.noz!.cx, s.noz!.cy);
+      it(`${id} · położenie ${polozenie}: wysokość glifu (nóż + znaczniki) w [0,55; 0,70] boku kafla`, () => {
+        const [a, b] = obwiedniaY([...s.stale, ...s.znaczniki.flatMap((z) => z.prymitywy)]);
+        const zasieg = s.noz!.zasiegi[polozenie as keyof typeof s.noz.zasiegi] ?? 1;
+        const [c, d] = obwiedniaY(s.noz!.prymitywy, kat ?? 0, s.noz!.cx, s.noz!.cy, zasieg);
         const udzial = (Math.max(b, d) - Math.min(a, c)) / QET_BOK_KAFLA_STANU;
         expect(udzial).toBeGreaterThanOrEqual(0.55);
         expect(udzial).toBeLessThanOrEqual(0.7);
@@ -465,8 +503,17 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
           expect(przewody).not.toBeNull();
           const szer = (g: Element) => [...g.querySelectorAll('[stroke-width]')].map((n) => Number(n.getAttribute('stroke-width')));
           const wGlifu = szer(glif);
-          expect(wGlifu.length).toBe(s.stale.length + s.noz!.prymitywy.length);
+          const kreskiZnacznikow = s.znaczniki.reduce((n, z) => n + z.prymitywy.length, 0);
+          expect(kreskiZnacznikow).toBeGreaterThan(0);
+          expect(wGlifu.length).toBe(s.stale.length + s.noz!.prymitywy.length + kreskiZnacznikow);
           for (const w of wGlifu) expect(w).toBeCloseTo(QET_KRESKA_GLIFU, 9);
+          // Ziemia (uziemnik, trójpołożeniowy) kreską glifu, poza grupą glifu (poza miarą stopnia).
+          const ziemia = doc.querySelector('[data-kafel-stanu] [data-qet="ziemia"]');
+          expect(ziemia === null).toBe(s.ziemia === null);
+          if (ziemia) {
+            expect(szer(ziemia).length).toBe(s.ziemia!.prymitywy.length);
+            for (const w of szer(ziemia)) expect(w).toBeCloseTo(QET_KRESKA_GLIFU, 9);
+          }
           expect(szer(przewody).length).toBe(s.przewody.length);
           for (const w of szer(przewody)) expect(w).toBeCloseTo(V3_STROKE_APPARATUS, 9);
           const osprzet = doc.querySelector('[data-kafel-stanu] [data-qet="osprzet"]');

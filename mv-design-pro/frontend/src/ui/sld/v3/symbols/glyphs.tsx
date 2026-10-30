@@ -21,6 +21,7 @@ import {
   QET_SYMBOLE_POLA_SN,
   type QetNozSymbolu,
   type QetPolozenieNoza,
+  type QetSymbolPolaSn,
   type QetSymbolPolaSnId,
 } from '../cad/qet/qetPoleSn';
 import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
@@ -1485,14 +1486,36 @@ export function prymitywyNozaQet(noz: QetNozSymbolu, polozenie: QetPolozenieNoza
 }
 
 /**
+ * Kreska PIKTOGRAMU KAFLA STANU (nóż, znaczniki rodzaju aparatu, ziemia, napęd) — STAŁA ŚWIATA
+ * `QET_KRESKA_GLIFU` (bok kafla / 24) na każdej skali kamery; symbol QET bez kafla (przekładnik,
+ * głowica, wskaźnik) — kreska glifu przez lejek `grubosc` (kompensacja PROPORCJE).
+ *
+ * DLACZEGO PIKTOGRAM KAFLA NIE BIERZE KOMPENSACJI. Decyzja właściciela 2026-10-30 (znacznik rodzaju
+ * aparatu przy styku stałym) wiąże geometrię kafla w jednostkach świata: znacznik 22–28 % boku
+ * kafla, kreska znacznika = kreska noża, margines tuszu znacznika od krawędzi kafla ≥ 4 j.św.
+ * i brak kolizji znacznika z nożem w każdym stanie, sprawdzane na LOD1 i LOD2, „te same proporcje
+ * w każdym rodzaju aparatu, w każdym stanie i w obu motywach". Kompensacja PROPORCJE
+ * (`strokeScaleFactor`: ×1,23 na dolnym brzegu LOD2, ×1,81 przy wejściu w LOD1, ×2,45 na dolnym
+ * brzegu LOD1) pogrubiała kreskę piktogramu względem kafla, który kompensacji nie ma (wypełniony
+ * kwadrat): tusz okręgu odłącznika schodził do 3,78 j.św. od krawędzi kafla już na LOD2, a ramiona
+ * krzyżyka wyłącznika zlewały się z nożem na LOD1 (pomiar w `znacznikRodzajuLacznika.test.tsx`).
+ * Czytelność piktogramu daje kontrast białego glifu z wypełnionym kaflem, nie waga kreski względem
+ * toru; przewody toru w kaflu i każdy rysunek poza kaflem zostają w lejku `grubosc`. Rozstrzygnięcie
+ * dwóch reguł właściciela: `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz UX04-KRESKA-PIKTOGRAMU-KAFLA.
+ */
+function kreskaPiktogramuKafla(props: GlyphProps, symbol: QetSymbolPolaSn): number {
+  return symbol.kafel ? QET_KRESKA_GLIFU : grubosc(props, QET_KRESKA_GLIFU);
+}
+
+/**
  * Symbol QET w rolach importera (`qetPoleSn.ts`): PRZEWODY (tor i obwód wtórny w gabarycie)
- * kreską przewodu `V3_STROKE_APPARATUS`; GLIF — rysunek aparatu (`stale`, nóż i ZNACZNIKI rodzaju
- * aparatu przy stykach stałych), ZIEMIA (symbol uziemienia skierowany w dół, poza miarą stopnia)
- * i OSPRZĘT (napęd — atrybut łącznika) kreską glifu `QET_KRESKA_GLIFU`, proporcjonalną do kafla
- * stanu. Znacznik ma kreskę i kolor noża (decyzja właściciela 2026-10-30: kolor znacznika taki
- * sam jak kolor noża — kontrast na czerwonym i zielonym kaflu). Oba mnożniki przechodzą przez
- * `grubosc` (kompensacja ekranowa jednorodna dla całego symbolu). Grupy `data-qet` są punktem
- * pomiaru stopnia glifu w e2e (`getBBox` glifu względem kafla).
+ * kreską przewodu `V3_STROKE_APPARATUS` przez lejek `grubosc`; GLIF — rysunek aparatu (`stale`,
+ * nóż i ZNACZNIKI rodzaju aparatu przy stykach stałych), ZIEMIA (symbol uziemienia skierowany
+ * w dół, poza miarą stopnia) i OSPRZĘT (napęd — atrybut łącznika) kreską glifu `QET_KRESKA_GLIFU`,
+ * proporcjonalną do kafla stanu (`kreskaPiktogramuKafla`). Znacznik ma kreskę i kolor noża
+ * (decyzja właściciela 2026-10-30: kolor znacznika taki sam jak kolor noża — kontrast na
+ * czerwonym i zielonym kaflu). Grupy `data-qet` są punktem pomiaru stopnia glifu w e2e
+ * (`getBBox` glifu względem kafla).
  */
 function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
   const symbol = QET_SYMBOLE_POLA_SN[id];
@@ -1500,7 +1523,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const state: SwitchState = props.state ?? 'unknown';
     const ink = stroke(props);
     const wPrzewodu = grubosc(props, V3_STROKE_APPARATUS);
-    const wGlifu = grubosc(props, QET_KRESKA_GLIFU);
+    const wGlifu = kreskaPiktogramuKafla(props, symbol);
     const noz = symbol.noz;
     const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
