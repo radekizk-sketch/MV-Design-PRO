@@ -10,7 +10,7 @@
   },
   "solver_version": "ncrfg-ptpiree-whitebox-2.0",
   "input_hash": "1ca095cd297a3552a84ef759dbbd1d4bb1f18b5e0c4cff89e1414dc8ffcb8540",
-  "deterministic_hash": "11fcc5361b6f7c50e006641d1dcde781897fca77ae6478cad71830515a9cbdb2",
+  "deterministic_hash": "3f7fbfd6fef5bc7d26a99024c63cd94a826749f309d745b137ee438a2d1c060a",
   "modules": [
     {
       "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -74,7 +74,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej",
@@ -237,7 +237,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej",
@@ -400,7 +400,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "FSM - regulacja częstotliwości w paśmie normalnym: statyzm P(f) modułu w tolerancji wymaganej",
@@ -563,7 +563,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Regulacja odbudowy częstotliwości: tempo zmiany mocy czynnej modułu",
@@ -699,7 +699,7 @@
           "required": false,
           "required_reason_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
           "verdict": "not_required",
-          "summary_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+          "summary_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T05:stosowalnosc:9",
@@ -710,10 +710,10 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
-              "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy",
+              "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
               "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -771,7 +771,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
               "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
               "czego_brakuje": [
                 "deklaracja funkcji: regulacja mocy czynnej (active_power_control_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)"
@@ -857,7 +857,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Tryb regulacji napięcia: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -887,7 +887,7 @@
             "limit": {
               "wartosc": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -1014,7 +1014,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Tryb regulacji mocy biernej Q: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -1044,7 +1044,7 @@
             "limit": {
               "wartosc": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -1156,11 +1156,11 @@
         },
         {
           "test_id": "T08",
-          "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+          "ability_pl": "Tryb regulacji współczynnika mocy",
           "required": false,
           "required_reason_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
           "verdict": "not_required",
-          "summary_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+          "summary_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T08:stosowalnosc:15",
@@ -1171,10 +1171,10 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
-              "opis_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu",
+              "opis_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu",
               "warunek_latex": "\\cos\\varphi_{\\min} \\le \\cos\\varphi_{\\mathrm{wym},\\min}",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -1232,7 +1232,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "zdanie_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
               "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
               "czego_brakuje": [
                 "najmniejszy współczynnik mocy modułu (cos_phi_min)"
@@ -1318,7 +1318,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -1348,7 +1348,7 @@
             "limit": {
               "wartosc": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -1465,7 +1465,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Potwierdzenie mocy maksymalnej PMAX: moc maksymalna zadeklarowana w programie",
@@ -1610,7 +1610,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Potwierdzenie mocy minimalnej PMIN: moc minimalna zadeklarowana i mniejsza od mocy maksymalnej",
@@ -1738,7 +1738,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Zaprzestanie generacji mocy czynnej: czas od polecenia do zaprzestania generacji",
@@ -1874,7 +1874,7 @@
           "required": false,
           "required_reason_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
           "verdict": "not_required",
-          "summary_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+          "summary_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T13:stosowalnosc:25",
@@ -1885,10 +1885,10 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
-              "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy",
+              "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
               "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -1946,7 +1946,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
               "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
               "czego_brakuje": [
                 "deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)"
@@ -2033,13 +2033,13 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
               "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
               "relacja": "LOGICZNE",
-              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)",
+              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)",
               "warunek_wstepny_podstawa": {
                 "rodzaj": "NIEUSTALONA",
                 "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
@@ -2090,7 +2090,7 @@
               ],
               "zastrzezenia": [
                 "Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (punkt programu ramowego testu nie jest wskazany w profilu — jednostka redakcyjna procedury nieustalona).",
-                "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+                "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
                 "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -2176,13 +2176,13 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
               "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
               "relacja": "LOGICZNE",
-              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)",
+              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)",
               "warunek_wstepny_podstawa": {
                 "rodzaj": "OSD",
                 "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator",
@@ -2233,7 +2233,7 @@
               ],
               "zastrzezenia": [
                 "Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (punkt programu ramowego testu nie jest wskazany w profilu — jednostka redakcyjna procedury nieustalona).",
-                "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
+                "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
                 "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -2319,7 +2319,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu",
@@ -2461,7 +2461,7 @@
           "required": false,
           "required_reason_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
           "verdict": "not_required",
-          "summary_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+          "summary_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T17:stosowalnosc:36",
@@ -2473,10 +2473,10 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
-              "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU",
+              "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia)",
               "warunek_latex": "K_{\\mathrm{FRT}} = \\frac{\\Delta I_q}{\\Delta U} \\ge K_{\\min}",
               "relacja": "NIE_MNIEJ",
               "warunek_wstepny_pl": null,
@@ -2516,7 +2516,7 @@
                 "status": "NIEUSTALONE",
                 "uwagi_pl": "wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury"
               },
-              "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (U_n)",
+              "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (napięcie znamionowe)",
               "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
             },
             "margines": null,
@@ -2534,7 +2534,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
               "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
               "czego_brakuje": [
                 "bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego"
@@ -2626,7 +2626,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji: moduł realizuje zdolności dodatkowe wskazane w programie szczegółowym",
@@ -2755,7 +2755,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Rejestracja zakłóceń i komunikacja z operatorem: komunikacja z operatorem i rejestrator zakłóceń zadeklarowane",
@@ -2883,7 +2883,7 @@
             "przedmiot": {
               "element_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
               "nazwa_pl": "Magazyn energii 1,5 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), P_max 1500 kW, napięcie przyłączenia 0,4 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (magazyn energii), moc maksymalna 1500 kW, napięcie przyłączenia 0,4 kV"
             },
             "kryterium": {
               "opis_pl": "Jakość energii - współczynnik THDu źródła: współczynnik odkształcenia napięcia źródła",
@@ -3081,7 +3081,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej",
@@ -3313,7 +3313,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej",
@@ -3536,7 +3536,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "FSM - regulacja częstotliwości w paśmie normalnym: statyzm P(f) modułu w tolerancji wymaganej",
@@ -3756,7 +3756,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Regulacja odbudowy częstotliwości: tempo zmiany mocy czynnej modułu",
@@ -3938,7 +3938,7 @@
           "required": true,
           "required_reason_pl": "test wykazuje wymaganie stosowalne do modułu (typ B, moduł parku energii), którego nie pokrywa certyfikat urządzenia z wykazu PTPiREE: Zmniejszenie mocy czynnej na polecenie (port wejściowy)",
           "verdict": "no_data",
-          "summary_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
+          "summary_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
           "metrics": {
             "czas_wykonania_min": 5.0,
             "czas_dopuszczalny_min": 10.0
@@ -3953,10 +3953,10 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
-              "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy",
+              "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
               "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -4052,7 +4052,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
+              "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
               "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
               "czego_brakuje": [
                 "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
@@ -4168,7 +4168,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Tryb regulacji napięcia: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -4202,20 +4202,20 @@
               "warunek_wstepny_nieuruchomiony": false
             },
             "wynik": {
-              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
+              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana)",
               "symbol_latex": "Q_{\\min}",
               "wartosc": {
                 "wartosc": -0.330749354005,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
-              "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_krytyczny_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "chwila_s": null,
               "metoda": "DEKLARACJA"
             },
             "limit": {
               "wartosc": {
                 "wartosc": -0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -4228,19 +4228,19 @@
                 "status": "NIEUSTALONE",
                 "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
               },
-              "zakres_stosowalnosci_pl": "strona dolna (Q_min) wymaganego zakresu mocy biernej",
+              "zakres_stosowalnosci_pl": "strona dolna (moc bierna minimalna) wymaganego zakresu mocy biernej",
               "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
             },
             "margines": {
               "wartosc": {
                 "wartosc": 0.000749354005168,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "definicja_latex": "m = x_{\\lim} - x",
-              "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "skala": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "skala_rodzaj": "LIMIT",
               "wzgledny": 0.00227076971263,
@@ -4271,8 +4271,8 @@
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: krzywa Q(U) albo tryb regulacji Q (has_qu_curve) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
                 "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne."
               ]
             },
@@ -4315,7 +4315,7 @@
                     "nazwa_pl": "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
                     "wartosc": {
                       "wartosc": -0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4324,7 +4324,7 @@
                     "nazwa_pl": "górna granica zakresu Q modułu (q_range_pct_pn_max)",
                     "wartosc": {
                       "wartosc": 0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4385,7 +4385,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Tryb regulacji mocy biernej Q: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -4419,20 +4419,20 @@
               "warunek_wstepny_nieuruchomiony": false
             },
             "wynik": {
-              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
+              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana)",
               "symbol_latex": "Q_{\\min}",
               "wartosc": {
                 "wartosc": -0.330749354005,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
-              "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_krytyczny_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "chwila_s": null,
               "metoda": "DEKLARACJA"
             },
             "limit": {
               "wartosc": {
                 "wartosc": -0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -4445,19 +4445,19 @@
                 "status": "NIEUSTALONE",
                 "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
               },
-              "zakres_stosowalnosci_pl": "strona dolna (Q_min) wymaganego zakresu mocy biernej",
+              "zakres_stosowalnosci_pl": "strona dolna (moc bierna minimalna) wymaganego zakresu mocy biernej",
               "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
             },
             "margines": {
               "wartosc": {
                 "wartosc": 0.000749354005168,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "definicja_latex": "m = x_{\\lim} - x",
-              "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "skala": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "skala_rodzaj": "LIMIT",
               "wzgledny": 0.00227076971263,
@@ -4488,8 +4488,8 @@
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: krzywa Q(U) albo tryb regulacji Q (has_qu_curve) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
                 "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne."
               ]
             },
@@ -4532,7 +4532,7 @@
                     "nazwa_pl": "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
                     "wartosc": {
                       "wartosc": -0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4541,7 +4541,7 @@
                     "nazwa_pl": "górna granica zakresu Q modułu (q_range_pct_pn_max)",
                     "wartosc": {
                       "wartosc": 0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4583,11 +4583,11 @@
         },
         {
           "test_id": "T08",
-          "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+          "ability_pl": "Tryb regulacji współczynnika mocy",
           "required": false,
           "required_reason_pl": "test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza",
           "verdict": "not_required",
-          "summary_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu (Instalacja PV 1,9 MW) — nie dotyczy: test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza.",
+          "summary_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu (Instalacja PV 1,9 MW) — nie dotyczy: test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T08:stosowalnosc:66",
@@ -4598,10 +4598,10 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
-              "opis_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu",
+              "opis_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu",
               "warunek_latex": "\\cos\\varphi_{\\min} \\le \\cos\\varphi_{\\mathrm{wym},\\min}",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -4666,7 +4666,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Tryb regulacji współczynnika mocy cosφ: najmniejszy współczynnik mocy modułu (Instalacja PV 1,9 MW) — nie dotyczy: test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza.",
+              "zdanie_pl": "Tryb regulacji współczynnika mocy: najmniejszy współczynnik mocy modułu (Instalacja PV 1,9 MW) — nie dotyczy: test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza.",
               "przyczyna_pl": "test nie jest wymagany dla modułu (typ B, moduł parku energii): nie wykazuje żadnego wymagania profilu stosowalnego do modułu bez pokrycia certyfikatem, zakres procedury obejmuje typy: C, D, a program szczegółowy go nie wymusza",
               "czego_brakuje": [
                 "najmniejszy współczynnik mocy modułu (cos_phi_min)"
@@ -4741,7 +4741,7 @@
           "required": true,
           "required_reason_pl": "test wykazuje wymaganie stosowalne do modułu (typ B, moduł parku energii), którego nie pokrywa certyfikat urządzenia z wykazu PTPiREE: Zdolność do generacji mocy biernej (moduł parku energii)",
           "verdict": "no_data",
-          "summary_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana): −0,3307 p.u. (P_n modułu) wobec wymaganych ≤ −0,33 p.u. (P_n modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (P_n modułu), punkt: strona dolna (Q_min) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
+          "summary_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana): −0,3307 p.u. (moc znamionowa modułu) wobec wymaganych ≤ −0,33 p.u. (moc znamionowa modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (moc znamionowa modułu), punkt: strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
           "metrics": {
             "q_min_kvar": -640.0,
             "q_max_kvar": 640.0
@@ -4756,7 +4756,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -4790,20 +4790,20 @@
               "warunek_wstepny_nieuruchomiony": false
             },
             "wynik": {
-              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
+              "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana)",
               "symbol_latex": "Q_{\\min}",
               "wartosc": {
                 "wartosc": -0.330749354005,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
-              "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_krytyczny_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "chwila_s": null,
               "metoda": "DEKLARACJA"
             },
             "limit": {
               "wartosc": {
                 "wartosc": -0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "pasmo": null,
               "obwiednia": null,
@@ -4816,19 +4816,19 @@
                 "status": "NIEUSTALONE",
                 "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
               },
-              "zakres_stosowalnosci_pl": "strona dolna (Q_min) wymaganego zakresu mocy biernej",
+              "zakres_stosowalnosci_pl": "strona dolna (moc bierna minimalna) wymaganego zakresu mocy biernej",
               "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
             },
             "margines": {
               "wartosc": {
                 "wartosc": 0.000749354005168,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "definicja_latex": "m = x_{\\lim} - x",
-              "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+              "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
               "skala": {
                 "wartosc": 0.33,
-                "jednostka": "p.u. (P_n modułu)"
+                "jednostka": "p.u. (moc znamionowa modułu)"
               },
               "skala_rodzaj": "LIMIT",
               "wzgledny": 0.00227076971263,
@@ -4846,8 +4846,8 @@
             "powody_niepelnosci": [
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
             ],
             "etykieta": {
@@ -4855,7 +4855,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana): −0,3307 p.u. (P_n modułu) wobec wymaganych ≤ −0,33 p.u. (P_n modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (P_n modułu), punkt: strona dolna (Q_min) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
+              "zdanie_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana): −0,3307 p.u. (moc znamionowa modułu) wobec wymaganych ≤ −0,33 p.u. (moc znamionowa modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (moc znamionowa modułu), punkt: strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
               "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
               "czego_brakuje": [
                 "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
@@ -4866,8 +4866,8 @@
                 "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
                 "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne."
               ]
             },
@@ -4901,7 +4901,7 @@
                     "nazwa_pl": "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
                     "wartosc": {
                       "wartosc": -0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4910,7 +4910,7 @@
                     "nazwa_pl": "górna granica zakresu Q modułu (q_range_pct_pn_max)",
                     "wartosc": {
                       "wartosc": 0.330749354005,
-                      "jednostka": "p.u. (P_n modułu)"
+                      "jednostka": "p.u. (moc znamionowa modułu)"
                     },
                     "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                     "jakosc": null
@@ -4967,7 +4967,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Potwierdzenie mocy maksymalnej PMAX: moc maksymalna zadeklarowana w programie",
@@ -5125,7 +5125,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Potwierdzenie mocy minimalnej PMIN: moc minimalna zadeklarowana i mniejsza od mocy maksymalnej",
@@ -5266,7 +5266,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Zaprzestanie generacji mocy czynnej: czas od polecenia do zaprzestania generacji",
@@ -5426,7 +5426,7 @@
           "required": true,
           "required_reason_pl": "test wykazuje wymaganie stosowalne do modułu (typ B, moduł parku energii), którego nie pokrywa certyfikat urządzenia z wykazu PTPiREE: Zmniejszenie mocy czynnej na polecenie (port wejściowy)",
           "verdict": "no_data",
-          "summary_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "summary_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T13:stosowalnosc:77",
@@ -5437,10 +5437,10 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
-              "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy",
+              "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
               "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
               "relacja": "NIE_WIECEJ",
               "warunek_wstepny_pl": null,
@@ -5510,7 +5510,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
               "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min))",
               "czego_brakuje": [
                 "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
@@ -5609,13 +5609,13 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
               "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
               "relacja": "LOGICZNE",
-              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)",
+              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)",
               "warunek_wstepny_podstawa": {
                 "rodzaj": "NIEUSTALONA",
                 "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
@@ -5680,7 +5680,7 @@
               ],
               "zastrzezenia": [
                 "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
-                "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+                "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
                 "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -5766,13 +5766,13 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
               "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
               "relacja": "LOGICZNE",
-              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)",
+              "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)",
               "warunek_wstepny_podstawa": {
                 "rodzaj": "OSD",
                 "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator",
@@ -5839,7 +5839,7 @@
               ],
               "zastrzezenia": [
                 "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-                "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
+                "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
                 "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -5925,7 +5925,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu",
@@ -6082,7 +6082,7 @@
           "required": true,
           "required_reason_pl": "test wykazuje wymaganie stosowalne do modułu (typ B, moduł parku energii), którego nie pokrywa certyfikat urządzenia z wykazu PTPiREE: Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii)",
           "verdict": "no_data",
-          "summary_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+          "summary_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
           "metrics": {},
           "trace_refs": [
             "proof:ncrfg-ptpiree:T17:stosowalnosc:88",
@@ -6094,10 +6094,10 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
-              "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU",
+              "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia)",
               "warunek_latex": "K_{\\mathrm{FRT}} = \\frac{\\Delta I_q}{\\Delta U} \\ge K_{\\min}",
               "relacja": "NIE_MNIEJ",
               "warunek_wstepny_pl": null,
@@ -6144,7 +6144,7 @@
                 "status": "NIEUSTALONE",
                 "uwagi_pl": "wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury"
               },
-              "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (U_n)",
+              "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (napięcie znamionowe)",
               "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
             },
             "margines": null,
@@ -6167,7 +6167,7 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+              "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
               "przyczyna_pl": "metoda „deklaracja” nie wykazuje zachowania dynamicznego",
               "czego_brakuje": [
                 "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „deklaracja” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
@@ -6262,7 +6262,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji: moduł realizuje zdolności dodatkowe wskazane w programie szczegółowym",
@@ -6398,7 +6398,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Rejestracja zakłóceń i komunikacja z operatorem: komunikacja z operatorem i rejestrator zakłóceń zadeklarowane",
@@ -6543,7 +6543,7 @@
             "przedmiot": {
               "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
               "nazwa_pl": "Instalacja PV 1,9 MW",
-              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+              "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
             },
             "kryterium": {
               "opis_pl": "Jakość energii - współczynnik THDu źródła: współczynnik odkształcenia napięcia źródła",
@@ -6778,7 +6778,7 @@
     },
     {
       "test_id": "T08",
-      "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+      "ability_pl": "Tryb regulacji współczynnika mocy",
       "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
       "default_for_modules": [
         "C",
@@ -6987,7 +6987,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "ac15253c49ea2d2a26f469b87549915c67942257b1cd0eef72cd94c5c6b4f3a5"
+        "odcisk_oceny": "48664f0fd3d7dabc1c5cc8086e41f9f07ef4062cc1de6756be3c6d8cd34ca4c8"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:2"
@@ -7031,7 +7031,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "00fceb299de36fea2d69f4cb6f2c91ba4d67987a80811ff9577fe0f22b304acd"
+        "odcisk_oceny": "758910dcf891bb0c270cc19d308192273bb598fa008deb2175c699ef9ae76a8c"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:4"
@@ -7075,7 +7075,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "3615fb36b01b9082dd50a37dd7bfd435ff8a2f3cc0b969d696b306fa7df5f204"
+        "odcisk_oceny": "0093ac71ac24ba119f0d19077105c56e0fd468f963790c1120eb0c0c7e9e86a6"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:6"
@@ -7119,7 +7119,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c544eb440b8e8cd83158659a3f41de69ac1af92dea9ec4a49c2d7ab75697e5e6"
+        "odcisk_oceny": "c5abc7740c7894af91b8b9c8045a100e04be707fa19702fcedcb46832fd2a558"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:8"
@@ -7166,7 +7166,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "e557da3c5eed2db77818ffd861fc3caa8bca635a170a14f1df2570fcde109a02"
+        "odcisk_oceny": "e3b4684cad110f220627825d5104740a3d78872707a5d9cfdd99fbe566a14538"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:10"
@@ -7210,7 +7210,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c310c896a14e09a9f64ef7330ee19ba72b45688626d39efffd33ff0ce46cca66"
+        "odcisk_oceny": "ed4bf8a22f79183dc4eec7e7298467280ce498c1ad95e68a87e5450d0e0bc3af"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:12"
@@ -7254,7 +7254,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "67f3b68e3bc1c14367aae2cdd2318de2ef223a70a98d0e97086f3e50400d48ca"
+        "odcisk_oceny": "abf3e36906f359d80e970a4e87462448d9f519f4dcb1309eae5a0def85474b15"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:14"
@@ -7298,7 +7298,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c2ec5ce3daabb18a11fb82ca52b8711dfc1158312b428ff45a4447793a5e64e3"
+        "odcisk_oceny": "a08dd2d0c2dd7d53122a6ee55e86e93dff1d25513fbd9f82ca63cf1dcfb001cc"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T08:ocena_kryterium:16"
@@ -7346,7 +7346,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "fce1e80fe570ee27358447fda915e77ac0c4c17158d69c2557decd8ef2678a29"
+        "odcisk_oceny": "f42012db357839f5f33bbc56492b54c0d1fd9b8810be1355c112e8ec72a270e1"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:18"
@@ -7391,7 +7391,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "d602ad07aff702e9ca6b26399f0f034fdcd306d45de0d9d2f0886d5b3aa4f21b"
+        "odcisk_oceny": "b989d610a9d6e61b0052a9ac550927dda2f53c4290989fc8af57388e62be6cd1"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:20"
@@ -7436,7 +7436,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "9f8565dc5685c3a870621360a395ec077e4ff0dd3035c1d04489c720ee248d70"
+        "odcisk_oceny": "ae38c24e39945489856bcee9d10f8ccc5442093e21964d2936b7c08564439b19"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:22"
@@ -7482,7 +7482,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c0c6ea4dfd89ba6263a0a23687a3c0182964f0d61d4f262ddcbd99e22f083bc8"
+        "odcisk_oceny": "8d3451855d127651676a16a95e2b3d45f7d218e587e445460006516fdde629a7"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:24"
@@ -7527,7 +7527,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "5cff68f67aab5d5a10868a99d9ff183365ae3dff04bfabdbbac0d80a0309a81c"
+        "odcisk_oceny": "143cca0f82689615b83874b4a2a671af433ec19958d39d3d3f3b0cf1b114094f"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:26"
@@ -7610,7 +7610,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "4baed055da818b3527b37aff3d5920c078ab74412eea0e8dbe3e7644371f34e3"
+        "odcisk_oceny": "660ac33c573536d6742663b66d7c37858eb2a3aee93ab32075eb9a802907b7c5"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:29"
@@ -7689,7 +7689,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "4e56fad1519eb3f771f2a88b64195504ed9abf74bca29379b404a92766d0224b"
+        "odcisk_oceny": "5249183f597ed5d2718d5ab81b25abaf83bfc2de468a30fece807dc59ea701ae"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:32"
@@ -7752,7 +7752,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "cd27c2739770e9caae89bcda92dcfb739774f4021d86d246a0fb9b12eb8f57c7"
+        "odcisk_oceny": "76df2c9bf2475603ead04a67786cda6490f21dc3a8c433e9583180d31aacd3ac"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:35"
@@ -7795,7 +7795,7 @@
         "wzmocnienie_minimalne": 2.0,
         "spadek_napiecia_testu_pu": 0.5
       },
-      "substitution": "brak przebiegu I_q(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
+      "substitution": "brak przebiegu prądu biernego w czasie z biegu dynamiki — wartość zadeklarowana informacyjnie",
       "result": {},
       "unit_check": "p.u. / p.u. = 1.",
       "proof_ref": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:37"
@@ -7813,7 +7813,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c223c06dfc3e3d75b22797258faa8d66fbf95d4c0acc3f9680bc3a2a3f366d83"
+        "odcisk_oceny": "44304d5b5fdc4700c49fc0d11f0b88d29efc9a383e2e05dc03d6459f8e8d6049"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:38"
@@ -7854,7 +7854,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c52e62110d3d5ad18f1f65ea34165f2e2fd32d37e01a4b9c80b451c256fc0d17"
+        "odcisk_oceny": "4596fc3d00b08ec2bc9daaf20c337541a74c925747abb98bcf14b37d01be76ba"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:40"
@@ -7898,7 +7898,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "b387fdec566e7c2d0aa38e5ed5b417e82fea9e8371728f2030602437ee2aef0b"
+        "odcisk_oceny": "fc0b370c09f3a687a7908235429a6b22769843c009f9b312ab9aef8f4cbbc4ad"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:42"
@@ -7939,7 +7939,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "2d0bf2f47134f21ef0badfc086cefbe654623841d407e1806f5862aa4bae8e68"
+        "odcisk_oceny": "da4c52a4f3997faf9e3caf9b21e768fb8bb19b8c30e5ee07186bc24a5ef14345"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:44"
@@ -8009,7 +8009,7 @@
       "result": {
         "status_maszynowy": "BRAK_PODSTAWY",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "35efaf0dc2638fb213c1c65965ad97c5035d0f4ecb5fbf0ebf1cb407fe19629a"
+        "odcisk_oceny": "300d01bffd7783271606def3a0a3223911d78d8816ae4467f9fc81918172cc9c"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:47"
@@ -8077,7 +8077,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "037aeafef3ff7a5db057381ba20692445dcb25c826e1b678b683064b9755bfa2"
+        "odcisk_oceny": "90556554c6ae25b968b6090b73f8e09700a6bd619b6b37b17b5a019c2ccc0ff6"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:50"
@@ -8145,7 +8145,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "c0a7ea1aa54887e4340d716525a7374276bb571e178d4e40cbe3e1381aa9f19b"
+        "odcisk_oceny": "175ffc46e9055abc079fb61884667b1efb4c31f642076bed3e8d4a24eedde140"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:53"
@@ -8206,7 +8206,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "5374794cf3ddf4b31aadc20e2a855100f0d65355a2d2a03825f041ffd814d34a"
+        "odcisk_oceny": "2f7862ef9336ccf258f3458de3f880823a8b63dfe99818d62fea00b58d0fadeb"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:56"
@@ -8274,7 +8274,7 @@
       "result": {
         "status_maszynowy": "BRAK_PODSTAWY",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "b8a62ba103954675ee0af5b4f91c2faac1886371c08d2d886608224cd7bce3e7"
+        "odcisk_oceny": "964d633516153d10a09a8b647e5135a53b4b4f15ed4d0b18f085bb6c4a61708d"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:59"
@@ -8345,7 +8345,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "850dc44f935e7f5f435d9a0890a718eaaf506fa5b1fe24abca041bdf374ed1fe"
+        "odcisk_oceny": "dede9fe53a7beb96c6dbba42b70f579dc907d08182ede8ae2b463d315d579af0"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:62"
@@ -8416,7 +8416,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "f6dd181e82de1350529c23a8985fc29c4c3faf777f0e2aa57c2a97aedb011ec7"
+        "odcisk_oceny": "801aec339d5b284cfb1217066bd47900db12901e83beaed0a17adfa038ca0ae8"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:65"
@@ -8460,7 +8460,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "7c787b81678432a3d95cbbc6837d87de8413861d889aea9962627254caca40e4"
+        "odcisk_oceny": "51bb02e06cdec794d338f8bc111f141a31cc35a3d620709b4c363d249b6cb7ab"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T08:ocena_kryterium:67"
@@ -8535,7 +8535,7 @@
       "result": {
         "status_maszynowy": "BRAK_PODSTAWY",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "9c40abdb4cb43ff1c47b3e4ee92e04a6a2367facb35d72d08f7aba730dee6213"
+        "odcisk_oceny": "f9709cca7804f1a91b8281fa7a2d4f2408893f907fcfd41eeef808efa9cf791f"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:70"
@@ -8580,7 +8580,7 @@
       "result": {
         "status_maszynowy": "BRAK_PODSTAWY",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "899a9eb9896c2b095498b4f0a9e8613690084f1077f73f17c97527f4b9c3f380"
+        "odcisk_oceny": "0d0ff59009a0b80701e0863ff65b3f7bf0605838ae85a802494302df53bf8cee"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:72"
@@ -8625,7 +8625,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "6b344ff22da79810cd911871360063030a4af4092c991801bc04cff11634e994"
+        "odcisk_oceny": "de15b2b1693205450f46d63ac1176ac0ce42055a1a827b92c4ef9023ce56ef71"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:74"
@@ -8671,7 +8671,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "1210a655dd585e21324b24fde7779bf659956d3f2126eb239503e202c830dd2d"
+        "odcisk_oceny": "fb9a53d435a188601d79bbc2189cd77200d77f0b761b50d7b3267d6f2bb3afa0"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:76"
@@ -8716,7 +8716,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "7451426f3546056d5818d01f89dbb327cb5cad6e34bcc951421fb3ca21c94272"
+        "odcisk_oceny": "c23461f8dcccd27284a9d0316aa2ef204ba5b55b3651af17cf66ebeb18f5810a"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:78"
@@ -8799,7 +8799,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "1b0d0fb89ab8e60903e561f68a2e55a4306406a76254bf8f774fed3948f36a6d"
+        "odcisk_oceny": "efb52bee0024a83b971583e4ea898a65d57b51b09d30a40895f1c6169dbcae5e"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:81"
@@ -8878,7 +8878,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "9e58103f69bc5544c9efbf3af765685ddaea069b1906eb19d02d2d8ba1ddb5db"
+        "odcisk_oceny": "a6896d9420c1fc8e75349737a4f164e2ad4ad0713cbfb8f363c9968d02f91da5"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:84"
@@ -8941,7 +8941,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "dad1ded3cc57c6d95d52f24e234f37417da4ce2df6be1fa519bf54bff5d38767"
+        "odcisk_oceny": "d0b95a4dc923dd2785ab161190a555a3a7ab65876a3228ee129e63ed7e464fb9"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:87"
@@ -8984,7 +8984,7 @@
         "wzmocnienie_minimalne": 2.0,
         "spadek_napiecia_testu_pu": 0.5
       },
-      "substitution": "brak przebiegu I_q(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
+      "substitution": "brak przebiegu prądu biernego w czasie z biegu dynamiki — wartość zadeklarowana informacyjnie",
       "result": {},
       "unit_check": "p.u. / p.u. = 1.",
       "proof_ref": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:89"
@@ -9002,7 +9002,7 @@
       "result": {
         "status_maszynowy": "NIE_OCENIONO",
         "kompletnosc_dowodu": "NIEPELNY",
-        "odcisk_oceny": "82b55656cb6569e9d2095792711186dbc2122150934ba0c51f1d59036bc541af"
+        "odcisk_oceny": "132cba802c3d09814ae5469d5fe470506d9b9c3b5406ea6aaf1437493dcb9610"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:90"
@@ -9043,7 +9043,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "f103c5912f5d92d63c915476cab44c0a8059757544b11ca05829a2c5449075eb"
+        "odcisk_oceny": "15cfc06664574e7616f478b273e6c73227a77492f2a416a677c8d4a18d70c3a3"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:92"
@@ -9087,7 +9087,7 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "7e082bfa7269051345a80e9d5e7c8e912726404c5f649e45bff23ff073108ffe"
+        "odcisk_oceny": "faebb404c9a65cc9e7a0ecdb817ac382001b26a21e6ede9b8883d7e1f7603455"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:94"
@@ -9128,13 +9128,13 @@
       "result": {
         "status_maszynowy": "NIE_DOTYCZY",
         "kompletnosc_dowodu": "NIE_DOTYCZY",
-        "odcisk_oceny": "cee23ff46e494b039ac459981b55a43fa3af40d16b13a29d78b79d15af4096e5"
+        "odcisk_oceny": "44c68e3bf3b12435d308bab87ab5fb95d728e56db84de497823e8b267b2a1e7d"
       },
       "unit_check": "Status maszynowy bez jednostek.",
       "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:96"
     }
   ],
-  "report_pl": "Raport testów zgodności NC RfG / PTPiREE (porównanie danych zadeklarowanych z profilem regulacyjnym)\nProcedura: PTPiREE — Procedura testowania modułów wytwarzania energii, wydanie 3.0\nSolver: ncrfg-ptpiree-whitebox-2.0\n\nModuł: Magazyn energii 1,5 MW\nOperator: Enea Operator; P_max: 1500 kW\nKlasyfikacja: moc 1500 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,4 kV < 110 kV → typ B\nTechnologia: magazyn energii\nProfil wymagań: NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4) (skrót 94119f64518fce06)\n\nModuł: Instalacja PV 1,9 MW\nOperator: Enea Operator; P_max: 1935 kW\nKlasyfikacja: moc 1935 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,8 kV < 110 kV → typ B\nTechnologia: moduł parku energii\nProfil wymagań: NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4) (skrót 94119f64518fce06)\n- T01 LFSM-O - ograniczanie mocy przy nadczęstotliwości: Brak zweryfikowanej podstawy wymagania — LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): statyzm P(f) modułu (zadeklarowany): 5 % wobec wymaganego pasma od 4 % do 6 % wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +1 pp, względnie +100 % tolerancji).\n- T05 Możliwość regulacji mocy czynnej: Brak zweryfikowanej podstawy wymagania — Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).\n- T09 Zdolność do generacji mocy biernej: Brak zweryfikowanej podstawy wymagania — Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana): −0,3307 p.u. (P_n modułu) wobec wymaganych ≤ −0,33 p.u. (P_n modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (P_n modułu), punkt: strona dolna (Q_min) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).\n- T10 Potwierdzenie mocy maksymalnej PMAX: Brak zweryfikowanej podstawy wymagania — Potwierdzenie mocy maksymalnej PMAX: moc maksymalna zadeklarowana w programie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik informacyjny: deklaracja mocy maksymalnej: moc maksymalna zadeklarowana w programie szczegółowym: 1935 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: Ocena niewykonana — Potwierdzenie mocy minimalnej PMIN: moc minimalna zadeklarowana i mniejsza od mocy maksymalnej (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (moc minimalna modułu (p_min_kw)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T12 Zaprzestanie generacji mocy czynnej: Ocena niewykonana — Zaprzestanie generacji mocy czynnej: czas od polecenia do zaprzestania generacji (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji zaprzestania generacji (stop_generation_enabled) i czas zaprzestania generacji (cease_generation_time_s)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T13 Zmniejszenie generacji mocy czynnej: Ocena niewykonana — Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: Ocena niewykonana — Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: Ocena niewykonana — Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T16 Odbudowa mocy czynnej po zakłóceniu: Ocena niewykonana — Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T17 Prąd bierny podczas FRT: Ocena niewykonana — Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+  "report_pl": "Raport testów zgodności NC RfG / PTPiREE (porównanie danych zadeklarowanych z profilem regulacyjnym)\nProcedura: PTPiREE — Procedura testowania modułów wytwarzania energii, wydanie 3.0\nSolver: ncrfg-ptpiree-whitebox-2.0\n\nModuł: Magazyn energii 1,5 MW\nOperator: Enea Operator; P_max: 1500 kW\nKlasyfikacja: moc 1500 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,4 kV < 110 kV → typ B\nTechnologia: magazyn energii\nProfil wymagań: NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4) (skrót 94119f64518fce06)\n\nModuł: Instalacja PV 1,9 MW\nOperator: Enea Operator; P_max: 1935 kW\nKlasyfikacja: moc 1935 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,8 kV < 110 kV → typ B\nTechnologia: moduł parku energii\nProfil wymagań: NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4) (skrót 94119f64518fce06)\n- T01 LFSM-O - ograniczanie mocy przy nadczęstotliwości: Brak zweryfikowanej podstawy wymagania — LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): statyzm P(f) modułu (zadeklarowany): 5 % wobec wymaganego pasma od 4 % do 6 % wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +1 pp, względnie +100 % tolerancji).\n- T05 Możliwość regulacji mocy czynnej: Brak zweryfikowanej podstawy wymagania — Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).\n- T09 Zdolność do generacji mocy biernej: Brak zweryfikowanej podstawy wymagania — Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana): −0,3307 p.u. (moc znamionowa modułu) wobec wymaganych ≤ −0,33 p.u. (moc znamionowa modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (moc znamionowa modułu), punkt: strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).\n- T10 Potwierdzenie mocy maksymalnej PMAX: Brak zweryfikowanej podstawy wymagania — Potwierdzenie mocy maksymalnej PMAX: moc maksymalna zadeklarowana w programie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik informacyjny: deklaracja mocy maksymalnej: moc maksymalna zadeklarowana w programie szczegółowym: 1935 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: Ocena niewykonana — Potwierdzenie mocy minimalnej PMIN: moc minimalna zadeklarowana i mniejsza od mocy maksymalnej (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (moc minimalna modułu (p_min_kw)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T12 Zaprzestanie generacji mocy czynnej: Ocena niewykonana — Zaprzestanie generacji mocy czynnej: czas od polecenia do zaprzestania generacji (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji zaprzestania generacji (stop_generation_enabled) i czas zaprzestania generacji (cease_generation_time_s)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T13 Zmniejszenie generacji mocy czynnej: Ocena niewykonana — Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: Ocena niewykonana — Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: Ocena niewykonana — Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T16 Odbudowa mocy czynnej po zakłóceniu: Ocena niewykonana — Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.\n- T17 Prąd bierny podczas FRT: Ocena niewykonana — Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
   "ocena_wymagan": [
     {
       "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -10770,7 +10770,7 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość",
@@ -11025,7 +11025,7 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej",
@@ -11853,10 +11853,10 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
-                "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy",
+                "opis_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
                 "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
                 "relacja": "NIE_WIECEJ",
                 "warunek_wstepny_pl": null,
@@ -11952,7 +11952,7 @@
                 "semantyka": "ostrzegawcza"
               },
               "wyjasnienie": {
-                "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
+                "zdanie_pl": "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas wykonania z zadeklarowanego tempa zmiany mocy: 5 min wobec wymaganych ≤ 10 min wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +5 min, względnie +50 % wartości granicznej).",
                 "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
                 "czego_brakuje": [
                   "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
@@ -12051,10 +12051,10 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
-                "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy",
+                "opis_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy",
                 "warunek_latex": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{\\mathrm{wym}}},\\; t_{\\min}\\right)",
                 "relacja": "NIE_WIECEJ",
                 "warunek_wstepny_pl": null,
@@ -12124,7 +12124,7 @@
                 "semantyka": "neutralna"
               },
               "wyjasnienie": {
-                "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "zdanie_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min))",
                 "czego_brakuje": [
                   "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
@@ -12216,15 +12216,15 @@
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
-            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
+            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
+            "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
+            "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -12233,28 +12233,28 @@
             "semantyka": "neutralna"
           },
           "wyjasnienie": {
-            "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)).",
-            "przyczyna_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min))",
+            "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)).",
+            "przyczyna_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min))",
             "czego_brakuje": [
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)",
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)",
               "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
-              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
+              "Możliwość regulacji mocy czynnej: czas przejścia do 50 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
+              "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % mocy maksymalnej przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
@@ -12407,13 +12407,13 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
                 "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
                 "relacja": "LOGICZNE",
-                "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)",
+                "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)",
                 "warunek_wstepny_podstawa": {
                   "rodzaj": "NIEUSTALONA",
                   "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
@@ -12478,7 +12478,7 @@
                 ],
                 "zastrzezenia": [
                   "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
-                  "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+                  "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
                   "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                   "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                   "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -12550,7 +12550,7 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni",
@@ -12812,7 +12812,7 @@
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
-              "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (U_n); t = 0,15 s: 0,05 p.u. (U_n); t = 0,7 s: 0,5 p.u. (U_n); t = 1,5 s: 0,85 p.u. (U_n); t = 3 s: 0,9 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+              "Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia LVRT profilu (typy B): t = 0 s: 0,05 p.u. (napięcie znamionowe); t = 0,15 s: 0,05 p.u. (napięcie znamionowe); t = 0,7 s: 0,5 p.u. (napięcie znamionowe); t = 1,5 s: 0,85 p.u. (napięcie znamionowe); t = 3 s: 0,9 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -13264,7 +13264,7 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
@@ -13298,20 +13298,20 @@
                 "warunek_wstepny_nieuruchomiony": false
               },
               "wynik": {
-                "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
+                "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana)",
                 "symbol_latex": "Q_{\\min}",
                 "wartosc": {
                   "wartosc": -0.330749354005,
-                  "jednostka": "p.u. (P_n modułu)"
+                  "jednostka": "p.u. (moc znamionowa modułu)"
                 },
-                "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+                "punkt_krytyczny_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                 "chwila_s": null,
                 "metoda": "DEKLARACJA"
               },
               "limit": {
                 "wartosc": {
                   "wartosc": -0.33,
-                  "jednostka": "p.u. (P_n modułu)"
+                  "jednostka": "p.u. (moc znamionowa modułu)"
                 },
                 "pasmo": null,
                 "obwiednia": null,
@@ -13324,19 +13324,19 @@
                   "status": "NIEUSTALONE",
                   "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
                 },
-                "zakres_stosowalnosci_pl": "strona dolna (Q_min) wymaganego zakresu mocy biernej",
+                "zakres_stosowalnosci_pl": "strona dolna (moc bierna minimalna) wymaganego zakresu mocy biernej",
                 "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
               },
               "margines": {
                 "wartosc": {
                   "wartosc": 0.000749354005168,
-                  "jednostka": "p.u. (P_n modułu)"
+                  "jednostka": "p.u. (moc znamionowa modułu)"
                 },
                 "definicja_latex": "m = x_{\\lim} - x",
-                "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+                "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
-                  "jednostka": "p.u. (P_n modułu)"
+                  "jednostka": "p.u. (moc znamionowa modułu)"
                 },
                 "skala_rodzaj": "LIMIT",
                 "wzgledny": 0.00227076971263,
@@ -13354,8 +13354,8 @@
               "powody_niepelnosci": [
                 "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                 "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
                 "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
               ],
               "etykieta": {
@@ -13363,7 +13363,7 @@
                 "semantyka": "ostrzegawcza"
               },
               "wyjasnienie": {
-                "zdanie_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana): −0,3307 p.u. (P_n modułu) wobec wymaganych ≤ −0,33 p.u. (P_n modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (P_n modułu), punkt: strona dolna (Q_min) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
+                "zdanie_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): granica zakresu mocy biernej modułu, strona dolna (moc bierna minimalna) (zadeklarowana): −0,3307 p.u. (moc znamionowa modułu) wobec wymaganych ≤ −0,33 p.u. (moc znamionowa modułu) wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines +0,0007494 p.u. (moc znamionowa modułu), punkt: strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia, względnie +0,2271 % wartości granicznej).",
                 "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
                 "czego_brakuje": [
                   "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
@@ -13374,8 +13374,8 @@
                   "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                   "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                   "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
                   "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne."
                 ]
               },
@@ -13409,7 +13409,7 @@
                       "nazwa_pl": "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
                       "wartosc": {
                         "wartosc": -0.330749354005,
-                        "jednostka": "p.u. (P_n modułu)"
+                        "jednostka": "p.u. (moc znamionowa modułu)"
                       },
                       "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                       "jakosc": null
@@ -13418,7 +13418,7 @@
                       "nazwa_pl": "górna granica zakresu Q modułu (q_range_pct_pn_max)",
                       "wartosc": {
                         "wartosc": 0.330749354005,
-                        "jednostka": "p.u. (P_n modułu)"
+                        "jednostka": "p.u. (moc znamionowa modułu)"
                       },
                       "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                       "jakosc": null
@@ -13467,13 +13467,13 @@
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
             "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-            "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
             "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "kryteria_naruszone": [],
@@ -13491,13 +13491,13 @@
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
               "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
               "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
               "IRiESD albo warunki przyłączenia operatora Enea Operator: rozstrzygnięcie, czy operator określił wymaganie art. 20 ust. 2 lit. a"
             ],
@@ -13507,8 +13507,8 @@
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (moc znamionowa modułu) — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wykonanie przez operatora prawa do określenia wymagań, dla których rozporządzenie przyznaje mu to prawo, nie jest udokumentowane w repozytorium; potrzebny dokument: IRiESD albo warunki przyłączenia (plan AB §12.1); dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21); prawo operatora do określenia wymagania (art. 20 ust. 2 lit. a rozporządzenia 2016/631) — wykonanie nieustalone).",
               "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
@@ -13564,7 +13564,7 @@
                   "nazwa_pl": "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
                   "wartosc": {
                     "wartosc": -0.330749354005,
-                    "jednostka": "p.u. (P_n modułu)"
+                    "jednostka": "p.u. (moc znamionowa modułu)"
                   },
                   "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                   "jakosc": null
@@ -13573,7 +13573,7 @@
                   "nazwa_pl": "górna granica zakresu Q modułu (q_range_pct_pn_max)",
                   "wartosc": {
                     "wartosc": 0.330749354005,
-                    "jednostka": "p.u. (P_n modułu)"
+                    "jednostka": "p.u. (moc znamionowa modułu)"
                   },
                   "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
                   "jakosc": null
@@ -13647,10 +13647,10 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
-                "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU",
+                "opis_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia)",
                 "warunek_latex": "K_{\\mathrm{FRT}} = \\frac{\\Delta I_q}{\\Delta U} \\ge K_{\\min}",
                 "relacja": "NIE_MNIEJ",
                 "warunek_wstepny_pl": null,
@@ -13697,7 +13697,7 @@
                   "status": "NIEUSTALONE",
                   "uwagi_pl": "wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury"
                 },
-                "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (U_n)",
+                "zakres_stosowalnosci_pl": "punkt testu: spadek napięcia 0,5 p.u. (napięcie znamionowe)",
                 "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
               },
               "margines": null,
@@ -13720,7 +13720,7 @@
                 "semantyka": "neutralna"
               },
               "wyjasnienie": {
-                "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+                "zdanie_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
                 "przyczyna_pl": "metoda „deklaracja” nie wykazuje zachowania dynamicznego",
                 "czego_brakuje": [
                   "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „deklaracja” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
@@ -13803,16 +13803,16 @@
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
-            "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+            "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
-            "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+            "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+            "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -13821,24 +13821,24 @@
             "semantyka": "neutralna"
           },
           "wyjasnienie": {
-            "zdanie_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii) („Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator”) — ocena niewykonana. Kryteria nieocenione: Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — metoda „deklaracja” nie wykazuje zachowania dynamicznego.",
-            "przyczyna_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW) — metoda „deklaracja” nie wykazuje zachowania dynamicznego",
+            "zdanie_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii) („Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator”) — ocena niewykonana. Kryteria nieocenione: Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — metoda „deklaracja” nie wykazuje zachowania dynamicznego.",
+            "przyczyna_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW) — metoda „deklaracja” nie wykazuje zachowania dynamicznego",
             "czego_brakuje": [
               "Pełne pokrycie programu badań — pokryto: program badań profilu: stan źródła „nieustalone”, scenariuszy 0, pokrytych biegami: 0 (zbiór scenariuszy (głębokości i czasy zapadu × poziomy P × Q × punkt pracy sprzed zakłócenia) wymaga programów ramowych testów PTPiREE (plan AB §12.1)).",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „deklaracja” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury).",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
-              "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „deklaracja” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury).",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
+              "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Prąd bierny podczas FRT: wzmocnienie prądu biernego (przyrost prądu biernego odniesiony do zmiany napięcia) (Instalacja PV 1,9 MW): Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
               "IRiESD albo warunki przyłączenia operatora Enea Operator: rozstrzygnięcie, czy operator określił wymaganie art. 20 ust. 2 lit. b"
             ],
             "zastrzezenia": [
@@ -13967,7 +13967,7 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu",
@@ -14283,13 +14283,13 @@
               "przedmiot": {
                 "element_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
                 "nazwa_pl": "Instalacja PV 1,9 MW",
-                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), P_max 1935 kW, napięcie przyłączenia 0,8 kV"
+                "opis_pl": "moduł wytwarzania energii typu B (moduł parku energii), moc maksymalna 1935 kW, napięcie przyłączenia 0,8 kV"
               },
               "kryterium": {
                 "opis_pl": "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik)",
                 "warunek_latex": "\\text{moduł przyłączony w całym przedziale obwiedni}",
                 "relacja": "LOGICZNE",
-                "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)",
+                "warunek_wstepny_pl": "napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)",
                 "warunek_wstepny_podstawa": {
                   "rodzaj": "OSD",
                   "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator",
@@ -14356,7 +14356,7 @@
                 ],
                 "zastrzezenia": [
                   "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-                  "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
+                  "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
                   "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
                   "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
                   "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
@@ -14470,7 +14470,7 @@
             ],
             "zastrzezenia": [
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-              "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (U_n); t = 0,1 s: 1,25 p.u. (U_n); t = 1 s: 1,15 p.u. (U_n); t = 60 s: 1,1 p.u. (U_n)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
+              "Warunek wstępny („napięcie w punkcie przyłączenia nie wyższe niż obwiednia HVRT profilu (typy B): t = 0 s: 1,3 p.u. (napięcie znamionowe); t = 0,1 s: 1,25 p.u. (napięcie znamionowe); t = 1 s: 1,15 p.u. (napięcie znamionowe); t = 60 s: 1,1 p.u. (napięcie znamionowe)”) oparty na podstawie o stanie źródła „nieustalone”: „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) (uwagi: nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)).",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",

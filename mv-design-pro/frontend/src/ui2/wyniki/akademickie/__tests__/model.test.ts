@@ -239,8 +239,8 @@ describe('danePrzyjeteWyniku — dane przyjęte z odpowiedzi solvera', () => {
   it('koordynacja izolacji: dobór wstępny ogranicznika z wierszy `arresters[]` z jednostką i założenia kryteriów', () => {
     const dane = danePrzyjeteWyniku(ODPOWIEDZI.insulation_coordination);
     expect(dane.map((d) => d.nazwa)).toEqual([
-      'Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)',
-      'Napięcie znamionowe ogranicznika U_r (dobór wstępny)',
+      'Napięcie trwałej pracy ogranicznika (dobór wstępny)',
+      'Napięcie znamionowe ogranicznika (dobór wstępny)',
       'Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)',
       'Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń)',
       'Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń)',

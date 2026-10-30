@@ -170,7 +170,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "DEKLARACJA",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk 450aaeaf7ba6321b)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 7bcc87aa07143dc7)",
           "poziom": "DECLARATION",
           "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
           "status_danych": {
@@ -289,7 +289,7 @@
       "p0_set_w": 1.0,
       "u0_start_percent": 5.0
     },
-    "settings_podstawa_pl": "Nastawy startowe metody zalecanej (U0 5 % U_f, P0 1 W, krotność 5. harmonicznej 3) — propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości normowej; dobór ostateczny w projekcie zabezpieczeń."
+    "settings_podstawa_pl": "Nastawy startowe metody zalecanej (napięcie składowej zerowej 5 % napięcia fazowego, moc czynna składowej zerowej 1 W, krotność 5. harmonicznej 3) — propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości normowej; dobór ostateczny w projekcie zabezpieczeń."
   },
   "earthing_safety": {
     "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
@@ -842,8 +842,8 @@
         "dane_przyjete": [
           {
             "jakosc": "ESTIMATED",
-            "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
-            "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "nazwa_pl": "Napięcie trwałej pracy ogranicznika (dobór wstępny)",
+            "powod_pl": "Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
             "wartosc": {
               "jednostka": "kV",
               "wartosc": 17.5
@@ -851,8 +851,8 @@
           },
           {
             "jakosc": "ESTIMATED",
-            "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
-            "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "nazwa_pl": "Napięcie znamionowe ogranicznika (dobór wstępny)",
+            "powod_pl": "Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
             "wartosc": {
               "jednostka": "kV",
               "wartosc": 21.0
@@ -861,7 +861,7 @@
           {
             "jakosc": "ESTIMATED",
             "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
-            "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "powod_pl": "Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             "wartosc": {
               "jednostka": "kV",
               "wartosc": 24.5
@@ -889,15 +889,15 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk 39ce3fb7a578ceb6)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 96a09026479d4b50)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
             "dane_przyjete": [
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
-                "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                "nazwa_pl": "Napięcie trwałej pracy ogranicznika (dobór wstępny)",
+                "powod_pl": "Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
                 "wartosc": {
                   "jednostka": "kV",
                   "wartosc": 17.5
@@ -905,8 +905,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
-                "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "nazwa_pl": "Napięcie znamionowe ogranicznika (dobór wstępny)",
+                "powod_pl": "Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
                 "wartosc": {
                   "jednostka": "kV",
                   "wartosc": 21.0
@@ -915,7 +915,7 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
-                "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "powod_pl": "Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
                 "wartosc": {
                   "jednostka": "kV",
                   "wartosc": 24.5
@@ -955,15 +955,15 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 39ce3fb7a578ceb6)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 96a09026479d4b50)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
                 "dane_przyjete": [
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
-                    "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika (dobór wstępny)",
+                    "powod_pl": "Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 17.5
@@ -971,8 +971,8 @@
                   },
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
-                    "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                    "nazwa_pl": "Napięcie znamionowe ogranicznika (dobór wstępny)",
+                    "powod_pl": "Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 21.0
@@ -981,7 +981,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
-                    "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                    "powod_pl": "Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 24.5
@@ -1063,9 +1063,9 @@
             },
             "powody_niepelnosci": [
               "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
               "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
             ],
             "przedmiot": {
@@ -1097,9 +1097,9 @@
               "zastrzezenia": [
                 "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                 "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
                 "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                 "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji."
               ],
@@ -1135,7 +1135,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 39ce3fb7a578ceb6)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 96a09026479d4b50)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
@@ -1271,15 +1271,15 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 39ce3fb7a578ceb6)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 96a09026479d4b50)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
                 "dane_przyjete": [
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
-                    "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika (dobór wstępny)",
+                    "powod_pl": "Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 17.5
@@ -1287,8 +1287,8 @@
                   },
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
-                    "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                    "nazwa_pl": "Napięcie znamionowe ogranicznika (dobór wstępny)",
+                    "powod_pl": "Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 21.0
@@ -1297,7 +1297,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
-                    "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                    "powod_pl": "Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
                     "wartosc": {
                       "jednostka": "kV",
                       "wartosc": 24.5
@@ -1382,9 +1382,9 @@
             },
             "powody_niepelnosci": [
               "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
               "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
             ],
             "przedmiot": {
@@ -1416,9 +1416,9 @@
               "zastrzezenia": [
                 "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-3 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                 "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
                 "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                 "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji."
               ],
@@ -1464,20 +1464,20 @@
         "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-          "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-          "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+          "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
           "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
           "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
           "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
         ],
         "slad": [
@@ -1514,29 +1514,29 @@
         "wyjasnienie": {
           "czego_brakuje": [
             "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
             "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
             "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
             "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
           ],
-          "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).; Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "zastrzezenia": [
             "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
-            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
-            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — napięcie trwałej pracy równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, IEC 60099-5).",
+            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika (dobór wstępny) = 21 kV, jakość danej: oszacowane — Napięcie znamionowe równe 1,2-krotności napięcia trwałej pracy — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — Wytrzymałość na przepięcie dorywcze 10 s równa 1,4-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
             "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji.",
             "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
@@ -1579,8 +1579,8 @@
         "dane_przyjete": [
           {
             "jakosc": "ESTIMATED",
-            "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
-            "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "nazwa_pl": "Znamionowy współczynnik mocy silnika",
+            "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
             "wartosc": {
               "jednostka": "1",
               "wartosc": 0.85
@@ -1588,8 +1588,8 @@
           },
           {
             "jakosc": "ESTIMATED",
-            "nazwa_pl": "Sprawność znamionowa silnika η_n",
-            "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "nazwa_pl": "Sprawność znamionowa silnika",
+            "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
             "wartosc": {
               "jednostka": "1",
               "wartosc": 0.95
@@ -1616,15 +1616,15 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk 00afc7818a39fab3)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 3f7491033a33f00c)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
             "dane_przyjete": [
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
-                "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "nazwa_pl": "Znamionowy współczynnik mocy silnika",
+                "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
                 "wartosc": {
                   "jednostka": "1",
                   "wartosc": 0.85
@@ -1632,8 +1632,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Sprawność znamionowa silnika η_n",
-                "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "nazwa_pl": "Sprawność znamionowa silnika",
+                "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
                 "wartosc": {
                   "jednostka": "1",
                   "wartosc": 0.95
@@ -1681,15 +1681,15 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 00afc7818a39fab3)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 3f7491033a33f00c)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
                 "dane_przyjete": [
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
-                    "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                    "nazwa_pl": "Znamionowy współczynnik mocy silnika",
+                    "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.85
@@ -1697,8 +1697,8 @@
                   },
                   {
                     "jakosc": "ESTIMATED",
-                    "nazwa_pl": "Sprawność znamionowa silnika η_n",
-                    "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                    "nazwa_pl": "Sprawność znamionowa silnika",
+                    "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.95
@@ -1783,8 +1783,8 @@
             },
             "powody_niepelnosci": [
               "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-              "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-              "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+              "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+              "Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
               "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora."
             ],
             "przedmiot": {
@@ -1816,8 +1816,8 @@
               "zastrzezenia": [
                 "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-9 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                 "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-                "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+                "Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
                 "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
                 "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu."
               ],
@@ -1853,7 +1853,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 00afc7818a39fab3)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 3f7491033a33f00c)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
@@ -2000,7 +2000,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "OBLICZENIE",
-              "odniesienie": "bieg analizy specjalistycznej (odcisk 00afc7818a39fab3)",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 3f7491033a33f00c)",
               "poziom": "UNVALIDATED_MODEL",
               "rodzaj_twierdzenia": "STATIC_CALCULATION",
               "status_danych": {
@@ -2157,14 +2157,14 @@
         "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-          "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+          "Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
           "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
           "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
           "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
           "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
           "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
           "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
           "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
@@ -2205,14 +2205,14 @@
         "wyjasnienie": {
           "czego_brakuje": [
             "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
             "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
             "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
             "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
             "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
             "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
             "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
             "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
@@ -2223,8 +2223,8 @@
           "zastrzezenia": [
             "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-9 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
-            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
+            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny).",
             "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
             "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu.",
             "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-10 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
@@ -3864,7 +3864,7 @@
     }
   },
   "ssci_impedance": {
-    "message_pl": "Analiza SSCI (Z_grid/Z_conv) wymaga przekształtnika (falownika) w modelu. Brak przekształtnika — analiza niewykonana.",
+    "message_pl": "Analiza SSCI (impedancja sieci względem impedancji przekształtnika) wymaga przekształtnika (falownika) w modelu. Brak przekształtnika — analiza niewykonana.",
     "missing_fields": [
       "converter"
     ],
@@ -3990,7 +3990,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk 8c8c539a4c8ac87b)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk eeffa7638a9cb9bd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {

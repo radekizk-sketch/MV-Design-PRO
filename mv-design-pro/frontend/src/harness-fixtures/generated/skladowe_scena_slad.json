@@ -351,7 +351,7 @@
       "result": {
         "ib_a": 13560.9476289
       },
-      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje prąd wyłączeniowy symetryczny równy początkowemu prądowi zwarciowemu (zanik strumienia maszyn nie jest uwzględniany).",
       "step": 8,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
@@ -381,7 +381,7 @@
     },
     {
       "key": "iDC",
-      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili wyłączenia",
       "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
       "inputs": {
         "ikss_a": 13560.9476289,
@@ -395,15 +395,15 @@
           "pochodzenie": "PROPOZYCJA",
           "wartosc_robocza": true,
           "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+          "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
         }
       },
       "substitution_latex": "\\sqrt{2} \\cdot 13560.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0980869}",
       "result": {
         "i_dc_a": 880.096447772
       },
-      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "step": 9,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
@@ -860,7 +860,7 @@
       "result": {
         "ib_a": 20705.0643036
       },
-      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje prąd wyłączeniowy symetryczny równy początkowemu prądowi zwarciowemu (zanik strumienia maszyn nie jest uwzględniany).",
       "step": 19,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
@@ -890,7 +890,7 @@
     },
     {
       "key": "iDC",
-      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili wyłączenia",
       "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
       "inputs": {
         "ikss_a": 20705.0643036,
@@ -904,15 +904,15 @@
           "pochodzenie": "PROPOZYCJA",
           "wartosc_robocza": true,
           "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+          "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
         }
       },
       "substitution_latex": "\\sqrt{2} \\cdot 20705.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.227408}",
       "result": {
         "i_dc_a": 23.1146423755
       },
-      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "step": 20,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
@@ -1388,7 +1388,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "a8d5e4cca53ebf668dfa4db2e32e9b9c271134ec084bef03bf22a1a19b589932",
+      "result_hash": "16b5333e29a460e1689af4780f93259d80e46545809733bf47d00d71fd44bcc8",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -1399,7 +1399,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+      "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

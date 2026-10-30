@@ -487,8 +487,8 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       render(<KreatorEdycjiParametrow />);
       const sekcja = await screen.findByTestId(M);
       expect(sekcja).toHaveTextContent(
-        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
-          + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
+        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej tabliczki '
+          + 'elementu (iloczyn mocy pozornej, sprawności i współczynnika mocy), IEC 60909-0:2016 pkt 6.7.',
       );
     });
 

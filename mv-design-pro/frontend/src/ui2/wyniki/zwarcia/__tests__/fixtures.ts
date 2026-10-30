@@ -187,7 +187,8 @@ export function branchFlowTraceFixture() {
         fraction_sum: 1.0,
       },
       notes:
-        'KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik\'\'(Thevenin).',
+        'Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, '
+        + 'więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina.',
     },
   ];
 }

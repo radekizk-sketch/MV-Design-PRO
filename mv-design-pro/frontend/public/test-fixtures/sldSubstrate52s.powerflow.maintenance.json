@@ -1087,7 +1087,7 @@
     },
     "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.180288
+      "p_from_mw": 0.180287
     },
     "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_L": {
       "direction": "forward",
@@ -2444,7 +2444,7 @@
     "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/sn_field_terminal/001",
     "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/sn_field_terminal/002"
   ],
-  "enm_hash": "a883902fe3e21ac0e328a8abae605731d9e38dbfab0633099780d640c5a3711b",
+  "enm_hash": "8b0020aedcfcb4c7c355dddc5f25f499f4be52c071a199ff12003cb347d7dc1e",
   "iterations": 4,
   "open_point_branch_refs": [
     "sw/60fbcc19e136eab0191cf6d5328518c0/switch"

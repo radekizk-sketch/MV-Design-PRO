@@ -17,18 +17,18 @@
         "propozycja": {
           "jednostka": "MW",
           "nazwa_pl": "moc znamionowa (mechaniczna) jednej maszyny",
-          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa; IEC 60909-0:2016 pkt 6.7 i 9.1.2 wymagają mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), m = P_rM/p)",
+          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa; IEC 60909-0:2016 pkt 6.7 i 9.1.2 wymagają mocy czynnej znamionowej z danych maszyny (moc pozorna znamionowa z mocy czynnej, sprawności i współczynnika mocy; moc na parę biegunów z liczby par biegunów)",
           "parametr": "pr_mw",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej znamionowej S_rM — przyjęto P_rM z mocy czynnej punktu pracy elementu",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje ani mocy czynnej znamionowej, ani mocy pozornej znamionowej — przyjęto moc znamionową z mocy czynnej punktu pracy elementu",
           "wartosc": null,
-          "wplyw_pl": "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
+          "wplyw_pl": "moc pozorna znamionowa, a z nią udział maszyny w prądach zwarciowych, oraz moc na parę biegunów (zanik prądu wyłączeniowego) są proporcjonalne do mocy czynnej znamionowej — maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
         },
         "symbol": "P_rM",
         "symbol_latex": "P_{rM}",
         "wyznaczenie_z_tabliczki": {
           "klucz_tabliczki": "sn_mva",
-          "opis_pl": "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7"
+          "opis_pl": "wyznaczona z mocy pozornej znamionowej tabliczki elementu (iloczyn mocy pozornej, sprawności i współczynnika mocy), IEC 60909-0:2016 pkt 6.7"
         }
       },
       {
@@ -42,12 +42,12 @@
         "propozycja": {
           "jednostka": "1",
           "nazwa_pl": "liczba par biegunów",
-          "odniesienie": "założenie zachowawcze: tabliczka nie podaje liczby par biegunów ani prędkości znamionowej, z której liczbę par wyznacza się przy częstotliwości sieci; IEC 60909-0:2016 pkt 9.1.2 wymaga mocy na parę biegunów m = P_rM/p",
+          "odniesienie": "założenie zachowawcze: tabliczka nie podaje liczby par biegunów ani prędkości znamionowej, z której liczbę par wyznacza się przy częstotliwości sieci; IEC 60909-0:2016 pkt 9.1.2 wymaga mocy na parę biegunów (moc czynna znamionowa przez liczbę par biegunów)",
           "parametr": "pole_pairs",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Przyjęto p = 1 — największą moc na parę biegunów, a więc najsłabszy zanik prądu maszyny (współczynnik q najbliższy 1) i dla maszyny SN o mocy co najmniej 1 MW najmniejszy stosunek R_M/X_M",
+          "uzasadnienie_pl": "Przyjęto p = 1 — największą moc na parę biegunów, a więc najsłabszy zanik prądu maszyny (współczynnik q najbliższy 1) i dla maszyny SN o mocy co najmniej 1 MW najmniejszy stosunek rezystancji do reaktancji maszyny",
           "wartosc": 1.0,
-          "wplyw_pl": "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
+          "wplyw_pl": "prąd wyłączeniowy (i przy maszynie SN — współczynnik udaru) jest liczony zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy prąd wyłączeniowy"
         },
         "symbol": "p",
         "symbol_latex": "p",
@@ -64,12 +64,12 @@
         "propozycja": {
           "jednostka": "1",
           "nazwa_pl": "krotność prądu zablokowanego wirnika",
-          "odniesienie": "wartość typowa maszyn indukcyjnych (zakres spotykany 4–7); IEC 60909-0:2016 pkt 6.7 wymaga I_LR/I_rM z danych maszyny",
+          "odniesienie": "wartość typowa maszyn indukcyjnych (zakres spotykany 4–7); IEC 60909-0:2016 pkt 6.7 wymaga krotności prądu zablokowanego wirnika z danych maszyny",
           "parametr": "i_lr_ratio",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto I_LR/I_rM = 5",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto 5",
           "wartosc": 5.0,
-          "wplyw_pl": "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
+          "wplyw_pl": "impedancja maszyny jest odwrotnie proporcjonalna do krotności prądu zablokowanego wirnika — maszyna o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
         },
         "symbol": "I_LR/I_rM",
         "symbol_latex": "I_{LR}/I_{rM}",
@@ -86,12 +86,12 @@
         "propozycja": {
           "jednostka": "1",
           "nazwa_pl": "znamionowy współczynnik mocy",
-          "odniesienie": "wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny",
+          "odniesienie": "wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny",
           "parametr": "cos_phi",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85",
           "wartosc": 0.85,
-          "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
+          "wplyw_pl": "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do znamionowego współczynnika mocy"
         },
         "symbol": "cos φ_r",
         "symbol_latex": "\\cos\\varphi_r",
@@ -108,12 +108,12 @@
         "propozycja": {
           "jednostka": "1",
           "nazwa_pl": "sprawność znamionowa",
-          "odniesienie": "wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny",
+          "odniesienie": "wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, sprawności i współczynnika mocy z danych maszyny",
           "parametr": "efficiency",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95",
           "wartosc": 0.95,
-          "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do sprawności"
+          "wplyw_pl": "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do sprawności"
         },
         "symbol": "η_r",
         "symbol_latex": "\\eta_r",
@@ -132,12 +132,12 @@
         "propozycja": {
           "jednostka": "MVA",
           "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny",
+          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny",
           "parametr": "sn_mva",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu",
           "wartosc": null,
-          "wplyw_pl": "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie"
+          "wplyw_pl": "impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie"
         },
         "symbol": "S_rG",
         "symbol_latex": "S_{rG}",
@@ -154,12 +154,12 @@
         "propozycja": {
           "jednostka": "p.u. (S_rG, U_rG)",
           "nazwa_pl": "reaktancja podprzejściowa nasycona",
-          "odniesienie": "wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej",
+          "odniesienie": "wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej",
           "parametr": "xd_subtransient_pu",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u.",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u.",
           "wartosc": 0.15,
-          "wplyw_pl": "impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych"
+          "wplyw_pl": "impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych"
         },
         "symbol": "x″d",
         "symbol_latex": "x''_{d}",
@@ -176,12 +176,12 @@
         "propozycja": {
           "jednostka": "1",
           "nazwa_pl": "znamionowy współczynnik mocy",
-          "odniesienie": "wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny",
+          "odniesienie": "wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny",
           "parametr": "cos_phi",
           "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
-          "uzasadnienie_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8",
           "wartosc": 0.8,
-          "wplyw_pl": "współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych"
+          "wplyw_pl": "współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych"
         },
         "symbol": "cos φ_r",
         "symbol_latex": "\\cos\\varphi_r",

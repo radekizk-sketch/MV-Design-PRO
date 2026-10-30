@@ -574,7 +574,7 @@ describe('EkranAnalizAkademickich — dane przyjęte i wyjaśnienie werdyktu (za
     );
     const pozycje = within(panel).getAllByRole('listitem');
     const pozycjaUc = pozycje.find((p) =>
-      p.textContent?.startsWith('Napięcie trwałej pracy ogranicznika U_c (dobór wstępny): 17,5 kV'),
+      p.textContent?.startsWith('Napięcie trwałej pracy ogranicznika (dobór wstępny): 17,5 kV'),
     );
     expect(pozycjaUc).toBeDefined();
     expect(pozycjaUc).toHaveAttribute('title', expect.stringContaining('IEC 60099-5'));

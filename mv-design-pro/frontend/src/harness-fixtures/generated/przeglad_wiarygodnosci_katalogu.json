@@ -14,7 +14,7 @@
           "kod": "KAT-W-004",
           "policzone": 4,
           "pominiete": 14,
-          "powod_pominiecia": "aparat bez dodatniej zdolności wyłączania Icu albo bez prądu krótkotrwałego Icw w karcie katalogowej"
+          "powod_pominiecia": "aparat bez dodatniej zdolności wyłączania albo bez prądu krótkotrwałego wytrzymywanego w karcie katalogowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -33,7 +33,7 @@
           "kod": "KAT-W-003",
           "policzone": 24,
           "pominiete": 26,
-          "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
+          "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez zdolności wyłączania albo bez prądu krótkotrwałego wytrzymywanego w karcie katalogowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -52,7 +52,7 @@
           "kod": "KAT-W-001",
           "policzone": 0,
           "pominiete": 17,
-          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej (R0)"
+          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -71,7 +71,7 @@
           "kod": "KAT-W-001",
           "policzone": 62,
           "pominiete": 1,
-          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej (R0)"
+          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -90,7 +90,7 @@
           "kod": "KAT-W-001",
           "policzone": 25,
           "pominiete": 1,
-          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej (R0)"
+          "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -110,7 +110,7 @@
           "kod": "KAT-W-002",
           "policzone": 243,
           "pominiete": 0,
-          "powod_pominiecia": "pozycja nie niesie strat jałowych (P0) albo obciążeniowych (Pk)"
+          "powod_pominiecia": "pozycja nie niesie strat jałowych albo obciążeniowych"
         },
         {
           "kod": "KAT-W-006",
@@ -178,7 +178,7 @@
     },
     {
       "rodzina": "lv-breaker-mcb",
-      "powod": "Wyłącznik nadprądowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez pary Icw/Icu, na której działa reguła wiarygodności."
+      "powod": "Wyłącznik nadprądowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez pary prąd krótkotrwały wytrzymywany — zdolność wyłączania, na której działa reguła wiarygodności."
     },
     {
       "rodzina": "lv-fuse-link",
@@ -194,7 +194,7 @@
     },
     {
       "rodzina": "pv-inverter",
-      "powod": "Przekształtnik PV: udział zwarciowy k_sc jest bramką TWARDĄ (KAT-T-003); brak k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
+      "powod": "Przekształtnik PV: współczynnik udziału zwarciowego jest bramką TWARDĄ (KAT-T-003); brak współczynnika jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
     },
     {
       "rodzina": "shunt-capacitor",
@@ -202,11 +202,11 @@
     },
     {
       "rodzina": "surge-arrester",
-      "powod": "Ogranicznik przepięć: znamiona napięciowo-energetyczne (Um, MCOV, Ures, BIL), bez par objętych regułami."
+      "powod": "Ogranicznik przepięć: znamiona napięciowo-energetyczne (napięcie najwyższe, napięcie trwałej pracy, napięcie obniżone, poziom izolacji udarowej), bez par objętych regułami."
     },
     {
       "rodzina": "switch-equipment",
-      "powod": "Aparat łączeniowy pola: relację Icw/Icu tych samych rekordów ocenia reguła KAT-W-003 na projekcji rodziny aparatów SN — druga ocena tej samej pary byłaby zdublowanym sygnałem."
+      "powod": "Aparat łączeniowy pola: relację prądu krótkotrwałego wytrzymywanego i zdolności wyłączania tych samych rekordów ocenia reguła KAT-W-003 na projekcji rodziny aparatów SN — druga ocena tej samej pary byłaby zdublowanym sygnałem."
     },
     {
       "rodzina": "switchgear-families",
@@ -214,7 +214,7 @@
     },
     {
       "rodzina": "synchronous-generator",
-      "powod": "Generator synchroniczny: reaktancje podprzejściowe/przejściowe i stałe czasowe, bez par objętych regułami (relacja x''<x'<x nie była u nas nigdy bramką i nie ma dziś konsumenta przeglądu)."
+      "powod": "Generator synchroniczny: reaktancje podprzejściowe/przejściowe i stałe czasowe, bez par objętych regułami (relacja reaktancji podprzejściowej, przejściowej i synchronicznej nie była u nas nigdy bramką i nie ma dziś konsumenta przeglądu)."
     },
     {
       "rodzina": "vt",
@@ -230,7 +230,7 @@
       "kod": "KAT-W-001",
       "nazwa": "R0 >= R1 przewodu",
       "podstawa": "Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
-      "uzasadnienie": "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym R0 jest zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord spoza dotychczasowego zbioru."
+      "uzasadnienie": "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym rezystancja składowej zerowej jest zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord spoza dotychczasowego zbioru."
     },
     {
       "kod": "KAT-W-002",
@@ -241,14 +241,14 @@
     {
       "kod": "KAT-W-003",
       "nazwa": "Icw <= Icu aparatu SN",
-      "podstawa": "IEC 62271-100 — Icw i Icu są ODDZIELNYMI wielkościami znamionowymi",
+      "podstawa": "IEC 62271-100 — prąd krótkotrwały wytrzymywany i zdolność wyłączania są ODDZIELNYMI wielkościami znamionowymi",
       "uzasadnienie": "Prąd krótkotrwały wytrzymywany (przewodzenie bez uszkodzenia) i zdolność wyłączania (przerwanie prądu) to różne zdolności, znamionowane osobno. Globalna nierówność po całej rodzinie aparatów SN nie ma podstawy normowej i mogłaby odrzucić poprawny rekord aparatu, dla którego norma tej relacji nie narzuca."
     },
     {
       "kod": "KAT-W-004",
       "nazwa": "Icw <= Icu aparatu nN",
       "podstawa": "IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
-      "uzasadnienie": "Norma definiuje Ics JAWNIE jako procent Icu (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno (§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno wyłącznie dla tego samego wariantu, napięcia i czasu."
+      "uzasadnienie": "Norma definiuje eksploatacyjną zdolność wyłączania JAWNIE jako procent graniczną zdolność wyłączania (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla prądu krótkotrwałego wytrzymywanego takiej definicji NIE MA: norma opisuje go osobno (§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno wyłącznie dla tego samego wariantu, napięcia i czasu."
     },
     {
       "kod": "KAT-W-005",

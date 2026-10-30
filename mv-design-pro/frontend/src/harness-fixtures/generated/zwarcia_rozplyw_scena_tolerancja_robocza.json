@@ -148,7 +148,7 @@
           "sum_into_fault_a": 8311.60967663,
           "fraction_sum": 0.928345399333
         },
-        "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+        "notes": "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina."
       },
       {
         "key": "wklady_pominiete",
@@ -314,7 +314,7 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec początkowego prądu zwarciowego źródła zastępczego Thevenina 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
         "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
@@ -334,7 +334,7 @@
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego prądu albo 1e-6 A. Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "status_danych": "UNVALIDATED_INPUT",
@@ -345,7 +345,7 @@
           "wartosc": 2.5,
           "jednostka": "MVA"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -354,7 +354,7 @@
           "wartosc": 0.15,
           "jednostka": "p.u. (S_rG, U_rG)"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -363,7 +363,7 @@
           "wartosc": 0.8,
           "jednostka": "1"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       }
     ],
@@ -415,7 +415,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "6cf0ef7b5caa6366e68dfb559cb5403742f97a3b12c299cfe446bff9ce7856c9",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -426,7 +426,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+        "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -609,7 +609,7 @@
           "sum_into_fault_a": 81.9603927841,
           "fraction_sum": 0.00586081299737
         },
-        "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+        "notes": "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina."
       },
       {
         "key": "wklady_pominiete",
@@ -759,7 +759,7 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 13984.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.5+j0 A wobec I_k''(Th) = 13984.5 A; reszta ≤ dopuszczalnej 1.39845e-05 A.",
+        "substitution": "Suma fazorowa wkładów źródeł 13984.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.5+j0 A wobec początkowego prądu zwarciowego źródła zastępczego Thevenina 13984.5 A; reszta ≤ dopuszczalnej 1.39845e-05 A.",
         "substitution_latex": "\\left(13984.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(13984.5 + j 0\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 1.39845e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
@@ -779,7 +779,7 @@
           "tolerancja_a": 1.39844749902e-05,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego prądu albo 1e-6 A. Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "status_danych": "UNVALIDATED_INPUT",
@@ -790,7 +790,7 @@
           "wartosc": 2.5,
           "jednostka": "MVA"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -799,7 +799,7 @@
           "wartosc": 0.15,
           "jednostka": "p.u. (S_rG, U_rG)"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -808,7 +808,7 @@
           "wartosc": 0.8,
           "jednostka": "1"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       }
     ],
@@ -860,7 +860,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "6cf0ef7b5caa6366e68dfb559cb5403742f97a3b12c299cfe446bff9ce7856c9",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -871,7 +871,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+        "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -1063,7 +1063,7 @@
           "sum_into_fault_a": 20516.2023668,
           "fraction_sum": 1.0
         },
-        "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+        "notes": "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina."
       }
     ],
     "wklady_pominiete": null,
@@ -1179,7 +1179,7 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 20516.2+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 20516.2+j0 A wobec I_k''(Th) = 20516.2 A; reszta ≤ dopuszczalnej 2.05162e-05 A.",
+        "substitution": "Suma fazorowa wkładów źródeł 20516.2+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 20516.2+j0 A wobec początkowego prądu zwarciowego źródła zastępczego Thevenina 20516.2 A; reszta ≤ dopuszczalnej 2.05162e-05 A.",
         "substitution_latex": "\\left(20516.2 + j 0\\right) + \\left(0 + j 0\\right) = \\left(20516.2 + j 0\\right)\\,\\mathrm{A} \\approx 20516.2\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 2.05162e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
@@ -1199,7 +1199,7 @@
           "tolerancja_a": 2.05162023668e-05,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego prądu albo 1e-6 A. Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "status_danych": "UNVALIDATED_INPUT",
@@ -1219,7 +1219,7 @@
           "wartosc": 2.5,
           "jednostka": "MVA"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -1228,7 +1228,7 @@
           "wartosc": 0.15,
           "jednostka": "p.u. (S_rG, U_rG)"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -1237,7 +1237,7 @@
           "wartosc": 0.8,
           "jednostka": "1"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       }
     ],
@@ -1289,7 +1289,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "6cf0ef7b5caa6366e68dfb559cb5403742f97a3b12c299cfe446bff9ce7856c9",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1300,7 +1300,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+        "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -1461,7 +1461,7 @@
           "sum_into_fault_a": 643.64107688,
           "fraction_sum": 0.0718899534254
         },
-        "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+        "notes": "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina."
       },
       {
         "key": "wklady_pominiete",
@@ -1627,7 +1627,7 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec początkowego prądu zwarciowego źródła zastępczego Thevenina 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
         "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
@@ -1647,7 +1647,7 @@
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego prądu albo 1e-6 A. Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "status_danych": "UNVALIDATED_INPUT",
@@ -1658,7 +1658,7 @@
           "wartosc": 2.5,
           "jednostka": "MVA"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -1667,7 +1667,7 @@
           "wartosc": 0.15,
           "jednostka": "p.u. (S_rG, U_rG)"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -1676,7 +1676,7 @@
           "wartosc": 0.8,
           "jednostka": "1"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       }
     ],
@@ -1728,7 +1728,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "6cf0ef7b5caa6366e68dfb559cb5403742f97a3b12c299cfe446bff9ce7856c9",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1739,7 +1739,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+        "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -1922,7 +1922,7 @@
           "sum_into_fault_a": 3943.4983582,
           "fraction_sum": 0.85662630068
         },
-        "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+        "notes": "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu prądowi zwarciowemu źródła zastępczego Thevenina."
       },
       {
         "key": "wklady_pominiete",
@@ -2072,7 +2072,7 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 4603.52+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4603.52+j0 A wobec I_k''(Th) = 4603.52 A; reszta ≤ dopuszczalnej 4.60352e-06 A.",
+        "substitution": "Suma fazorowa wkładów źródeł 4603.52+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4603.52+j0 A wobec początkowego prądu zwarciowego źródła zastępczego Thevenina 4603.52 A; reszta ≤ dopuszczalnej 4.60352e-06 A.",
         "substitution_latex": "\\left(4603.52 + j 0\\right) + \\left(0 + j 0\\right) = \\left(4603.52 + j 0\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 4.60352e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
@@ -2092,7 +2092,7 @@
           "tolerancja_a": 4.60352239368e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego prądu albo 1e-6 A. Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "status_danych": "UNVALIDATED_INPUT",
@@ -2103,7 +2103,7 @@
           "wartosc": 2.5,
           "jednostka": "MVA"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -2112,7 +2112,7 @@
           "wartosc": 0.15,
           "jednostka": "p.u. (S_rG, U_rG)"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       },
       {
@@ -2121,7 +2121,7 @@
           "wartosc": 0.8,
           "jednostka": "1"
         },
-        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
         "jakosc": "ESTIMATED"
       }
     ],
@@ -2173,7 +2173,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "6cf0ef7b5caa6366e68dfb559cb5403742f97a3b12c299cfe446bff9ce7856c9",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -2184,7 +2184,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+        "catalog_fingerprint": "142be7eec43fc76706082a7c5eb3914905dcf1b38dd5bb2cc5004d76538beade",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",

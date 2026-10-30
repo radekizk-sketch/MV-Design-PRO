@@ -91,7 +91,7 @@ for _rodzaj in CZASY:
 WYLACZNIK = "sw-cb-abb-vd4-24kv-630a"
 STACJA = "stn/test-zaniku"
 POLE = "pole/test-zaniku"
-POCZATEK_ZDANIA = "Prąd wyłączeniowy I_b stoi na założeniach inżynierskich krzywych zaniku"
+POCZATEK_ZDANIA = "Prąd wyłączeniowy stoi na założeniach inżynierskich krzywych zaniku"
 
 
 def _migawka_ze_stacja(maszyna: str) -> tuple[dict[str, Any], str]:

@@ -1,11 +1,11 @@
 {
-  "analysis_id": "262a4a23d9385a2e56c43b6d23909da85f5e9d152afb59d3fb106b558ab02bd0",
+  "analysis_id": "8f08a689204ced4546e12fb714bae30a7276662b6996e7bbf464e8f17c545a2b",
   "context": {
     "project_name": "Scena analiz OZE",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "b60854b340ef5b888b7ac91930c999637da22fb92330238a01a93aa940276c2b",
+    "snapshot_hash": "8b9bc5df2bf697b8802c24b01bfa2d8775aa9b7315baade5861920a874e97492",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "weak_threshold": 3.0,

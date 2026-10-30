@@ -62,6 +62,15 @@ WATCHED_PATHS: list[str] = [f"backend/src/{sciezka}" for sciezka in sciezki_b01(
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
 # (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.
 SANCTIONED_CHANGES = {
+    "backend/src/network_model/solvers/ncrfg_ptpiree/": (
+        "Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "engine.py - jednostki p.u. i opisy zdolnosci/stron/FRT napisane slowami zamiast "
+        "symboli splaszczonych; zapis wzoru sladu (`trace.add` argument 3) BEZ ZMIAN - "
+        "LaTeX tych zapisow niesie rejestr warstwy aplikacji "
+        "application/ncrfg_compliance/wzory_sladu.py (test kompletnosci z AST rdzenia). "
+        "AST z normalizacja stalych tekstowych IDENTYCZNE, parytet liczbowy bit w bit. "
+        "Wpis do usuniecia po scaleniu do main."
+    ),
     "backend/src/network_model/solvers/short_circuit_iec60909.py": (
         "V12K-120: FIX pre-existing (wymiar wektora iniekcji w "
         "_build_branch_contributions_for_inverters dla scalonych wezlow) "
@@ -198,6 +207,13 @@ SANCTIONED_CHANGES = {
         "przyczyna PRZYCZYNA_KATA_NIEOKRESLONEGO w notatce kroku i polu przyczyna; krok "
         "wklady_pominiete bez sumy fazorowej. Liczby wkladow publikowanych bez zmian; testy "
         "tests/network_model/solvers/test_kat_wkladu_pominietego.py."
+        " Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "stale tekstowe prozy (uwagi, tytuly, podstawienia slowne, komunikaty) napisane "
+        "slowami zamiast symboli splaszczonych; AST z normalizacja stalych tekstowych "
+        "IDENTYCZNE, zadna zmieniona stala nie jest kluczem, indeksem ani operandem "
+        "porownania, parytet liczbowy bit w bit; tabela zmian w "
+        "docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md (Przekazanie). Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -229,6 +245,13 @@ SANCTIONED_CHANGES = {
         "przyczyna PRZYCZYNA_KATA_NIEOKRESLONEGO w notatce kroku i polu przyczyna; krok "
         "wklady_pominiete bez sumy fazorowej. Liczby wkladow publikowanych bez zmian; testy "
         "tests/network_model/solvers/test_kat_wkladu_pominietego.py."
+        " Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "stale tekstowe prozy (uwagi, tytuly, podstawienia slowne, komunikaty) napisane "
+        "slowami zamiast symboli splaszczonych; AST z normalizacja stalych tekstowych "
+        "IDENTYCZNE, zadna zmieniona stala nie jest kluczem, indeksem ani operandem "
+        "porownania, parytet liczbowy bit w bit; tabela zmian w "
+        "docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md (Przekazanie). Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "
@@ -317,6 +340,13 @@ SANCTIONED_CHANGES = {
         "odmowa nazwana. Pomiar przy partii integracji 10 (rozszerzenie WATCHED_PATHS na "
         "cala liste B-01): jedyna zmiana pliku wobec main. Wpis do usuniecia po scaleniu "
         "do main."
+        " Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "stale tekstowe prozy (uwagi, tytuly, podstawienia slowne, komunikaty) napisane "
+        "slowami zamiast symboli splaszczonych; AST z normalizacja stalych tekstowych "
+        "IDENTYCZNE, zadna zmieniona stala nie jest kluczem, indeksem ani operandem "
+        "porownania, parytet liczbowy bit w bit; tabela zmian w "
+        "docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md (Przekazanie). Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/v126_academic.py": (
         "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3 i decyzja B-01 partii 9): "
@@ -396,6 +426,13 @@ SANCTIONED_CHANGES = {
         "podstawienie kroku sladu pradu uziomowego to proza bez LaTeX-u (kontrakt kroku, "
         "`slad_proza_bez_latex_guard`), wzor symbolu zostaje w uzasadnieniu wyniku. "
         "Sonda przed/po i determinizm: docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md par. 3.21."
+        " Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "stale tekstowe prozy (uwagi, tytuly, podstawienia slowne, komunikaty) napisane "
+        "slowami zamiast symboli splaszczonych; AST z normalizacja stalych tekstowych "
+        "IDENTYCZNE, zadna zmieniona stala nie jest kluczem, indeksem ani operandem "
+        "porownania, parytet liczbowy bit w bit; tabela zmian w "
+        "docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md (Przekazanie). Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "

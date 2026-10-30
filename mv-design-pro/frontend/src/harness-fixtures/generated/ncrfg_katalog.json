@@ -903,7 +903,7 @@
     },
     {
       "test_id": "T08",
-      "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+      "ability_pl": "Tryb regulacji współczynnika mocy",
       "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
       "default_for_modules": [
         "C",
@@ -1069,5 +1069,21 @@
       "zdolnosc_id": "ncrfg_ptpiree.power_quality_declared",
       "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
     }
-  ]
+  ],
+  "wzory_sladu_latex": {
+    "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))": "\\text{wymagany} = \\text{wymuszony} \\lor \\left(\\text{klasa} \\land \\text{technologia} \\land \\lnot\\,\\text{istniejący} \\land \\left(\\text{wymaganie przez test} \\lor \\text{zakres procedury} \\lor \\text{brak certyfikatu typu} \\lor \\text{zdolność dodatkowa}\\right)\\right)",
+    "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)": "\\text{status} = K\\left(\\text{stosowalność} \\rightarrow \\text{metoda} \\rightarrow \\text{wynik} \\rightarrow \\text{podstawa} \\rightarrow \\text{niejednoznaczność} \\rightarrow \\text{margines}\\right)",
+    "ΔP = Pmax · min(1, max(|f − f_n| − db, 0) / (f_n · s)); kryterium: |s − s_wym| ≤ Δs": "\\Delta P = P_{\\max} \\cdot \\min\\left(1, \\frac{\\max\\left(\\left|f - f_{n}\\right| - d_{b}, 0\\right)}{f_{n} \\cdot s}\\right), \\quad \\left|s - s_{wym}\\right| \\le \\Delta s",
+    "r ≥ k_r · r_wym": "r \\ge k_{r} \\cdot r_{wym}",
+    "t = (1 − u) / r ≤ max(k · (1 − u) / r_wym, t_min)": "t = \\frac{1 - u}{r} \\le \\max\\left(k \\cdot \\frac{1 - u}{r_{wym}}, t_{\\min}\\right)",
+    "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka strona o mniejszym zapasie": "\\Delta Q_{dolny} = Q_{wym,\\min} - Q_{\\min}, \\quad \\Delta Q_{\\text{górny}} = Q_{\\max} - Q_{wym,\\max}, \\quad \\text{orzeka strona o mniejszym zapasie}",
+    "cosφ_min,moduł ≤ cosφ_min,wym": "\\cos\\varphi_{\\min,\\text{moduł}} \\le \\cos\\varphi_{\\min,wym}",
+    "t_zap ≤ t_max": "t_{zap} \\le t_{\\max}",
+    "moduł przyłączony ∀t, gdy U(t) ≥ U_obwiedni(t)": "\\text{moduł przyłączony}\\ \\forall t: \\ U(t) \\ge U_{obwiedni}(t)",
+    "moduł przyłączony ∀t, gdy U(t) ≤ U_obwiedni(t)": "\\text{moduł przyłączony}\\ \\forall t: \\ U(t) \\le U_{obwiedni}(t)",
+    "t_odb ≤ t_odb,wym (wymaga przebiegu P(t) z biegu dynamiki)": "t_{odb} \\le t_{odb,wym} \\quad \\text{(wymaga przebiegu } P(t) \\text{ z biegu dynamiki)}",
+    "K_FRT ≥ K_min (wymaga przebiegu I_q(t) z biegu dynamiki)": "K_{\\mathrm{FRT}} \\ge K_{\\min} \\quad \\text{(wymaga przebiegu } I_{q}(t) \\text{ z biegu dynamiki)}",
+    "każda wymagana zdolność dodatkowa realizowana (wymaga biegu dynamiki)": "\\forall\\ \\text{wymagana zdolność dodatkowa: realizowana} \\quad \\text{(wymaga biegu dynamiki)}",
+    "THD_U ≤ THD_U,max": "THD_{U} \\le THD_{U,\\max}"
+  }
 }

@@ -249,7 +249,7 @@
       "equation": {
         "equation_id": "EQ_SC1_006",
         "latex": "\\begin{aligned}\\text{1F–Z:} \\quad & I_1 = I_2 = I_0 = \\frac{U_f}{Z_k} \\\\\\text{2F:} \\quad & I_1 = \\frac{U_f}{Z_k}, \\quad I_2 = -I_1, \\quad I_0 = 0 \\\\\\text{2F–Z:} \\quad & I_1 = \\frac{U_f}{Z_k}, \\quadI_2 = -\\frac{Z_0}{Z_2 + Z_0} I_1, \\quadI_0 = -\\frac{Z_2}{Z_2 + Z_0} I_1\\end{aligned}",
-        "name_pl": "Wyznaczenie prądów składowych I₁, I₂, I₀",
+        "name_pl": "Wyznaczenie prądów składowych symetrycznych",
         "notes": "Stosować zgodnie z typem zwarcia oraz impedancją Z_k z EQ_SC1_003/004/005.",
         "standard_ref": "IEC 60909-0:2016 Annex B",
         "symbols": [
@@ -347,7 +347,7 @@
       "step_id": "SC1_STEP_004",
       "step_number": 4,
       "substitution_latex": "I_1 = 9.5263 / 1.1000 + j2.3000\\,\\text{Ω} = 1.6121 - j3.3708\\,\\text{kA}, \\quad I_2 = -I_1 = -1.6121 + j3.3708\\,\\text{kA}, \\quad I_0 = 0",
-      "title_pl": "Wyznaczenie prądów składowych I₁, I₂, I₀",
+      "title_pl": "Wyznaczenie prądów składowych symetrycznych",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kV / Ω = kA ✓",
@@ -363,7 +363,7 @@
       "equation": {
         "equation_id": "EQ_SC1_007",
         "latex": "\\begin{bmatrix} I_a \\\\ I_b \\\\ I_c \\end{bmatrix} =\\begin{bmatrix} 1 & 1 & 1 \\\\ 1 & a^2 & a \\\\ 1 & a & a^2 \\end{bmatrix}\\begin{bmatrix} I_0 \\\\ I_1 \\\\ I_2 \\end{bmatrix}",
-        "name_pl": "Rekonstrukcja prądów fazowych Ia, Ib, Ic",
+        "name_pl": "Rekonstrukcja prądów fazowych",
         "notes": "Rekombinacja składowych symetrycznych do prądów fazowych.",
         "standard_ref": "IEC 60909-0:2016 Annex B",
         "symbols": [
@@ -461,7 +461,7 @@
       "step_id": "SC1_STEP_005",
       "step_number": 5,
       "substitution_latex": "I_a = I_0 + I_1 + I_2 = 0.0000 + j0.0000\\,\\text{kA}, \\quad I_b = I_0 + a^2 I_1 + a I_2 = -5.8385 - j2.7923\\,\\text{kA}, \\quad I_c = I_0 + a I_1 + a^2 I_2 = 5.8385 + j2.7923\\,\\text{kA}",
-      "title_pl": "Rekonstrukcja prądów fazowych Ia, Ib, Ic",
+      "title_pl": "Rekonstrukcja prądów fazowych",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kA = kA ✓",
@@ -478,7 +478,7 @@
       "equation": {
         "equation_id": "EQ_SC1_008",
         "latex": "\\begin{aligned}\\text{1F–Z:} \\quad & I_k'' = \\frac{\\sqrt{3} \\cdot c \\cdot U_n}{|Z_1 + Z_2 + Z_0|} \\\\\\text{2F:} \\quad & I_k'' = \\frac{c \\cdot U_n}{|Z_1 + Z_2|} \\\\\\text{2F–Z:} \\quad & I_k'' = \\frac{c \\cdot U_n}{|Z_k|}\\end{aligned}",
-        "name_pl": "Początkowy prąd zwarciowy I″k (zwarcie asymetryczne)",
+        "name_pl": "Początkowy prąd zwarciowy (zwarcie asymetryczne)",
         "notes": "Współczynnik napięciowy c występuje WYŁĄCZNIE w tym równaniu dla dowodu SC1. ANTI-DOUBLE-COUNTING: c NIE występuje w EQ_SC1_001–007 ani EQ_SC1_009–012.",
         "standard_ref": "IEC 60909-0:2016 § 4.2 / eq. 29, 23",
         "symbols": [
@@ -548,7 +548,7 @@
       "step_id": "SC1_STEP_006",
       "step_number": 6,
       "substitution_latex": "I_k'' = \\frac{1.1000 \\cdot 15.0000}{|Z_k|} = \\frac{16.5000}{2.5495} = 6.4718\\,\\text{kA}",
-      "title_pl": "Początkowy prąd zwarciowy I″k (zwarcie asymetryczne)",
+      "title_pl": "Początkowy prąd zwarciowy (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kV / Ω = kA ✓",
@@ -576,13 +576,13 @@
             "unit": "—"
           },
           {
-            "description_pl": "Rezystancja zastępcza Z_k",
+            "description_pl": "Rezystancja impedancji zastępczej pętli zwarcia",
             "mapping_key": "r_equiv_ohm",
             "symbol": "R_k",
             "unit": "Ω"
           },
           {
-            "description_pl": "Reaktancja zastępcza Z_k",
+            "description_pl": "Reaktancja impedancji zastępczej pętli zwarcia",
             "mapping_key": "x_equiv_ohm",
             "symbol": "X_k",
             "unit": "Ω"
@@ -637,7 +637,7 @@
       "equation": {
         "equation_id": "EQ_SC1_010",
         "latex": "i_p = \\kappa \\cdot \\sqrt{2} \\cdot I_k''",
-        "name_pl": "Prąd udarowy ip (zwarcie asymetryczne)",
+        "name_pl": "Prąd udarowy (zwarcie asymetryczne)",
         "notes": "Prąd udarowy dla zwarcia asymetrycznego. Wzór identyczny jak dla 3F.",
         "standard_ref": "IEC 60909-0:2016 § 4.3.1.1 eq. (55)",
         "symbols": [
@@ -693,7 +693,7 @@
       "step_id": "SC1_STEP_008",
       "step_number": 8,
       "substitution_latex": "i_p = 1.2534 \\cdot \\sqrt{2} \\cdot 6.4718 = 1.2534 \\cdot 1.4142 \\cdot 6.4718 = 11.4718\\,\\text{kA}",
-      "title_pl": "Prąd udarowy ip (zwarcie asymetryczne)",
+      "title_pl": "Prąd udarowy (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "— · — · kA = kA ✓",
@@ -709,7 +709,7 @@
       "equation": {
         "equation_id": "EQ_SC1_012",
         "latex": "I_{dyn} = i_p",
-        "name_pl": "Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
+        "name_pl": "Prąd dynamiczny (zwarcie asymetryczne)",
         "notes": "I_dyn = i_p. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
         "standard_ref": "IEC 60909-0:2016 § 4.3.1.1",
         "symbols": [
@@ -751,7 +751,7 @@
       "step_id": "SC1_STEP_009",
       "step_number": 9,
       "substitution_latex": "I_{dyn} = i_p = 11.4718\\,\\text{kA}",
-      "title_pl": "Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
+      "title_pl": "Prąd dynamiczny (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kA = kA ✓",
@@ -766,7 +766,7 @@
       "equation": {
         "equation_id": "EQ_SC1_011",
         "latex": "I_{th} = I_k'' \\cdot \\sqrt{m + n}",
-        "name_pl": "Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
+        "name_pl": "Prąd cieplny równoważny (zwarcie asymetryczne)",
         "notes": "Prąd cieplny równoważny I_th dla doboru aparatury. m = 1, n = 0 w uproszczeniu (zwarcie odległe od generatora).",
         "standard_ref": "IEC 60909-0:2016 § 4.8 eq. (102)",
         "symbols": [
@@ -836,7 +836,7 @@
       "step_id": "SC1_STEP_010",
       "step_number": 10,
       "substitution_latex": "I_{th} = 6.4718 \\cdot \\sqrt{0.0073 + 1.0000} = 6.4718 \\cdot 1.0036 = 6.4954\\,\\text{kA}",
-      "title_pl": "Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
+      "title_pl": "Prąd cieplny równoważny (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kA · — = kA ✓",
