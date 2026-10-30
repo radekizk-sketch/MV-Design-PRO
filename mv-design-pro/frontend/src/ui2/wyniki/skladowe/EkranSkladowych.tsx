@@ -26,6 +26,7 @@ import '../wzorzec/wzorzec.css';
 
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
@@ -340,7 +341,9 @@ export function EkranSkladowych() {
                         className="mvd-skladowe-wartosc"
                         data-testid={`mvd-skladowe-doziemienie-${w.klucz}`}
                       >
-                        <dt>{w.etykieta}</dt>
+                        <dt>
+                          <TekstZWzorami tekst={w.etykieta} />
+                        </dt>
                         <dd className="mvd-num">{w.wartosc}</dd>
                       </div>
                     ))}

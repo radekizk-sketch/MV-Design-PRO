@@ -21,6 +21,7 @@
  * status → tekst i zero liczników.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -515,19 +516,19 @@ function WynikWniosku({
               <td>{zwarcia.nazwa_wezla}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIkss}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIkss} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ik_ss_ka, T.jednKA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaSk}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaSk} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.sk_mva, T.jednMVA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIp}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIp} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ip_ka, T.jednKA)}</td>
             </tr>
             <tr>
-              <th scope="row">{T.zwarciaIth}</th>
+              <th scope="row"><TekstZWzorami tekst={T.zwarciaIth} /></th>
               <td className="mvd-num">{fmtZJednostkaWniosku(zwarcia.ith_ka, T.jednKA)}</td>
             </tr>
             <tr>

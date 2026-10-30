@@ -3,7 +3,7 @@
 export const OGRANICZNIK_STRINGS = {
   eyebrow: 'MODEL SIECI · OCHRONA PRZEPIĘCIOWA',
   cel:
-    'Postaw ogranicznik przepięć (SPD) w wybranym polu SN. Parametry — U_m, MCOV, '
+    'Postaw ogranicznik przepięć (SPD) w wybranym polu SN. Parametry — $U_m$, MCOV, '
     + 'napięcie obniżone przy 10 kA, klasa energetyczna, poziom ochrony BIL — bierzesz '
     + 'z katalogu. Ogranicznik rysuje się na schemacie i wchodzi do koordynacji izolacji '
     + 'IEC 60071 (margines BIL liczy solver).',
@@ -16,13 +16,13 @@ export const OGRANICZNIK_STRINGS = {
   typKatalogPlaceholder: '— wybierz typ ogranicznika —',
   typBlad: 'Nie udało się pobrać katalogu ograniczników przepięć SN.',
   typPomoc:
-    'Typ wnosi U_m, MCOV, napięcie obniżone U_res(10 kA) i poziom ochrony BIL — '
+    'Typ wnosi $U_m$, MCOV, napięcie obniżone $U_{\\mathrm{res}}$ (10 kA) i poziom ochrony BIL — '
     + 'wartości z karty katalogowej (PN-EN 60099-4), nie z ręki.',
 
   // Parametry katalogu (odczyt).
-  paramUm: 'Najwyższe napięcie urządzenia U_m',
+  paramUm: 'Najwyższe napięcie urządzenia $U_m$',
   paramMcov: 'Trwałe napięcie robocze MCOV',
-  paramUres: 'Napięcie obniżone U_res (10 kA)',
+  paramUres: 'Napięcie obniżone $U_{\\mathrm{res}}$ (10 kA)',
   paramKlasa: 'Klasa energetyczna',
   paramBil: 'Chroniony poziom BIL',
 
@@ -31,13 +31,13 @@ export const OGRANICZNIK_STRINGS = {
   downstreamOpis:
     'Ogranicznik rysuje się na schemacie (glif SPD w gałęzi uziemiającej pola) i wchodzi '
     + 'do analizy koordynacji izolacji IEC 60071 — solver policzy margines BIL '
-    + '(U_res względem poziomu wytrzymałości udarowej) dla węzła pola.',
+    + '($U_{\\mathrm{res}}$ względem poziomu wytrzymałości udarowej) dla węzła pola.',
 
   // Kontrola / gotowość.
   kontrolaTytul: 'Kontrola ogranicznika',
   wierszTyp: 'Typ z katalogu',
   wierszMiejsce: 'Miejsce (pole/szyna)',
-  wierszUm: 'U_m',
+  wierszUm: '$U_m$',
   wierszBil: 'BIL',
 
   // Uczciwy stan zerowy.
@@ -68,7 +68,7 @@ export const OGRANICZNIK_STRINGS = {
     + 'urządzeniu poniżej jego wytrzymałości udarowej BIL. Trwałe napięcie robocze MCOV musi '
     + 'przewyższać napięcie fazowe sieci (a przy sieci izolowanej/skompensowanej — z zapasem na '
     + 'przepięcia ziemnozwarciowe TOV). Kluczowa jest różnica między poziomem ochrony (napięcie '
-    + 'obniżone U_res przy prądzie znamionowym) a poziomem BIL izolacji — margines BIL. '
+    + 'obniżone $U_{\\mathrm{res}}$ przy prądzie znamionowym) a poziomem BIL izolacji — margines BIL. '
     + 'Zbyt niskie MCOV grozi przyspieszonym starzeniem, zbyt wysokie — słabą ochroną.',
   teoriaWymog:
     'Margines koordynacji: $\\mathrm{BIL} \\ge U_{\\mathrm{res}}$ z zapasem (IEC 60071 zaleca ~20%). MCOV dobiera się do '

@@ -207,5 +207,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const wzory = within(slad).getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThan(0);
     expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
+    // Etykieta kroku to „Wzór” — identyfikator `symbol` backendu nie jest dopisywany prozą.
+    expect(slad.textContent).not.toContain('(E)');
   });
 });

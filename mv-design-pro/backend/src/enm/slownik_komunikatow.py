@@ -123,7 +123,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "f_min_hz": "f< — próg [Hz]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "factory_configuration_ref": "Blok fabryczny",  # stacja/strings.ts blokWybor
     "factory_unit_index": "Jednostki bloku (skład stały)",  # stacja/strings.ts blokJednostkiTytul
-    "feeder_ref": "Odpływ nN",  # odbior/strings.ts wierszOdplyw
+    "feeder_ref": "Odpływ nN",  # odbior/strings.ts ODBIOR_STRINGS.wierszOdplyw
     "load_ref": "Odbiór nN",  # rcd-nn/strings.ts odbior (karta W5-E-TTIT)
     "add_nn_cable_segment:from_bus_ref": "Szyna źródłowa",  # odcinek-nn/strings.ts szynaZrodlowa
     "add_nn_switch_device:from_bus_ref": "Szyna od",  # aparat-nn/strings.ts szynaOd
@@ -270,31 +270,31 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "protection_codes": "Kody zabezpieczeń pola",  # stacja/strings.ts pomiarKody
     # Formularz danych analizy akademickiej (uziom stacji, silniki) — kontekst sekcji
     # ``parameters`` wejścia solvera v126 (`api/v126_academic._with_parameter_payloads`).
-    "v126_uziom:gpz_ref": "Oznaczenie stacji",  # ui2/wyniki/akademickie/parametry.ts gpz_ref
-    "v126_uziom:rho1_ohm_m": "Rezystywność warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts rho1_ohm_m
-    "v126_uziom:rho2_ohm_m": "Rezystywność warstwy dolnej",  # ui2/wyniki/akademickie/parametry.ts rho2_ohm_m
-    "v126_uziom:h1_m": "Grubość warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts h1_m
-    "v126_uziom:length_m": "Długość uziomu",  # ui2/wyniki/akademickie/parametry.ts length_m
-    "v126_uziom:width_m": "Szerokość uziomu",  # ui2/wyniki/akademickie/parametry.ts width_m
-    "v126_uziom:mesh_spacing_m": "Rozstaw oczek siatki",  # ui2/wyniki/akademickie/parametry.ts mesh_spacing_m
-    "v126_uziom:buried_depth_m": "Głębokość ułożenia",  # ui2/wyniki/akademickie/parametry.ts buried_depth_m
-    "v126_uziom:rods_total_length_m": "Sumaryczna długość prętów",  # ui2/wyniki/akademickie/parametry.ts rods_total_length_m
-    "v126_uziom:split_factor": "Współczynnik podziału prądu",  # ui2/wyniki/akademickie/parametry.ts split_factor
-    "v126_uziom:fault_current_ka": "Prąd zwarcia doziemnego",  # ui2/wyniki/akademickie/parametry.ts fault_current_ka
-    "v126_uziom:fault_clearing_time_s": "Czas wyłączenia zwarcia",  # ui2/wyniki/akademickie/parametry.ts fault_clearing_time_s
-    "v126_uziom:surface_layer_rho_ohm_m": "Rezystywność warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_rho_ohm_m
-    "v126_uziom:surface_layer_derating": "Współczynnik redukcji warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_derating
-    "v126_silnik:ref": "Oznaczenie",  # ui2/wyniki/akademickie/parametry.ts ref
-    "v126_silnik:bus_ref": "Szyna przyłączenia",  # ui2/wyniki/akademickie/parametry.ts bus_ref
-    "v126_silnik:rated_kw": "Moc znamionowa",  # ui2/wyniki/akademickie/parametry.ts rated_kw
-    "v126_silnik:rated_voltage_kv": "Napięcie znamionowe",  # ui2/wyniki/akademickie/parametry.ts rated_voltage_kv
-    "v126_silnik:locked_rotor_multiplier": "Krotność prądu rozruchowego",  # ui2/wyniki/akademickie/parametry.ts locked_rotor_multiplier
-    "v126_silnik:start_power_factor": "Współczynnik mocy przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts start_power_factor
-    "v126_silnik:start_time_s": "Czas rozruchu",  # ui2/wyniki/akademickie/parametry.ts start_time_s
-    "v126_silnik:allowable_locked_rotor_time_s": "Dopuszczalny czas utyku",  # ui2/wyniki/akademickie/parametry.ts allowable_locked_rotor_time_s
-    "v126_silnik:max_torque_pu": "Moment maksymalny",  # ui2/wyniki/akademickie/parametry.ts max_torque_pu
-    "v126_silnik:critical_slip": "Poślizg krytyczny",  # ui2/wyniki/akademickie/parametry.ts critical_slip
-    "v126_silnik:load_start_torque_pu": "Moment obciążenia przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts load_start_torque_pu
+    "v126_uziom:bus_ref": "Szyna stacji",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.bus_ref
+    "v126_uziom:rho1_ohm_m": "Rezystywność warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.rho1_ohm_m
+    "v126_uziom:rho2_ohm_m": "Rezystywność warstwy dolnej",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.rho2_ohm_m
+    "v126_uziom:h1_m": "Grubość warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.h1_m
+    "v126_uziom:length_m": "Długość uziomu",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.length_m
+    "v126_uziom:width_m": "Szerokość uziomu",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.width_m
+    "v126_uziom:mesh_spacing_m": "Rozstaw oczek siatki",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.mesh_spacing_m
+    "v126_uziom:buried_depth_m": "Głębokość ułożenia",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.buried_depth_m
+    "v126_uziom:rods_total_length_m": "Sumaryczna długość prętów",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.rods_total_length_m
+    "v126_uziom:split_factor": "Współczynnik podziału prądu",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.split_factor
+    "v126_uziom:fault_current_ka": "Prąd zwarcia doziemnego (nadpisanie)",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.fault_current_ka
+    "v126_uziom:fault_clearing_time_s": "Czas wyłączenia zwarcia",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.fault_clearing_time_s
+    "v126_uziom:surface_layer_rho_ohm_m": "Rezystywność warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.surface_layer_rho_ohm_m
+    "v126_uziom:surface_layer_derating": "Współczynnik redukcji warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts POLA_UZIOMU.surface_layer_derating
+    "v126_silnik:ref": "Oznaczenie",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.ref
+    "v126_silnik:bus_ref": "Szyna przyłączenia",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.bus_ref
+    "v126_silnik:rated_kw": "Moc znamionowa",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.rated_kw
+    "v126_silnik:rated_voltage_kv": "Napięcie znamionowe",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.rated_voltage_kv
+    "v126_silnik:locked_rotor_multiplier": "Krotność prądu rozruchowego",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.locked_rotor_multiplier
+    "v126_silnik:start_power_factor": "Współczynnik mocy przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.start_power_factor
+    "v126_silnik:start_time_s": "Czas rozruchu",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.start_time_s
+    "v126_silnik:allowable_locked_rotor_time_s": "Dopuszczalny czas utyku",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.allowable_locked_rotor_time_s
+    "v126_silnik:max_torque_pu": "Moment maksymalny",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.max_torque_pu
+    "v126_silnik:critical_slip": "Poślizg krytyczny",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.critical_slip
+    "v126_silnik:load_start_torque_pu": "Moment obciążenia przy rozruchu",  # ui2/wyniki/akademickie/parametry.ts POLA_SILNIKA.load_start_torque_pu
 }
 
 

@@ -180,7 +180,7 @@ export function walidujFormularz(data: OdbiorFormData): BladPola[] {
   if (data.earth_electrode_r_ohm !== null && !isPositive(data.earth_electrode_r_ohm)) {
     errors.push({
       field: 'earth_electrode_r_ohm',
-      message: 'Rezystancja uziomu instalacji R_A musi być dodatnia [Ω] albo pozostać pusta.',
+      message: 'Rezystancja uziomu instalacji $R_A$ musi być dodatnia [Ω] albo pozostać pusta.',
     });
   }
   errors.push(...walidujZip(data.zip));

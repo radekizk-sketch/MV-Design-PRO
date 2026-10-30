@@ -76,6 +76,7 @@ from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
+from enm.tor_pola import ZNACZNIK_SZYNY_POMOCNICZEJ
 from enm.zero_sequence_transformer import (
     NAZWY_POLACZEN_ZEROWYCH_PL,
     ZeroSeqConnection,
@@ -199,7 +200,7 @@ def _build_snapshot_graph_element_context(
         #     czy liczymy zwarcie, decyduje rola elektryczna wezla, nie jego
         #     widocznosc na schemacie). Szyny, ktore te flagi mialy wylaczyc, i
         #     tak nosza `helper_bus`.
-        skip_short_circuit_target = "helper_bus" in tags
+        skip_short_circuit_target = ZNACZNIK_SZYNY_POMOCNICZEJ in tags
         node_context[_graph_id_from_ref(ref_id)] = {
             "element_id": ref_id,
             "element_type": "BUS",
@@ -697,41 +698,6 @@ def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
     return impedancja_przejscia_obliczeniowa(float(cast(float, r_f)), float(cast(float, x_f)))
 
 
-def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
-    """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
-
-    Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
-    (``NetworkGraph.find_islands``); element z impedancją do odniesienia = źródło
-    sieciowe (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w
-    ruchu. Metoda równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga
-    skończonej impedancji Z_kk widzianej z węzła zwarcia do odniesienia; falownik
-    jest źródłem prądowym bez impedancji (§6.8), więc wyspa zasilana wyłącznie
-    falownikami ma Y-bus osobliwą — ``np.linalg.inv`` w solverze (FROZEN, B-01)
-    oddaje wtedy liczby zależne od biblioteki algebry liniowej, nie od sieci,
-    albo (macierz dokładnie osobliwa) wywraca cały bieg. Pomiar 2026-09-05 (CI run
-    4877 vs lokalnie, sieć G04/06 rejestru): lokalnie R/X = −32 dokładnie,
-    κ ≈ 5·10⁴¹, na CI inne śmieci mieszczące się w paśmie — kwalifikacja po
-    LICZBACH była funkcją maszyny. Wyspa jest funkcją WEJŚCIA, więc kwalifikacja
-    po niej jest deterministyczna i przenośna (CI-PARYTET-5); od CV-4.3 K3b te
-    węzły są ponadto USUWANE z grafu solvera (``WejscieZwarcia.solve_graph``).
-    """
-    # Źródło sieciowe bez Z_Q (odmowa odroczona, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) nadal jest
-    # odniesieniem topologii — jego brak danej odmawia konsument impedancji, nie ta kwalifikacja.
-    wezly_odniesienia: set[str] = set(graph.wezly_zrodel_sieciowych())
-    for zrodla in (
-        graph.synchronous_machine_sources,
-        graph.asynchronous_machine_sources,
-    ):
-        wezly_odniesienia.update(
-            s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
-        )
-    bez_odniesienia: set[str] = set()
-    for wyspa in graph.find_islands():
-        if not any(wezel in wezly_odniesienia for wezel in wyspa):
-            bez_odniesienia.update(wyspa)
-    return frozenset(bez_odniesienia)
-
-
 def _nastawy_u_zrodel(snapshot: dict[str, Any]) -> dict[str, float]:
     """``ref_id`` źródła sieciowego → napięcie zadane szyny bilansującej [p.u.].
 
@@ -1209,7 +1175,7 @@ def zloz_wejscie_zwarcia(
     # albo oddawało szum. Wiersz takiego węzła buduje wykonawca bez solvera
     # (``_oznacz_wiersz_bez_odniesienia``). Podgraf dzieli obiekty elementów z
     # ``solve_graph`` (bez kopii); ``graph`` (topologia raportowalna) nietknięty.
-    wezly_bez_odniesienia = wezly_bez_impedancji_do_odniesienia(solve_graph)
+    wezly_bez_odniesienia = solve_graph.wezly_bez_impedancji_do_odniesienia()
     if wezly_bez_odniesienia:
         solve_graph = solve_graph.podgraf(
             wezel for wezel in solve_graph.nodes if wezel not in wezly_bez_odniesienia

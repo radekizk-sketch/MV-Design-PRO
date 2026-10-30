@@ -115,9 +115,15 @@ class OpisParametru:
     parametr: str
     nazwa_pl: str
     symbol: str
+    #: Ten sam symbol jako LaTeX — postać ekranowa (`MathInline`/`$…$`); `symbol` zostaje
+    #: identyfikatorem prozy śladu i raportu (`ui_math_guard`, karta UX-04/POLE-ZU).
+    symbol_latex: str
     jednostka: str
     dopuszczalne_od: float
     dopuszczalne_do: float
+    #: Jednostka jako LaTeX, gdy niesie symbole (`p.u.` na bazie `S_rG`, `U_rG`); pusta, gdy
+    #: jednostka jest zwykłym tekstem (`MVA`, `s`) — ekran pokazuje wtedy `jednostka`.
+    jednostka_latex: str = ""
     #: Parametr przyjmuje wyłącznie wartości całkowite (liczba par biegunów maszyny).
     calkowita: bool = False
 
@@ -129,6 +135,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_CZAS_WLASNY,
         nazwa_pl="czas własny wyłączania wyłącznika",
         symbol="t_b",
+        symbol_latex=r"t_b",
         jednostka="s",
         dopuszczalne_od=0.005,
         dopuszczalne_do=0.3,
@@ -137,6 +144,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_TH,
         nazwa_pl="prąd krótkotrwały wytrzymywany",
         symbol="I_k",
+        symbol_latex=r"I_k",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=100.0,
@@ -145,6 +153,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_T_TH,
         nazwa_pl="znamionowy czas trwania zwarcia",
         symbol="t_k",
+        symbol_latex=r"t_k",
         jednostka="s",
         dopuszczalne_od=0.1,
         dopuszczalne_do=5.0,
@@ -153,6 +162,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_DYN,
         nazwa_pl="prąd szczytowy wytrzymywany",
         symbol="I_p",
+        symbol_latex=r"I_p",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=250.0,
@@ -1579,6 +1589,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_POZORNA_MASZYNY,
         nazwa_pl="moc pozorna znamionowa jednej maszyny",
         symbol="S_rG",
+        symbol_latex=r"S_{rG}",
         jednostka="MVA",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_POZORNA_MASZYNY_MAX_MVA,
@@ -1587,6 +1598,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
         nazwa_pl="moc znamionowa (mechaniczna) jednej maszyny",
         symbol="P_rM",
+        symbol_latex=r"P_{rM}",
         jednostka="MW",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_ZNAMIONOWA_MASZYNY_MAX_MW,
@@ -1595,7 +1607,9 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_XD,
         nazwa_pl="reaktancja podprzejściowa nasycona",
         symbol="x″d",
+        symbol_latex=r"x''_{d}",
         jednostka="p.u. (S_rG, U_rG)",
+        jednostka_latex=r"\mathrm{p.u.}\ (S_{rG},\ U_{rG})",
         dopuszczalne_od=0.05,
         dopuszczalne_do=0.5,
     ),
@@ -1603,6 +1617,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_COS_PHI_MASZYNY,
         nazwa_pl="znamionowy współczynnik mocy",
         symbol="cos φ_r",
+        symbol_latex=r"\cos\varphi_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1611,6 +1626,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_PARY_BIEGUNOW,
         nazwa_pl="liczba par biegunów",
         symbol="p",
+        symbol_latex=r"p",
         jednostka="1",
         dopuszczalne_od=1.0,
         dopuszczalne_do=float(PARY_BIEGUNOW_MAX),
@@ -1620,6 +1636,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_KROTNOSC_I_LR,
         nazwa_pl="krotność prądu zablokowanego wirnika",
         symbol="I_LR/I_rM",
+        symbol_latex=r"I_{LR}/I_{rM}",
         jednostka="1",
         dopuszczalne_od=2.0,
         dopuszczalne_do=10.0,
@@ -1628,6 +1645,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_SPRAWNOSC,
         nazwa_pl="sprawność znamionowa",
         symbol="η_r",
+        symbol_latex=r"\eta_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1824,6 +1842,8 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
                     "parametr": parametr,
                     "nazwa_pl": OPISY_PARAMETROW_MASZYNY[parametr].nazwa_pl,
                     "symbol": OPISY_PARAMETROW_MASZYNY[parametr].symbol,
+                    "symbol_latex": OPISY_PARAMETROW_MASZYNY[parametr].symbol_latex,
+                    "jednostka_latex": OPISY_PARAMETROW_MASZYNY[parametr].jednostka_latex,
                     "jednostka": OPISY_PARAMETROW_MASZYNY[parametr].jednostka,
                     "dopuszczalne_od": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_od,
                     "dopuszczalne_do": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_do,

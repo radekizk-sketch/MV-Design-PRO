@@ -1,6 +1,8 @@
 # P18 — Protection Proof Pack (Overcurrent / Selectivity)
 
-**STATUS: CANONICAL & BINDING**
+**STATUS: SKASOWANY** (karta AB-1a Pakiet L, 2026-09-23 — `generate_protection_proof` bez
+wołających w `backend/src`; wskrzeszenie pilnuje `scripts/legacy_public_path_guard.py`). Dokument
+zostaje jako zapis historyczny.
 
 ---
 

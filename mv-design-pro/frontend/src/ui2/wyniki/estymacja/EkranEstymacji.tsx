@@ -28,6 +28,7 @@ import {
   usePoprawWModelu,
 } from '../wzorzec';
 import { useSwiezoscNaglowka } from '../../freshness';
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   fetchWymaganiaEstymacji,
   postEstymacjaStanu,
@@ -243,7 +244,9 @@ function Edytor({
     <div className="mvd-est-formularz">
       <section className="mvd-est-sekcja">
         <h3 className="mvd-est-sekcja-tytul">{S.pomiaryTytul}</h3>
-        <p className="mvd-est-pole-opis">{S.pomiaryOpis}</p>
+        <p className="mvd-est-pole-opis">
+          <TekstZWzorami tekst={S.pomiaryOpis} />
+        </p>
         <div className="mvd-est-edytor" data-testid="mvd-est-edytor">
           {wiersze.map((w, i) => {
             const flow = wymagaWezlaJ(w.meas_type, typy);

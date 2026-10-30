@@ -2103,7 +2103,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `nazwa_od`, `nazwa_do`, `z_base_ohm`). -4: pola skasowanego mostu doziemienia
     # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `pack_input`,
     # `readiness_issues`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4502." in wyjscie, wyjscie
+    # Ta sama karta, symbole jako wzory KaTeX (`ui_math_guard`, 2026-10-30): 4502 -> 4503 —
+    # POMIAR `contract_fields()` na `e73b336a1` (`git archive`: 4502) i na drzewie karty (4503).
+    # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
+    # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
+    # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

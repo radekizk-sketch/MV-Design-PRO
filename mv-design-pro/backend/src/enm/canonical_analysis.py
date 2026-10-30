@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
@@ -77,7 +77,7 @@ from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
-from enm.mapping import BrakWynikuZerowego, grid_source_graph_id
+from enm.mapping import BrakWynikuZerowego, grid_source_graph_id, ref_to_graph_id
 from enm.maszyny_robocze import parametry_robocze_maszyn_punktu, wyspy_wezlow_grafu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
@@ -136,6 +136,7 @@ from network_model.core.branch import Branch
 from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC, StanAwsc
 from network_model.core.voltage_factor import DoborC
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -400,7 +401,7 @@ def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
     ``non_physical_reason`` (addytywne pole: DLACZEGO). Zero liczb solvera w takim
     wierszu to nie strata informacji — IEC 60909 nie definiuje dla niego Z_kk, a
     wartości oddane przez odwrócenie osobliwej macierzy są szumem biblioteki, nie
-    prądem zwarciowym (patrz ``_wezly_bez_impedancji_do_odniesienia``).
+    prądem zwarciowym (patrz ``NetworkGraph.wezly_bez_impedancji_do_odniesienia``).
     """
     # Dane przyjęte, z których LICZONO prąd punktu (gałęzie z wartością roboczą, parametry
     # robocze maszyn), nie dotyczą wiersza bez prądu — wiersz ich nie niesie (dawniej zerowanie
@@ -2513,6 +2514,138 @@ def _wynik_solvera_punktu(
     return wynik, czas_tb
 
 
+def _doziemienie_sieci_wezla(
+    wejscie: WejscieZwarcia, node_id: str, wiersz: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """``doziemienie_sieci`` wiersza zwarcia jednofazowego węzła — JEDEN predykat dla biegu
+    i dla prądu uziomowego stacji (``zwarcia_doziemne_szyn``).
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): węzeł sieci SN niesie
+    doziemienie wg sposobu pracy punktu neutralnego (izolowany — I_C, kompensowany — I_res,
+    rezystor — I_F, bezpośredni — napięcia faz z Z1/Z2/Z0 rdzenia). ``None``: węzeł poza siecią
+    SN, bez impedancji do odniesienia albo z brakiem danych składowej zerowej (brak podstawy).
+    """
+    sekcja_sn = wejscie.sekcje_sn_wezlow.get(node_id)
+    brak_zerowej = wejscie.brak_wyniku_zerowego.get(node_id)
+    if (
+        sekcja_sn is None
+        or node_id in wejscie.wezly_bez_odniesienia
+        or (brak_zerowej is not None and brak_zerowej.przyczyna == "brak_danych")
+    ):
+        return None
+    return doziemienie_wiersza(
+        sekcja_sn, wejscie.stan_awsc, wiersz, z_f_ohm=wejscie.impedancja_zwarcia
+    )
+
+
+@dataclass(frozen=True)
+class ZwarcieDoziemneSzyny:
+    """Zwarcie jednofazowe z ziemią szyny modelu (scenariusz MAX, zwarcie metaliczne).
+
+    ``ikss_a`` — I″k1 rdzenia IEC 60909 (``None``: węzeł bez wyniku składowej zerowej —
+    sieć izolowana albo skompensowana, brak drogi, brak danych — albo bez impedancji do
+    odniesienia; przyczyna w ``brak_pl``). ``doziemienie`` — ``doziemienie_sieci`` węzła
+    (``_doziemienie_sieci_wezla``, ten sam co w wierszu biegu) albo ``None``. ``dane_przyjete``
+    — dane przyjęte I″k1 (JSON): te same trzy znaczniki co wiersz biegu (tolerancja sieci nN,
+    gałęzie z wartością roboczą impedancji, parametry robocze maszyn wyspy punktu)."""
+
+    bus_ref: str
+    nazwa_pl: str
+    ikss_a: float | None
+    doziemienie: dict[str, Any] | None
+    brak_pl: str | None
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
+
+
+def zwarcia_doziemne_szyn(
+    enm: EnergyNetworkModel,
+    bus_refs: Iterable[str],
+    *,
+    stan_awsc: StanAwsc = "spoczynek",
+) -> dict[str, ZwarcieDoziemneSzyny]:
+    """Zwarcie jednofazowe z ziemią szyn ``bus_refs`` liczone TĄ SAMĄ drogą co bieg zwarciowy.
+
+    Wejście z assemblera (``zloz_wejscie_zwarcia``: zwarcie 1F, scenariusz MAX, stan AWSC
+    ``stan_awsc``), punkt przez ``_wynik_solvera_punktu`` (jedyna droga biegu do rdzenia
+    IEC 60909) z c tabeli 1 dla pasma węzła, doziemienie sieci SN przez
+    ``_doziemienie_sieci_wezla``. Konsument: prąd uziomowy stacji analizy bezpieczeństwa
+    uziomu V12.6 (EN 50522 tab. 1). Szyna spoza modelu — wpis z przyczyną.
+
+    Raises:
+        OdmowaDanychError: odmowa danych wejścia zwarciowego (assembler, rdzeń).
+    """
+    wejscie = zloz_wejscie_zwarcia(
+        enm.model_dump(mode="json"),
+        {"fault_type": "1F", "scenario": "max", KLUCZ_OPCJI_STANU_AWSC: stan_awsc},
+    )
+    wezly: dict[str, str] = {}
+    wynik: dict[str, ZwarcieDoziemneSzyny] = {}
+    for bus_ref in sorted(set(bus_refs)):
+        node_id = ref_to_graph_id(bus_ref)
+        if node_id in wejscie.graph.nodes:
+            wezly[bus_ref] = node_id
+            continue
+        wynik[bus_ref] = ZwarcieDoziemneSzyny(
+            bus_ref=bus_ref,
+            nazwa_pl=SPOZA_MODELU,
+            ikss_a=None,
+            doziemienie=None,
+            brak_pl="Szyna nie należy do modelu sieci.",
+        )
+    dane_galezi = dane_przyjete_galezi_punktow(
+        wejscie.zalozenia,
+        wejscie.graph,
+        list(wezly.values()),
+        skladowe_zerowe=wejscie.skladowe_zerowe,
+    )
+    wyspy = wyspy_wezlow_grafu(wejscie.graph) if wejscie.graph.wartosci_robocze_maszyn else {}
+    for bus_ref, node_id in wezly.items():
+        nazwa = nazwa_elementu(wejscie.graph.nodes[node_id], "buses")
+        policzony = _wynik_solvera_punktu(
+            wejscie,
+            node_id,
+            c_factor=_dobor_c_punktu(wejscie, node_id).wartosc,
+            wklady=False,
+        )
+        wiersz: dict[str, Any] = policzony[0].to_dict() if policzony is not None else {}
+        brak_pl: str | None = None
+        if node_id in wejscie.wezly_bez_odniesienia:
+            brak_pl = (
+                "Węzeł bez impedancji do odniesienia — w jego wyspie nie ma źródła sieciowego "
+                "ani maszyny wirującej; zwarcie nie płynie."
+            )
+        elif node_id in wejscie.brak_wyniku_zerowego:
+            brak_pl = wejscie.brak_wyniku_zerowego[node_id].opis_pl
+        znaczniki: dict[str, Any] = {}
+        if wejscie.graph.nodes[node_id].tolerancja_nn_robocza:
+            znaczniki["tolerancja_nn_robocza"] = True
+        if node_id in dane_galezi:
+            znaczniki[KLUCZ_WIERSZA_DANE_GALEZI] = dane_galezi[node_id]
+        robocze_maszyn = parametry_robocze_maszyn_punktu(
+            wejscie.graph, node_id, wejscie.short_circuit_type, wyspy=wyspy
+        )
+        if robocze_maszyn:
+            znaczniki["parametry_robocze_maszyn"] = robocze_maszyn
+        ikss = wiersz.get("ikss_a")
+        wynik[bus_ref] = ZwarcieDoziemneSzyny(
+            bus_ref=bus_ref,
+            nazwa_pl=nazwa,
+            ikss_a=(
+                float(ikss)
+                if brak_pl is None and isinstance(ikss, int | float) and math.isfinite(ikss)
+                else None
+            ),
+            doziemienie=_doziemienie_sieci_wezla(wejscie, node_id, wiersz),
+            brak_pl=brak_pl,
+            dane_przyjete=tuple(
+                _dane_przyjete_punktu_rozplywu(
+                    znaczniki, wejscie.graph_nodes.get(node_id) or {}
+                ).get("dane_przyjete", ())
+            ),
+        )
+    return wynik
+
+
 def _zalozenie_czasu_tb_roboczego(
     punkty: list[dict[str, Any]], scenario_c: str
 ) -> list[dict[str, Any]]:
@@ -2847,16 +2980,9 @@ def _execute_short_circuit(
         # jednofazowego węzła sieci SN niesie doziemienie wg sposobu pracy punktu neutralnego
         # (izolowany — I_C, kompensowany — I_res, rezystor — I_F, bezpośredni — napięcia faz
         # z Z1/Z2/Z0 rdzenia). Węzeł z brakiem danych składowej zerowej — bez (brak podstawy).
-        sekcja_sn = wejscie.sekcje_sn_wezlow.get(node_id)
-        brak_zerowej = wejscie.brak_wyniku_zerowego.get(node_id)
-        if (
-            sekcja_sn is not None
-            and node_id not in wezly_bez_odniesienia
-            and (brak_zerowej is None or brak_zerowej.przyczyna != "brak_danych")
-        ):
-            payload[KLUCZ_DOZIEMIENIA_SIECI] = doziemienie_wiersza(
-                sekcja_sn, wejscie.stan_awsc, payload, z_f_ohm=wejscie.impedancja_zwarcia
-            )
+        doziemienie_sieci = _doziemienie_sieci_wezla(wejscie, node_id, payload)
+        if doziemienie_sieci is not None:
+            payload[KLUCZ_DOZIEMIENIA_SIECI] = doziemienie_sieci
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:

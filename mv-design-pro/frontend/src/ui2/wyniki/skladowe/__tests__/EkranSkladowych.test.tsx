@@ -438,7 +438,7 @@ const DOZIEMIENIE_KOMPENSOWANE = {
     },
     {
       key: 'doziemienie_punkty_neutralne',
-      title: 'Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o U_f',
+      title: 'Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o napięcie fazowe',
       formula_latex:
         'I_N = \\sum_p \\frac{U_f}{Z_{N,p} + Z_{0,p}/3},\\ I_w = \\mathrm{Re}\\,I_N,\\ I_L = -\\mathrm{Im}\\,I_N',
       inputs: {},
@@ -558,6 +558,19 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
       'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',
     );
     expect(screen.getByTestId('mvd-skladowe-doziemienie-niepelny')).toHaveTextContent(T.doziemienieNiepelny);
+    // Etykiety wielkości niosą symbole jako wzory składane przez KaTeX (`$I_C$`, `$U_f$`, `$k$`),
+    // nigdy zapis ASCII ani surowy `$` — każda poza prądem w miejscu doziemienia (bez symbolu).
+    const etykiety = Array.from(
+      screen.getByTestId('mvd-skladowe-doziemienie-wartosci').querySelectorAll('[data-testid] > dt'),
+    );
+    expect(etykiety.length).toBeGreaterThanOrEqual(9);
+    for (const etykieta of etykiety) {
+      const klucz = etykieta.parentElement?.getAttribute('data-testid') ?? '';
+      expect(etykieta.textContent ?? '', klucz).not.toContain('$');
+      if (klucz !== 'mvd-skladowe-doziemienie-prad') {
+        expect(etykieta.querySelector('.katex'), klucz).not.toBeNull();
+      }
+    }
   });
 
   it('ślad WHITE BOX doziemienia: kroki nazywają model, wzór i podstawienie przez KaTeX, proza poza KaTeX-em', async () => {
@@ -581,12 +594,12 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
     }
   });
 
-  it('krok śladu bez podstawienia LaTeX (B_0 nieoznaczalne) → sam wzór, proza braku nie idzie do KaTeX-a', async () => {
+  it('krok śladu bez podstawienia LaTeX (susceptancja zerowa nieoznaczalna) → sam wzór, proza braku nie idzie do KaTeX-a', async () => {
     const [pierwszy, ...reszta] = DOZIEMIENIE_KOMPENSOWANE.slad;
     mockFetchZDoziemieniem({
       ...DOZIEMIENIE_KOMPENSOWANE,
       slad: [
-        { ...pierwszy, substitution: 'B_0 nieoznaczalne: odcinek bez B′0', substitution_latex: null },
+        { ...pierwszy, substitution: 'susceptancja pojemnościowa zerowa sieci nieoznaczalna: odcinek bez B′0', substitution_latex: null },
         ...reszta,
       ],
     });

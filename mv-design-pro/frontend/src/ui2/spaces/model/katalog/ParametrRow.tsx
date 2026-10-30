@@ -10,6 +10,8 @@
  */
 
 import { formatPolishValue } from '../../../../ui/shared/formatPolishValue';
+import { TekstZWzorami } from '../../../kreatory/rama';
+import { MathInline } from '../../../../ui/proof/MathRenderer';
 import type { DefinicjaParametru } from './types';
 
 export interface ParametrRowProps {
@@ -38,10 +40,12 @@ export function ParametrRow({ definicja, wartosc }: ParametrRowProps): JSX.Eleme
   return (
     <div className="mvd-katalog__param" data-pole={definicja.symbol}>
       <div>
-        <span className="mvd-katalog__param-symbol">{definicja.symbol}</span>
+        <span className="mvd-katalog__param-symbol">
+          <MathInline latex={definicja.symbolLatex} />
+        </span>
         <span>{definicja.etykieta}</span>
         <span className="mvd-katalog__param-def">
-          {definicja.definicja} ({definicja.norma})
+          <TekstZWzorami tekst={definicja.definicja} /> ({definicja.norma})
         </span>
       </div>
       <span className="mvd-katalog__param-wartosc">{tekstWartosci}</span>

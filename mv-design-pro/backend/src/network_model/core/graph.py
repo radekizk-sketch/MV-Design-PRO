@@ -387,6 +387,43 @@ class NetworkGraph:
         wezly = {s.node_id for s in self.grid_sc_sources.values() if s.in_service}
         return sorted(wezly)
 
+    def wezly_bez_impedancji_do_odniesienia(self) -> frozenset[str]:
+        """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
+
+        Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
+        (``find_islands``); element z impedancją do odniesienia = źródło sieciowe
+        (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w ruchu. Metoda
+        równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga skończonej impedancji Z_kk
+        widzianej z węzła do odniesienia; falownik jest źródłem prądowym bez impedancji (§6.8),
+        więc wyspa zasilana wyłącznie falownikami ma Y-bus osobliwą — ``np.linalg.inv``
+        (``short_circuit_core.build_zbus``, FROZEN, B-01) oddaje wtedy liczby zależne od
+        biblioteki algebry liniowej, nie od sieci, albo (macierz dokładnie osobliwa) wywraca
+        bieg. Pomiar 2026-09-05 (CI run 4877 vs lokalnie, sieć G04/06 rejestru): lokalnie
+        R/X = −32 dokładnie, κ ≈ 5·10⁴¹, na CI inne śmieci mieszczące się w paśmie —
+        kwalifikacja po LICZBACH była funkcją maszyny. Wyspa jest funkcją WEJŚCIA, więc
+        kwalifikacja po niej jest deterministyczna i przenośna (CI-PARYTET-5).
+
+        JEDYNY predykat wysp bez odniesienia dla każdego czytelnika macierzy Z-bus sieci
+        zwarciowej: graf solvera zwarć (``enm.assembler``, CV-4.3 K3b — węzły usuwane
+        ``podgraf``) i impedancja zastępcza Thévenina szyn analiz V12.6
+        (``solver_input.v126_contracts.impedancje_zastepcze_szyn``). Źródło sieciowe bez Z_Q
+        (odmowa odroczona, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) nadal jest odniesieniem
+        topologii — jego brak danej odmawia konsument impedancji, nie ta kwalifikacja.
+        """
+        wezly_odniesienia: set[str] = set(self.wezly_zrodel_sieciowych())
+        for zrodla in (
+            self.synchronous_machine_sources,
+            self.asynchronous_machine_sources,
+        ):
+            wezly_odniesienia.update(
+                s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
+            )
+        bez_odniesienia: set[str] = set()
+        for wyspa in self.find_islands():
+            if not any(wezel in wezly_odniesienia for wezel in wyspa):
+                bez_odniesienia.update(wyspa)
+        return frozenset(bez_odniesienia)
+
     def remove_node(self, node_id: str) -> None:
         """
         Usuwa węzeł z grafu sieci.

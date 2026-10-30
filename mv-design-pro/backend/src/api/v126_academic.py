@@ -12,6 +12,7 @@ from application.analyses.v126_gotowosc import (
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import POZIOMY_IZOLACJI_IEC60071, katalog_do_dict
+from application.analyses.v126_prad_uziomowy import doloz_prad_uziomowy
 from application.analyses.v126_wzory import wzbogac_kroki_latex
 from application.execution import wykonawca_biegow
 from domain.execution import StanBiegu, stan_biegu
@@ -222,6 +223,27 @@ def _waliduj_sekcje(
         ) from exc
 
 
+def wejscie_solvera_v126(
+    enm: EnergyNetworkModel, analysis_type: V126AnalysisType, parametry: dict[str, Any]
+) -> V126AcademicInput:
+    """JEDNA składanka wejścia solvera V12.6 z modelu i parametrów projektanta — bieg z API
+    i biegi scen (skrypt fixtur harnessu, testy uczciwości) idą tą samą drogą: most modelu
+    (`build_v126_input_from_enm`), dane projektanta (`_with_parameter_payloads`) i prąd
+    zwarcia doziemnego stacji z modelu (EN 50522 tab. 1, `doloz_prad_uziomowy` — ta sama
+    funkcja co gotowość). Druga, ręczna składanka gubiła prąd z modelu (bieg uziomu sceny
+    meldował „nie wskazano szyny stacji”, choć szyna była wskazana)."""
+    return doloz_prad_uziomowy(
+        _with_parameter_payloads(
+            build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
+            parametry,
+            enm,
+        ),
+        enm,
+        analysis_type,
+        parametry,
+    )
+
+
 def _with_parameter_payloads(
     model: V126AcademicInput, parameters: dict[str, Any], enm: EnergyNetworkModel
 ) -> V126AcademicInput:
@@ -318,11 +340,7 @@ def run_v126_analysis(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=gotowosc.komunikat_odmowy(),
         )
-    model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
-        parametry,
-        enm,
-    )
+    model = wejscie_solvera_v126(enm, analysis_type, parametry)
     # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
     # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,
     # wyliczone TĄ SAMĄ oceną karty co budowa wejścia (`pominiete_zrodla_v126`,

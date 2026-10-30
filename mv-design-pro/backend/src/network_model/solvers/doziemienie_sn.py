@@ -86,7 +86,8 @@ PODSTAWA_ZAKRESU_PL = (
     "neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym)"
 )
 PODSTAWA_NAPIEC_PL = (
-    "Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f "
+    "Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek "
+    "największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem "
     "(IEC 60071-1)"
 )
 PODWOJNE_DOZIEMIENIE_PL = (
@@ -95,7 +96,7 @@ PODWOJNE_DOZIEMIENIE_PL = (
 )
 ZASTRZEZENIE_STRAT_PL = (
     "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa "
-    "czynna I_w zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową "
+    "czynna prądu doziemnego zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową "
     "transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy."
 )
 ZASTRZEZENIE_PODLUZNYCH_PL = (
@@ -308,10 +309,12 @@ PODSTAWA_WARUNKU_POJEMNOSCI_ZEROWEJ_PL = (
     "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się "
     "w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest "
     "większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). "
-    "Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym "
-    "metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony "
-    "z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje "
-    "pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych "
+    "Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do "
+    "napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) "
+    "z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony "
+    "z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji "
+    "zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy "
+    "największe k jej węzłów liczonych "
     "zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem "
     "normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
 )
@@ -422,7 +425,7 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                     f"I_C = √3·{format_liczba(dane.napiecie_kv)} kV·{format_liczba(dane.b0_s)} S "
                     f"= {_pl(i_c, '.4f')} A"
                     if i_c is not None and dane.b0_s is not None
-                    else f"B_0 nieoznaczalne: {dane.brak_b0_pl}"
+                    else f"susceptancja pojemnościowa zerowa sieci nieoznaczalna: {dane.brak_b0_pl}"
                 ),
                 (
                     rf"I_C = \sqrt{{3}}\cdot {format_liczba(dane.napiecie_kv).replace(',', '{,}')}"
@@ -441,7 +444,8 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
             slad.append(
                 _krok(
                     "doziemienie_punkty_neutralne",
-                    "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o U_f",
+                    "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego "
+                    "o napięcie fazowe",
                     r"I_N = \sum_p \frac{U_f}{Z_{N,p} + Z_{0,p}/3},\ I_w = \mathrm{Re}\,I_N,"
                     r"\ I_L = -\mathrm{Im}\,I_N",
                     {

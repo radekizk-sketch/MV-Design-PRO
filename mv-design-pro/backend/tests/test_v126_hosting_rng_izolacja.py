@@ -35,12 +35,17 @@ from solver_input.v126_contracts import (
 
 
 def _bus(ref: str, *, fault_level_mva: float = 100.0, load_mw: float = 1.0) -> V126BusInput:
+    """Szyna 15 kV z impedancją zastępczą sieci Z_th = U_n²/S_k (R/X = 0,1) — dana wejścia
+    testu (w biegu z modelu Z_th liczy most kanonicznym budowniczym sieci zwarciowej).
+    """
+    z = 15.0**2 / fault_level_mva
     return V126BusInput(
         ref=ref,
         name=ref,
         nominal_kv=15.0,
         load_mw=load_mw,
-        fault_level_mva=fault_level_mva,
+        thevenin_r_ohm=0.1 * z,
+        thevenin_x_ohm=z,
     )
 
 
@@ -292,6 +297,8 @@ def _bogaty_model(**zmiany: object) -> V126AcademicInput:
             fault_level_mva=250.0,
             source_r_ohm=0.09,
             source_x_ohm=0.89,
+            thevenin_r_ohm=0.09,
+            thevenin_x_ohm=0.89,
         ),
         V126BusInput(
             ref="ST1",
@@ -301,8 +308,18 @@ def _bogaty_model(**zmiany: object) -> V126AcademicInput:
             load_mw=1.2,
             load_mvar=0.3,
             customer_count=120,
+            thevenin_r_ohm=0.708,
+            thevenin_x_ohm=1.244,
         ),
-        V126BusInput(ref="NN1", name="nN stacji 1", nominal_kv=0.4, load_mw=0.3, customer_count=60),
+        V126BusInput(
+            ref="NN1",
+            name="nN stacji 1",
+            nominal_kv=0.4,
+            load_mw=0.3,
+            customer_count=60,
+            thevenin_r_ohm=0.0049,
+            thevenin_x_ohm=0.0157,
+        ),
     ]
     galaz = V126BranchInput(
         ref="K1",
@@ -351,6 +368,7 @@ def _bogaty_model(**zmiany: object) -> V126AcademicInput:
             )
         ],
         "earthing": V126EarthingInput(
+            bus_ref="B1",
             rho1_ohm_m=100.0,
             length_m=60.0,
             width_m=40.0,
@@ -386,6 +404,23 @@ def _zmien_trafo(model: V126AcademicInput, **pola: object) -> V126AcademicInput:
 
 _ZMIANY_NIECZYTANE = {
     "szyna.name": lambda m: _zmien_szyne(m, "ST1", name="Stacja przemianowana"),
+    # Impedancja zasilania i moc zwarciowa szyny wchodzą do Z_th w moście (kanoniczny
+    # budowniczy sieci zwarciowej) — analiza czyta Z_th, nie składniki.
+    "szyna.fault_level_mva": lambda m: _zmien_szyne(m, "GPZ", fault_level_mva=500.0),
+    "szyna.source_r_ohm": lambda m: _zmien_szyne(m, "GPZ", source_r_ohm=0.2),
+    "szyna.source_x_ohm": lambda m: _zmien_szyne(m, "GPZ", source_x_ohm=1.5),
+    "galaz.from_bus_ref": lambda m: _zmien_galaz(m, from_bus_ref="NN1"),
+    "galaz.length_km": lambda m: _zmien_galaz(m, length_km=5.0),
+    "galaz.r": lambda m: _zmien_galaz(m, r_ohm_per_km=0.3),
+    "galaz.x": lambda m: _zmien_galaz(m, x_ohm_per_km=0.2),
+    "galaz.b": lambda m: _zmien_galaz(m, b_siemens_per_km=1.0e-5),
+    "trafo.ref": lambda m: _zmien_trafo(m, ref="TR9"),
+    "trafo.hv_bus_ref": lambda m: _zmien_trafo(m, hv_bus_ref="GPZ"),
+    "trafo.lv_bus_ref": lambda m: _zmien_trafo(m, lv_bus_ref="ST1"),
+    "trafo.sn_mva": lambda m: _zmien_trafo(m, sn_mva=1.0),
+    "trafo.uhv_kv": lambda m: _zmien_trafo(m, uhv_kv=15.75),
+    "trafo.uk_percent": lambda m: _zmien_trafo(m, uk_percent=4.5),
+    "trafo.pk_kw": lambda m: _zmien_trafo(m, pk_kw=8.0),
     "szyna.load_mvar": lambda m: _zmien_szyne(m, "ST1", load_mvar=0.9),
     "szyna.generation_mw": lambda m: _zmien_szyne(m, "GPZ", generation_mw=1.5),
     "szyna.generation_mvar": lambda m: _zmien_szyne(m, "GPZ", generation_mvar=0.7),
@@ -412,19 +447,11 @@ _ZMIANY_CZYTANE = {
     "szyna.nominal_kv": lambda m: _zmien_szyne(m, "ST1", nominal_kv=20.0),
     "szyna.voltage_pu": lambda m: _zmien_szyne(m, "ST1", voltage_pu=0.98),
     "szyna.load_mw": lambda m: _zmien_szyne(m, "ST1", load_mw=2.0),
-    "szyna.fault_level_mva": lambda m: _zmien_szyne(m, "GPZ", fault_level_mva=500.0),
-    "szyna.source_r_ohm": lambda m: _zmien_szyne(m, "GPZ", source_r_ohm=0.2),
-    "szyna.source_x_ohm": lambda m: _zmien_szyne(m, "GPZ", source_x_ohm=1.5),
+    "szyna.thevenin_r_ohm": lambda m: _zmien_szyne(m, "ST1", thevenin_r_ohm=0.9),
+    "szyna.thevenin_x_ohm": lambda m: _zmien_szyne(m, "NN1", thevenin_x_ohm=0.02),
+    "galaz.to_bus_ref": lambda m: _zmien_galaz(m, to_bus_ref="NN1"),
     "galaz.is_open": lambda m: _zmien_galaz(m, is_open=True),
-    "galaz.length_km": lambda m: _zmien_galaz(m, length_km=5.0),
-    "galaz.r": lambda m: _zmien_galaz(m, r_ohm_per_km=0.3),
-    "galaz.x": lambda m: _zmien_galaz(m, x_ohm_per_km=0.2),
-    "galaz.b": lambda m: _zmien_galaz(m, b_siemens_per_km=1.0e-5),
     "galaz.ampacity": lambda m: _zmien_galaz(m, ampacity_a=180.0),
-    "trafo.sn_mva": lambda m: _zmien_trafo(m, sn_mva=1.0),
-    "trafo.uhv_kv": lambda m: _zmien_trafo(m, uhv_kv=15.75),
-    "trafo.uk_percent": lambda m: _zmien_trafo(m, uk_percent=4.5),
-    "trafo.pk_kw": lambda m: _zmien_trafo(m, pk_kw=8.0),
     "monte_carlo_n": lambda m: m.model_copy(
         update={"parameters": {**m.parameters, "hosting_monte_carlo_n": 49}}
     ),
@@ -438,7 +465,8 @@ def test_zbiory_zmian_pokrywaja_kazde_pole_kontraktu() -> None:
     for klasa, pola, prefiks in (
         (V126BusInput, v126_academic.POLA_HOSTINGU_SZYNY, "szyna."),
         (V126BranchInput, v126_academic.POLA_HOSTINGU_GALEZI, "galaz."),
-        (V126TransformerInput, v126_academic.POLA_HOSTINGU_TRANSFORMATORA, "trafo."),
+        # Transformatory nie są czytane wprost — wchodzą do Z_th szyn w moście.
+        (V126TransformerInput, (), "trafo."),
     ):
         nieczytane = set(klasa.model_fields) - set(pola)
         czytane = set(pola) - {"ref"}
@@ -453,9 +481,8 @@ def test_zbiory_zmian_pokrywaja_kazde_pole_kontraktu() -> None:
         }
         pokryte_n = {k.removeprefix(prefiks) for k in _ZMIANY_NIECZYTANE if k.startswith(prefiks)}
         pokryte_c = {k.removeprefix(prefiks) for k in _ZMIANY_CZYTANE if k.startswith(prefiks)}
-        zaciski = {"from_bus_ref", "to_bus_ref", "hv_bus_ref", "lv_bus_ref"}
         assert {skroty.get(p, p) for p in nieczytane} == pokryte_n, klasa.__name__
-        assert {skroty.get(p, p) for p in czytane - zaciski} == pokryte_c, klasa.__name__
+        assert {skroty.get(p, p) for p in czytane} == pokryte_c, klasa.__name__
 
 
 @pytest.mark.parametrize("zmiana", sorted(_ZMIANY_NIECZYTANE))

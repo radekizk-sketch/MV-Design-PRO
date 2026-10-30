@@ -241,7 +241,22 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
 
       <section className="mvd-ark-sekcja" aria-label={T.formatEyebrow}>
         <span className="mvd-ark-lbl">{T.formatEyebrow}</span>
-        <p className="mvd-ark-opis">{T.formatOpis}</p>
+        <p className="mvd-ark-opis">{T.formatWstep}</p>
+        <ul className="mvd-ark-opis" data-testid="mvd-ark-kolumny">
+          {[...T.formatArkusze, ...T.formatTabliczki].map((grupa) => (
+            <li key={grupa.nazwa}>
+              {grupa.nazwa}:{' '}
+              {grupa.kolumny.map((kolumna, i) => (
+                <span key={kolumna}>
+                  {i > 0 ? ', ' : null}
+                  <code>{kolumna}</code>
+                </span>
+              ))}
+            </li>
+          ))}
+        </ul>
+        <p className="mvd-ark-opis">{T.formatOpcjonalne}</p>
+        <p className="mvd-ark-opis">{T.formatTyp}</p>
       </section>
 
       <section className="mvd-ark-sekcja" aria-label={T.wyborEyebrow}>

@@ -202,6 +202,40 @@ solvera), nie z odcisku całego wejścia — próbka losowa przesunięta raz, ś
     nodes[].compatibility_status                                               wystawia statusu)
   hosting_capacity[stacja].hosting_capacity_mw   7,0 (ograniczenie U_max)      7,4 (ograniczenie
                                                                                I_galaz) — ziarno
+
+2026-10-30, ta sama karta, commit 5 (rdzeń B-01 `v126_academic`, wersja solvera 1.4 → 1.5).
+Impedancja zastępcza sieci w węźle (rozruch silnika, przepustowość) przychodzi z wejścia szyny
+(`thevenin_*`, w API — most z kanonicznego budowniczego sieci zwarciowej IEC 60909); fixtura
+niesie ją jawnie (`IMPEDANCJE_ZASTEPCZE`, tylko dla `ANALIZY_IMPEDANCJI_ZASTEPCZEJ`). Uziom
+wskazuje szynę stacji modelu (`bus_ref`, dawne `gpz_ref` nie wskazywało niczego), prąd zwarcia
+doziemnego stacji przychodzi z modelu wg EN 50522 tab. 1 (`PRAD_UZIOMOWY_GPZ`, tylko w biegu
+uziomu), a 8 kA fixtury zostaje NADPISANIEM projektanta — daną przyjętą ESTIMATED z prądem
+z modelu w uzasadnieniu. Liczby w zdaniach solvera (`result_pl`, uzasadnienia) w zapisie polskim.
+
+  rodzaj / wielkość                              PRZED                         PO
+  ---------------------------------------------- ----------------------------- ---------------
+  earthing_safety.gpz_ref                        szyna GPZ                     usunięte; `bus_ref`
+                                                                               (ta sama szyna)
+  earthing_safety.prad_uziomowy                  —                             przypadek SN: sieć
+                                                                               skompensowana, dławik
+                                                                               w stacji, √(I_L² +
+                                                                               I_res²) = 15,2032 A;
+                                                                               rozstrzyga nadpisanie
+  earthing_safety.{i_f_ka,dane_przyjete}         —                             8,0 kA; dana przyjęta
+                                                                               „Prąd zwarcia
+                                                                               doziemnego stacji”
+                                                                               (także w rekordach
+                                                                               ocen uziomu)
+  earthing_safety.{r_g_ohm,gpr_kv,u_*}           bez zmian                     bez zmian (I_F 8 kA)
+  motor_starting.motors[].thevenin_impedance_ohm 0,454761 + j0,971303          0,959 + j1,363
+  motor_starting.motors[].voltage_dip_percent    13,9457                       21,6705
+  motor_starting.oceny (Z-9 zapad)               SPELNIA (dowód niepełny);     NIE_SPELNIA; agregat
+                                                 agregat BRAK_DOWODU           NIE_SPELNIA
+  hosting_capacity.{dane_przyjete,               impedancja źródła z mocy      usunięte (impedancja
+    kompletnosc_dowodu}                          zwarciowej (ESTIMATED),       zastępcza z wejścia
+                                                 NIEPELNY                      szyny)
+  hosting_capacity[stacja].hosting_capacity_mw   7,4 (ograniczenie I_galaz)    7,3 (ograniczenie
+                                                                               U_max)
 """
 
 from __future__ import annotations
@@ -221,6 +255,7 @@ if str(Path(__file__).resolve().parents[2] / "src") not in sys.path:
 from application.v126_artifacts import wynik_v126_dla_powierzchni  # noqa: E402
 from network_model.solvers.v126_academic import V126AcademicSolver  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
+    ANALIZY_IMPEDANCJI_ZASTEPCZEJ,
     ANALIZY_UZIEMIENIA_SN,
     V126AcademicInput,
     V126AnalysisType,
@@ -229,6 +264,8 @@ from solver_input.v126_contracts import (  # noqa: E402
     V126HarmonicSourceInput,
     V126InsulationInput,
     V126MotorInput,
+    V126PradUziomowyInput,
+    V126PrzypadekPraduUziomowegoInput,
     V126PunktNeutralnySnInput,
     V126SiecSnInput,
     V126TransformerInput,
@@ -264,6 +301,42 @@ PARAMETRY_TRV_PROJEKTANTA: dict[str, float] = {
     "trv_tau_s": 0.00018,
     "inrush_multiple_in": 8.0,
 }
+
+
+#: Impedancja zastępcza sieci w szynach (Z_th = R_th + jX_th, Ω) — w API liczy ją most
+#: kanonicznym budowniczym sieci zwarciowej IEC 60909 (`impedancje_zastepcze_szyn`) wyłącznie
+#: dla analiz `ANALIZY_IMPEDANCJI_ZASTEPCZEJ`. Fixtura ręczna: szyna GPZ — Z_Q z mocy
+#: zwarciowej 250 MVA przy 15 kV (|Z| = 0,9 Ω, podział R/X 0,15/0,99); szyna stacji — Z_Q
+#: plus kabel 4 km (0,206 + j0,118 Ω/km). Dane wejścia ekranu, nie wyrocznia fizyki (wyrocznia
+#: Z_th z przekładnią i K_T: `tests/solver_input/test_impedancja_zastepcza_mostu_v126.py`).
+IMPEDANCJE_ZASTEPCZE: dict[str, tuple[float, float]] = {
+    REF_GPZ_SZYNA: (0.135, 0.891),
+    REF_STACJA_SZYNA: (0.959, 1.363),
+}
+
+#: Prąd zwarcia doziemnego stacji GPZ z modelu (EN 50522 tab. 1) — w API składa go
+#: `application.analyses.v126_prad_uziomowy.prad_uziomowy_z_modelu` wyłącznie dla biegu uziomu.
+#: Sieć skompensowana z dławikiem gaszącym w tej stacji: prąd resztkowy 2,477474 A z biegu
+#: `neutral_earthing_design` tej fixtury, prąd dławika 15 A (nastawa punktu neutralnego).
+PRAD_UZIOMOWY_GPZ = V126PradUziomowyInput(
+    bus_ref=REF_GPZ_SZYNA,
+    nazwa_stacji_pl="GPZ Zachód",
+    przypadki=[
+        V126PrzypadekPraduUziomowegoInput(
+            strona="SN",
+            nazwa_pl="Sieć SN 15 kV — GPZ Zachód — szyny SN",
+            bus_ref=REF_GPZ_SZYNA,
+            tryb="kompensowany",
+            prad_doziemienia_a=2.477474,
+            i_l_a=15.0,
+            dlawik_w_stacji=True,
+            brak_ikss_pl=(
+                "Sieć SN skompensowana: prąd doziemienia jest prądem resztkowym, nie prądem "
+                "zwarciowym IEC 60909-0."
+            ),
+        )
+    ],
+)
 
 
 def model_wejsciowy() -> V126AcademicInput:
@@ -339,7 +412,7 @@ def model_wejsciowy() -> V126AcademicInput:
             # liczonych). Liczby równe dawnym domyślnym solvera, więc wielkości liczbowe fixtury
             # się nie przesuwają; zmienia się tylko to, że są daną WPISANĄ.
             "earthing": {
-                "gpz_ref": REF_GPZ_SZYNA,
+                "bus_ref": REF_GPZ_SZYNA,
                 "rho1_ohm_m": 100.0,
                 "rho2_ohm_m": 500.0,
                 "h1_m": 0.5,
@@ -349,6 +422,8 @@ def model_wejsciowy() -> V126AcademicInput:
                 "buried_depth_m": 0.6,
                 "rods_total_length_m": 40.0,
                 "split_factor": 0.65,
+                # Nadpisanie projektanta (dana przyjęta) — prąd z modelu (`PRAD_UZIOMOWY_GPZ`)
+                # zostaje w śladzie i w uzasadnieniu jako wartość zastąpiona.
                 "fault_current_ka": 8.0,
                 "fault_clearing_time_s": 0.5,
                 "surface_layer_rho_ohm_m": 2500.0,
@@ -442,6 +517,42 @@ def model_wejsciowy() -> V126AcademicInput:
     )
 
 
+def wejscie_rodzaju(model: V126AcademicInput, analysis_type: V126AnalysisType) -> V126AcademicInput:
+    """Wejście solvera rodzaju — składane jak w ścieżce API (`build_v126_input_from_enm`):
+    uziemienie sieci SN WYŁĄCZNIE dla analiz zależnych od punktu neutralnego (odcisk wejścia
+    pozostałych, np. ziarno Monte Carlo przepustowości, nie zależy od uziemienia), impedancja
+    zastępcza sieci wyłącznie dla analiz, które ją czytają, prąd uziomowy z modelu wyłącznie
+    w biegu uziomu, parametry obwodu napięcia powrotnego wyłącznie w biegu TRV."""
+    wybrane = (
+        model
+        if analysis_type in ANALIZY_UZIEMIENIA_SN
+        else model.model_copy(update={"uziemienie_sn": None})
+    )
+    if analysis_type in ANALIZY_IMPEDANCJI_ZASTEPCZEJ:
+        wybrane = wybrane.model_copy(
+            update={
+                "buses": [
+                    szyna.model_copy(
+                        update={
+                            "thevenin_r_ohm": IMPEDANCJE_ZASTEPCZE[szyna.ref][0],
+                            "thevenin_x_ohm": IMPEDANCJE_ZASTEPCZE[szyna.ref][1],
+                        }
+                    )
+                    for szyna in wybrane.buses
+                ]
+            }
+        )
+    if analysis_type is V126AnalysisType.EARTHING_SAFETY:
+        wybrane = wybrane.model_copy(update={"prad_uziomowy": PRAD_UZIOMOWY_GPZ})
+    if analysis_type is V126AnalysisType.TRANSIENT_TRV:
+        # Parametry obwodu napięcia powrotnego wpisuje projektant w formularzu biegu (solver
+        # nie ma wartości zastępczych) — tylko w biegu TRV, jak w ścieżce API.
+        wybrane = wybrane.model_copy(
+            update={"parameters": {**wybrane.parameters, **PARAMETRY_TRV_PROJEKTANTA}}
+        )
+    return wybrane
+
+
 def zbuduj_odpowiedzi() -> dict[str, Any]:
     """Uruchamia solver dla KAŻDEGO rodzaju kontraktu i zwraca ładunki wyników TAK, jak
     widzi je ekran: przez granicę `wynik_v126_dla_powierzchni` (ta sama funkcja, którą woła
@@ -455,26 +566,10 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     # z migawki biegu; tu źródłem nazw są szyny modelu wejściowego (karta #144).
     # Gałęzie wejścia V12.6 nie niosą nazwy — w API indeks obejmuje każdy element migawki.
     nazwy = {szyna.ref: szyna.name for szyna in model.buses} | {REF_KABEL: NAZWA_KABLA}
-    # Uziemienie sieci SN niosą WYŁĄCZNIE analizy zależne od punktu neutralnego — tak jak
-    # w ścieżce API (`build_v126_input_from_enm(analysis_type=...)`); pozostałe rodzaje
-    # dostają wejście bez niego (ich odcisk wejścia, np. ziarno Monte Carlo przepustowości
-    # przyłączeniowej, nie zależy od uziemienia).
-    bez_uziemienia = model.model_copy(update={"uziemienie_sn": None})
-
-    def wejscie(analysis_type: V126AnalysisType) -> V126AcademicInput:
-        wybrane = model if analysis_type in ANALIZY_UZIEMIENIA_SN else bez_uziemienia
-        if analysis_type is V126AnalysisType.TRANSIENT_TRV:
-            # Parametry obwodu napięcia powrotnego wpisuje projektant w formularzu biegu (solver
-            # nie ma wartości zastępczych) — tylko w biegu TRV, jak w ścieżce API.
-            return wybrane.model_copy(
-                update={"parameters": {**wybrane.parameters, **PARAMETRY_TRV_PROJEKTANTA}}
-            )
-        return wybrane
-
     return {
         analysis_type.value: wynik_v126_dla_powierzchni(
             analysis_type.value,
-            solver.run(analysis_type, wejscie(analysis_type)),
+            solver.run(analysis_type, wejscie_rodzaju(model, analysis_type)),
             nazwy=nazwy,
         )["result"]
         for analysis_type in V126AnalysisType

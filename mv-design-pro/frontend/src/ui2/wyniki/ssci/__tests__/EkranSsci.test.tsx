@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useSelectionStore } from '../../../../ui/selection/store';
@@ -142,7 +142,16 @@ describe('EkranSsci — ślad WHITE BOX (tryb ekspercki)', () => {
     const otworz = screen.getByTestId('mvd-ssci-slad-otworz');
     expect(screen.queryByTestId('mvd-ssci-slad')).not.toBeInTheDocument();
     fireEvent.click(otworz);
-    expect(screen.getByTestId('mvd-ssci-slad')).toBeInTheDocument();
+    const slad = screen.getByTestId('mvd-ssci-slad');
+    expect(slad).toBeInTheDocument();
+    // Kolumna „Wzór” renderuje `formula_latex` KaTeX-em; identyfikator kroku (`max|L|`)
+    // nie trafia na ekran jako tekst ASCII (`ui_math_guard`, karta UX-04/ZU).
+    expect(
+      within(slad)
+        .getAllByTestId('math-rendered')
+        .map((wzor) => wzor.getAttribute('data-latex')),
+    ).toContain('\\max_f |L(j\\omega)|');
+    expect(slad.textContent).not.toContain('max|L|');
   });
 });
 

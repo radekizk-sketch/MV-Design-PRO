@@ -30,6 +30,7 @@ import { POWODY_NIEPREZENTOWANIA } from '../nieprezentowane';
 import { PREZENTACJA } from '../prezentacja';
 import { AKADEMICKIE_STRINGS as S } from '../strings';
 import { CASE_ID, KATALOG, ODPOWIEDZI, migawkaSieciZlotej, ustawFetchV126 } from './atrapyV126';
+import { czekajNaKatalogKart } from './katalogKart';
 
 const RODZAJE = Object.keys(PREZENTACJA);
 
@@ -213,7 +214,7 @@ describe('strażnik prezentacji — katalog kart na realnym katalogu i gotowośc
   it('katalog kart: żadna widoczna etykieta karty ani stan danych nie jest kodem produkcyjnym', async () => {
     ustawFetchV126();
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    await czekajNaKatalogKart();
     await waitFor(() => expect(screen.getByTestId('mvd-akad-karta-uncertainty_sensitivity')).toHaveTextContent(S.stanDanychPotwierdzona));
     expect(naruszenia(screen.getByTestId('mvd-akad-ekran'))).toEqual([]);
   });
@@ -384,7 +385,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   it('świeżość mówi „brak wyników” DOPÓKI przebiegu nie ma (kontrola dodatnia pary)', async () => {
     ustawFetchV126();
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    await czekajNaKatalogKart();
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
