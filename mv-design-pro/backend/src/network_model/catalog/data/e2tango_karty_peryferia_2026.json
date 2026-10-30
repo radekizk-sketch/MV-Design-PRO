@@ -714,20 +714,25 @@
       "kod": "TRC1",
       "opis": "Wykonanie 450 z cewkami Rogowskiego, 3–3000 mV",
       "modele_potwierdzone": [
+        "250",
         "450"
       ],
       "zrodla": [
+        "s250",
         "s450"
       ],
-      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA",
+      "rozbieznosc_nazwy_250": "K-42.1.8 oznacza TRCI (litera I) w formularzu; interpretacja TRC1 bez potwierdzonego kodu zamówienia wymaga sprawdzenia."
     },
     {
       "kod": "TRC2",
       "opis": "Wykonanie 450 z cewkami Rogowskiego, 9–9000 mV",
       "modele_potwierdzone": [
+        "250",
         "450"
       ],
       "zrodla": [
+        "s250",
         "s450"
       ],
       "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
@@ -736,9 +741,11 @@
       "kod": "TRC3",
       "opis": "Wykonanie 450 z cewkami Rogowskiego, 30–30000 mV",
       "modele_potwierdzone": [
+        "250",
         "450"
       ],
       "zrodla": [
+        "s250",
         "s450"
       ],
       "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
@@ -1032,7 +1039,7 @@
     },
     {
       "id": "R-250-ARC",
-      "opis": "K-42.1.8 tabela możliwości 250 wymienia czujniki błysku, ale formularz KROK 2 nie zawiera karty ARC; nie zakładać zamawialności bez producenta",
+      "opis": "K-42.1.8 tabela możliwości 250 wymienia czujniki błysku, ale formularz KROK 2 nie zawiera karty ARC; nie zakładać zamawialności bez producenta Również oznaczenie TRCI/TRC1 w tym formularzu wymaga potwierdzenia przed wygenerowaniem kodu.",
       "models": [
         "250"
       ],
@@ -1040,7 +1047,7 @@
     },
     {
       "id": "R-450-NAMES",
-      "opis": "K-43.1.7 używa 6O3I i AO10/AO20, bieżący formularz online 603I i A010/A020; nie tworzyć odrębnych modeli dla literówek bez potwierdzenia",
+      "opis": "K-43.1.7 używa 6O3I i AO10/AO20, bieżący formularz online 603I i A010/A020; nie tworzyć odrębnych modeli dla literówek bez potwierdzenia Dodatkowo formularz online nazywa kartę 603I '6 wejść przekaźnikowych', podczas gdy karta K-43.1.7 opisuje 6 wyjść przekaźnikowych; do schematów wykorzystać wyłącznie sprawdzony opis wyjść/terminali DTR.",
       "models": [
         "450"
       ],
