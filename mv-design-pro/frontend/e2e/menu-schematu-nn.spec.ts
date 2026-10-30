@@ -13,6 +13,7 @@
  * odcinki” jest dostępne, a po scaleniu model ma jeden kabel nN.
  */
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -162,7 +163,8 @@ async function zoomujAzWidoczne(page: Page, selector: string): Promise<Locator> 
 async function otworzPortalNn(page: Page): Promise<void> {
   const selektor = '[data-symbol-canon="lvPortal"]';
   const portal = await zoomujAzWidoczne(page, selektor);
-  await page.waitForTimeout(400);
+  // Spoczynek kadru po przybliżeniu zamiast sztywnej pauzy (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(portal);
   const punkt = await portal.evaluate((el) => {
     const testId = el.closest('[data-testid]')?.getAttribute('data-testid') ?? null;
     const rect = (el as SVGGraphicsElement).getBoundingClientRect();
@@ -192,7 +194,8 @@ async function otworzPortalNn(page: Page): Promise<void> {
  */
 async function prawyKlikObiektuNn(page: Page, cel: Locator): Promise<void> {
   await cel.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
-  await page.waitForTimeout(200);
+  // Spoczynek po przewinięciu zamiast sztywnej pauzy (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(cel);
   const punkt = await cel.evaluate((el) => {
     const rect = el.getBoundingClientRect();
     for (const f of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {

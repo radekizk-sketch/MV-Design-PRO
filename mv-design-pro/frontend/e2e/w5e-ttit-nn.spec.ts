@@ -23,6 +23,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 import { katalogZrzutow } from './katalogZrzutow';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/w5e_ttit'));
@@ -208,6 +209,8 @@ async function otworzSchemat(page: Page, seed: Awaited<ReturnType<typeof zbudujS
 async function otworzPortalNn(page: Page): Promise<void> {
   const portal = page.locator('[data-testid="sld-v3-symbols"] [data-symbol-canon="lvPortal"]').first();
   await expect(portal).toBeVisible({ timeout: 30000 });
+  // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(portal);
   const box = await portal.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
@@ -262,6 +265,8 @@ for (const motyw of MOTYWY) {
     // wypaść w pustym polu między symbolem a etykietą, gdzie zdarzenie nie trafia w `<g>`.
     const etykieta = aparat.locator('text').first();
     await expect(etykieta).toBeVisible();
+    // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+    await czekajNaStabilnaGeometrie(etykieta);
     const box = await etykieta.boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.click(box!.x + Math.min(10, box!.width / 2), box!.y + box!.height / 2);

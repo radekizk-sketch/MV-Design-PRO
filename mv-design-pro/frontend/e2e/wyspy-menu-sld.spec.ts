@@ -20,6 +20,7 @@
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import type { Bay } from '../src/types/enm';
 import { polaSnStacji } from '../src/ui/shared/polaStacji';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -250,21 +251,6 @@ async function zoomujAzWidoczne(page: Page, selector: string, deltaY: number): P
   return target;
 }
 
-/** Geometria elementu stabilna = dwa kolejne odczyty bboxa identyczne (kamera
- *  po ficie, panele po pomiarze). Realny warunek zamiast sztywnego sleep. */
-async function czekajNaStabilnaGeometrie(page: Page, cel: Locator): Promise<void> {
-  let poprzedni = '';
-  for (let i = 0; i < 40; i += 1) {
-    const biezacy = await cel.evaluate((el) => {
-      const rect = (el as SVGGraphicsElement).getBoundingClientRect();
-      return `${Math.round(rect.x)}:${Math.round(rect.y)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
-    });
-    if (biezacy === poprzedni) return;
-    poprzedni = biezacy;
-    await page.waitForTimeout(250);
-  }
-}
-
 test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dyspozycyjnego z kontekstem elementu (bramka K5-A)', async ({ page, request }) => {
   test.setTimeout(240000);
 
@@ -292,7 +278,7 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
   // Kamera wykonuje fit po pomiarze kontenera (useMeasuredSize) — czekamy,
   // aż geometria szyny będzie STABILNA między dwoma odczytami, żeby punkt
   // kliku nie „odjechał" między pomiarem a zdarzeniem myszy.
-  await czekajNaStabilnaGeometrie(page, szyna);
+  await czekajNaStabilnaGeometrie(szyna);
   // WSPÓŁRZĘDNE CAŁKOWITE: zdarzenia myszy CDP niosą całkowite piksele,
   // więc sonda elementFromPoint musi próbkować DOKŁADNIE ten sam punkt —
   // ułamek piksela potrafi przełączyć trafienie między nakładającymi się

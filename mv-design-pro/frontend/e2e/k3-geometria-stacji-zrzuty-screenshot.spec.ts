@@ -32,6 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { wykonajBiegDoKonca } from './biegi';
 import { katalogZrzutow } from './katalogZrzutow';
 import { BACKEND_BASE, kable, otworzAplikacje, siecKadrow, ustawMotyw } from './siecKadrowStacji';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-10', 'geometria-stacji'));
@@ -213,6 +214,8 @@ test('GEOMETRIA-STACJI — stacje pięciu rodzajów z topologii, sekcje i sprzę
     await kadrStacji(page, sekcyjna);
     const poleWe = (model.bays ?? []).find((b) => b.substation_ref === sekcyjna.ref_id && b.bay_role === 'IN')!;
     const aparat = kanwa.locator(`g[data-owner-ref="${poleWe.ref_id}"][data-device-ref]`).first();
+    // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+    await czekajNaStabilnaGeometrie(aparat);
     const ramka = (await aparat.boundingBox())!;
     await page.mouse.click(ramka.x + ramka.width / 2, ramka.y + ramka.height / 2);
     const obrys = kanwa.locator('[data-testid="sld-v3-zaznaczenie"] rect').first();

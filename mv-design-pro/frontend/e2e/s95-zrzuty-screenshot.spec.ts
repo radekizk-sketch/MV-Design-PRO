@@ -20,6 +20,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -169,6 +170,8 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
       // Klik NATYWNY myszą w rzeczywisty punkt uchwytu: `locator.click` odrzuca
       // cienkie kreski SVG jako „niewidoczne" (heurystyka aktorowalności), a to
       // jest dokładnie ten kształt, który karta S9-4 uczyniła klikalnym.
+      // Spoczynek kadru po zamknięciu poprzedniego menu (klasa G karty FIX-E2E-PELNE).
+      await czekajNaStabilnaGeometrie(uchwyt);
       const box = await uchwyt.boundingBox();
       if (!box) continue;
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });

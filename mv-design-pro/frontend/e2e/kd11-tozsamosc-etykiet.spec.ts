@@ -18,6 +18,7 @@
  *  5. przybliżenie kółkiem ⇒ dane szczegółowe wracają (licznik ukrytych maleje).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -250,6 +251,8 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
     has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
   });
   await expect(wezelBloku).toHaveCount(1);
+  // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(wezelBloku);
   const box = await wezelBloku.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);

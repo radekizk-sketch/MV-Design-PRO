@@ -23,6 +23,7 @@
  * naprawdę urosnąć, nie tylko rysunek.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 /**
@@ -185,6 +186,9 @@ async function prawyKlikWUchwyt(page: Page, uchwyt: ReturnType<Page['locator']>)
   await expect
     .poll(async () => ((await uchwyt.boundingBox().catch(() => null))?.width ?? 0), { timeout: 60000 })
     .toBeGreaterThan(0);
+  // Punkt liczymy dopiero, gdy kadr przestał się ruszać: zamknięcie poprzedniego menu
+  // i zmiana zaznaczenia przesuwają kamerę jeszcze ~1 s (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(uchwyt);
   // Klik NATYWNY myszą w rzeczywistym punkcie ekranu zajmowanym przez uchwyt.
   // `locator.click` odrzuca cienkie kreski SVG jako „niewidoczne" (heurystyka
   // aktorowalności Playwrighta), a to jest właśnie ten kształt, który karta

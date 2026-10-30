@@ -209,8 +209,6 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
       await page.setViewportSize({ width: WIDOK.szerokosc, height: WIDOK.wysokosc });
       const bledy = await otworzKanwe(page, 2, 'dark');
 
-      // SONDA-TMP
-      console.log('SONDA AUD', await page.evaluate(() => [...new Set([...document.querySelectorAll('[data-owner-ref*="sn-bus"]')].map((e) => `${e.tagName} ${e.getAttribute('data-owner-ref')}`))].join('\n')));
       const kotwica = page.locator(obszar.kotwica);
       await expect(
         kotwica,
