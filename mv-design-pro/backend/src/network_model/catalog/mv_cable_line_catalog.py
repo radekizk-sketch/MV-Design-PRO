@@ -269,6 +269,8 @@ def _line_family(record_id: str) -> str:
 
 
 def _cable_family(record_id: str) -> str:
+    if record_id.startswith("cable-enea-2026-nkt-"):
+        return "NKT_ENEA_2026"
     if record_id.startswith("cable-enea-operator-"):
         return "ENEA_OPERATOR"
     if record_id.startswith("cable-nkt-"):
@@ -2079,7 +2081,9 @@ def _kabel_nkt_zgodny_z_enea_2026(
             "catalog_status": "PRODUKCYJNY_V1",
             "contract_version": CATALOG_CONTRACT_VERSION,
             "verification_note": (
-                "R20/C/L/Ith/Iz z NKT CTL00109 rev. 4 (L w trójkąt, f=50 Hz). "
+                "R20/C/L/Ith/Iz z NKT "
+                + ("CTL00109 rev. 4" if rodzina == "XRUHAKXS1" else "CTL00352 rev. 1")
+                + " (L w trójkąt, f=50 Hz). "
                 "Iz dotyczy gruntu 20°C, rezystywności 1,0 K m/W, "
                 "głębokości 0,7 m, obciążenia 0,7, kabli w trójkąt. "
                 "Ith żyły powrotnej 5 kA/1 s z tabeli NKT; "
