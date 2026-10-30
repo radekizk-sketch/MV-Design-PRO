@@ -36,7 +36,11 @@ from .slownik_komunikatow import (
     opis_obiektu,
     pole,
 )
-from .stan_normalny import migruj_punkty_podzialu_slownika
+from .stan_normalny import (
+    RODZAJE_GALEZI_LACZNIKA,
+    RodzajGaleziLacznika,
+    migruj_punkty_podzialu_slownika,
+)
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -456,7 +460,7 @@ class SwitchBranch(BranchBase):
     bazowy zostaje bez zmian.
     """
 
-    type: Literal["switch", "breaker", "bus_coupler", "disconnector"]
+    type: RodzajGaleziLacznika
     r_ohm: float | None = None
     x_ohm: float | None = None
     normal_state: Literal["closed", "open"] | None = None
@@ -468,11 +472,8 @@ class FuseBranch(BranchBase):
     rated_voltage_kv: float | None = None
 
 
-#: Rodzaje gałęzi łącznika (``SwitchBranch.type``) — JEDNO źródło listy w backendzie,
-#: wyprowadzone z typu pola. Front dostaje je przez wyrocznię harnessu
-#: ``rodzaje_wielkosci_zwarciowych_aparatury.json`` (``rodzaje_galezi``, test parytetu
-#: ``types/enm.ts``).
-RODZAJE_GALEZI_LACZNIKA: tuple[str, ...] = get_args(SwitchBranch.model_fields["type"].annotation)
+#: Rodzaje gałęzi łącznika (``SwitchBranch.type``) — ``RODZAJE_GALEZI_LACZNIKA`` z
+#: ``enm.stan_normalny`` (jedyna definicja, typ pola ``RodzajGaleziLacznika``).
 #: Rodzaje gałęzi aparatu łączeniowego: łączniki i bezpiecznik (``FuseBranch.type``) —
 #: zamknięty aparat SCALA szyny w jeden węzeł elektryczny, linia i kabel są impedancją.
 RODZAJE_GALEZI_APARATU: frozenset[str] = frozenset(

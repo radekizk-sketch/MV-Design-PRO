@@ -1152,7 +1152,7 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
             rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
             for rodzaj in sorted(RODZAJE_APARATURY_LACZENIOWEJ)
         },
-        # Rodzaje gałęzi modelu (`Branch.type`) — wyrocznia list `types/enm.ts`
+        # Rodzaje gałęzi modelu (`Branch.type`) — wyrocznia list `types/rodzajeGalezi.ts`
         # (`RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`, `RODZAJE_GALEZI_APARATU`) i słownika
         # nazw `ui/shared/rodzajGalezi.ts` (`RODZAJ_GALEZI_PL`).
         "rodzaje_galezi": {

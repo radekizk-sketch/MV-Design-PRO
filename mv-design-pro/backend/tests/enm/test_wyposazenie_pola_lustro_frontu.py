@@ -5,10 +5,13 @@ wiersze aparatów wg tablic backendu (który rodzaj ma katalog i jaką przestrze
 gałąź łącznika, który ma rolę uziemienia). Rozjazd tablic nie jest odrzucany przez backend
 po cichu — ale formularz zaproponowałby pole, którego backend nie przyjmie (fantom), albo
 schowałby pole, którego backend wymaga. Lustro stanu łącznika
-(``frontend/src/types/enm.ts::isSwitchBranch`` / ``isFuseBranch``) decyduje, które gałęzie
-front traktuje jako łącznik i jako łącznik z pozycją normalną — rozjazd z
-``RODZAJE_GALEZI_APARATU`` / ``TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM`` to ten sam defekt, który
-karta usuwa (dwie prawdy o punkcie podziału).
+(``frontend/src/types/rodzajeGalezi.ts::KLASA_RODZAJU_GALEZI`` — źródło ``isSwitchBranch`` /
+``isApparatusBranch``) decyduje, które gałęzie front traktuje jako aparat i jako łącznik
+z pozycją normalną — rozjazd z ``RODZAJE_GALEZI_APARATU`` / ``RODZAJE_GALEZI_LACZNIKA`` to ten
+sam defekt, który karta usuwa (dwie prawdy o punkcie podziału). Parytet listy z frontem niesie
+też wyrocznia harnessu (``rodzaje_galezi``, ``frontend/src/ui/shared/__tests__/
+rodzajGalezi.test.ts``); ten test czyta mapę źródłową frontu wprost, więc rozjazd zapala
+czerwień także bez regeneracji fikstur.
 
 KLASA, NIE INSTANCJA: porównywana jest KAŻDA tablica lustra w obie strony, nie jeden rodzaj.
 """
@@ -19,8 +22,12 @@ import re
 import typing
 from pathlib import Path
 
-from enm.models import RODZAJE_GALEZI_APARATU, BayBaseModel, BayPrimaryDevice
-from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+from enm.models import (
+    RODZAJE_GALEZI_APARATU,
+    RODZAJE_GALEZI_LACZNIKA,
+    BayBaseModel,
+    BayPrimaryDevice,
+)
 from enm.wyposazenie_pola import (
     NAZWY_RODZAJOW_APARATU_POLA_PL,
     PRZESTRZEN_KATALOGU_APARATU,
@@ -33,6 +40,7 @@ from enm.wyposazenie_pola import (
 _FRONT = Path(__file__).resolve().parents[3] / "frontend" / "src"
 _WYPOSAZENIE_TS = (_FRONT / "ui" / "field" / "wyposazeniePola.ts").read_text(encoding="utf-8")
 _ENM_TS = (_FRONT / "types" / "enm.ts").read_text(encoding="utf-8")
+_RODZAJE_GALEZI_TS = (_FRONT / "types" / "rodzajeGalezi.ts").read_text(encoding="utf-8")
 
 
 def _obiekt(nazwa: str) -> str:
@@ -107,17 +115,17 @@ def test_stan_danych_wyposazenia_jest_lustrem_kontraktu() -> None:
     assert frozenset(_slownik_napisow("STAN_DANYCH_WYPOSAZENIA_PL")) == kontrakt
 
 
-def _typy_predykatu(nazwa: str) -> frozenset[str]:
-    wynik = re.search(
-        rf"export function {nazwa}\(b: Branch\)[^{{]*\{{(.*?)^\}}", _ENM_TS, re.M | re.S
-    )
-    assert wynik, f"brak predykatu {nazwa} w types/enm.ts"
-    return frozenset(re.findall(r"'([^']*)'", wynik.group(1)))
+def _klasy_rodzajow_galezi() -> dict[str, str]:
+    """Mapa ``KLASA_RODZAJU_GALEZI`` frontu: rodzaj gałęzi → klasa (odcinek/lacznik/bezpiecznik)."""
+    wynik = re.search(r"const KLASA_RODZAJU_GALEZI = \{(.*?)\} as const", _RODZAJE_GALEZI_TS, re.S)
+    assert wynik, "brak mapy KLASA_RODZAJU_GALEZI w types/rodzajeGalezi.ts"
+    return dict(re.findall(r"(\w+): '(\w+)'", wynik.group(1)))
 
 
-def test_predykaty_lacznika_frontu_sa_lustrem_typow_backendu() -> None:
-    z_pozycja = _typy_predykatu("isSwitchBranch")
-    bezpiecznik = _typy_predykatu("isFuseBranch")
-    assert z_pozycja == frozenset(TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM)
-    assert z_pozycja | bezpiecznik == RODZAJE_GALEZI_APARATU
-    assert not (z_pozycja & bezpiecznik)
+def test_klasy_rodzajow_galezi_frontu_sa_lustrem_typow_backendu() -> None:
+    klasy = _klasy_rodzajow_galezi()
+    lacznik = frozenset(r for r, k in klasy.items() if k == "lacznik")
+    aparat = frozenset(r for r, k in klasy.items() if k != "odcinek")
+    assert lacznik == frozenset(RODZAJE_GALEZI_LACZNIKA)
+    assert aparat == RODZAJE_GALEZI_APARATU
+    assert "fuse" in aparat - lacznik

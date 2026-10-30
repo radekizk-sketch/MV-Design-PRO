@@ -50,7 +50,7 @@ import type {
   SwitchBranch,
   Transformer,
 } from '../../types/enm';
-import { RODZAJE_GALEZI } from '../../types/enm';
+import { RODZAJE_GALEZI } from '../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../ui/shared/rodzajGalezi';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
@@ -128,7 +128,7 @@ function znajdzElement(model: EnergyNetworkModel, id: string): Znaleziony | null
         if (kolekcja.klucz === 'branches') {
           const galaz = el as unknown as { type?: string };
           // Rodzaj gałęzi (`Branch.type`) — drugi poziom dyskryminacji „odcinka”; lista
-          // i nazwy z jednego źródła (`types/enm.ts`, `ui/shared/rodzajGalezi.ts`).
+          // i nazwy z jednego źródła (`types/rodzajeGalezi.ts`, `ui/shared/rodzajGalezi.ts`).
           const typGalezi = RODZAJE_GALEZI.find((rodzaj) => rodzaj === galaz.type);
           const typEtykieta = typGalezi ? RODZAJ_GALEZI_PL[typGalezi] : kolekcja.typEtykieta;
           return { element: el, typ: galaz.type ?? kolekcja.typ, typEtykieta };

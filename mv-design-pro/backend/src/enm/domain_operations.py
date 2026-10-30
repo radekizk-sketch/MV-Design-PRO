@@ -144,7 +144,7 @@ from .slownik_komunikatow import (
     opis_pozycji_katalogu,
     pole,
 )
-from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+from .stan_normalny import RODZAJE_GALEZI_LACZNIKA
 from .topology import punkty_podzialu_korytarza
 from .topology_ops import (
     create_branch,
@@ -10289,7 +10289,7 @@ def _blad_stanu_lacznika_w_parametrach(
         )
     if "normal_state" not in parameters:
         return None
-    if typ not in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM:
+    if typ not in RODZAJE_GALEZI_LACZNIKA:
         return _error_response(
             f"{opis_elementu(enm, ref, 'Element')} nie ma pozycji normalnej — mają ją wyłącznie "
             "wyłączniki, rozłączniki, odłączniki i sprzęgła.",

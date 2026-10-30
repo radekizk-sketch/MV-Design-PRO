@@ -32,7 +32,7 @@
  */
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
-import { jestRodzajemGaleziAparatu } from '../../../../types/enm';
+import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
 import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { sheetSizeFor } from '../sheet/outline';

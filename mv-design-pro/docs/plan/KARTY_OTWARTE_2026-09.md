@@ -1215,7 +1215,17 @@ serwera), jakość pól karty (`card_field_status`) po polsku z `NAZWA_JAKOSCI_D
 (przeniesione z `KartaWerdyktu.tsx` do `ui2/wyniki/wzorzec/werdykt.ts`, parytet z
 `FieldQuality.label_pl` przez wyrocznię), skrót wykazu kategorii złożonych (przekładniki,
 przekształtniki) bez pól, których serwer nie wysyła (`measurement_kind`, `kind`, `sn_mva`,
-`pmax_mw`). Następny krok: biegi celowane, tsc, eslint, iniekcje, strażniki.
+`pmax_mw`). Krok 4 (WIP): kopia `INTERNAL_STATION_DEVICE_LABELS_PL` i
+`stationRefFromInternalElement` w `InspectorEngineeringView.tsx` usunięta. Krok 5 (WIP, po
+strażniku `lv_domain_projection_guard` R4 — domena nN nie importuje `types/enm`): lista rodzajów
+gałęzi w osobnym module bez modelu sieci `frontend/src/types/rodzajeGalezi.ts`
+(`KLASA_RODZAJU_GALEZI`, typy `RodzajGaleziLacznika`/`RodzajGaleziBezpiecznika`, z których unia
+`Branch` bierze pola `type`; zgodność w obie strony wymusza kompilacja
+`RODZAJE_GALEZI_ZGODNE_Z_UNIA`); backend: `enm.stan_normalny.RodzajGaleziLacznika` jest typem
+pola `SwitchBranch.type`, kopia `TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM` i słownik
+`_RODZAJ_GALEZI_PL` usunięte; kopie w testach (`operacjeNn.test.ts`,
+`stanAparatuParytetGlifu.test.tsx`) i `czyLacznik` w `stanLacznika.ts` czytają jedno źródło.
+Następny krok: drugi bieg weryfikacyjny (vitest related, tsc, eslint, pytest celowany, strażniki).
 
 ---
 

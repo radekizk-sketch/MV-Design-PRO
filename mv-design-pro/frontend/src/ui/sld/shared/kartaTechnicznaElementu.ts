@@ -33,7 +33,7 @@ import type {
   Substation,
   Transformer,
 } from '../../../types/enm';
-import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/enm';
+import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';

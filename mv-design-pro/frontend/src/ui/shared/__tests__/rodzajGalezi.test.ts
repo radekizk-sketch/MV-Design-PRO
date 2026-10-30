@@ -1,5 +1,5 @@
 /**
- * Rodzaje gałęzi modelu — jedno źródło listy (`types/enm.ts`) i jeden słownik nazw
+ * Rodzaje gałęzi modelu — jedno źródło listy (`types/rodzajeGalezi.ts`) i jeden słownik nazw
  * (`ui/shared/rodzajGalezi.ts`) w parytecie z backendem.
  *
  * Wyrocznia: `harness-fixtures/generated/rodzaje_wielkosci_zwarciowych_aparatury.json`
@@ -15,16 +15,15 @@
 import { describe, expect, it } from 'vitest';
 
 import wyrocznia from '../../../harness-fixtures/generated/rodzaje_wielkosci_zwarciowych_aparatury.json';
+import { isApparatusBranch, isFuseBranch, isSwitchBranch, type Branch } from '../../../types/enm';
 import {
   RODZAJE_GALEZI,
   RODZAJE_GALEZI_APARATU,
   RODZAJE_GALEZI_LACZNIKA,
-  isApparatusBranch,
-  isFuseBranch,
-  isSwitchBranch,
+  jestRodzajemGalezi,
   jestRodzajemGaleziAparatu,
-  type Branch,
-} from '../../../types/enm';
+  jestRodzajemGaleziLacznika,
+} from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../rodzajGalezi';
 
 const posortowane = (lista: readonly string[]): string[] => [...lista].sort();
@@ -76,7 +75,9 @@ describe('Rodzaje gałęzi — predykaty z jednego źródła', () => {
   it.each(RODZAJE_GALEZI.map((rodzaj) => [rodzaj] as const))('rodzaj „%s”', (rodzaj) => {
     const aparat = wyrocznia.rodzaje_galezi.aparat.includes(rodzaj);
     const lacznik = wyrocznia.rodzaje_galezi.lacznik.includes(rodzaj);
+    expect(jestRodzajemGalezi(rodzaj)).toBe(true);
     expect(jestRodzajemGaleziAparatu(rodzaj)).toBe(aparat);
+    expect(jestRodzajemGaleziLacznika(rodzaj)).toBe(lacznik);
     expect(isApparatusBranch(galaz(rodzaj))).toBe(aparat);
     expect(isSwitchBranch(galaz(rodzaj))).toBe(lacznik);
     expect(isFuseBranch(galaz(rodzaj))).toBe(rodzaj === 'fuse');
@@ -92,7 +93,9 @@ describe('Rodzaje gałęzi — predykaty z jednego źródła', () => {
     ['liczba', 3],
     ['null', null],
     ['brak', undefined],
-  ] as const)('%s nie jest rodzajem aparatu', (_opis, wartosc) => {
+  ] as const)('%s nie jest rodzajem gałęzi', (_opis, wartosc) => {
+    expect(jestRodzajemGalezi(wartosc)).toBe(false);
     expect(jestRodzajemGaleziAparatu(wartosc)).toBe(false);
+    expect(jestRodzajemGaleziLacznika(wartosc)).toBe(false);
   });
 });

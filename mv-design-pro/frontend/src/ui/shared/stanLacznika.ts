@@ -14,16 +14,16 @@
  * łącznika z innego miejsca niż gałąź łącznika.
  */
 import type { Branch, EnergyNetworkModel, FuseBranch, SwitchBranch } from '../../types/enm';
-import { isFuseBranch, isSwitchBranch } from '../../types/enm';
+import { isApparatusBranch, isSwitchBranch } from '../../types/enm';
 
 export type PolozenieLacznika = 'closed' | 'open';
 
-/** Łącznik z położeniem otwarty/zamknięty (także bezpiecznik) — `TYPY_LACZNIKOW_ENM`. */
+/** Łącznik z położeniem otwarty/zamknięty (także bezpiecznik) — `RODZAJE_GALEZI_APARATU`. */
 export function czyLacznik(galaz: Branch | null | undefined): galaz is SwitchBranch | FuseBranch {
-  return galaz != null && (isSwitchBranch(galaz) || isFuseBranch(galaz));
+  return galaz != null && isApparatusBranch(galaz);
 }
 
-/** Łącznik z POZYCJĄ NORMALNĄ (bez bezpiecznika) — `TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM`. */
+/** Łącznik z POZYCJĄ NORMALNĄ (bez bezpiecznika) — `RODZAJE_GALEZI_LACZNIKA`. */
 export function czyLacznikZPozycjaNormalna(
   galaz: Branch | null | undefined,
 ): galaz is SwitchBranch {

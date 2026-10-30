@@ -24,7 +24,7 @@
  */
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import type { LvDomainGraphView } from './types';
-import { jestRodzajemGaleziAparatu } from '../../../../types/enm';
+import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
 
 /** Część grafu projekcji nN, z której czyta menu (gałęzie, szyny, odbiory, role aparatów). */
 export type GrafMenuNn = Pick<LvDomainGraphView, 'buses' | 'branches' | 'loads' | 'devices'>;
@@ -122,7 +122,7 @@ export function operacjaBezposredniaNn(actionId: string, elementId: string | nul
     const aparat = galaz(graf, elementId);
     if (!aparat) return { ok: false, powodPl: POWOD_BRAKU_OBIEKTU_PL };
     const rola = graf.devices.find((d) => d.ref_id === elementId)?.device_role ?? null;
-    // Rodzaje aparatu z jednego źródła (`types/enm.ts`) — ten sam zbiór, od którego
+    // Rodzaje aparatu z jednego źródła (`types/rodzajeGalezi.ts`) — ten sam zbiór, od którego
     // `copy_nn_feeder` zaczyna kopię (backend `enm.models.RODZAJE_GALEZI_APARATU`).
     if (!jestRodzajemGaleziAparatu(aparat.type)) return { ok: false, powodPl: POWOD_KOPII_TYPU_PL };
     // Sprzęgło sekcji jest sprzęgłem z samego typu gałęzi — ta sama reguła co operacja

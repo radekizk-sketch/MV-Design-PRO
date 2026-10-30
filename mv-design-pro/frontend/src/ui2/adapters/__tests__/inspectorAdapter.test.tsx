@@ -19,7 +19,7 @@ import { renderHook } from '@testing-library/react';
 import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { RODZAJE_GALEZI } from '../../../types/enm';
+import { RODZAJE_GALEZI } from '../../../types/rodzajeGalezi';
 import {
   KOLEKCJE_ELEMENTOW,
   mapowanieObiektuInspektora,

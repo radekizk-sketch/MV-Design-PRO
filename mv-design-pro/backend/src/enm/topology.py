@@ -48,7 +48,7 @@ from .models import (
     OverheadLine,
 )
 from .pola import poziom_pol
-from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+from .stan_normalny import RODZAJE_GALEZI_LACZNIKA
 from .tor_pola import szyny_stacji
 
 #: Generatory będące maszynami z impedancją do odniesienia w zwarciu (IEC 60909-0 §4.2,
@@ -314,8 +314,7 @@ def punkty_podzialu(snapshot: EnergyNetworkModel | Mapping[str, object]) -> tupl
         sorted(
             str(_pole(g, "ref_id"))
             for g in _kolekcja(snapshot, "branches")
-            if _pole(g, "type") in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
-            and _pole(g, "normal_state") == "open"
+            if _pole(g, "type") in RODZAJE_GALEZI_LACZNIKA and _pole(g, "normal_state") == "open"
         )
     )
 
@@ -345,7 +344,7 @@ def _graf_konfiguracji_normalnej(
             continue
         stan_normalny = (
             _pole(galaz, "normal_state")
-            if _pole(galaz, "type") in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+            if _pole(galaz, "type") in RODZAJE_GALEZI_LACZNIKA
             else None
         )
         if ref == wymuszony_zamkniety:

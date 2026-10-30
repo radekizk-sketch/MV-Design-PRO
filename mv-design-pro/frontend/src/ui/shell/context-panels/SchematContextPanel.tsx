@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state/store';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { jestRodzajemGaleziAparatu } from '../../../types/enm';
+import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { useSelectionStore } from '../../selection';
 import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';

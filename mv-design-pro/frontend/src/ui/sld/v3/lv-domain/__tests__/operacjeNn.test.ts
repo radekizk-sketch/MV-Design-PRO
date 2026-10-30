@@ -25,6 +25,7 @@ import {
 } from '../operacjeNn';
 import type { GrafMenuNn } from '../operacjeNn';
 import type { LvDeviceRole } from '../types';
+import { RODZAJE_GALEZI_APARATU } from '../../../../../types/rodzajeGalezi';
 
 function galaz(ref: string, type: string, from: string, to: string, name = ref) {
   return { ref_id: ref, name, type, from_bus_ref: from, to_bus_ref: to };
@@ -120,13 +121,16 @@ describe('Scalenie odcinków przy zacisku — liczba i typ gałęzi', () => {
   });
 });
 
-const TYPY_APARATU = ['switch', 'breaker', 'fuse', 'disconnector'] as const;
+// Każdy rodzaj gałęzi aparatu z jednego źródła (`types/rodzajeGalezi.ts`, parytet z backendem) —
+// także sprzęgło szyn, którego dawna lista testu nie miała (odmowa z samego typu, jak backend).
+const TYPY_APARATU = RODZAJE_GALEZI_APARATU;
 const ROLE: ReadonlyArray<LvDeviceRole | undefined> = ['feeder', 'internal', 'incomer', 'coupler', 'boundary', undefined];
 
 describe('Kopia odpływu — typ gałęzi × rola z projekcji nN', () => {
   for (const typ of TYPY_APARATU) {
     for (const rola of ROLE) {
-      const odmowa = rola === 'incomer' || rola === 'coupler' || rola === 'boundary';
+      const odmowa =
+        typ === 'bus_coupler' || rola === 'incomer' || rola === 'coupler' || rola === 'boundary';
       it(`${typ} × ${rola ?? 'brak pomiaru'} → ${odmowa ? 'odmowa' : 'ładunek'}`, () => {
         const m = model([galaz('ap/1', typ, 'bus/a', 'bus/b')], { 'ap/1': rola });
         const wynik = operacjaBezposredniaNn('copy-nn-feeder', 'ap/1', m);

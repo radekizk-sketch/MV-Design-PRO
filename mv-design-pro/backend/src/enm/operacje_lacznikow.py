@@ -28,7 +28,7 @@ from .domain_operations import _error_response, _response
 from .kopia_graniczna import kopia_graniczna_enm
 from .models import RODZAJE_GALEZI_APARATU
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
-from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+from .stan_normalny import RODZAJE_GALEZI_LACZNIKA
 from .topology import poprzednie_punkty_podzialu
 
 StanLacznika = Literal["closed", "open"]
@@ -122,7 +122,7 @@ def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         return _error_response(
             "Wskazany łącznik nie istnieje w modelu sieci.", "nop.switch_not_found"
         )
-    if galaz.get("type") not in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM:
+    if galaz.get("type") not in RODZAJE_GALEZI_LACZNIKA:
         return _error_response(
             f"{opis_elementu(enm, ref, 'Element')} nie może być punktem normalnie otwartym — "
             "punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło "
