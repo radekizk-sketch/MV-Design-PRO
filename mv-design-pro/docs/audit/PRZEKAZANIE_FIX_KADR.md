@@ -63,7 +63,8 @@ synchronicznej, więc nie należą do tej klasy.
   w bramce. To limit czasu testu vitest, a nie wyścig; karta zakazuje podnoszenia timeoutu.
 - **Pozostałe sprawdzenia:** `tsc` RC=0, `eslint` na pliku RC=0.
 
-## Pierwszy krok dla następcy
+## Stan końcowy
 
-Uruchom `scripts/guardy_z_ci.py` z `backend/`, pod `flock`. Bieg przerwałem poleceniem STOP przed
-jego końcem. Gdy wyjdzie zielony, zrób końcowy commit bez prefiksu WIP.
+`scripts/guardy_z_ci.py` (z `backend/`, pod `flock`): RC=0 — 107/107 guardów, lint i kroki npm
+zielone, samotesty guardów 4537 passed. Karta zamknięta commitem końcowym po WIP `bb4fcfbe9`;
+następca nie ma kroku do wykonania.
