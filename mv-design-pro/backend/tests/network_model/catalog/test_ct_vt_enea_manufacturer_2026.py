@@ -5,6 +5,7 @@ from math import isclose, isfinite, sqrt
 
 from api.catalog import list_ferranti_types
 from network_model.catalog.mv_ferranti_catalog import get_all_ferranti_types
+from network_model.catalog.mv_ct_abb_tpu_standard import get_abb_tpu6_standard_types
 from network_model.catalog.mv_instrument_transformers_full import (
     get_all_enea_ct_profiles,
     get_all_enea_vt_profiles,
@@ -157,3 +158,36 @@ def test_abb_tpu70_63_rzeczywista_tabliczka_z_czterema_rdzeniami() -> None:
     assert p["catalog_status"] == "REFERENCYJNY_V1"
     assert "1VLM000610" in p["source_reference"]
     assert get_default_mv_catalog().ct_types[row["id"]].to_dict()["secondary_cores"] == p["secondary_cores"]
+
+
+def test_17_abb_tpu6_rzeczywiste_wiersze_producenta_bez_awansu_na_enea() -> None:
+    """TPU 6x.xx 2014: 17 jednoznacznych kombinacji 0,5 FS5 + 5P ALF."""
+    types = get_abb_tpu6_standard_types()
+    assert len(types) == 17
+    assert len({item["id"] for item in types}) == 17
+    assert {item["params"]["ratio_primary_a"] for item in types} == {
+        20.0, 30.0, 50.0, 100.0, 200.0, 300.0, 400.0,
+        500.0, 600.0, 750.0, 1000.0, 1250.0,
+        1500.0, 2000.0, 2500.0, 3000.0, 3200.0,
+    }
+    repo = get_default_mv_catalog()
+    for item in types:
+        p = item["params"]
+        assert item["id"] in repo.ct_types
+        assert p["manufacturer"] == "ABB"
+        assert p["um_kv"] == 24.0
+        assert p["core_count"] == 2
+        assert len(p["secondary_cores"]) == 2
+        billing, protective = p["secondary_cores"]
+        assert billing["accuracy_class"] == "0.5"
+        assert billing["fs"] == 5.0
+        assert billing["role"] == "METERING"
+        assert protective["accuracy_class"].startswith("5P")
+        assert protective["alf"] in (10, 15)
+        assert "fs" not in protective
+        assert p["ith_ka_1s"] > 0
+        assert p["idyn_ka_peak"] >= 2.5 * p["ith_ka_1s"] * 0.99
+        assert "2014" in p["source_reference"]
+        assert "referencyj" in p["catalog_status"].lower()
+        assert "Klasa 0,5 nie zastępuje wymogu 0,2S" in p["verification_note"]
+        assert repo.ct_types[item["id"]].to_dict()["secondary_cores"] == p["secondary_cores"]
