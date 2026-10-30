@@ -163,8 +163,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+        "latex": null
       }
     ],
     "wywod_sekcje": [
@@ -236,8 +236,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -246,33 +246,27 @@
     "walidacja_iec": [
       {
         "pozycja_pl": "Norma bazowa metody",
-        "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "wartosc_pl": "IEC 60909-0:2016"
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
-        "status": "INFO"
+        "wartosc_pl": "c = 1,10 (z tego przebiegu)"
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
-        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)"
       },
       {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "pozycja_pl": "Maszyny wirujące w modelu",
+        "wartosc_pl": "synchroniczne: 1 szt., asynchroniczne: 0 szt."
       },
       {
-        "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
-        "status": "PASS"
+        "pozycja_pl": "Reguła małych silników (p. 6.6)",
+        "wartosc_pl": "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)"
       },
       {
         "pozycja_pl": "Powtarzalność obliczenia",
-        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-        "status": "PASS"
+        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik"
       }
     ],
     "input_hash": "e50c9897ec67df7b4495cfcfe457856d31d9834c0a4ca2d238a359ef005eae7d",
@@ -533,8 +527,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,699 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+        "latex": null
       }
     ],
     "wywod_sekcje": [
@@ -606,8 +600,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,699 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -616,33 +610,27 @@
     "walidacja_iec": [
       {
         "pozycja_pl": "Norma bazowa metody",
-        "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "wartosc_pl": "IEC 60909-0:2016"
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
-        "status": "INFO"
+        "wartosc_pl": "c = 1,10 (z tego przebiegu)"
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
-        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)"
       },
       {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "pozycja_pl": "Maszyny wirujące w modelu",
+        "wartosc_pl": "synchroniczne: 1 szt., asynchroniczne: 0 szt."
       },
       {
-        "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,699 kA)",
-        "status": "PASS"
+        "pozycja_pl": "Reguła małych silników (p. 6.6)",
+        "wartosc_pl": "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)"
       },
       {
         "pozycja_pl": "Powtarzalność obliczenia",
-        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-        "status": "PASS"
+        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik"
       }
     ],
     "input_hash": "8b4ee04ba70fc13672e0be918eacc379eb42abd04f0fcaec5daf2b3ca84c2a0a",
@@ -885,8 +873,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,026 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.516\\;\\mathrm{kA} = 1.026\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+        "latex": null
       }
     ],
     "wywod_sekcje": [
@@ -958,8 +946,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,026 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.516\\;\\mathrm{kA} = 1.026\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -968,33 +956,27 @@
     "walidacja_iec": [
       {
         "pozycja_pl": "Norma bazowa metody",
-        "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "wartosc_pl": "IEC 60909-0:2016"
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
-        "status": "INFO"
+        "wartosc_pl": "c = 1,10 (z tego przebiegu)"
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
-        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)"
       },
       {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "pozycja_pl": "Maszyny wirujące w modelu",
+        "wartosc_pl": "synchroniczne: 1 szt., asynchroniczne: 0 szt."
       },
       {
-        "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,026 kA)",
-        "status": "PASS"
+        "pozycja_pl": "Reguła małych silników (p. 6.6)",
+        "wartosc_pl": "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)"
       },
       {
         "pozycja_pl": "Powtarzalność obliczenia",
-        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-        "status": "PASS"
+        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik"
       }
     ],
     "input_hash": "9d4796628b65ba5239f0a4796eeb6baf43da821e48afa09eaf56cb116d70670b",
@@ -1264,8 +1246,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+        "latex": null
       }
     ],
     "wywod_sekcje": [
@@ -1337,8 +1319,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -1347,33 +1329,27 @@
     "walidacja_iec": [
       {
         "pozycja_pl": "Norma bazowa metody",
-        "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "wartosc_pl": "IEC 60909-0:2016"
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
-        "status": "INFO"
+        "wartosc_pl": "c = 1,10 (z tego przebiegu)"
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
-        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)"
       },
       {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "pozycja_pl": "Maszyny wirujące w modelu",
+        "wartosc_pl": "synchroniczne: 1 szt., asynchroniczne: 0 szt."
       },
       {
-        "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
-        "status": "PASS"
+        "pozycja_pl": "Reguła małych silników (p. 6.6)",
+        "wartosc_pl": "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)"
       },
       {
         "pozycja_pl": "Powtarzalność obliczenia",
-        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-        "status": "PASS"
+        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik"
       }
     ],
     "input_hash": "0530cf96eff44792d7bc2abf9da9898dc0908f1d18e3a9a5788d288a7e06c2bc",
@@ -1634,8 +1610,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+        "latex": null
       }
     ],
     "wywod_sekcje": [
@@ -1707,8 +1683,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy suma I″k,M ≤ 0,05·I″k — w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze).",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -1717,33 +1693,27 @@
     "walidacja_iec": [
       {
         "pozycja_pl": "Norma bazowa metody",
-        "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "wartosc_pl": "IEC 60909-0:2016"
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
-        "status": "INFO"
+        "wartosc_pl": "c = 1,10 (z tego przebiegu)"
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
-        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)"
       },
       {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "pozycja_pl": "Maszyny wirujące w modelu",
+        "wartosc_pl": "synchroniczne: 1 szt., asynchroniczne: 0 szt."
       },
       {
-        "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,230 kA)",
-        "status": "PASS"
+        "pozycja_pl": "Reguła małych silników (p. 6.6)",
+        "wartosc_pl": "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)"
       },
       {
         "pozycja_pl": "Powtarzalność obliczenia",
-        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-        "status": "PASS"
+        "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik"
       }
     ],
     "input_hash": "68cfc5b216591a69e3614ad2782c396bb63d324a75276021e864642ab10e0e6b",

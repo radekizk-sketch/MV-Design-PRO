@@ -13,7 +13,6 @@ export { SladSekcyjny } from './SladSekcyjny';
 export type {
   SekcjaWywodu,
   PozycjaWalidacji,
-  StatusPozycjiWalidacji,
   WalidacjaWywodu,
 } from './SladSekcyjny';
 export { WZORZEC_STRINGS, etykietaPrzebieguWyniku, formatZnacznikaCzasu } from './strings';

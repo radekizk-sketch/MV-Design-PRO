@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SladSekcyjny, type SekcjaWywodu, type PozycjaWalidacji } from '../SladSekcyjny';
-import { WZORZEC_STRINGS } from '../strings';
 
 const SEKCJE: SekcjaWywodu[] = [
   {
@@ -20,16 +19,15 @@ const SEKCJE: SekcjaWywodu[] = [
 ];
 
 const WALIDACJA: PozycjaWalidacji[] = [
-  { pozycja_pl: 'Norma bazowa metody', wartosc_pl: 'IEC 60909-0:2016', status: 'INFO' },
+  { pozycja_pl: 'Norma bazowa metody', wartosc_pl: 'IEC 60909-0:2016' },
   {
-    pozycja_pl: 'Reguła małych silników (5%)',
-    wartosc_pl: 'SPELNIONA — silniki pomijalne w Ib',
-    status: 'PASS',
+    pozycja_pl: 'Reguła małych silników (p. 6.6)',
+    wartosc_pl:
+      'suma I″k,M = 0,612 kA > 0,05·I″k = 0,421 kA — pominięcie silników asynchronicznych niedopuszczalne; ich wkłady są uwzględnione w I″k,M i Ib',
   },
   {
-    pozycja_pl: 'Maszyny asynchroniczne',
-    wartosc_pl: 'NIESPELNIONA — wklady uwzglednione w Ib',
-    status: 'FAIL',
+    pozycja_pl: 'Maszyny wirujące w modelu',
+    wartosc_pl: 'synchroniczne: 1 szt., asynchroniczne: 1 szt.',
   },
 ];
 
@@ -84,32 +82,27 @@ describe('SladSekcyjny — ślad obliczeń w sekcjach (ZWARCIA-PRO F3 pkt 8)', (
   });
 });
 
-describe('SladSekcyjny — checklista walidacji metody (ZWARCIA-PRO F3 pkt 10)', () => {
-  it('panel walidacji jako ostatnia sekcja: checklista z ikonami statusów, nie kroki', () => {
-    renderSlad({ tytul: 'Walidacja metody IEC 60909', pozycje: WALIDACJA });
+describe('SladSekcyjny — panel metody (ZWARCIA-PRO F3 pkt 10)', () => {
+  it('panel metody jako ostatnia sekcja: pozycje faktów biegu bez statusu i bez ikon oceny', () => {
+    renderSlad({ tytul: 'Metoda obliczenia IEC 60909', pozycje: WALIDACJA });
     fireEvent.click(screen.getByTestId('mvd-test-slad-btn'));
     const btnWalidacji = screen.getByTestId('mvd-test-slad-walidacja-btn');
     expect(btnWalidacji).toHaveAttribute('aria-expanded', 'false');
-    expect(within(btnWalidacji).getByText('Walidacja metody IEC 60909')).toBeInTheDocument();
+    expect(within(btnWalidacji).getByText('Metoda obliczenia IEC 60909')).toBeInTheDocument();
     fireEvent.click(btnWalidacji);
     const lista = screen.getByTestId('mvd-test-slad-walidacja');
     const pozycje = within(lista).getAllByRole('listitem');
     expect(pozycje).toHaveLength(3);
-    expect(pozycje[0]).toHaveAttribute('data-status', 'INFO');
-    expect(pozycje[1]).toHaveAttribute('data-status', 'PASS');
-    expect(pozycje[2]).toHaveAttribute('data-status', 'FAIL');
-    // Ikony statusów z dostępnym opisem PL (aria-label ze słownika wzorca).
-    expect(
-      within(pozycje[1]).getByRole('img', { name: WZORZEC_STRINGS.walidacjaSpelnione }),
-    ).toHaveTextContent('✓');
-    expect(
-      within(pozycje[2]).getByRole('img', { name: WZORZEC_STRINGS.walidacjaNiespelnione }),
-    ).toHaveTextContent('✗');
-    // Pozycja i wartość PL z backendu (zero fabrykacji w UI).
-    expect(within(pozycje[1]).getByText('Reguła małych silników (5%)')).toBeInTheDocument();
-    expect(
-      within(pozycje[1]).getByText('SPELNIONA — silniki pomijalne w Ib'),
-    ).toBeInTheDocument();
+    // Karta WERDYKT-MIGRACJA-190: żadna pozycja nie jest oceną — brak `data-status`
+    // i brak ikon ✓/✗ (dawne PASS/FAIL bez rekordu wyjaśnienia).
+    for (const pozycja of pozycje) {
+      expect(pozycja).not.toHaveAttribute('data-status');
+      expect(within(pozycja).queryByRole('img')).not.toBeInTheDocument();
+      expect(pozycja.textContent).not.toMatch(/[✓✗]/);
+    }
+    // Pozycja i wartość PL z backendu (zero fabrykacji w UI) — zdanie niesie liczby i skutek.
+    expect(within(pozycje[1]).getByText('Reguła małych silników (p. 6.6)')).toBeInTheDocument();
+    expect(within(pozycje[1]).getByText(WALIDACJA[1].wartosc_pl)).toBeInTheDocument();
   });
 
   it('brak walidacji → sekcja walidacji nie renderuje się', () => {

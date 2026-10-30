@@ -604,9 +604,9 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
           ],
           walidacja_iec: [
             {
-              pozycja_pl: 'Reguła małych silników (5%)',
-              wartosc_pl: 'SPELNIONA — silniki pomijalne w Ib',
-              status: 'PASS',
+              pozycja_pl: 'Reguła małych silników (p. 6.6)',
+              wartosc_pl:
+                'w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)',
             },
           ],
         }),
@@ -632,12 +632,12 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     expect(within(kroki).getByTestId('math-rendered').getAttribute('data-latex')).toContain(
       'I_b = \\mu',
     );
-    // Checklista walidacji metody IEC na koncu wywodu sekcyjnego.
+    // Panel metody IEC na koncu wywodu sekcyjnego (fakty biegu, bez statusow).
     fireEvent.click(within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-walidacja-btn'));
     const walidacja = within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-walidacja');
-    expect(within(walidacja).getByText('Reguła małych silników (5%)')).toBeInTheDocument();
+    expect(within(walidacja).getByText('Reguła małych silników (p. 6.6)')).toBeInTheDocument();
     expect(
-      within(walidacja).getByText('SPELNIONA — silniki pomijalne w Ib'),
+      within(walidacja).getByText('w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn synchronicznych liczone zawsze)'),
     ).toBeInTheDocument();
     vi.unstubAllGlobals();
   });

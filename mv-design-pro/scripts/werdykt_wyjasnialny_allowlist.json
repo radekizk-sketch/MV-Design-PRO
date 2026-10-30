@@ -366,20 +366,6 @@
    "wiersz_inwentarza": "E36"
   },
   {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/wzorzec/SladSekcyjny.tsx:IKONA_STATUSU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D22 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D22"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/wzorzec/SladSekcyjny.tsx:KLASA_STATUSU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D22 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D22"
-  },
-  {
    "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/network-build/GuidedBuildActionPanel.tsx:GuidedBuildActionPanel.ok",
    "klasa": "ENUM_WEWNETRZNY",
@@ -570,13 +556,6 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "api.proof_pack:_walidacja_iec.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C48 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C48 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.dokument_studium:_wariant_sekcja.obszar.status",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Stan WYKONANIA fazy obliczenia obszaru P–Q wariantu (ok = obszar policzony, blad = odmowa obliczenia biegu z `komunikat_bledu` po polsku), nie werdykt oceny: faza nie porównuje wielkości z limitem. Ekran i DOCX/PDF studium nie pokazują kodu — przy odmowie zdanie `komunikat_bledu`, przy wyniku pasmo Q i liczba wierzchołków; ocenę wariantu niesie rekord `pokrycie_pq.ocena` (OcenaKryterium). Zbieżność leksykalna `ok` ze słownikiem werdyktów.",
@@ -723,34 +702,6 @@
    "wiersz_inwentarza": "D18"
   },
   {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "api.proof_pack:_krok_reguly_malych_silnikow.latex:NIESPELNIONA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "api.proof_pack:_krok_reguly_malych_silnikow.latex:SPELNIONA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "api.proof_pack:_krok_reguly_malych_silnikow.tekst:NIESPELNIONA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "api.proof_pack:_krok_reguly_malych_silnikow.tekst:SPELNIONA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C48"
-  },
-  {
    "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui/enm-inspector/DiagnosticsPanel.tsx:StatusHeader.statusColor",
    "klasa": "MIGRACJA",
@@ -840,13 +791,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D72 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "D72"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/wyniki/wzorzec/SladSekcyjny.tsx:opisStatusu",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D22 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D22"
   }
  ]
 }

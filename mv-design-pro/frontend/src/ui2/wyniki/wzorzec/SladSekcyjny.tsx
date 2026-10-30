@@ -7,9 +7,10 @@
  * jak w SladWywodu: `latex` przez KaTeX (`MathBlock`, fail-safe), krok
  * tekstowy monospace. ZERO fizyki, ZERO arytmetyki w UI.
  *
- * Dodatkowo (pkt 10): opcjonalny panel walidacji metody — CHECKLISTA pozycji
- * `{pozycja_pl, wartosc_pl, status}` z ikonami statusu (nie kroki wywodu),
- * renderowany jako ostatnia sekcja akordeonu. Statusy wyłącznie z backendu.
+ * Dodatkowo (pkt 10): opcjonalny panel metody — lista pozycji `{pozycja_pl, wartosc_pl}`
+ * (fakty biegu: norma, c, maszyny, reguła małych silników, powtarzalność), renderowany jako
+ * ostatnia sekcja akordeonu. Panel NIE niesie statusu PASS/FAIL: żadna pozycja nie jest
+ * oceną wymagania (kontrakt werdyktu wyjaśnialnego) — zdanie pozycji z backendu mówi wszystko.
  *
  * Wzorzec interakcji: zwinięty przycisk „Pokaż ślad obliczeń" (zasada śladu
  * na żądanie, 2026-07-22) → lista sekcji, każda zwinięta → klik sekcji →
@@ -28,17 +29,13 @@ export interface SekcjaWywodu {
   readonly norma?: string;
 }
 
-/** Status pozycji walidacji — wyłącznie z backendu (zero ocen w UI). */
-export type StatusPozycjiWalidacji = 'PASS' | 'FAIL' | 'INFO';
-
-/** Pozycja checklisty walidacji metody (kształt 1:1 odpowiedzi backendu). */
+/** Pozycja panelu metody (kształt 1:1 odpowiedzi backendu) — fakt biegu, nie ocena. */
 export interface PozycjaWalidacji {
   readonly pozycja_pl: string;
   readonly wartosc_pl: string;
-  readonly status: StatusPozycjiWalidacji;
 }
 
-/** Panel walidacji metody — ostatnia sekcja akordeonu (checklista, nie kroki). */
+/** Panel metody — ostatnia sekcja akordeonu (pozycje faktów biegu, nie kroki). */
 export interface WalidacjaWywodu {
   readonly tytul: string;
   readonly pozycje: readonly PozycjaWalidacji[];
@@ -47,28 +44,10 @@ export interface WalidacjaWywodu {
 export interface SladSekcyjnyProps {
   /** Sekcje wywodu (z backendu). Pusta lista → komponent nie renderuje się. */
   sekcje: readonly SekcjaWywodu[];
-  /** Checklista walidacji metody (opcjonalna, na końcu wywodu sekcyjnego). */
+  /** Panel metody (opcjonalny, na końcu wywodu sekcyjnego). */
   walidacja?: WalidacjaWywodu;
   /** Prefiks `data-testid` (np. „mvd-zwarcia-wklady-slad"). */
   testIdPrefix: string;
-}
-
-const IKONA_STATUSU: Record<StatusPozycjiWalidacji, string> = {
-  PASS: '✓',
-  FAIL: '✗',
-  INFO: 'i',
-};
-
-const KLASA_STATUSU: Record<StatusPozycjiWalidacji, string> = {
-  PASS: 'mvd-wyn-walid-ok',
-  FAIL: 'mvd-wyn-walid-err',
-  INFO: 'mvd-wyn-walid-info',
-};
-
-function opisStatusu(status: StatusPozycjiWalidacji): string {
-  if (status === 'PASS') return WZORZEC_STRINGS.walidacjaSpelnione;
-  if (status === 'FAIL') return WZORZEC_STRINGS.walidacjaNiespelnione;
-  return WZORZEC_STRINGS.walidacjaInformacja;
 }
 
 function KrokiSekcji({ kroki, testId }: { kroki: readonly KrokWywodu[]; testId: string }) {
@@ -164,18 +143,7 @@ export function SladSekcyjny({ sekcje, walidacja, testIdPrefix }: SladSekcyjnyPr
               {otwarte.has('walidacja') && (
                 <ul className="mvd-wyn-walid" data-testid={`${testIdPrefix}-walidacja`}>
                   {walidacja.pozycje.map((pozycja) => (
-                    <li
-                      key={pozycja.pozycja_pl}
-                      className="mvd-wyn-walid-poz"
-                      data-status={pozycja.status}
-                    >
-                      <span
-                        className={KLASA_STATUSU[pozycja.status]}
-                        role="img"
-                        aria-label={opisStatusu(pozycja.status)}
-                      >
-                        {IKONA_STATUSU[pozycja.status]}
-                      </span>
+                    <li key={pozycja.pozycja_pl} className="mvd-wyn-walid-poz">
                       <span className="mvd-wyn-walid-etykieta">{pozycja.pozycja_pl}</span>
                       <span className="mvd-wyn-walid-wartosc mvd-num">{pozycja.wartosc_pl}</span>
                     </li>

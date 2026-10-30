@@ -4,7 +4,7 @@ import hashlib
 import json
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
@@ -268,46 +268,86 @@ def _liczba_pl(wartosc: float, miejsca: int) -> str:
     return f"{wartosc:.{miejsca}f}".replace(".", ",")
 
 
+#: Skutek reguły małych silników dla wyniku — program liczy wkłady WSZYSTKICH maszyn
+#: (`compute_machine_contributions` sumuje I″k i Ib każdej maszyny), więc reguła p. 6.6 mówi
+#: wyłącznie, czy norma dopuszcza pominięcie silników asynchronicznych; nie zmienia liczb.
+_SKUTEK_POMIJALNE: Final = (
+    "norma dopuszcza pominięcie silników asynchronicznych; program uwzględnia ich wkłady "
+    "w I″k,M i Ib (zachowawczo)"
+)
+_SKUTEK_NIEPOMIJALNE: Final = (
+    "pominięcie silników asynchronicznych niedopuszczalne; ich wkłady są uwzględnione "
+    "w I″k,M i Ib"
+)
+
+
+def _regula_malych_silnikow(result: Any) -> tuple[str, str | None]:
+    """Zdanie reguły małych silników (IEC 60909-0:2016 p. 6.6) i jej skutek (LaTeX).
+
+    JEDNO źródło treści dla kroku wywodu i pozycji panelu metody (predykaty parami).
+    Reguła jest warunkiem metody, nie wymaganiem projektu: zdanie podaje wartość obliczoną,
+    wartość graniczną z podstawą i skutek dla wyniku — bez słowa rozstrzygnięcia.
+    ``None`` zamiast LaTeX = brak liczb w śladzie solvera (brak maszyn albo silników
+    asynchronicznych) — krok bez podstawień.
+    """
+    wb = result.white_box
+    async_a = wb.get("ikss_async_machines_a")
+    limit_a = wb.get("small_motor_limit_a")
+    if async_a is None or limit_a is None:
+        return (
+            "w modelu brak maszyn wirujących, więc reguła nie dotyczy tego punktu zwarcia",
+            None,
+        )
+    if int(wb.get("n_asynchronous", 0)) == 0:
+        return (
+            "w modelu brak silników asynchronicznych, więc reguła nie dotyczy (wkłady maszyn "
+            "synchronicznych liczone zawsze)",
+            None,
+        )
+    rel = "≤" if result.motors_negligible else ">"
+    skutek = _SKUTEK_POMIJALNE if result.motors_negligible else _SKUTEK_NIEPOMIJALNE
+    return (
+        f"suma I″k,M = {_ka_pl(async_a)} kA {rel} 0,05·I″k = {_ka_pl(limit_a)} kA — {skutek}",
+        r"\le" if result.motors_negligible else ">",
+    )
+
+
 def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     """PELNY krok reguly malych silnikow (ZWARCIA-PRO F3 pkt 9, par. 6.6).
 
     Tresc reguly + wymaganie normy (suma I''k,M <= 0.05*I''k) + wartosc graniczna
-    + wartosc obliczona + werdykt SPELNIONA/NIESPELNIONA + wplyw na wynik (Ib).
+    + wartosc obliczona + skutek dla wyniku (program liczy wklady wszystkich maszyn).
     Czysty formatter: liczby z white_box solvera (`ikss_async_machines_a`,
     `small_motor_limit_a`, `ikss_total_a`); jedyna operacja = skala A -> kA.
     """
-    werdykt = "spełniona" if result.motors_negligible else "niespełniona"
-    wplyw = (
-        "silniki pomijalne w prądzie wyłączeniowym Ib"
-        if result.motors_negligible
-        else "silniki niepomijalne w prądzie wyłączeniowym Ib"
-    )
-    ikss_total_a = result.white_box.get("ikss_total_a")
-    async_a = result.white_box.get("ikss_async_machines_a")
-    limit_a = result.white_box.get("small_motor_limit_a")
-    if ikss_total_a is None or async_a is None or limit_a is None:
-        # Wynik bez maszyn (white_box bez liczb) — uczciwy krok bez podstawien.
+    zdanie, rel_latex = _regula_malych_silnikow(result)
+    if rel_latex is None:
+        # Wynik bez maszyn asynchronicznych (white_box bez liczb reguły) — bez podstawień.
         return {
             "tekst": (
-                "Reguła małych silników (p. 6.6): silniki są pomijalne, gdy suma I″k,M ≤ "
-                f"0,05·I″k — reguła {werdykt} ({wplyw})."
+                "Reguła małych silników (p. 6.6): silniki asynchroniczne wolno pominąć, gdy "
+                f"suma I″k,M ≤ 0,05·I″k — {zdanie}."
             ),
             "latex": None,
         }
-    rel_tekst = "≤" if result.motors_negligible else ">"
-    rel_latex = r"\le" if result.motors_negligible else ">"
+    wb = result.white_box
+    async_a = wb["ikss_async_machines_a"]
+    limit_a = wb["small_motor_limit_a"]
+    ikss_total_a = wb["ikss_total_a"]
+    skutek_latex = (
+        "pominięcie dopuszczalne" if result.motors_negligible else "pominięcie niedopuszczalne"
+    )
     return {
         "tekst": (
             "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; "
             f"wartość graniczna 0,05·I″k = {_ka_pl(limit_a)} kA; "
-            f"wartość obliczona suma I″k,M = {_ka_pl(async_a)} kA "
-            f"({_ka_pl(async_a)} {rel_tekst} {_ka_pl(limit_a)}) — reguła {werdykt} ({wplyw})."
+            f"wartość obliczona suma I″k,M = {_ka_pl(async_a)} kA ({zdanie})."
         ),
         "latex": (
             rf"\sum_m I''_{{k,M}} = {a_na_ka(async_a):.3f}\;\mathrm{{kA}} \;{rel_latex}\; "
             rf"0.05 \cdot I''_k = 0.05 \cdot {a_na_ka(ikss_total_a):.3f}\;\mathrm{{kA}} "
             rf"= {a_na_ka(limit_a):.3f}\;\mathrm{{kA}} "
-            rf"\;\Rightarrow\; \text{{reguła {werdykt}}}"
+            rf"\;\Rightarrow\; \text{{{skutek_latex}}}"
         ),
     }
 
@@ -428,28 +468,20 @@ def _wywod_wkladow(result: Any, sekcje: list[dict[str, Any]]) -> list[dict[str, 
     return kroki
 
 
-def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
-    """Panel walidacji metody IEC 60909 (ZWARCIA-PRO F3 pkt 10) — checklista.
+def _walidacja_iec(result: Any) -> list[dict[str, str]]:
+    """Panel metody IEC 60909 (ZWARCIA-PRO F3 pkt 10) — pozycje {pozycja_pl, wartosc_pl}.
 
-    Pozycje budowane WYLACZNIE z realnych wlasnosci biegu (zero fabrykacji):
-    stale metody (norma, Z-bus) = INFO; realne sprawdzenia (maszyny, regula 5%,
-    input_hash) = PASS/FAIL wprost z wyniku solvera. Kolejnosc stala (determinizm).
+    Pozycje budowane WYLACZNIE z realnych wlasnosci biegu (zero fabrykacji): norma, c,
+    metoda, maszyny, regula malych silnikow (to samo zdanie co krok wywodu), odcisk wejscia
+    i zakres waznosci przy Z_f. Karta WERDYKT-MIGRACJA-190: panel NIE niesie statusu
+    PASS/FAIL — zaden z punktow nie jest ocena wymagania (obecnosc maszyn i odcisk to
+    fakty biegu, regula p. 6.6 to warunek metody ze skutkiem dla wyniku podanym w zdaniu).
+    Kolejnosc stala (determinizm).
     """
     wb = result.white_box
     n_async = int(wb.get("n_asynchronous", 0))
-    async_a = wb.get("ikss_async_machines_a")
-    limit_a = wb.get("small_motor_limit_a")
-    if result.motors_negligible:
-        regula_status = "PASS"
-        regula_wartosc = "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
-    else:
-        regula_status = "FAIL"
-        regula_wartosc = (
-            "niespełniona — silniki niepomijalne, ich wkłady uwzględnione w prądzie "
-            "wyłączeniowym Ib"
-        )
-    if async_a is not None and limit_a is not None:
-        regula_wartosc += f" (suma I″k,M = {_ka_pl(async_a)} kA, próg = {_ka_pl(limit_a)} kA)"
+    n_sync = int(wb.get("n_synchronous", 0))
+    zdanie_reguly, _ = _regula_malych_silnikow(result)
     z_f = wb.get("z_f_ohm")
     zakres: list[dict[str, str]] = (
         []
@@ -465,44 +497,33 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
                     "zakresem IEC 60909-0 (norma definiuje zwarcie metaliczne); wynik nie jest "
                     "podstawą doboru aparatury ani wytrzymałości zwarciowej"
                 ),
-                "status": "INFO",
             }
         ]
     )
     return [
-        {
-            "pozycja_pl": "Norma bazowa metody",
-            "wartosc_pl": "IEC 60909-0:2016",
-            "status": "INFO",
-        },
+        {"pozycja_pl": "Norma bazowa metody", "wartosc_pl": "IEC 60909-0:2016"},
         {
             "pozycja_pl": "Współczynnik napięciowy c",
             "wartosc_pl": f"c = {_liczba_pl(result.c_factor, 2)} (z tego przebiegu)",
-            "status": "INFO",
         },
         {
             "pozycja_pl": "Metoda obliczenia wkładów",
             "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-            "status": "INFO",
         },
         {
-            "pozycja_pl": "Maszyny asynchroniczne",
+            "pozycja_pl": "Maszyny wirujące w modelu",
             "wartosc_pl": (
-                f"uwzględnione: {n_async} szt." if n_async > 0 else "nieobecne w modelu"
+                f"synchroniczne: {n_sync} szt., asynchroniczne: {n_async} szt."
+                if n_sync + n_async > 0
+                else "nieobecne w modelu"
             ),
-            "status": "PASS" if n_async > 0 else "INFO",
         },
-        {
-            "pozycja_pl": "Reguła małych silników (5%)",
-            "wartosc_pl": regula_wartosc,
-            "status": regula_status,
-        },
+        {"pozycja_pl": "Reguła małych silników (p. 6.6)", "wartosc_pl": zdanie_reguly},
         {
             # Karta #145: odcisk danych wejściowych jest metadaną — pozycja mówi, że
             # obliczenie jest powtarzalne; sam odcisk zostaje w odpowiedzi (`input_hash`).
             "pozycja_pl": "Powtarzalność obliczenia",
             "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
-            "status": "PASS" if input_hash else "FAIL",
         },
         *zakres,
     ]
@@ -607,7 +628,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         **result.to_dict(),
         "wywod": _wywod_wkladow(result, sekcje),
         "wywod_sekcje": sekcje,
-        "walidacja_iec": _walidacja_iec(result, input_hash),
+        "walidacja_iec": _walidacja_iec(result),
         "input_hash": input_hash,
         # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c punktu i jego podstawa (White Box).
         "c_factor": punkt.dobor_c.wartosc,

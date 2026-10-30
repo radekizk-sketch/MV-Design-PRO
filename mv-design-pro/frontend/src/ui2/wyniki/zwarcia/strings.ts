@@ -99,7 +99,7 @@ export const ZWARCIA_STRINGS = {
   wkladyKolUdzial: 'Udział',
   wkladyKolIdentyfikator: 'Identyfikator źródła',
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
-  walidacjaTytul: 'Walidacja metody IEC 60909',
+  walidacjaTytul: 'Metoda obliczenia IEC 60909',
   wkladyNiedostepneOpis:
     'Rozbicie maszynowe wymaga migawki modelu sieci i parametrów biegu (scenariusz, współczynnik c, czas wyłączenia) — bez nich serwer nie ma z czego go policzyć. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
   // Stany ODCZYTU (odczyt w toku ≠ brak danych, błąd odczytu ≠ brak danych).

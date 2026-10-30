@@ -453,66 +453,133 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
 
-def test_sc3f_contributions_regula_5_procent_pelna(tmp_path):
-    """ZWARCIA-PRO F3 pkt 9: krok reguly malych silnikow PELNY (wartosci + LaTeX).
+def _dane_wkladow_maszyn(tmp_path, generatory: list) -> dict:
+    """Odpowiedź wkładów dla sieci `_enm_z_maszyna` z podmienionym zbiorem maszyn."""
+    enm = _enm_z_maszyna().model_copy(update={"generators": generatory})
+    client, _ = _prepare_api_client(tmp_path)
+    response = client.post(
+        "/api/proof/sc3f/contributions",
+        json={
+            "snapshot": enm.model_dump(mode="json"),
+            "fault_node_id": "bus_oze",
+            "scenariusz": "MAX",
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
 
-    Tresc reguly + wymaganie normy + wartosc graniczna 0.05*I''k + wartosc
-    obliczona suma I''k,M + werdykt + wplyw na Ib; liczby 1:1 z white_box solvera.
+
+def _silnik(ref_id: str, p_mw: float):
+    from enm.models import Generator
+
+    return Generator(
+        ref_id=ref_id,
+        name=f"Silnik {ref_id}",
+        bus_ref="bus_oze",
+        p_mw=p_mw,
+        gen_type="fw_scig",
+        materialized_params={"un_kv": 15.0},
+    )
+
+
+def _agregat():
+    return _enm_z_maszyna().generators[0]
+
+
+#: Iloczyn cech reguły małych silników (karta WERDYKT-MIGRACJA-190, domena 8 C48):
+#: zbiór maszyn punktu (brak / tylko synchroniczne / silnik mały / silnik duży, także obok
+#: maszyny synchronicznej) × treść kroku wywodu, LaTeX i pozycja panelu metody (jedno zdanie).
+_PRZYPADKI_REGULY = {
+    "brak_maszyn": ([], "brak maszyn wirujących, więc reguła nie dotyczy", None),
+    "tylko_synchroniczna": (
+        [_agregat],
+        "brak silników asynchronicznych, więc reguła nie dotyczy",
+        None,
+    ),
+    "silnik_maly": ([lambda: _silnik("m1", 0.2)], "norma dopuszcza pominięcie", True),
+    "silnik_duzy": (
+        [lambda: _silnik("m1", 6.0)],
+        "pominięcie silników asynchronicznych " "niedopuszczalne",
+        False,
+    ),
+    "silnik_duzy_i_synchroniczna": (
+        [_agregat, lambda: _silnik("m1", 6.0)],
+        "pominięcie silników asynchronicznych niedopuszczalne",
+        False,
+    ),
+}
+
+
+@pytest.mark.parametrize("przypadek", sorted(_PRZYPADKI_REGULY))
+def test_sc3f_contributions_regula_malych_silnikow_iloczyn(tmp_path, przypadek):
+    """ZWARCIA-PRO F3 pkt 9-10: krok reguły p. 6.6 i pozycja panelu metody — JEDNO zdanie.
+
+    Reguła jest warunkiem metody (czy norma dopuszcza pominięcie silników asynchronicznych),
+    nie wymaganiem projektu: zdanie podaje wartość obliczoną, wartość graniczną i skutek dla
+    wyniku; program liczy wkłady wszystkich maszyn, więc zdanie nie twierdzi, że silniki
+    pominięto. Panel metody nie niesie statusu PASS/FAIL (kontrakt werdyktu wyjaśnialnego).
     """
-    _, _, dane = _dane_wkladow(tmp_path)
-    krok = dane["wywod"][-1]
-    async_ka = dane["white_box"]["ikss_async_machines_a"] / 1000.0
-    limit_ka = dane["white_box"]["small_motor_limit_a"] / 1000.0
-    ikss_ka = dane["white_box"]["ikss_total_a"] / 1000.0
+    fabryki, fragment, pomijalne = _PRZYPADKI_REGULY[przypadek]
+    dane = _dane_wkladow_maszyn(tmp_path, [f() for f in fabryki])
+    krok = dane["wywod_sekcje"][-1]["kroki"][-1]
+    assert krok == dane["wywod"][-1]
+    assert krok["tekst"].startswith("Reguła małych silników (p. 6.6)")
+    assert fragment in krok["tekst"]
+    assert "spełnion" not in krok["tekst"] and "pomijalne w prądzie" not in krok["tekst"]
+    pozycja = next(
+        p for p in dane["walidacja_iec"] if p["pozycja_pl"] == "Reguła małych silników (p. 6.6)"
+    )
+    assert set(pozycja) == {"pozycja_pl", "wartosc_pl"}
+    assert fragment in pozycja["wartosc_pl"]
+    assert pozycja["wartosc_pl"] in krok["tekst"]
+    wb = dane["white_box"]
+    if pomijalne is None:
+        assert krok["latex"] is None
+        return
+    assert dane["motors_negligible"] is pomijalne
+    async_ka = wb["ikss_async_machines_a"] / 1000.0
+    limit_ka = wb["small_motor_limit_a"] / 1000.0
+    ikss_ka = wb["ikss_total_a"] / 1000.0
     assert limit_ka == pytest.approx(0.05 * ikss_ka)
-    # Tekst: wymaganie + wartosc graniczna + wartosc obliczona + werdykt + wplyw.
-    # Karta #145: zdanie po polsku (znaki diakrytyczne, przecinek dziesiętny, bez kodów).
-    assert "wymaganie suma I″k,M ≤ 0,05·I″k" in krok["tekst"]
+    assert (async_ka <= limit_ka) is pomijalne
     limit_pl = f"{limit_ka:.3f}".replace(".", ",")
     async_pl = f"{async_ka:.3f}".replace(".", ",")
+    assert "wymaganie suma I″k,M ≤ 0,05·I″k" in krok["tekst"]
     assert f"wartość graniczna 0,05·I″k = {limit_pl} kA" in krok["tekst"]
     assert f"wartość obliczona suma I″k,M = {async_pl} kA" in krok["tekst"]
-    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in krok["tekst"]
+    assert f"{async_pl} kA {'≤' if pomijalne else '>'} 0,05·I″k = {limit_pl} kA" in (
+        pozycja["wartosc_pl"]
+    )
+    assert "uwzględni" in krok["tekst"]
     # LaTeX podstawienia obowiazkowy (zasada KaTeX 2026-07-22).
-    assert krok["latex"] is not None
     assert rf"\sum_m I''_{{k,M}} = {async_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
+    rel_latex = r"\le" if pomijalne else ">"
+    assert rf"\;{rel_latex}\; " in krok["latex"]
     assert (
         rf"0.05 \cdot {ikss_ka:.3f}\;\mathrm{{kA}} = {limit_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
     )
-    assert r"\text{reguła spełniona}" in krok["latex"]
-    # Ten sam krok w sekcji „Suma wkładów i reguły" (1:1).
-    assert dane["wywod_sekcje"][-1]["kroki"][-1] == krok
+    assert (
+        r"\text{pominięcie dopuszczalne}" if pomijalne else r"\text{pominięcie niedopuszczalne}"
+    ) in krok["latex"]
 
 
 def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
-    """ZWARCIA-PRO F3 pkt 10: checklista walidacji metody z realnych wlasnosci biegu."""
+    """ZWARCIA-PRO F3 pkt 10: panel metody z realnych wlasnosci biegu, bez statusow."""
     client, payload, dane = _dane_wkladow(tmp_path)
     walidacja = dane["walidacja_iec"]
     assert [p["pozycja_pl"] for p in walidacja] == [
         "Norma bazowa metody",
         "Współczynnik napięciowy c",
         "Metoda obliczenia wkładów",
-        "Maszyny asynchroniczne",
-        "Reguła małych silników (5%)",
+        "Maszyny wirujące w modelu",
+        "Reguła małych silników (p. 6.6)",
         "Powtarzalność obliczenia",
     ]
-    assert all(p["status"] in {"PASS", "FAIL", "INFO"} for p in walidacja)
+    # Karta WERDYKT-MIGRACJA-190: pozycje to fakty biegu — zadna nie niesie statusu.
+    assert all(set(p) == {"pozycja_pl", "wartosc_pl"} for p in walidacja)
     assert walidacja[0]["wartosc_pl"] == "IEC 60909-0:2016"
     assert walidacja[1]["wartosc_pl"].startswith("c = 1,10")
-    # Siec z sama maszyna synchroniczna: silniki asynchroniczne nieobecne (INFO),
-    # regula 5% SPELNIONA (PASS) z liczbami z white_box.
-    assert walidacja[3] == {
-        "pozycja_pl": "Maszyny asynchroniczne",
-        "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO",
-    }
-    assert walidacja[4]["status"] == "PASS"
-    assert walidacja[4]["wartosc_pl"].startswith(
-        "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
-    )
-    assert "próg =" in walidacja[4]["wartosc_pl"]
-    # Determinizm kontraktu: input_hash obecny (SHA-256) i stabilny miedzy biegami.
-    assert walidacja[5]["status"] == "PASS"
+    assert walidacja[3]["wartosc_pl"] == "synchroniczne: 1 szt., asynchroniczne: 0 szt."
     assert len(dane["input_hash"]) == 64
     # Karta #145: odcisk jest metadaną — pozycja mówi o powtarzalności, odcisk zostaje
     # w polu odpowiedzi `input_hash` (Informacje audytowe ekranu).
@@ -526,30 +593,16 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
 
 def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     """Siec bez maszyn: sekcje bez fabrykacji liczb, regula bez podstawien (latex None)."""
-    from enm.mapping import map_enm_to_network_graph
-
-    enm = _enm_z_maszyna().model_copy(update={"generators": []})
-    graph = map_enm_to_network_graph(enm)
-    fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
-
-    client, _ = _prepare_api_client(tmp_path)
-    response = client.post(
-        "/api/proof/sc3f/contributions",
-        json={
-            "snapshot": enm.model_dump(mode="json"),
-            "fault_node_id": fault_node_id,
-            "scenariusz": "MAX",
-        },
-    )
-    dane = response.json()
+    dane = _dane_wkladow_maszyn(tmp_path, [])
     tytuly = [s["tytul"] for s in dane["wywod_sekcje"]]
     assert tytuly == ["Dane wejściowe i model", "Suma wkładów i reguły"]
     regula = dane["wywod_sekcje"][-1]["kroki"][-1]
     assert regula["latex"] is None  # brak liczb w white_box -> bez podstawien
-    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in regula["tekst"]
     walidacja = dane["walidacja_iec"]
     assert walidacja[3]["wartosc_pl"] == "nieobecne w modelu"
-    assert walidacja[4]["wartosc_pl"] == "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
+    assert walidacja[4]["wartosc_pl"] == (
+        "w modelu brak maszyn wirujących, więc reguła nie dotyczy tego punktu zwarcia"
+    )
 
 
 def _payload_sc3f_pack(data, snapshot: dict) -> dict:
