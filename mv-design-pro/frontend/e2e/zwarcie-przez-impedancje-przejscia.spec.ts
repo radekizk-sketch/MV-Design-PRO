@@ -62,8 +62,8 @@ async function dodajZrodloSn(request: APIRequestContext, caseId: string): Promis
             catalog_item_id: SOURCE_ID,
             catalog_item_version: CATALOG_VERSION,
           },
-          hv_voltage_kv: 110.0,
-          transformer_sn_mva: 25.0,
+          // Równoważnik sieci na szynach SN GPZ zawiera już impedancję transformatorów 110/SN —
+          // operacja odmawia danych transformatorów w tym trybie (karta GPZ-MODEL).
         },
       },
     },

@@ -17,13 +17,16 @@ import { describe, expect, it } from 'vitest';
 
 import { tekstBezWzorow } from '../tekstZWzorami';
 
-const ZRODLA = import.meta.glob('../../../**/*.{ts,tsx}', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-
-const WYLACZONE = ['__tests__', '.test.', '.spec.'];
+/**
+ * Źródła `ui2/**` bez testów. Wyłączenie stoi we WZORCU, a nie w filtrze po imporcie: import
+ * `?raw` jest krawędzią grafu modułów vitest, więc plik testu w globie wiązałby ten test
+ * z każdą zmianą dowolnego innego testu `ui2` (wybór `vitest related` bramki scalenia,
+ * `scripts/test_bramka_scalenia.py`).
+ */
+const ZRODLA = import.meta.glob(
+  ['../../../**/*.{ts,tsx}', '!**/__tests__/**', '!**/*.test.*', '!**/*.spec.*'],
+  { query: '?raw', import: 'default', eager: true },
+) as Record<string, string>;
 
 /** Literał łańcuchowy TS (ten sam wzorzec co `ui_math_guard.STRING_LITERAL_TS_RE`). */
 const LITERAL = /(['"`])((?:\\.|(?!\1).)*)\1/g;
@@ -43,7 +46,6 @@ interface Wzor {
 function wzoryZrodel(): Wzor[] {
   const wynik: Wzor[] = [];
   for (const [sciezka, zrodlo] of Object.entries(ZRODLA)) {
-    if (WYLACZONE.some((w) => sciezka.includes(w))) continue;
     zrodlo.split('\n').forEach((linia, i) => {
       const oczyszczona = linia.trim();
       if (oczyszczona.startsWith('//') || oczyszczona.startsWith('*') || oczyszczona.startsWith('/*')) return;
@@ -60,6 +62,12 @@ function wzoryZrodel(): Wzor[] {
 
 describe('wzory $…$ w tekstach ui2', () => {
   const wzory = wzoryZrodel();
+
+  it('glob niesie źródła ui2 bez plików testów (krawędzie grafu modułów vitest)', () => {
+    const sciezki = Object.keys(ZRODLA);
+    expect(sciezki.filter((s) => /__tests__|\.test\.|\.spec\./.test(s))).toEqual([]);
+    expect(sciezki).toContain('../tekstZWzorami.tsx');
+  });
 
   it('skan widzi wzory przeniesione z ASCII (kontrola dodatnia — skan nie jest pusty)', () => {
     expect(wzory.length).toBeGreaterThan(100);
