@@ -7,7 +7,7 @@ Dwie klasy wpisów, których NIE wolno mieszać:
 - **Rodzina producenta:** dopuszczalne kombinacje z publikacji producenta. Dopóki nie ma osobnego numeru zamówieniowego/DTR, status nadal REFERENCYJNY_V1. NIE nazywamy jej potwierdzonym wyrobem.
 
 W bazie wyjściowej było **14 przekładników CT** (12 modeli referencyjnych plus 2 sieciowe ENEA 5/B) oraz **13 VT**.
-Po tej gałęzi: **68 CT** (36 nowych ENEA 5/A-D oraz 18 ABB TPU), **28 VT** (6 nowych ENEA 5/E-F i 9 ABB UDZ 24-1) oraz **5 Ferranti 3I0** w osobnym katalogu.
+Po tej gałęzi: **68 CT** (36 nowych ENEA 5/A-D oraz 18 ABB TPU), **31 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB) oraz **5 Ferranti 3I0** w osobnym katalogu.
 Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
 
 ## ENEA Operator — przekładniki prądowe
@@ -97,11 +97,23 @@ jako oddzielne pozycje z mocą, klasą, FS/ALF i połączeniem.
 Ferranti ma własną kategorię oraz znajduje się w zbiorczej
 bibliotece przekładników — **nie** jest modelowany jako CT fazowy.
 
+## Nowi producenci z rynku polskiego
+
+Osobny katalog `/api/catalog/instrument-transformer-families` obejmuje **49
+rodzin 12 producentów**, m.in. KPB Intra, RITZ, Arteche, ALCE Elektrik,
+ESITAS, PLESSE, ZWARPOL, PFIFFNER, MBS, Łukasiewicz-ITR,
+SPIE Energotest i ZELISKO. Są to rodziny doborowe, bez wymyślonych
+tabliczek CT/VT. Dodatkowe trzy zidentyfikowane typy VT ESITAS
+VTB10/20-K z polskiej oferty zostały włączone do listy VT.
+
+Szczegóły, źródła i zasady w:
+`docs/catalog/PRODUCENCI_PRZEKLADNIKOW_POLSKA_2026.md`.
+
 ## Technika wdrożenia i Ubuntu
 
 - `get_default_mv_catalog().list_ct_types()`: 68 modeli CT fazowych/profili wymagań.
-- `get_default_mv_catalog().list_vt_types()`: 28 VT.
-- `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0.
+- `get_default_mv_catalog().list_vt_types()`: 31 VT.
+- `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0; 49 rodzin 12 producentów w katalogu doborowym.
 - Nowe opcjonalne pola `secondary_cores`, `core_count`, `um_kv`, `primary_taps_a`, `secondary_windings`, `primary_connection` są przekazywane `from_dict → to_dict → REST` bez naruszania starych rekordów.
 - Dotychczasowe ID CT/VT nie są zmieniane, tylko dodano nowe.
 - Odbiór: `bash scripts/catalog_audit_ubuntu.sh` (wymaga Python 3.11 i zależności repo).
