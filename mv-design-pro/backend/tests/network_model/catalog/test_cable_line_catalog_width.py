@@ -37,9 +37,9 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
 
     # +6 aktualnych kabli NKT ENEA 2026; 4 stare etykiety operatora
     # nie sa juz bezpodstawnie oznaczone jako PRODUKCYJNY_V1.
-    assert stats["liczba_kabli_ogolem"] == 69
-    assert stats["liczba_kabli_produkcyjnych"] == 56
-    assert summary["liczba_kabli_produkcyjnych"] == 56
+    assert stats["liczba_kabli_ogolem"] == 82
+    assert stats["liczba_kabli_produkcyjnych"] == 69
+    assert summary["liczba_kabli_produkcyjnych"] == 69
     assert summary["liczba_kabli_testowych"] == 1
     # K30-22: + POLISH family (YHAKXS, YHKXS)
     assert "POLISH" in summary["rodziny_kabli"] or any(
@@ -49,7 +49,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     assert 50 in summary["przekroje_kabli_mm2"]
     assert 95 in summary["przekroje_kabli_mm2"]
     # 33 + 8 Polish 1C = 41
-    assert summary["liczba_typow_1z"] == 47
+    assert summary["liczba_typow_1z"] == 60
     assert summary["liczba_typow_3z"] == 22
     assert "NKT_ENEA_2026" in summary["rodziny_kabli"]
     assert summary["statusy_weryfikacji"] == [
