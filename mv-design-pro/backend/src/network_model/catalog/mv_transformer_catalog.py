@@ -7,8 +7,8 @@ ZRODLA DANYCH (proweniencja w polach rekordu, widoczna w karcie technicznej UI):
     ekoprojektu, dokumenty niedolaczone — NIEWERYFIKOWANY, znacznik przekroczenia Tier 2.
 - Pozycje normatywne SN/nN 15/0,4 i 20/0,4 kV (olejowe i suche, 250–3150 kVA) oraz
     blokowe PV/BESS/FW 15|20/0,385–1,0 kV (suche, 500–3150 kVA): straty = pulap Tier 2
-    rozporzadzenia (UE) 548/2014 w brzmieniu 2019/1783, u_k/i0/zaczepy = seria Siemens
-    GEAFOL — REFERENCYJNY (normatywna/typowa, nie egzemplarz producenta).
+    rozporzadzenia (UE) 548/2014 w brzmieniu 2019/1783, u_k/zaczepy = seria Siemens
+    GEAFOL, i0 = GEAFOL (suche) lub BEZ/EG (olejowe) — REFERENCYJNY.
 - Karty producentow: Siemens GEAFOL Neo 4GY6364-1EC 2000 kVA 20/0,48 kV — ZWERYFIKOWANY.
 
 KONWENCJE:
@@ -1208,6 +1208,52 @@ def _token(value: float) -> str:
     return f"{value:g}".replace(".", "p")
 
 
+
+#: Dane i0 dla referencyjnych modeli olejowych — z katalogow OLEJOWYCH.
+#: BEZ ecoFIT2, 2025, s. 5, Um <= 24 (25) kV: 250/400/630/800/1000/
+#: 1250/1600/2000/2500/3150 kVA. Brakujace moce 315/500: karty EG System.
+#: Wartosci sa przeniesione do modelu NORMATYWNEGO (P0/Pk Tier2, uk GEAFOL).
+#: Nie sa deklaracja parametrow jednego wyrobu ani pomiarem konkretnego typu.
+ZRODLO_I0_OLEJ_BEZ = (
+    "BEZ Transformátory ecoFIT², LIQUID-FILLED MEDIUM POWER TRANSFORMERS,"
+    " 2025, s. 5, Um <= 24(25) kV, No-load current I0 (%);"
+    " https://www.bez.sk/wp-content/uploads/2025/04/"
+    "BEZ_OIL_transformers_catalogue_05_2025_ENG.pdf (dostęp 2026-10-30)"
+)
+ZRODLO_I0_OLEJ_EG_315 = (
+    "EG System, EG-TO-0315-24-P-K, 315 kVA 21/0,8 kV Dyn5, i0 = 0,8 %;"
+    " https://www.egsystem-sklep.pl/images/karty-katalogowe-trafo-olej-JAN25/"
+    "EG-TO-0315-24-P-K-21-08_E2.pdf (dostęp 2026-10-30)"
+)
+ZRODLO_I0_OLEJ_EG_500 = (
+    "EG System, EG-TO-0500-17-P-K, 500 kVA 15,75/0,42 kV Dyn5, i0 = 0,6 %;"
+    " https://www.egsystem-sklep.pl/images/karty-katalogowe-trafo-olej-JAN25/"
+    "EG-TO-0500-17-P-K-1575-042_E2.pdf (dostęp 2026-10-30)"
+)
+I0_OLEJOWE_REFERENCYJNE_PROC: dict[int, float] = {
+    250: 0.45,
+    315: 0.8,
+    400: 0.4,
+    500: 0.6,
+    630: 0.3,
+    800: 0.25,
+    1000: 0.2,
+    1250: 0.17,
+    1600: 0.15,
+    2000: 0.13,
+    2500: 0.13,
+    3150: 0.13,
+}
+
+
+def zrodlo_referencyjnego_i0_olejowego(moc_kva: int) -> str:
+    if moc_kva == 315:
+        return ZRODLO_I0_OLEJ_EG_315
+    if moc_kva == 500:
+        return ZRODLO_I0_OLEJ_EG_500
+    return ZRODLO_I0_OLEJ_BEZ
+
+
 def _pozycja_normatywna(
     *,
     item_id: str,
@@ -1217,18 +1263,24 @@ def _pozycja_normatywna(
     lv_kv: float,
     rodzaj: str,
 ) -> dict[str, Any]:
-    """Pozycja NORMATYWNA: straty = pulap Tier 2, u_k/i0/zaczepy = seria GEAFOL.
+    """Pozycja NORMATYWNA: straty = pulap Tier 2, u_k/zaczepy = GEAFOL; i0 = GEAFOL lub BEZ/EG.
 
-    i0: dla transformatora SUCHEGO z kolumny „No-load Current" tej samej serii (suchej,
-    zywicznej); dla OLEJOWEGO ``None`` — prad jalowy serii suchej nie przenosi sie na
-    rdzen transformatora olejowego, a zrodla dla serii olejowej brak (konsument zglasza
-    WARNING `transformer.no_load_params_missing`, nie zgaduje).
+    i0: suche z GEAFOL; olejowe z katalogow BEZ/EG dla tej samej mocy,
+    ale innego modelu. Wszystkie pozycje normatywne sa REFERENCYJNE.
     """
     pulap = pulap_strat_tier2_w(rodzaj, float(moc_kva))
     if pulap is None:
         raise ValueError(f"{item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat")
     pk_w, p0_w = pulap
-    uk_proc, i0_proc = GEAFOL_24KV_UK_I0_PROC[moc_kva]
+    uk_proc, geafol_i0 = GEAFOL_24KV_UK_I0_PROC[moc_kva]
+    i0_proc = (
+        geafol_i0 if rodzaj == RODZAJ_SUCHY
+        else I0_OLEJOWE_REFERENCYJNE_PROC[moc_kva]
+    )
+    zrodlo_i0 = (
+        ZRODLO_GEAFOL_UK if rodzaj == RODZAJ_SUCHY
+        else zrodlo_referencyjnego_i0_olejowego(moc_kva)
+    )
     tabela = _NUMER_TABELI_TIER2[rodzaj]
     return {
         "id": item_id,
@@ -1239,7 +1291,7 @@ def _pozycja_normatywna(
             "voltage_lv_kv": lv_kv,
             "uk_percent": uk_proc,
             "pk_kw": _w_na_kw_bez_przekroczenia(pk_w),
-            "i0_percent": i0_proc if rodzaj == RODZAJ_SUCHY else None,
+            "i0_percent": i0_proc,
             "p0_kw": _w_na_kw_bez_przekroczenia(p0_w),
             "vector_group": "Dyn11",
             "cooling_class": _CHLODZENIE_WG_RODZAJU[rodzaj],
@@ -1249,7 +1301,10 @@ def _pozycja_normatywna(
             "standard": "UE 548/2014 (2019/1783) Tier 2",
             "verification_status": "REFERENCYJNY",
             "catalog_status": "REFERENCYJNY_V1",
-            "source_reference": f"{ZRODLO_TIER2} || u_k, i0, zaczepy: {ZRODLO_GEAFOL_UK}",
+            "source_reference": (
+                f"{ZRODLO_TIER2} || u_k i zaczepy: {ZRODLO_GEAFOL_UK}"
+                f" || i0 ({rodzaj}): {zrodlo_i0}"
+            ),
             "contract_version": "2.0",
             "verification_note": (
                 f"Pozycja NORMATYWNA/TYPOWA — nie egzemplarz producenta. Transformator "
@@ -1264,7 +1319,13 @@ def _pozycja_normatywna(
                 + (
                     f", i0 = {i0_proc:g} % z tej samej serii (suchej)"
                     if rodzaj == RODZAJ_SUCHY
-                    else ", i0 — brak źródła dla transformatora olejowego (pole puste)"
+                    else f", i0 = {i0_proc:g} % z ODRĘBNEJ serii transformatorów olejowych"
+                )
+                + "; model referencyjny z różnych źródeł, nie tabliczka jednego wyrobu"
+                + (
+                    "; dla 315/500 kVA karta źródłowa ma INNĄ przekładnię i grupę"
+                    if rodzaj == RODZAJ_OLEJOWY and moc_kva in (315, 500)
+                    else ""
                 )
                 + ". Dla HV 15 kV przyjęto serię Um 24 kV (tab. I.1/I.2 obejmuje Um ≤ 24 kV "
                 "łącznie). Pozycję producenta dopisuje się osobnym rekordem z karty PDF."
@@ -1385,8 +1446,9 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
             "uk_percent": 6.0,
             # Pk120 gwarantowane (temperatura odniesienia klasy F wg IEC 60076-11).
             "pk_kw": 16.0,
-            # Karta wg 548/2014 nie podaje pradu jalowego — pole puste, nie zgadywane.
-            "i0_percent": None,
+            # Karta Neo nie podaje i0. GEAFOL 24 kV to inna seria:
+            # pole jest referencyjne, NIE gwarantowane dla tego typu.
+            "i0_percent": GEAFOL_24KV_UK_I0_PROC[2000][1],
             "p0_kw": 2.34,
             "vector_group": "Dyn11",
             "cooling_class": "AN",
@@ -1404,15 +1466,17 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
                 "Budapeszt, grudzień 2025; https://assets.siemens-energy.com/dam/"
                 "21d60220-d7c1-473c-8eef-b3db0095a922/GEAFOL-Distribution-Transformer-"
                 "Information-acc--to-EU-Regulation-548-2014-pdf_Original%20file.pdf "
-                "(dostęp 2026-10-15)"
+                "(dostęp 2026-10-15); i0 referencyjny z INNEJ serii: "
+                + ZRODLO_GEAFOL_UK
             ),
             "contract_version": "2.0",
             "verification_note": (
                 "Karta producenta: Sr = 2000 kVA, Dyn11, U1 = 20 000 V, U2 = 480 V, chłodzenie "
                 "AN; P0 = 2340 W gwarantowane (1974 W zmierzone); Pk120 = 16 000 W "
                 "gwarantowane (15 174 W zmierzone; Pk75 = 14 000 W); u_k = 6 % ±10 %; "
-                "zaczepy ±2,5; ±5 %. Prąd jałowy — karta nie podaje (pole puste). "
-                "Wartości gwarantowane równe pułapowi Tier 2 tab. I.2 dla 2000 kVA."
+                "zaczepy ±2,5; ±5 %. Prąd jałowy i0 = 0,5 % z INNEJ serii "
+                "GEAFOL 24 kV (REFERENCYJNY, nie pomiar/gwarancja Neo). "
+                "Wartości gwarantowane P0/Pk równe pułapowi Tier 2 tab. I.2 dla 2000 kVA."
             ),
         },
     },

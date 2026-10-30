@@ -230,7 +230,13 @@ def test_pozycja_normatywna_ma_straty_rowne_pulapowi_i_u_k_serii(rekord: dict[st
     assert 0.0 <= p0_max_w - params["p0_kw"] * 1000.0 < 0.1 + 1e-6
     uk, i0 = tr.GEAFOL_24KV_UK_I0_PROC[sr_kva]
     assert params["uk_percent"] == uk
-    assert params["i0_percent"] == (i0 if rodzaj == tr.RODZAJ_SUCHY else None)
+    oczekiwane_i0 = (
+        i0 if rodzaj == tr.RODZAJ_SUCHY
+        else tr.I0_OLEJOWE_REFERENCYJNE_PROC[sr_kva]
+    )
+    assert params["i0_percent"] == oczekiwane_i0
+    if rodzaj == tr.RODZAJ_OLEJOWY:
+        assert "ODRĘBNEJ serii" in params["verification_note"]
     assert "manufacturer" not in params
     assert "NORMATYWNA/TYPOWA — nie egzemplarz producenta" in params["verification_note"]
 
@@ -240,10 +246,9 @@ def test_pozycja_normatywna_ma_straty_rowne_pulapowi_i_u_k_serii(rekord: dict[st
     [
         # tab. I.2 sucha 1000 kVA: 9000 / 1395 W; GEAFOL 6 % / 0,6 %
         ("tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy", 9.0, 1.395, 6.0, 0.6),
-        # tab. I.1 olejowa 800 kVA: 6000 / 585 W; i0 bez źródła
-        ("tr-sn-nn-20-04-800kva-dyn11-tier2-olej", 6.0, 0.585, 6.0, None),
-        # tab. I.1 olejowa 3150 kVA: 23000 / 1980 W; u_k 8 %
-        ("tr-sn-nn-15-04-3150kva-dyn11-tier2-olej", 23.0, 1.98, 8.0, None),
+        # tab. I.1 olejowa 800/3150 kVA: i0 z katalogu BEZ, osobny typ
+        ("tr-sn-nn-20-04-800kva-dyn11-tier2-olej", 6.0, 0.585, 6.0, 0.25),
+        ("tr-sn-nn-15-04-3150kva-dyn11-tier2-olej", 23.0, 1.98, 8.0, 0.13),
         # tab. I.2 sucha 500 kVA — interpolacja 400..630: Pk 5630,43 W, P0 811,96 W
         ("tr-sn-nn-15-0p69-0p5mva-dyn11-inverter", 5.6304, 0.8119, 6.0, 0.8),
         # tab. I.2 sucha 2500 kVA blokowa
@@ -267,7 +272,48 @@ def test_karta_producenta_transformatora_cytuje_dokument() -> None:
     assert karta["verification_status"] == ZWERYFIKOWANY
     assert "4GY6364-1EC" in karta["source_reference"]
     assert (karta["pk_kw"], karta["p0_kw"], karta["uk_percent"]) == (16.0, 2.34, 6.0)
-    assert karta["i0_percent"] is None  # karta nie podaje prądu jałowego
+    assert karta["i0_percent"] == 0.5  # referencja GEAFOL, NIE karta Neo
+    assert "REFERENCYJNY, nie pomiar/gwarancja Neo" in karta["verification_note"]
+
+
+
+
+def test_kazdy_transformator_ma_pelny_minimalny_zestaw_liczbowy() -> None:
+    """243 rekordy, w tym 24 olejowe + Siemens: nie dopuszczamy ponownie pustego i0.
+
+    Kontrola kompletnosci NIE oznacza, ze model normatywny ma karte jednego producenta.
+    Pochodzenie kazdego parametru pozostaje opisane w source_reference i verification_note.
+    """
+    wymagane = (
+        "rated_power_mva", "voltage_hv_kv", "voltage_lv_kv",
+        "uk_percent", "pk_kw", "p0_kw", "i0_percent",
+    )
+    for rekord in tr.get_all_transformer_types():
+        p = rekord["params"]
+        for pole in wymagane:
+            v = p.get(pole)
+            assert isinstance(v, (int, float)) and math.isfinite(v) and v > 0, (
+                rekord["id"], pole, v
+            )
+        assert str(p.get("vector_group", "")).strip(), rekord["id"]
+        # Moc pozorna jalowa nie moze byc mniejsza od strat czynnych P0.
+        assert p["i0_percent"] * p["rated_power_mva"] * 10 >= p["p0_kw"], rekord["id"]
+
+
+def test_24_olejowe_i0_z_oddzielnej_serii_i_nie_awansowane_na_producenta() -> None:
+    olejowe = [
+        r for r in tr.TRANSFORMER_SN_NN_04_TIER2
+        if tr.rodzaj_izolacji_transformatora(r["params"]["cooling_class"]) == tr.RODZAJ_OLEJOWY
+    ]
+    assert len(olejowe) == 24
+    for rekord in olejowe:
+        p = rekord["params"]
+        assert p["verification_status"] == REFERENCYJNY
+        assert p["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        moc_kva = round(p["rated_power_mva"] * 1000)
+        assert p["i0_percent"] == tr.I0_OLEJOWE_REFERENCYJNE_PROC[moc_kva]
+        assert tr.zrodlo_referencyjnego_i0_olejowego(moc_kva) in p["source_reference"]
+        assert "różnych źródeł" in p["verification_note"]
 
 
 # ---------------------------------------------------------------------------
