@@ -22,6 +22,7 @@ import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import {
   buildCanvasModelIndex,
   ELEMENT_KIND_KOTWICY,
+  refOperacjiTematu,
   resolveCanvasMenuSubject,
   type CanvasMenuSubject,
   type CanvasModelIndex,
@@ -210,7 +211,8 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const wykonajAkcje = useCallback(
     (actionId: string) => {
       if (!temat) return;
-      wykonawca(actionId, temat.menuKind, temat.modelRef);
+      // Ten sam ref operacji co menu kanwy — aparat pola jako `${bayRef}#${SymbolId}`.
+      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat));
     },
     [temat, wykonawca],
   );

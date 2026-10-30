@@ -11,7 +11,7 @@
  *   - `handleAction` (ciało `useCallback`, ~linie 1790-1901) → ciało hooka
  *     `useSldActionExecutor` poniżej,
  *   - czyste zależności modułowe wołane przez `handleAction`:
- *     `parseGpzApparatusSelectionId` (~241), `elementTypeForSldKind` +
+ *     `elementTypeForSldKind` +
  *     `buildSldOperationContext` + `operationOpenMessage` (~405-546, ostatnia
  *     to prywatny helper `buildSldOperationContext`, nieeksportowany również
  *     tutaj), `ACTION_TO_SCREEN` (~700), `routeSurfaceLabelPl` (~728),
@@ -27,7 +27,11 @@
  * v2 i v3 (Core Rule #3, brak shadow-modelu), więc hook działa identycznie
  * niezależnie od tego, która wersja kanwy go woła.
  *
- * `parseGpzApparatusSelectionId`/`elementTypeForSldKind`/
+ * Identyfikator aparatu pola (`${bayRef}#${SymbolId}`) rozbiera WYŁĄCZNIE
+ * `identyfikatorAparatu.ts::rozbierzIdentyfikatorAparatu` (jeden parser dla wykonawcy,
+ * kontekstu dostępności, stanu łącznika i karty aparatu inspektora).
+ *
+ * `elementTypeForSldKind`/
  * `buildSldOperationContext` są eksportowane, bo czytają je także kontekst
  * dostępności akcji (`akcjeElementu.ts` — wspólny dla menu kanwy i paska działań
  * inspektora), karta techniczna inspektora i kanwa v3 — importują je stąd zamiast
@@ -59,6 +63,7 @@ import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
 import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
+import { jestGlowicaKablowa, rozbierzIdentyfikatorAparatu } from './identyfikatorAparatu';
 import type { OperacjaNn } from '../v3/lv-domain/operacjeNn';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
@@ -231,14 +236,6 @@ export const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
 
 export function isSldDeleteAction(actionId: string): boolean {
   return Object.prototype.hasOwnProperty.call(DELETE_ACTION_OBJECT_LABEL_PL, actionId);
-}
-
-/** `id` w postaci `${bayRef}#${apparatusKind}` (konwencja GPZ canonical
- *  overlay, `SldWorkspaceContainer.buildGpzApparatusOverlayTargets`). */
-export function parseGpzApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
-  const marker = id.lastIndexOf('#');
-  if (marker <= 0 || marker === id.length - 1) return null;
-  return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
 }
 
 interface SldOperationAction {
@@ -603,11 +600,20 @@ export function buildSldOperationContext(
 
   if (!elementId) return null;
 
-  const apparatusSelection = kind === 'apparatus' ? parseGpzApparatusSelectionId(elementId) : null;
+  // Aparat pola trafiony na kanwie przychodzi jako `${bayRef}#${SymbolId}`
+  // (`canvasMenuSubject.refOperacjiTematu`) — operacja dotyczy POLA, a rodzaj aparatu
+  // bramkuje operacje aparatu (ciąg główny wyłącznie z głowicy kablowej).
+  const apparatusSelection = kind === 'apparatus' ? rozbierzIdentyfikatorAparatu(elementId) : null;
   let operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
   let operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
-  if (kind === 'apparatus' && actionId === 'extend-trunk' && apparatusSelection?.apparatusKind !== 'cable_head') {
-    return null;
+  // „Wyprowadź ciąg główny z głowicy": punktem startu jest WYŁĄCZNIE pole tej głowicy —
+  // głowica innego aparatu nie istnieje, a pole już niosące kabel (zajętość z modelu
+  // odczytu backendu, `line_fields`) nie wyprowadza drugiego ciągu (kanon POLA-W-TORZE).
+  // Resolver dostępności menu woła TĘ funkcję, więc pozycja menu i operacja mają jeden
+  // predykat; dawna bramka `bayHasOutgoingRun` nie miała żadnego pisarza.
+  if (kind === 'apparatus' && actionId === 'extend-trunk') {
+    if (!apparatusSelection || !jestGlowicaKablowa(apparatusSelection.symbolId)) return null;
+    if (!poleLinioweWolne(logicalViews, apparatusSelection.bayRef)) return null;
   }
   // K5-A: ogranicznik z aparatu BEZ kompozytu `bayRef#kind` (scena v3 niesie
   // w `elementId` ref POLA macierzystego — `meta.ownerRef = bayRef`,
@@ -631,10 +637,8 @@ export function buildSldOperationContext(
   if (!op) return null;
 
   const extraContext: Record<string, unknown> = { source: 'sld_context_menu' };
-  if (apparatusSelection) {
-    extraContext.apparatus_ref = elementId;
-    extraContext.apparatus_kind = apparatusSelection.apparatusKind;
-    extraContext.bay_ref = apparatusSelection.bayRef;
+  if (actionId === 'extend-trunk' && apparatusSelection) {
+    extraContext.field_ref = apparatusSelection.bayRef;
   }
   if (actionId === 'append-station-on-endpoint') {
     extraContext.default_termination = 'station';
@@ -929,7 +933,7 @@ export function useSldActionExecutor(
         // (jak w gałęzi nawigacyjnej niżej).
         case 'wyniki-rozplywu': {
           const apparatusSelection = kind === 'apparatus' && elementId
-            ? parseGpzApparatusSelectionId(elementId)
+            ? rozbierzIdentyfikatorAparatu(elementId)
             : null;
           const navigationElementId = apparatusSelection?.bayRef ?? elementId;
           setWynikiTab('rozplyw', navigationElementId ?? null);
@@ -953,7 +957,7 @@ export function useSldActionExecutor(
         case 'nawigacja': {
           const screenCode = ACTION_TO_SCREEN[actionId];
           const apparatusSelection = kind === 'apparatus' && elementId
-            ? parseGpzApparatusSelectionId(elementId)
+            ? rozbierzIdentyfikatorAparatu(elementId)
             : null;
           let navigationElementId = apparatusSelection?.bayRef ?? elementId;
           // Karta W2-B ('show-sc-data' z menu sekcji): elementId to szyna

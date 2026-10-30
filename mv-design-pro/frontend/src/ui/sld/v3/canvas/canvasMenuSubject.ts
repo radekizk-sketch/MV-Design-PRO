@@ -90,6 +90,8 @@ import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import { LABEL_OWNER_ELEMENT_KIND, type HitObjectClass } from './hitAreas';
 import type { OwnerKind } from '../layout/labels';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
+import type { SymbolId } from '../symbols/defs';
+import { identyfikatorAparatu } from '../../shared/identyfikatorAparatu';
 
 /**
  * Rodzaj obiektu MODELU, do którego zakotwiczony jest trafiony rysunek.
@@ -247,6 +249,22 @@ export interface CanvasMenuSubject {
   readonly kotwica: MenuAnchorKind;
   /** Rodzina gałęzi (`Branch.type`) — tylko dla kotwicy `galaz`. */
   readonly rodzinaGalezi?: string;
+  /** Rodzaj trafionego APARATU pola (`SymbolId` symbolu sceny) — tylko dla kotwicy `pole`
+   *  trafionej symbolem. Razem z `modelRef` (ref pola) tworzy identyfikator aparatu
+   *  (`refOperacjiTematu`), którym menu, pasek inspektora i wykonawca rozstrzygają
+   *  operacje aparatu (np. wyprowadzenie ciągu głównego z głowicy kablowej). */
+  readonly symbolAparatu?: SymbolId;
+}
+
+/**
+ * Ref, który jedzie do wykonawcy akcji i do kontekstu dostępności: dla aparatu pola —
+ * identyfikator `${bayRef}#${SymbolId}` (`shared/identyfikatorAparatu.ts`), dla każdego
+ * innego tematu — ref modelu. Jedno miejsce dla menu kanwy i paska działań inspektora.
+ */
+export function refOperacjiTematu(temat: CanvasMenuSubject): string {
+  return temat.symbolAparatu === undefined
+    ? temat.modelRef
+    : identyfikatorAparatu(temat.modelRef, temat.symbolAparatu);
 }
 
 export type CanvasMenuSubjectResult =
@@ -262,6 +280,8 @@ export interface CanvasMenuSubjectInput {
   readonly derKind?: DerSourceKind;
   /** Kanoniczny `Bus.ref_id` podany wprost przez adapter (szyny GPZ). */
   readonly busRef?: string;
+  /** `SymbolId` trafionego symbolu sceny (`undefined` dla odcinków i napisów). */
+  readonly symbolId?: SymbolId;
 }
 
 // ---------------------------------------------------------------------------
@@ -583,6 +603,11 @@ export function resolveCanvasMenuSubject(
       modelRef: znaleziona.modelRef,
       kotwica: znaleziona.kotwica,
       ...(znaleziona.rodzinaGalezi === undefined ? {} : { rodzinaGalezi: znaleziona.rodzinaGalezi }),
+      // Aparat pola: symbol trafiony WPROST na polu-kotwicy. Napis albo odcinek pola nie
+      // niesie rodzaju aparatu — temat zostaje tematem pola (bez domysłu rodzaju).
+      ...(znaleziona.kotwica === 'pole' && input.symbolId !== undefined
+        ? { symbolAparatu: input.symbolId }
+        : {}),
     },
   };
 }

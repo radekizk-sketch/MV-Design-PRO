@@ -7,6 +7,8 @@
  *   - publish toast events (Polish messages)
  *   - integrację z BuildSequence (8 komend) + HistoryStore (undo/redo)
  */
+import { jestGlowicaKablowa } from '../../shared/identyfikatorAparatu';
+import type { SymbolId } from '../../v3/symbols/defs';
 
 export type SldElementKindForMenu =
   | 'background'
@@ -360,26 +362,31 @@ export function powodBrakuStartuCiagu(kind: SldElementKindForMenu): string {
     case 'cable_segment_sn':
     case 'overhead_line_sn':
       return 'Nie rozpoznano wolnego końca tego ciągu. Kontynuuj ciąg ze stacji albo pola na jego końcu.';
+    case 'apparatus':
+    case 'bay':
+      return 'Pole ma już wyprowadzony kabel albo nie jest polem liniowym SN. Kontynuuj ciąg od końca jego odcinka albo wybierz wolne pole liniowe.';
     default:
       return 'Ten obiekt nie ma wolnego pola SN, z którego można wyprowadzić ciąg.';
   }
 }
 
 /**
- * Filtruje akcje menu wg dostępności (np. zakaz "Wyprowadź ciąg główny" gdy
- * pole już ma wyprowadzony ciąg).
+ * Filtruje akcje menu wg dostępności. Punkt startu ciągu (w tym zajętość pola głowicy
+ * kablowej) przychodzi w `trunkStartAvailable` z tego samego rozstrzygnięcia, które buduje
+ * kontekst operacji (`shared/sldActionExecutor.ts::buildSldOperationContext`). Dawne bramki
+ * `bayHasOutgoingRun`/`bayIsRunEndpoint` nie miały żadnego pisarza (deklaracja bez pomiaru)
+ * — skasowane.
  */
 export function getMenuActions(
   kind: SldElementKindForMenu,
   context?: {
-    readonly bayHasOutgoingRun?: boolean;
-    readonly bayIsRunEndpoint?: boolean;  // Phase 0B: czy pole jest endpointem ciągu (free terminal)
     /** S9-10 (predykaty parami): punkt startu ODGAŁĘZIENIA liczony TYM SAMYM
      *  resolverem co kreator (`resolveBranchStartAvailability`). Zastępuje
      *  martwe `stationHasFreeBay` (S9-5: bramka bez żadnego pisarza). */
     readonly branchStartAvailable?: boolean;
     readonly hasResults?: boolean;
-    readonly apparatusKind?: string;
+    /** Rodzaj trafionego aparatu pola (`SymbolId` sceny v3, `shared/identyfikatorAparatu.ts`). */
+    readonly symbolAparatu?: SymbolId;
     /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
      *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
     readonly stationHasNnBus?: boolean;
@@ -411,27 +418,11 @@ export function getMenuActions(
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;
     }
-    if (a.id === 'extend-trunk' && ctx.bayHasOutgoingRun === true) {
-      return {
-        ...a,
-        disabled: true,
-        disabledReasonPl: 'Pole ma już wyprowadzony ciąg główny.',
-      };
-    }
-    if (kind === 'apparatus' && a.id === 'extend-trunk' && ctx.apparatusKind !== 'cable_head') {
+    if (kind === 'apparatus' && a.id === 'extend-trunk' && !jestGlowicaKablowa(ctx.symbolAparatu)) {
       return {
         ...a,
         disabled: true,
         disabledReasonPl: 'Ciąg główny można wyprowadzić tylko z głowicy kablowej / portu odpływu pola SN.',
-      };
-    }
-    /* Phase 0B (operator-grade SLD plan v2): append-on-endpoint dostępny TYLKO
-     * gdy pole jest free endpointem ciągu (bus z topology_terminal tag). */
-    if (a.id === 'append-station-on-endpoint' && ctx.bayIsRunEndpoint === false) {
-      return {
-        ...a,
-        disabled: true,
-        disabledReasonPl: 'Pole nie jest końcem ciągu. Najpierw wyprowadź ciąg lub wybierz endpoint.',
       };
     }
     /* K5-A: agregat/UPS przyłączają się do szyny nN stacji — stacja bez szyny

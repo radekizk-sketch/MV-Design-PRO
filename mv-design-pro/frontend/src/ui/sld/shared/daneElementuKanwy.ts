@@ -24,7 +24,6 @@ import type {
   EnergyNetworkModel,
   Substation,
 } from '../../../types/enm';
-import type { SelectedElement } from '../../types';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { getMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
@@ -37,7 +36,6 @@ import {
 } from '../v2/model/stanAparatowPola';
 import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
-import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { PreviewElementKind } from '../v3/compose/preview';
 import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
@@ -223,125 +221,16 @@ function rekordStanuAparatu(bay: Bay, deviceRef: string): BaySwitchState | null 
   return bay.runtime_state?.primary_device_states?.[deviceRef] ?? null;
 }
 
-/** Nazwa aparatu pola z identyfikatora wewnętrznego widoku stacji
- *  (`${stationRef}/internal-bay/<pole>/<aparat>`) — jedno źródło dla opisu elementu kanwy
- *  i inspektora inżynierskiego (`InspectorEngineeringView`). */
-export const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
-  'switch-disconnector': 'Rozłącznik',
-  fuse: 'Bezpiecznik',
-  'earthing-switch': 'Uziemnik',
-  'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator',
-  breaker: 'Wyłącznik',
-  disconnector: 'Odłącznik',
-  vt: 'Przekładnik napięciowy',
-};
-
-/** `id` w postaci `${stationRef}/internal-bay/...`, `${stationRef}/nn/...`,
- *  `${stationRef}/pv/...`, `${stationRef}/transformer/...` — konwencja
- *  `StationInternalView` (K30). */
-export function stationRefFromInternalElement(id: string): string | null {
-  for (const marker of ['/internal-bay/', '/nn/', '/pv/', '/transformer/']) {
-    const markerIndex = id.indexOf(marker);
-    if (markerIndex > 0) return id.slice(0, markerIndex);
-  }
-  return null;
-}
-
-export function stationDisplayNameForRef(snapshot: EnergyNetworkModel | null, stationRef: string): string {
-  const station = findSubstationByRef(snapshot, stationRef);
-  return station && snapshot
-    ? stationPublicIdentity(snapshot, station).displayName
-    : 'stacja SN/nN';
-}
-
 export function stationRefForTransformerSelection(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string,
 ): string | null {
   // SZYNY-STACJI-LUSTRO (commit 2): stacja transformatora z JEDNEJ reguły „transformatory
   // stacji” (`stationRefOfTransformer`, odwrotność `selectStationDistributionTransformers`).
-  // Dawny skrót „ref wewnętrznego widoku stacji” (`stationRefFromInternalElement`) dopasowywał
-  // także realne refy modelu — `gpz/<id>/transformer/001/wn_sn` dawał „stację” `gpz/<id>`.
+  // Dawny skrót po znacznikach skasowanego widoku wewnętrznego stacji (`/transformer/`…)
+  // dopasowywał także realne refy modelu — `gpz/<id>/transformer/001/wn_sn` dawał „stację”
+  // `gpz/<id>`; skasowany razem z tą konwencją identyfikatorów.
   return stationRefOfTransformer(snapshot, transformerRef);
-}
-
-export function describeStationInternalElement(
-  snapshot: EnergyNetworkModel | null,
-  id: string,
-): SelectedElement | null {
-  const stationRef = stationRefFromInternalElement(id);
-  if (!stationRef) return null;
-  const stationName = stationDisplayNameForRef(snapshot, stationRef);
-
-  if (id.includes('/internal-bay/')) {
-    const bayPath = id.slice(id.indexOf('/internal-bay/') + '/internal-bay/'.length);
-    const [bayKey, deviceKey] = bayPath.split('/');
-    const roleKey = bayKey?.split('-')[0] ?? '';
-    // Etykieta roli z kanonu słownictwa ról pól (karta #141); rola spoza kanonu — „Pole SN”.
-    const bayLabel = fieldRoleLabelPl(roleKey);
-    const deviceLabel = deviceKey ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? 'Aparat pola SN' : null;
-    return {
-      id,
-      type: deviceLabel ? 'Switch' : 'BaySN',
-      name: deviceLabel
-        ? `${deviceLabel} - ${bayLabel}, ${stationName}`
-        : `${bayLabel} - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/nn/')) {
-    return {
-      id,
-      type: 'SwitchNN',
-      name: `Wyłącznik nN - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/nn-pcc')) {
-    return {
-      id,
-      type: 'ConnectionPoint',
-      name: `Punkt przyłączenia PV po stronie nN - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/nn-breaker/')) {
-    return {
-      id,
-      type: 'SwitchNN',
-      name: `Wyłącznik nN PV - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/protection/')) {
-    return {
-      id,
-      type: 'ProtectionNN',
-      name: `Zabezpieczenie PV - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/inverter/')) {
-    return {
-      id,
-      type: 'PVInverter',
-      name: `Falownik PV - ${stationName}`,
-      semanticHash: `source:${id}`,
-      semanticElementKind: 'SOURCE',
-      semanticEngineeringRole: 'PV_INVERTER',
-    };
-  }
-
-  if (id.includes('/transformer/')) {
-    return {
-      id,
-      type: 'TransformerBranch',
-      name: `Transformator - ${stationName}`,
-    };
-  }
-
-  return null;
 }
 
 /** `kind` z `onSelectElement` → kind gałęzi panelu elementu. `null` = brak
@@ -521,39 +410,32 @@ export function buildDaneElementuStacji(
   if (!rodzaj) return null;
 
   const stacjaSld = sldData.stations.find((s) => s.id === id);
-  const internalStationRef = stationRefFromInternalElement(id);
-  const stationForInternalElement = internalStationRef
-    ? sldData.stations.find((s) => s.id === internalStationRef)
-    : undefined;
   const transformerStationRef = rodzaj === 'transformer'
     ? stationRefForTransformerSelection(snapshot, id)
     : null;
   const stationForTransformer = transformerStationRef
     ? sldData.stations.find((s) => s.id === transformerStationRef)
     : undefined;
-  // Kod stacji z relacji elementu (stacja kliknięta, stacja elementu wewnętrznego, stacja
-  // transformatora). Brak relacji ⇒ `null` — dawne `sldData.stations[0]` przypisywało
+  // Kod stacji z relacji elementu (stacja kliknięta, stacja transformatora). Brak relacji ⇒ `null` — dawne `sldData.stations[0]` przypisywało
   // elementowi bez stacji kod PIERWSZEJ stacji rysunku (fałszywy kontekst w inspektorze).
   const stationContext = kind === 'station'
     ? stacjaSld
-    : stationForInternalElement ?? stationForTransformer;
-  const internalElementDescription = describeStationInternalElement(snapshot, id);
+    : stationForTransformer;
   // Gałąź 'station' ma KOMPLETNY obiekt z budowniczego stacji — użyty wprost.
   const daneStacjiBudowniczego = rodzaj === 'station'
     ? buildDaneStacji(snapshot, sldData, overlayPayload, id)
     : null;
   // Etykieta transformatora: nazwa rekordu modelu (bezpośredniego albo pierwszego
-  // transformatora dystrybucyjnego stacji), potem opis elementu wewnętrznego, potem rodzaj
-  // bez klasy napięciowej (karta ETYKIETY-TR).
+  // transformatora dystrybucyjnego stacji), potem rodzaj bez klasy napięciowej (karta ETYKIETY-TR).
   let transformerLabelOverride: string | null = null;
   if (rodzaj === 'transformer' && snapshot) {
     const directTransformer = (snapshot.transformers ?? []).find(
       (item) => item.ref_id === id || item.id === id,
     );
-    const stationRef = transformerStationRef ?? internalStationRef;
+    const stationRef = transformerStationRef;
     const transformerStation = stationRef ? findSubstationByRef(snapshot, stationRef) : null;
     const tr = directTransformer ?? selectStationDistributionTransformers(snapshot, transformerStation)[0] ?? null;
-    transformerLabelOverride = tr?.name ?? internalElementDescription?.name ?? 'Transformator';
+    transformerLabelOverride = tr?.name ?? 'Transformator';
   }
   // Karta #135 (e)1: identyfikacja pola i aparatu z MODELU — rekordy `bays` (karta W5-B: jedyny
   // nośnik pól SN, nN i ZKSN; kolejność zapisu). Pole trafione:
@@ -674,7 +556,6 @@ export function buildDaneElementuStacji(
           ?? (rodzaj === 'station'
             ? stacjaSld?.name ?? stacjaSld?.stationCode
             : stacjaSld?.stationCode ?? stacjaSld?.name)
-          ?? internalElementDescription?.name
           ?? nazwaElementuZModelu(snapshot, id)
           ?? id.split('/').pop()
           ?? id,

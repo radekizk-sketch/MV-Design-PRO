@@ -30,11 +30,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../../types/enm';
 import { useAppStateStore } from '../../../app-state';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import { identyfikatorAparatu } from '../identyfikatorAparatu';
 import * as sldActionExecutorModule from '../sldActionExecutor';
 import {
   ACTION_TO_SCREEN,
@@ -233,7 +234,6 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
       oczekiwanyOp: string;
     }> = [
       { actionId: 'add-bay', kind: 'section', elementId: 'bus/SEC-1', oczekiwanyOp: 'add_sn_bay' },
-      { actionId: 'extend-trunk', kind: 'apparatus', elementId: 'bay/B-1#cable_head', oczekiwanyOp: 'continue_trunk_segment_sn' },
       { actionId: 'start-branch', kind: 'section', elementId: 'bus/SEC-1', oczekiwanyOp: 'start_branch_segment_sn' },
       { actionId: 'insert-station', kind: 'cable_segment_sn', elementId: 'line/L-1', oczekiwanyOp: 'insert_station_on_segment_sn' },
       { actionId: 'insert-zksn', kind: 'cable_segment_sn', elementId: 'line/L-1', oczekiwanyOp: 'insert_zksn_on_segment_sn' },
@@ -276,7 +276,10 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
 
     it.each([
       ['bay/B-1', 'sw-1'],
-      ['bay/B-1#cb', 'sw-1'],
+      // Aparat pola wskazuje swoje pole (identyfikator `${bayRef}#${SymbolId}`); kompozyt
+      // rysunku spoza biblioteki symboli nie jest aparatem i nie wskazuje łącznika.
+      [identyfikatorAparatu('bay/B-1', 'breaker'), 'sw-1'],
+      ['bay/B-1#sn-bus', null],
       ['sw-1', 'sw-1'],
       ['bay/B-2', null],
       ['bay/B-3', null],
@@ -288,6 +291,40 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
         expect(context?.op).toBe('set_normal_open_point');
         expect(context?.context.switch_ref).toBe(oczekiwany);
       }
+    });
+
+    // „Wyprowadź ciąg główny z głowicy" — punkt startu to WYŁĄCZNIE pole głowicy, wolne
+    // według modelu odczytu backendu. Iloczyn {rodzaj aparatu} × {zajętość pola}.
+    const WIDOK_POL = (occupied: boolean | null) =>
+      ({
+        line_fields: occupied === null
+          ? []
+          : [{ field_ref: 'bay/B-1', station_ref: 'gpz/G-1', bay_role: 'OUT', occupied, segment_refs: [], corridor_refs: [] }],
+      }) as unknown as LogicalViewsV1;
+    it.each([
+      ['cableHead', false, true],
+      ['cableHead', true, false],
+      ['cableHead', null, false],
+      ['breaker', false, false],
+      ['earthSwitch', false, false],
+    ] as const)('extend-trunk z aparatu %s, pole zajęte=%s → operacja=%s', (symbol, zajete, oczekiwana) => {
+      const context = buildSldOperationContext(
+        'extend-trunk',
+        'apparatus',
+        identyfikatorAparatu('bay/B-1', symbol),
+        null,
+        WIDOK_POL(zajete),
+      );
+      expect(context !== null).toBe(oczekiwana);
+      if (context) {
+        expect(context.op).toBe('continue_trunk_segment_sn');
+        expect(context.context.field_ref).toBe('bay/B-1');
+      }
+    });
+    it('extend-trunk z dawnym kodem `cable_head` — kod spoza biblioteki symboli nie jest aparatem', () => {
+      expect(
+        buildSldOperationContext('extend-trunk', 'apparatus', 'bay/B-1#cable_head', null, WIDOK_POL(false)),
+      ).toBeNull();
     });
 
     it('set-switch-state: klucz skasowany — nie buduje żadnej operacji', () => {

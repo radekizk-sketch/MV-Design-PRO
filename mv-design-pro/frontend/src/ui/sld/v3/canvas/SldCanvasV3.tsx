@@ -32,7 +32,7 @@ import {
   type SceneV3,
 } from '../scene/buildScene';
 import { scenyWszystkichPoziomow } from '../scene/scenaSld';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth, measureTextWidth, screenFixedFontSize } from '../core/text';
@@ -240,6 +240,9 @@ export interface SldElementClickMeta {
    *  narysowana jako kompozyt stacji da się sprowadzić do kanonicznej szyny SN.
    *  `undefined` = tło arkusza. */
   readonly klasa?: HitObjectClass;
+  /** `SymbolId` trafionego SYMBOLU sceny (`undefined` dla odcinków i napisów) — rodzaj
+   *  aparatu pola dla tematu menu (`canvasMenuSubject.ts`, `symbolAparatu`). */
+  readonly symbolId?: SymbolId;
 }
 
 /**
@@ -3097,6 +3100,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         deviceRef: symbol.meta?.deviceRef,
         // PORTAL nN: stacja, której projekcję nN otwiera klik w portal.
         lvPortalStationRef: symbol.meta?.lvPortalStationRef,
+        // Rodzaj aparatu pola (głowica kablowa, wyłącznik…) — ten sam `SymbolId`,
+        // którym scena rysuje symbol.
+        symbolId: symbol.symbolId,
       });
     });
     // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis

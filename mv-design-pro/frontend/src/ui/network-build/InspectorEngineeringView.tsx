@@ -34,7 +34,7 @@ import { useKatalogPola, type KatalogPola } from '../field/useKatalogPola';
 import { bayKindLabelPl, etykietaStatusuZrodlaSzablonuPl } from '../catalog/BayTemplatePicker';
 import { CONSTRUCTION_LABELS_PL, powodBlokadyRodzinyPl } from '../catalog/SwitchgearFamilyPicker';
 import { PORT_KIND_LABELS_PL } from '../sld/v2/core/ports';
-import { fieldRoleLabelOrNullPl, fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
+import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
 import { sanitizeDisplayValue } from '../shell/displayHelpers';
@@ -94,9 +94,13 @@ import {
 } from '../shared/transformatoryStacji';
 import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
 import {
-  INTERNAL_STATION_DEVICE_LABELS_PL,
-  stationRefFromInternalElement,
-} from '../sld/shared/daneElementuKanwy';
+  jestGlowicaKablowa,
+  nazwaAparatuPl,
+  rolaAparatuPl,
+  rozbierzIdentyfikatorAparatu,
+  type IdentyfikatorAparatu,
+} from '../sld/shared/identyfikatorAparatu';
+import { refOperacjiTematu } from '../sld/v3/canvas/canvasMenuSubject';
 import {
   DzialaniaZwiniete,
   PanelElementuKanwy,
@@ -1028,98 +1032,6 @@ function isSemanticGpzSource(selectedElement: SelectedElement): boolean {
     || (selectedElement.type === 'Source' && selectedElement.id.includes('/substation'));
 }
 
-const APPARATUS_KIND_LABELS_PL: Record<string, string> = {
-  disconnect_bus: 'Odłącznik szynowy',
-  breaker: 'Wyłącznik SN',
-  ct: 'Przekładnik prądowy',
-  vt: 'Przekładnik napięciowy',
-  switch_disconnector: 'Rozłącznik',
-  earthing_switch: 'Uziemnik boczny',
-  fuse: 'Bezpieczniki',
-  cable_head: 'Głowica kablowa / port odpływowy',
-  transformer_symbol: 'Transformator WN/SN',
-};
-
-const APPARATUS_ROLE_LABELS_PL: Record<string, string> = {
-  disconnect_bus: 'Izolacja pola od szyny zbiorczej',
-  breaker: 'Łączenie robocze i zwarciowe pola',
-  ct: 'Pomiar prądu i tor zabezpieczeń',
-  vt: 'Pomiar napięcia i automatyka napięciowa',
-  switch_disconnector: 'Łączenie robocze pola',
-  earthing_switch: 'Uziemienie odpływu po odłączeniu pola',
-  fuse: 'Zabezpieczenie wkładkami bezpiecznikowymi',
-  cable_head: 'Jawny punkt wyprowadzenia ciągu głównego SN',
-  transformer_symbol: 'Tor transformatora WN/SN',
-};
-
-function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
-  const marker = id.lastIndexOf('#');
-  if (marker <= 0 || marker === id.length - 1) return null;
-  return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
-}
-
-function stationDisplayNameForInternalRef(
-  snapshot: EnergyNetworkModel,
-  stationRef: string,
-): string {
-  const station = (snapshot.substations ?? []).find((item) =>
-    item.ref_id === stationRef || item.id === stationRef,
-  );
-  // Tożsamość stacji z JEDNEGO miejsca (`stationPublicIdentity`: kod · rodzaj z topologii).
-  return station ? stationPublicIdentity(snapshot, station).displayName : 'Stacja SN/nN';
-}
-
-function buildInternalStationElementSections(
-  selectedElement: SelectedElement,
-  snapshot: EnergyNetworkModel,
-): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } | null {
-  const stationRef = stationRefFromInternalElement(selectedElement.id);
-  if (!stationRef) return null;
-
-  const stationName = stationDisplayNameForInternalRef(snapshot, stationRef);
-  const bayPath = selectedElement.id.includes('/internal-bay/')
-    ? selectedElement.id.slice(selectedElement.id.indexOf('/internal-bay/') + '/internal-bay/'.length)
-    : '';
-  const [bayKey, deviceKey] = bayPath.split('/');
-  const roleKey = bayKey?.split('-')[0] ?? '';
-  // Rola pola z identyfikatora wewnętrznego (`in`/`tr`/`coupler`/`oze`…) — etykieta z kanonu
-  // słownictwa ról pól (karta #141), nie z drugiej listy.
-  const bayLabel = fieldRoleLabelOrNullPl(roleKey) ?? 'Układ stacyjny';
-  const deviceLabel = deviceKey
-    ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? selectedElement.name
-    : selectedElement.name;
-  const isNnBreaker = selectedElement.id.includes('/nn/') || selectedElement.id.includes('/pv/nn-breaker/');
-  const isPvConnection = selectedElement.id.includes('/pv/');
-
-  const sections: PropertySection[] = [
-    {
-      id: 'ident',
-      label: 'Identyfikacja',
-      fields: [
-        { key: 'name', label: 'Nazwa', value: selectedElement.name },
-        { key: 'kind', label: 'Rodzaj elementu', value: deviceLabel },
-        { key: 'station', label: 'Stacja', value: stationName },
-      ],
-    },
-    {
-      id: 'context',
-      label: 'Miejsce w układzie',
-      fields: [
-        { key: 'switchgear', label: 'Rozdzielnia', value: isNnBreaker ? 'Rozdzielnica nN' : 'Rozdzielnia SN' },
-        { key: 'bay', label: 'Pole / tor', value: bayLabel },
-        { key: 'role', label: 'Rola techniczna', value: isPvConnection ? 'Przyłączenie źródła' : 'Tor pierwotny stacji' },
-      ],
-    },
-  ];
-
-  return {
-    sections,
-    elementType: selectedElement.type,
-    elementName: selectedElement.name,
-    actions: [],
-  };
-}
-
 function formatBayLabelForApparatus(
   bayRef: string,
   snapshot: EnergyNetworkModel | null,
@@ -1148,30 +1060,34 @@ function bayVoltageLabel(
   return bus ? `${bus.voltage_kv} kV` : 'nie wyznaczono';
 }
 
+/**
+ * Karta APARATU pola trafionego na kanwie. Tożsamość ⟨pole, `SymbolId`⟩ pochodzi z tematu
+ * kliknięcia kanwy (`refOperacjiTematu` → `rozbierzIdentyfikatorAparatu`, jeden parser);
+ * nazwa rodzaju i rola z jednego słownika (`shared/identyfikatorAparatu.ts`). Operacje
+ * aparatu (w tym „Wyprowadź ciąg główny z głowicy") daje pasek działań inspektora z rejestru
+ * menu i jednego wykonawcy — karta nie buduje drugiej ścieżki tej samej operacji.
+ */
 function buildApparatusSectionsForElement(
-  selectedElement: SelectedElement,
+  apparatus: IdentyfikatorAparatu,
   snapshot: EnergyNetworkModel | null,
   readinessIssues: ReadinessIssue[],
   fieldItems: readonly FieldReadModelItem[],
-): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } | null {
-  const apparatus = parseApparatusSelectionId(selectedElement.id);
-  if (!apparatus) return null;
-
-  const apparatusLabel = APPARATUS_KIND_LABELS_PL[apparatus.apparatusKind] ?? 'Aparat SN';
-  const apparatusRole = APPARATUS_ROLE_LABELS_PL[apparatus.apparatusKind] ?? 'Element toru pierwotnego pola SN';
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+  const apparatusLabel = nazwaAparatuPl(apparatus.symbolId);
+  const apparatusRole = rolaAparatuPl(apparatus.symbolId);
   const bayLabel = formatBayLabelForApparatus(apparatus.bayRef, snapshot, fieldItems);
   const voltageLabel = bayVoltageLabel(apparatus.bayRef, snapshot, fieldItems);
   const readinessForApparatus = readinessIssues.filter((issue) =>
-    issueTargetsElement(issue, selectedElement.id) || issueTargetsElement(issue, apparatus.bayRef),
+    issueTargetsElement(issue, apparatus.bayRef),
   );
-  const isCableHead = apparatus.apparatusKind === 'cable_head';
+  const isCableHead = jestGlowicaKablowa(apparatus.symbolId);
 
   const sections: PropertySection[] = [
     {
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'name', label: 'Nazwa', value: selectedElement.name || apparatusLabel },
+        { key: 'name', label: 'Nazwa', value: apparatusLabel },
         { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
         { key: 'bay', label: 'Pole powiązane', value: bayLabel },
         { key: 'role', label: 'Rola techniczna', value: apparatusRole },
@@ -1236,26 +1152,10 @@ function buildApparatusSectionsForElement(
     },
   ];
 
-  if (isCableHead) {
-    actions.unshift({
-      id: 'continue_trunk_from_cable_head',
-      label: 'Wyprowadź ciąg główny z głowicy',
-      op: 'continue_trunk_segment_sn',
-      context: {
-        field_ref: apparatus.bayRef,
-        bay_ref: apparatus.bayRef,
-        terminal_name: `${apparatusLabel} - ${bayLabel}`,
-        terminal_voltage_label: voltageLabel,
-        is_first_trunk_segment: true,
-      },
-      variant: 'primary',
-    });
-  }
-
   return {
     sections,
     elementType: 'apparatus',
-    elementName: selectedElement.name || apparatusLabel,
+    elementName: apparatusLabel,
     actions,
   };
 }
@@ -2061,19 +1961,6 @@ function buildSectionsForElement(
   if (!snapshot) return { sections: [], elementType: '', elementName: '', actions: [] };
 
   if (selectedElement) {
-    const apparatusSections = buildApparatusSectionsForElement(
-      selectedElement,
-      snapshot,
-      readinessIssues,
-      fieldItems,
-    );
-    if (apparatusSections) {
-      return apparatusSections;
-    }
-    const internalStationSections = buildInternalStationElementSections(selectedElement, snapshot);
-    if (internalStationSections) {
-      return internalStationSections;
-    }
     if (isConverterSourceSelection(selectedElement)) {
       const converter = findGeneratorForSelectedConverter(selectedElement, snapshot);
       if (converter || selectedElement.type === 'PVInverter' || selectedElement.type === 'BESSInverter') {
@@ -2584,8 +2471,24 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     [elementId, selectedElement, snapshot],
   );
 
+  // Aparat pola trafiony na kanwie: tożsamość z tematu kliknięcia (ten sam ref operacji, którym
+  // pasek działań woła wykonawcę), rozebrana jednym parserem identyfikatora aparatu.
+  const temat = stanPanelu?.temat ?? null;
+  const aparatZaznaczenia = useMemo(
+    () => (temat ? rozbierzIdentyfikatorAparatu(refOperacjiTematu(temat)) : null),
+    [temat],
+  );
+
   const { sections, elementType, elementName, actions } = useMemo(
     () => {
+      if (aparatZaznaczenia) {
+        return buildApparatusSectionsForElement(
+          aparatZaznaczenia,
+          snapshot,
+          readinessIssues,
+          fieldReadModelData.fields,
+        );
+      }
       if (isSelectedBay) {
         return buildBaySections(
           selectedBayField,
@@ -2611,6 +2514,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       );
     },
     [
+      aparatZaznaczenia,
       elementId,
       fieldReadModelError,
       fieldReadModelData.fields,

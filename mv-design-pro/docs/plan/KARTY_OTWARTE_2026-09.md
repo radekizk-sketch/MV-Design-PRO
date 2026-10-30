@@ -1251,6 +1251,21 @@ menu „extend-trunk” na aparacie są nieosiągalne z kanwy; identyfikatory `�
 `StationInternalView`. Rozstrzygnięcie (kasacja martwej ścieżki albo wpięcie akcji głowicy
 w temat menu pola) należy do wątku SLD — bez zmian w commicie 6.
 
+**Commit 7 (WIP, 2026-10-30, niezweryfikowany — rozstrzygnięcie architekta: wpięcie, nie
+kasacja).** Jedna tożsamość aparatu pola `frontend/src/ui/sld/shared/identyfikatorAparatu.ts`
+(`${bayRef}#${SymbolId}`, jedyny konstruktor i parser, nazwa z `SYMBOL_DEFS.labelPl`, rola
+z `ROLA_SYMBOLU_PL`). `SymbolId` jedzie z meta kliku kanwy v3 do tematu menu
+(`CanvasMenuSubject.symbolAparatu`, `refOperacjiTematu`), stąd do menu, paska działań
+inspektora, wykonawcy (`extend-trunk` z głowicy: bramka zajętości pola z `line_fields`,
+`field_ref`) i karty aparatu inspektora. Skasowane: `APPARATUS_KIND_LABELS_PL` ×2,
+`APPARATUS_ROLE_LABELS_PL`, identyfikatory `…/internal-bay/…`, `EmptyInspectorPanel`,
+`inspectorTabRegistry`, słownik `APPARATUS_KIND` v2, martwe bramki `bayHasOutgoingRun`/
+`bayIsRunEndpoint`. Nowe testy: `identyfikatorAparatu.test.ts`,
+`identyfikatorAparatuSceny.contract.test.ts`, natywny klik w `punktStartuCiagu.test.tsx`.
+Następny krok: bieg tsc/eslint/vitest pod `flock`, iniekcje, test e2e głowicy
+(`s95-budowa-z-kanwy.spec.ts`), potem klasy 2–4 (typy katalogu wg wyroczni, nazwy wartości
+kodowych, „—” a „brak danych”).
+
 ---
 
 ## LICZBY-PL

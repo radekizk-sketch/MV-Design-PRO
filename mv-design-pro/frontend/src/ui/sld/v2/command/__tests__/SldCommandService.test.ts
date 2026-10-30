@@ -52,12 +52,12 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     const actions = SLD_MENU_REGISTRY.apparatus;
     expect(actions.some((a) => a.id === 'extend-trunk')).toBe(true);
 
-    const breakerActions = getMenuActions('apparatus', { apparatusKind: 'breaker' });
+    const breakerActions = getMenuActions('apparatus', { symbolAparatu: 'breaker' });
     const breakerExtend = breakerActions.find((a) => a.id === 'extend-trunk');
     expect(breakerExtend?.disabled).toBe(true);
     expect(breakerExtend?.disabledReasonPl).toContain('głowicy kablowej');
 
-    const cableHeadActions = getMenuActions('apparatus', { apparatusKind: 'cable_head' });
+    const cableHeadActions = getMenuActions('apparatus', { symbolAparatu: 'cableHead' });
     const cableHeadExtend = cableHeadActions.find((a) => a.id === 'extend-trunk');
     expect(cableHeadExtend?.disabled).toBeUndefined();
   });
@@ -108,11 +108,17 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
 });
 
 describe('SldCommandService — getMenuActions z context', () => {
-  it('extend-trunk disabled na głowicy, gdy pole ma już wyprowadzony ciąg', () => {
-    const actions = getMenuActions('apparatus', { apparatusKind: 'cable_head', bayHasOutgoingRun: true });
+  // Intencja zachowana, predykat WYMIENIONY: dawna bramka `bayHasOutgoingRun` nie miała
+  // pisarza; zajętość pola głowicy przychodzi w `trunkStartAvailable` z tego samego
+  // rozstrzygnięcia, które buduje kontekst operacji (`buildSldOperationContext`).
+  it('extend-trunk disabled na głowicy, gdy pole ma już wyprowadzony kabel', () => {
+    const actions = getMenuActions('apparatus', {
+      symbolAparatu: 'cableHead',
+      trunkStartAvailable: { 'extend-trunk': false },
+    });
     const extendAction = actions.find((a) => a.id === 'extend-trunk');
     expect(extendAction?.disabled).toBe(true);
-    expect(extendAction?.disabledReasonPl).toContain('wyprowadzony');
+    expect(extendAction?.disabledReasonPl).toContain('wyprowadzony kabel');
   });
 
   // S9-10 (intencja S9-5 zachowana, predykat WYMIENIONY): dawne

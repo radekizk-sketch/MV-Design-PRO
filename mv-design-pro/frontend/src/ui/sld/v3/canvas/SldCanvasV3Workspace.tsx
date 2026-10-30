@@ -113,6 +113,7 @@ import {
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import {
   buildCanvasModelIndex,
+  refOperacjiTematu,
   resolveCanvasMenuSubject,
   ELEMENT_KIND_KOTWICY,
   KLASY_UCHWYTU,
@@ -1681,13 +1682,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           elementKind: meta?.elementKind,
           derKind: meta?.derKind,
           busRef: meta?.busRef,
+          symbolId: meta?.symbolId,
         },
         modelIndex,
       );
       if (wynik.stan === 'brak') return;
       setContextRequest({
         kind: wynik.temat.menuKind,
-        elementId: wynik.temat.modelRef,
+        // Aparat pola jedzie do wykonawcy jako `${bayRef}#${SymbolId}` — ten sam ref,
+        // którym pasek działań inspektora woła wykonawcę (`refOperacjiTematu`).
+        elementId: refOperacjiTematu(wynik.temat),
         clientX,
         clientY,
       });
@@ -2395,6 +2399,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             elementKind: meta.elementKind,
             derKind: meta.derKind,
             busRef: meta.busRef,
+            symbolId: meta.symbolId,
           },
           modelIndex,
         );

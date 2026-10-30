@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
-import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
+import { useKontekstElementuKanwy } from '../../sld/shared/kontekstElementuKanwy';
+import { ROLA_SYMBOLU_PL } from '../../sld/shared/identyfikatorAparatu';
+import { SYMBOL_DEFS, type SymbolId } from '../../sld/v3/symbols/defs';
 
 /** Karta FAB-J: patrz komentarz w `InspectorEngineeringView.test.tsx`. */
 function render(ui: ReactElement) {
@@ -117,63 +119,50 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
   beforeEach(() => {
     openOperationForm.mockReset();
     mockReadinessIssues = [];
+    useKontekstElementuKanwy.getState().wyczysc();
   });
 
-  it('pokazuje właściwości klikniętego wyłącznika SN w prawym panelu', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#breaker',
-      type: 'Switch',
-      name: 'Wyłącznik SN - Pole liniowe 1',
-    }];
+  /** Kontekst kliknięcia kanwy dla aparatu pola — to, co zapisuje `SldCanvasV3Workspace`
+   *  po natywnym kliknięciu symbolu (ścieżkę natywną ćwiczy `punktStartuCiagu.test.tsx`). */
+  function kliknijAparat(symbolAparatu: SymbolId): void {
+    mockSelectedElements = [{ id: 'bay_ref_1', type: 'Switch', name: 'bay_ref_1' }];
+    useKontekstElementuKanwy.getState().ustawKontekst({
+      selekcjaId: 'bay_ref_1',
+      elementKind: 'apparatus',
+      ref: 'bay_ref_1',
+      temat: { menuKind: 'apparatus', modelRef: 'bay_ref_1', kotwica: 'pole', symbolAparatu },
+      tylkoOdczyt: false,
+    });
+  }
 
-    render(<InspectorEngineeringView />);
-
+  // Iloczyn: KAŻDY rodzaj symbolu biblioteki × karta aparatu — nazwa z biblioteki symboli,
+  // rola z jednego słownika, pole powiązane z modelu, zero surowego kodu rodzaju.
+  it.each(Object.keys(SYMBOL_DEFS) as SymbolId[])('karta aparatu %s: nazwa i rola z jednego słownika', (symbol) => {
+    kliknijAparat(symbol);
+    const { container } = render(<InspectorEngineeringView />);
     expect(screen.getByText('Parametry aparatu')).toBeInTheDocument();
-    expect(screen.getByText('Wyłącznik SN')).toBeInTheDocument();
-    expect(screen.getByText('Łączenie robocze i zwarciowe pola')).toBeInTheDocument();
+    expect(screen.getAllByText(SYMBOL_DEFS[symbol].labelPl).length).toBeGreaterThan(0);
+    expect(screen.getByText(ROLA_SYMBOLU_PL[symbol])).toBeInTheDocument();
     expect(screen.getByText('Pole liniowe 1')).toBeInTheDocument();
-    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain(`#${symbol}`);
+    expect(screen.queryByText('Wyprowadzenie sieci SN') !== null).toBe(symbol === 'cableHead');
   });
 
-  it('udostępnia wyprowadzenie ciągu wyłącznie z głowicy odpływowej pola SN', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#cable_head',
-      type: 'Switch',
-      name: 'Głowica kablowa / port odpływowy - Pole liniowe 1',
-    }];
-
+  it('głowica kablowa: jedna pozycja „Wyprowadź ciąg główny z głowicy" — z paska działań, nie z karty', () => {
+    kliknijAparat('cableHead');
     render(<InspectorEngineeringView />);
-
     expect(screen.getByText('Wyprowadzenie sieci SN')).toBeInTheDocument();
-    expect(screen.getByText('Wyprowadź ciąg główny z głowicy')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Wyprowadź ciąg główny z głowicy'));
-
-    expect(openOperationForm).toHaveBeenCalledWith(
-      'continue_trunk_segment_sn',
-      expect.objectContaining({
-        field_ref: 'bay_ref_1',
-        bay_ref: 'bay_ref_1',
-        terminal_name: expect.stringContaining('Głowica kablowa'),
-      }),
-    );
+    expect(screen.getAllByRole('button', { name: /Wyprowadź ciąg główny z głowicy/ })).toHaveLength(1);
   });
 
-  it('pokazuje kartę techniczną aparatu z wewnętrznego SLD stacji bez surowych referencji', () => {
-    mockSelectedElements = [{
-      id: 'stn/teststation/station/internal-bay/tr-3/fuse',
-      type: 'Switch',
-      name: 'Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa',
-    }];
-
-    render(<InspectorEngineeringView />);
-
-    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa').length).toBeGreaterThan(0);
-    expect(screen.getByText('Miejsce w układzie')).toBeInTheDocument();
-    expect(screen.getByText('Rozdzielnia SN')).toBeInTheDocument();
-    // Karta #141: pole wewnętrznego układu stacji nazwane rolą z kanonu słownictwa ról pól.
-    expect(screen.getByText(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE)).toBeInTheDocument();
-    expect(screen.queryByText(/internal-bay/)).not.toBeInTheDocument();
+  it('id selekcji z dawnym kodem (`#cable_head`) albo ścieżką widoku wewnętrznego stacji nie daje karty aparatu', () => {
+    for (const id of ['bay_ref_1#cable_head', 'stn/teststation/station/internal-bay/tr-3/fuse']) {
+      useKontekstElementuKanwy.getState().wyczysc();
+      mockSelectedElements = [{ id, type: 'Switch', name: 'Aparat' }];
+      const { unmount } = render(<InspectorEngineeringView />);
+      expect(screen.queryByText('Parametry aparatu')).not.toBeInTheDocument();
+      expect(screen.queryByText('Miejsce w układzie')).not.toBeInTheDocument();
+      unmount();
+    }
   });
 });

@@ -190,49 +190,9 @@ describe('InspectorEngineeringView', () => {
     expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
   });
 
-  it('pokazuje w prawym panelu właściwości klikniętego aparatu pola SN', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#breaker',
-      type: 'Switch',
-      name: 'Wyłącznik SN — Pole liniowe 1',
-    }];
-    mockReadinessIssues = [];
-
-    render(<InspectorEngineeringView />);
-
-    expect(screen.getByText('Parametry aparatu')).toBeInTheDocument();
-    expect(screen.getByText('Wyłącznik SN')).toBeInTheDocument();
-    expect(screen.getByText('Łączenie robocze i zwarciowe pola')).toBeInTheDocument();
-    expect(screen.getByText('Pole liniowe 1')).toBeInTheDocument();
-    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
-  });
-
-  it('udostępnia wyprowadzenie ciągu tylko z głowicy odpływowej pola SN', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#cable_head',
-      type: 'Switch',
-      name: 'Głowica kablowa / port odpływowy — Pole liniowe 1',
-    }];
-    mockReadinessIssues = [];
-
-    render(<InspectorEngineeringView />);
-
-    expect(screen.getByText('Głowica kablowa / port odpływowy')).toBeInTheDocument();
-    expect(screen.getByText('Wyprowadzenie sieci SN')).toBeInTheDocument();
-    expect(screen.getByText('Wyprowadź ciąg główny z głowicy')).toBeInTheDocument();
-    expect(screen.getByText('stacja transformatorowa, ZKSN, słup rozgałęźny albo kolejny odcinek ciągu')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Wyprowadź ciąg główny z głowicy'));
-
-    expect(openOperationForm).toHaveBeenCalledWith(
-      'continue_trunk_segment_sn',
-      expect.objectContaining({
-        field_ref: 'bay_ref_1',
-        bay_ref: 'bay_ref_1',
-        terminal_name: expect.stringContaining('Głowica kablowa'),
-      }),
-    );
-  });
+  // Karta aparatu pola (wyłącznik, głowica kablowa i każdy inny `SymbolId`) — tożsamość
+  // z tematu kliknięcia kanwy, nie z id selekcji: `InspectorEngineeringView.apparatus.test.tsx`
+  // (iloczyn rodzaj aparatu × karta) i natywny klik na kanwie w `punktStartuCiagu.test.tsx`.
 
   it('wybiera akcje segmentu po semantyce selekcji zamiast po branch.type', () => {
     mockSelectedElements = [{
@@ -299,9 +259,8 @@ describe('InspectorEngineeringView', () => {
     // WYŁĄCZNIE, gdy selekcja nie rozwiązuje się do rekordu generatora ENM —
     // wtedy komponent NIE zgaduje po gen_type (bo go nie ma), tylko honoruje
     // semantykę (tu: PV zamiast domysłu „farma wiatrowa" z jedynego rekordu).
-    // Id celowo BEZ członów gramatyki ścieżek wewnątrz-stacyjnych
-    // (`/pv/`, `/internal-bay/` — te kieruje buildInternalStationElementSections)
-    // — selekcja ma reprezentować źródło NIEROZWIĄZYWALNE do rekordu ENM.
+    // Id celowo BEZ członu `/pv/` (gramatyka ścieżek źródeł przekształtnikowych) —
+    // selekcja ma reprezentować źródło NIEROZWIĄZYWALNE do rekordu ENM.
     mockSelectedElements = [{
       id: 'zrodlo_pv_inverter_001',
       type: 'PVInverter',

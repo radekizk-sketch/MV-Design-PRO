@@ -59,6 +59,7 @@ import {
   type SldElementKindForMenu,
 } from '../../v2/command/SldCommandService';
 import { HIT_ATTR } from '../../v3/canvas/hitAreas';
+import { identyfikatorAparatu, rozbierzIdentyfikatorAparatu } from '../identyfikatorAparatu';
 import { SldCanvasV3Workspace } from '../../v3/canvas/SldCanvasV3Workspace';
 import {
   buildSldOperationContext,
@@ -152,6 +153,13 @@ const OCZEKIWANA: Record<StanPol, boolean> = {
 const BAZA = scena('stacja_na_odcinku', 'wolne_kilka');
 const STACJA_REF = stacjaSnNn(BAZA.snapshot).ref_id;
 const POLE_GPZ = (BAZA.logical_views.line_fields ?? []).find((w) => w.station_ref.startsWith('gpz/'))!.field_ref;
+/** Pola liniowe GPZ sceny bazowej wg zajętości z modelu odczytu backendu (`line_fields`). */
+const POLE_GPZ_WOLNE = (BAZA.logical_views.line_fields ?? []).find(
+  (w) => w.station_ref.startsWith('gpz/') && !w.occupied,
+)!.field_ref;
+const POLE_GPZ_ZAJETE = (BAZA.logical_views.line_fields ?? []).find(
+  (w) => w.station_ref.startsWith('gpz/') && w.occupied,
+)!.field_ref;
 const ODCINEK_KONCOWY = (() => {
   const korytarz = (BAZA.snapshot.corridors ?? []).find((c) => (c.ordered_segment_refs ?? []).length > 0)!;
   return korytarz.ordered_segment_refs[korytarz.ordered_segment_refs.length - 1];
@@ -235,20 +243,31 @@ const PRZYPADKI: readonly Przypadek[] = [
     widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
+  // Aparat pola × zajętość pola: ciąg główny wychodzi WYŁĄCZNIE z głowicy kablowej pola,
+  // które backend widzi jako wolne (dawniej głowica zajętego pola otwierała kreator).
   {
-    nazwa: 'aparat pola: głowica kablowa',
+    nazwa: 'aparat pola: głowica kablowa wolnego pola',
     kind: 'apparatus',
     actionId: 'extend-trunk',
-    elementId: `${POLE_GPZ}#cable_head`,
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'cableHead'),
     enm: BAZA.snapshot,
     widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
   {
-    nazwa: 'aparat pola: wyłącznik (nie głowica)',
+    nazwa: 'aparat pola: głowica kablowa zajętego pola',
     kind: 'apparatus',
     actionId: 'extend-trunk',
-    elementId: `${POLE_GPZ}#breaker`,
+    elementId: identyfikatorAparatu(POLE_GPZ_ZAJETE, 'cableHead'),
+    enm: BAZA.snapshot,
+    widoki: BAZA.logical_views,
+    oczekiwanaDostepnosc: false,
+  },
+  {
+    nazwa: 'aparat pola: wyłącznik wolnego pola (nie głowica)',
+    kind: 'apparatus',
+    actionId: 'extend-trunk',
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'breaker'),
     enm: BAZA.snapshot,
     widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: false,
@@ -329,7 +348,7 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
 
       const pozycja = getMenuActions(kind, {
         trunkStartAvailable: dostepnosc,
-        apparatusKind: elementId.includes('#') ? elementId.slice(elementId.lastIndexOf('#') + 1) : undefined,
+        symbolAparatu: rozbierzIdentyfikatorAparatu(elementId)?.symbolId,
       }).find((a) => a.id === actionId)!;
       expect(pozycja, `pozycja ${actionId} w menu ${kind}`).toBeTruthy();
       expect(pozycja.disabled ?? false).toBe(!oczekiwanaDostepnosc);
@@ -506,4 +525,64 @@ describe('S95-START — pasek działań inspektora czyta TO SAMO rozstrzygnięci
     },
     30000,
   );
+});
+
+/**
+ * Aparat pola na kanwie v3 — tożsamość `${bayRef}#${SymbolId}` z meta trafionego symbolu.
+ *
+ * Do tej karty kanwa v3 nie niosła rodzaju aparatu (temat menu = samo pole), a menu,
+ * wykonawca i inspektor czekały na kody skasowanej nakładki v2 (`…#cable_head`) — pozycja
+ * „Wyprowadź ciąg główny z głowicy" była zawsze zablokowana, a karta aparatu inspektora
+ * martwa. Natywny prawy/lewy klik w symbol sceny ćwiczy realną ścieżkę: trafienie → meta
+ * symbolu → temat → menu / pasek inspektora → wykonawca → kreator z polem startu.
+ */
+describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajętość × rodzaj)', () => {
+  function uchwytSymbolu(container: HTMLElement, bayRef: string, symbol: string): Element {
+    const uchwyt = container.querySelector(
+      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(bayRef)}"][${HIT_ATTR.for}*="${symbol}"]`,
+    );
+    expect(uchwyt, `uchwyt symbolu ${symbol} pola ${bayRef}`).toBeTruthy();
+    return uchwyt!;
+  }
+
+  it.each([
+    { nazwa: 'głowica wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'cableHead', aktywna: true },
+    { nazwa: 'głowica zajętego pola', pole: POLE_GPZ_ZAJETE, symbol: 'cableHead', aktywna: false },
+    { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
+  ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {
+    useSnapshotStore.setState({ snapshot: BAZA.snapshot, logicalViews: BAZA.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    await userEvent.pointer({ keys: '[MouseRight]', target: uchwytSymbolu(container, pole, symbol) });
+    const menu = screen.getByRole('menu');
+    const pozycja = within(menu).getByTestId('sld-menu-extend-trunk') as HTMLButtonElement;
+    expect(pozycja.disabled).toBe(!aktywna);
+    if (!aktywna) {
+      expect(pozycja.getAttribute('title')).toBeTruthy();
+      return;
+    }
+    await userEvent.click(pozycja);
+    const kontekst = useNetworkBuildStore.getState().activeSurface?.routeState.payload?.context as
+      | Record<string, unknown>
+      | undefined;
+    expect(maStartOperacjiCiagu(kontekst)).toBe(true);
+    expect(kontekst?.field_ref).toBe(pole);
+  });
+
+  it('lewy klik w głowicę: inspektor pokazuje kartę głowicy kablowej i aktywną pozycję paska', async () => {
+    useSnapshotStore.setState({ snapshot: BAZA.snapshot, logicalViews: BAZA.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    await userEvent.click(uchwytSymbolu(container, POLE_GPZ_WOLNE, 'cableHead'));
+    cleanup();
+    renderWithQueryClient(<InspectorEngineeringView />);
+    expect((await screen.findAllByText('Głowica kablowa')).length).toBeGreaterThan(0);
+    expect(screen.getByText(/jawny punkt wyprowadzenia ciągu głównego SN/)).toBeTruthy();
+    const pasek = await screen.findByTestId('inspektor-dzialania');
+    const pozycja = within(pasek).getByTestId('inspektor-akcja-extend-trunk');
+    expect(pozycja.getAttribute('aria-disabled')).not.toBe('true');
+    await userEvent.click(pozycja);
+    const kontekst = useNetworkBuildStore.getState().activeSurface?.routeState.payload?.context as
+      | Record<string, unknown>
+      | undefined;
+    expect(kontekst?.field_ref).toBe(POLE_GPZ_WOLNE);
+  });
 });

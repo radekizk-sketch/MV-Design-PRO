@@ -45,7 +45,6 @@ CTA_PATTERNS = [
 # Pliki które są tylko definicją Empty State component (bez własnego CTA — to OK,
 # konsumenci dostarczają CTA jako prop).
 EMPTY_STATE_LIBS = {
-    "EmptyInspectorPanel.tsx",
     "EmptyState.tsx",
 }
 

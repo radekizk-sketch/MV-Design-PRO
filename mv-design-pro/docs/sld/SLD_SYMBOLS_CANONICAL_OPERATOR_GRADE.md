@@ -100,7 +100,7 @@ Egzekwowane testem `apparatusSymbolPolicy.test.ts` (`isGeometryInvariantAcrossSt
 | `cable_head` | Głowica kablowa | trójkąt | MAIN_AXIS, koniec pola |
 | `metering_cubicle` | Pole pomiarowe | prostokąt z VT | osobny field (MEASUREMENT) |
 
-Mapowanie `BayPrimaryDeviceKind` (ENM) → `ApparatusKind` w `BAY_PRIMARY_DEVICE_TO_APPARATUS`.
+Mapowanie `BayPrimaryDeviceKind` (ENM) → rodzaj symbolu kanwy (`SymbolId`) w `v3/compose/apparatusSequence.ts::symbolIdForPrimaryDeviceKind` (korekta 2026-10-30: dawny słownik `ApparatusKind`/`BAY_PRIMARY_DEVICE_TO_APPARATUS` nie miał konsumenta i został skasowany; tożsamość aparatu na kanwie — `${bayRef}#${SymbolId}`, `ui/sld/shared/identyfikatorAparatu.ts`).
 
 ## 3. 5-wymiarowa matryca stanów (`ApparatusVisualState`)
 

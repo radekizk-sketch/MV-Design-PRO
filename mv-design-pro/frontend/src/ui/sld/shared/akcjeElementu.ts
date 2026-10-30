@@ -24,9 +24,8 @@ import {
   czyPunktPodzialu,
   lacznikTematu,
 } from '../../shared/stanLacznika';
-import type { CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
+import { refOperacjiTematu, type CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
 import {
-  parseGpzApparatusSelectionId,
   resolveBranchStartAvailability,
   resolveTrunkStartAvailability,
 } from './sldActionExecutor';
@@ -38,7 +37,9 @@ import {
  *  - „Pokaż wyniki" — aktywny przypadek ma wynik (świeży albo nieaktualny); bez wyniku
  *    pozycja jest nieaktywna z przyczyną;
  *  - agregat/UPS stacji — stacja ma szynę nN (FK `substation.bus_refs`, pasmo nN);
- *  - rodzaj aparatu z kompozytu `⟨pole⟩#⟨rodzaj⟩`, gdy ref go niesie;
+ *  - rodzaj trafionego aparatu pola (`temat.symbolAparatu`, `SymbolId` sceny), a ref
+ *    operacji aparatu to `${bayRef}#${SymbolId}` (`refOperacjiTematu`) — TEN SAM, który
+ *    dostaje wykonawca, więc dostępność pozycji i operacja liczą się z jednego refu;
  *  - stan łącznika pola/aparatu (W5-C) — TEN SAM resolver `lacznikTematu`, którym
  *    wykonawca wybiera łącznik operacji `open_switch`/`close_switch`/`set_normal_open_point`.
  */
@@ -48,11 +49,12 @@ export function kontekstDostepnosciAkcji(
   temat: CanvasMenuSubject,
   activeCaseResultStatus: ResultStatus,
 ): SldMenuContext {
+  const refOperacji = refOperacjiTematu(temat);
   const trunkStartAvailable = resolveTrunkStartAvailability(
     snapshot,
     logicalViews,
     temat.menuKind,
-    temat.modelRef,
+    refOperacji,
   );
   const branchStartAvailable = resolveBranchStartAvailability(
     snapshot,
@@ -61,15 +63,14 @@ export function kontekstDostepnosciAkcji(
     temat.modelRef,
   );
   const hasResults = activeCaseResultStatus !== 'NONE';
-  const apparatusKind = parseGpzApparatusSelectionId(temat.modelRef)?.apparatusKind;
   const lacznik = temat.menuKind === 'bay' || temat.menuKind === 'apparatus'
-    ? stanLacznikaMenu(snapshot, temat.modelRef)
+    ? stanLacznikaMenu(snapshot, refOperacji)
     : undefined;
   const wspolne: SldMenuContext = {
     trunkStartAvailable,
     branchStartAvailable,
     hasResults,
-    ...(apparatusKind === undefined ? {} : { apparatusKind }),
+    ...(temat.symbolAparatu === undefined ? {} : { symbolAparatu: temat.symbolAparatu }),
     ...(lacznik === undefined ? {} : { lacznik }),
   };
   if (temat.kotwica !== 'stacja') return wspolne;

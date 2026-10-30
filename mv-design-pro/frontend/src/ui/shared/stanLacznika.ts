@@ -15,6 +15,7 @@
  */
 import type { Branch, EnergyNetworkModel, FuseBranch, SwitchBranch } from '../../types/enm';
 import { isApparatusBranch, isSwitchBranch } from '../../types/enm';
+import { rozbierzIdentyfikatorAparatu } from '../sld/shared/identyfikatorAparatu';
 
 export type PolozenieLacznika = 'closed' | 'open';
 
@@ -132,7 +133,8 @@ export type LacznikTematu =
 /**
  * Łącznik, którego dotyczy akcja stanu (otwórz / zamknij / punkt podziału) dla obiektu
  * rysunku: gałąź łącznikowa wprost albo JEDYNY łącznik pola (`Bay.equipment_refs`;
- * aparat z kompozytem `⟨pole⟩#⟨rodzaj⟩` wskazuje pole). Pole z kilkoma łącznikami nie
+ * aparat pola `${bayRef}#${SymbolId}` wskazuje pole — rozbiór jednym parserem
+ * `rozbierzIdentyfikatorAparatu`). Pole z kilkoma łącznikami nie
  * daje wyboru za projektanta — powód nazywa łączniki do wskazania.
  */
 export function lacznikTematu(
@@ -153,8 +155,7 @@ export function lacznikTematu(
             'Element nie jest łącznikiem — stan otwarty albo zamknięty mają wyłącznie łączniki i bezpieczniki.',
         };
   }
-  const znacznik = ref.lastIndexOf('#');
-  const refPola = znacznik > 0 ? ref.slice(0, znacznik) : ref;
+  const refPola = rozbierzIdentyfikatorAparatu(ref)?.bayRef ?? ref;
   const pole = (snapshot.bays ?? []).find((b) => b.ref_id === refPola || b.id === refPola) ?? null;
   if (!pole) {
     return { lacznik: null, powodPl: 'Wskazany obiekt nie jest łącznikiem modelu sieci.' };
