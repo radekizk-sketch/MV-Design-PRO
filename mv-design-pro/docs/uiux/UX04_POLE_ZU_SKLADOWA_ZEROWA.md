@@ -1336,63 +1336,44 @@ powrotne, rozruch silników i walidacja benchmarkowa — model niezwalidowany
 (`DECLARATION`, porównanie zbiorów funkcji bez symulacji zjawiska). Żadna z tych zdolności nie
 jest dowodem regulacyjnym.
 
-## Przekazanie (stan na przerwaniu, 2026-10-30)
+## Przekazanie (stan bieżący, 2026-10-30)
 
-Praca przerwana na polecenie architekta (limit tygodniowy). Drzewo zacommitowane w całości
-jednym commitem „WIP (przerwane, niezweryfikowane)”. Niczego nie wypchnięto.
+Sekcja aktualizowana przy każdym commicie. Niczego nie wypchnięto (gałąź wypycha architekt).
 
-**Parytet assemblera SC_1F_max (czerwony na bramce ab750bdc6).** Przyczyna ustalona pomiarem:
-commit b1e677ced zmienił ślad solvera doziemienia (`doziemienie_sn.py`), a poddrzewo
+**Parytet assemblera SC_1F_max — ZAMKNIĘTY.** Przyczyna ustalona pomiarem: commit b1e677ced
+zmienił ślad solvera doziemienia (`doziemienie_sn.py`), a poddrzewo
 `results[*].doziemienie_sieci.slad` nie jest na liście `KLUCZE_SLADU_LICZBOWEGO` harnessu, więc
-wchodzi do szkieletu porównywanego dokładnie. Szkielety policzone na d7dcb2f2e (ostatnia
-regeneracja; zgodne ze złotym plikiem 61/61) i na b1e677ced (zgodne z hashami „teraz” z logu
-bramki 57/57) różnią się WYŁĄCZNIE pod `$.results[*].doziemienie_sieci.slad[*]`: nowy klucz
-`substitution_latex` (408 kroków), przecinek dziesiętny w `substitution` (338 kroków), nowy krok
-`doziemienie_prad_bezposrednie` na `slad[0]` w trybie bezpośrednim (G16/00 i G17/00, po 4
-wiersze; dawny krok przesunięty na `slad[1]`). Liczby: 40 284 porównane parami (w śladzie po
-kluczu kroku) — 0 poza tolerancją. Drzewo commitu 5 daje dla SC_1F_max te same szkielety
-i liczby co b1e677ced. Złoty plik `tests/golden/parytet_assemblera/zlote_hashe.json`
-przegenerowany narzędziem repo (`regeneruj.py`, drzewo b1e677ced): zmienione wyłącznie 57
-wpisów SC_1F_max (`szkielet_sha256`, `szkielet_skroty`; `liczby` tylko G16/00 i G17/00:
-247 → 283). Plik jest w tym commicie WIP (miał być osobnym commitem — nie zdążył).
-NIEZWERYFIKOWANE: bieg `tests/golden` + `tests/enm` z nowym złotym plikiem (czekał w kolejce
-blokady, przerwany). Tabela per sieć i treść commitu: `/tmp/claude-0/zu_edit/par/msg_gold.txt`
-(poza repo).
+wchodzi do szkieletu porównywanego dokładnie. Różnice wyłącznie pod
+`$.results[*].doziemienie_sieci.slad[*]`: nowy klucz `substitution_latex` (408 kroków), przecinek
+dziesiętny w `substitution` (338 kroków), nowy krok `doziemienie_prad_bezposrednie` na `slad[0]`
+w trybie bezpośrednim (G16/00 i G17/00, po 4 wiersze). Liczby: 40 284 porównane parami —
+0 poza tolerancją. Złoty plik `tests/golden/parytet_assemblera/zlote_hashe.json` przegenerowany
+`regeneruj.py` (57 wpisów SC_1F_max; `liczby` tylko G16/00 i G17/00: 247 → 283) — wszedł
+w commit e73b336a1. Weryfikacja: `tests/golden` + `tests/enm` z nowym złotym plikiem na drzewie
+b1e677ced pod blokadą biegów ciężkich — kod wyjścia 0, 7350 passed (675 s).
 
 **Commit 5 — zrobione** (opis §3.21, §5, §6.1): Z_th z mostu modelu przez `build_zbus`
-z przekładnią (wyrocznia 44 testy, sonda, determinizm 3× wszystkich 14 rodzajów — zgodny
-także po ostatniej zmianie), prąd uziomowy EN 50522 tab. 1 z modelu (25 testów
-`test_v126_prad_uziomowy.py` zielone), kasacja P19, wzory w prozie i `ui_math_guard` PIN 0,
-KaTeX ścisły, scena i spec zrzutowy doziemienia E-29 (bieg 9/9 zielony, PNG w
-`docs/uiux/zrzuty/ux04-doziemienie/` — sprzed zmiany etykiet), odcisk `solver_hashes.json`
-(v126_academic) i sankcja odświeżone po ostatniej zmianie, piny mypy 163/21 i
-`raise ValueError` 79. Po `guardy_z_ci` (bieg przerwany limitem czasu na testach własnych
-strażników) naprawiono trzy czerwone strażniki: `slad_proza_bez_latex_guard` (podstawienie
-kroku prądu uziomowego bez LaTeX-u), `solver_input_substitute_guard` (`ikss_a or 0.0`),
-`polykanie_wyjatkow_guard` (pin 80 → 79) — każdy osobno zielony. Etykiety wielkości doziemienia
-E-29 jako wzory (`EkranSkladowych.test.tsx` 53/53 zielony, iniekcja czerwona). Spec
-`v126-okna-zrzuty` poprawiony (szyna stacji z modelu własnej sieci, gotowość potwierdzona
-sondą API) — NIE uruchomiony po poprawce.
+z przekładnią, prąd uziomowy EN 50522 tab. 1 z modelu, kasacja P19, wzory w prozie, KaTeX
+ścisły, scena i spec zrzutowy doziemienia E-29, odcisk `solver_hashes.json` (v126_academic),
+piny mypy 163/21 i `raise ValueError` 79, trzy strażniki naprawione po `guardy_z_ci`
+(`slad_proza_bez_latex_guard`, `solver_input_substitute_guard`, `polykanie_wyjatkow_guard`),
+etykiety wielkości doziemienia E-29 jako wzory, spec `v126-okna-zrzuty` z szyną stacji z modelu
+własnej sieci.
 
-**Znane czerwone / niezweryfikowane.** Na ostatnim biegu e2e czerwony był
-`e2e/v126-okna-zrzuty.spec.ts` (selectOption szyny sceny `bus_sn_main` na innej sieci) —
-poprawka w drzewie, bez biegu. `pradUziomowy.test.tsx` padał na limicie 5 s w puli
-`vitest related` (1/1391) — dostał budżet 20 s, plik zielony pojedynczo. Nie uruchomiono po
-ostatnich zmianach: celowanego zestawu backendu (`tests/golden tests/enm tests/network_model
-tests/proof_engine tests/analysis tests/application/analyses tests/ci tests/uczciwosc
-tests/solver_input` + testy V12.6 i API), pełnego `guardy_z_ci`, e2e zmienionych ekranów
-(v126-okna, v126-jezyk, dowody-flow-ekspert, wyniki-jezyk-inzyniera „wyniki-skladowe”) ani
-odświeżenia PNG doziemienia z nowymi etykietami. Ostatnie zielone: vitest katalogów
-akademickie/harness-fixtures 342/342, skladowe 53/53, `vitest related` 1390/1391 (wyżej),
-katalogi 2517/2517; tsc 0; eslint 0; black/ruff 0 na 50 plikach Python; testy własne
-strażników (6 plików) 481/481.
+**W toku (decyzja architekta w sprawie `ui_math_guard`).** Strażnik wykrywa goły indeks
+symbolu (`U_f`, `I_C`, `Z_0`, `I_Δn`, `φ_r`) w tekstach UI (`ui2/**` i dwa moduły katalogu
+backendu); skan Pythona po drzewie `ast` pomija wyłącznie pola `*_latex` i identyfikator
+`symbol` w parze z `symbol_latex`; stała kodu TS (`'V_MAGNITUDE'`) jest kodem tylko poza modułem
+`strings.ts` i poza właściwością tekstową. Pomiar przed naprawą: 122 trafienia w 31 plikach
+(117 wzorcem łacińskim, 5 dalszych po dopuszczeniu liter greckich), po naprawie 0 = PIN. Naprawa:
+symbole jako `$…$` składane przez `TekstZWzorami` (rama kreatora: etykieta, błąd, pomoc,
+opis przełącznika, nota sekcji, cel, informacja, podsumowanie, następny krok; tabela wyników,
+założenia, ekrany SSCI, stanu fazowego, analiz V12.6, NC RfG, OZE), atrybuty i natywne
+`<option>` przez `tekstBezWzorow`. Do zrobienia: testy vitest/e2e zależne od etykiet,
+samotest strażnika z iniekcją, proza podstawy `doziemienie_sn.py` (+ regeneracja parytetu),
+fikstury generowane, biegi weryfikacyjne.
 
-**Pierwszy krok następcy.** Pod blokadą `/tmp/claude-0/bieg_ciezki.lock` uruchomić
-`tests/golden` i `tests/enm` (`-n 4 --dist loadfile -m "not pandapower and not andes"`,
-prywatny `--basetemp`) na tym commicie; jeśli zielone — parytet zamknięty. Potem zestaw
-celowany backendu z akapitu wyżej, `scripts/guardy_z_ci.py` (venv na PATH, limit ≥ 3600 s),
-e2e: `v126-okna-zrzuty`, `v126-jezyk-screenshot`, `dowody-flow-ekspert-screenshot` oraz
-`ZRZUTY_DO_DOKUMENTACJI=1` dla `doziemienie-slad-zrzuty-screenshot` (odświeżenie PNG
-z etykietami jako wzory). Klasa zgłoszona architektowi: goły indeks `X_y` poza wzorcami
-`ui_math_guard` (145 linii w 49 plikach `ui2/**`, proza podstawy doziemienia
-w `doziemienie_sn.py` — zmiana tej prozy zmieni szkielet parytetu assemblera).
+**Biegi w kolejce.** Zestaw celowany backendu (bieg `cel7`) i e2e `v126-okna-zrzuty`,
+`v126-jezyk-screenshot`, `dowody-flow-ekspert-screenshot` (bieg `e2e12`) — pod blokadą;
+potem `guardy_z_ci` (limit ≥ 3600 s) i `ZRZUTY_DO_DOKUMENTACJI=1`
+`doziemienie-slad-zrzuty-screenshot`.
