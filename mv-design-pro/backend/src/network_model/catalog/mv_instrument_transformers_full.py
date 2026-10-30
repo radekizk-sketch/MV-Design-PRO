@@ -54,9 +54,21 @@ def _enea_ct(
             "fs": 5.0, "secondary_a": 5.0,
             "source_kind": "ENEA_REQUIREMENT",
         })
+    # Historyczne profile z 2026-10-30 rozdzielały 50–100 i 200–400
+    # na dwie pozycje 50/100 lub 200/400. Nie zmieniamy ich ID:
+    # istniejące projekty mogą je referencjonować. Nowe projekty wybierają
+    # rekord z primary_taps_a w mv_ct_enea_multirange.py.
+    podzielony_zakres = (
+        (annex == "A" and place == "linia" and primary_a in (200, 400))
+        or (annex == "B" and place == "pole-sieciowe" and primary_a in (50, 100, 200, 400))
+        or (annex == "B" and place == "slup-wytworca" and primary_a in (50, 100))
+        or (annex == "C" and place == "linia" and primary_a in (200, 400))
+        or (annex == "D" and place == "pole-sieciowe" and primary_a in (200, 400))
+    )
+    prefix = "LEGACY — pojedynczy zakres (nie wybierać do nowych projektów): " if podzielony_zakres else ""
     return {
         "id": f"ct-enea-2024-5{annex.lower()}-{place}-{construction.lower()}-{primary_a}-5-c{core_count}",
-        "name": f"Profil ENEA 5/{annex} {place}: CT {primary_a}/5 A, {core_count} rdzenie, 0,2S FS5",
+        "name": prefix + f"Profil ENEA 5/{annex} {place}: CT {primary_a}/5 A, {core_count} rdzenie, 0,2S FS5",
         "params": {
             "ratio_primary_a": float(primary_a),
             "ratio_secondary_a": 5.0,
@@ -90,6 +102,14 @@ def _enea_ct(
                 "FS<=5 dotyczy nowych rozliczeniowych CT. "
                 "Dobór sprawdzić względem mocy umownej, obciążenia wtórnego, "
                 "klasy i warunków przyłączenia."
+                + (
+                    " UWAGA: pojedynczy zakres jest HISTORYCZNYM uproszczeniem "
+                    "katalogu. Źródłowy zał.5/A-D podaje przekładnik "
+                    "wieloprzekładniowy 50–100 albo 200–400/5 A. "
+                    "Do nowej inwestycji używać kanonicznego profilu "
+                    "z primary_taps_a; ID pozostaje dla istniejących projektów."
+                    if podzielony_zakres else ""
+                )
             ),
         },
     }
