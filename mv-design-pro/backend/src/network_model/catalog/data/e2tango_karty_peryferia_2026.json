@@ -1,0 +1,1084 @@
+{
+  "wersja": "1.0",
+  "stan_na": "2026-10-31",
+  "zakres": "INDEKS_ZRODLOWY_KART_I_PERYFERIOW_NIE_AKTYWNY_KONFIGURATOR",
+  "zrodla": {
+    "s600": {
+      "id": "K-3.2.25",
+      "model": "600/800/1000/1200",
+      "revision": "04/2026",
+      "pages": [
+        12,
+        13,
+        19,
+        20,
+        21
+      ],
+      "url": "https://elektrometal-energetyka.pl/wp-content/uploads/2026/04/Karta-katalogowa-e2TANGO-600-1200-K-3.2.25.pdf"
+    },
+    "s450": {
+      "id": "K-43.1.7",
+      "model": "450",
+      "revision": "07/2025",
+      "pages": [
+        6,
+        13,
+        14
+      ],
+      "url": "https://elektrometal-energetyka.pl/wp-content/uploads/2025/07/Karta-katalogowa-e2TANGO-450-K-43.1.7.pdf"
+    },
+    "f450": {
+      "id": "FORM-450",
+      "model": "450",
+      "revision": "online 2026",
+      "url": "https://elektrometal-energetyka.pl/rozwiazania-2/formularz-zamawiania-e%C2%B2tango-450/"
+    },
+    "s250": {
+      "id": "K-42.1.8",
+      "model": "250",
+      "revision": "10/2025",
+      "pages": [
+        6,
+        13,
+        14
+      ],
+      "url": "https://elektrometal-energetyka.pl/wp-content/uploads/2025/10/Karta-katalogowa-e2TANGO-250-K-42.1.8.pdf"
+    },
+    "s400": {
+      "id": "K-33.2.2",
+      "model": "400",
+      "revision": "04/2021",
+      "pages": [
+        8
+      ],
+      "url": "https://www.elektrometal-energetyka.pl/wp-content/uploads/2021/04/Karta-katalogowa-e2TANGO-400-33.2.2.pdf"
+    },
+    "echo": {
+      "id": "E2ECHO-STRONA",
+      "revision": "online",
+      "url": "https://elektrometal-energetyka.pl/solutions/e%C2%B2echo-voltage-presence-indicators/"
+    },
+    "red": {
+      "id": "REDUNDANCJA-2024",
+      "revision": "26.11.2024",
+      "url": "https://elektrometal-energetyka.pl/redundancja-w-zabezpieczeniach-e%C2%B2tango/"
+    }
+  },
+  "jednostki_centralne": [
+    {
+      "id": "J6",
+      "sloty": "ABCDEF",
+      "modele": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ]
+    },
+    {
+      "id": "J10",
+      "sloty": "ABCDEFGHIJ",
+      "modele": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ]
+    },
+    {
+      "id": "J14",
+      "sloty": "ABCDEFGHIJKLMN",
+      "modele": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ]
+    }
+  ],
+  "modele_kompaktowe": [
+    {
+      "model": "250",
+      "sloty": "ABCD",
+      "karta_A": "603I",
+      "zrodla": [
+        "s250"
+      ]
+    },
+    {
+      "model": "450",
+      "sloty": "ABCD",
+      "karta_A": "6O3I",
+      "zrodla": [
+        "s450",
+        "f450"
+      ]
+    }
+  ],
+  "karty_rozszerzen": [
+    {
+      "kod": "8IN",
+      "opis": "8 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 8,
+      "napięcie_pomocnicze_wg_producenta": "110 V (80–390 V DC)"
+    },
+    {
+      "kod": "12IN",
+      "opis": "12 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 12,
+      "napięcie_pomocnicze_wg_producenta": "110 V (80–390 V DC)"
+    },
+    {
+      "kod": "8IN24",
+      "opis": "8 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 8,
+      "napięcie_pomocnicze_wg_producenta": "24 V (19–60 V DC)"
+    },
+    {
+      "kod": "12IN24",
+      "opis": "12 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 12,
+      "napięcie_pomocnicze_wg_producenta": "24 V (19–60 V DC)"
+    },
+    {
+      "kod": "8IN220",
+      "opis": "8 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 8,
+      "napięcie_pomocnicze_wg_producenta": "220 V (176–264 V DC)"
+    },
+    {
+      "kod": "12IN220",
+      "opis": "12 wejść dwustanowych",
+      "rodzaj": "DI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wejsc": 12,
+      "napięcie_pomocnicze_wg_producenta": "220 V (176–264 V DC)"
+    },
+    {
+      "kod": "8OUT",
+      "opis": "8 wyjść przekaźnikowych",
+      "rodzaj": "DO",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wyjsc": 8
+    },
+    {
+      "kod": "4OUTH",
+      "opis": "4 wyjścia przekaźnikowe wzmocnione szybkie",
+      "rodzaj": "DO",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_wyjsc": 4
+    },
+    {
+      "kod": "AI10",
+      "opis": "4 wejścia analogowe 0–10 V",
+      "rodzaj": "AI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_kanalow": 4,
+      "zakres_sygnalu": "0–10 V"
+    },
+    {
+      "kod": "AI20",
+      "opis": "4 wejścia analogowe 4–20 mA",
+      "rodzaj": "AI",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_kanalow": 4,
+      "zakres_sygnalu": "4–20 mA"
+    },
+    {
+      "kod": "AO10",
+      "opis": "4 wyjścia analogowe 0–10 V",
+      "rodzaj": "AO",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_kanalow": 4,
+      "zakres_sygnalu": "0–10 V"
+    },
+    {
+      "kod": "AO20",
+      "opis": "4 wyjścia analogowe 4–20 mA",
+      "rodzaj": "AO",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_kanalow": 4,
+      "zakres_sygnalu": "4–20 mA"
+    },
+    {
+      "kod": "PT1",
+      "opis": "6 wejść temperaturowych PT100",
+      "rodzaj": "TEMPERATURA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "wejscia": 6,
+      "czujnik": "PT100"
+    },
+    {
+      "kod": "3TMP",
+      "opis": "3 czujniki światłowodowe temperatury szyn, przewód 5 m",
+      "rodzaj": "TEMPERATURA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_czujnikow": 3,
+      "dlugosc_swiatlowodu_m": 5
+    },
+    {
+      "kod": "6TMP",
+      "opis": "6 czujników światłowodowych temperatury szyn, przewód 5 m",
+      "rodzaj": "TEMPERATURA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "liczba_czujnikow": 6,
+      "dlugosc_swiatlowodu_m": 5
+    },
+    {
+      "kod": "ARC",
+      "opis": "6 wejść czujników łuku z komunikacją CAN; 3 czujniki w zestawie",
+      "rodzaj": "LUK",
+      "modele_potwierdzone": [
+        "450",
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "f450"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "wejscia": 6,
+      "czujniki_w_zestawie": 3
+    },
+    {
+      "kod": "ARP",
+      "opis": "6 wejść pasywnych czujników łuku; 3 czujniki w zestawie; wymaga ARC",
+      "rodzaj": "LUK",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "wejscia": 6,
+      "czujniki_w_zestawie": 3,
+      "wymaga": [
+        "ARC"
+      ]
+    },
+    {
+      "kod": "PSU2",
+      "opis": "Karta redundantnego zasilacza 110–220 V AC/DC",
+      "rodzaj": "ZASILANIE",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600",
+        "red"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "sloty_zajmowane": 2,
+      "pary_slotow_z_przykladow": [
+        "C+D",
+        "E+F"
+      ],
+      "wymaga_potwierdzenia_lokalizacji_w_konfiguracji": true
+    },
+    {
+      "kod": "TV",
+      "opis": "Dodatkowe 4 wejścia napięciowe z przekładników",
+      "rodzaj": "POMIAR_NAPIECIA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "wejscia_napieciowe": 4,
+      "sloty_sprzeczne": [
+        "E",
+        "F"
+      ],
+      "wymaga_potwierdzenia_lokalizacji_w_konfiguracji": true
+    },
+    {
+      "kod": "TVZ",
+      "opis": "Dodatkowe wejścia napięciowe z sensorów do synchronizacji",
+      "rodzaj": "POMIAR_NAPIECIA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "slot_wskazany": "E"
+    },
+    {
+      "kod": "TRR",
+      "opis": "Pomiar dodatkowych prądów (SN1/SN2/nN), m.in. dla zabezpieczeń różnicowych",
+      "rodzaj": "POMIAR_PRADU",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "pary_slotow_z_przypisow": [
+        "C+E",
+        "D+F"
+      ],
+      "sloty_sprzeczne": [
+        "E",
+        "F"
+      ],
+      "wymaga_potwierdzenia_lokalizacji_w_konfiguracji": true
+    },
+    {
+      "kod": "603I",
+      "opis": "6 wyjść przekaźnikowych oraz 3 wejścia dwustanowe, karta standardowa",
+      "rodzaj": "DI_DO",
+      "modele_potwierdzone": [
+        "250"
+      ],
+      "zrodla": [
+        "s250"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "slot_staly": "A",
+      "nazywanie_oryginalne": "603I"
+    },
+    {
+      "kod": "6O3I",
+      "opis": "6 wyjść przekaźnikowych i 3 wejścia dwustanowe, standardowa pozycja 450",
+      "rodzaj": "DI_DO",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450",
+        "f450"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "slot_staly": "A",
+      "nazywanie_oryginalne": "6O3I w K-43.1.7, 603I w formularzu online",
+      "rozbieznosc_oznaczenia": true
+    },
+    {
+      "kod": "CPU",
+      "opis": "Karta procesorowa jednostki centralnej, fabryczna",
+      "rodzaj": "PODSTAWOWA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "standard": true
+    },
+    {
+      "kod": "PSU",
+      "opis": "Karta zasilająca z 7 wyjściami przekaźnikowymi, fabryczna",
+      "rodzaj": "PODSTAWOWA",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "status": "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY",
+      "standard": true
+    }
+  ],
+  "karty_pomiarowe_wybierane_przy_zamowieniu": [
+    {
+      "kod": "TR",
+      "opis": "Karta pomiarów prądów/napięć z przekładników; wersja 600–1200 5I+4U, 250 4I+1U, 450 4I+1U",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA",
+      "wymiary_zalezne_od_modelu": true
+    },
+    {
+      "kod": "TRS",
+      "opis": "Karta pomiarowa synchronizacji 4I+5U",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRSG",
+      "opis": "Uniwersalna karta pomiarowa 5I+5U",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRU",
+      "opis": "Karta 9U do SZR w 600–1200; 4U w 250",
+      "modele_potwierdzone": [
+        "250",
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600",
+        "s250"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA",
+      "wymiary_zalezne_od_modelu": true
+    },
+    {
+      "kod": "TRP",
+      "opis": "5I+3Ip+4U (dodatkowe pomiary)",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRC",
+      "opis": "Cewki Rogowskiego, wykonanie 600–1200",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRCZ",
+      "opis": "Cewki Rogowskiego i sensory napięcia",
+      "modele_potwierdzone": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zrodla": [
+        "s600"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRC1",
+      "opis": "Wykonanie 450 z cewkami Rogowskiego, 3–3000 mV",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRC2",
+      "opis": "Wykonanie 450 z cewkami Rogowskiego, 9–9000 mV",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TRC3",
+      "opis": "Wykonanie 450 z cewkami Rogowskiego, 30–30000 mV",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TU",
+      "opis": "Dodatkowy zestaw 3U z przekładników w 450",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TZ1",
+      "opis": "Sensory napięcia dla 450: 200 kΩ, 300 pF",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    },
+    {
+      "kod": "TZ2",
+      "opis": "Sensory napięcia dla 450: 2 MΩ, 50 pF",
+      "modele_potwierdzone": [
+        "450"
+      ],
+      "zrodla": [
+        "s450"
+      ],
+      "rola": "WYBOR_W_FORMULARZU_NIE_KARTA_SLOTOWA"
+    }
+  ],
+  "peryferia": [
+    {
+      "id": "E2ECHO_B",
+      "nazwa": "e²ECHO-B",
+      "rodzaj": "ZAKRES_POZA_STEROWNIKIEM",
+      "rola": "Wskaźnik obecności napięcia SN ze stykami pomocniczymi blokady uziemnika",
+      "zrodla": [
+        "echo"
+      ]
+    },
+    {
+      "id": "E2ECHO_BD",
+      "nazwa": "e²ECHO-Bd",
+      "rodzaj": "ZAKRES_POZA_STEROWNIKIEM",
+      "rola": "Wskaźnik obecności napięcia z dodatkową blokadą i funkcją odblokowania",
+      "zrodla": [
+        "echo"
+      ],
+      "parametry": {
+        "czas_resetowania_okolo_s": 30
+      }
+    },
+    {
+      "id": "E2TANGO_FER",
+      "nazwa": "e²TANGO-FER",
+      "rodzaj": "ZEWNETRZNY_MODUL_MOCY",
+      "rola": "Dwustopniowe tłumienie ferrorezonansu w obwodach wtórnych VT, tylko z odpowiednio skonfigurowanym sterownikiem 600–1200",
+      "zrodla": [
+        "s600"
+      ],
+      "modele_wspolpracujace": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "zastrzezenie": "Nie traktować jako uziemnika ani obciążenia sieci SN; wymaga schematu wtórnego i koordynacji VT."
+    },
+    {
+      "id": "E2TANGO_ARC_SENS",
+      "nazwa": "Czujnik łuku",
+      "rodzaj": "CZUJNIK_ZEWNETRZNY",
+      "rola": "Czujnik światłowodowy łuku do ARC/ARP",
+      "zrodla": [
+        "s600",
+        "s450"
+      ],
+      "parametry": {
+        "dlugosc_przewodu_typowo_m": 5
+      }
+    },
+    {
+      "id": "E2TANGO_TMP_SENS",
+      "nazwa": "Czujnik temperatury szyn",
+      "rodzaj": "CZUJNIK_ZEWNETRZNY",
+      "rola": "Czujnik światłowodowy do 3TMP/6TMP; wymagany wymiar przekroju szyny przy zamówieniu",
+      "zrodla": [
+        "s600"
+      ],
+      "parametry": {
+        "dlugosc_przewodu_typowo_m": 5
+      }
+    },
+    {
+      "id": "E2TANGO_PT100",
+      "nazwa": "Czujnik PT100",
+      "rodzaj": "CZUJNIK_ZEWNETRZNY",
+      "rola": "Pomiar temperatury przez kartę PT1; parametry przewodu i typ złącza wymagają DTR",
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ]
+    },
+    {
+      "id": "E2TANGO_HMI",
+      "nazwa": "Panel operatorski 600/800/1000/1200",
+      "rodzaj": "PANEL_OPERATORSKI",
+      "rola": "Oddzielny od jednostki centralnej, 6- lub 7-calowy",
+      "zrodla": [
+        "s600"
+      ]
+    },
+    {
+      "id": "E2TANGO_HMI_CABLE",
+      "nazwa": "Przewód połączeniowy panel–jednostka",
+      "rodzaj": "OKABLOWANIE",
+      "rola": "Opcje zamówienia 1 m / 2 m, 0,25 m dla montażu N3, inne po uzgodnieniu",
+      "zrodla": [
+        "s600"
+      ],
+      "parametry": {
+        "dlugosci_katalogowe_m": [
+          0.25,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "E2TANGO_COMM",
+      "nazwa": "Porty COM1/COM2 i porty IEC 61850",
+      "rodzaj": "INTERFEJS_KOMUNIKACYJNY",
+      "rola": "RS485/CAN×2/światłowody/Profibus/ProfiNET; IEC 61850 na dodatkowych złączach panela; PRP opcjonalnie",
+      "zrodla": [
+        "s600",
+        "red"
+      ],
+      "zastrzezenie": "IEC 61850 i podgląd kamer wzajemnie wykluczone w K-3.2.25; łączność nie oznacza zgodności konkretnego ICD/SCD."
+    },
+    {
+      "id": "E2TANGO_ROG",
+      "nazwa": "Cewki Rogowskiego",
+      "rodzaj": "CZUJNIK_POMIAROWY",
+      "rola": "Współpraca z kartami TRC/TRCZ i wykonaniami TRC1/2/3; kalibracja i kompatybilność wariantu nie są domyślne",
+      "zrodla": [
+        "s600",
+        "s450",
+        "s250"
+      ]
+    },
+    {
+      "id": "E2TANGO_VSENS",
+      "nazwa": "Sensory napięcia",
+      "rodzaj": "CZUJNIK_POMIAROWY",
+      "rola": "Współpraca z TRCZ, TVZ albo TZ1/TZ2 zgodnie z konkretnym wejściem",
+      "zrodla": [
+        "s600",
+        "s450"
+      ]
+    }
+  ],
+  "reguly_i_niejasnosci": [
+    {
+      "id": "R-CHASSIS",
+      "opis": "J6/J10/J14: 6, 10, 14 slotów odpowiednio; 250 i 450: slot A zajęty kartą podstawową",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-IN-VOLT",
+      "opis": "8IN/12IN występują w wariantach 110, 24 i 220 V DC; nie wolno ich zamieniać bez sprawdzenia pomocniczego napięcia i DTR",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-PSU2",
+      "opis": "PSU2 zajmuje 2 sąsiadujące poziomo sloty; wariant 110–220 V AC/DC",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-ARC-ARP",
+      "opis": "ARP wymaga ARC; każdy moduł ARC i ARP do 6 wejść czujników; producent ogranicza ARC/ARP do jednego każdego w opisie instrukcji",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE_W_INSTRUKCJI"
+    },
+    {
+      "id": "R-AI",
+      "opis": "Łącznie maksymalnie jedna karta z grupy AI10/AI20",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-AO",
+      "opis": "Łącznie maksymalnie jedna karta z grupy AO10/AO20",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-PT",
+      "opis": "PT1 maksymalnie 1",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200",
+        "250",
+        "450"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-TMP",
+      "opis": "Maksymalnie 1 karta 3TMP albo 6TMP",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-8OUT",
+      "opis": "Maksymalnie 4 karty 8OUT w 600–1200",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-TVRR",
+      "opis": "TRR tylko J10/J14 i zajmuje 2 sloty; przypisy w K-3.2.25 dopuszczają E (C+E) i F (D+F), instrukcja wyłącznie F. TV wg przypisu E/F, wg instrukcji wyłącznie E i zakaz razem z TR; weryfikacja producenta wymagana",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "SPRZECZNOSC_W_JEDNYM_WYDANIU"
+    },
+    {
+      "id": "R-250-ARC",
+      "opis": "K-42.1.8 tabela możliwości 250 wymienia czujniki błysku, ale formularz KROK 2 nie zawiera karty ARC; nie zakładać zamawialności bez producenta",
+      "models": [
+        "250"
+      ],
+      "status": "SPRZECZNOSC_WEWNATRZ_DOKUMENTU"
+    },
+    {
+      "id": "R-450-NAMES",
+      "opis": "K-43.1.7 używa 6O3I i AO10/AO20, bieżący formularz online 603I i A010/A020; nie tworzyć odrębnych modeli dla literówek bez potwierdzenia",
+      "models": [
+        "450"
+      ],
+      "status": "ROZBIEZNOSC_NAZEWNICTWA"
+    },
+    {
+      "id": "R-61850-CAM",
+      "opis": "W K-3.2.25 przy opcji IEC 61850 podgląd kamer jest niedostępny",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-PRP",
+      "opis": "Dodatkowe porty PRP/HSR nie oznaczają standardowego wyposażenia urządzenia, wymagany kod zamówienia",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    },
+    {
+      "id": "R-FER",
+      "opis": "e²TANGO-FER jest zewnętrznym modułem mocy w obwodach wtórnych VT, nie kartą obsady J6/J10/J14",
+      "models": [
+        "600",
+        "800",
+        "1000",
+        "1200"
+      ],
+      "status": "POTWIERDZONE"
+    }
+  ],
+  "bramka_projektowa": "CZYTAC_JAKO_DOSTEPNOSC_PRODUCENTA; DOBOR_KONFIGURACJI_WYMAGA_WARIANTU_KODU_ZAMOWIENIA_I_DTR; BRAK_ZWERYFIKOWANEJ_MACIERZY_DOPUSZCZALNYCH_SLOTOW"
+}
