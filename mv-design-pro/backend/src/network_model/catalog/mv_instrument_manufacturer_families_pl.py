@@ -28,6 +28,8 @@ KPB_CTS25_2022_SOURCE = (
     "KPB Intra Polska, CTS 25, karta k_kat_cts_25_(22_03), s. 1, "
     "5–3200 A, 1/5 A, 1–4 rdzenie, 2–80 kA/1s: "
     "https://intrapolska.pl/uploads/produkt_files/k_kat_cts_25_%2822_03%29.pdf"
+    " || źródło uzupełniające konstrukcji dwóch łączników: "
+    "https://kpbintra.cz/en/produkty/pristrojovy-transformator-proudu-podperny-7/"
 )
 KPB_CTT25_SOURCE = (
     "KPB Intra Polska, CTT 25, karta producenta, "
@@ -395,6 +397,9 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
             rodzina["fs_options"] = [5, 10]
             rodzina["alf_options"] = [5, 10, 15, 20]
             rodzina["rated_frequency_hz"] = 50
+            rodzina["power_frequency_withstand_kv"] = 50
+            rodzina["lightning_impulse_withstand_kv"] = 125
+            rodzina["mass_kg"] = 28
             rodzina["primary_reconnection_supported"] = True
             rodzina["secondary_reconnection_supported"] = True
             rodzina["primary_reconnection_method"] = "TWO_M8_BRIDGES"
@@ -406,10 +411,16 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
             rodzina["fs_options"] = [5, 10]
             rodzina["alf_options"] = [5, 10, 15, 20]
             rodzina["rated_frequency_hz"] = 50
+            rodzina["power_frequency_withstand_kv"] = 50
+            rodzina["lightning_impulse_withstand_kv"] = 125
+            rodzina["mass_kg"] = 17
         elif rodzina["manufacturer"] == "ABB" and rodzina["model_family"] == "TPU 6x.xx":
             rodzina["primary_reconnection_supported"] = True
             rodzina["secondary_reconnection_supported"] = True
             rodzina["um_options_kv"] = [24, 25]
+            rodzina["power_frequency_withstand_options_kv"] = [50, 55]
+            rodzina["lightning_impulse_withstand_kv_max"] = 125
+            rodzina["rated_frequency_options_hz"] = [50, 60]
             rodzina["number_of_secondaries_max_depends_on_design"] = True
     if len({f["id"] for f in families}) != len(families):
         raise ValueError("Duplikat ID w rodzinach CT/VT producentów")
