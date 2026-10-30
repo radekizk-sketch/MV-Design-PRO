@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import type { NNCableLayingConditionsDescription } from '../../../types/domainOps';
 import { KreatorInfo, KreatorSekcja, KreatorSiatka, PanelTeorii, PoleLiczbowe, PolePrzelacznik, PoleWyboru } from '../rama';
 import { ODCINEK_NN_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 export type TrybUlozenia = 'katalogowe' | 'wlasne';
 type Srodowisko = NNCableLayingConditionsDescription['environment'];
@@ -103,7 +104,7 @@ export function SekcjaUlozeniaKablaNn({
   const u = ulozenie;
   return (
     <KreatorSekcja tytul={T.sekcjaUlozenieTytul} testid={`${testid}-ulozenie`}>
-      <KreatorInfo>{T.ulozeniePomoc}</KreatorInfo>
+      <KreatorInfo><TekstZWzorami tekst={T.ulozeniePomoc} /></KreatorInfo>
       <PolePrzelacznik
         opcje={[
           { id: 'katalogowe', etykieta: T.ulozenieKatalogowe },
@@ -162,7 +163,7 @@ export function SekcjaUlozeniaKablaNn({
           ) : null}
         </KreatorSiatka>
       ) : null}
-      <KreatorInfo>{T.izPrimaBrak}</KreatorInfo>
+      <KreatorInfo><TekstZWzorami tekst={T.izPrimaBrak} /></KreatorInfo>
       <PanelTeorii
         tytul={T.teoriaTytul}
         opis={T.teoriaOpis}

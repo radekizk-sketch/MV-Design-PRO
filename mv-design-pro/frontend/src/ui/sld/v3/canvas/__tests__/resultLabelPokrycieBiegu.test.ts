@@ -119,7 +119,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
       const entry = Object.values(entries).find((candidate) => candidate.resultRef === ref);
       expect(entry, ref).toBeDefined();
       const prefixy = entry!.lines.map((line) => line.prefix);
-      expect(prefixy.slice(0, 3)).toEqual(['Ik″', 'ip', 'Ith']);
+      expect(prefixy.slice(0, 3)).toEqual(["$I_{k}''$", '$i_{p}$', '$I_{th}$']);
       // Kontrola „1:1 z danych": liczba w etykiecie == wartość metryki
       // znormalizowana do kA wg JEDNOSTKI metryki (ścieżka zwarciowa emituje
       // `ikss_ka` w kA — patrz `result_builder_v1.METRYKI_ELEMENTOW_WYNIKU`). Formatowanie

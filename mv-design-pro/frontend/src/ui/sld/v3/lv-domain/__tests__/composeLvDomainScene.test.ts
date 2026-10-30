@@ -101,7 +101,7 @@ describe('Kotwica systemu SN (§10/§11) — jedna kreska na tożsamość zasila
     expect(kotwice.map((k) => k.meta?.systemCount)).toEqual([2, 2]);
     for (const k of kotwice) {
       expect(k.meta?.status).toBe('OK');
-      expect(String(k.meta?.opisLabel)).toContain('Sk″ SN =');
+      expect(String(k.meta?.opisLabel)).toContain("$S_{k}''$ SN =");
       expect(String(k.meta?.opisLabel)).not.toContain('brak danych');
       expect(typeof k.meta?.labelMaxWidth).toBe('number');
     }

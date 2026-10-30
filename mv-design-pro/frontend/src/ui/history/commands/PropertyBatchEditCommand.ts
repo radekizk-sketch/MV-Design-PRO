@@ -18,6 +18,7 @@
 
 import type { Command } from '../Command';
 import { generateCommandId } from '../Command';
+import { tekstBezWzorow } from '../../proof/latexTekst';
 
 /**
  * Single element change in batch edit.
@@ -67,7 +68,7 @@ export class PropertyBatchEditCommand implements Command {
     const elementLabel = elementCount === 1 ? 'element' :
                         (elementCount >= 2 && elementCount <= 4) ? 'elementy' : 'elementów';
 
-    this.name_pl = `Edycja "${params.fieldLabel}" (${elementCount} ${elementLabel})`;
+    this.name_pl = `Edycja "${tekstBezWzorow(params.fieldLabel)}" (${elementCount} ${elementLabel})`;
     this.timestamp = Date.now();
 
     // Sort changes by elementId for determinism

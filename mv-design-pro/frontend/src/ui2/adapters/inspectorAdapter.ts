@@ -234,7 +234,7 @@ function wlasciwosciParametrowZGeometrii(el: OverheadLine): (WierszWlasciwosci |
         ? 'pełna — dane projektu i katalogu'
         : `niepełna — wartości robocze (ESTIMATED): ${robocze.join(', ')}`,
     ),
-    wr(`Rezystancja R1 w temperaturze ${p.temperatura_przewodu_c} °C`, p.r1_temperatura_ohm_per_km, 'Ω/km'),
+    wr(`Rezystancja $R_{1}$ w temperaturze ${p.temperatura_przewodu_c} °C`, p.r1_temperatura_ohm_per_km, 'Ω/km'),
     wr('Średnia geometryczna odległość faz (GMD)', p.gmd_m, 'm'),
     w('Rezystywność gruntu (projekt)', el.geometria_slupa?.rezystywnosc_gruntu_ohm_m ?? null, 'Ω·m'),
   ];
@@ -245,9 +245,9 @@ function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
     ...wlasciwosciGaleziWspolne(el),
     ...bezNulli([
       wr('Długość', el.length_km, 'km'),
-      wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
+      wr('Rezystancja $R_{1}$', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja $X_{1}$', el.x_ohm_per_km, 'Ω/km'),
-      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
+      w('Susceptancja $B_{1}$', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja $R_{0}$', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja $X_{0}$', el.x0_ohm_per_km ?? null, 'Ω/km'),
       w('Susceptancja $B_{0}$', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
@@ -264,9 +264,9 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
     ...wlasciwosciGaleziWspolne(el),
     ...bezNulli([
       wr('Długość', el.length_km, 'km'),
-      wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
+      wr('Rezystancja $R_{1}$', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja $X_{1}$', el.x_ohm_per_km, 'Ω/km'),
-      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
+      w('Susceptancja $B_{1}$', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja $R_{0}$', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja $X_{0}$', el.x0_ohm_per_km ?? null, 'Ω/km'),
       w('Susceptancja $B_{0}$', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),

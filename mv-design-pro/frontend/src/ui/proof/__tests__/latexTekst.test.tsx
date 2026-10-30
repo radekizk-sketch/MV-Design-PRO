@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { latexNaSegmentySvg, latexNaTekst, rozwinStrukture, type SegmentSvg } from '../latexTekst';
 import { MathBlock, MathInline } from '../MathRenderer';
 import { TekstSvgZWzorami, TspanyWzoru } from '../TekstSvgZWzorami';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 const PRZYPADKI: ReadonlyArray<{
   readonly cecha: string;
@@ -234,5 +235,31 @@ describe('MathRenderer — odczyt wzoru i niezależność od wielkości liter ko
       </button>,
     );
     expect(getByRole('button')).toHaveAccessibleName(/^Ustaw\s+Ith$/);
+  });
+});
+
+// Komponenty składające zastąpiły setki wstawień `{tekst}` wprost. Dane spoza typu w czasie
+// działania (brak pola w odpowiedzi, liczba zamiast napisu) nie mogą przerwać renderu całego
+// ekranu — zachowanie ma być takie jak `{tekst}`. Iloczyn: {HTML (KaTeX), SVG (tspan)} ×
+// {undefined, null, liczba, napis ze wzorem}.
+describe('TekstZWzorami / TekstSvgZWzorami — tekst spoza typu nie przerywa renderu', () => {
+  const przypadki: ReadonlyArray<[string, unknown, string]> = [
+    ['undefined', undefined, ''],
+    ['null', null, ''],
+    ['liczba', 42, '42'],
+  ];
+  it.each(przypadki)('HTML: %s → jak wstawienie wprost', (_opis, tekst, oczekiwany) => {
+    const { container } = render(<p><TekstZWzorami tekst={tekst as string} /></p>);
+    expect(container.textContent).toBe(oczekiwany);
+  });
+  it.each(przypadki)('SVG: %s → jak wstawienie wprost', (_opis, tekst, oczekiwany) => {
+    const { container } = render(<svg><text><TekstSvgZWzorami tekst={tekst as string} /></text></svg>);
+    expect(container.textContent).toBe(oczekiwany);
+  });
+  it('napis ze wzorem nadal składa się przez KaTeX (HTML) i tspany (SVG)', () => {
+    const html = render(<p><TekstZWzorami tekst={'Prąd $I_{th}$'} /></p>);
+    expect(html.getByTestId('math-rendered').getAttribute('data-latex')).toBe('$I_{th}$');
+    const svg = render(<svg><text><TekstSvgZWzorami tekst={'Prąd $I_{th}$'} /></text></svg>);
+    expect(svg.container.querySelectorAll('tspan').length).toBeGreaterThan(0);
   });
 });

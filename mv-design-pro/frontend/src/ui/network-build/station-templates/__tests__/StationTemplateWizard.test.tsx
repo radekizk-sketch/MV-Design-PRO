@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { StationTemplateWizard } from '../StationTemplateWizard';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -593,7 +594,7 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
     expect(trBess.textContent).toContain(
       '2× TR 15/0.69 kV 2.5 MVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
     );
-    expect(trBess.textContent).toContain('Sn 2.5 MVA, wymagane 2.2 MVA na jednostkę');
+    expect(tekstZrodlowy(trBess)).toContain('$S_{n}$ 2.5 MVA, wymagane 2.2 MVA na jednostkę');
     expect(screen.getByTestId('preview-tr-blokowy-PV').textContent).toContain(
       '3× TR 15/0.8 kV 500 kVA Dyn11 PV/BESS/FW suchy — normatywny Tier 2',
     );

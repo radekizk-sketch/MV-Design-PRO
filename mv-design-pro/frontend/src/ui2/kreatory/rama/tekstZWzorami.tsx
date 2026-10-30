@@ -23,8 +23,10 @@ import { MathInline } from '../../../ui/proof/MathRenderer';
 import { jestWzorem, SEGMENT_WZORU_INLINE, tekstBezWzorow } from '../../../ui/proof/latexTekst';
 
 export interface TekstZWzoramiProps {
-  /** Tekst PL z opcjonalnymi wzorami LaTeX w delimiterach `$...$`. */
-  tekst: string;
+  /** Tekst PL z opcjonalnymi wzorami LaTeX w delimiterach `$...$`. Brak tekstu (`null`,
+   *  `undefined`) nie rysuje niczego — tak jak wstawienie `{tekst}` wprost, które ten
+   *  komponent zastępuje (dane spoza typu w czasie działania nie przerywają renderu). */
+  tekst: string | null | undefined;
 }
 
 /** Tekst bez wzorów dla atrybutów i natywnych `<option>` (patrz nagłówek modułu). */
@@ -32,6 +34,7 @@ export { tekstBezWzorow };
 
 /** Tekst z osadzonymi wzorami LaTeX renderowanymi przez KaTeX (MathInline). */
 export function TekstZWzorami({ tekst }: TekstZWzoramiProps) {
+  if (typeof tekst !== 'string') return <>{tekst}</>;
   const segmenty = tekst.split(SEGMENT_WZORU_INLINE);
   return (
     <>

@@ -53,7 +53,7 @@ describe('dowodModel — mapujKroki (czysty adapter TraceStep[])', () => {
   it('etykieta wielkości ze słownika TRACE_VALUE_LABELS (znany klucz)', () => {
     const model = mapujKroki(traceStepsFixture());
     const ikss = model[1].wynik.find((w) => w.klucz === 'ikss_ka');
-    expect(ikss?.etykieta).toBe('Prąd zwarciowy początkowy Ik"');
+    expect(ikss?.etykieta).toBe("Prąd zwarciowy początkowy $I_{k}''$");
     expect(ikss?.jednostka).toBe('kA');
     expect(ikss?.wartosc).toBe('12,345');
   });
@@ -137,7 +137,7 @@ describe('dowodModel — mapujKroki na REALNYM (nieopakowanym) kształcie kroku 
     // z modelu), prąd niesie jednostkę z kontraktu klucza (`_a` → A).
     expect(fault?.etykieta).toBe('Węzeł zwarcia');
     expect(fault?.odnosnik).toBe('C');
-    expect(ik?.etykieta).toBe('Prąd zwarciowy źródła zastępczego (Thevenin) Ik″');
+    expect(ik?.etykieta).toBe("Prąd zwarciowy źródła zastępczego (Thevenin) $I_{k}''$");
     expect(ik?.jednostka).toBe('A');
   });
 

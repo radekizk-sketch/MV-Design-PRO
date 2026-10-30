@@ -44,12 +44,14 @@ export function TspanyWzoru({ latex }: TspanyWzoruProps) {
 }
 
 export interface TekstSvgZWzoramiProps {
-  /** Tekst PL z opcjonalnymi wzorami LaTeX w ogranicznikach `$…$`. */
-  readonly tekst: string;
+  /** Tekst PL z opcjonalnymi wzorami LaTeX w ogranicznikach `$…$`. Brak tekstu (`null`,
+   *  `undefined`) nie rysuje niczego — jak wstawienie `{tekst}` wprost. */
+  readonly tekst: string | null | undefined;
 }
 
 /** Tekst SVG: proza wprost, segmenty `$…$` jako `<tspan>` symbolu. */
 export function TekstSvgZWzorami({ tekst }: TekstSvgZWzoramiProps) {
+  if (typeof tekst !== 'string') return <>{tekst}</>;
   return (
     <>
       {tekst.split(SEGMENT_WZORU_INLINE).map((segment, i) =>

@@ -42,7 +42,9 @@ def test_wpisy_ts_szablon_bez_kodu_interpolacji(tmp_path: Path) -> None:
     assert _literaly(plik) == [(1, "wartosc:  koniec")]
 
 
-def test_wpisy_ts_literal_zagniezdzony_w_interpolacji_jest_osobnym_wpisem(tmp_path: Path) -> None:
+def test_wpisy_ts_literal_zagniezdzony_w_interpolacji_jest_osobnym_wpisem(
+    tmp_path: Path,
+) -> None:
     # Wewnetrzny backtick konczyl dopasowanie zewnetrznego literalu w skanie wierszy.
     plik = tmp_path / "a.tsx"
     plik.write_text("const t = `wklad ${x} kA${ok ? ` · i_b=${y} kA` : ''}`;\n", encoding="utf-8")
@@ -177,7 +179,9 @@ def test_skanuj_ts_ignoruje_kod_w_interpolacji_template_literal(tmp_path: Path) 
     assert wyniki == []
 
 
-def test_skanuj_ts_wykrywa_ascii_w_czesci_literalnej_template_literal(tmp_path: Path) -> None:
+def test_skanuj_ts_wykrywa_ascii_w_czesci_literalnej_template_literal(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "Przyklad.tsx"
     plik.write_text(
         "const opis = `wartosc ${x} spelnia U_dot <= U_dot,dop`;\n",
@@ -258,7 +262,9 @@ def test_skanuj_py_nie_wybucha_na_niedomknietym_stringu(tmp_path: Path) -> None:
     assert "zepsuty.py:1:" in str(wyjatek.value)
 
 
-def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Path) -> None:
+def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "przyklad.py"
     plik.write_text(
         '"""Docstring modulu bez ASCII-matematyki."""\n' "wartosc = 'U_dot <= U_dot,dop'\n",
@@ -481,16 +487,21 @@ def test_skanuj_ts_ta_sama_stala_w_module_tekstow_jest_etykieta(tmp_path: Path) 
     assert [(n, GOLY in powod) for n, _l, powod in wyniki] == [(2, True)]
 
 
-def test_skanuj_ts_stala_jako_wartosc_wlasciwosci_tekstowej_jest_etykieta(tmp_path: Path) -> None:
+def test_skanuj_ts_stala_jako_wartosc_wlasciwosci_tekstowej_jest_etykieta(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "model.ts"
     plik.write_text(
-        "const k = { klucz: 'u', etykieta: 'U_m', jednostka: 'kV' };\n", encoding="utf-8"
+        "const k = { klucz: 'u', etykieta: 'U_m', jednostka: 'kV' };\n",
+        encoding="utf-8",
     )
     wyniki = guard.skanuj_ts(plik)
     assert len(wyniki) == 1 and GOLY in wyniki[0][2]
 
 
-def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(tmp_path: Path) -> None:
+def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(
+    tmp_path: Path,
+) -> None:
     """Para cech: {wlasciwosc LaTeX `symbolLatex:`/`formula_latex:`, wlasciwosc tekstowa} ×
     {ta sama linia, osobne linie}. Wartosc pola LaTeX jest zrodlem `MathInline` (jak `*_latex`
     w Pythonie), etykieta z gołym indeksem w tej samej linii pozostaje wykryta."""
@@ -512,7 +523,9 @@ def test_skanuj_ts_pomija_komentarz_blokowy(tmp_path: Path) -> None:
     assert guard.skanuj_ts(plik) == []
 
 
-def test_skanuj_py_pola_latex_i_identyfikator_symbolu_w_parze_pominiete(tmp_path: Path) -> None:
+def test_skanuj_py_pola_latex_i_identyfikator_symbolu_w_parze_pominiete(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "katalog.py"
     plik.write_text(
         "from dataclasses import dataclass\n"
@@ -608,7 +621,10 @@ def test_skanuj_plik_frontu_tekst_jsx_goly_indeks_i_dolary(tmp_path: Path) -> No
         encoding="utf-8",
     )
     wyniki = guard.skanuj_plik_frontu(plik)
-    assert [(n, GOLY in p_ or "dolarami" in p_) for n, _l, p_ in wyniki] == [(3, True), (4, True)]
+    assert [(n, GOLY in p_ or "dolarami" in p_) for n, _l, p_ in wyniki] == [
+        (3, True),
+        (4, True),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -717,6 +733,373 @@ def test_iniekcja_w_kopii_realnego_pliku_frontu_czerwieni_main(
     oryginal = kopia.read_text(encoding="utf-8")
     assert oryginal.count(przed) == 1, przed
     kopia.write_text(oryginal.replace(przed, po), encoding="utf-8")
+    assert guard.main() == 1
+
+
+# ---------------------------------------------------------------------------
+# Symbol splaszczony (karta UX-04/ZU, punkt 2): iloczyn {rodzaj zapisu: indeks Unicode, prim,
+# indeks sklejony, funkcja trygonometryczna, IΔn} × {kontekst: proza tekstu UI, wzor $…$,
+# pojedynczy token kodu, wartosc `case`/porownania, etykieta rewizji} × {zapis zrodla: wprost,
+# ucieczka JS}.
+# ---------------------------------------------------------------------------
+
+SPLASZCZONY = "symbol splaszczony"
+PODWOJNY = "podwojnym ukosnikiem"
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Prąd Ik″ [kA]",
+        "Prąd cieplny Ith [kA]",
+        "Współczynnik cosφ",
+        "Współczynnik cos φ",
+        "Moc tg φ",
+        "Prąd I₁ składowej zgodnej",
+        "Moc S″k sieci",
+        "Susceptancja B′0",
+        "Prąd Ik'' max",
+        "Moc Pmax modułu",
+        "Napięcie Un sieci",
+        "Napięcie zwarcia uk transformatora",
+        "Wyzwalacz IΔn 30 mA",
+        "Rezystancja R0 linii",
+        "Impedancja zwarciowa Zk",
+        "Rezystancja Rk i reaktancja Xk",
+        "Impedancja Z/Zn",
+        "Czas tk zwarcia",
+        # Znak z cyfra po nazwie wielkosci jest symbolem, nie oznaczeniem reguly/pasma.
+        "Rezystancja R1 linii",
+        "Susceptancja B1",
+        "Reaktancja X1 w temperaturze",
+        "Impedancję Z2 składowej",
+        "Napięcie Uzad szyny",
+        "Przy cos φ = 1 sin φ = 0",
+    ],
+)
+def test_splaszczony_wykryty_w_prozie(tekst: str) -> None:
+    assert guard._splaszczone(tekst, pojedynczy_token_jest_kodem=False), tekst
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "wymagana co najmniej rewizja R0 (wersja początkowa)",
+        "reguła R1 i pasmo B1",
+        "Prąd cieplny $I_{th}$ [kA]",
+        "Współczynnik $\\cos\\varphi$",
+        "Inne dane i Unikat",
+        "Napięcie zwarcia uk% transformatora",
+        "Impedancja $|Z_{k}|$ (max)",
+    ],
+)
+def test_splaszczony_nie_wykryty_we_wzorze_i_w_slowach(tekst: str) -> None:
+    assert not guard._splaszczone(tekst, pojedynczy_token_jest_kodem=False), tekst
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "zrodlo", "oczekiwane"),
+    [
+        # Ucieczka JS: `\'\'` to w tekscie `''` (prim), `\u0049` to `I`.
+        ("strings.ts", "export const T = { a: 'Prąd Ik\\'\\' [kA]' };\n", True),
+        ("strings.ts", "export const T = { a: 'Prąd \\u0049th [kA]' };\n", True),
+        # Pojedynczy token: w module tekstow etykieta, poza nim klucz kodu.
+        ("strings.ts", "export const T = { kolIb: 'Ib' };\n", True),
+        ("model.ts", "const klucz = 'Ib';\n", False),
+        # Wartosc `case` i operand porownania sa kodem takze w module tekstow.
+        (
+            "strings.ts",
+            "export function f(k: string) { switch (k) { case 'cosfi': return 1; } }\n",
+            False,
+        ),
+        ("strings.ts", "export const g = (k: string) => k === 'cos fi';\n", False),
+        # Etykieta rewizji dokumentu nie jest rezystancja R0.
+        ("strings.ts", "export const T = { a: 'wymagana rewizja R0' };\n", False),
+    ],
+)
+def test_skanuj_ts_splaszczony_kontekst_literalu(
+    tmp_path: Path, nazwa: str, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / nazwa
+    plik.write_text(zrodlo, encoding="utf-8")
+    trafione = any(SPLASZCZONY in powod for _n, _l, powod in guard.skanuj_ts(plik))
+    assert trafione is oczekiwane, zrodlo
+
+
+def test_skanuj_jsx_splaszczony_w_tekscie_jsx(tmp_path: Path) -> None:
+    plik = tmp_path / "P.tsx"
+    plik.write_text(
+        "export const P = () => (\n"
+        "  <div>\n"
+        "    <span>Prąd Ith [kA]</span>\n"
+        '    <span>Prąd <MathInline latex="I_{th}" /> [kA]</span>\n'
+        "  </div>\n"
+        ");\n",
+        encoding="utf-8",
+    )
+    wyniki = guard.skanuj_plik_frontu(plik)
+    assert [(n, SPLASZCZONY in p_) for n, _l, p_ in wyniki] == [(3, True)]
+
+
+@pytest.mark.parametrize(
+    ("zrodlo", "oczekiwane"),
+    [
+        ('const a = <MathInline latex="\\\\cos\\\\varphi" />;\n', True),
+        ('const a = <MathInline latex="\\cos\\varphi" />;\n', False),
+        ('const a = <Pole etykieta="Moc $\\\\cos\\\\varphi$" />;\n', True),
+        ('const a = <Pole etykieta="Moc $\\cos\\varphi$" />;\n', False),
+        # Wyrazenie `{'...'}` to literal JS — tam podwojny ukosnik jest poprawny.
+        ("const a = <Pole etykieta={'Moc $\\\\cos\\\\varphi$'} />;\n", False),
+        # Prim w atrybucie JSX nie jest ucieczka JS (`\\'` to dwa znaki).
+        ("const a = <MathInline latex=\"I_{k}''\" />;\n", False),
+    ],
+)
+def test_skanuj_ts_podwojny_ukosnik_w_atrybucie_jsx(
+    tmp_path: Path, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / "a.tsx"
+    plik.write_text(zrodlo, encoding="utf-8")
+    trafione = any(PODWOJNY in powod for _n, _l, powod in guard.skanuj_ts(plik))
+    assert trafione is oczekiwane, zrodlo
+
+
+@pytest.mark.parametrize(
+    ("wzgledna", "przed", "po"),
+    [
+        # Os wykresu kreatora (SVG przez TekstSvgZWzorami) splaszczona do `Zn`.
+        (
+            "ui2/kreatory/zrodlo/strings.ts",
+            "'Impedancja $Z/Z_{n}$'",
+            "'Impedancja Z/Zn'",
+        ),
+        # Znacznik wykresu w literale szablonowym splaszczony do `cosφ`.
+        (
+            "ui2/kreatory/odbior/WykresTrojkatMocy.tsx",
+            "`$\\\\cos\\\\varphi$ = ${c.toFixed(2)}`",
+            "`cosφ = ${c.toFixed(2)}`",
+        ),
+        # Tabliczka RCD na rysunku SLD splaszczona do `IΔn`.
+        (
+            "ui/sld/v3/lv-domain/LvDomainView.tsx",
+            "`$I_{\\\\Delta n}$ ${plNumber(",
+            "`IΔn ${plNumber(",
+        ),
+        # Kolumna tabeli wynikow splaszczona do `|Zk|`.
+        ("ui2/wyniki/zwarcia/strings.ts", "kolZk: '$|Z_{k}|$'", "kolZk: '|Zk|'"),
+        # Atrybut JSX z podwojnym ukosnikiem (KaTeX dostalby `\\\\`).
+        (
+            "ui/study-cases/CreateCaseDialog.tsx",
+            'latex="\\cos\\varphi(P)"',
+            'latex="\\\\cos\\\\varphi(P)"',
+        ),
+    ],
+)
+def test_iniekcja_splaszczonego_symbolu_w_kopii_realnego_pliku_czerwieni_main(
+    monkeypatch, tmp_path: Path, wzgledna: str, przed: str, po: str
+) -> None:
+    kopia = _drzewo_z_kopiami(monkeypatch, tmp_path, [wzgledna])[wzgledna]
+    assert guard.main() == 0
+    oryginal = kopia.read_text(encoding="utf-8")
+    assert oryginal.count(przed) == 1, przed
+    kopia.write_text(oryginal.replace(przed, po), encoding="utf-8")
+    assert guard.main() == 1
+
+
+# ---------------------------------------------------------------------------
+# Droga danych (karta UX-04/ZU, punkt 2): stala ze wzorem `$…$` wyswietlona wprost w JSX
+# (dziecko, atrybut opisowy) albo przekazana do komponentu, ktory wlasciwosc wstawia wprost.
+# Iloczyn {miejsce: dziecko JSX, atrybut `title`, wlasciwosc komponentu (jeden krok, przez
+# reeksport)} × {dostep: wprost, alias prosty, alias warunkowy `a ? X : Y`} × {zlozenie:
+# surowe, `TekstZWzorami`, `tekstBezWzorow`}.
+# ---------------------------------------------------------------------------
+
+WZOR_BEZ_SKLADANIA = "wzor"
+
+
+def _skan_drzewa(tmp_path: Path, pliki: dict[str, str]) -> list[tuple[str, int]]:
+    """Skan zestawu plikow jak w `main` (stale i komponenty z CALEGO zestawu)."""
+    sciezki: list[Path] = []
+    for nazwa, zrodlo in pliki.items():
+        plik = tmp_path / nazwa
+        plik.parent.mkdir(parents=True, exist_ok=True)
+        plik.write_text(zrodlo, encoding="utf-8")
+        sciezki.append(plik)
+    wpisy = guard.wpisy_ts(sciezki)
+    stale = guard.sciezki_stalych_ze_wzorem(wpisy)
+    komponenty = guard.komponenty_wyswietlajace_wprost(wpisy)
+    wyniki: list[tuple[str, int]] = []
+    for plik in sciezki:
+        for numer, _linia, powod in guard.skanuj_plik_frontu(
+            plik, wpisy.get(plik, []), stale, komponenty
+        ):
+            assert guard.POWOD_WZORU_BEZ_SKLADANIA in powod, powod
+            wyniki.append((plik.name, numer))
+    return wyniki
+
+
+STALE_ZE_WZOREM = (
+    "export const T = { opis: 'Prąd $I_{th}$ żyły', zwykly: 'Prąd cieplny' };\n"
+    "export const T_SN = { opis: 'Prąd $I_{th}$ kabla SN', zwykly: 'Prąd SN' };\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("ekran", "oczekiwane"),
+    [
+        # Dziecko JSX wprost — dolary na ekranie.
+        (
+            "import { T } from './strings';\nexport const E = () => <p>{T.opis}</p>;\n",
+            True,
+        ),
+        # Ta sama stala zlozona KaTeX-em albo odczytem — czysto.
+        (
+            "import { T } from './strings';\n"
+            "export const E = () => <p><TekstZWzorami tekst={T.opis} /></p>;\n",
+            False,
+        ),
+        (
+            "import { T } from './strings';\n"
+            "export const E = () => <p title={tekstBezWzorow(T.opis)}>x</p>;\n",
+            False,
+        ),
+        # Atrybut opisowy wprost.
+        (
+            "import { T } from './strings';\nexport const E = () => <p title={T.opis}>x</p>;\n",
+            True,
+        ),
+        # Stala bez wzoru wyswietlona wprost — czysto.
+        (
+            "import { T } from './strings';\nexport const E = () => <p>{T.zwykly}</p>;\n",
+            False,
+        ),
+        # Alias prosty i alias warunkowy (obie galezie wskazuja stale ze wzorem).
+        (
+            "import { T } from './strings';\n"
+            "export const E = () => { const S = T; return <p>{S.opis}</p>; };\n",
+            True,
+        ),
+        (
+            "import { T, T_SN } from './strings';\n"
+            "export const E = ({ sn }: { sn: boolean }) => {\n"
+            "  const S = sn ? T_SN : T;\n"
+            "  return <p>{S.opis}</p>;\n"
+            "};\n",
+            True,
+        ),
+        (
+            "import { T, T_SN } from './strings';\n"
+            "export const E = ({ sn }: { sn: boolean }) => {\n"
+            "  const S = sn ? T_SN : T;\n"
+            "  return <p>{S.zwykly}</p>;\n"
+            "};\n",
+            False,
+        ),
+    ],
+)
+def test_stala_ze_wzorem_wyswietlona_wprost(tmp_path: Path, ekran: str, oczekiwane: bool) -> None:
+    wyniki = _skan_drzewa(tmp_path, {"strings.ts": STALE_ZE_WZOREM, "Ekran.tsx": ekran})
+    assert any(nazwa == "Ekran.tsx" for nazwa, _n in wyniki) is oczekiwane, (
+        ekran,
+        wyniki,
+    )
+
+
+PANEL_SUROWY = (
+    "export function Panel({ komunikat }: { komunikat: string }) {\n"
+    "  return <p>{komunikat}</p>;\n"
+    "}\n"
+)
+PANEL_SKLADAJACY = (
+    "export function Panel({ komunikat }: { komunikat: string }) {\n"
+    "  return <p><TekstZWzorami tekst={komunikat} /></p>;\n"
+    "}\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("panel", "import_panelu", "wartosc", "oczekiwane"),
+    [
+        (PANEL_SUROWY, "./Panel", "{T.opis}", True),
+        # Przez reeksport `index.ts` — ta sama definicja komponentu.
+        (PANEL_SUROWY, "./index", "{T.opis}", True),
+        # Literal ze wzorem przekazany wprost.
+        (PANEL_SUROWY, "./Panel", "'Prąd $I_{th}$'", True),
+        # Komponent sklada wzory — kazde uzycie czyste.
+        (PANEL_SKLADAJACY, "./Panel", "{T.opis}", False),
+        # Wartosc bez wzoru — czysto.
+        (PANEL_SUROWY, "./Panel", "{T.zwykly}", False),
+    ],
+)
+def test_wzor_przekazany_do_komponentu_wyswietlajacego_wprost(
+    tmp_path: Path, panel: str, import_panelu: str, wartosc: str, oczekiwane: bool
+) -> None:
+    uzycie = (
+        "import { T } from './strings';\n"
+        f"import {{ Panel }} from '{import_panelu}';\n"
+        f"export const E = () => <Panel komunikat={wartosc} />;\n"
+    )
+    wyniki = _skan_drzewa(
+        tmp_path,
+        {
+            "strings.ts": STALE_ZE_WZOREM,
+            "Panel.tsx": panel,
+            "index.ts": "export { Panel } from './Panel';\n",
+            "Ekran.tsx": uzycie,
+        },
+    )
+    assert any(nazwa == "Ekran.tsx" for nazwa, _n in wyniki) is oczekiwane, wyniki
+
+
+@pytest.mark.parametrize(
+    ("zrodlo", "oczekiwane"),
+    [
+        # Podpis linii wyniku na rysunku (`prefix:`) jest tekstem ekranu takze jako jeden token.
+        ("const S = [{ code: 'IK_3F_A', prefix: 'Ik″' }];\n", True),
+        ("const S = [{ code: 'IK_3F_A', prefix: \"$I_{k}''$\" }];\n", False),
+        # Pole `symbol` w parze z `symbolLatex` jest identyfikatorem, nie tekstem.
+        ("const D = { r0: { symbol: 'R₀', symbolLatex: 'R_0' } };\n", False),
+    ],
+)
+def test_skanuj_ts_podpis_linii_wyniku_jest_tekstem_ui(
+    tmp_path: Path, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / "szablony.ts"
+    plik.write_text(zrodlo, encoding="utf-8")
+    trafione = any(SPLASZCZONY in powod for _n, _l, powod in guard.skanuj_ts(plik))
+    assert trafione is oczekiwane, zrodlo
+
+
+@pytest.mark.parametrize(
+    ("wzgledna", "przed", "po"),
+    [
+        # Komponent ramy kreatora wstawia wartosc wprost (droga danych przez wlasciwosc).
+        (
+            "ui2/kreatory/rama/gotowosc.tsx",
+            '<span className="mvd-rzad-wartosc" data-ton={ton}><TekstZWzorami tekst={wartosc} /></span>',
+            '<span className="mvd-rzad-wartosc" data-ton={ton}>{wartosc}</span>',
+        ),
+    ],
+)
+def test_iniekcja_drogi_danych_w_kopii_realnych_plikow_czerwieni_main(
+    monkeypatch, tmp_path: Path, wzgledna: str, przed: str, po: str
+) -> None:
+    """Kopia ramy kreatora i kreatora odbioru jest czysta; komponent `RzadWartosci` cofniety
+    do wstawienia wprost czerwieni straznika przez uzycie z literalem ze wzorem."""
+    kopie = _drzewo_z_kopiami(
+        monkeypatch,
+        tmp_path,
+        [wzgledna, "ui2/kreatory/rama/tekstZWzorami.tsx", "ui2/kreatory/rama/model.ts"],
+    )
+    uzycie = kopie[wzgledna].parent / "UzycieRzedu.tsx"
+    uzycie.write_text(
+        "import { RzadWartosci } from './gotowosc';\n"
+        'export const U = () => <RzadWartosci etykieta="Tryb" wartosc="Stały $\\cos\\varphi$" />;\n',
+        encoding="utf-8",
+    )
+    assert guard.main() == 0
+    oryginal = kopie[wzgledna].read_text(encoding="utf-8")
+    assert oryginal.count(przed) == 1, przed
+    kopie[wzgledna].write_text(oryginal.replace(przed, po), encoding="utf-8")
     assert guard.main() == 1
 
 

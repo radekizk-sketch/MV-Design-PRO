@@ -32,8 +32,8 @@ export const ZRODLO_STRINGS = {
   napiecieSn: 'Napięcie SN',
   napiecieSnPomoc: 'Napięcie nominalne szyn SN. Wpływa na dobór katalogu transformatorów i kabli.',
   uziemienie: 'Punkt neutralny sieci 110 kV',
-  uziemienieR: 'R uziemienia',
-  uziemienieX: 'X cewki',
+  uziemienieR: 'Rezystancja uziemienia $R_{N}$',
+  uziemienieX: 'Reaktancja cewki $X_{N}$',
   uziemienieZTransformatora: (grupa: string | null, uziemiony: boolean | null): string => (grupa
     ? `Transformatory 110/SN o grupie ${grupa}: ${uziemiony ? 'uzwojenie SN z wyprowadzonym punktem neutralnym daje drogę składowej zerowej po stronie SN' : 'uzwojenie SN nie daje drogi składowej zerowej — sieć SN bez zespołu uziemiającego pracuje jako izolowana'}. Punkt neutralny sieci SN uziemia zespół uziemiający sekcji (niżej) albo uzwojenie transformatora.`
     : 'Punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN i z zespołów uziemiających sekcji — wybierz transformator z katalogu.'),
@@ -67,11 +67,11 @@ export const ZRODLO_STRINGS = {
   zwarcieMinOpis:
     'Warunki przyłączenia OSD — minimalna moc zwarciowa; brak = scenariusz MIN liczony '
     + 'z danych maksymalnych (założenie niekonserwatywne dla czułości zabezpieczeń).',
-  sk3Min: '$S_{k,\\min}\'\'$',
+  sk3Min: 'Minimalna moc zwarciowa $S_{k,\\min}\'\'$',
   sk3MinPomoc:
     'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, $c_{\\min}$). Podaj '
     + '$S_{k,\\min}^{\\prime\\prime}$ albo $I_{k,\\min}^{\\prime\\prime}$ — jedno wystarczy.',
-  ik3Min: '$I_{k,\\min}\'\'$',
+  ik3Min: 'Minimalny prąd zwarciowy $I_{k,\\min}\'\'$',
   ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla $S_{k,\\min}\'\'$, gdy OSD podaje prąd, nie moc.',
   rxMin: 'Stosunek R/X (MIN)',
   rxMinPomoc:

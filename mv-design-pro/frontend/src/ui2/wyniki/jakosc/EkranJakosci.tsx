@@ -207,7 +207,7 @@ export function StanSekcji({
       <div
         className={wariant === 'blad' ? 'mvd-jakosc-stan mvd-jakosc-stan--blad' : 'mvd-jakosc-stan'}
       >
-        <p className="mvd-jakosc-stan-title">{komunikat}</p>
+        <p className="mvd-jakosc-stan-title"><TekstZWzorami tekst={komunikat} /></p>
         {opis && <p className="mvd-jakosc-stan-desc"><TekstZWzorami tekst={opis} /></p>}
         <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
       </div>
@@ -1091,7 +1091,7 @@ export function SekcjaArcFlash({
     <section data-testid="mvd-jakosc-arcflash">
       <h2 className="mvd-jakosc-sekcja-tytul">{JAKOSC_STRINGS.sekcjaArcFlash}</h2>
       <div className="mvd-jakosc-af-form" data-testid="mvd-jakosc-af-form">
-        <p className="mvd-jakosc-af-form-opis">{JAKOSC_STRINGS.parametryOpis}</p>
+        <p className="mvd-jakosc-af-form-opis"><TekstZWzorami tekst={JAKOSC_STRINGS.parametryOpis} /></p>
         <div className="mvd-jakosc-af-form-pola">
           <label className="mvd-jakosc-af-pole">
             <span>

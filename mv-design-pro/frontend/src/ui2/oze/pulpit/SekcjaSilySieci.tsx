@@ -124,7 +124,7 @@ export function SekcjaSilySieci({
           <div className="mvd-oze-blokada" data-testid="mvd-oze-sila-brak-przebiegu">
             {PULPIT_STRINGS.silaBrakPrzebiegu}
           </div>
-          <p style={{ margin: '6px 0 0' }}>{PULPIT_STRINGS.silaBrakOpis}</p>
+          <p style={{ margin: '6px 0 0' }}><TekstZWzorami tekst={PULPIT_STRINGS.silaBrakOpis} /></p>
         </div>
       ) : stan.rodzaj === 'ladowanie' ? (
         <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-sila-ladowanie">

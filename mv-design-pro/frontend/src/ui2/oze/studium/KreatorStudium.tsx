@@ -75,6 +75,7 @@ interface BrakiDokumentu {
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 /** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
 interface ParametryZakonczonegoBiegu {
@@ -158,8 +159,8 @@ function StanPanel({
       }
       data-testid={testid}
     >
-      <p className="mvd-studium-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-studium-stan-desc">{opis}</p>}
+      <p className="mvd-studium-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-studium-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

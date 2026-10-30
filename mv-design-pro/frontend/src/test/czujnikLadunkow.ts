@@ -111,6 +111,11 @@ export function sprawdzPoTescie(): void {
   }
 }
 
+/** Hak `afterEach` czujnika — asynchroniczny (powód przy `zainstalujCzujnikLadunkow`). */
+export async function hakLadunkowPoTescie(): Promise<void> {
+  sprawdzPoTescie();
+}
+
 export function zainstalujCzujnikLadunkow(): void {
   const fn = vi.fn.bind(vi);
   const spyOn = vi.spyOn.bind(vi);
@@ -119,5 +124,7 @@ export function zainstalujCzujnikLadunkow(): void {
     spyOn: ((...argumenty: Parameters<typeof vi.spyOn>) =>
       zarejestruj(spyOn(...argumenty))) as typeof vi.spyOn,
   });
-  afterEach(sprawdzPoTescie);
+  // Hak asynchroniczny — ten sam powód co w `czujnikSurowychWzorow.ts`: synchroniczny wyjątek
+  // przerwałby wywołanie pozostałych haków `afterEach` (w tym `cleanup` Testing Library).
+  afterEach(hakLadunkowPoTescie);
 }

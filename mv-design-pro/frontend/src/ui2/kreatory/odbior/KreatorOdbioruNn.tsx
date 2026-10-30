@@ -304,7 +304,7 @@ function KreatorOdbioru({ poziom }: { readonly poziom: PoziomOdbioru }) {
           /* Polecenie podania mocy i cosfi TYLKO wtedy, gdy naprawde ich brakuje.
              Przy bledzie uslugi ten tekst przeczylby banerowi nad nim i wskazywalby
              projektanta jako przyczyne cudzej awarii (V12K-260). */
-          <p className="mvd-podsum-komunikat">{T.podgladBrak}</p>
+          <p className="mvd-podsum-komunikat"><TekstZWzorami tekst={T.podgladBrak} /></p>
         )}
       </KreatorPodsumowanie>
       <KreatorGotowosc tytul={T.kontrolaTytul} wiersze={wierszeGotowosci} testid="mvd-kreator-odbior-gotowosc" />
@@ -392,7 +392,7 @@ function KreatorOdbioru({ poziom }: { readonly poziom: PoziomOdbioru }) {
 
           {!dane.manual_mode ? (
             <>
-              <KreatorInfo>{T.typPomoc}</KreatorInfo>
+              <KreatorInfo><TekstZWzorami tekst={T.typPomoc} /></KreatorInfo>
               <PoleKatalogu
                 etykieta={T.typKatalog}
                 wartosc={dane.catalog_ref}
@@ -569,7 +569,7 @@ function KreatorOdbioru({ poziom }: { readonly poziom: PoziomOdbioru }) {
 
       {krok === 'zapis' ? (
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-odbior-zapis">
-          <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.downstreamOpis} /></KreatorInfo>
           <KreatorSiatka kolumny={2}>
             <RzadWartosci
               etykieta={T.pochodzenieDanychTytul}

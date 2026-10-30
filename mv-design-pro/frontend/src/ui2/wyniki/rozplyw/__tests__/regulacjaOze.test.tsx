@@ -12,6 +12,7 @@ import { RegulacjaOze } from '../RegulacjaOze';
 import { ROZPLYW_STRINGS } from '../strings';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { busResultFixture, powerFlowResultFixture, runHeaderFixture } from './fixtures';
+import { poTekscieZWzorami, tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 function ustawWynik(over: Parameters<typeof powerFlowResultFixture>[0] = {}) {
   usePowerFlowResultsStore.getState().reset();
@@ -38,8 +39,8 @@ describe('RegulacjaOze — wynik obecny: stan zerowy zdolności (decyzja OD-15)'
     ustawWynik();
     render(<RegulacjaOze />);
     const panel = screen.getByTestId('mvd-rozplyw-regulacja-oze-niedostepne');
-    expect(within(panel).getByText(ROZPLYW_STRINGS.regulacjaOzeTytul)).toBeInTheDocument();
-    expect(within(panel).getByText(ROZPLYW_STRINGS.regulacjaOzeOpis)).toBeInTheDocument();
+    expect(within(panel).getByText(poTekscieZWzorami(ROZPLYW_STRINGS.regulacjaOzeTytul))).toBeInTheDocument();
+    expect(within(panel).getByText(poTekscieZWzorami(ROZPLYW_STRINGS.regulacjaOzeOpis))).toBeInTheDocument();
     const od15 = screen.getByTestId('mvd-rozplyw-regulacja-oze-od15');
     expect(od15).toHaveTextContent(ROZPLYW_STRINGS.regulacjaOzeDecyzja);
     expect(od15).not.toHaveTextContent('OD-15');
@@ -85,7 +86,7 @@ describe('RegulacjaOze — dowod „nie fabrykuje" (DoD karty W3-H §2, iloczyn 
     ustawWynik(over);
     render(<RegulacjaOze />);
     const panel = screen.getByTestId('mvd-rozplyw-regulacja-oze-niedostepne');
-    expect(panel).toHaveTextContent(ROZPLYW_STRINGS.regulacjaOzeOpis);
+    expect(tekstZrodlowy(panel)).toContain(ROZPLYW_STRINGS.regulacjaOzeOpis);
 
     // Zero fabrykacji trybu: żadna z czterech nazw trybu solvera
     // (`InverterMode`, `power_flow_inverter.py`) nie ma prawa pojawić się w

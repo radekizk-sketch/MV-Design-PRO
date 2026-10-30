@@ -333,7 +333,7 @@ export function EkranStanuFazowego() {
               <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-rn-zalozenia">
                 {naZalozeniaBiegu(rn).map((z) => (
                   <li key={z.kod} data-kod={z.kod}>
-                    <b>{z.opis}</b>
+                    <b><TekstZWzorami tekst={z.opis} /></b>
                     {z.elementy ? (
                       <>
                         {' '}
@@ -446,7 +446,7 @@ export function EkranStanuFazowego() {
               <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-zdarzenia">
                 {naZdarzeniaObwodu(wiersz).map((z) => (
                   <li key={z.etykieta}>
-                    <b>{z.etykieta}:</b> {z.fazy || T.kreska}
+                    <b><TekstZWzorami tekst={z.etykieta} />:</b> {z.fazy || T.kreska}
                   </li>
                 ))}
               </ul>

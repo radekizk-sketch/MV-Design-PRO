@@ -1027,7 +1027,7 @@ export function opisUziemienia(type: TypPunktuNeutralnego): string {
     case 'directly_grounded':
       return 'Sieć 110 kV skutecznie uziemiona (punkty neutralne transformatorów 110 kV uziemione) — typowa praca krajowej sieci 110 kV. Podaj $Z_{0}$ sieci ($R_{0}$/$X_{0}$ albo $Z_{0}$/$Z_{1}$) z danych operatora.';
     case 'resistor_grounded':
-      return 'Punkt neutralny sieci 110 kV uziemiony przez rezystor — podaj R uziemienia i $Z_{0}$ sieci z danych operatora.';
+      return 'Punkt neutralny sieci 110 kV uziemiony przez rezystor — podaj rezystancję uziemienia $R_{N}$ i $Z_{0}$ sieci z danych operatora.';
     case 'petersen_coil':
       return 'Sieć 110 kV kompensowana dławikiem — podaj X dławika i $Z_{0}$ sieci z danych operatora.';
     case 'isolated':

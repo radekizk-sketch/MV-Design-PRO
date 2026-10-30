@@ -56,6 +56,7 @@ import {
   nazwaElementu,
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type TrybZakresu = 'pelny' | 'wybrane';
 
@@ -89,8 +90,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-n1-stan mvd-n1-stan--blad' : 'mvd-n1-stan'}
       data-testid={testid}
     >
-      <p className="mvd-n1-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-n1-stan-desc">{opis}</p>}
+      <p className="mvd-n1-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-n1-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

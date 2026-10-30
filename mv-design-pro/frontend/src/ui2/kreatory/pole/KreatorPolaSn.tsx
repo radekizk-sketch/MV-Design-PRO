@@ -66,6 +66,7 @@ import { naglowekRodziny, torRodziny, wyposazenieSzablonu } from '../stacja/konf
 import { STACJA_STRINGS as ST } from '../stacja/strings';
 import { pobierzPodgladStacji } from '../stacja/stacjaPodglad';
 import { POLE_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'pole', tytul: T.krokPole },
@@ -469,7 +470,7 @@ export function KreatorPolaSn() {
                 <dl className="mvd-kreator-naglowek-rodziny">
                   {naglowekRodziny(wybranaRodzina, wybranaRodzina.manufacturer_ref).map((wiersz) => (
                     <Fragment key={wiersz.etykieta}>
-                      <dt>{wiersz.etykieta}</dt>
+                      <dt><TekstZWzorami tekst={wiersz.etykieta} /></dt>
                       <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>
                         {wiersz.wartosc ?? ST.naglowekBrakDanej}
                       </dd>

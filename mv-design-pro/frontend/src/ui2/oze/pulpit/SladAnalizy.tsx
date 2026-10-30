@@ -59,7 +59,7 @@ export function SladAnalizy({ kroki }: SladAnalizyProps): JSX.Element {
               <MathInline latex={krok.formula_latex} />
             </Pole>
           ) : (
-            <span className="mvd-oze-panel-etyk">{krok.symbol}</span>
+            <span className="mvd-oze-panel-etyk"><TekstZWzorami tekst={krok.symbol} /></span>
           )}
           {krok.substitution_pl ? (
             <Pole etykieta={PULPIT_STRINGS.sladPodstawienie}>

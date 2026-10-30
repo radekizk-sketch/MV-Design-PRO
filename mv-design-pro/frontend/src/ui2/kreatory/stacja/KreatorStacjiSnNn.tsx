@@ -163,6 +163,7 @@ import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
 import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 /** Opcje tolerancji napięcia sieci nN — słownik przypięty do backendu (`types/uziemienie.ts`). */
 const OPCJE_TOLERANCJI_NN = TOLERANCJE_NAPIECIA_NN.map((id) => ({
@@ -1860,7 +1861,7 @@ export function KreatorStacjiSnNn() {
               <dl className="mvd-kreator-naglowek-rodziny">
                 {wierszeNaglowkaRodziny.map((wiersz) => (
                   <Fragment key={wiersz.etykieta}>
-                    <dt>{wiersz.etykieta}</dt>
+                    <dt><TekstZWzorami tekst={wiersz.etykieta} /></dt>
                     <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>
                       {wiersz.wartosc ?? T.naglowekBrakDanej}
                     </dd>

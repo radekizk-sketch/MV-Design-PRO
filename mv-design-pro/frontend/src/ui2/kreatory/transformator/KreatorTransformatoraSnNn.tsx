@@ -56,6 +56,7 @@ import {
 } from './transformatorModel';
 import { TRANSFORMATOR_STRINGS as T } from './strings';
 import { WykresAvr } from './WykresAvr';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szyny', tytul: T.krokSzyny },
@@ -266,7 +267,7 @@ export function KreatorTransformatoraSnNn() {
             <RzadWartosci etykieta={T.podgladZrodlo} wartosc={T.podgladZrodloWartosc} />
           </>
         ) : (
-          <p className="mvd-podsum-komunikat">{T.podgladBrak}</p>
+          <p className="mvd-podsum-komunikat"><TekstZWzorami tekst={T.podgladBrak} /></p>
         )}
       </KreatorPodsumowanie>
       <KreatorGotowosc tytul={T.kontrolaTytul} wiersze={wierszeGotowosci} testid="mvd-kreator-transformator-gotowosc" />
@@ -477,7 +478,7 @@ export function KreatorTransformatoraSnNn() {
 
       {krok === 'zapis' ? (
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-transformator-zapis">
-          <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.downstreamOpis} /></KreatorInfo>
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszTyp} wartosc={dane.catalog_ref ?? '—'} />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtMva(params?.rated_power_mva)} />

@@ -93,7 +93,7 @@ function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
         >
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladSzczegolBrak}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">
-            {ZWARCIA_STRINGS.wkladSzczegolBrakOpis}
+            <TekstZWzorami tekst={ZWARCIA_STRINGS.wkladSzczegolBrakOpis} />
           </p>
         </div>
       ) : (

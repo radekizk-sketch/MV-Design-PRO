@@ -32,6 +32,7 @@ import {
   etykietaWerdyktu,
   fmtLiczba,
 } from './strings';
+import { TekstZWzorami } from '../kreatory/rama/tekstZWzorami';
 
 export interface ObwodWtorny {
   readonly dlugosc_m: number | null;
@@ -60,7 +61,7 @@ export interface SekcjaBilansuCtVtProps {
 function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }): JSX.Element {
   return (
     <div className="mvd-kryteria__wiersz">
-      <span className="mvd-kryteria__etykieta">{etykieta}</span>
+      <span className="mvd-kryteria__etykieta"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-kryteria__wartosc">{wartosc}</span>
     </div>
   );

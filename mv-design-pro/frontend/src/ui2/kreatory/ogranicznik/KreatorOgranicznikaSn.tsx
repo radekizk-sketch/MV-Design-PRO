@@ -345,7 +345,7 @@ export function KreatorOgranicznikaSn() {
 
       {krok === 'typ' ? (
         <KreatorSekcja tytul={T.krokTyp} testid="mvd-kreator-ogranicznik-typ">
-          <KreatorInfo>{T.typPomoc}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.typPomoc} /></KreatorInfo>
           <PoleKatalogu
             etykieta={T.typKatalog}
             wartosc={dane.catalog_ref}
@@ -373,7 +373,7 @@ export function KreatorOgranicznikaSn() {
 
       {krok === 'zapis' ? (
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-ogranicznik-zapis">
-          <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.downstreamOpis} /></KreatorInfo>
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszMiejsce} wartosc={miejsceLabel} />
             <RzadWartosci etykieta={T.wierszUm} wartosc={fmtKv(params?.u_m_kv)} />

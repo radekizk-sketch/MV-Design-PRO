@@ -20,6 +20,7 @@ import '../dowod/dowod.css';
 import type { TraceStep } from '../../../ui/results-inspector/types';
 import { KrokDowodu, mapujKroki } from '../dowod';
 import { ZWARCIA_STRINGS } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 /** Tokeny `fault_type` wiersza wyniku (kody `ShortCircuitType`), w których solver czyta Z0. */
 export const RODZAJE_ZWARCIA_ZE_SKLADOWA_ZEROWA: ReadonlySet<string> = new Set(['1F', '2F+G']);
@@ -58,7 +59,7 @@ export function SladSieciZerowej({
         </div>
       ) : (
         <>
-          <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.sladZerowejOpis}</p>
+          <p className="mvd-zwarcia-wklad-szczegol-opis"><TekstZWzorami tekst={ZWARCIA_STRINGS.sladZerowejOpis} /></p>
           <div className="mvd-zwarcia-slad-rozplywu-lista" data-testid={`${testid}-lista`}>
             {kroki.map((krok) => (
               <KrokDowodu key={krok.numer} krok={krok} szczegolyAudytowe={szczegolyAudytowe} />

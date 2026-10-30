@@ -24,6 +24,7 @@ import {
   widokKompensacjiFixture,
   widokNocFixture,
 } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const pobierzDobor = vi.fn();
 vi.mock('../../api', () => ({
@@ -140,8 +141,8 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
   it('stan wyjściowy (baseline) pokazuje OBA cosφ pod różnymi etykietami (dzień)', async () => {
     await uruchomBieg();
     const baseline = screen.getByTestId('mvd-komp-baseline');
-    expect(within(baseline).getByText(T.baselineCosfiPunktuDzien)).toBeInTheDocument();
-    expect(within(baseline).getByText(T.baselineCosfiPrzekrojuDzien)).toBeInTheDocument();
+    expect(within(baseline).getByText(poTekscieZWzorami(T.baselineCosfiPunktuDzien))).toBeInTheDocument();
+    expect(within(baseline).getByText(poTekscieZWzorami(T.baselineCosfiPrzekrojuDzien))).toBeInTheDocument();
     // Bez baterii obie wielkości równe (0,8200) — ale wystawione osobno.
     expect(screen.getByTestId('mvd-komp-baseline-punktu-dzien')).toHaveTextContent('0,8200');
     expect(screen.getByTestId('mvd-komp-baseline-przekroju-dzien')).toHaveTextContent('0,8200');

@@ -83,8 +83,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-obszar-stan mvd-obszar-stan--blad' : 'mvd-obszar-stan'}
       data-testid={testid}
     >
-      <p className="mvd-obszar-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-obszar-stan-desc">{opis}</p>}
+      <p className="mvd-obszar-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-obszar-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

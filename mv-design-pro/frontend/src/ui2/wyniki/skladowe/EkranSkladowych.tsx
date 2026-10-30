@@ -181,7 +181,7 @@ export function EkranSkladowych() {
 
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-tabela">
             <h4>{T.tabelaTytul}</h4>
-            <p className="mvd-skladowe-nota">{T.tabelaOpis}</p>
+            <p className="mvd-skladowe-nota"><TekstZWzorami tekst={T.tabelaOpis} /></p>
             {/* F-K4 (znalezisko Z4): ten ekran nie ma kryterium naruszenia
                 (raportowalność jest zawsze pozytywna), więc akcja jest INSPEKCYJNA —
                 „Pokaż na schemacie", nie „Popraw". Nazwanie jej naprawą wmawiałoby
@@ -222,7 +222,7 @@ export function EkranSkladowych() {
               // ślad dostępny lecz bez kroku „Zk" dla punktu.
               !dane?.slad ? (
                 <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-slad-niedostepny">
-                  {T.skladoweSladNiedostepny}
+                  <TekstZWzorami tekst={T.skladoweSladNiedostepny} />
                 </p>
               ) : (
                 <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-brak-kroku">
@@ -238,8 +238,8 @@ export function EkranSkladowych() {
                     <WartoscSkladowej etykieta={T.skladowaZ0} wartosc={skladowe.z0} testid="mvd-skladowe-z0" />
                   ) : (
                     <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-z0-brak">
-                      <dt>{T.skladowaZ0}</dt>
-                      <dd>{T.skladoweBrakZ0}</dd>
+                      <dt><TekstZWzorami tekst={T.skladowaZ0} /></dt>
+                      <dd><TekstZWzorami tekst={T.skladoweBrakZ0} /></dd>
                     </div>
                   )}
                 </dl>

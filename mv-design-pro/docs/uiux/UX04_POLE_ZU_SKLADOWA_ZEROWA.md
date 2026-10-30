@@ -1432,4 +1432,34 @@ ukośnikiem w literale TS (`\Delta` ginie, `\varphi` staje się znakiem sterują
 strażnika z iniekcją. Wspólne źródło odczytu i tekstu SVG: `ui/proof/latexTekst.ts`,
 `ui/proof/TekstSvgZWzorami.tsx`. Test kreatora źródła z profilem NC RfG dostał jawny budżet 20 s
 (przekraczał 5 s w równoległej puli przed zmianą i po niej; `delay: null` łamie przebieg).
-Punkty 2–4: w toku (kolejno).
+Punkt 2 (symbole spłaszczone do Unicode w `ui2` i `ui`) — kod zrobiony, weryfikacja vitest
+w kolejce blokady biegów ciężkich (commit oznaczony WIP). Literały `Ik″`, `Ith`, `Sk″`, `cosφ`,
+`Pmax`, `Un` zapisane jako wzory `$…$`; tekst HTML przez `TekstZWzorami` (KaTeX), tekst SVG przez
+`TekstSvgZWzorami` (`<tspan>` z tego samego źródła LaTeX, `latexNaSegmentySvg`), atrybuty
+i natywne `<option>` przez `tekstBezWzorow`. Inwentarz klasy (miejsca, w których tekst ze stałej
+trafia na ekran wprost): prymitywy kreatora `KreatorRama` (nadtytuł, tytuł, odznaka, licznik
+kroków, tytuł sekcji, błąd globalny, walidacja), `gotowosc.tsx` (wartość wiersza, tytuły
+podsumowania i gotowości, nadtytuł następnego kroku), `panelTeorii.tsx`, `pola.tsx` (jednostka,
+komunikat błędu, podpowiedź, opcje katalogu), komórka i jednostka `TabelaWynikow`, podstawienie
+`KrokDowodu`, teksty `KreatorOdbioruNn`, błąd API `FaultScenarioModal`, etykiety
+`inspectorAdapter` (`$R_{1}$`, `$B_{1}$`). `TekstZWzorami`/`TekstSvgZWzorami` przyjmują
+`null`/`undefined`/liczbę bez wywrotki (wcześniej `split` na `undefined` w `FieldRow` DER).
+Etykiety wyników SLD: przedrostki szablonów jako wzory (`PODPIS_IK` i in.), a zamknięta tabela
+filtra wielkości (`PREFIX_TO_QUANTITY`) budowana z par (przedrostek, wielkość) szablonów —
+jedno źródło prawdy; poprzednio tabela była kluczowana starymi przedrostkami i po zmianie
+filtr gubił etykiety (regresja wykryta testem, test „przedrostek → jedna wielkość”). Czujnik
+surowych wzorów (`src/test/czujnikSurowychWzorow.ts`) oblewa test, gdy DOM pokazuje `$…$`; haki
+czujników są asynchroniczne, żeby rzut nie przerywał sprzątania Testing Library (pomiar: 359
+czerwonych testów w 55 plikach było kaskadą jednego naruszenia na plik; test
+`czujnikiNiePrzerywajaSprzatania`). Strażnik `ui_math_guard` rozszerzony: wzorzec symbolu
+spłaszczonego (`Uzad`, kontekstowe `R1`/`X1`/`B1`/`Z2` po „-ancja”, `sin φ`), klucz `prefix`
+jako tekst UI, droga danych stałej ze wzorem do miejsca wyświetlenia (alias warunkowy `?:`/`??`,
+reeksport z `index`, jeden przeskok do komponentu wyświetlającego właściwość wprost). Samotest
+154 passed; iniekcje (usunięcie aliasu warunkowego, klucza `prefix`, wzorca „-ancja”, powrót
+`RzadWartosci` do stanu `main` w kopii realnych plików) czerwienią. Pomiar strażnika: 250 trafień,
+wyłącznie w generowanych towarzyszach archetypów stacji
+(`ui/sld/v2/station-rozdzielnia/companions/shortCircuit.ts`, `ozeArchetypes2a.ts`) — ich źródłem
+jest ślad FROZEN `short_circuit_iec60909.py`; usuwa je punkt 4 (zmiana tekstowa B-01
+i przegenerowanie generatorem), do tego czasu pin strażnika jest czerwony.
+Punkt 3 (nazwy pól w komunikatach operacji słowami) — kod zrobiony, w drzewie, bez commitu.
+Punkt 4 — w kolejce.

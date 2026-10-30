@@ -395,7 +395,7 @@ export const OZE_STRINGS = {
     + 'przyłączenia rośnie. Wyborem jest moc bierna: pobór Q (tak działa regulacja Q(U) falownika) '
     + 'TŁUMI wzrost napięcia i pozwala zwykle na mniejszy przekrój; oddawanie Q wzrost powiększa.',
   doborCharakterQBezZnaczenia:
-    'Przy $\\cos\\varphi$ = 1 falownik nie wymienia mocy biernej (sin φ = 0), więc charakter Q nie wpływa '
+    'Przy $\\cos\\varphi$ = 1 falownik nie wymienia mocy biernej ($\\sin\\varphi$ = 0), więc charakter Q nie wpływa '
     + 'na dobór. Ustaw $\\cos\\varphi$ < 1, aby sprawdzić wpływ regulacji Q(U).',
   doborZmianaNapiecia: (wzrost: boolean) => (wzrost ? 'Wzrost napięcia' : 'Spadek napięcia'),
   doborWzrostInfo:

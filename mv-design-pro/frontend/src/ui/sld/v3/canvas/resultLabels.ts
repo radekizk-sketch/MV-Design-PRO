@@ -52,12 +52,14 @@ import {
   applyDeltaSign,
   computeResultLabelTrend,
   normalizeResultLabelAnalysis,
+  RESULT_LABEL_TEMPLATES,
   selectResultLabelSpecs,
   type ResultLabelAnalysis,
   type ResultLabelComparisonMode,
   type ResultLabelKind,
   type ResultLabelLine,
   type ResultLabelLineSpec,
+  type ResultLabelQuantity,
 } from './resultLabelTemplates';
 
 export type { ResultLabelKind, ResultLabelLine } from './resultLabelTemplates';
@@ -420,59 +422,22 @@ function severityOf(payload: RawOverlayPayload, ownerRef: string): string {
 // niezależnie od stanu filtrów (inwariant §11, dowód w testach).
 // ---------------------------------------------------------------------------
 
-/** Wielkości filtrowane (wym. 17 „tylko P / tylko Q / tylko prądy / tylko
- *  napięcia / tylko przeciążenia”, rozszerzone o S — komplet realnych wielkości
- *  szablonów). Każdy prefiks linii mapuje się na dokładnie jedną. */
-export type ResultLabelQuantity = 'P' | 'Q' | 'S' | 'I' | 'U' | 'loading';
+export type { ResultLabelQuantity } from './resultLabelTemplates';
 
-/** Prefiks linii (z `resultLabelTemplates.ts`) → wielkość filtrowana. Zamknięta
- *  tabela — WSZYSTKIE prefiksy szablonów pokryte, więc każda linia jest
- *  filtrowalna: P/ΔP→moc czynna, Q→bierna, S→pozorna, I/Ik″/ip/Ith→prądy,
- *  U/δ→węzeł (napięcie/kąt), obc.→obciążenie. */
-const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
-  P: 'P',
-  'ΔP': 'P',
-  Q: 'Q',
-  S: 'S',
-  // Sk = moc zwarciowa [MVA] (R4) — filtrowana pod „moc pozorna S" (obie w MVA,
-  // najbliższa semantyka; linia pozostaje filtrowalna, brak cichego gubienia).
-  Sk: 'S',
-  I: 'I',
-  'Ik″': 'I',
-  ip: 'I',
-  Ith: 'I',
-  U: 'U',
-  δ: 'U',
-  // ΔU = spadek napięcia linii/kabla [%] — wielkość NAPIĘCIOWA (LF-KONTRAKT
-  // V12K-161 dołożył ją do szablonu gałęzi, ale tabela nie została uzupełniona:
-  // linia przechodziła przez filtry niefiltrowalna. Deklaracja „tabela
-  // ZAMKNIĘTA" nie miała testu — teraz ma).
-  'ΔU': 'U',
-  // cosφ = |P|/|S| — mówi, jaka CZĘŚĆ mocy pozornej jest mocą czynną, więc
-  // znika razem z grupą mocy czynnej (ta sama zasada „najbliższa semantyka"
-  // co przy Sk→S). Dotąd bez wpisu, z tego samego powodu co ΔU.
-  'cosφ': 'P',
-  'obc.': 'loading',
-  // NAKŁADKA RÓŻNIC A/B — prefiksy rodziny `short_circuit_delta`. Różnica
-  // wielkości filtruje się jak sama wielkość (Δ Ik″/ip/Ith → prądy, Δ Sk → moc
-  // pozorna), inaczej włączenie filtra prądów zostawiłoby różnice prądów na
-  // ekranie: tabela jest ZAMKNIĘTA, każdy prefiks szablonu musi tu być.
-  'Δ Ik″': 'I',
-  'Δ Ik″ %': 'I',
-  'Δ ip': 'I',
-  'Δ Ith': 'I',
-  'Δ Sk': 'S',
-  // S9-13 — wartości bezwzględne przebiegu B w nakładce różnic (`B_*`): ta sama
-  // wielkość co ich odpowiedniki bez „(B)" (prądy/moc pozorna), więc filtrują
-  // się razem z nimi.
-  'Ik″ (B)': 'I',
-  'ip (B)': 'I',
-  'Ith (B)': 'I',
-  'Sk (B)': 'S',
-};
+/** Podpis linii → wielkość filtrowana. Zamknięta tabela BUDOWANA z rejestru szablonów
+ *  (`RESULT_LABEL_TEMPLATES`, para `prefix`/`quantity` każdej specyfikacji) — każdy podpis
+ *  szablonu ma wpis z definicji, a zmiana zapisu podpisu (np. symbol jako wzór `$…$`) nie
+ *  może zostawić linii niefiltrowalnej. Ten sam podpis w dwóch szablonach musi nieść tę
+ *  samą wielkość (test `resultLabelRoznice`: podpis → jedna wielkość). */
+const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = Object.fromEntries(
+  Object.values(RESULT_LABEL_TEMPLATES).flatMap((rodzina) =>
+    Object.values(rodzina).flatMap((specs) =>
+      (specs ?? []).map((spec): [string, ResultLabelQuantity] => [spec.prefix, spec.quantity]),
+    ),
+  ),
+);
 
-/** Wielkość linii wg prefiksu (`null` = prefiks spoza tabeli — linia traktowana
- *  jako zawsze widoczna, bez cichego gubienia). */
+/** Wielkość filtrowana linii o podpisie `prefix` (`null` — podpis spoza rejestru szablonów). */
 export function resultLabelLineQuantity(prefix: string): ResultLabelQuantity | null {
   return PREFIX_TO_QUANTITY[prefix] ?? null;
 }

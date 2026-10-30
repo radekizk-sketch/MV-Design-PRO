@@ -154,7 +154,7 @@ export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
     <div className="mvd-por" data-testid="mvd-porz-ekran">
       <header className="mvd-por-head">
         <div className="mvd-por-head-main">
-          <p className="mvd-por-sub">{SZ.podtytul}</p>
+          <p className="mvd-por-sub"><TekstZWzorami tekst={SZ.podtytul} /></p>
         </div>
       </header>
 
@@ -251,7 +251,7 @@ export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
               >
                 {nakladkaWTrakcie ? SZ.pokazNaSchemacieWTrakcie : SZ.pokazNaSchemacie}
               </button>
-              <p className="mvd-por-schemat-opis">{SZ.pokazNaSchemacieOpis}</p>
+              <p className="mvd-por-schemat-opis"><TekstZWzorami tekst={SZ.pokazNaSchemacieOpis} /></p>
             </>
           )}
           {bladNakladki && (

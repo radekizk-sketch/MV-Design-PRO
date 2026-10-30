@@ -30,6 +30,7 @@ import {
 import { useShellStore } from '../../../shell/useShellStore';
 import type { PrzebiegWiersz } from './adapters/przebiegiAdapter';
 import { formatCzas, formatOdcisk, PRZEBIEGI_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../../../kreatory/rama/tekstZWzorami';
 
 interface SzczegolyPrzebieguProps {
   przebieg: PrzebiegWiersz | null;
@@ -59,7 +60,7 @@ function WierszParametru({
 function WierszKontraktu({ etykieta, wartosc }: { etykieta: string; wartosc: string }) {
   return (
     <tr>
-      <td>{etykieta}</td>
+      <td><TekstZWzorami tekst={etykieta} /></td>
       <td className="mvd-num">{wartosc}</td>
     </tr>
   );

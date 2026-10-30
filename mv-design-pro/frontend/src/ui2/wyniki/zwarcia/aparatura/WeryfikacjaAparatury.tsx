@@ -348,7 +348,7 @@ export function WeryfikacjaAparatury({
         <div>
           <dt>{T.wejsciePrady}</dt>
           <dd data-testid="mvd-zwarcia-aparatura-prady">
-            {runId === null ? T.kreska : T.wejsciePradyOpis}
+            {runId === null ? T.kreska : <TekstZWzorami tekst={T.wejsciePradyOpis} />}
             <span className="mvd-apar-zrodlo">{T.zrodloPradow}</span>
           </dd>
         </div>

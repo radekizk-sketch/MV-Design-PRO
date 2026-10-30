@@ -323,7 +323,7 @@ export function FaultScenarioModal() {
           )}
           {error && (
             <div className="p-2 text-xs rounded bg-rose-50 text-rose-700 border border-rose-200" data-testid="fault-scenario-api-error">
-              {error}
+              <TekstZWzorami tekst={error} />
             </div>
           )}
         </div>

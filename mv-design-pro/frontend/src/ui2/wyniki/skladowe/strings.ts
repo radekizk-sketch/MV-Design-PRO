@@ -50,9 +50,9 @@ export const SKLADOWE_STRINGS = {
     + 'Kliknij wiersz, aby zobaczyć składowe $Z_{1}$/$Z_{2}$/$Z_{0}$ i uziemienie punktu.',
   kolPunkt: 'Punkt zwarcia',
   kolRodzaj: 'Rodzaj zwarcia',
-  kolZk: '|Zk|',
-  kolRk: 'Rk',
-  kolXk: 'Xk',
+  kolZk: '$|Z_{k}|$',
+  kolRk: '$R_{k}$',
+  kolXk: '$X_{k}$',
   kolXR: 'X/R',
   kolKappa: 'Współczynnik udaru κ',
   kolIkss: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
@@ -76,7 +76,7 @@ export const SKLADOWE_STRINGS = {
     + 'dla wybranego punktu — składowych nie można pokazać bez fabrykacji.',
   skladoweSladNiedostepny: 'Ślad obliczeń przebiegu jest niedostępny (błąd pobierania). '
     + 'Składowe $Z_{1}$/$Z_{2}$/$Z_{0}$ są prezentowane wyłącznie ze śladu obliczeń — bez niego '
-    + 'ekran pokazuje tylko bilans |Zk| z wierszy kanonicznych.',
+    + 'ekran pokazuje tylko bilans $|Z_{k}|$ z wierszy kanonicznych.',
   skladoweDowod: 'Otwórz pełny dowód obliczeń',
   skladoweDowodOpis: 'Pełny ślad obliczeń przebiegu (wszystkie kroki) w zakładce „Dowód obliczeń".',
 

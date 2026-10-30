@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { KatalogPanel } from '../KatalogPanel';
 import { FIXTURE_UZYCIA, stubLoader } from './fixtures';
+import { poTekscieZWzorami } from '../../../../../test/tekstZWzorami';
 
 describe('KatalogPanel', () => {
   it('renderuje wszystkie kategorie katalogu', async () => {
@@ -66,7 +67,7 @@ describe('KatalogPanel', () => {
     );
     expect(screen.getByText('0,500 A')).toBeInTheDocument();
     expect(screen.getByText('Rodzaj prądu różnicowego')).toBeInTheDocument();
-    expect(screen.getByText('Maksymalny czas wyłączenia przy IΔn')).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami("Maksymalny czas wyłączenia przy $I_{\\Delta n}$"))).toBeInTheDocument();
     expect(screen.getByText('Minimalny czas niezadziałania')).toBeInTheDocument();
     expect(screen.getByText('0,13 s')).toBeInTheDocument();
   });

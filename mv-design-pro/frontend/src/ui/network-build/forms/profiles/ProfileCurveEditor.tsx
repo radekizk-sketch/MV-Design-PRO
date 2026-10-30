@@ -215,8 +215,8 @@ export function ProfileCurveEditor({
         <thead>
           <tr className="text-scada-muted">
             <th className="text-left">#</th>
-            <th className="text-right">{xLabel}</th>
-            <th className="text-right">{yLabel}</th>
+            <th className="text-right"><TekstZWzorami tekst={xLabel} /></th>
+            <th className="text-right"><TekstZWzorami tekst={yLabel} /></th>
           </tr>
         </thead>
         <tbody>

@@ -29,6 +29,7 @@ import {
 import { WZORZEC_STRINGS } from '../wzorzec/strings';
 import { DYNAMIKA_STRINGS as T } from './strings';
 import { WykresPrzebiegow } from './WykresPrzebiegow';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 const TEKSTY_KANALOW = {
   brakNazwy: T.brakNazwy,
@@ -392,7 +393,7 @@ export function PrzegladarkaPrzebiegow({
                               checked={wybrane.includes(k.klucz)}
                               onChange={() => przelacz(k.klucz)}
                             />
-                            <span>{k.etykieta}</span>
+                            <span><TekstZWzorami tekst={k.etykieta} /></span>
                             <span className="mvd-dynamika-jednostka">[{symbolJednostki(k.jednostka)}]</span>
                           </label>
                         ))}

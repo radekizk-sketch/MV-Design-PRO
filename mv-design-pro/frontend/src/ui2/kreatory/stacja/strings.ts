@@ -669,7 +669,7 @@ export const STACJA_STRINGS = {
   potrzebyWlasneMoc: 'Moc potrzeb własnych [kW]',
   potrzebyWlasneMocPlaceholder: 'np. 5',
   potrzebyWlasneMocPomoc: 'Puste — stacja bez odrębnego odbioru potrzeb własnych.',
-  potrzebyWlasneCosphi: '$\\cos\\varphi$ potrzeb własnych',
+  potrzebyWlasneCosphi: 'Współczynnik mocy $\\cos\\varphi$ potrzeb własnych',
   potrzebyWlasneCosphiPomoc:
     'Współczynnik mocy odbioru — moc bierną (Q) wylicza backend ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$).',
 

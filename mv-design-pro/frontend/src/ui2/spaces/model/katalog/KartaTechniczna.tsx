@@ -24,6 +24,7 @@ import {
   STRINGS,
 } from './strings';
 import type { KatalogPozycja, KategoriaId } from './types';
+import { TekstZWzorami } from '../../../kreatory/rama/tekstZWzorami';
 
 export interface KartaTechnicznaProps {
   pozycja: KatalogPozycja;
@@ -140,7 +141,7 @@ export function KartaTechniczna({
       <div>
         {pochodzenie.map((w) => (
           <div key={w.etykieta} className="mvd-katalog__param mvd-katalog__param--tekst">
-            <span>{w.etykieta}</span>
+            <span><TekstZWzorami tekst={w.etykieta} /></span>
             <span className="mvd-katalog__param-wartosc mvd-katalog__param-wartosc--tekst">
               {w.wartosc}
             </span>

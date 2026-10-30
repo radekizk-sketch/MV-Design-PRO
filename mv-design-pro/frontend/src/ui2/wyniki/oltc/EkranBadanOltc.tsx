@@ -35,6 +35,7 @@ import { OLTC_BADANIA_STRINGS as T } from './strings';
 import { WykresProfilChart } from './WykresProfilChart';
 import { WykresSweepChart } from './WykresSweepChart';
 import './oltc.css';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export function EkranBadanOltc({
   klientRejestru = pobierzRejestrGotowosci,
@@ -287,7 +288,7 @@ function WynikProfilu({
           <tbody>
             {wynik.steps.map((k) => (
               <tr key={k.index}>
-                <td>{k.label}</td>
+                <td><TekstZWzorami tekst={k.label} /></td>
                 <td>{k.load_scale.toFixed(2)}</td>
                 <td>{fmtPozycja(k.positions[branchId])}</td>
                 <td>{fmtKv(k.controlled_bus_kv[branchId])}</td>

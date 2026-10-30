@@ -101,7 +101,7 @@ export const PULPIT_STRINGS = {
 
   // Warunki przyłączenia OSD (K2 — blok `header.connection_conditions`)
   osdLimit: 'Moc przyłączeniowa (OSD)',
-  osdCosPhi: 'Wymagany $\\cos\\varphi$ (OSD)',
+  osdCosPhi: 'Wymagany współczynnik mocy $\\cos\\varphi$ (OSD)',
   osdTrybPracy: 'Tryb pracy przyłącza',
   osdBrak: 'Warunków przyłączenia OSD nie podano.',
   osdUzupelnij: 'Uzupełnij warunki OSD',

@@ -23,6 +23,7 @@ import {
   SURFACE_REGISTRY,
 } from '../types';
 import { ustawBiegOgladany } from '../../../test/kontekstBiegu';
+import { poTekscieZWzorami, tekstZrodlowy } from '../../../test/tekstZWzorami';
 
 const fetchMock = vi.fn();
 
@@ -551,9 +552,9 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
 
     expect(await screen.findByText('Wyniki zwarciowe per obiekt')).toBeInTheDocument();
     expect(screen.getByText('ZKSN SN')).toBeInTheDocument();
-    expect(screen.getByText(/Ik'' 84,38 kA/)).toBeInTheDocument();
-    expect(screen.getByText(/ip 121,77 kA/)).toBeInTheDocument();
-    expect(document.body.textContent ?? '').toMatch(/Sk'' (2\s?192|2192),171 MVA/);
+    expect(screen.getByText(poTekscieZWzorami(/\$I_\{k\}''\$ 84,38 kA/))).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(/\$i_\{p\}\$ 121,77 kA/))).toBeInTheDocument();
+    expect(tekstZrodlowy(document.body)).toMatch(/\$S_\{k\}''\$ (2\s?192|2192),171 MVA/);
     expect(document.body.textContent ?? '').not.toContain('U: nie wyznaczono');
     expect(document.body.textContent ?? '').not.toContain('0.00');
   });

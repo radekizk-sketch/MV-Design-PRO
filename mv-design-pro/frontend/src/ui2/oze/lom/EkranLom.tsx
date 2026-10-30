@@ -28,6 +28,7 @@ import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, naWierszeLom, naZalozeniaLom } from './
 import { LOM_STRINGS, fmtNastawaLom, fmtOknoLom, istotnoscLom } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanZasobu = 'brakPrzypadku' | 'ladowanie' | 'blad' | 'gotowe';
 
@@ -121,8 +122,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-lom-stan mvd-lom-stan--blad' : 'mvd-lom-stan'}
       data-testid={testid}
     >
-      <p className="mvd-lom-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-lom-stan-desc">{opis}</p>}
+      <p className="mvd-lom-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-lom-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

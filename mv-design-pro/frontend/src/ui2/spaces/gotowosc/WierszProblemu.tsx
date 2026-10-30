@@ -13,6 +13,7 @@
 import { etykietaAkcji, rozwiazAkcjeNaprawcza } from './akcjeNaprawcze';
 import type { ProblemGotowosci } from './grupowanieCelow';
 import { GOTOWOSC_STRINGS } from './strings';
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama/tekstZWzorami';
 
 interface WierszProblemuProps {
   problem: ProblemGotowosci;
@@ -79,14 +80,14 @@ export function WierszProblemu({
           type="button"
           className="mvd-btn mvd-problem-napraw"
           data-testid={`mvd-problem-napraw-${code}-${elementRef ?? 'brak'}`}
-          title={akcja.rodzaj === 'przestrzen' ? akcja.powodPl : undefined}
+          title={akcja.rodzaj === 'przestrzen' ? tekstBezWzorow(akcja.powodPl) : undefined}
           onClick={() => onNaprawa(problem)}
         >
           {etykieta}
         </button>
       ) : akcja?.rodzaj === 'odmowa' ? (
         <span className="mvd-problem-brak-akcji" data-testid={`mvd-problem-odmowa-${code}`}>
-          {akcja.powodPl}
+          <TekstZWzorami tekst={akcja.powodPl} />
         </span>
       ) : (
         elementRef && <span className="mvd-problem-brak-akcji">{GOTOWOSC_STRINGS.wymagaInterwencji}</span>

@@ -932,7 +932,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
           {rows.map((row) => (
             <tr key={row.label}>
               <th className="w-52 bg-slate-100 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                {row.label}
+                <TekstZWzorami tekst={row.label} />
               </th>
               <td className="px-3 py-2 text-slate-900">{row.value}</td>
             </tr>

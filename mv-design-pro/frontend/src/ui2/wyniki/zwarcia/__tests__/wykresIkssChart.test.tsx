@@ -4,6 +4,7 @@ import { WykresIkssChart } from '../WykresIkssChart';
 import { ZWARCIA_STRINGS } from '../strings';
 import { naSlupkiIkss } from '../zwarciaModel';
 import { shortCircuitResultsFixture } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 /** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
@@ -15,7 +16,7 @@ describe('WykresIkssChart — słupki Recharts (tokeny --mvd-*, deterministyczny
   it('renderuje tytuł wykresu i kontener', () => {
     render(<WykresIkssChart slupki={slupki} />);
     expect(screen.getByTestId('mvd-zwarcia-wykres')).toBeInTheDocument();
-    expect(screen.getByText(ZWARCIA_STRINGS.wykresTytul)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytul))).toBeInTheDocument();
   });
 
   it('kolory wyłącznie przez tokeny var(--mvd-*) — zero literałów hex w SVG', () => {

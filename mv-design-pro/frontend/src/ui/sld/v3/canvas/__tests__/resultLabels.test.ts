@@ -183,8 +183,8 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
       kind: 'bus',
       severity: 'INFO',
       lines: [
-        { prefix: 'Ik″', text: '12,5 kA' },
-        { prefix: 'Ith', text: '116,9 kA' },
+        { prefix: "$I_{k}''$", text: '12,5 kA' },
+        { prefix: '$I_{th}$', text: '116,9 kA' },
       ],
     });
   });
@@ -198,7 +198,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
       'sc_3f',
     );
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
-    expect(entries[busOwnerRef]?.lines).toEqual([{ prefix: 'Ik″', text: '24 A' }]);
+    expect(entries[busOwnerRef]?.lines).toEqual([{ prefix: "$I_{k}''$", text: '24 A' }]);
   });
 
   it('węzeł (LF): U_kV wygrywa nad V_PU (jedna linia napięcia); kąt δ osobno', () => {
@@ -314,7 +314,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
       { prefix: 'P', text: '+6,5000 MW' },
       { prefix: 'Q', text: '+0,9000 Mvar' },
       { prefix: 'S', text: '6,56 MVA' },
-      { prefix: 'cosφ', text: '0,99' },
+      { prefix: '$\\cos\\varphi$', text: '0,99' },
     ]);
   });
 
@@ -338,7 +338,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
       { prefix: 'P', text: '+5,6480 MW' },
       { prefix: 'Q', text: '+0,9200 Mvar' },
       { prefix: 'ΔU', text: '1,35 %' },
-      { prefix: 'cosφ', text: '0,99' },
+      { prefix: '$\\cos\\varphi$', text: '0,99' },
     ]);
   });
 

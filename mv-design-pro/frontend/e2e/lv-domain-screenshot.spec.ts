@@ -276,7 +276,8 @@ const KADRY: readonly Kadr[] = [
     asercje: async (page) => {
       await atrybut(page, 'lv-domain-result-freshness', 'data-result-status', 'FRESH');
       await widoczny(page, 'lv-domain-badge-shortCircuit-RGnN-1');
-      await expect(page.locator('[data-testid="lv-domain-badge-shortCircuit-RGnN-1"]')).toContainText('Ik″3');
+      // `$I_{k3}''$` rysowany `<tspan>`-ami — odczyt treści: indeks, potem prim.
+      await expect(page.locator('[data-testid="lv-domain-badge-shortCircuit-RGnN-1"]')).toContainText('Ik3″');
     },
   },
   {

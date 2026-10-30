@@ -28,6 +28,7 @@ import { useShellStore } from '../../shell/useShellStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 import './coWymagaUwagi.css';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export function EkranCoWymagaUwagi() {
   const rejestr = useRejestrPrzekroczen();
@@ -119,7 +120,7 @@ export function EkranCoWymagaUwagi() {
               <li key={p.klucz} className="mvd-cwu-pozycja" data-testid="mvd-cwu-pozycja">
                 <span className="mvd-cwu-analiza">{p.analizaPL}</span>
                 <span className="mvd-cwu-element mvd-num">{p.elementNazwa}</span>
-                <span className="mvd-cwu-opis">{p.opis}</span>
+                <span className="mvd-cwu-opis"><TekstZWzorami tekst={p.opis} /></span>
                 <span className="mvd-cwu-wartosc mvd-num">{p.wartosc}</span>
                 {/* K1 / F-E6.3: etykieta i akcja z rejestru akcji naprawczych —
                     kontekstowe per rodzaj przekroczenia pozycji rejestru.

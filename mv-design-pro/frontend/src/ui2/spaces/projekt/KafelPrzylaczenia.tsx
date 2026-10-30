@@ -113,7 +113,7 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
       </label>
       {blad && (
         <p className="mvd-kafel-form-blad" role="alert" data-testid="pulpit-osd-blad">
-          {blad}
+          <TekstZWzorami tekst={blad} />
         </p>
       )}
       <div className="mvd-kafel-form-akcje">

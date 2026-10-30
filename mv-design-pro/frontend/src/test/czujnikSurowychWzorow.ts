@@ -114,6 +114,11 @@ export function sprawdzSuroweWzoryPoTescie(): void {
   }
 }
 
+/** Hak `afterEach` czujnika — asynchroniczny (powód przy `zainstalujCzujnikSurowychWzorow`). */
+export async function hakSurowychWzorowPoTescie(): Promise<void> {
+  sprawdzSuroweWzoryPoTescie();
+}
+
 export function zainstalujCzujnikSurowychWzorow(): void {
   if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
   obserwator = new MutationObserver(przetworz);
@@ -124,5 +129,9 @@ export function zainstalujCzujnikSurowychWzorow(): void {
     attributes: true,
     attributeFilter: [...ATRYBUTY_OPISOWE],
   });
-  afterEach(sprawdzSuroweWzoryPoTescie);
+  // Hak asynchroniczny: Vitest 1 woła haki `afterEach` w `hooks.map(...)` (kolejność
+  // `parallel`) — synchroniczny wyjątek przerwałby mapę i pominął sprzątanie Testing Library
+  // (`cleanup`), więc kolejne testy pliku widziałyby DOM poprzedniego (kaskada „Found multiple
+  // elements"). Odrzucona obietnica nie przerywa wywołania pozostałych haków.
+  afterEach(hakSurowychWzorowPoTescie);
 }

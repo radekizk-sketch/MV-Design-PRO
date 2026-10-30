@@ -1227,7 +1227,7 @@ export function KreatorZrodlaOze() {
       {krok === 'zapis' && faza === 'formularz' ? (
         <>
           <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-oze-zapis">
-            <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+            <KreatorInfo><TekstZWzorami tekst={T.downstreamOpis} /></KreatorInfo>
             <KreatorSiatka kolumny={2}>
               <RzadWartosci etykieta={T.wierszStacja} wartosc={kontekst.station_label || '—'} />
               <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />

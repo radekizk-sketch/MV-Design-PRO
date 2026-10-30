@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KreatorZrodloZasilania } from '../KreatorZrodloZasilania';
 import { ZRODLO_STRINGS as T } from '../strings';
 import type { GridSourcePreviewResponse } from '../../../../ui/network-build/forms/gridSourcePreviewApi';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const T_BRAK_ZAKRESU = T.brakZakresu;
 
@@ -944,6 +945,6 @@ describe('KreatorZrodloZasilania — synchronizacja katalogu przy przełączeniu
     // wskazuje NOWĄ pozycję (kontekst dla testu powyżej, który dowodzi, że i
     // dane STANU formularza, nie tylko referencja, poszły za przełączeniem).
     // (dwa wystąpienia: opcja <select> i wiersz „Powiązanie katalogowe”.)
-    expect(screen.getAllByText(/Sk3 400 MVA/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(poTekscieZWzorami(/\$S_\{k3\}''\$ 400 MVA/)).length).toBeGreaterThan(0);
   });
 });

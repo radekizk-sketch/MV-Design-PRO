@@ -24,6 +24,7 @@ import type {
 } from './api';
 import { ikonaWarunku, ocenaWarunkuPL } from './jakoscModel';
 import { JAKOSC_STRINGS, fmtLiczba, fmtWartosc } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface PanelDowoduCieplnegoProps {
   pozycja: PozycjaCieplna;
@@ -301,7 +302,7 @@ export function PanelDowoduCieplnego({
           <p className="mvd-cieplny-opis">{k.tozsamosc_pl}</p>
           {k.zrodlo_k === 'WYPROWADZONE_IEC60949' && (
             <p className="mvd-cieplny-brak" data-testid="mvd-jakosc-cieplna-k-wyprowadzone">
-              {JAKOSC_STRINGS.ostrzezenieKWyprowadzone}
+              <TekstZWzorami tekst={JAKOSC_STRINGS.ostrzezenieKWyprowadzone} />
             </p>
           )}
           {k.granica_temperatury_pl && (

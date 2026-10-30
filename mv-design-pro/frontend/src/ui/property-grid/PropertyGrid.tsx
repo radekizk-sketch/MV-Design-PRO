@@ -23,6 +23,7 @@ import { useSelectionStore, useCanEdit } from '../selection';
 import { ValidationBadge, ValidationSummary, ValidationIcon } from './ValidationBadge';
 import { UnitLabel, ValueWithUnit } from './UnitLabel';
 import { validateField } from './validation';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -409,7 +410,7 @@ function PropertyFieldRow({
       >
         {/* Label */}
         <div className="mb-1">
-          <span className="text-xs text-gray-600">{field.label}</span>
+          <span className="text-xs text-gray-600"><TekstZWzorami tekst={field.label} /></span>
         </div>
 
         {/* Type Display */}
@@ -470,7 +471,7 @@ function PropertyFieldRow({
       {/* Label */}
       <div className="flex-1 min-w-0">
         <span className="text-xs text-gray-600">
-          {field.label}
+          <TekstZWzorami tekst={field.label} />
           {getSourceIndicator() && (
             <span className="text-gray-400 ml-1">{getSourceIndicator()}</span>
           )}

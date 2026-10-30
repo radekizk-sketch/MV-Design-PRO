@@ -155,7 +155,7 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
       {!krok.podstawienie && krok.podstawienieTekst && (
         <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-podstawienie-tekst">
           <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.substitution}</h4>
-          <p className="mvd-dowod-uwagi">{krok.podstawienieTekst}</p>
+          <p className="mvd-dowod-uwagi"><TekstZWzorami tekst={krok.podstawienieTekst} /></p>
         </section>
       )}
 

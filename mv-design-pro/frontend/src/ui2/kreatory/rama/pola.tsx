@@ -70,7 +70,7 @@ function Polakoszulka({
     <div className="mvd-pole">
       <label className="mvd-pole-etykieta" htmlFor={htmlFor}>
         <TekstZWzorami tekst={etykieta} />
-        {jednostka ? <span className="mvd-pole-jednostka">[{jednostka}]</span> : null}
+        {jednostka ? <span className="mvd-pole-jednostka">[<TekstZWzorami tekst={jednostka} />]</span> : null}
         {wymagane ? <span className="mvd-pole-gwiazdka" aria-hidden="true">*</span> : null}
       </label>
       {children}
@@ -118,7 +118,7 @@ export function PoleTekstowe({
         type="text"
         className="mvd-pole-input"
         value={wartosc}
-        placeholder={placeholder}
+        placeholder={placeholder === undefined ? undefined : tekstBezWzorow(placeholder)}
         readOnly={tylkoOdczyt}
         disabled={tylkoOdczyt}
         ref={ref}
@@ -175,7 +175,7 @@ export function PoleLiczbowe({
         step={krok}
         min={min}
         max={max}
-        placeholder={placeholder ?? 'Wprowadź wartość'}
+        placeholder={tekstBezWzorow(placeholder ?? 'Wprowadź wartość')}
         disabled={wylaczone}
         aria-invalid={blad ? 'true' : undefined}
         data-testid={testid}
@@ -377,7 +377,7 @@ export function PoleKatalogu({
         onChange={(e) => onZmiana(e.target.value === '' ? null : e.target.value)}
       >
         <option value="">
-          {status === 'loading' ? (placeholderLadowanie ?? 'Ładowanie katalogu…') : placeholder}
+          {tekstBezWzorow(status === 'loading' ? (placeholderLadowanie ?? 'Ładowanie katalogu…') : placeholder)}
         </option>
         {opcje.map((o) => (
           <option key={o.id} value={o.id}>{tekstBezWzorow(o.etykieta)}</option>
@@ -385,7 +385,7 @@ export function PoleKatalogu({
       </select>
       {status === 'error' ? (
         <p className="mvd-pole-blad" role="alert">
-          {komunikatBledu ?? 'Nie udało się pobrać katalogu.'}
+          <TekstZWzorami tekst={komunikatBledu ?? 'Nie udało się pobrać katalogu.'} />
         </p>
       ) : null}
     </Polakoszulka>

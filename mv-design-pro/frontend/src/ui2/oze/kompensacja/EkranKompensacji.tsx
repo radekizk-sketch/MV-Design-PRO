@@ -81,8 +81,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-komp-stan mvd-komp-stan--blad' : 'mvd-komp-stan'}
       data-testid={testid}
     >
-      <p className="mvd-komp-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-komp-stan-desc">{opis}</p>}
+      <p className="mvd-komp-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-komp-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -100,7 +100,7 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
         <TekstZWzorami tekst={T.notaCosfiPunktu} />
       </p>
       <p className="mvd-komp-nota-wiersz" data-testid="mvd-komp-nota-przekroju">
-        {T.notaCosfiPrzekroju}
+        <TekstZWzorami tekst={T.notaCosfiPrzekroju} />
       </p>
       <p className="mvd-komp-nota-konwencja" data-testid="mvd-komp-nota-konwencja">
         <strong>{T.notaKonwencjaTytul}: </strong>
@@ -280,7 +280,7 @@ function WynikKompensacji({
               </div>
             )}
           </dl>
-          <p className="mvd-komp-komentarz">{T.doborPodstawa}</p>
+          <p className="mvd-komp-komentarz"><TekstZWzorami tekst={T.doborPodstawa} /></p>
           <button
             type="button"
             className="mvd-komp-dobor-kreator"
@@ -482,7 +482,7 @@ export function EkranKompensacji({
                 }}
                 data-testid="mvd-komp-cosfi"
               />
-              <p className="mvd-komp-param-opis">{T.paramCosfiMinOpis}</p>
+              <p className="mvd-komp-param-opis"><TekstZWzorami tekst={T.paramCosfiMinOpis} /></p>
             </div>
 
             <div className="mvd-komp-param-przelacznik">

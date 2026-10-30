@@ -8,6 +8,7 @@ import {
 } from '../ElementCalculationProofPanel';
 import type { ExtendedTrace, ShortCircuitResults } from '../../results-inspector/types';
 import { TRACE_VALUE_LABELS } from '../../results-inspector/types';
+import { tekstZrodlowy } from '../../../test/tekstZWzorami';
 
 const tracePayload: ExtendedTrace = {
   run_id: 'run-1',
@@ -155,7 +156,8 @@ describe('ElementCalculationProofPanel', () => {
     expect(screen.getAllByText(/12,34 kA/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Krok innego węzła')).not.toBeInTheDocument();
 
-    const renderedText = document.body.textContent ?? '';
+    // Napis źródłowy: wzory KaTeX wracają do `data-latex` (etykiety śladu niosą symbole).
+    const renderedText = tekstZrodlowy(document.body);
     expect(renderedText).toContain('Rodzaj zwarcia');
     // Karta SC-IB-ITH-ZRODLA: panel czyta JEDEN słownik etykiet śladu frontu
     // (`TRACE_VALUE_LABELS`, results-inspector) zamiast własnej kopii — intencja testu

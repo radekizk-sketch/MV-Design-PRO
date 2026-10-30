@@ -5,6 +5,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 interface SectionCardProps {
   title: string;
@@ -39,7 +40,7 @@ export function KeyValueGrid({ rows, columns = 2 }: KeyValueGridProps) {
     <div className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
       {rows.map((row) => (
         <div key={row.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{row.label}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500"><TekstZWzorami tekst={row.label} /></div>
           <div className="mt-1 text-sm text-slate-800">{row.value}</div>
         </div>
       ))}
@@ -197,7 +198,7 @@ export function ActionableEngineeringTable({
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
             {rows.map((row) => (
               <tr key={row.id} data-stage={row.stage} data-object-ref={row.objectRef ?? undefined}>
-                <td className="px-3 py-2 align-top font-semibold text-slate-900">{row.label}</td>
+                <td className="px-3 py-2 align-top font-semibold text-slate-900"><TekstZWzorami tekst={row.label} /></td>
                 <td className="px-3 py-2 align-top"><StatusPill status={row.status} /></td>
                 <td className="max-w-[280px] px-3 py-2 align-top">{row.dataSummary}</td>
                 <td className="max-w-[260px] px-3 py-2 align-top">{missingFieldsLabel(row.missingFields)}</td>

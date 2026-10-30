@@ -863,7 +863,7 @@ export function KreatorZrodloZasilania() {
       {krok === 'transformatory' && zTransformatorami ? (
         <>
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
-          <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.transformatoryOpis} /></KreatorInfo>
           <PoleWyboru
             etykieta={T.liczbaTrafo}
             wartosc={String(dane.transformer_count)}

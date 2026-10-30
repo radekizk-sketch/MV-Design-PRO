@@ -155,7 +155,7 @@ describe('R4 — przełączanie analiz na WSPÓLNYM rejestrze (wym. 13)', () => 
     const scEntries = buildResultLabelsFromScene(sceneL2, sc, singleHop);
     // Ta sama kotwica, INNE treści z tego samego rejestru (przełączenie payloadu).
     expect(lfEntries[busOwnerRef].lines[0]).toEqual({ prefix: 'U', text: '15,02 kV' });
-    expect(scEntries[busOwnerRef].lines[0]).toEqual({ prefix: 'Ik″', text: '12,5 kA' });
+    expect(scEntries[busOwnerRef].lines[0]).toEqual({ prefix: "$I_{k}''$", text: '12,5 kA' });
   });
 });
 

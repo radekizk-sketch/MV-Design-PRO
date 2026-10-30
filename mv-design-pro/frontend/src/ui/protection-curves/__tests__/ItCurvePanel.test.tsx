@@ -57,7 +57,7 @@ describe('ItCurvePanel — krzywa DEFINITE z solvera', () => {
     const summary = screen.getByTestId('it-curve-summary');
     expect(summary).toHaveTextContent('Czas niezależny (DT)');
     expect(summary).toHaveTextContent('4 pkt');
-    expect(summary).toHaveTextContent('Ip = 500 A');
+    expect(summary).toHaveTextContent('prąd rozruchowy 500 A');
   });
 });
 
@@ -88,7 +88,7 @@ describe('ItCurvePanel — krzywa INVERSE (TMS) z solvera', () => {
 
     const summary = screen.getByTestId('it-curve-summary');
     expect(summary).toHaveTextContent('Charakterystyka odwrotna (SI)');
-    expect(summary).toHaveTextContent('Ip = 240 A');
+    expect(summary).toHaveTextContent('prąd rozruchowy 240 A');
   });
 
   it('adapter przenosi TMS i typ krzywej odwrotnej z backendu', () => {

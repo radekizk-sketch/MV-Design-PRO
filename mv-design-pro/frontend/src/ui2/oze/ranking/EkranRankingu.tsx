@@ -50,6 +50,7 @@ import { useSwiezoscNaglowka } from '../../freshness';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -80,8 +81,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-rank-stan mvd-rank-stan--blad' : 'mvd-rank-stan'}
       data-testid={testid}
     >
-      <p className="mvd-rank-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-rank-stan-desc">{opis}</p>}
+      <p className="mvd-rank-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-rank-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

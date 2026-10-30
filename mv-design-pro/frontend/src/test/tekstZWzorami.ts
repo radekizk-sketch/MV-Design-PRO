@@ -55,3 +55,21 @@ export function tekstZrodlowy(element: HTMLElement): string {
   }
   return kopia.textContent ?? '';
 }
+
+/**
+ * Dopasowanie `getByText`/`findByText` do napisu z wzorami: najgłębszy element, którego napis
+ * źródłowy (`tekstZrodlowy`, białe znaki złączone) jest równy `tekst` albo pasuje do wyrażenia.
+ * Zapytanie po stałej tekstu (`T.tytul`) zostaje zapytaniem po DOKŁADNYM napisie także wtedy,
+ * gdy komponent składa jego wzory KaTeX-em.
+ */
+export function poTekscieZWzorami(
+  tekst: string | RegExp,
+): (tresc: string, element: Element | null) => boolean {
+  const pasuje = (element: Element): boolean => {
+    if (!(element instanceof HTMLElement)) return false;
+    const zrodlowy = normalizuj(tekstZrodlowy(element));
+    return typeof tekst === 'string' ? zrodlowy === normalizuj(tekst) : tekst.test(zrodlowy);
+  };
+  return (_tresc, element) =>
+    element !== null && pasuje(element) && !Array.from(element.children).some(pasuje);
+}

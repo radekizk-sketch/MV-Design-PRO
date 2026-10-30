@@ -11,6 +11,7 @@ import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
 import userEvent from '@testing-library/user-event';
 import { useZadanieCzasuTb } from '../../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
 import { useShellStore } from '../../../shell/useShellStore';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 // Karta UI2 p.9 (test klasy §2: {koperta obecna, koperta nieobecna} × {rozpływ,
 // zbieżność, ZWARCIA}) — trzeci człon macierzy, dotąd nietestowany w tym pliku
@@ -58,7 +59,7 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     await renderEkranZwarc(<EkranZwarc {...props()} />);
     const bilans = screen.getByTestId('mvd-zwarcia-bilans');
     // Wielkosci impedancyjne i wspolczynniki (z FROZEN solvera, format PL).
-    expect(within(bilans).getByText(ZWARCIA_STRINGS.bilansZk)).toBeInTheDocument();
+    expect(within(bilans).getByText(poTekscieZWzorami(ZWARCIA_STRINGS.bilansZk))).toBeInTheDocument();
     expect(within(bilans).getByText('0,7777 Ω')).toBeInTheDocument();
     expect(within(bilans).getByText('1,728')).toBeInTheDocument(); // kappa
     expect(within(bilans).getByText('9,416')).toBeInTheDocument(); // X/R
@@ -333,15 +334,15 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     await renderEkranZwarc(<EkranZwarc {...props()} />);
     const slot = screen.getByTestId('mvd-wyn-wykres');
     expect(within(slot).getByTestId('mvd-zwarcia-wykres')).toBeInTheDocument();
-    expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytul)).toBeInTheDocument();
+    expect(within(slot).getByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytul))).toBeInTheDocument();
   });
 
   it('przełącznik wielkości w slocie wykresu — klik Sk" zmienia podpis (karta W-A F2)', async () => {
     await renderEkranZwarc(<EkranZwarc {...props()} />);
     const slot = screen.getByTestId('mvd-wyn-wykres');
     fireEvent.click(within(slot).getByTestId('mvd-zwarcia-wykres-btn-sk'));
-    expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytulSk)).toBeInTheDocument();
-    expect(within(slot).queryByText(ZWARCIA_STRINGS.wykresTytul)).not.toBeInTheDocument();
+    expect(within(slot).getByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytulSk))).toBeInTheDocument();
+    expect(within(slot).queryByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytul))).not.toBeInTheDocument();
   });
 
   it('onEksport przekazany do stopki wzorca', async () => {
@@ -712,8 +713,11 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     expect(within(panel).getByText('1,004 kA')).toBeInTheDocument(); // Ib (A -> kA)
     // Wywod dyplomowy TEJ maszyny — na zadanie, wzor przez KaTeX.
     fireEvent.click(within(panel).getByTestId('mvd-zwarcia-wklad-szczegol-slad-btn'));
-    const wzory = within(panel).getAllByTestId('math-rendered');
-    expect(wzory[0].getAttribute('data-latex')).toContain('I_b = \\mu');
+    // Etykiety wielkości panelu też są wzorami KaTeX — wywód szukany wśród wszystkich.
+    const latexy = within(panel)
+      .getAllByTestId('math-rendered')
+      .map((wzor) => wzor.getAttribute('data-latex') ?? '');
+    expect(latexy.some((latex) => latex.includes('I_b = \\mu'))).toBe(true);
     vi.unstubAllGlobals();
   });
 

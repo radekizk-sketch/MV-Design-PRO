@@ -277,8 +277,8 @@ describe('StationConfigurator — karta uziemienia z modelu', () => {
     const sekcja = screen.getByTestId('station-earthing-sekcja');
     expect(sekcja.textContent).toContain('brak danych susceptancji zerowej gałęzi');
     expect(sekcja.textContent).not.toContain('zaniżony');
-    expect(within(sekcja).getByTestId('station-earthing-bez-b0').textContent).toBe(
-      'Gałęzie bez susceptancji zerowej B′0 (prąd pojemnościowy niewyznaczony — uzupełnij B′0 '
+    expect(tekstZrodlowy(within(sekcja).getByTestId('station-earthing-bez-b0'))).toBe(
+      "Gałęzie bez susceptancji zerowej $B'_{0}$ (prąd pojemnościowy niewyznaczony — uzupełnij $B'_{0}$ "
         + 'albo typ katalogowy odcinka): 2.',
     );
   });

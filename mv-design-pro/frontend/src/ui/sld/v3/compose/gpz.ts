@@ -1126,7 +1126,7 @@ function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): strin
     );
   }
   if (source.voltageKv != null) parts.push(`${liczbaRysunkuPl(source.voltageKv)} kV`);
-  if (source.uSetPu != null) parts.push(`Uzad ${liczbaRysunkuPl(source.uSetPu)} pu`);
+  if (source.uSetPu != null) parts.push(`$U_{\\text{zad}}$ ${liczbaRysunkuPl(source.uSetPu)} pu`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

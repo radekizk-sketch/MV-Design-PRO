@@ -52,7 +52,7 @@ export function PanelTeorii({
 }: PanelTeoriiProps) {
   return (
     <details className="mvd-teoria" data-testid={testid} open={domyslnieOtwarty || undefined}>
-      <summary className="mvd-teoria-summary">{tytul}</summary>
+      <summary className="mvd-teoria-summary"><TekstZWzorami tekst={tytul} /></summary>
       <div className="mvd-teoria-body">
         <p className="mvd-teoria-opis">
           <TekstZWzorami tekst={opis} />
@@ -60,7 +60,7 @@ export function PanelTeorii({
         {children}
         {wymog ? (
           <p className="mvd-teoria-wymog">
-            <strong>{wymogPrefix}</strong>
+            <strong><TekstZWzorami tekst={wymogPrefix} /></strong>
             <TekstZWzorami tekst={wymog} />
           </p>
         ) : null}

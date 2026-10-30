@@ -4,13 +4,14 @@ import { WykresZwarc } from '../WykresZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WIELKOSCI_WYKRESU } from '../zwarciaModel';
 import { shortCircuitResultsFixture, shortCircuitRowFixture } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const rows = shortCircuitResultsFixture().rows;
 
 describe('WykresZwarc — przełącznik wielkości Ik"/ip/Ith/Sk"/I²t (karta W-A F2)', () => {
   it('domyślnie prezentuje Ik" (podpis 1:1 sprzed karty) z wciśniętym przyciskiem', () => {
     render(<WykresZwarc rows={rows} />);
-    expect(screen.getByText(ZWARCIA_STRINGS.wykresTytul)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytul))).toBeInTheDocument();
     expect(screen.getByTestId('mvd-zwarcia-wykres-btn-ikss')).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -31,8 +32,8 @@ describe('WykresZwarc — przełącznik wielkości Ik"/ip/Ith/Sk"/I²t (karta W-
   it('klik Sk" zmienia podpis wykresu i stan przycisków (natywna ścieżka)', () => {
     render(<WykresZwarc rows={rows} />);
     fireEvent.click(screen.getByTestId('mvd-zwarcia-wykres-btn-sk'));
-    expect(screen.getByText(ZWARCIA_STRINGS.wykresTytulSk)).toBeInTheDocument();
-    expect(screen.queryByText(ZWARCIA_STRINGS.wykresTytul)).not.toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytulSk))).toBeInTheDocument();
+    expect(screen.queryByText(poTekscieZWzorami(ZWARCIA_STRINGS.wykresTytul))).not.toBeInTheDocument();
     expect(screen.getByTestId('mvd-zwarcia-wykres-btn-sk')).toHaveAttribute(
       'aria-pressed',
       'true',

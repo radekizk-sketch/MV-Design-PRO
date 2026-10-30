@@ -29,11 +29,12 @@ import {
   type WpisRejestruGotowosci,
 } from './rejestrGotowosci';
 import { KRYTERIA_STRINGS as T, etykietaWerdyktu, fmtLiczba } from './strings';
+import { TekstZWzorami } from '../kreatory/rama/tekstZWzorami';
 
 function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }): JSX.Element {
   return (
     <div className="mvd-kryteria__wiersz">
-      <span className="mvd-kryteria__etykieta">{etykieta}</span>
+      <span className="mvd-kryteria__etykieta"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-kryteria__wartosc">{wartosc}</span>
     </div>
   );

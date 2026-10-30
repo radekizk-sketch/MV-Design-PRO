@@ -11,6 +11,7 @@ import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
 import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 // Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
 // bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
@@ -48,13 +49,13 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
 
-      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
+      expect(screen.getByText(poTekscieZWzorami(/Moc zwarciowa \$S_\{k\}''\$ 110 kV/))).toBeInTheDocument();
       expect(screen.getByText(/Stosunek R\/X/)).toBeInTheDocument();
 
       fireEvent.click(screen.getByTestId('gpz-short-circuit-mode-sn'));
 
-      expect(screen.getByText(/Moc zwarciowa S''k po stronie SN/)).toBeInTheDocument();
-      expect(screen.queryByText(/Moc zwarciowa S''k 110 kV/)).not.toBeInTheDocument();
+      expect(screen.getByText(poTekscieZWzorami(/Moc zwarciowa \$S_\{k\}''\$ po stronie SN/))).toBeInTheDocument();
+      expect(screen.queryByText(poTekscieZWzorami(/Moc zwarciowa \$S_\{k\}''\$ 110 kV/))).not.toBeInTheDocument();
       expect(screen.queryByText(/Stosunek R\/X/)).not.toBeInTheDocument();
     });
 
@@ -113,7 +114,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     it('karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
-      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
+      expect(screen.getByText(poTekscieZWzorami(/Moc zwarciowa \$S_\{k\}''\$ 110 kV/))).toBeInTheDocument();
       expect(screen.getByText(/MVA/)).toBeInTheDocument();
     });
 

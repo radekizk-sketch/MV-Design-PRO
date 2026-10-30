@@ -36,6 +36,7 @@ import {
   patchDerCatalogBindings,
   type DerCatalogBindingsRequest,
 } from '../../sld/v2/canvas/derPersistenceApi';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 /** Wiązanie edytowalne = takie, dla którego backend ma katalog i potrafi je zweryfikować. */
 interface WiazanieEdytowalne {
@@ -231,7 +232,7 @@ export function DerWiazaniaEditor({
         <ul className="mt-1 space-y-1">
           {WIAZANIA_BEZ_KATALOGU.map((pozycja) => (
             <li key={pozycja.etykieta} className="text-xs text-scada-muted">
-              <span className="text-scada-text">{pozycja.etykieta}</span> — {pozycja.powod}
+              <span className="text-scada-text"><TekstZWzorami tekst={pozycja.etykieta} /></span> — {pozycja.powod}
               <span className="block">Zależne analizy: {pozycja.zaleznosci}.</span>
               <span className="block">Źródło danych: {pozycja.skadDane}.</span>
             </li>

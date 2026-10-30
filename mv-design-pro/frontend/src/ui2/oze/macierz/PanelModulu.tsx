@@ -139,7 +139,7 @@ function FormularzPanelu({
   return (
     <>
       <p className="mvd-oze-panel-etyk" style={{ textTransform: 'none', margin: '4px 0 6px' }}>
-        {MACIERZ_STRINGS.panelOpis}
+        <TekstZWzorami tekst={MACIERZ_STRINGS.panelOpis} />
       </p>
 
       <div className="mvd-oze-panel-blok">

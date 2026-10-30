@@ -26,7 +26,7 @@ import {
   nazwaObiektuZMigawki,
 } from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
-import { TekstZWzorami } from '../../kreatory/rama';
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
 import {
   pobierzOdpowiedzOsd,
@@ -95,8 +95,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-osd-stan mvd-osd-stan--blad' : 'mvd-osd-stan'}
       data-testid={testid}
     >
-      <p className="mvd-osd-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-osd-stan-desc">{opis}</p>}
+      <p className="mvd-osd-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-osd-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -135,7 +135,7 @@ function WynikOsd({
         </div>
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalPolecenie}</dt>
-          <dd>{etykietaPoleceniaOsd(dane.parameters.command)}</dd>
+          <dd><TekstZWzorami tekst={etykietaPoleceniaOsd(dane.parameters.command)} /></dd>
         </div>
       </dl>
 
@@ -463,11 +463,11 @@ export function EkranOsd({ szczegolyAudytowe, onOtworzDowod }: EkranOsdProps) {
               >
                 {POLECENIA.map((p) => (
                   <option key={p} value={p}>
-                    {etykietaPoleceniaOsd(p)}
+                    {tekstBezWzorow(etykietaPoleceniaOsd(p))}
                   </option>
                 ))}
               </select>
-              <p className="mvd-osd-param-opis">{OSD_STRINGS.wyborPolecenieOpis}</p>
+              <p className="mvd-osd-param-opis"><TekstZWzorami tekst={OSD_STRINGS.wyborPolecenieOpis} /></p>
             </div>
 
             {pola.has('limitP') && (
@@ -550,7 +550,7 @@ export function EkranOsd({ szczegolyAudytowe, onOtworzDowod }: EkranOsdProps) {
                   <option value="nadwzbudny">{OSD_STRINGS.charakterNadwzbudny}</option>
                   <option value="podwzbudny">{OSD_STRINGS.charakterPodwzbudny}</option>
                 </select>
-                <p className="mvd-osd-param-opis">{OSD_STRINGS.paramCharakterOpis}</p>
+                <p className="mvd-osd-param-opis"><TekstZWzorami tekst={OSD_STRINGS.paramCharakterOpis} /></p>
               </div>
             )}
 

@@ -467,7 +467,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
         key: 'conductor_thermal_k_factor',
         title: 'Współczynnik materiałowy k żyły',
         inputs: {},
-        substitution: '$$k = 143$$',
+        // Kształt z solvera (`conductor_thermal_withstand`): podstawienie jako LaTeX w
+        // `substitution_latex`, nie jako proza z ogranicznikami w `substitution`.
+        substitution_latex: 'k = 143',
         result: {},
         notes: 'k = Jth(1 s).',
       },

@@ -63,7 +63,7 @@ describe('PrzegladDowodu — nagłówek i kompozycja', () => {
     // Start: krok 1. Wybierz krok 2 (bez wzoru).
     fireEvent.click(screen.getAllByTestId('mvd-dowod-spis-poz')[1]);
     const krok = screen.getByTestId('mvd-dowod-krok');
-    expect(within(krok).getByText('Prąd zwarciowy początkowy')).toBeInTheDocument();
+    expect(within(krok).getByText('Prąd zwarciowy początkowy', { selector: 'h3' })).toBeInTheDocument();
     expect(within(krok).queryByTestId('mvd-dowod-pole-wzor')).not.toBeInTheDocument();
   });
 
@@ -71,6 +71,6 @@ describe('PrzegladDowodu — nagłówek i kompozycja', () => {
     render(<PrzegladDowodu {...props()} />);
     fireEvent.keyDown(screen.getByTestId('mvd-dowod-spis'), { key: 'ArrowDown' });
     const krok = screen.getByTestId('mvd-dowod-krok');
-    expect(within(krok).getByText('Prąd zwarciowy początkowy')).toBeInTheDocument();
+    expect(within(krok).getByText('Prąd zwarciowy początkowy', { selector: 'h3' })).toBeInTheDocument();
   });
 });
