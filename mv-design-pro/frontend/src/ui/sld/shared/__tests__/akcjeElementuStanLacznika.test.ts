@@ -1,7 +1,7 @@
 /**
  * KARTA W5-C — dostępność pozycji stanu łącznika w menu schematu (`akcjeElementu`).
  *
- * Iloczyn cech: obiekt menu {pole z jednym łącznikiem, aparat pola `⟨pole⟩#⟨rodzaj⟩`,
+ * Iloczyn cech: obiekt menu {pole z jednym łącznikiem, aparat pola `${bayRef}#${SymbolId}`,
  * łącznik sekcyjny na trasie (gałąź `switch`), sprzęgło sekcji (gałąź `bus_coupler`)} ×
  * stan łącznika {zamknięty bez deklaracji, otwarty bez deklaracji, punkt normalnie otwarty,
  * normalnie zamknięty a chwilowo otwarty, bezpiecznik zamknięty, bezpiecznik otwarty} ×
@@ -54,7 +54,14 @@ function temat(obiekt: Obiekt | 'pole-0' | 'pole-2'): CanvasMenuSubject {
     case 'pole':
       return { menuKind: 'bay', modelRef: 'pole-1', kotwica: 'pole' } as CanvasMenuSubject;
     case 'aparat':
-      return { menuKind: 'apparatus', modelRef: 'pole-1#cb', kotwica: 'pole' } as CanvasMenuSubject;
+      // Temat aparatu w postaci, którą buduje kanwa v3 (`resolveCanvasMenuSubject` z meta
+      // symbolu): ref POLA + `SymbolId` trafionego symbolu.
+      return {
+        menuKind: 'apparatus',
+        modelRef: 'pole-1',
+        kotwica: 'pole',
+        symbolAparatu: 'breaker',
+      } as CanvasMenuSubject;
     case 'trasa':
     case 'sprzeglo':
       return { menuKind: 'apparatus', modelRef: 'q1', kotwica: 'galaz', rodzinaGalezi: 'switch' } as CanvasMenuSubject;

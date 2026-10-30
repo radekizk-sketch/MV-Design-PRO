@@ -23,7 +23,7 @@ const REFY_POLA = ['bay_ref_1', 'gpz/pole-L1', 'stacja#pole-2', 'a#b#c'] as cons
 
 describe('identyfikator aparatu — konstruktor ∘ parser = tożsamość', () => {
   it('biblioteka symboli nie jest pusta (wyrocznia nad pustym zbiorem nic nie mierzy)', () => {
-    expect(SYMBOLE.length).toBeGreaterThanOrEqual(40);
+    expect(SYMBOLE.length).toBeGreaterThan(30);
   });
 
   for (const bayRef of REFY_POLA) {

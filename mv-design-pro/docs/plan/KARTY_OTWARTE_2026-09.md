@@ -1266,6 +1266,17 @@ Następny krok: bieg tsc/eslint/vitest pod `flock`, iniekcje, test e2e głowicy
 (`s95-budowa-z-kanwy.spec.ts`), potem klasy 2–4 (typy katalogu wg wyroczni, nazwy wartości
 kodowych, „—” a „brak danych”).
 
+**Commit 8 (WIP, 2026-10-30).** Pierwszy bieg vitest commitu 7: 65 czerwonych w 12 plikach —
+testy z dawnymi kodami (`pole-1#cb`, temat aparatu z kompozytem w `modelRef`), meta kliku bez
+`symbolId`, niepełny kształt `LogicalViewsV1`, test martwej konwencji `…/transformer/…`.
+Przepisane na identyfikatory emitowane przez scenę. Pomiar klasy: głowica kablowa jest na
+kanwie WYŁĄCZNIE z rekordu aparatu pola (`primary_devices`, `CABLE_HEAD`); GPZ z
+`add_grid_source_sn` ma pola z samym łącznikiem, więc głowicę daje dopiero wyposażenie pola
+(`set_bay_equipment`, szablon pola odpływowego). Nowa scena generatora
+`glowice_kablowe_pol_gpz` (pole wolne i zajęte, wyposażone tą operacją) zasila natywny klik
+i kontrakt sceny (głowica na kanwie ⇔ rekord głowicy). Otwarte: karta aparatu inspektora
+(40 czerwonych w `InspectorEngineeringView.apparatus.test.tsx`, diagnoza w toku).
+
 ---
 
 ## LICZBY-PL

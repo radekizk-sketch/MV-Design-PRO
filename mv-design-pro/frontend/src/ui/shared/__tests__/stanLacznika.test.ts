@@ -171,7 +171,11 @@ describe('lacznikTematu — obiekt rysunku × liczba łączników pola', () => {
     ['fu-1', 'fu-1', null],
     ['kab', null, 'Element nie jest łącznikiem'],
     ['pole-1', 'sw-1', null],
-    ['pole-1#cb', 'sw-1', null],
+    // Aparat pola w postaci emitowanej przez kanwę v3: `${bayRef}#${SymbolId}`.
+    ['pole-1#breaker', 'sw-1', null],
+    ['pole-f#fuse', 'fu-1', null],
+    // Kod spoza biblioteki symboli nie jest aparatem — ref nie wskazuje pola.
+    ['pole-1#cb', null, 'Wskazany obiekt nie jest łącznikiem modelu sieci.'],
     ['pole-f', 'fu-1', null],
     ['pole-0', null, 'Pole nie ma łącznika w modelu sieci.'],
     ['pole-2', null, 'Pole ma kilka łączników (N-sw-1, N-sw-2)'],

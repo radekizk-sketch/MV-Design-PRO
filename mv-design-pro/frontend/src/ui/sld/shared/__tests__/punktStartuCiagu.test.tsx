@@ -153,13 +153,24 @@ const OCZEKIWANA: Record<StanPol, boolean> = {
 const BAZA = scena('stacja_na_odcinku', 'wolne_kilka');
 const STACJA_REF = stacjaSnNn(BAZA.snapshot).ref_id;
 const POLE_GPZ = (BAZA.logical_views.line_fields ?? []).find((w) => w.station_ref.startsWith('gpz/'))!.field_ref;
-/** Pola liniowe GPZ sceny bazowej wg zajętości z modelu odczytu backendu (`line_fields`). */
-const POLE_GPZ_WOLNE = (BAZA.logical_views.line_fields ?? []).find(
-  (w) => w.station_ref.startsWith('gpz/') && !w.occupied,
-)!.field_ref;
-const POLE_GPZ_ZAJETE = (BAZA.logical_views.line_fields ?? []).find(
-  (w) => w.station_ref.startsWith('gpz/') && w.occupied,
-)!.field_ref;
+/**
+ * Scena głowicy kablowej (`eksport_fixtur_harnessu.py::glowice_kablowe_pol_gpz`): scena
+ * bazowa + oba pola liniowe GPZ wyposażone operacją `set_bay_equipment` z szablonu pola
+ * odpływowego. Głowica jest REKORDEM aparatu pola (`primary_devices`, `CABLE_HEAD`) — pole
+ * GPZ z samym łącznikiem (scena bazowa) nie ma głowicy na kanwie. Pole wolne i zajęte
+ * wskazuje backend (`zajetosc_pol`).
+ */
+interface ScenaGlowic {
+  readonly pole_wolne: string;
+  readonly pole_zajete: string;
+  readonly snapshot: EnergyNetworkModel;
+  readonly logical_views: LogicalViewsV1;
+}
+const GLOWICE = JSON.parse(
+  readFileSync(resolve(GENERATED, 'glowice_kablowe_pol_gpz.json'), 'utf8'),
+) as ScenaGlowic;
+const POLE_GPZ_WOLNE = GLOWICE.pole_wolne;
+const POLE_GPZ_ZAJETE = GLOWICE.pole_zajete;
 const ODCINEK_KONCOWY = (() => {
   const korytarz = (BAZA.snapshot.corridors ?? []).find((c) => (c.ordered_segment_refs ?? []).length > 0)!;
   return korytarz.ordered_segment_refs[korytarz.ordered_segment_refs.length - 1];
@@ -250,8 +261,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'apparatus',
     actionId: 'extend-trunk',
     elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'cableHead'),
-    enm: BAZA.snapshot,
-    widoki: BAZA.logical_views,
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
     oczekiwanaDostepnosc: true,
   },
   {
@@ -259,8 +270,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'apparatus',
     actionId: 'extend-trunk',
     elementId: identyfikatorAparatu(POLE_GPZ_ZAJETE, 'cableHead'),
-    enm: BAZA.snapshot,
-    widoki: BAZA.logical_views,
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
     oczekiwanaDostepnosc: false,
   },
   {
@@ -268,8 +279,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'apparatus',
     actionId: 'extend-trunk',
     elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'breaker'),
-    enm: BAZA.snapshot,
-    widoki: BAZA.logical_views,
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
     oczekiwanaDostepnosc: false,
   },
 ];
@@ -550,7 +561,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
     { nazwa: 'głowica zajętego pola', pole: POLE_GPZ_ZAJETE, symbol: 'cableHead', aktywna: false },
     { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
   ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {
-    useSnapshotStore.setState({ snapshot: BAZA.snapshot, logicalViews: BAZA.logical_views });
+    useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
     await userEvent.pointer({ keys: '[MouseRight]', target: uchwytSymbolu(container, pole, symbol) });
     const menu = screen.getByRole('menu');
@@ -569,7 +580,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
   });
 
   it('lewy klik w głowicę: inspektor pokazuje kartę głowicy kablowej i aktywną pozycję paska', async () => {
-    useSnapshotStore.setState({ snapshot: BAZA.snapshot, logicalViews: BAZA.logical_views });
+    useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
     await userEvent.click(uchwytSymbolu(container, POLE_GPZ_WOLNE, 'cableHead'));
     cleanup();

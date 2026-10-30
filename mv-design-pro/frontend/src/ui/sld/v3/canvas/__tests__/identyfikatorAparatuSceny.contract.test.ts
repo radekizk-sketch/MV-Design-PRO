@@ -9,7 +9,9 @@
  *  A. każdy symbol rozstrzygnięty na kotwicę `pole` daje ref operacji, którego JEDYNY parser
  *     (`rozbierzIdentyfikatorAparatu`) oddaje ⟨ref pola, SymbolId tego symbolu⟩;
  *  B. temat innej kotwicy nigdy nie niesie rodzaju aparatu (ref operacji = ref modelu);
- *  C. głowice kablowe są na scenie i rozstrzygają się na pole (zapadka na pusty zbiór).
+ *  C. głowica kablowa jest na scenie wtedy i tylko wtedy, gdy pole niesie jej rekord, i każda
+ *     rozstrzyga się na pole (scena z generatora backendu ma takie rekordy — zapadka na pusty
+ *     zbiór).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -31,9 +33,29 @@ function loadEnm(relative: string): EnergyNetworkModel {
   return (JSON.parse(readFileSync(resolve(here, relative), 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 }
 
+/** Scena głowicy kablowej z generatora backendu: pola liniowe GPZ wyposażone operacją
+ *  `set_bay_equipment` z szablonu pola odpływowego (`glowice_kablowe_pol_gpz`). */
+const GLOWICE = (
+  JSON.parse(
+    readFileSync(
+      resolve(here, '../../../../../harness-fixtures/generated/glowice_kablowe_pol_gpz.json'),
+      'utf8',
+    ),
+  ) as { readonly snapshot: EnergyNetworkModel }
+).snapshot;
+
+/** Liczba rekordów głowicy kablowej w polach modelu (`primary_devices`, `CABLE_HEAD`). */
+function rekordyGlowic(enm: EnergyNetworkModel): number {
+  return (enm.bays ?? []).reduce(
+    (suma, pole) => suma + (pole.primary_devices ?? []).filter((d) => d.kind === 'CABLE_HEAD').length,
+    0,
+  );
+}
+
 const SIECI: readonly { readonly nazwa: string; readonly enm: EnergyNetworkModel }[] = [
   { nazwa: 'sldSubstrate52s', enm: loadEnm('../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json') },
   { nazwa: 'gpzFeeder', enm: loadEnm('../../scene/__tests__/fixtures/gpzFeeder.enm.json') },
+  { nazwa: 'glowiceKablowePolGpz', enm: GLOWICE },
 ];
 const LODY: readonly SceneLod[] = [0, 1, 2];
 
@@ -104,11 +126,15 @@ describe('tożsamość aparatu pola — scena → temat → ref operacji', () =>
       });
     }
 
-    it(`${nazwa} LOD 2: C — głowice kablowe są na scenie i kotwiczą się na polu`, () => {
+    // Iloczyn {sieć z rekordami głowicy, sieć bez} — głowica na kanwie wyłącznie z rekordu
+    // aparatu pola (GEOMETRIA-STACJI §0 pkt 4: zero symboli z domysłu gramatyki ról).
+    it(`${nazwa} LOD 2: C — głowica na scenie ⇔ rekord głowicy w polu; każda kotwiczy się na polu`, () => {
       const glowice = trafieniaSymboli(enm, 2).filter((t) => t.symbolId === 'cableHead');
-      expect(glowice.length).toBeGreaterThan(0);
-      const naPolu = glowice.filter((t) => t.kotwica === 'pole');
-      expect(naPolu.length).toBeGreaterThan(0);
+      expect(glowice.length > 0).toBe(rekordyGlowic(enm) > 0);
+      for (const t of glowice) {
+        expect(t.kotwica).toBe('pole');
+        expect(rozbierzIdentyfikatorAparatu(t.refOperacji)).toEqual({ bayRef: t.modelRef, symbolId: 'cableHead' });
+      }
     });
   }
 });

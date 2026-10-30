@@ -5101,6 +5101,55 @@ def _scena_punktu_startu(rodzaj: str, stan: str) -> dict[str, Any]:
     )
 
 
+def glowice_kablowe_pol_gpz() -> dict[str, Any]:
+    """Pola liniowe GPZ WYPOSAŻONE z szablonu pola odpływowego — scena głowicy kablowej.
+
+    Głowica kablowa jest rekordem aparatu pola (`Bay.primary_devices`, rodzaj `CABLE_HEAD`):
+    GPZ zbudowany operacją `add_grid_source_sn` ma pola z samym łącznikiem, więc kanwa nie
+    rysuje na nich głowicy. Projektant wyposaża pole operacją `set_bay_equipment` (tryb
+    `szablon`, szablon pola odpływowego) — dopiero wtedy na kanwie pojawia się symbol
+    `cableHead`, z którego menu wyprowadza ciąg główny. Scena: `stacja_na_odcinku ×
+    wolne_kilka` (jedno pole GPZ zajęte odcinkiem, jedno wolne) + wyposażenie obu pól
+    liniowych GPZ tą samą operacją, którą woła kreator wyposażenia pola."""
+    from enm.domain_operations import execute_domain_operation
+    from enm.zajetosc_pol import zajetosc_pol
+
+    from tests.reference_networks.sceny_zajetosci_pol import ok, zbuduj_scene
+
+    enm = zbuduj_scene("stacja_na_odcinku", "wolne_kilka").enm
+    pola_gpz = sorted(
+        str(b["ref_id"])
+        for b in enm["bays"]
+        if str(b["ref_id"]).startswith("gpz/") and b.get("bay_role") == "OUT"
+    )
+    for bay_ref in pola_gpz:
+        enm = ok(
+            execute_domain_operation(
+                enm_dict=enm,
+                op_name="set_bay_equipment",
+                payload={
+                    "bay_ref": bay_ref,
+                    "mode": "szablon",
+                    "bay_template_ref": "bay_template_line_out",
+                },
+            )
+        )
+    zajetosc = zajetosc_pol(enm)
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {
+            "pole_wolne": next(r for r in pola_gpz if not zajetosc[r].odcinki_fizyczne),
+            "pole_zajete": next(r for r in pola_gpz if zajetosc[r].odcinki_fizyczne),
+            "snapshot": odpowiedz["snapshot"],
+            "logical_views": odpowiedz["logical_views"],
+        }
+    )
+
+
 def ciag_w_budowie_etapy() -> dict[str, Any]:
     """Karta PARTIA-6-FRONT: etapy CIĄGU W BUDOWIE (`tests/reference_networks/
     scena_ciagu_w_budowie.py`) — GPZ i 0…15 stacji budowanych ogniwo po ogniwie operacjami,
@@ -5304,6 +5353,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     },
     **{nazwa: _fabryka_widokow_fikstury(nazwa) for nazwa in _FIKSTURY_ENM_FRONTU},
     "ciag_w_budowie_etapy": ciag_w_budowie_etapy,
+    "glowice_kablowe_pol_gpz": glowice_kablowe_pol_gpz,
     **{
         f"geometria_stacji_{wariant}": _fabryka_sceny_geometrii_stacji(wariant)
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")

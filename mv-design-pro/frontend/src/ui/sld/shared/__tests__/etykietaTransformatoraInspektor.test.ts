@@ -80,7 +80,11 @@ describe('inspektor transformatora — etykieta z modelu', () => {
     },
   );
 
-  it('element wewnętrzny stacji bez rekordu ENM → rodzaj bez klasy', () => {
+  // Identyfikator `${stacja}/transformer/<n>` należał do skasowanego widoku wewnętrznego
+  // stacji (K30) — kanwa v3 go nie emituje. Intencja testu zostaje: transformator bez rekordu
+  // ENM dostaje rodzaj bez klasy napięciowej; a ref spoza modelu nie wywodzi stacji z
+  // przedrostka ścieżki (dawny skrót dopasowywał też realne refy `gpz/<id>/transformer/…`).
+  it('transformator bez rekordu ENM → rodzaj bez klasy, bez stacji z przedrostka refu', () => {
     const snapshot = makeCalculationReadySnapshot();
     const dane = buildDaneElementuStacji(
       snapshot,
@@ -89,11 +93,9 @@ describe('inspektor transformatora — etykieta z modelu', () => {
       'transformer',
       'st-1/transformer/0',
     );
-    // Rodzaj elementu bez klasy; człon po myślniku to nazwa stacji (tu: stacja spoza modelu).
-    expect(dane?.label).toMatch(/^Transformator - /);
+    expect(dane?.label).toBe('Transformator');
     expect(dane?.label).not.toContain('Transformator SN/nN');
-    // Kod stacji z relacji elementu wewnętrznego (`st-1/…` → stacja rysunku `st-1`).
-    expect(dane?.stationCode).toBe('S01');
+    expect(dane?.stationCode).toBeNull();
   });
 
   it('widok stacji bez rekordu ENM → etykieta stacji z rysunku, bez nazwy transformatora', () => {

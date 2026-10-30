@@ -295,8 +295,14 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
 
     // „Wyprowadź ciąg główny z głowicy" — punkt startu to WYŁĄCZNIE pole głowicy, wolne
     // według modelu odczytu backendu. Iloczyn {rodzaj aparatu} × {zajętość pola}.
-    const WIDOK_POL = (occupied: boolean | null) =>
+    // Pełny kształt `LogicalViewsV1` (backend zawsze wysyła cztery listy); `line_fields`
+    // bez pola = zajętość nieznana (pozycja niedostępna).
+    const WIDOK_POL = (occupied: boolean | null): LogicalViewsV1 =>
       ({
+        trunks: [],
+        branches: [],
+        secondary_connectors: [],
+        terminals: [],
         line_fields: occupied === null
           ? []
           : [{ field_ref: 'bay/B-1', station_ref: 'gpz/G-1', bay_role: 'OUT', occupied, segment_refs: [], corridor_refs: [] }],
