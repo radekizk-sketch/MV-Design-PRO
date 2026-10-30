@@ -97,7 +97,7 @@ const FRT_SCENA_SEKWENCJA = JSON.parse(
   kontekst_sily_sieci: {
     bus_ref: string;
     scr: number;
-    verdict: string;
+    ocena: { etykieta: { etykieta_pl: string } };
     white_box: { substitution_pl: string; result_pl: string; symbol: string }[];
   };
 };
@@ -253,9 +253,11 @@ test.describe('dowody-oze:screenshot', () => {
       await expect(ocenaSekwencji).toHaveAttribute('data-status', 'NIE_OCENIONO');
       await expect(ocenaSekwencji).toContainText(FRT_SCENA_SEKWENCJA.ocena.wyjasnienie.zdanie_pl);
       const kontekst = page.getByTestId('mvd-frt-sekw-kontekst');
-      // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (bieg modelu sceny;
-      // dawna asercja cytowała „sieć słaba"/„2,250" z atrapy sprzed konwersji sceny).
-      await expect(kontekst).toContainText(FRT_KONTEKST_SILY.verdict);
+      // Ocena siły sieci i SCR — WPROST z odpowiedzi backendu (bieg modelu sceny); etykieta
+      // z rekordu K (kontrakt werdyktu §9), nie kod klasy siły sieci.
+      await expect(page.getByTestId('mvd-frt-sekw-kontekst-werdykt')).toContainText(
+        FRT_KONTEKST_SILY.ocena.etykieta.etykieta_pl,
+      );
       await expect(kontekst).toContainText(liczbaFrtPl(FRT_KONTEKST_SILY.scr));
 
       // OTWARTY ślad pełnej jawności kontekstu siły sieci. INTENCJA (K10):

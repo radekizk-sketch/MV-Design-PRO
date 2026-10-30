@@ -366,7 +366,11 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     expect(screen.queryByTestId('mvd-frt-sekw-werdykt')).not.toBeInTheDocument();
     const kontekst = screen.getByTestId('mvd-frt-sekw-kontekst-dane');
     expect(kontekst).toHaveTextContent('2,250');
-    expect(kontekst).toHaveTextContent('sieć słaba');
+    // Etykieta z rekordu K buildera siły sieci (SCR 2,25 < próg sieci słabej 3), nie kod klasy.
+    expect(screen.getByTestId('mvd-frt-sekw-kontekst-werdykt')).toHaveTextContent(
+      'Kryterium naruszone',
+    );
+    expect(kontekst).not.toHaveTextContent('słaba');
   });
 
   it('ślad WHITE BOX kontekstu siły sieci — domyślnie zwinięty, klik odsłania kroki wywodu', async () => {
@@ -376,7 +380,7 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     await screen.findByTestId('mvd-frt-sekw-wynik');
     // Uzasadnienie oceny (why_pl) widoczne od razu; ślad NA ŻĄDANIE.
     expect(screen.getByTestId('mvd-frt-sekw-kontekst-why')).toHaveTextContent(
-      'poniżej progu sieci słabej',
+      'sieć słaba w węźle',
     );
     const przycisk = screen.getByTestId('mvd-frt-sekw-slad-otworz');
     expect(przycisk).toHaveAttribute('aria-expanded', 'false');
@@ -385,8 +389,8 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     fireEvent.click(przycisk);
     expect(przycisk).toHaveAttribute('aria-expanded', 'true');
     const slad = screen.getByTestId('mvd-frt-sekw-slad');
-    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 45,0 / 20,0');
-    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 2,25');
+    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 45.0 MVA / 20.0 MVA');
+    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 2.25');
     // Ponowny klik zwija ślad.
     fireEvent.click(przycisk);
     expect(screen.queryByTestId('mvd-frt-sekw-slad')).not.toBeInTheDocument();

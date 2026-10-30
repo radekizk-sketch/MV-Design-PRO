@@ -12,8 +12,6 @@ from collections.abc import Iterable
 from analysis.grid_strength.models import (
     DEFAULT_VERY_WEAK_THRESHOLD,
     DEFAULT_WEAK_THRESHOLD,
-    VERDICT_NO_DATA,
-    VERDICT_STRONG,
     VERDICT_VERY_WEAK,
     VERDICT_WEAK,
     BusStrengthEntry,
@@ -24,19 +22,20 @@ from analysis.grid_strength.models import (
     WhiteBoxStep,
     compute_grid_strength_id,
 )
+from analysis.grid_strength.oceny import klasa_sily, ocena_sily
+from enm.nazwy_elementow import opis_bez_nazwy
+from werdykt import OcenaKryterium
 
 
 def _round(value: float, digits: int = 4) -> float:
     return round(float(value), digits)
 
 
-def _classify(scr: float, weak: float, very_weak: float) -> tuple[str, bool]:
-    """Zwraca (werdykt, is_weak) wg progów siły sieci."""
-    if scr < very_weak:
-        return VERDICT_VERY_WEAK, True
-    if scr < weak:
-        return VERDICT_WEAK, True
-    return VERDICT_STRONG, False
+#: Opis brakującej wielkości (pole ``missing_data`` → zdanie rekordu).
+_BRAKI_PL = {
+    "s_sc_mva": "moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia)",
+    "s_installed_mva": "moc zainstalowana S_n źródeł falownikowych węzła (brak albo niedodatnia)",
+}
 
 
 class GridStrengthBuilder:
@@ -63,7 +62,7 @@ class GridStrengthBuilder:
 
         weak_count = sum(1 for e in entries if e.is_weak and e.scr is not None)
         not_computed = sum(1 for e in entries if e.scr is None)
-        wscr, wscr_verdict, wscr_why, wscr_wb = self._build_wscr(ordered)
+        wscr, wscr_verdict, wscr_why, wscr_wb, wscr_ocena = self._build_wscr(ordered)
 
         summary = GridStrengthSummary(
             total_buses=len(entries),
@@ -73,6 +72,8 @@ class GridStrengthBuilder:
             wscr_verdict=wscr_verdict,
             wscr_why_pl=wscr_why,
             wscr_white_box=wscr_wb,
+            wscr_ocena=wscr_ocena,
+            wscr_wyjasnienie=wscr_ocena.wyjasnienie,
         )
         analysis_id = compute_grid_strength_id(
             context, self.weak_threshold, self.very_weak_threshold, entries
@@ -94,11 +95,24 @@ class GridStrengthBuilder:
             missing.append("s_sc_mva")
         if item.s_installed_mva is None or item.s_installed_mva <= 0.0:
             missing.append("s_installed_mva")
+        nazwa_pl = item.nazwa_pl or opis_bez_nazwy("buses")
 
-        if missing:
+        if item.s_sc_mva is None or item.s_installed_mva is None or missing:
+            ocena = ocena_sily(
+                wskaznik="SCR",
+                nazwa_pl=nazwa_pl,
+                element_ref=item.bus_ref,
+                wartosc=None,
+                prog_slaby=self.weak_threshold,
+                braki=tuple(_BRAKI_PL[kod] for kod in missing),
+                dane_przyjete=item.dane_przyjete,
+            )
+            verdict, is_weak = klasa_sily(
+                ocena, wartosc=None, prog_bardzo_slaby=self.very_weak_threshold
+            )
             why = (
                 "Dane niekompletne — brak: "
-                + ", ".join(missing)
+                + "; ".join(_BRAKI_PL[kod] for kod in missing)
                 + ". SCR wymaga dodatniej mocy zwarciowej S_sc'' (z solvera "
                 "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł S_n."
             )
@@ -108,18 +122,30 @@ class GridStrengthBuilder:
                 s_sc_mva=item.s_sc_mva,
                 s_installed_mva=item.s_installed_mva,
                 scr=None,
-                verdict=VERDICT_NO_DATA,
-                is_weak=False,
+                verdict=verdict,
+                is_weak=is_weak,
                 why_pl=why,
                 missing_data=tuple(missing),
                 white_box=(),
+                ocena=ocena,
+                wyjasnienie=ocena.wyjasnienie,
                 modules=item.modules,
             )
 
-        s_sc = float(item.s_sc_mva)  # type: ignore[arg-type]
-        s_n = float(item.s_installed_mva)  # type: ignore[arg-type]
+        s_sc = float(item.s_sc_mva)
+        s_n = float(item.s_installed_mva)
         scr = _round(s_sc / s_n)
-        verdict, is_weak = _classify(scr, self.weak_threshold, self.very_weak_threshold)
+        ocena = ocena_sily(
+            wskaznik="SCR",
+            nazwa_pl=nazwa_pl,
+            element_ref=item.bus_ref,
+            wartosc=scr,
+            prog_slaby=self.weak_threshold,
+            dane_przyjete=item.dane_przyjete,
+        )
+        verdict, is_weak = klasa_sily(
+            ocena, wartosc=scr, prog_bardzo_slaby=self.very_weak_threshold
+        )
 
         if verdict == VERDICT_VERY_WEAK:
             why = (
@@ -168,33 +194,57 @@ class GridStrengthBuilder:
             why_pl=why,
             missing_data=(),
             white_box=white_box,
+            ocena=ocena,
+            wyjasnienie=ocena.wyjasnienie,
             modules=item.modules,
         )
 
     def _build_wscr(
         self, ordered: list[BusStrengthInput]
-    ) -> tuple[float | None, str, str, tuple[WhiteBoxStep, ...]]:
+    ) -> tuple[float | None, str, str, tuple[WhiteBoxStep, ...], OcenaKryterium]:
         """WSCR (ERCOT) dla zbioru źródeł z kompletem danych."""
         valid = [
-            item
+            (float(item.s_sc_mva), float(item.s_installed_mva), item.dane_przyjete)
             for item in ordered
             if item.s_sc_mva is not None
             and item.s_sc_mva > 0.0
             and item.s_installed_mva is not None
             and item.s_installed_mva > 0.0
         ]
+        dane = tuple(dana for _, _, dane_wezla in valid for dana in dane_wezla)
         if not valid:
+            ocena = ocena_sily(
+                wskaznik="WSCR",
+                nazwa_pl="Źródła falownikowe sieci",
+                element_ref=None,
+                wartosc=None,
+                prog_slaby=self.weak_threshold,
+                braki=(
+                    "węzeł przyłączenia z kompletem danych (dodatnie S_sc'' i S_n) — brak "
+                    "takiego węzła",
+                ),
+            )
+            verdict, _ = klasa_sily(ocena, wartosc=None, prog_bardzo_slaby=self.very_weak_threshold)
             return (
                 None,
-                VERDICT_NO_DATA,
+                verdict,
                 "WSCR niepoliczony — brak węzłów z kompletem danych (S_sc'' i S_n).",
                 (),
+                ocena,
             )
 
-        numerator = sum(float(i.s_sc_mva) * float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
-        sum_sn = sum(float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
+        numerator = sum(s_sc * s_n for s_sc, s_n, _ in valid)
+        sum_sn = sum(s_n for _, s_n, _ in valid)
         wscr = _round(numerator / (sum_sn**2))
-        verdict, _is_weak = _classify(wscr, self.weak_threshold, self.very_weak_threshold)
+        ocena = ocena_sily(
+            wskaznik="WSCR",
+            nazwa_pl="Źródła falownikowe sieci",
+            element_ref=None,
+            wartosc=wscr,
+            prog_slaby=self.weak_threshold,
+            dane_przyjete=dane,
+        )
+        verdict, _ = klasa_sily(ocena, wartosc=wscr, prog_bardzo_slaby=self.very_weak_threshold)
         why = (
             f"WSCR = {wscr} dla {len(valid)} źródeł — sieć {verdict}. "
             "WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu "
@@ -214,4 +264,4 @@ class GridStrengthBuilder:
                 result_pl=f"WSCR = {wscr} (–), n = {len(valid)}",
             ),
         )
-        return wscr, verdict, why, white_box
+        return wscr, verdict, why, white_box, ocena

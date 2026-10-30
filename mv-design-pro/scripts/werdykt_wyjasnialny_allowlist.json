@@ -3,27 +3,6 @@
  "wpisy": [
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.grid_strength.models:BusStrengthEntry.is_weak",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B11 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B11"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.grid_strength.models:BusStrengthEntry.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B11 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B11"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.grid_strength.models:GridStrengthSummary.wscr_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B11 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B11"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "analysis.protection_insight.models:ProtectionInsightItem.selectivity_status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B7 (LEGACY_USUNAC): kasacja (fala WW-0).",

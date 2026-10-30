@@ -27,6 +27,7 @@ import {
   useNazwaObiektu,
 } from '../../wyniki/wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from '../pulpit';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -167,12 +168,20 @@ function WynikSekwencji({
             </div>
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstWerdykt}</dt>
-              <dd>{kontekst.verdict}</dd>
+              <dd>
+                {/* Etykieta Z REKORDU (kontrakt werdyktu §9) — klasa siły sieci w uzasadnieniu. */}
+                <EtykietaWerdyktu
+                  etykieta={kontekst.ocena.etykieta}
+                  status={kontekst.ocena.status_maszynowy}
+                  testid="mvd-frt-sekw-kontekst-werdykt"
+                />
+              </dd>
             </div>
             </dl>
             <p className="mvd-frt-sekw-kontekst-why" data-testid="mvd-frt-sekw-kontekst-why">
               {kontekst.why_pl}
             </p>
+            <KartaWerdyktu rekord={kontekst.ocena} naglowek={FRT_STRINGS.sekwKontekstOcena} />
             {kontekst.white_box.length > 0 && (
               <div className="mvd-frt-sekw-slad-blok">
                 <button

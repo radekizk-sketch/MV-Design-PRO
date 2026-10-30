@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 import { pobierzSileSieci, type WpisSilyWezla } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from './SladAnalizy';
 import { busRefModuluSily } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
@@ -18,7 +19,6 @@ import {
   formatKv,
   formatMva,
   formatWskaznik,
-  klasaWerdyktuSily,
   PULPIT_STRINGS,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
@@ -48,12 +48,12 @@ function WpisWezla({
     >
       <div className="mvd-oze-metryka">
         <span>{nazwaObiektu(wpis.bus_ref)}</span>
-        <span
-          className={`mvd-oze-komorka ${klasaWerdyktuSily(wpis.verdict)}`}
-          data-testid={`mvd-oze-sila-werdykt-${wpis.bus_ref}`}
-        >
-          {wpis.verdict}
-        </span>
+        {/* Etykieta Z REKORDU (kontrakt werdyktu §9) — klasa siły sieci jest w uzasadnieniu. */}
+        <EtykietaWerdyktu
+          etykieta={wpis.ocena.etykieta}
+          status={wpis.ocena.status_maszynowy}
+          testid={`mvd-oze-sila-werdykt-${wpis.bus_ref}`}
+        />
       </div>
       <div className="mvd-oze-metryka">
         <span>{PULPIT_STRINGS.silaScr}</span>
@@ -72,6 +72,7 @@ function WpisWezla({
         <span className="mvd-oze-num">{formatKv(wpis.nominal_kv)}</span>
       </div>
       <p style={{ margin: '4px 0 0' }}>{wpis.why_pl}</p>
+      <KartaWerdyktu rekord={wpis.ocena} naglowek={PULPIT_STRINGS.silaOcenaWezla} />
       {wpis.missing_data.length > 0 ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.silaBrakDanych}</span>
@@ -104,6 +105,8 @@ export function SekcjaSilySieci({
   const runId = useAktywnyRunId('zwarcie');
   const stan = useAnaliza(runId, pobierzSileSieci);
   const [wscrSlad, setWscrSlad] = useState(false);
+  // Karta #145: wyróżniony węzeł nazwany z modelu, nigdy referencją.
+  const nazwaObiektu = useNazwaObiektu();
 
   const wyroznionyWezel =
     stan.rodzaj === 'gotowe' && wyroznionyModul
@@ -144,12 +147,11 @@ export function SekcjaSilySieci({
             </div>
             <div className="mvd-oze-podsum-poz">
               <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaWscrWerdykt}</span>
-              <span
-                className={`mvd-oze-komorka ${klasaWerdyktuSily(stan.dane.summary.wscr_verdict)}`}
-                data-testid="mvd-oze-sila-wscr-werdykt"
-              >
-                {stan.dane.summary.wscr_verdict}
-              </span>
+              <EtykietaWerdyktu
+                etykieta={stan.dane.summary.wscr_ocena.etykieta}
+                status={stan.dane.summary.wscr_ocena.status_maszynowy}
+                testid="mvd-oze-sila-wscr-werdykt"
+              />
             </div>
             <div className="mvd-oze-podsum-poz">
               <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaBadane}</span>
@@ -172,6 +174,7 @@ export function SekcjaSilySieci({
           </div>
 
           <p style={{ margin: '4px 0 0' }}>{stan.dane.summary.wscr_why_pl}</p>
+          <KartaWerdyktu rekord={stan.dane.summary.wscr_ocena} naglowek={PULPIT_STRINGS.silaOcenaWscr} />
           {stan.dane.summary.wscr_white_box.length > 0 ? (
             <div style={{ marginTop: 6 }}>
               <button
@@ -194,7 +197,7 @@ export function SekcjaSilySieci({
                 className="mvd-oze-wyroznienie-wezel"
                 data-testid="mvd-oze-sila-wyroznienie-wezel"
               >
-                {PULPIT_STRINGS.silaWyroznionyWezel}: {wyroznionyWezel}
+                {PULPIT_STRINGS.silaWyroznionyWezel}: {nazwaObiektu(wyroznionyWezel)}
               </p>
             ) : null}
             {wyroznionyModul && !wyroznionyWezel ? (

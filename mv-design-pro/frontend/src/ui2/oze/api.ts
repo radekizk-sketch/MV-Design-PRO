@@ -27,6 +27,7 @@ import type {
   PodstawaWymagania,
   RekordWerdyktu,
   StatusWerdyktu,
+  WyjasnienieWerdyktu,
   WynikWymagania,
 } from '../wyniki/wzorzec/werdykt';
 
@@ -102,11 +103,16 @@ export interface WpisSilyWezla {
   readonly s_sc_mva: number | null;
   readonly s_installed_mva: number | null;
   readonly scr: number | null;
+  /** Klasa siły sieci — projekcja rekordu `ocena` (tekst domeny, nie werdykt). */
   readonly verdict: string;
+  /** Sieć słaba ⇔ rekord `ocena` NIE_SPELNIA (projekcja). */
   readonly is_weak: boolean;
   readonly why_pl: string;
   readonly missing_data: readonly BrakDanychSily[];
   readonly white_box: readonly KrokSladuSily[];
+  /** Rekord K wskaźnika SCR węzła (`analysis/grid_strength/oceny.py`) — etykieta i wyjaśnienie. */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   /** Moduły źródłowe IBG węzła (mapowanie moduł→węzeł, P47b). */
   readonly modules: readonly ModulZrodlaSily[];
 }
@@ -115,9 +121,10 @@ export interface WpisSilyWezla {
 export interface KontekstSily {
   readonly project_name: string | null;
   readonly case_name: string | null;
+  readonly case_id: string | null;
   readonly run_timestamp: string | null;
-  readonly snapshot_id: string | null;
-  readonly trace_id: string | null;
+  readonly snapshot_hash: string | null;
+  readonly run_id: string | null;
 }
 
 /** Podsumowanie systemowe siły sieci (WSCR). */
@@ -126,9 +133,13 @@ export interface PodsumowanieSily {
   readonly weak_bus_count: number;
   readonly not_computed_count: number;
   readonly wscr: number | null;
+  /** Klasa siły sieci zbioru źródeł — projekcja rekordu `wscr_ocena`. */
   readonly wscr_verdict: string;
   readonly wscr_why_pl: string;
   readonly wscr_white_box: readonly KrokSladuSily[];
+  /** Rekord K wskaźnika WSCR wobec progu sieci słabej. */
+  readonly wscr_ocena: OcenaKryterium;
+  readonly wscr_wyjasnienie: WyjasnienieWerdyktu;
 }
 
 /** Widok analizy siły sieci (odpowiedź grid-strength). */

@@ -48,9 +48,21 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
     render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-sila-wynik')).toBeInTheDocument();
     expect(pobierzSileSieci).toHaveBeenCalledWith('sc-run');
-    expect(screen.getByTestId('mvd-oze-sila-wscr')).toHaveTextContent('4,5');
-    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-1')).toHaveTextContent('mocna');
-    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-2')).toHaveTextContent('bardzo słaba');
+    // Fikstura z buildera backendu (generuj_fixtury_ocen_fe.py): WSCR = 1,875; etykiety z rekordu.
+    expect(screen.getByTestId('mvd-oze-sila-wscr')).toHaveTextContent('1,88');
+    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-1')).toHaveTextContent(
+      'Kryterium spełnione — dowód niepełny',
+    );
+    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-2')).toHaveTextContent(
+      'Kryterium naruszone',
+    );
+    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-3')).toHaveTextContent(
+      'Ocena niewykonana',
+    );
+    // Brak danych ≠ spełnia: węzeł bez S_sc'' nie dostaje etykiety spełnienia.
+    expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-3')).not.toHaveTextContent(
+      'spełnione',
+    );
   });
 
   it('karta #145: węzeł nazwany z modelu, braki danych po polsku — bez referencji i kodów', async () => {
@@ -73,7 +85,7 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.queryByTestId('mvd-oze-slad-kroki')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-oze-sila-slad-otworz-bus-pcc-1'));
-    expect(screen.getByText('SCR = 120,0 / 20,0')).toBeInTheDocument();
+    expect(screen.getByText('SCR = 120.0 MVA / 20.0 MVA')).toBeInTheDocument();
   });
 
   it('błąd końcówki → jawny stan błędu', async () => {

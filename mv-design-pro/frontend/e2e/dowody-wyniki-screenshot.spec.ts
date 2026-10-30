@@ -267,8 +267,9 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(sekcja).toContainText(SILA_SIECI_LICZNIK_WSCR);
     await page.getByTestId(`mvd-oze-sila-slad-otworz-${WEZEL_SILY_SIECI}`).click();
     await expect(sekcja).toContainText(SILA_SIECI_PODSTAWIENIE_SCR);
+    // Etykieta z rekordu K siły sieci (kontrakt werdyktu §9), nie kod klasy „mocna”.
     await expect(page.getByTestId(`mvd-oze-sila-werdykt-${WEZEL_SILY_SIECI}`)).toContainText(
-      'mocna',
+      'Kryterium spełnione',
     );
   } else if (scena === 'odbior-zgodnosc') {
     // Pomiary z obiektu w edytorze wierszy + jawne tolerancje → raport →

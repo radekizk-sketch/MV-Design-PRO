@@ -157,6 +157,7 @@ export const FRT_STRINGS = {
   sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
   sekwKontekstWezel: 'Szyna przyłączenia',
   sekwKontekstWerdykt: 'Ocena siły sieci',
+  sekwKontekstOcena: 'Ocena siły sieci w węźle przyłączenia modułu',
   sekwKontekstSladTytul: 'Ślad obliczeń (pełna jawność)',
   sekwKontekstSladPokaz: 'Pokaż ślad obliczeń',
   sekwKontekstSladUkryj: 'Ukryj ślad obliczeń',

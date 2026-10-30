@@ -1,6 +1,6 @@
 /*
  * Fixtures 1:1 z serializerami backendu (karta P47a):
- *   - `analysis/grid_strength/serializer.py::view_to_dict`  → WidokSilySieci,
+ *   - `analysis/grid_strength/serializer.py::view_to_dict`  → WidokSilySieci (JSON z backendu),
  *   - `analysis/reactive_adequacy/serializer.py::view_to_dict` → WidokAdekwatnosciQ,
  *   - `ConverterType.to_dict` (podzbiór)                    → RekordKonwertera,
  *   - `ExecutionRun` (`ui/study-cases/types`)              → przebiegi.
@@ -13,91 +13,12 @@ import type {
   WidokSilySieci,
 } from '../../api';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import WIDOK_SILY_SIECI from './widokSilySieci.json';
 
+/** Widok siły sieci złożony BACKENDEM (`backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py::
+ *  _sila_sieci`, ten sam builder co końcówka) — rekordy werdyktu bez ręcznej atrapy. */
 export function silaSieciFixture(): WidokSilySieci {
-  return {
-    analysis_id: 'gs-abc123',
-    context: {
-      project_name: 'Projekt A',
-      case_name: 'Scenariusz 1',
-      run_timestamp: '2026-07-16T10:00:00Z',
-      snapshot_id: 'snap-1',
-      trace_id: 'tr-1',
-    },
-    weak_threshold: 3.0,
-    very_weak_threshold: 2.0,
-    entries: [
-      {
-        bus_ref: 'bus-pcc-1',
-        nominal_kv: 15.0,
-        s_sc_mva: 120.0,
-        s_installed_mva: 20.0,
-        scr: 6.0,
-        verdict: 'mocna',
-        is_weak: false,
-        why_pl: 'SCR = 6,0 ≥ 3,0 — sieć mocna w węźle.',
-        missing_data: [],
-        white_box: [
-          {
-            symbol: 'SCR',
-            formula_latex: 'SCR = S_sc / S_n',
-            substitution_pl: 'SCR = 120,0 / 20,0',
-            result_pl: 'SCR = 6,0',
-          },
-        ],
-        modules: [{ ref: 'src-1', name: 'Blok PV A', sn_mva: 20.0 }],
-      },
-      {
-        bus_ref: 'bus-pcc-2',
-        nominal_kv: 15.0,
-        s_sc_mva: 40.0,
-        s_installed_mva: 20.0,
-        scr: 2.0,
-        verdict: 'bardzo słaba',
-        is_weak: true,
-        why_pl: 'SCR = 2,0 < 2,0 — bardzo słaba sieć w węźle.',
-        missing_data: [],
-        white_box: [
-          {
-            symbol: 'SCR',
-            formula_latex: 'SCR = S_sc / S_n',
-            substitution_pl: 'SCR = 40,0 / 20,0',
-            result_pl: 'SCR = 2,0',
-          },
-        ],
-        modules: [{ ref: 'src-2', name: 'Magazyn energii 1', sn_mva: 20.0 }],
-      },
-      {
-        bus_ref: 'bus-pcc-3',
-        nominal_kv: null,
-        s_sc_mva: null,
-        s_installed_mva: 20.0,
-        scr: null,
-        verdict: 'brak danych',
-        is_weak: false,
-        why_pl: 'Brak mocy zwarciowej — SCR nieobliczony.',
-        missing_data: ['s_sc_mva'],
-        white_box: [],
-        modules: [{ ref: 'src-3', name: null, sn_mva: 20.0 }],
-      },
-    ],
-    summary: {
-      total_buses: 3,
-      weak_bus_count: 1,
-      not_computed_count: 1,
-      wscr: 4.5,
-      wscr_verdict: 'mocna',
-      wscr_why_pl: 'WSCR = 4,5 ≥ 3,0 — system mocny.',
-      wscr_white_box: [
-        {
-          symbol: 'WSCR',
-          formula_latex: 'WSCR = Σ(S_sc·S_n) / (ΣS_n)²',
-          substitution_pl: 'WSCR = 4,5',
-          result_pl: 'WSCR = 4,5',
-        },
-      ],
-    },
-  };
+  return structuredClone(WIDOK_SILY_SIECI) as unknown as WidokSilySieci;
 }
 
 export function adekwatnoscQFixture(): WidokAdekwatnosciQ {
@@ -107,8 +28,9 @@ export function adekwatnoscQFixture(): WidokAdekwatnosciQ {
       project_name: 'Projekt A',
       case_name: 'Scenariusz 1',
       run_timestamp: '2026-07-16T10:05:00Z',
-      snapshot_id: 'snap-1',
-      trace_id: 'tr-2',
+      case_id: 'case-1',
+      snapshot_hash: 'snap-1',
+      run_id: 'run-pf-2',
     },
     saturation_tol_mvar: 0.001,
     default_u_min_pu: 0.95,

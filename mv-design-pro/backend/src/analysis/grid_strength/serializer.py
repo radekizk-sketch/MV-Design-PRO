@@ -51,6 +51,8 @@ def entry_to_dict(entry: BusStrengthEntry) -> dict[str, Any]:
         "why_pl": entry.why_pl,
         "missing_data": list(entry.missing_data),
         "white_box": [white_box_to_dict(step) for step in entry.white_box],
+        "ocena": entry.ocena.model_dump(mode="json"),
+        "wyjasnienie": entry.wyjasnienie.model_dump(mode="json"),
         "modules": [module_to_dict(module) for module in entry.modules],
     }
 
@@ -64,6 +66,8 @@ def summary_to_dict(summary: GridStrengthSummary) -> dict[str, Any]:
         "wscr_verdict": summary.wscr_verdict,
         "wscr_why_pl": summary.wscr_why_pl,
         "wscr_white_box": [white_box_to_dict(step) for step in summary.wscr_white_box],
+        "wscr_ocena": summary.wscr_ocena.model_dump(mode="json"),
+        "wscr_wyjasnienie": summary.wscr_wyjasnienie.model_dump(mode="json"),
     }
 
 

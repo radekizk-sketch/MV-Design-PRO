@@ -106,11 +106,13 @@ export const PULPIT_STRINGS = {
   silaLadowanie: 'Ładowanie oceny siły sieci…',
   silaBlad: 'Nie udało się pobrać oceny siły sieci',
   silaWscr: 'WSCR (systemowy)',
-  silaWscrWerdykt: 'Werdykt systemowy',
+  silaWscrWerdykt: 'Ocena systemowa',
   silaBadane: 'Zbadane węzły',
   silaSlabe: 'Węzły słabe',
   silaNieobliczone: 'Nieobliczone',
   silaWezly: 'Węzły przyłączenia',
+  silaOcenaWezla: 'Ocena siły sieci w węźle',
+  silaOcenaWscr: 'Ocena siły sieci zbioru źródeł (WSCR)',
   silaScr: 'SCR',
   silaSsc: 'Moc zwarciowa S″k',
   silaSinst: 'Moc zainstalowana',
@@ -162,23 +164,6 @@ export const PULPIT_STRINGS = {
   dokumentyOpis: 'Dokumentacja przyłączeniowa i raporty modułu w osobnym widoku.',
   dokumentyPrzejdz: 'Przejdź do dokumentacji',
 } as const;
-
-/**
- * Klasa CSS werdyktu siły sieci (wartości backendu: mocna/słaba/bardzo słaba/
- * brak danych). Kolory wyłącznie przez tokeny --mvd-*. Fallback: neutralny.
- */
-export function klasaWerdyktuSily(verdict: string): string {
-  switch (verdict) {
-    case 'mocna':
-      return 'mvd-oze-werdykt-ok';
-    case 'słaba':
-      return 'mvd-oze-werdykt-warn';
-    case 'bardzo słaba':
-      return 'mvd-oze-werdykt-err';
-    default:
-      return 'mvd-oze-werdykt-neutralny';
-  }
-}
 
 /**
  * Klasa CSS werdyktu adekwatności Q. Bazuje na fladze `is_adequate` z backendu

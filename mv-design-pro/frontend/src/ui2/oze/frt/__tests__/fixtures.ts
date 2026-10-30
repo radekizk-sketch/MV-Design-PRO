@@ -18,7 +18,12 @@
  */
 
 import katalogNcRfg from '../../../../harness-fixtures/generated/ncrfg_katalog.json';
-import type { RekordOcenyFrt, WidokSekwencjiFrt, WidokTrajektoriiFrt } from '../../api';
+import type {
+  RekordOcenyFrt,
+  WidokSekwencjiFrt,
+  WidokTrajektoriiFrt,
+  WpisSilyWezla,
+} from '../../api';
 import type { KatalogNcRfg } from '../../ncrfg/typy';
 import rekordyOceny from './rekordyOceny.json';
 
@@ -26,6 +31,8 @@ interface RekordyWidoku {
   readonly widok: RekordOcenyFrt;
   readonly scenariusze?: readonly RekordOcenyFrt[];
   readonly zapady?: readonly RekordOcenyFrt[];
+  /** Wiersz siły sieci z buildera backendu (sekwencja z kontekstem). */
+  readonly kontekst_sily_sieci?: WpisSilyWezla | null;
 }
 
 /** Rekordy oceny wygenerowane przez backend (widok + scenariusze/zapady). */
@@ -398,28 +405,9 @@ export function widokSekwencjiZKontekstemFixture(): WidokSekwencjiFrt {
     ],
     werdykt_sekwencji_pl: 'nie oceniono',
     zalozenia_pl: ZALOZENIA_SEKWENCJI,
-    kontekst_sily_sieci: {
-      bus_ref: 'bus-oze-1',
-      nominal_kv: 15.0,
-      s_sc_mva: 45.0,
-      s_installed_mva: 20.0,
-      scr: 2.25,
-      verdict: 'sieć słaba',
-      is_weak: true,
-      why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
-      missing_data: [],
-      // Kroki śladu 1:1 z backendem (widok siły sieci D1): zapis symboliczny
-      // ASCII + podstawienie i wynik zbudowane po stronie backendu.
-      white_box: [
-        {
-          symbol: 'SCR',
-          formula_latex: 'SCR = S_sc / S_n',
-          substitution_pl: 'SCR = 45,0 / 20,0',
-          result_pl: 'SCR = 2,25',
-        },
-      ],
-      modules: [{ ref: 'gen-oze-1', name: 'Farma wiatrowa 1', sn_mva: 20.0 }],
-    },
+    // Wiersz siły sieci 1:1 z builderem backendu (generuj_fixtury_ocen_fe.py): SCR = 45 / 20,
+    // rekord K „Kryterium naruszone” (SCR 2,25 < próg sieci słabej 3).
+    kontekst_sily_sieci: REKORDY_OCENY_FRT.sekwencja_z_kontekstem.kontekst_sily_sieci ?? null,
     kontekst_sily_sieci_powod_pl: null,
     input_hash: 'seq-hash-z-kontekstem',
   };

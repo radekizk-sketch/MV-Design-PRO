@@ -257,8 +257,13 @@ BACKEND = ROOT / "backend"
 # `analysis/normative/evaluator.py` (3x `float(value.value)` na `float | complex | str`
 # i 1x `observed_value` zespolony) — jedna regula progowa czyta liczbe rzeczywista przez
 # `_liczba`, wartosc zespolona pozycji zapisywana tekstem. Zero nowych.
-BASELINE_ERRORS = 163
-BASELINE_FILES = 20
+# Karta WERDYKT-MIGRACJA-190, domena 6 (2026-10-30): 163/20 -> 161/19. POMIAR `mypy src`
+# (mypy 1.19.1) na WIP `6bc155298` i na drzewie domeny; roznica zbiorow (plik, komunikat):
+# domena minus WIP = 0, WIP minus domena = dokladnie 2 bledy `misc` (generator `float` zamiast
+# `bool`) w `analysis/grid_strength/builder.py` — WSCR liczony z krotek z jawnymi `float`
+# zamiast `sum(...)` z `type: ignore` po wejsciu `float | None`. Zero nowych.
+BASELINE_ERRORS = 161
+BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

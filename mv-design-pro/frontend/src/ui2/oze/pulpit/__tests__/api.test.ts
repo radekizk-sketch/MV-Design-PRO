@@ -31,7 +31,7 @@ describe('pobierzSileSieci', () => {
     const fn = mockFetchOk(silaSieciFixture());
     const widok = await pobierzSileSieci('abc-123');
     expect(fn).toHaveBeenCalledWith('/api/oze-analysis/grid-strength?run_id=abc-123');
-    expect(widok.summary.wscr).toBe(4.5);
+    expect(widok.summary.wscr).toBe(1.875);
     expect(widok.entries).toHaveLength(3);
   });
 });

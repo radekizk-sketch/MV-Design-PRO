@@ -1,0 +1,682 @@
+{
+  "analysis_id": "20c6c3c376b6f6f4f40f5f5f15167f1b9e69ad85c916684c0270d3943939f005",
+  "context": {
+    "case_id": "case-1",
+    "case_name": "Scenariusz 1",
+    "project_name": "Projekt A",
+    "run_id": "run-sc-1",
+    "run_timestamp": "2026-07-16T10:00:00+00:00",
+    "snapshot_hash": "snap-1"
+  },
+  "entries": [
+    {
+      "bus_ref": "bus-pcc-1",
+      "is_weak": false,
+      "missing_data": [],
+      "modules": [
+        {
+          "name": "Blok PV A",
+          "ref": "src-1",
+          "sn_mva": 20.0
+        }
+      ],
+      "nominal_kv": 15.0,
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/grid_strength/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\mathrm{SCR} \\ge \\mathrm{SCR}_{\\text{słaba}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "sila_sieci.scr_wezla",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+            "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "próg sieci słabej"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN przyłączenia A",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "wzgledny": 1.0
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+          "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-pcc-1",
+          "nazwa_pl": "Szyna SN przyłączenia A",
+          "opis_pl": "Węzeł przyłączenia źródeł falownikowych"
+        },
+        "slad": [
+          {
+            "krok": "grid_strength.scr",
+            "opis_pl": "Wywód wskaźnika SCR (wzór, podstawienie, wynik, progi)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+          ],
+          "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia A) — kryterium spełnione. Wskaźnik siły sieci SCR w węźle przyłączenia: 6 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines +3, punkt: Szyna SN przyłączenia A, względnie +100 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN przyłączenia A",
+          "symbol_latex": "\\mathrm{SCR}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 6.0
+          },
+          "wielkosc_pl": "wskaźnik siły sieci SCR w węźle przyłączenia"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu)",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności",
+            "inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego"
+          ]
+        }
+      },
+      "s_installed_mva": 20.0,
+      "s_sc_mva": 120.0,
+      "scr": 6.0,
+      "verdict": "mocna",
+      "white_box": [
+        {
+          "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+          "result_pl": "SCR = 6.0 (–)",
+          "substitution_pl": "SCR = 120.0 MVA / 20.0 MVA",
+          "symbol": "SCR"
+        },
+        {
+          "formula_latex": "\\mathrm{SCR} \\; \\geq \\; 3.0",
+          "result_pl": "sieć mocna",
+          "substitution_pl": "próg słaby = 3.0; próg bardzo słaby = 2.0",
+          "symbol": "werdykt"
+        }
+      ],
+      "why_pl": "SCR = 6.0 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+        ],
+        "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia A) — kryterium spełnione. Wskaźnik siły sieci SCR w węźle przyłączenia: 6 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines +3, punkt: Szyna SN przyłączenia A, względnie +100 % wartości granicznej)."
+      }
+    },
+    {
+      "bus_ref": "bus-pcc-2",
+      "is_weak": true,
+      "missing_data": [],
+      "modules": [
+        {
+          "name": "Magazyn energii 1",
+          "ref": "src-2",
+          "sn_mva": 20.0
+        }
+      ],
+      "nominal_kv": 15.0,
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/grid_strength/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\mathrm{SCR} \\ge \\mathrm{SCR}_{\\text{słaba}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "sila_sieci.scr_wezla",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+            "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "próg sieci słabej"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN przyłączenia B",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -1.5
+          },
+          "wzgledny": -0.5
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+          "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-pcc-2",
+          "nazwa_pl": "Szyna SN przyłączenia B",
+          "opis_pl": "Węzeł przyłączenia źródeł falownikowych"
+        },
+        "slad": [
+          {
+            "krok": "grid_strength.scr",
+            "opis_pl": "Wywód wskaźnika SCR (wzór, podstawienie, wynik, progi)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "wskaźnik siły sieci SCR w węźle przyłączenia nie osiąga wartości granicznej o 1,5 (Szyna SN przyłączenia B)",
+          "zastrzezenia": [
+            "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+          ],
+          "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia B) — kryterium naruszone. Wskaźnik siły sieci SCR w węźle przyłączenia: 1,5 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines −1,5, punkt: Szyna SN przyłączenia B, względnie −50 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN przyłączenia B",
+          "symbol_latex": "\\mathrm{SCR}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.5
+          },
+          "wielkosc_pl": "wskaźnik siły sieci SCR w węźle przyłączenia"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu)",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności",
+            "inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego"
+          ]
+        }
+      },
+      "s_installed_mva": 20.0,
+      "s_sc_mva": 30.0,
+      "scr": 1.5,
+      "verdict": "bardzo słaba",
+      "white_box": [
+        {
+          "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+          "result_pl": "SCR = 1.5 (–)",
+          "substitution_pl": "SCR = 30.0 MVA / 20.0 MVA",
+          "symbol": "SCR"
+        },
+        {
+          "formula_latex": "\\mathrm{SCR} \\; \\lt \\; 3.0",
+          "result_pl": "sieć bardzo słaba",
+          "substitution_pl": "próg słaby = 3.0; próg bardzo słaby = 2.0",
+          "symbol": "werdykt"
+        }
+      ],
+      "why_pl": "SCR = 1.5 < 2.0 — sieć bardzo słaba w węźle. Wysokie ryzyko niestabilności regulatorowej źródeł falownikowych; rozważ tryb grid-forming (GFM/VSM) lub wzmocnienie sieci.",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "wskaźnik siły sieci SCR w węźle przyłączenia nie osiąga wartości granicznej o 1,5 (Szyna SN przyłączenia B)",
+        "zastrzezenia": [
+          "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+        ],
+        "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia B) — kryterium naruszone. Wskaźnik siły sieci SCR w węźle przyłączenia: 1,5 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines −1,5, punkt: Szyna SN przyłączenia B, względnie −50 % wartości granicznej)."
+      }
+    },
+    {
+      "bus_ref": "bus-pcc-3",
+      "is_weak": false,
+      "missing_data": [
+        "s_sc_mva"
+      ],
+      "modules": [
+        {
+          "name": null,
+          "ref": "src-3",
+          "sn_mva": 20.0
+        }
+      ],
+      "nominal_kv": null,
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/grid_strength/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\mathrm{SCR} \\ge \\mathrm{SCR}_{\\text{słaba}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "sila_sieci.scr_wezla",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+            "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 3.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "próg sieci słabej"
+        },
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+          "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-pcc-3",
+          "nazwa_pl": "Szyna SN przyłączenia C",
+          "opis_pl": "Węzeł przyłączenia źródeł falownikowych"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia)"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia))",
+          "zastrzezenia": [
+            "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+          ],
+          "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia C) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu)",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności",
+            "inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego"
+          ]
+        }
+      },
+      "s_installed_mva": 20.0,
+      "s_sc_mva": null,
+      "scr": null,
+      "verdict": "brak danych",
+      "white_box": [],
+      "why_pl": "Dane niekompletne — brak: moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia). SCR wymaga dodatniej mocy zwarciowej S_sc'' (z solvera IEC 60909 w węźle) oraz mocy zainstalowanej źródeł S_n.",
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia)"
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia))",
+        "zastrzezenia": [
+          "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+        ],
+        "zdanie_pl": "Stosunek mocy zwarciowej węzła do mocy zainstalowanej źródeł falownikowych nie mniejszy od progu sieci słabej (Szyna SN przyłączenia C) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (moc zwarciowa S_sc'' węzła z biegu zwarciowego IEC 60909 (brak albo niedodatnia)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      }
+    }
+  ],
+  "summary": {
+    "not_computed_count": 1,
+    "total_buses": 3,
+    "weak_bus_count": 1,
+    "wscr": 1.875,
+    "wscr_ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "analysis/grid_strength/builder.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium naruszone",
+        "semantyka": "negatywna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Ważony wskaźnik siły sieci zbioru źródeł falownikowych nie mniejszy od progu sieci słabej",
+        "relacja": "NIE_MNIEJ",
+        "warunek_latex": "\\mathrm{WSCR} \\ge \\mathrm{WSCR}_{\\text{słaba}}",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "sila_sieci.wscr",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+          "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 3.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "próg sieci słabej"
+      },
+      "margines": {
+        "definicja_latex": "m = x - x_{\\lim}",
+        "niedefiniowalny": false,
+        "powod_pl": null,
+        "punkt_pl": "Źródła falownikowe sieci",
+        "skala": {
+          "jednostka": "1",
+          "wartosc": 3.0
+        },
+        "skala_rodzaj": "LIMIT",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": -1.125
+        },
+        "wzgledny": -0.375
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR",
+        "jednostka_redakcyjna": "klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "klasyfikacja przewodnika IEEE dla łączy prądu stałego przeniesiona na źródła falownikowe jako założenie inżynierskie programu; progi parametryzowalne w analizie",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Źródła falownikowe sieci",
+        "opis_pl": "Zbiór węzłów przyłączenia źródeł falownikowych z kompletem danych"
+      },
+      "slad": [
+        {
+          "krok": "grid_strength.wscr",
+          "opis_pl": "Wywód wskaźnika WSCR (wzór, podstawienie, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "status_maszynowy": "NIE_SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "ważony wskaźnik siły sieci WSCR zbioru źródeł nie osiąga wartości granicznej o 1,125 (Źródła falownikowe sieci)",
+        "zastrzezenia": [
+          "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+        ],
+        "zdanie_pl": "Ważony wskaźnik siły sieci zbioru źródeł falownikowych nie mniejszy od progu sieci słabej (Źródła falownikowe sieci) — kryterium naruszone. Ważony wskaźnik siły sieci WSCR zbioru źródeł: 1,875 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines −1,125, punkt: Źródła falownikowe sieci, względnie −37,5 % wartości granicznej)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "OBLICZENIE",
+        "punkt_krytyczny_pl": "Źródła falownikowe sieci",
+        "symbol_latex": "\\mathrm{WSCR}",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 1.875
+        },
+        "wielkosc_pl": "ważony wskaźnik siły sieci WSCR zbioru źródeł"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu)",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "SHORT_CIRCUIT",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności",
+          "inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego"
+        ]
+      }
+    },
+    "wscr_verdict": "bardzo słaba",
+    "wscr_white_box": [
+      {
+        "formula_latex": "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
+        "result_pl": "WSCR = 1.875 (–), n = 2",
+        "substitution_pl": "licznik Σ(S_sc·S_n) = 3000.0 MVA²; (Σ S_n)² = 1600.0 MVA²",
+        "symbol": "WSCR"
+      }
+    ],
+    "wscr_why_pl": "WSCR = 1.875 dla 2 źródeł — sieć bardzo słaba. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).",
+    "wscr_wyjasnienie": {
+      "czego_brakuje": [],
+      "przyczyna_pl": "ważony wskaźnik siły sieci WSCR zbioru źródeł nie osiąga wartości granicznej o 1,125 (Źródła falownikowe sieci)",
+      "zastrzezenia": [
+        "Podstawa „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR”, wydanie bieżący stan programu, klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Moc zwarciowa S_sc'' w węźle z biegu zwarciowego IEC 60909 wobec mocy zainstalowanej źródeł falownikowych przyłączonych do węzła (stan modelu biegu) — wynik nie obejmuje: stabilność dynamiczna regulatorów i interakcje źródeł — SCR jest wskaźnikiem przesiewowym, nie analizą stabilności; inne konfiguracje sieci niż zapisana w modelu biegu zwarciowego."
+      ],
+      "zdanie_pl": "Ważony wskaźnik siły sieci zbioru źródeł falownikowych nie mniejszy od progu sieci słabej (Źródła falownikowe sieci) — kryterium naruszone. Ważony wskaźnik siły sieci WSCR zbioru źródeł: 1,875 wobec wymaganych ≥ 3 wg klasyfikacja siły sieci: SCR ≥ 3 — sieć mocna, 2 ≤ SCR < 3 — słaba, SCR < 2 — bardzo słaba „IEEE Std 1204-1997 (Guide for Planning DC Links Terminating at AC Locations Having Low Short-Circuit Capacities); CIGRE TB 671 (źródła falownikowe w sieci słabej); metodyka ERCOT dla WSCR” (margines −1,125, punkt: Źródła falownikowe sieci, względnie −37,5 % wartości granicznej)."
+    }
+  },
+  "very_weak_threshold": 2.0,
+  "weak_threshold": 3.0
+}

@@ -18,10 +18,13 @@ Uruchomienie (z katalogu ``backend/``):
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
+from analysis.grid_strength.builder import GridStrengthBuilder
+from analysis.grid_strength.models import BusSourceModule, BusStrengthInput, GridStrengthContext
 from analysis.energy_validation.models import EnergyCheckType
 from analysis.energy_validation.serializer import item_to_dict
 from analysis.normative.models import NormativeConfig
@@ -86,14 +89,35 @@ def _frt() -> dict[str, Any]:
             "widok": widok["ocena"],
             "scenariusze": [sc["ocena"] for sc in widok["scenariusze"]],
         }
-    for nazwa, zapady in (
-        ("sekwencja_bez_kontekstu", _SEKWENCJA_BEZ_KONTEKSTU),
-        ("sekwencja_z_kontekstem", _SEKWENCJA_Z_KONTEKSTEM),
+    # Kontekst siły sieci sekwencji: wiersz widoku SCR z buildera siły sieci (ten sam, którym
+    # końcówka sekwencji FRT go dostaje) — węzeł słaby SCR = 45 / 20 = 2,25 < 3.
+    wiersz_sily = (
+        GridStrengthBuilder()
+        .build(
+            [
+                BusStrengthInput(
+                    bus_ref="bus-oze-1",
+                    nominal_kv=15.0,
+                    s_sc_mva=45.0,
+                    s_installed_mva=20.0,
+                    modules=(
+                        BusSourceModule(ref="gen-oze-1", name="Farma wiatrowa 1", sn_mva=20.0),
+                    ),
+                    nazwa_pl="Szyna SN farmy wiatrowej",
+                )
+            ]
+        )
+        .to_dict()["entries"][0]
+    )
+    for nazwa, zapady, kontekst in (
+        ("sekwencja_bez_kontekstu", _SEKWENCJA_BEZ_KONTEKSTU, None),
+        ("sekwencja_z_kontekstem", _SEKWENCJA_Z_KONTEKSTEM, wiersz_sily),
     ):
-        widok = build_frt_sekwencja_view(converter, profile, zapady)
+        widok = build_frt_sekwencja_view(converter, profile, zapady, grid_strength_row=kontekst)
         wynik[nazwa] = {
             "widok": widok["ocena"],
             "zapady": [zapad["ocena"] for zapad in widok["zapady"]],
+            "kontekst_sily_sieci": widok["kontekst_sily_sieci"],
         }
     return wynik
 
@@ -458,6 +482,47 @@ def _akademickie() -> dict[str, Any]:
     }
 
 
+def _sila_sieci() -> dict[str, Any]:
+    """Widok siły sieci (``analysis/grid_strength/serializer.view_to_dict`` — TEN SAM builder co
+    końcówka ``GET /api/oze-analysis/grid-strength``) dla pulpitu OZE: węzeł mocny, węzeł
+    bardzo słaby (SCR 1,5 < 2), węzeł bez mocy zwarciowej; WSCR z dwóch węzłów kompletnych."""
+    wejscia = [
+        BusStrengthInput(
+            bus_ref="bus-pcc-1",
+            nominal_kv=15.0,
+            s_sc_mva=120.0,
+            s_installed_mva=20.0,
+            modules=(BusSourceModule(ref="src-1", name="Blok PV A", sn_mva=20.0),),
+            nazwa_pl="Szyna SN przyłączenia A",
+        ),
+        BusStrengthInput(
+            bus_ref="bus-pcc-2",
+            nominal_kv=15.0,
+            s_sc_mva=30.0,
+            s_installed_mva=20.0,
+            modules=(BusSourceModule(ref="src-2", name="Magazyn energii 1", sn_mva=20.0),),
+            nazwa_pl="Szyna SN przyłączenia B",
+        ),
+        BusStrengthInput(
+            bus_ref="bus-pcc-3",
+            nominal_kv=None,
+            s_sc_mva=None,
+            s_installed_mva=20.0,
+            modules=(BusSourceModule(ref="src-3", name=None, sn_mva=20.0),),
+            nazwa_pl="Szyna SN przyłączenia C",
+        ),
+    ]
+    kontekst = GridStrengthContext(
+        project_name="Projekt A",
+        case_name="Scenariusz 1",
+        case_id="case-1",
+        run_timestamp=datetime(2026, 7, 16, 10, 0, tzinfo=UTC),
+        snapshot_hash="snap-1",
+        run_id="run-sc-1",
+    )
+    return GridStrengthBuilder().build(wejscia, context=kontekst).to_dict()
+
+
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
@@ -488,6 +553,7 @@ FIXTURY: dict[Path, Any] = {
     / "wrazliwosc"
     / "__tests__"
     / "wrazliwoscOgolna.json": _wrazliwosc_ogolna,
+    _FRONTEND_SRC / "ui2" / "oze" / "pulpit" / "__tests__" / "widokSilySieci.json": _sila_sieci,
 }
 
 

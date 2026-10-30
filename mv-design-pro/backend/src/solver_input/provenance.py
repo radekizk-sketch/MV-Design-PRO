@@ -471,6 +471,18 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             ),
         ),
         CapabilityEvidence(
+            capability_id="sila_sieci.scr_wscr",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Siła sieci SCR/WSCR: iloraz mocy zwarciowej S_sc'' węzła z biegu zwarciowego "
+                "IEC 60909 i mocy zainstalowanej źródeł falownikowych z modelu, porównany "
+                "z progiem sieci słabej. Wskaźnik przesiewowy obliczony statycznie na modelu "
+                "niezwalidowanym pomiarem — nie analiza stabilności ani dowód regulacyjny."
+            ),
+            audit_ref="analysis/grid_strength/builder.py; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="wrazliwosc.zapas_kryterium",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

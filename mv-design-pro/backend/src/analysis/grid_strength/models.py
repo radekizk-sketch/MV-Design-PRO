@@ -27,6 +27,7 @@ from datetime import datetime
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from werdykt import DanaPrzyjeta, OcenaKryterium, WyjasnienieWerdyktu
 
 # Domyślne progi klasyfikacji siły sieci (parametryzowalne w builderze).
 DEFAULT_WEAK_THRESHOLD = 3.0  # SCR < 3  → sieć słaba (ostrzeżenie, §8C.4)
@@ -90,6 +91,12 @@ class BusStrengthInput:
     s_sc_mva: float | None
     s_installed_mva: float | None
     modules: tuple[BusSourceModule, ...] = ()
+    #: Nazwa węzła z modelu (przedmiot rekordu werdyktu); ``None`` — opis rodzaju „Szyna bez
+    #: nazwy”, nigdy identyfikator.
+    nazwa_pl: str | None = None
+    #: Dane przyjęte gałęzi, na których stoi S_sc'' węzła (kontrakt werdyktu §3) — dowód
+    #: rekordu ma wtedy kompletność ``NIEPELNY``.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -109,11 +116,16 @@ class BusStrengthEntry:
     s_sc_mva: float | None
     s_installed_mva: float | None
     scr: float | None
+    #: Klasa siły sieci — PROJEKCJA rekordu ``ocena`` (``analysis.grid_strength.oceny``).
     verdict: str
+    #: Sieć słaba ⇔ rekord ``NIE_SPELNIA`` (projekcja).
     is_weak: bool
     why_pl: str
     missing_data: tuple[str, ...]
     white_box: tuple[WhiteBoxStep, ...]
+    #: Rekord K wskaźnika SCR węzła wobec progu sieci słabej.
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     modules: tuple[BusSourceModule, ...] = ()
 
 
@@ -123,9 +135,13 @@ class GridStrengthSummary:
     weak_bus_count: int
     not_computed_count: int
     wscr: float | None
+    #: Klasa siły sieci zbioru źródeł — PROJEKCJA rekordu ``wscr_ocena``.
     wscr_verdict: str
     wscr_why_pl: str
     wscr_white_box: tuple[WhiteBoxStep, ...]
+    #: Rekord K wskaźnika WSCR wobec progu sieci słabej.
+    wscr_ocena: OcenaKryterium
+    wscr_wyjasnienie: WyjasnienieWerdyktu
 
 
 @dataclass(frozen=True)

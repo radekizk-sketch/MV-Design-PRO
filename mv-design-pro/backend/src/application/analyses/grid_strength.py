@@ -30,12 +30,17 @@ from analysis.grid_strength.models import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
-from enm.dane_przyjete_galezi import pola_danych_przyjetych_wiersza
+from enm.dane_przyjete_galezi import (
+    dane_przyjete_galezi_wiersza,
+    pola_danych_przyjetych_wiersza,
+)
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyna_raportowa
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
+from werdykt import DanaPrzyjeta
 
 # Źródła falownikowe (Inverter-Based Generation) — SCR dotyczy punktu przyłączenia
 # źródeł energoelektronicznych; zbiór = kanoniczny `GEN_TYPES_PRZEKSZTALTNIKOWE`
@@ -182,6 +187,27 @@ def _dane_przyjete_by_bus(run: CanonicalRun) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _rekordy_danych_przyjetych_by_bus(run: CanonicalRun) -> dict[str, tuple[DanaPrzyjeta, ...]]:
+    """Dane przyjęte S_sc'' per węzeł jako rekordy dowodu werdyktu — z TEGO SAMEGO wiersza
+    zwarciowego co pola ``_dane_przyjete_by_bus`` (jedno źródło)."""
+    out: dict[str, tuple[DanaPrzyjeta, ...]] = {}
+    for row in build_short_circuit_results(run).get("rows", []):
+        bus_ref = row.get("element_id")
+        dane = dane_przyjete_galezi_wiersza(row)
+        if isinstance(bus_ref, str) and dane:
+            out[bus_ref] = tuple(dane)
+    return out
+
+
+def _nazwy_wezlow(snapshot: dict[str, Any]) -> dict[str, str]:
+    """Nazwa węzła z modelu (albo opis rodzaju) per ``ref_id`` — przedmiot rekordu werdyktu."""
+    return {
+        str(bus["ref_id"]): nazwa_elementu(bus, "buses")
+        for bus in snapshot.get("buses") or []
+        if isinstance(bus, dict) and isinstance(bus.get("ref_id"), str)
+    }
+
+
 def _nominal_kv_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
     out: dict[str, float | None] = {}
     for bus in snapshot.get("buses") or []:
@@ -233,6 +259,8 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
     sk_by_bus = _sk_mva_by_bus(run)
     kv_by_bus = _nominal_kv_by_bus(snapshot)
     modules_by_bus = _modules_by_bus(snapshot)
+    nazwy = _nazwy_wezlow(snapshot)
+    dane_rekordow = _rekordy_danych_przyjetych_by_bus(run)
 
     inputs = [
         BusStrengthInput(
@@ -246,6 +274,8 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
             # mocą zainstalowaną — przekazanie wprost, bez własnej translacji.
             s_installed_mva=installed,
             modules=modules_by_bus.get(bus_ref, ()),
+            nazwa_pl=nazwy.get(bus_ref),
+            dane_przyjete=dane_rekordow.get(szyna_raportowa(snapshot, bus_ref), ()),
         )
         for bus_ref, installed in installed_by_bus.items()
     ]
@@ -255,5 +285,7 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
     # gałęzi (linia 110 kV z wartością roboczą geometrii) — pozycja niesie ją addytywnie.
     dane_by_bus = _dane_przyjete_by_bus(run)
     for entry in view.get("entries") or []:
-        entry.update(dane_by_bus.get(str(entry.get("bus_ref")), {}))
+        # Ten sam węzeł raportowy co S_sc'' wejścia (zacisk pola → szyna pola) — pola danych
+        # przyjętych i moc zwarciowa z JEDNEGO wiersza (predykaty parami).
+        entry.update(dane_by_bus.get(szyna_raportowa(snapshot, str(entry.get("bus_ref"))), {}))
     return view
