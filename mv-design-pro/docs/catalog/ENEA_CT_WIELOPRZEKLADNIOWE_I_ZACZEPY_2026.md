@@ -72,7 +72,29 @@ zawiera `primary_reconnection_supported=true`,
 **Nie oznacza to**, że zamawialny CTS 25 zawsze ma zakres 200–400/5 A.
 Jest to właściwość rodziny, nie zweryfikowana karta jednej konfiguracji.
 
-## 4. Zachowanie zgodności starych projektów
+## 4. ABB KOKM 1 — 17 konfiguracji do pomiaru FAZOWEGO na kablu SN
+
+Z oryginalnego [katalogu ABB — przekładniki prądowe kablowe, tabele 1–2,
+s. 4–5](https://library.e.abb.com/public/9ec0e942183d4a40b26153d12e58476e/ABB-przekladniki%20nn_PL_noweA%28217B%29_05.03.pdf)
+dodano 17 konfiguracyjnych rekordów KOKM 1, z przypisaniem:
+przekładnia I1/I2, klasa (pomiarowa 0,5 lub zabezpieczeniowa 5P/10P),
+VA, średnica okna 42–85 mm i Ith według reguły producenta 60×I1
+(maks. 100 kA, 1 s). **To potwierdzone przykłady konfiguracji z archiwalnego
+katalogu, nie aktualne w 2026 kody zamówieniowe.**
+
+KOKM 1 to CT **prądu fazowego**, przez którego okno przechodzi jeden
+kabel fazowy (lub szyna). Izolacja samego CT ma Um=1,2 kV, a przy
+kablu SN izolację wymaganą dla napięcia sieci zapewnia kabel.
+**Nie należy stosować KOKM jako Ferrantiego do 3I0**.
+Z tego samego katalogu ABB KOLMA/KOLA przeznaczone są do pomiaru
+prądu składowej zerowej — nie są w tej rodzinie KOKM.
+
+Ważne dla ENEA: wyroby KOKM z tabeli mają klasy 0,5 lub 5P/10P.
+Nie są automatycznie zgodne z wymaganym w nowych układach rozliczeniowych
+0,2S FS≤5. Do doboru takiego układu potrzebna jest inna,
+ściśle potwierdzona konfiguracja producenta.
+
+## 5. Zachowanie zgodności starych projektów
 
 Historyczne profile ENEA 200/5, 400/5, 50/5 i 100/5 A pozostały z
 TYMI SAMYMI ID. Ich nazwy i `verification_note` otrzymały informację
@@ -80,7 +102,7 @@ TYMI SAMYMI ID. Ich nazwy i `verification_note` otrzymały informację
 profile wieloprzekładniowe. Nie wykonujemy automatycznej migracji
 aktywnych nastaw ani zmiany topologii istniejących projektów.
 
-## 5. Testy / Ubuntu
+## 6. Testy / Ubuntu
 
 ```bash
 cd mv-design-pro
@@ -89,7 +111,7 @@ PYTHONPATH=backend/src:backend pytest -q \
     backend/tests/network_model/catalog/test_enea_ct_multirange_catalog.py
 ```
 
-Sprawdzane: 13 + 3 profile, unikalność ID, poprawność rdzeni i izolacji,
+Sprawdzane: 13 + 3 profile ENEA + 17 ABB KOKM, unikalność ID, poprawność rdzeni i izolacji,
 przeniesienie `primary_taps_a` przez `CTType.from_dict().to_dict()`,
 zachowanie starszych ID, zgodność nazwy z wymaganiem ENEA,
 brak niepotwierdzonej konfiguracji 200–400/5 jako fikcyjnego wyrobu KPB.
