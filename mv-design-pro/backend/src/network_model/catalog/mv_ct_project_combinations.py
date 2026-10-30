@@ -26,8 +26,8 @@ PROTECTION = (("5P10", 10.0), ("5P20", 15.0))
 def get_ct_project_combination_templates() -> list[dict[str, Any]]:
     """78 kombinacji SN i 30 nN: 1 rdzeń pomiarowy + 1 EAZ.
 
-    13 prądów × 3 klasy pomiaru × 2 warianty EAZ = 78; ponieważ
-    zakresy SN i nN są niezależne, rzeczywista liczba to 48 SN + 30 nN.
+    8 prądów SN × 3 klasy × 2 warianty EAZ = 48 SN;
+    5 prądów nN × 3 klasy × 2 warianty EAZ = 30 nN.
     """
     result: list[dict[str, Any]] = []
     for domain, primaries in (("sn", SN_PRIMARY), ("nn", LV_PRIMARY)):
