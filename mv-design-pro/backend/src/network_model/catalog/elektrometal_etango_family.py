@@ -15,7 +15,7 @@ from typing import Any
 
 # Dane celowo proste, bez nowego modelu domenowego ani nowej tabeli SQL.
 # Źródła: oficjalne strony i karty Elektrometal Energetyka.
-_FAMILY: tuple[dict[str, Any], ...] = [
+_FAMILY: list[dict[str, Any]] = [
   {
     "id": "EM_E2TANGO_50",
     "model": "e²TANGO-50",
