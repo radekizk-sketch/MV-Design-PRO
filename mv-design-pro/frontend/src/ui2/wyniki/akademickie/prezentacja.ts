@@ -13,9 +13,10 @@
  * (`backend/src/network_model/solvers/v126_academic.py`) i kontraktu
  * `V126AnalysisType` — nie z wygody UI.
  *
- * ZERO FIZYKI I ZERO OCEN (CLAUDE.md): werdykt jest CYTATEM pola statusu
- * z odpowiedzi solvera (`odczytaj` + `mapaWerdyktu`), nigdy porównaniem liczb
- * w UI. Tekst kryterium jest OPISEM reguły, którą stosuje solver — służy
+ * ZERO FIZYKI I ZERO OCEN (CLAUDE.md): werdykt jest REKORDEM WERDYKTU WYJAŚNIALNEGO
+ * z odpowiedzi backendu (`OcenaKryterium` / `WynikWymagania` pod kluczem `oceny`,
+ * kontrakt `docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`) renderowanym kartą
+ * `KartaWerdyktu`, nigdy porównaniem liczb w UI ani mapą „status → tekst". Tekst kryterium jest OPISEM reguły, którą stosuje solver — służy
  * projektantowi do zrozumienia werdyktu, a nie do jego wyliczenia. Tam, gdzie
  * solver zwraca wartość dopuszczalną (np. `u_touch_allowable_v`), pokazujemy ją
  * jako wartość odniesienia obok wielkości — także wprost z odpowiedzi.
@@ -80,49 +81,15 @@ export type MapaWerdyktu = Readonly<
 >;
 
 /**
- * Werdykt pojedynczy — pole statusu w ładunku wyniku.
- *
- * `sciezki` jest LISTĄ, bo jeden rodzaj analizy potrafi wystawić werdykt pod
- * różnymi kluczami w zależności od kompletności danych: dobór uziemienia punktu
- * neutralnego melduje `tuning_status` po udanym doborze, a `status`
- * („dane niekompletne") gdy brakuje susceptancji doziemnej gałęzi. Pierwsza
- * OBECNA ścieżka wygrywa — okno nie zgaduje i nie podstawia werdyktu.
+ * Stan pojedynczy — pole statusu w ładunku wyniku, które NIE jest werdyktem zgodności
+ * (dziś: pasmo wiarygodności `sanity.status` niezawodności — kontrola pasma fizycznie
+ * możliwego, nie ocena projektu wobec normy). Pierwsza OBECNA ścieżka wygrywa — okno nie
+ * zgaduje i nie podstawia stanu.
  */
 export interface WerdyktPojedynczy {
   readonly rodzaj: 'pojedynczy';
   readonly sciezki: readonly string[];
   readonly mapa: MapaWerdyktu;
-  /**
-   * Wynik złożony z WYNIKÓW SKŁADOWYCH (np. projekt uziemienia modelu z kilkoma
-   * galwanicznie połączonymi sieciami SN — każda z własnym punktem neutralnym): gdy
-   * ładunek niesie tę tablicę, okno czyta status pod `sciezki` w KAŻDYM elemencie i
-   * zlicza elementy z wpisem istotności „ok" w `mapa` (jak werdykt zbiorczy). Element
-   * ze statusem spoza mapy → brak oceny całości (okno nie zgaduje). Agregat nie zastępuje
-   * wyników składowych — niesie je tabela tej samej tablicy.
-   */
-  readonly skladowe?: {
-    readonly sciezkaTablicy: string;
-    /** Rzeczownik obiektów w dopełniaczu mnogim, np. „sieci SN". */
-    readonly obiektyDopelniacz: string;
-  };
-}
-
-/**
- * Werdykt zbiorczy — status jest POWTÓRZONY w każdym elemencie tablicy
- * (np. status zgodności per węzeł). Okno NIE liczy tu fizyki: zlicza wystąpienia
- * wartości statusu, tak jak licznik wierszy tabeli.
- */
-export interface WerdyktZbiorczy {
-  readonly rodzaj: 'zbiorczy';
-  /** Ścieżka tablicy obiektów. */
-  readonly sciezkaTablicy: string;
-  /** Klucz pola statusu wewnątrz elementu tablicy. */
-  readonly kluczStatusu: string;
-  readonly mapa: MapaWerdyktu;
-  /** Wartość statusu uznawana za spełnienie kryterium (do zdania zbiorczego). */
-  readonly wartoscSpelniona: string;
-  /** Rzeczownik obiektów w dopełniaczu mnogim, np. „węzłów", „aparatów". */
-  readonly obiektyDopelniacz: string;
 }
 
 /** Werdykt liczbowy — wielkość wynikowa BEZ progu normatywnego w solverze. */
@@ -141,7 +108,19 @@ export interface WerdyktOceny {
   readonly sciezka: string;
 }
 
-export type WerdyktRodzaju = WerdyktPojedynczy | WerdyktZbiorczy | WerdyktLiczbowy | WerdyktOceny;
+/**
+ * Rekordy werdyktu wyjaśnialnego — tablica `OcenaKryterium` / `WynikWymagania` pod wskazaną
+ * ścieżką (granica `application/v126_artifacts.py::wynik_v126_dla_powierzchni`, kryteria
+ * z rejestru założeń `application/analyses/v126_oceny.py`). Panel renderuje KAŻDY rekord
+ * kartą `KartaWerdyktu` — co oceniono, kryterium, wynik z jednostką, limit z podstawą,
+ * margines, wyjaśnienie, dowód i zakres ważności; agregat nie zastępuje składowych.
+ */
+export interface WerdyktRekordow {
+  readonly rodzaj: 'rekordy';
+  readonly sciezka: string;
+}
+
+export type WerdyktRodzaju = WerdyktPojedynczy | WerdyktLiczbowy | WerdyktOceny | WerdyktRekordow;
 
 /** Wielkość główna ekranu — liczba z jednostką i (gdy solver ją zwraca) odniesieniem. */
 export interface WielkoscGlowna {
@@ -244,22 +223,6 @@ export interface PrezentacjaRodzaju {
 // Wspólne mapy werdyktów (słownictwo statusów solvera V12.6)
 // ---------------------------------------------------------------------------
 
-const ZGODNY: MapaWerdyktu = {
-  zgodny: { tekst: 'spełnione', istotnosc: 'ok' },
-  niezgodny: { tekst: 'niespełnione', istotnosc: 'err' },
-};
-
-const SPELNIONY: MapaWerdyktu = {
-  spelniony: { tekst: 'spełnione', istotnosc: 'ok' },
-  niespelniony: { tekst: 'niespełnione', istotnosc: 'err' },
-};
-
-/** Koordynacja izolacji: miejsce z U_m powyżej tabeli IEC 60071-1 solvera — brak podstawy. */
-const SPELNIONY_IZOLACJI: MapaWerdyktu = {
-  ...SPELNIONY,
-  brak_podstawy: { tekst: 'brak podstawy poziomu izolacji', istotnosc: 'neutral' },
-};
-
 /** Tryb doziemienia sieci (`network_model.core.uziemienie.TrybDoziemienia`) po polsku. */
 const TRYB_DOZIEMIENIA_IZOLACJI: MapaWerdyktu = {
   izolowany: { tekst: 'izolowany', istotnosc: 'neutral' },
@@ -271,14 +234,6 @@ const TRYB_DOZIEMIENIA_IZOLACJI: MapaWerdyktu = {
 const CZAS_DOZIEMIENIA_IZOLACJI: MapaWerdyktu = {
   dlugotrwale: { tekst: 'długotrwale', istotnosc: 'neutral' },
   do_wylaczenia: { tekst: 'do wyłączenia (≤ 10 s)', istotnosc: 'neutral' },
-};
-
-/**
- * Status węzła w sekcji audytowej jakości energii — `NIE_OCENIONO` (dawniej „zgodny"
- * nawet dla szyny bez danych). Jedyna etykieta: „Ocena niewykonana", kolor neutralny.
- */
-const OCENA_NIEWYKONANA_STATUS: MapaWerdyktu = {
-  NIE_OCENIONO: { tekst: 'Ocena niewykonana', istotnosc: 'neutral' },
 };
 
 /**
@@ -312,17 +267,6 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
  * (`prezentowane + nieprezentowane = komplet`) pilnuje
  * `backend/tests/ci/test_v126_rodzaje_parytet.py`.
  */
-/** Mapa statusów doboru uziemienia punktu neutralnego — JEDNA dla werdyktu całości
- *  i dla kolumny dostrojenia w tabeli sieci SN (te same wartości `tuning_status`). */
-const MAPA_DOBORU_UZIEMIENIA: MapaWerdyktu = {
-  dostrojony: { tekst: 'dławik dostrojony — prąd resztkowy w granicy', istotnosc: 'ok' },
-  rozstrojony_poza_10pct: {
-    tekst: 'prąd resztkowy powyżej 10 % prądu pojemnościowego',
-    istotnosc: 'err',
-  },
-  'dane niekompletne': { tekst: 'dane niekompletne — dobór niewykonany', istotnosc: 'warn' },
-};
-
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
@@ -346,11 +290,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             { klucz: 'thd_u_percent', etykieta: 'Odkształcenie napięcia THD_U', jednostka: '%' },
             { klucz: 'tdd_percent', etykieta: 'Odkształcenie prądu TDD', jednostka: '%' },
             { klucz: 'k_factor', etykieta: 'Współczynnik K (obciążenie transformatora)' },
-            {
-              klucz: 'compatibility_status',
-              etykieta: 'Kompatybilność',
-              mapaStatusu: OCENA_NIEWYKONANA_STATUS,
-            },
           ],
         },
       ],
@@ -453,30 +392,10 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earthing_safety: {
-    // Karta V12.7 §0.7: werdykt nazywa KRYTERIUM sprawdzone przez solver
-    // (napięcia rażenia dotykowego i krokowego), NIE cały uziom stacji —
-    // solver nie ocenia korozji, połączeń wyrównawczych ani konserwacji, więc
-    // „uziom (nie)bezpieczny" byłby werdyktem szerszym niż zakres (poprzedni
-    // tekst — ocena właściciela: fałszywe rozszerzenie na cały obiekt).
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['safety_status'],
-      mapa: {
-        bezpieczny: {
-          tekst: 'spełnia kryteria dopuszczalnych napięć rażenia (dotykowego i krokowego)',
-          istotnosc: 'ok',
-        },
-        wymaga_ochrony: {
-          tekst:
-            'przekracza kryteria napięć rażenia do 25 % — wymagane środki ochrony dodatkowej',
-          istotnosc: 'warn',
-        },
-        niezgodny: {
-          tekst: 'nie spełnia kryteriów dopuszczalnych napięć rażenia (dotykowego lub krokowego)',
-          istotnosc: 'err',
-        },
-      },
-    },
+    // Werdykt = rekord wymagania „bezpieczeństwo uziomu" z dwiema ocenami składowymi
+    // (napięcie dotykowe i krokowe, IEEE 80) — nazywa KRYTERIUM, nie cały uziom stacji
+    // (karta V12.7 §0.7: korozja, połączenia wyrównawcze i konserwacja poza zakresem).
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [
       {
         sciezka: 'u_touch_calculated_v',
@@ -506,14 +425,9 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   insulation_coordination: {
-    werdykt: {
-      rodzaj: 'zbiorczy',
-      sciezkaTablicy: 'arresters',
-      kluczStatusu: 'verification_status',
-      mapa: SPELNIONY_IZOLACJI,
-      wartoscSpelniona: 'spelniony',
-      obiektyDopelniacz: 'miejsc zainstalowania ograniczników',
-    },
+    // Werdykt = rekord wymagania na KAŻDE miejsce zainstalowania (napięcie trwałej pracy,
+    // przepięcie dorywcze, margines ochrony izolacji jako oceny składowe).
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [],
     tabele: [
       {
@@ -554,12 +468,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             jednostka: 'kV',
           },
           { klucz: 'bil_margin_percent', etykieta: 'Margines ochrony izolacji', jednostka: '%' },
-          {
-            klucz: 'verification_status',
-            etykieta: 'Margines ≥ 20 %, napięcie pracy i przepięcie dorywcze',
-            mapaStatusu: SPELNIONY_IZOLACJI,
-          },
-          { klucz: 'uzasadnienie_pl', etykieta: 'Uzasadnienie oceny (kryteria, wartości, podstawa)' },
         ],
       },
     ],
@@ -570,17 +478,9 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earth_fault_detection: {
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['relay_support_status'],
-      mapa: {
-        spelniony: { tekst: 'przekaźnik obsługuje zalecaną metodę', istotnosc: 'ok' },
-        brak_w_przekazniku: {
-          tekst: 'zalecanej metody brak w przekaźniku',
-          istotnosc: 'err',
-        },
-      },
-    },
+    // Werdykt = rekord „funkcje przekaźnika wymagane przez metodę zalecaną" — z deklaracji
+    // funkcji przekaźnika (parametr biegu); bez niej ocena niewykonana, nie „spełnia".
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [
       { sciezka: 'neutral_grounding', etykieta: 'Sposób uziemienia punktu neutralnego' },
       { sciezka: 'recommended_method', etykieta: 'Metoda zalecana' },
@@ -607,26 +507,15 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   transient_trv: {
-    // Karta V12.7 §0.7/§2: werdykt nazywa KRYTERIUM (margines napięcia
-    // powrotnego), nie samo „spełnione/niespełnione" bez wskazania czego —
-    // ta ścieżka jest werdyktem POJEDYNCZYM (nie kolumną tabeli z nagłówkiem
-    // dającym kontekst), więc tekst musi nieść kryterium wprost.
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['trv_status'],
-      mapa: {
-        spelniony: { tekst: 'spełnia kryterium marginesu napięcia powrotnego', istotnosc: 'ok' },
-        niespelniony: {
-          tekst: 'nie spełnia kryterium marginesu napięcia powrotnego',
-          istotnosc: 'err',
-        },
-      },
-    },
+    // Werdykt = rekord obwiedni napięcia powrotnego: program nie niesie obwiedni TRV
+    // IEC 62271-100 (tablic wartości znamionowych) — rekord BRAK_PODSTAWY nazywa lukę;
+    // szczyt napięcia powrotnego obwodu jest wielkością wynikową bez oceny.
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [
       {
-        sciezka: 'trv_margin_percent',
-        etykieta: 'Najmniejszy margines napięcia powrotnego',
-        jednostka: '%',
+        sciezka: 'trv_peak_kv',
+        etykieta: 'Szczyt napięcia powrotnego obwodu',
+        jednostka: 'kV',
       },
       {
         sciezka: 'inrush.peak_multiple_in',
@@ -653,14 +542,9 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   motor_starting: {
-    werdykt: {
-      rodzaj: 'zbiorczy',
-      sciezkaTablicy: 'motors',
-      kluczStatusu: 'verification_status',
-      mapa: ZGODNY,
-      wartoscSpelniona: 'zgodny',
-      obiektyDopelniacz: 'silników',
-    },
+    // Werdykt = rekord wymagania na KAŻDY silnik (zapad napięcia, czas rozruchu względem
+    // czasu utyku, zapas momentu jako oceny składowe).
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [],
     tabele: [
       {
@@ -674,8 +558,13 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
           { klucz: 'voltage_dip_percent', etykieta: 'Zapad napięcia na szynie', jednostka: '%' },
           { klucz: 'torque_start_pu', etykieta: 'Moment rozruchowy', jednostka: 'j.w.' },
           { klucz: 'torque_margin_pu', etykieta: 'Zapas momentu nad oporowym', jednostka: 'j.w.' },
-          { klucz: 'thermal_i2t_ratio', etykieta: 'Wykorzystanie czasu utyku I²t' },
-          { klucz: 'verification_status', etykieta: 'Kryteria rozruchu', mapaStatusu: ZGODNY },
+          { klucz: 'start_time_s', etykieta: 'Czas rozruchu', jednostka: 's' },
+          {
+            klucz: 'allowable_locked_rotor_time_s',
+            etykieta: 'Dopuszczalny czas utyku',
+            jednostka: 's',
+          },
+          { klucz: 'locked_rotor_time_ratio', etykieta: 'Wykorzystanie dopuszczalnego czasu utyku' },
         ],
       },
     ],
@@ -745,12 +634,9 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   neutral_earthing_design: {
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['tuning_status', 'thermal_check.status', 'status'],
-      mapa: MAPA_DOBORU_UZIEMIENIA,
-      skladowe: { sciezkaTablicy: 'sieci', obiektyDopelniacz: 'sieci SN' },
-    },
+    // Werdykt = rekordy kryteriów KAŻDEJ galwanicznie połączonej sieci SN (prąd resztkowy
+    // dławika wobec prądu pojemnościowego) i KAŻDEGO rezystora (energia doziemienia).
+    werdykt: { rodzaj: 'rekordy', sciezka: 'oceny' },
     wielkosciGlowne: [
       { sciezka: 'neutral_earthing_type', etykieta: 'Sposób uziemienia punktu neutralnego' },
       {
@@ -775,6 +661,11 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         sciezka: 'residual_current_a',
         etykieta: 'Prąd resztkowy dławika modelu',
         jednostka: 'A',
+      },
+      {
+        sciezka: 'residual_share_percent',
+        etykieta: 'Prąd resztkowy jako udział prądu pojemnościowego doziemienia',
+        jednostka: '%',
       },
       {
         sciezka: 'active_component_a',
@@ -861,6 +752,11 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             etykieta: 'Prąd resztkowy dławika modelu',
             jednostka: 'A',
           },
+          {
+            klucz: 'residual_share_percent',
+            etykieta: 'Udział prądu resztkowego w prądzie pojemnościowym',
+            jednostka: '%',
+          },
           { klucz: 'detuning_model', etykieta: 'Rozstrojenie dławika modelu' },
           { klucz: 'resistor_ohm', etykieta: 'Rezystancja uziemiająca', jednostka: 'Ω' },
           {
@@ -868,7 +764,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
             etykieta: 'Wynikowy prąd zwarcia doziemnego',
             jednostka: 'A',
           },
-          { klucz: 'tuning_status', etykieta: 'Dostrojenie dławika', mapaStatusu: MAPA_DOBORU_UZIEMIENIA },
         ],
       },
       {

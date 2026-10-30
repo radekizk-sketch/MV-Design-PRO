@@ -821,26 +821,6 @@
       "notes": null
     },
     {
-      "key": "z0_line_shunt[cab_main_b]",
-      "title": "Gałąź Kabel SN 1: pojemność doziemna (bocznik B0, model π)",
-      "formula_latex": "Y_{0,sh} = j B_0 \\cdot \\ell;\\quad Y_{0,sh,end} = Y_{0,sh}/2",
-      "inputs": {
-        "ref_id": "cab_main_b",
-        "b0_siemens_per_km": 4.1e-05,
-        "length_km": 2.4,
-        "z_base_ohm": 2.25
-      },
-      "substitution": "B0=4.1e-05 S/km · 2.4 km = 9.84e-05 S; Y0 na każdym końcu = j0.0001107 pu (na Szyna SN i Stacja B SN)",
-      "substitution_latex": null,
-      "result": {
-        "y0_shunt_per_end_pu": {
-          "re": 0.0,
-          "im": 0.0001107
-        }
-      },
-      "notes": null
-    },
-    {
       "key": "z0_line[line_b_c]",
       "title": "Gałąź Linia SN 1: impedancja zerowa (szeregowa)",
       "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
@@ -880,6 +860,36 @@
         }
       },
       "notes": null
+    },
+    {
+      "key": "z0_warunek_pojemnosci[1]",
+      "title": "Pojemności linii w składowej zerowej: warunek współczynnika zwarcia doziemnego (IEC 60909-0 pkt 5.2 f))",
+      "formula_latex": "k = \\max\\left(\\left|a^2 - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|,\\left|a - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|\\right),\\ Z_2 = Z_1;\\quad \\max_i k_i > 1{,}4 \\Rightarrow Y_{0,sh} = j B_0 \\ell",
+      "inputs": {
+        "galezie": [
+          {
+            "ref_id": "cab_main_b",
+            "nazwa_pl": "Kabel SN 1",
+            "b0_s": 9.84e-05,
+            "zrodlo_b0": "model"
+          },
+          {
+            "ref_id": "line_b_c",
+            "nazwa_pl": "Linia SN 1",
+            "b0_s": 3.72e-06,
+            "zrodlo_b0": "wartosc_robocza"
+          }
+        ],
+        "wezly": [],
+        "prog_k": 1.4
+      },
+      "substitution": "Sieć zerowa gałęzi Kabel SN 1, Linia SN 1: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+      "substitution_latex": null,
+      "result": {
+        "k_max": null,
+        "pojemnosci_w_y0": false
+      },
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
     },
     {
       "key": "tr_z0_parse[tr_hv_sn]",
@@ -1042,6 +1052,24 @@
         }
       },
       "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+    },
+    {
+      "key": "z0_numerical_reference",
+      "title": "Węzły bez drogi prądu zerowego: domknięcie macierzy, bez wyniku zwarcia",
+      "formula_latex": "Y_{0,ii} = 10^{6}\\ \\text{pu} \\Rightarrow \\text{blok rozprzężony, bez wyniku zwarcia doziemnego}",
+      "inputs": {
+        "wezly": [
+          "Stacja B SN",
+          "Stacja C SN",
+          "Szyna SN"
+        ]
+      },
+      "substitution": "Stacja B SN, Stacja C SN, Szyna SN: żaden element sieci nie łączy tych węzłów z ziemią w składowej zerowej; macierz Y0 dostaje w nich odniesienie numeryczne 10⁶ pu wyłącznie po to, by dała się odwrócić.",
+      "substitution_latex": null,
+      "result": {
+        "liczba_wezlow": 3
+      },
+      "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
     }
   ],
   "zalozenia": [
@@ -1138,7 +1166,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "c8e67f3d092a3996404e4ccce1ed767324af1e96fd25724fd6460f11aba8277d",
+      "result_hash": "aaaa6bb149b5b7b01c66d417629e8f086e3d701053416ffec2995ca5afbbaa7c",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

@@ -1670,10 +1670,6 @@ export interface BayEarthFaultPath {
   closure_path_elements: string[];
   transformer_contribution_ref?: string | null;
   grounding_device_ref?: string | null;
-  /** V12K-230: rezystancja uziomu [Ohm] — wspolautor pradu doziemnego. */
-  earth_electrode_resistance_ohm?: number | null;
-  /** Wspolczynnik podzialu pradu powrotnego przez ziemie. */
-  earth_return_split_factor?: number | null;
 }
 
 export interface BayProofBinding {

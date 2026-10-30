@@ -120,7 +120,13 @@ class TestBenchmarkSilentFalseFix:
         assert res["references_provided"] is False
         assert res["validation_report"] == []
 
-    def test_with_real_references_validates(self) -> None:
+    def test_with_real_references_reports_delta_and_declared_verdict(self) -> None:
+        """Odchyłki liczone dla każdej referencji; ocena kryterium nie jest wystawiana, bo
+        wartość „calculated” jest zadeklarowana w danych biegu, nie policzona przez ten bieg
+        (rekord NIE_OCENIONO z przyczyną i wartością informacyjną — dawne PASS/FAIL ufało
+        liczbie, której program nie wyznaczył: klasa cichego fałszu K-09)."""
+        from application.analyses.v126_oceny import oceny_wyniku_v126
+
         refs = [
             {
                 "network": "IEEE_9_bus",
@@ -139,24 +145,17 @@ class TestBenchmarkSilentFalseFix:
         ]
         res = _run(V126AnalysisType.BENCHMARK_VALIDATION, {"benchmark_references": refs})
         assert res["references_provided"] is True
-        # pierwszy w tolerancji (PASS), drugi poza (FAIL) → ogólnie FAIL
-        assert res["status"] == "FAIL"
-        statuses = {row["network"]: row["status"] for row in res["validation_report"]}
-        assert statuses["IEEE_9_bus"] == "PASS"
-        assert statuses["IEEE_14_bus"] == "FAIL"
-
-    def test_all_references_in_tolerance_pass(self) -> None:
-        refs = [
-            {
-                "network": "CIGRE_MV",
-                "test": "PF",
-                "reference": 1.0,
-                "calculated": 1.002,
-                "tolerance_percent": 0.5,
-            }
-        ]
-        res = _run(V126AnalysisType.BENCHMARK_VALIDATION, {"benchmark_references": refs})
-        assert res["status"] == "PASS"
+        assert "status" not in res
+        delty = {row["network"]: row["delta_percent"] for row in res["validation_report"]}
+        assert delty["IEEE_9_bus"] < 0.5 < delty["IEEE_14_bus"]
+        oceny = oceny_wyniku_v126(
+            "benchmark_validation", res, wersja_silnika=None, odcisk=None, nazwy={}
+        )
+        assert oceny is not None and len(oceny) == 2
+        for ocena in oceny:
+            assert ocena["status_maszynowy"] == "NIE_OCENIONO"
+            assert "deklaracja" in ocena["wyjasnienie"]["przyczyna_pl"]
+            assert ocena["wynik"]["wartosc"]["jednostka"] == "%"
 
 
 def _run_model(analysis: V126AnalysisType, model: V126AcademicInput) -> dict:
@@ -204,7 +203,12 @@ class TestV126SanityCoverageAllAnalyses:
             res = _run(analysis, params)
             assert "sanity" in res, f"{analysis.value} bez bloku sanity"
             assert res["sanity"]["status"] in _VALID_STATUSES
-            assert res["sanity"]["checks_total"] >= 1
+            if res["sanity"]["status"] == "dane niekompletne":
+                # Brak danych wejściowych (np. uziom bez danych — nazwany brak zamiast dawnego
+                # uziomu domyślnego) nie zalicza żadnej kontroli.
+                assert res["sanity"]["checks_passed"] == 0, analysis.value
+            else:
+                assert res["sanity"]["checks_total"] >= 1, analysis.value
 
     def test_always_complete_analyses_are_verified(self) -> None:
         for analysis in self.ALWAYS_COMPLETE:
@@ -260,7 +264,21 @@ class TestV126SanityWithRealInputs:
         assert res["sanity"]["checks_passed"] == res["sanity"]["checks_total"]
 
     def test_earthing_with_data_verified(self) -> None:
-        model = _input().model_copy(update={"earthing": V126EarthingInput()})
+        # Komplet danych uziomu — pola wymagane kontraktu (bez uziomu domyślnego).
+        uziom = V126EarthingInput(
+            rho1_ohm_m=100.0,
+            length_m=60.0,
+            width_m=40.0,
+            mesh_spacing_m=6.0,
+            buried_depth_m=0.6,
+            rods_total_length_m=40.0,
+            split_factor=0.65,
+            fault_current_ka=10.0,
+            fault_clearing_time_s=0.5,
+            surface_layer_rho_ohm_m=2500.0,
+            surface_layer_derating=0.74,
+        )
+        model = _input().model_copy(update={"earthing": uziom})
         res = _run_model(V126AnalysisType.EARTHING_SAFETY, model)
         assert res["sanity"]["status"] == "zweryfikowany"
         assert res["r_g_ohm"] >= 0.0 and res["gpr_kv"] >= 0.0
@@ -291,14 +309,26 @@ class TestV126SanityWithRealInputs:
         )
         res = _run_model(V126AnalysisType.TRANSIENT_TRV, model)
         assert res["sanity"]["status"] == "zweryfikowany"
-        assert res["trv_margin_percent"] is not None and "missing_fields" not in res
+        assert res["trv_peak_kv"] is not None and "missing_fields" not in res
 
     def test_motor_starting_credible_motor_verified(self) -> None:
         # Silnik 15 kV dopasowany do szyny B2 (15 kV) — zapad napięcia w granicach wiarygodności.
         model = _input().model_copy(
             update={
                 "motors": [
-                    V126MotorInput(ref="M1", bus_ref="B2", rated_kw=500.0, rated_voltage_kv=15.0)
+                    V126MotorInput(
+                        ref="M1",
+                        bus_ref="B2",
+                        rated_kw=500.0,
+                        rated_voltage_kv=15.0,
+                        locked_rotor_multiplier=6.0,
+                        start_power_factor=0.22,
+                        start_time_s=8.0,
+                        allowable_locked_rotor_time_s=20.0,
+                        max_torque_pu=2.0,
+                        critical_slip=0.2,
+                        load_start_torque_pu=0.6,
+                    )
                 ]
             }
         )

@@ -29,6 +29,7 @@ import {
   KATALOG,
   ODPOWIEDZI,
   REF_GPZ_SZYNA,
+  REF_KABEL,
   REF_STACJA_SZYNA,
   RUN_ID,
   migawkaSieciZlotej,
@@ -469,53 +470,52 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
   });
 });
 
-/*
- * Projekt uziemienia modelu z KILKU galwanicznie połączonych sieci SN (dwie sekcje GPZ przy
- * otwartym sprzęgle, każda z własnym zespołem uziemiającym): backend zwraca wynik KAŻDEJ
- * sieci w `sieci` (`_zestawienie_sieci`, solver V12.6). Wiersz sieci = realna odpowiedź
- * solvera dla jednej sieci (fixtura) z odniesieniem szyny i nazwą sieci.
- * ILOCZYN: liczba sieci {1, 2} × statusy składowe {wszystkie dostrojone, jedna rozstrojona,
- * jedna ze statusem spoza mapy} — werdykt całości z wyników składowych, tabela tylko przy
- * kilku sieciach.
+/**
+ * Projekt uziemienia punktu neutralnego: model z kilkoma galwanicznie połączonymi sieciami SN
+ * niesie wynik KAŻDEJ sieci w `sieci` (`_zestawienie_sieci`, solver V12.6), a ocenę — rekordy
+ * werdyktu wyjaśnialnego `oceny` (kryterium prądu resztkowego KAŻDEJ sieci, granica
+ * `wynik_v126_dla_powierzchni`). Okno nie składa werdyktu z wierszy: renderuje rekordy.
+ * ILOCZYN: liczba sieci {1, 2} × rekordy {z odpowiedzi, po jednym na sieć, rekord bez
+ * wyjaśnienia (odrzucony po kształcie), brak rekordów} — tabela tylko przy kilku sieciach.
  */
 describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN osobno', () => {
-  // Sieć fixtury (dławik 15 A, I_C ≈ 12,5 A) jest rozstrojona: v = −0,199 z solvera doziemienia
-  // sieci. Testy tej grupy ćwiczą składanie werdyktu wielu sieci, więc punkt wyjścia to sieć
-  // dostrojona (status nadpisany w atrapie); werdykt samej fixtury — test poniżej.
-  const jednaSiec = { ...ODPOWIEDZI.neutral_earthing_design, tuning_status: 'dostrojony' };
+  const fixtura = ODPOWIEDZI.neutral_earthing_design as Record<string, unknown> & {
+    oceny: Array<Record<string, unknown> & { kryterium_id: string; etykieta: { etykieta_pl: string } }>;
+  };
+  const rekord = fixtura.oceny[0];
   const wiersz = (szyna: string, nadpisanie: Record<string, unknown> = {}) => ({
+    ...fixtura,
     szyna_ref: szyna,
     nazwa_pl: `Sieć SN 15 kV — ${nazwaZMigawki(szyna)}`,
-    ...jednaSiec,
+    oceny: undefined,
     ...nadpisanie,
   });
   const dwieSieci = (drugaNadpisanie: Record<string, unknown> = {}) => ({
     neutral_earthing_type: 'petersen_coil',
     network_count: 2,
     sieci: [wiersz(REF_GPZ_SZYNA), wiersz(REF_STACJA_SZYNA, drugaNadpisanie)],
-    sanity: { status: 'zweryfikowany', violations: [], checks_total: 8, checks_passed: 8 },
+    oceny: [
+      rekord,
+      { ...rekord, kryterium_id: `v126.uziemienie.prad_resztkowy.${REF_STACJA_SZYNA}` },
+    ],
+    sanity: { status: 'w paśmie wiarygodności', violations: [], checks_total: 8, checks_passed: 8 },
   });
 
-  it('jedna sieć: werdykt z wyniku wprost, bez tabeli sieci', async () => {
-    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], wynik: jednaSiec });
+  it('fixtura solvera (dławik 15 A przy I_C ≈ 12,5 A): rekord kryterium z odpowiedzi kartą werdyktu', async () => {
+    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], wynik: fixtura });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('neutral_earthing_design');
     await uruchom();
-    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent('dławik dostrojony');
+    const oceny = screen.getByTestId('mvd-akad-ocena');
+    // Etykieta i zdanie z rekordu backendu (UI nie ma mapy „status → tekst").
+    expect(oceny).toHaveTextContent(rekord.etykieta.etykieta_pl);
+    expect(oceny).toHaveTextContent('19,87 %');
+    expect(oceny).toHaveTextContent('Z-6');
+    expect(screen.queryByTestId('mvd-akad-werdykt-chip')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-obiekty-sieci')).not.toBeInTheDocument();
   });
 
-  it('fixtura solvera (dławik 15 A przy I_C ≈ 12,5 A): werdykt „rozstrojony” z wyniku wprost', async () => {
-    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], wynik: ODPOWIEDZI.neutral_earthing_design });
-    render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await otworzAnalize('neutral_earthing_design');
-    await uruchom();
-    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(
-      'prąd resztkowy powyżej 10 % prądu pojemnościowego',
-    );
-  });
-
-  it('dwie sieci dostrojone: werdykt zbiorczy 2 z 2 i wiersz każdej sieci z jej prądem', async () => {
+  it('dwie sieci: karta rekordu KAŻDEJ sieci i wiersz każdej sieci z jej prądem', async () => {
     ustawFetchV126({
       potwierdzone: ['neutral_earthing_design'],
       wynik: dwieSieci({ capacitive_earth_fault_current_a: 3.1177 }),
@@ -523,9 +523,8 @@ describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN os
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('neutral_earthing_design');
     await uruchom();
-    expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(
-      S.werdyktZbiorczy(2, 2, 'sieci SN'),
-    );
+    const oceny = screen.getByTestId('mvd-akad-ocena');
+    expect(within(oceny).getAllByText(rekord.etykieta.etykieta_pl).length).toBeGreaterThanOrEqual(2);
     const tabela = screen.getByTestId('mvd-akad-obiekty-sieci');
     const wiersze = within(tabela).getAllByRole('row').slice(1);
     expect(wiersze).toHaveLength(2);
@@ -534,38 +533,25 @@ describe('EkranAnalizAkademickich — projekt uziemienia dla każdej sieci SN os
     // Każda sieć ze SWOIM prądem pojemnościowym (nie suma modelu).
     expect(wiersze[0]).toHaveTextContent('12');
     expect(wiersze[1]).toHaveTextContent('3,1');
-    expect(within(tabela).getAllByText('dławik dostrojony — prąd resztkowy w granicy')).toHaveLength(2);
   });
 
-  it('dwie sieci, jedna rozstrojona: werdykt 1 z 2, istotność błędu, wiersz rozstrojony nazwany', async () => {
+  it('rekord bez wyjaśnienia nie trafia do karty; bez rekordów — uczciwy brak oceny', async () => {
+    const { wyjasnienie: _pominiete, ...bezWyjasnienia } = rekord;
     ustawFetchV126({
       potwierdzone: ['neutral_earthing_design'],
-      wynik: dwieSieci({ tuning_status: 'rozstrojony_poza_10pct' }),
+      wynik: { ...dwieSieci(), oceny: [bezWyjasnienia] },
     });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('neutral_earthing_design');
     await uruchom();
-    const chip = screen.getByTestId('mvd-akad-werdykt-chip');
-    expect(chip).toHaveTextContent(S.werdyktZbiorczy(1, 2, 'sieci SN'));
-    const tabela = screen.getByTestId('mvd-akad-obiekty-sieci');
-    expect(within(tabela).getByText('prąd resztkowy powyżej 10 % prądu pojemnościowego')).toBeInTheDocument();
-  });
-
-  it('dwie sieci, status składowej spoza mapy: brak oceny całości (okno nie zgaduje)', async () => {
-    ustawFetchV126({
-      potwierdzone: ['neutral_earthing_design'],
-      wynik: dwieSieci({ tuning_status: undefined, thermal_check: { status: 'zgodny' } }),
-    });
-    render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await otworzAnalize('neutral_earthing_design');
-    await uruchom();
+    expect(screen.queryByTestId('mvd-akad-ocena')).not.toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-werdykt-chip')).toHaveTextContent(S.werdyktBrak);
     expect(screen.getByTestId('mvd-akad-obiekty-sieci')).toBeInTheDocument();
   });
 });
 
 describe('EkranAnalizAkademickich — dane przyjęte i wyjaśnienie werdyktu (zasada nr 4)', () => {
-  it('koordynacja izolacji: dane przyjęte doboru wstępnego z powodem, nota dowodu niepełnego i uzasadnienie kryteriów', async () => {
+  it('koordynacja izolacji: dane przyjęte doboru wstępnego z powodem, nota dowodu niepełnego i rekord wymagania z ocenami składowymi', async () => {
     ustawFetchV126({ potwierdzone: ['insulation_coordination'], wynikZFixtury: true });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('insulation_coordination');
@@ -575,31 +561,39 @@ describe('EkranAnalizAkademickich — dane przyjęte i wyjaśnienie werdyktu (za
       S.danePrzyjeteNiepelny,
     );
     const pozycje = within(panel).getAllByRole('listitem');
-    expect(pozycje).toHaveLength(3);
-    expect(pozycje[0]).toHaveTextContent('Napięcie trwałej pracy ogranicznika U_c (dobór wstępny): 17.5 kV');
-    expect(pozycje[0]).toHaveAttribute('title', expect.stringContaining('IEC 60099-5'));
-    // Werdykt wiersza nie stoi sam: uzasadnienie z liczbami, limitem i podstawą normową.
-    expect(screen.getAllByText(/U_TOV = k·U_m\/√3 = 1,732·17,5\/√3 = 17,50 kV/).length).toBeGreaterThan(0);
+    const pozycjaUc = pozycje.find((p) =>
+      p.textContent?.startsWith('Napięcie trwałej pracy ogranicznika U_c (dobór wstępny): 17,5 kV'),
+    );
+    expect(pozycjaUc).toBeDefined();
+    expect(pozycjaUc).toHaveAttribute('title', expect.stringContaining('IEC 60099-5'));
+    // Werdykt nie stoi sam: rekord wymagania miejsca z ocenami składowymi (wynik, limit,
+    // podstawa — § rejestru założeń) z odpowiedzi backendu.
+    const oceny = screen.getByTestId('mvd-akad-ocena');
+    expect(oceny).toHaveTextContent('Koordynacja izolacji ogranicznika');
+    expect(oceny).toHaveTextContent('35,71 %');
+    expect(oceny).toHaveTextContent('Z-3');
   });
 
-  it('wynik bez danych przyjętych i z dowodem pełnym nie renderuje panelu', async () => {
-    ustawFetchV126({
-      potwierdzone: ['earth_fault_detection'],
-      wynik: { ...ODPOWIEDZI.earth_fault_detection, dane_przyjete: [], kompletnosc_dowodu: 'PELNY' },
-    });
+  // Zmiana kanonu (odcinek 3 karty ZU, §3.18): każde kryterium V12.6 stoi na założeniu
+  // rejestru (dana przyjęta rekordu oceny), więc wynik z ocenami zawsze ma panel. Intencja
+  // zachowana na realnej odpowiedzi rodzaju bez kryteriów z założeniami i bez wartości
+  // roboczych (impedancja sieci dla SSCI): brak danych przyjętych ⇒ brak panelu.
+  it('wynik bez danych przyjętych i bez dowodu niepełnego nie renderuje panelu', async () => {
+    ustawFetchV126({ potwierdzone: ['ssci_impedance'], wynik: ODPOWIEDZI.ssci_impedance });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await otworzAnalize('earth_fault_detection');
+    await otworzAnalize('ssci_impedance');
     await uruchom();
     expect(screen.queryByTestId('mvd-akad-dane-przyjete')).not.toBeInTheDocument();
   });
 
-  it('detekcja doziemień: dana przyjęta bez wartości liczbowej pokazana samą nazwą', async () => {
+  it('detekcja doziemień bez wskazanych funkcji przekaźnika: rekord „ocena niewykonana", nie „spełnia"', async () => {
     ustawFetchV126({ potwierdzone: ['earth_fault_detection'], wynikZFixtury: true });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('earth_fault_detection');
     await uruchom();
-    const lista = screen.getByTestId('mvd-akad-dane-przyjete-lista');
-    expect(within(lista).getByRole('listitem')).toHaveTextContent(/^Metody detekcji dostępne w przekaźniku$/);
+    const oceny = screen.getByTestId('mvd-akad-ocena');
+    expect(oceny).toHaveTextContent('Ocena niewykonana');
+    expect(oceny).toHaveTextContent('wyposażenie przekaźnika nie zostało wskazane');
   });
 });
 
@@ -670,7 +664,7 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     const mock = ustawFetchV126({ potwierdzone: ['motor_starting'] });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('motor_starting');
-    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz-motors'));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-ref'), { target: { value: 'M-1' } });
     const szyna = screen.getByTestId('mvd-akad-pole-bus_ref') as HTMLSelectElement;
     expect(szyna.tagName).toBe('SELECT');
@@ -685,8 +679,8 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'] });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
     await otworzAnalize('reliability_contingency');
-    expect(screen.getByTestId('mvd-akad-lista')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
+    expect(screen.getByTestId('mvd-akad-lista-customer_counts')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz-customer_counts'));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-bus_ref'), { target: { value: 'bus_sn_b' } });
     fireEvent.change(screen.getByTestId('mvd-akad-pole-liczba'), { target: { value: '120' } });
     await waitFor(() => {
@@ -696,6 +690,34 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     });
     await uruchom();
     expect(zadaniaPost(mock)[0].body).toEqual({ parameters: { customer_counts: { bus_sn_b: 120 } } });
+  });
+
+  it('dane niezawodności elementu (karta UX-04, odcinek 3): druga lista rodzaju, gałąź z modelu, mapa `reliability_data` obok `customer_counts`', async () => {
+    // Iloczyn cech: dwie listy jednego rodzaju wypełniane w tym samym formularzu — każda
+    // trafia pod własnym kluczem; wybór gałęzi z migawki modelu (nie wpis dowolny).
+    const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'] });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('reliability_contingency');
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz-customer_counts'));
+    const odbiorcy = screen.getByTestId('mvd-akad-lista-customer_counts-wiersz-0');
+    fireEvent.change(within(odbiorcy).getByTestId('mvd-akad-pole-bus_ref'), { target: { value: 'bus_sn_b' } });
+    fireEvent.change(within(odbiorcy).getByTestId('mvd-akad-pole-liczba'), { target: { value: '120' } });
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz-reliability_data'));
+    const niezawodnosc = screen.getByTestId('mvd-akad-lista-reliability_data-wiersz-0');
+    const galaz = within(niezawodnosc).getByTestId('mvd-akad-pole-element_ref') as HTMLSelectElement;
+    expect(galaz.tagName).toBe('SELECT');
+    expect(Array.from(galaz.options).map((o) => o.value)).toContain(REF_KABEL);
+    fireEvent.change(galaz, { target: { value: REF_KABEL } });
+    fireEvent.change(within(niezawodnosc).getByTestId('mvd-akad-pole-failure_rate_per_year'), {
+      target: { value: '0,04' },
+    });
+    await uruchom();
+    expect(zadaniaPost(mock)[0].body).toEqual({
+      parameters: {
+        customer_counts: { bus_sn_b: 120 },
+        reliability_data: { [REF_KABEL]: { failure_rate_per_year: 0.04 } },
+      },
+    });
   });
 
   it('zmiana analizy czyści parametry — wpisy nie wyciekają do innej analizy', async () => {
@@ -716,8 +738,8 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     expect(screen.queryByTestId('mvd-akad-parametry')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
     await otworzAnalize('power_quality_harmonics');
-    expect(screen.getByTestId('mvd-akad-lista')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
+    expect(screen.getByTestId('mvd-akad-lista-harmonic_spectra')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz-harmonic_spectra'));
     expect(screen.getByTestId('mvd-akad-pole-generator_ref')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-pole-rzad')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-pole-procent')).toBeInTheDocument();

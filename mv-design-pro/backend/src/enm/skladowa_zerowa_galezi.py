@@ -33,8 +33,10 @@ Konsumenci B′0 (z wartością roboczą): prąd pojemnościowy sieci SN (``enm.
 wejście i gotowość projektu uziemienia V12.6 (``solver_input.v126_contracts``,
 ``application.analyses.v126_gotowosc``) i pojemność sieci IT
 (``application.analyses.fault_loop.tt_it`` — pasmo nN, więc odmowa nazwana bez danej modelu).
-Bocznik pojemności sieci zerowej zwarć IEC 60909 (``enm.mapping``) czyta wyłącznie B′0 modelu
-(``robocze_b0`` puste) — IEC 60909-0:2016 pkt 5.2 f) i rozdz. 1, uzasadnienie przy boczniku.
+Bocznik pojemności sieci zerowej zwarć IEC 60909 (``enm.mapping``) czyta B′0 modelu i wartość
+roboczą JEDNYM predykatem: wchodzi, gdy sieć zerowa gałęzi jest uziemiona przez małą impedancję
+o współczynniku zwarcia doziemnego k > 1,4 (IEC 60909-0:2016 pkt 5.2 f), karta
+ZEROWA-POJEMNOSCI); wartość robocza, która weszła, jest daną przyjętą wiersza zwarcia.
 Rozpływ niesymetryczny B′0 nie czyta (admitancje poprzeczne pominięte z założeniem nazwanym).
 """
 
@@ -77,7 +79,7 @@ class SkladowaZerowaOdcinka:
     #: Susceptancja zerowa (pojemność doziemna) B′0 [S/km] z modelu albo z wartości roboczej
     #: (``None`` = nieznana i bez podstawy — ``brak_b0_pl``). Osobno od R′0/X′0: wchodzi
     #: WYŁĄCZNIE tam, gdzie liczy się pojemność doziemna (prąd pojemnościowy sieci, projekt
-    #: uziemienia; bocznik sieci zerowej zwarć — tylko B′0 modelu), nie do rozpływu
+    #: uziemienia; bocznik sieci zerowej zwarć — pod warunkiem pkt 5.2 f)), nie do rozpływu
     #: niesymetrycznego.
     b0_s_per_km: float | None = None
     robocze_b0: tuple[tuple[str, str, str, float], ...] = ()

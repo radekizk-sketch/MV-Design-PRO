@@ -691,7 +691,7 @@
     },
     {
       "kod": "earth_fault_detection",
-      "gotowosc": "NIEPOTWIERDZONA",
+      "gotowosc": "POTWIERDZONA",
       "warunki": [
         {
           "kod": "model.wezly",
@@ -714,21 +714,21 @@
           "opis_pl": "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku",
           "spelniony": false,
           "elementy": [],
-          "blokujacy": true,
+          "blokujacy": false,
           "klucz_parametru": "relay_methods"
         }
       ],
-      "braki": [
+      "braki": [],
+      "uwagi": [
         {
           "kod": "parametr.relay_methods",
           "opis_pl": "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku",
           "spelniony": false,
           "elementy": [],
-          "blokujacy": true,
+          "blokujacy": false,
           "klucz_parametru": "relay_methods"
         }
       ],
-      "uwagi": [],
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",

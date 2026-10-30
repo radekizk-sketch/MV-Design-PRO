@@ -1,14 +1,161 @@
 {
   "benchmark_validation": {
+    "kompletnosc_dowodu": "NIEPELNY",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "DEKLARACJA",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk d732bfe768fe1644)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium zgodności z wartością odniesienia (Z-12 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Odchyłka wyniku od wartości odniesienia nie większa od tolerancji podanej z tą wartością. Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową.",
+                "wartosc": null
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Odchyłka wyniku od wartości odniesienia nie większa od tolerancji",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "\\delta \\leq \\delta_{\\mathrm{tol}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "v126.benchmark.1",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+            "jednostka_redakcyjna": "§ Z-12",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową.",
+            "wydanie": "2026-10-29"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.5
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "tolerancja podana z wartością odniesienia"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "IEEE 14-bus — rozpływ mocy — napięcie węzła 4",
+          "skala": {
+            "jednostka": "pp",
+            "wartosc": 0.5
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": 0.48037
+          },
+          "wzgledny": 0.96074
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-12",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową.",
+          "wydanie": "2026-10-29"
+        },
+        "powody_niepelnosci": [
+          "Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia z obliczenia statycznego — właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+          "Dana przyjęta bez walidacji: Kryterium zgodności z wartością odniesienia (Z-12 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Odchyłka wyniku od wartości odniesienia nie większa od tolerancji podanej z tą wartością. Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "IEEE 14-bus — rozpływ mocy — napięcie węzła 4",
+          "opis_pl": "Pozycja walidacji na sieci odniesienia"
+        },
+        "slad": [
+          {
+            "krok": "benchmark_regression",
+            "opis_pl": "odchyłka względna wyniku od wartości odniesienia: wynik 0.01963 %, limit 0.5 % (Z-12)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „deklaracja” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie)."
+          ],
+          "przyczyna_pl": "metoda „deklaracja” nie wykazuje wielkości z obliczenia statycznego",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-12 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium zgodności z wartością odniesienia (Z-12 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Odchyłka wyniku od wartości odniesienia nie większa od tolerancji podanej z tą wartością. Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową."
+          ],
+          "zdanie_pl": "Odchyłka wyniku od wartości odniesienia nie większa od tolerancji (IEEE 14-bus — rozpływ mocy — napięcie węzła 4) — ocena niewykonana: metoda „deklaracja” nie wykazuje wielkości z obliczenia statycznego; wartość zadeklarowana pokazana informacyjnie: odchyłka względna wyniku od wartości odniesienia: 0,01963 % wobec wymaganych ≤ 0,5 % wg § Z-12 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +0,4804 pp, punkt: IEEE 14-bus — rozpływ mocy — napięcie węzła 4, względnie +96,07 % wartości granicznej); właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "DEKLARACJA",
+          "punkt_krytyczny_pl": "IEEE 14-bus — rozpływ mocy — napięcie węzła 4",
+          "symbol_latex": "\\delta",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.01963
+          },
+          "wielkosc_pl": "odchyłka względna wyniku od wartości odniesienia"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Porównanie wyniku solvera z wartością odniesienia sieci odniesienia.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": []
+        }
+      }
+    ],
     "proof_type": "benchmark_regression",
     "references_provided": true,
-    "status": "PASS",
     "validation_report": [
       {
+        "calculated": 1.0184,
         "delta_percent": 0.01963,
         "network": "IEEE 14-bus",
         "proof_type": "benchmark_regression",
-        "status": "PASS",
+        "reference": 1.0186,
         "test": "rozpływ mocy — napięcie węzła 4",
         "tolerance_percent": 0.5
       }
@@ -16,18 +163,121 @@
   },
   "earth_fault_detection": {
     "alternative_method": "fifth_harmonic",
-    "dane_przyjete": [
-      {
-        "jakosc": "ESTIMATED",
-        "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
-        "powod_pl": "Brak danych przekaźnika — przyjęto komplet metod (watometryczna, admitancyjna, stanów przejściowych, 5. harmonicznej); dostępność metody zalecanej do potwierdzenia kartą przekaźnika.",
-        "wartosc": null
-      }
-    ],
     "kompletnosc_dowodu": "NIEPELNY",
     "neutral_grounding": "petersen_tuned",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "DEKLARACJA",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 700ef2924be6a461)",
+          "poziom": "DECLARATION",
+          "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium dostępności metody detekcji doziemień (Z-8 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
+                "wartosc": null
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Przekaźnik ma każdą funkcję metody detekcji zalecanej dla sposobu pracy punktu neutralnego sieci",
+          "relacja": "LOGICZNE",
+          "warunek_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\mathrm{przekaźnika}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "v126.detekcja.funkcje_przekaznika",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "kryterium logiczne — porównanie zbiorów funkcji",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-8",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
+          "wydanie": "2026-10-29"
+        },
+        "powody_niepelnosci": [
+          "Dana przyjęta bez walidacji: Kryterium dostępności metody detekcji doziemień (Z-8 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Zabezpieczenie ziemnozwarciowe sieci SN",
+          "opis_pl": "Funkcje detekcji doziemień przekaźnika pól sieci SN"
+        },
+        "slad": [
+          {
+            "krok": "earth_fault_method_selection",
+            "opis_pl": "funkcje wymagane: wattmetric; funkcje przekaźnika: nie wskazano",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "sieć SN z zespołem uziemiającym w modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "wyposażenie przekaźnika nie zostało wskazane — dostępności funkcji metody zalecanej nie sprawdzono"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (wyposażenie przekaźnika nie zostało wskazane — dostępności funkcji metody zalecanej nie sprawdzono)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-8 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium dostępności metody detekcji doziemień (Z-8 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
+            "Zakres ważności: Sieć SN jako całość: metoda detekcji zalecana dla sposobu pracy punktu neutralnego z modelu wobec funkcji przekaźnika wskazanych przez projektanta — wynik nie obejmuje: nastawy rozruchowe funkcji ziemnozwarciowych; selektywność czasowa."
+          ],
+          "zdanie_pl": "Przekaźnik ma każdą funkcję metody detekcji zalecanej dla sposobu pracy punktu neutralnego sieci (Zabezpieczenie ziemnozwarciowe sieci SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (wyposażenie przekaźnika nie zostało wskazane — dostępności funkcji metody zalecanej nie sprawdzono). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Sieć SN jako całość: metoda detekcji zalecana dla sposobu pracy punktu neutralnego z modelu wobec funkcji przekaźnika wskazanych przez projektanta.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "nastawy rozruchowe funkcji ziemnozwarciowych",
+            "selektywność czasowa"
+          ]
+        }
+      }
+    ],
     "recommended_method": "wattmetric",
-    "relay_support_status": "spelniony",
+    "relay_methods": [],
+    "relay_methods_podane": false,
+    "required_functions": [
+      "wattmetric"
+    ],
     "sanity": {
       "checks_passed": 2,
       "checks_total": 2,
@@ -52,8 +302,426 @@
       "width_m": 40.0
     },
     "i_g_ka": 5.2,
+    "kompletnosc_dowodu": "NIEPELNY",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk d4fe94a92b0d5f06)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wartosc": null
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium napięcia krokowego (Z-5 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wartosc": null
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Wymaganie naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryteria_naruszone": [
+          "v126.uziom.napiecie_dotykowe"
+        ],
+        "kryterium_najblizej_granicy": null,
+        "nazwa_pl": "Napięcia rażenia uziomu — GPZ Zachód — szyny SN",
+        "oceny_skladowe": [
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk d4fe94a92b0d5f06)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                    "wartosc": null
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium naruszone",
+              "semantyka": "negatywna"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "U_{\\mathrm{dot}} \\leq U_{\\mathrm{dot,dop}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.uziom.napiecie_dotykowe",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-4",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": 838.169
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "GPZ Zachód — szyny SN",
+              "skala": {
+                "jednostka": "V",
+                "wartosc": 838.169
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": -1542.911
+              },
+              "wzgledny": -1.84081133996
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-4",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+            ],
+            "przedmiot": {
+              "element_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+              "nazwa_pl": "GPZ Zachód — szyny SN",
+              "opis_pl": "Uziom kratowy stacji"
+            },
+            "slad": [
+              {
+                "krok": "ieee80_sverak",
+                "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381.08 V, limit 838.169 V (Z-4)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "NIE_SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": "napięcie dotykowe rażeniowe przekracza wartość graniczną o 1543 V (GPZ Zachód — szyny SN)",
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-4 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "Zakres ważności: Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg — wynik nie obejmuje: rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej); potencjały przeniesione, korozja i połączenia wyrównawcze."
+              ],
+              "zdanie_pl": "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN) — kryterium naruszone. Napięcie dotykowe rażeniowe: 2381 V wobec wymaganych ≤ 838,2 V wg § Z-4 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −1543 V, punkt: GPZ Zachód — szyny SN, względnie −184,1 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "GPZ Zachód — szyny SN",
+              "symbol_latex": "U_{\\mathrm{dot}}",
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": 2381.08
+              },
+              "wielkosc_pl": "napięcie dotykowe rażeniowe"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej)",
+                "potencjały przeniesione, korozja i połączenia wyrównawcze"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk d4fe94a92b0d5f06)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium napięcia krokowego (Z-5 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                    "wartosc": null
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Napięcie krokowe nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "U_{\\mathrm{kr}} \\leq U_{\\mathrm{kr,dop}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.uziom.napiecie_krokowe",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-5",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": 2686.582
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "GPZ Zachód — szyny SN",
+              "skala": {
+                "jednostka": "V",
+                "wartosc": 2686.582
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": 848.555
+              },
+              "wzgledny": 0.315849283588
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-5",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+            ],
+            "przedmiot": {
+              "element_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+              "nazwa_pl": "GPZ Zachód — szyny SN",
+              "opis_pl": "Uziom kratowy stacji"
+            },
+            "slad": [
+              {
+                "krok": "ieee80_sverak",
+                "opis_pl": "napięcie krokowe: wynik 1838.027 V, limit 2686.582 V (Z-5)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-5 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "Zakres ważności: Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg — wynik nie obejmuje: rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej); potencjały przeniesione, korozja i połączenia wyrównawcze."
+              ],
+              "zdanie_pl": "Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN) — kryterium spełnione. Napięcie krokowe: 1838 V wobec wymaganych ≤ 2687 V wg § Z-5 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +848,6 V, punkt: GPZ Zachód — szyny SN, względnie +31,58 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "GPZ Zachód — szyny SN",
+              "symbol_latex": "U_{\\mathrm{kr}}",
+              "wartosc": {
+                "jednostka": "V",
+                "wartosc": 1838.027
+              },
+              "wielkosc_pl": "napięcie krokowe"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej)",
+                "potencjały przeniesione, korozja i połączenia wyrównawcze"
+              ]
+            }
+          }
+        ],
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-1 … Z-12",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Założenia inżynierskie programu — żadne nie jest wartością normową.",
+          "wydanie": "2026-10-29"
+        },
+        "podstawa_sposobu_wykazania": null,
+        "pokrycie_programu": "NIE_DOTYCZY",
+        "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+        ],
+        "slad": [
+          {
+            "krok": "ieee80_sverak",
+            "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381.08 V, limit 838.169 V (Z-4)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          },
+          {
+            "krok": "ieee80_sverak",
+            "opis_pl": "napięcie krokowe: wynik 1838.027 V, limit 2686.582 V (Z-5)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "sposob_wykazania": "OBLICZENIE",
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN): Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+          ],
+          "przyczyna_pl": "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN) — napięcie dotykowe rażeniowe przekracza wartość graniczną o 1543 V (GPZ Zachód — szyny SN)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-4 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Zakres ważności: Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg — wynik nie obejmuje: rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej); potencjały przeniesione, korozja i połączenia wyrównawcze.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-5 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 … Z-12 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+          ],
+          "zdanie_pl": "Napięcia rażenia uziomu — GPZ Zachód — szyny SN (§ Z-1 … Z-12 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN) — napięcie dotykowe rażeniowe: 2381 V wobec wymaganych ≤ 838,2 V wg § Z-4 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −1543 V, punkt: GPZ Zachód — szyny SN, względnie −184,1 % wartości granicznej). Pozostałe kryteria składowe: Napięcie krokowe nie większe od dopuszczalnego (GPZ Zachód — szyny SN) — kryterium spełnione — dowód niepełny (margines +848,6 V)."
+        },
+        "wymaganie_id": "v126.uziom",
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Uziom kratowy jednej stacji z danych projektanta; napięcia rażenia wzorami przybliżonymi metody Sveraka przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia; ciało człowieka 70 kg.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "rozkład potencjału w gruncie dwuwarstwowym (rachunek używa warstwy górnej)",
+            "potencjały przeniesione, korozja i połączenia wyrównawcze"
+          ]
+        }
+      }
+    ],
     "r_g_ohm": 1.00028,
-    "safety_status": "niezgodny",
     "sanity": {
       "checks_passed": 4,
       "checks_total": 4,
@@ -72,6 +740,14 @@
     "u_touch_calculated_v": 2381.08
   },
   "hosting_capacity": {
+    "dane_przyjete": [
+      {
+        "jakosc": "ESTIMATED",
+        "nazwa_pl": "Impedancja źródła sieciowego z mocy zwarciowej szyny",
+        "powod_pl": "Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+        "wartosc": null
+      }
+    ],
     "hosting_capacity": [
       {
         "brak_danych": "Żaden element zasilający tę szynę nie ma obciążalności długotrwałej — kryterium prądowe pominięto, ograniczeniem jest wyłącznie napięcie.",
@@ -84,11 +760,12 @@
       {
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
-        "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.0,
+        "critical_limit": "I_galaz",
+        "hosting_capacity_mw": 7.4,
         "monte_carlo_n": 64
       }
     ],
+    "kompletnosc_dowodu": "NIEPELNY",
     "sanity": {
       "checks_passed": 2,
       "checks_total": 2,
@@ -132,26 +809,699 @@
         ],
         "earth_fault_factor": 1.732051,
         "earth_fault_factor_zrodlo_pl": "solver doziemienia sieci SN",
-        "kompletnosc_dowodu": "NIEPELNY",
         "location_bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-        "margin_ok": true,
         "mcov_kv": 17.5,
-        "mcov_ok": true,
         "mcov_required_kv": 17.5,
         "network_neutral": "kompensowany",
         "predicted_tov_kv": 17.5,
         "short_duration_50hz_kv": 38.0,
         "tov_10s_kv": 24.5,
         "tov_duration": "dlugotrwale",
-        "tov_ok": true,
         "u_m_kv": 17.5,
         "u_rated_kv": 21.0,
-        "u_residual_at_10ka_kv": 70.0,
-        "uzasadnienie_pl": "U_TOV = k·U_m/√3 = 1,732·17,5/√3 = 17,50 kV (solver doziemienia sieci SN); U_c = 17,50 kV ≥ U_TOV = 17,50 kV (doziemienie długotrwałe, IEC 60099-5) — spełnione; margines (BIL − U_res)/U_res = (95 − 70,00)/70,00 = 35,7 % ≥ 20 % (IEC 60071-2; BIL 95 kV — IEC 60071-1 tab. 2, najbliższy znormalizowany U_m ≥ 17,5 kV) — spełnione.",
-        "verification_status": "spelniony"
+        "u_residual_at_10ka_kv": 70.0
       }
     ],
     "kompletnosc_dowodu": "NIEPELNY",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 32a000b88e6d0669)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+                "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                "wartosc": {
+                  "jednostka": "kV",
+                  "wartosc": 17.5
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+                "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "wartosc": {
+                  "jednostka": "kV",
+                  "wartosc": 21.0
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
+                "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "wartosc": {
+                  "jednostka": "kV",
+                  "wartosc": 24.5
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wartosc": null
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wartosc": {
+                  "jednostka": "%",
+                  "wartosc": 20.0
+                }
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Brak wystarczającego dowodu",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryteria_naruszone": [],
+        "kryterium_najblizej_granicy": null,
+        "nazwa_pl": "Koordynacja izolacji ogranicznika — Stacja SN/nN Ogrodowa",
+        "oceny_skladowe": [
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 32a000b88e6d0669)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+                    "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 17.5
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+                    "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 21.0
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
+                    "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 24.5
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                    "wartosc": null
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego",
+              "relacja": "NIE_MNIEJ",
+              "warunek_latex": "U_c \\geq U_{c,\\mathrm{wym}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.izolacja.napiecie_pracy.station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-1",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 17.5
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "U_c,wym = U_TOV (doziemienie długotrwałe)"
+            },
+            "margines": {
+              "definicja_latex": "m = x - x_{\\lim}",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Stacja SN/nN Ogrodowa",
+              "skala": {
+                "jednostka": "kV",
+                "wartosc": 17.5
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 0.0
+              },
+              "wzgledny": 0.0
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-1",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+            ],
+            "przedmiot": {
+              "element_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+              "nazwa_pl": "Stacja SN/nN Ogrodowa",
+              "opis_pl": "Miejsce zainstalowania ogranicznika przepięć"
+            },
+            "slad": [
+              {
+                "krok": "iec60071_arrester_margin",
+                "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17.5 kV, limit 17.5 kV (Z-1)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji."
+              ],
+              "zdanie_pl": "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa) — kryterium spełnione. Napięcie trwałej pracy ogranicznika: 17,5 kV wobec wymaganych ≥ 17,5 kV wg § Z-1 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines 0 kV, punkt: Stacja SN/nN Ogrodowa, względnie 0 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Stacja SN/nN Ogrodowa",
+              "symbol_latex": "U_c",
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 17.5
+              },
+              "wielkosc_pl": "napięcie trwałej pracy ogranicznika"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu",
+                "starzenie i zabrudzenie izolacji"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 32a000b88e6d0669)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "kryterium": {
+              "opis_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od przepięcia dorywczego przy doziemieniu",
+              "relacja": "NIE_MNIEJ",
+              "warunek_latex": "\\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.izolacja.przepiecie_dorywcze.station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-2",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 17.5
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "U_TOV = k·U_m/√3"
+            },
+            "margines": {
+              "definicja_latex": "m = x - x_{\\lim}",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Stacja SN/nN Ogrodowa",
+              "skala": {
+                "jednostka": "kV",
+                "wartosc": 17.5
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 7.0
+              },
+              "wzgledny": 0.4
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-2",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+              "nazwa_pl": "Stacja SN/nN Ogrodowa",
+              "opis_pl": "Miejsce zainstalowania ogranicznika przepięć"
+            },
+            "slad": [
+              {
+                "krok": "iec60071_arrester_margin",
+                "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24.5 kV, limit 17.5 kV (Z-2)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "NIE_DOTYCZY",
+            "stosowalnosc": {
+              "dotyczy": false,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "sieć izolowana albo kompensowana pracuje z doziemieniem długotrwale — rozstrzyga napięcie trwałej pracy (Z-1), nie wytrzymałość 10 s",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": "sieć izolowana albo kompensowana pracuje z doziemieniem długotrwale — rozstrzyga napięcie trwałej pracy (Z-1), nie wytrzymałość 10 s",
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji."
+              ],
+              "zdanie_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od przepięcia dorywczego przy doziemieniu (Stacja SN/nN Ogrodowa) — nie dotyczy: sieć izolowana albo kompensowana pracuje z doziemieniem długotrwale — rozstrzyga napięcie trwałej pracy (Z-1), nie wytrzymałość 10 s."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Stacja SN/nN Ogrodowa",
+              "symbol_latex": "\\mathrm{TOV}_{10\\,\\mathrm{s}}",
+              "wartosc": {
+                "jednostka": "kV",
+                "wartosc": 24.5
+              },
+              "wielkosc_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu",
+                "starzenie i zabrudzenie izolacji"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk 32a000b88e6d0669)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+                    "powod_pl": "Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 17.5
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+                    "powod_pl": "U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 21.0
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
+                    "powod_pl": "TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                    "wartosc": {
+                      "jednostka": "kV",
+                      "wartosc": 24.5
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                    "wartosc": {
+                      "jednostka": "%",
+                      "wartosc": 20.0
+                    }
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Margines ochrony izolacji nie mniejszy od wymaganego",
+              "relacja": "NIE_MNIEJ",
+              "warunek_latex": "M_{\\mathrm{BIL}} = \\dfrac{\\mathrm{BIL} - U_{\\mathrm{res}}}{U_{\\mathrm{res}}}\\cdot 100\\% \\geq 20\\%",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.izolacja.margines_bil.station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-3",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 20.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": null
+            },
+            "margines": {
+              "definicja_latex": "m = x - x_{\\lim}",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Stacja SN/nN Ogrodowa",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 20.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 15.714
+              },
+              "wzgledny": 0.7857
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-3",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+              "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+              "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+            ],
+            "przedmiot": {
+              "element_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+              "nazwa_pl": "Stacja SN/nN Ogrodowa",
+              "opis_pl": "Miejsce zainstalowania ogranicznika przepięć"
+            },
+            "slad": [
+              {
+                "krok": "iec60071_arrester_margin",
+                "opis_pl": "margines ochrony izolacji: wynik 35.714 %, limit 20.0 % (Z-3)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-3 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+                "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+                "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji."
+              ],
+              "zdanie_pl": "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa) — kryterium spełnione. Margines ochrony izolacji: 35,71 % wobec wymaganych ≥ 20 % wg § Z-3 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +15,71 pp, punkt: Stacja SN/nN Ogrodowa, względnie +78,57 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Stacja SN/nN Ogrodowa",
+              "symbol_latex": "M_{\\mathrm{BIL}}",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 35.714
+              },
+              "wielkosc_pl": "margines ochrony izolacji"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu",
+                "starzenie i zabrudzenie izolacji"
+              ]
+            }
+          }
+        ],
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-1 … Z-12",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Założenia inżynierskie programu — żadne nie jest wartością normową.",
+          "wydanie": "2026-10-29"
+        },
+        "podstawa_sposobu_wykazania": null,
+        "pokrycie_programu": "NIE_DOTYCZY",
+        "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+          "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+          "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+        ],
+        "slad": [
+          {
+            "krok": "iec60071_arrester_margin",
+            "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17.5 kV, limit 17.5 kV (Z-1)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          },
+          {
+            "krok": "iec60071_arrester_margin",
+            "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24.5 kV, limit 17.5 kV (Z-2)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          },
+          {
+            "krok": "iec60071_arrester_margin",
+            "opis_pl": "margines ochrony izolacji: wynik 35.714 %, limit 20.0 % (Z-3)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "sposob_wykazania": "OBLICZENIE",
+        "status_maszynowy": "BRAK_DOWODU",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie)."
+          ],
+          "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).; Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa): Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Dana przyjęta bez walidacji: Napięcie trwałej pracy ogranicznika U_c (dobór wstępny) = 17,5 kV, jakość danej: oszacowane — Brak karty katalogowej ogranicznika — U_c równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5).",
+            "Dana przyjęta bez walidacji: Napięcie znamionowe ogranicznika U_r (dobór wstępny) = 21 kV, jakość danej: oszacowane — U_r = 1,2·U_c — największy stosunek ograniczników ZnO SN katalogu programu (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny) = 24,5 kV, jakość danej: oszacowane — TOV(10 s) = 1,4·U_c — najmniejszy stosunek ograniczników ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+            "Dana przyjęta bez walidacji: Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Zakres ważności: Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m — wynik nie obejmuje: przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu; starzenie i zabrudzenie izolacji.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-3 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń) = 20 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 … Z-12 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+          ],
+          "zdanie_pl": "Koordynacja izolacji ogranicznika — Stacja SN/nN Ogrodowa (§ Z-1 … Z-12 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego (Stacja SN/nN Ogrodowa) — napięcie trwałej pracy ogranicznika: 17,5 kV wobec wymaganych ≥ 17,5 kV wg § Z-1 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines 0 kV, punkt: Stacja SN/nN Ogrodowa, względnie 0 % wartości granicznej); Margines ochrony izolacji nie mniejszy od wymaganego (Stacja SN/nN Ogrodowa) — margines ochrony izolacji: 35,71 % wobec wymaganych ≥ 20 % wg § Z-3 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +15,71 pp, punkt: Stacja SN/nN Ogrodowa, względnie +78,57 % wartości granicznej)."
+        },
+        "wymaganie_id": "v126.izolacja.station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu IEC 60071-1 dla napięcia najwyższego U_m.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu",
+            "starzenie i zabrudzenie izolacji"
+          ]
+        }
+      }
+    ],
     "sanity": {
       "checks_passed": 3,
       "checks_total": 3,
@@ -160,11 +1510,714 @@
     }
   },
   "motor_starting": {
-    "motors": [],
+    "kompletnosc_dowodu": "NIEPELNY",
+    "motors": [
+      {
+        "allowable_locked_rotor_time_s": 20.0,
+        "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+        "dane_przyjete": [
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
+            "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 0.85
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Sprawność znamionowa silnika η_n",
+            "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 0.95
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "Impedancja źródła sieciowego z mocy zwarciowej szyny",
+            "powod_pl": "Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+            "wartosc": null
+          }
+        ],
+        "i_start_a": 450.44,
+        "load_start_torque_pu": 0.6,
+        "locked_rotor_time_ratio": 0.4,
+        "motor_ref": "M1",
+        "rated_current_a": 75.073,
+        "start_time_s": 8.0,
+        "thevenin_impedance_ohm": {
+          "r_ohm": 0.454761,
+          "x_ohm": 0.971303
+        },
+        "torque_margin_pu": 0.1692,
+        "torque_start_pu": 0.7692,
+        "voltage_dip_percent": 13.9457
+      }
+    ],
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk b91ca75b43f1f488)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
+                "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "wartosc": {
+                  "jednostka": "1",
+                  "wartosc": 0.85
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Sprawność znamionowa silnika η_n",
+                "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "wartosc": {
+                  "jednostka": "1",
+                  "wartosc": 0.95
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Impedancja źródła sieciowego z mocy zwarciowej szyny",
+                "powod_pl": "Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+                "wartosc": null
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+                "wartosc": {
+                  "jednostka": "%",
+                  "wartosc": 15.0
+                }
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium czasu rozruchu (Z-10 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+                "wartosc": null
+              },
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium momentu rozruchowego (Z-11 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+                "wartosc": null
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Brak wystarczającego dowodu",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryteria_naruszone": [],
+        "kryterium_najblizej_granicy": null,
+        "nazwa_pl": "Rozruch silnika M1",
+        "oceny_skladowe": [
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk b91ca75b43f1f488)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
+                    "powod_pl": "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.85
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Sprawność znamionowa silnika η_n",
+                    "powod_pl": "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 0.95
+                    }
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Impedancja źródła sieciowego z mocy zwarciowej szyny",
+                    "powod_pl": "Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+                    "wartosc": null
+                  },
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+                    "wartosc": {
+                      "jednostka": "%",
+                      "wartosc": 15.0
+                    }
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\Delta U \\leq 15\\%",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.rozruch.zapad.M1",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-9",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 15.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": null
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 15.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 1.0543
+              },
+              "wzgledny": 0.0702866666667
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-9",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+              "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+              "Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+              "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "opis_pl": "Silnik podany przez projektanta — rozruch bezpośredni"
+            },
+            "slad": [
+              {
+                "krok": "motor_starting",
+                "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13.9457 %, limit 15.0 % (Z-9)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-9 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+                "Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+                "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+                "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu."
+              ],
+              "zdanie_pl": "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — kryterium spełnione. Zapad napięcia na szynie przy prądzie rozruchowym: 13,95 % wobec wymaganych ≤ 15 % wg § Z-9 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +1,054 pp, punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +7,029 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "symbol_latex": "\\Delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 13.9457
+              },
+              "wielkosc_pl": "zapad napięcia na szynie przy prądzie rozruchowym"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obniżenie momentu przez zapad napięcia w czasie rozruchu",
+                "rozruch kilku silników jednocześnie i przebieg czasowy rozruchu"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk b91ca75b43f1f488)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium czasu rozruchu (Z-10 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+                    "wartosc": null
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "t_r \\leq t_{\\mathrm{utyku}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.rozruch.czas.M1",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-10",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "s",
+                "wartosc": 20.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalny czas utyku z karty silnika"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "skala": {
+                "jednostka": "s",
+                "wartosc": 20.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "s",
+                "wartosc": 12.0
+              },
+              "wzgledny": 0.6
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-10",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "opis_pl": "Silnik podany przez projektanta — rozruch bezpośredni"
+            },
+            "slad": [
+              {
+                "krok": "motor_starting",
+                "opis_pl": "czas rozruchu: wynik 8.0 s, limit 20.0 s (Z-10)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-10 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+                "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu."
+              ],
+              "zdanie_pl": "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — kryterium spełnione. Czas rozruchu: 8 s wobec wymaganych ≤ 20 s wg § Z-10 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +12 s, punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +60 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "symbol_latex": "t_r",
+              "wartosc": {
+                "jednostka": "s",
+                "wartosc": 8.0
+              },
+              "wielkosc_pl": "czas rozruchu"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obniżenie momentu przez zapad napięcia w czasie rozruchu",
+                "rozruch kilku silników jednocześnie i przebieg czasowy rozruchu"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "bieg analizy specjalistycznej (odcisk b91ca75b43f1f488)",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "Kryterium momentu rozruchowego (Z-11 rejestru założeń)",
+                    "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+                    "wartosc": null
+                  }
+                ],
+                "stan": "UNVALIDATED_INPUT"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu",
+              "relacja": "NIE_MNIEJ",
+              "warunek_latex": "M_r \\geq M_{\\mathrm{obc}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "v126.rozruch.moment.M1",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+                "jednostka_redakcyjna": "§ Z-11",
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "status": "WSKAZANE",
+                "uwagi_pl": "Warunek ruszenia napędu — bez wartości normowej.",
+                "wydanie": "2026-10-29"
+              },
+              "wartosc": {
+                "jednostka": "p.u. (M_n)",
+                "wartosc": 0.6
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "moment obciążenia przy rozruchu z danych napędu"
+            },
+            "margines": {
+              "definicja_latex": "m = x - x_{\\lim}",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "skala": {
+                "jednostka": "p.u. (M_n)",
+                "wartosc": 0.6
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "p.u. (M_n)",
+                "wartosc": 0.1692
+              },
+              "wzgledny": 0.282
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+              "jednostka_redakcyjna": "§ Z-11",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Warunek ruszenia napędu — bez wartości normowej.",
+              "wydanie": "2026-10-29"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+              "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "opis_pl": "Silnik podany przez projektanta — rozruch bezpośredni"
+            },
+            "slad": [
+              {
+                "krok": "motor_starting",
+                "opis_pl": "moment rozruchowy silnika: wynik 0.7692 p.u. (M_n), limit 0.6 p.u. (M_n) (Z-11)",
+                "run_id": null,
+                "wersja_silnika": "v126-academic-whitebox-1.4"
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-11 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+                "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu."
+              ],
+              "zdanie_pl": "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — kryterium spełnione. Moment rozruchowy silnika: 0,7692 p.u. (M_n) wobec wymaganych ≥ 0,6 p.u. (M_n) wg § Z-11 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +0,1692 p.u. (M_n), punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +28,2 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
+              "symbol_latex": "M_r",
+              "wartosc": {
+                "jednostka": "p.u. (M_n)",
+                "wartosc": 0.7692
+              },
+              "wielkosc_pl": "moment rozruchowy silnika"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obniżenie momentu przez zapad napięcia w czasie rozruchu",
+                "rozruch kilku silników jednocześnie i przebieg czasowy rozruchu"
+              ]
+            }
+          }
+        ],
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-1 … Z-12",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Założenia inżynierskie programu — żadne nie jest wartością normową.",
+          "wydanie": "2026-10-29"
+        },
+        "podstawa_sposobu_wykazania": null,
+        "pokrycie_programu": "NIE_DOTYCZY",
+        "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+          "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+          "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+          "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+          "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+          "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+          "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej."
+        ],
+        "slad": [
+          {
+            "krok": "motor_starting",
+            "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13.9457 %, limit 15.0 % (Z-9)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          },
+          {
+            "krok": "motor_starting",
+            "opis_pl": "czas rozruchu: wynik 8.0 s, limit 20.0 s (Z-10)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          },
+          {
+            "krok": "motor_starting",
+            "opis_pl": "moment rozruchowy silnika: wynik 0.7692 p.u. (M_n), limit 0.6 p.u. (M_n) (Z-11)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "sposob_wykazania": "OBLICZENIE",
+        "status_maszynowy": "BRAK_DOWODU",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+            "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+            "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+            "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+            "Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+            "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+            "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej."
+          ],
+          "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).; Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).; Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).; Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.; Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.; Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.; Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).; Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).; Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).; Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.; Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.; Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)): Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-9 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Dana przyjęta bez walidacji: Znamionowy współczynnik mocy silnika cos φ_n = 0,85, jakość danej: oszacowane — Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rM 0,85 (wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Sprawność znamionowa silnika η_n = 0,95, jakość danej: oszacowane — Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95 (wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; IEC 60909-0:2016 pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny).",
+            "Dana przyjęta bez walidacji: Impedancja źródła sieciowego z mocy zwarciowej szyny (bez wartości liczbowej), jakość danej: oszacowane — Wejście bez impedancji Z_Q modelu dla szyn: GPZ Zachód — szyny SN, Stacja SN/nN Ogrodowa — Z = U_n²/S_k, R = 0,15·Z, X = 0,99·Z (wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1).",
+            "Dana przyjęta bez walidacji: Kryterium zapadu napięcia przy rozruchu (Z-9 rejestru założeń) = 15 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
+            "Zakres ważności: Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym — wynik nie obejmuje: obniżenie momentu przez zapad napięcia w czasie rozruchu; rozruch kilku silników jednocześnie i przebieg czasowy rozruchu.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-10 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium czasu rozruchu (Z-10 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-11 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Dana przyjęta bez walidacji: Kryterium momentu rozruchowego (Z-11 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. Warunek ruszenia napędu — bez wartości normowej.",
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-1 … Z-12 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+          ],
+          "zdanie_pl": "Rozruch silnika M1 (§ Z-1 … Z-12 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — zapad napięcia na szynie przy prądzie rozruchowym: 13,95 % wobec wymaganych ≤ 15 % wg § Z-9 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +1,054 pp, punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +7,029 % wartości granicznej); Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — czas rozruchu: 8 s wobec wymaganych ≤ 20 s wg § Z-10 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +12 s, punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +60 % wartości granicznej); Moment rozruchowy nie mniejszy od momentu obciążenia przy rozruchu (silnik M1 (szyna Stacja SN/nN Ogrodowa)) — moment rozruchowy silnika: 0,7692 p.u. (M_n) wobec wymaganych ≥ 0,6 p.u. (M_n) wg § Z-11 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines +0,1692 p.u. (M_n), punkt: silnik M1 (szyna Stacja SN/nN Ogrodowa), względnie +28,2 % wartości granicznej)."
+        },
+        "wymaganie_id": "v126.rozruch.M1",
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Rozruch bezpośredni jednego silnika podanego przez projektanta, każdy osobno; zapad z impedancji zastępczej sieci w węźle silnika; moment rozruchowy przy napięciu znamionowym.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "obniżenie momentu przez zapad napięcia w czasie rozruchu",
+            "rozruch kilku silników jednocześnie i przebieg czasowy rozruchu"
+          ]
+        }
+      }
+    ],
     "sanity": {
-      "checks_passed": 0,
+      "checks_passed": 4,
       "checks_total": 4,
-      "status": "dane niekompletne",
+      "status": "w paśmie wiarygodności",
       "violations": []
     }
   },
@@ -190,19 +2243,173 @@
     "dane_przyjete": [],
     "design_mode": "petersen_coil",
     "detuning_model": -0.19866,
-    "kompletnosc_dowodu": "PELNY",
+    "kompletnosc_dowodu": "NIEPELNY",
+    "nazwa_pl": "Sieć SN 15 kV — GPZ Zachód — szyny SN",
     "network_line_voltage_kv": 15.0,
     "neutral_earthing_type": "petersen_coil",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk a2fa042ffced6f21)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "nazwa_pl": "Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń)",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+                "wartosc": {
+                  "jednostka": "%",
+                  "wartosc": 10.0
+                }
+              }
+            ],
+            "stan": "UNVALIDATED_INPUT"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału prądu pojemnościowego sieci",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "v126.uziemienie.prad_resztkowy.gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+            "jednostka_redakcyjna": "§ Z-6",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+            "wydanie": "2026-10-29"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 10.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": null
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Sieć SN 15 kV — GPZ Zachód — szyny SN",
+          "skala": {
+            "jednostka": "pp",
+            "wartosc": 10.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": -9.866258
+          },
+          "wzgledny": -0.9866258
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO",
+          "jednostka_redakcyjna": "§ Z-6",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+          "wydanie": "2026-10-29"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej."
+        ],
+        "przedmiot": {
+          "element_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+          "nazwa_pl": "Sieć SN 15 kV — GPZ Zachód — szyny SN",
+          "opis_pl": "Sieć SN połączona galwanicznie (punkt neutralny zespołu uziemiającego)"
+        },
+        "slad": [
+          {
+            "krok": "petersen_residual_current",
+            "opis_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci: wynik 19.866258 %, limit 10.0 % (Z-6)",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu analizy dla tego obiektu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci przekracza wartość graniczną o 9,866 pp (Sieć SN 15 kV — GPZ Zachód — szyny SN)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-6 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+            "Zakres ważności: Galwanicznie połączona sieć SN z zespołem uziemiającym modelu; prąd pojemnościowy z susceptancji zerowej linii, kabli i baterii tej sieci; prąd doziemienia z impedancji punktów neutralnych w ruchu — wynik nie obejmuje: straty czynne dławika i upływność izolacji sieci (rzeczywisty prąd resztkowy jest nie mniejszy); impedancje zgodna i przeciwna sieci w prądzie rezystora (strona bezpieczna)."
+          ],
+          "zdanie_pl": "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału prądu pojemnościowego sieci (Sieć SN 15 kV — GPZ Zachód — szyny SN) — kryterium naruszone. Udział prądu resztkowego w prądzie pojemnościowym sieci: 19,87 % wobec wymaganych ≤ 10 % wg § Z-6 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −9,866 pp, punkt: Sieć SN 15 kV — GPZ Zachód — szyny SN, względnie −98,66 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Sieć SN 15 kV — GPZ Zachód — szyny SN",
+          "symbol_latex": "I_{\\mathrm{res}}/I_C",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 19.866258
+          },
+          "wielkosc_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Galwanicznie połączona sieć SN z zespołem uziemiającym modelu; prąd pojemnościowy z susceptancji zerowej linii, kabli i baterii tej sieci; prąd doziemienia z impedancji punktów neutralnych w ruchu.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "straty czynne dławika i upływność izolacji sieci (rzeczywisty prąd resztkowy jest nie mniejszy)",
+            "impedancje zgodna i przeciwna sieci w prądzie rezystora (strona bezpieczna)"
+          ]
+        }
+      }
+    ],
     "residual_current_a": 2.477474,
     "residual_current_at_resonance_a": 0.012901,
     "residual_current_awsc_a": null,
+    "residual_share_percent": 19.866258,
     "sanity": {
       "checks_passed": 3,
       "checks_total": 3,
       "status": "w paśmie wiarygodności",
       "violations": []
     },
-    "tuning_status": "rozstrojony_poza_10pct",
+    "szyna_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
     "zastrzezenia_pl": [
       "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna I_w zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
       "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
@@ -338,7 +2545,6 @@
       "nodes": [
         {
           "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-          "compatibility_status": "NIE_OCENIONO",
           "flicker_plt": null,
           "flicker_pst": null,
           "i_h": [],
@@ -569,7 +2775,6 @@
         },
         {
           "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-          "compatibility_status": "NIE_OCENIONO",
           "flicker_plt": null,
           "flicker_pst": null,
           "i_h": [],
@@ -1570,12 +3775,42 @@
     }
   },
   "reliability_contingency": {
+    "dane_przyjete": [
+      {
+        "jakosc": "ESTIMATED",
+        "nazwa_pl": "Intensywność uszkodzeń — linia kablowa SN",
+        "powod_pl": "Model nie niesie danych niezawodnościowych elementów (1: Kabel SN GPZ Zachód – Ogrodowa) — przyjęto wartość roboczą rejestru (założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów); projektant podaje własną w danych niezawodności analizy.",
+        "wartosc": {
+          "jednostka": "1/(km·rok)",
+          "wartosc": 0.015
+        }
+      },
+      {
+        "jakosc": "ESTIMATED",
+        "nazwa_pl": "Czas odnowy zasilania — linia kablowa SN",
+        "powod_pl": "Model nie niesie danych niezawodnościowych elementów (1: Kabel SN GPZ Zachód – Ogrodowa) — przyjęto wartość roboczą rejestru (założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów); projektant podaje własną w danych niezawodności analizy.",
+        "wartosc": {
+          "jednostka": "h",
+          "wartosc": 12.0
+        }
+      },
+      {
+        "jakosc": "ESTIMATED",
+        "nazwa_pl": "Udział przerw krótkich w przerwach długich (MAIFI/SAIFI)",
+        "powod_pl": "MAIFI = 0,12·SAIFI — założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich.",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.12
+        }
+      }
+    ],
     "indices": {
       "caidi_min_per_interruption": 720.0,
-      "maifi_per_year": 0.0018,
-      "saidi_min_per_year": 10.8,
-      "saifi_per_year": 0.015
+      "maifi_per_year": 0.0072,
+      "saidi_min_per_year": 43.2,
+      "saifi_per_year": 0.06
     },
+    "kompletnosc_dowodu": "NIEPELNY",
     "ranking_n1": {
       "ekran": "Wyniki › Kontyngencje",
       "metoda_pl": "szacunek bez rozpływu",
@@ -1711,6 +3946,117 @@
       "peak_multiple_in": 8.0,
       "second_harmonic_percent_of_peak": 7.875
     },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "oceny": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 2a019b38d2a7a8fc)",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod obwiednią wytrzymałości wyłącznika",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "u_{\\mathrm{TRV}}(t) \\leq u_{\\mathrm{obw}}(t)",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "v126.trv.obwiednia",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "porównanie wielkości z obliczenia analitycznego wzorem zamkniętym — niepewność danych wejściowych nie jest propagowana do tej oceny",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 62271-100",
+          "jednostka_redakcyjna": null,
+          "rodzaj": "NORMA",
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "obwiednia wytrzymałości wyłącznika (parametry u_c, t_3 dla napięcia znamionowego i współczynnika pierwszego bieguna) nie jest daną programu",
+          "wydanie": null
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Podstawa „IEC 62271-100” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Wyłącznik sieci SN",
+          "opis_pl": "Wyłącznik o napięciu znamionowym U_r przerywający prąd zwarciowy"
+        },
+        "slad": [
+          {
+            "krok": "trv_inrush_ferro",
+            "opis_pl": "szczyt napięcia powrotnego: 38.01894 kV",
+            "run_id": null,
+            "wersja_silnika": "v126-academic-whitebox-1.4"
+          }
+        ],
+        "status_maszynowy": "BRAK_PODSTAWY",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wyłącznik przerywa prąd zwarciowy w sieci SN",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Tabele parametrów obwiedni wytrzymałości wyłącznika na napięcie powrotne (u_c, t_3) IEC 62271-100 dla napięcia znamionowego wyłącznika — do wprowadzenia do programu z podstawą (wydanie, tablica)."
+          ],
+          "przyczyna_pl": "kryterium nie ma limitu z podstawą",
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-100” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (obwiednia wytrzymałości wyłącznika (parametry u_c, t_3 dla napięcia znamionowego i współczynnika pierwszego bieguna) nie jest daną programu).",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Przebieg napięcia powrotnego 2–100 µs po przerwaniu prądu zwarciowego z parametrów obwodu podanych przez projektanta (częstotliwość własna, stała czasowa) — wynik nie obejmuje: obwiednia wytrzymałości wyłącznika z tablic normy."
+          ],
+          "zdanie_pl": "Napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod obwiednią wytrzymałości wyłącznika (Wyłącznik sieci SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): największa wartość napięcia powrotnego: 38,02 kV."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Wyłącznik sieci SN",
+          "symbol_latex": "\\max u_{\\mathrm{TRV}}",
+          "wartosc": {
+            "jednostka": "kV",
+            "wartosc": 38.01894
+          },
+          "wielkosc_pl": "największa wartość napięcia powrotnego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Przebieg napięcia powrotnego 2–100 µs po przerwaniu prądu zwarciowego z parametrów obwodu podanych przez projektanta (częstotliwość własna, stała czasowa).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "obwiednia wytrzymałości wyłącznika z tablic normy"
+          ]
+        }
+      }
+    ],
     "sanity": {
       "checks_passed": 3,
       "checks_total": 3,
@@ -1719,258 +4065,207 @@
     },
     "trv_curve": [
       {
-        "envelope_kv": 0.79545,
         "t_us": 2.0,
         "u_trv_kv": 10.30003
       },
       {
-        "envelope_kv": 1.59091,
         "t_us": 4.0,
         "u_trv_kv": 10.87614
       },
       {
-        "envelope_kv": 2.38636,
         "t_us": 6.0,
         "u_trv_kv": 11.80632
       },
       {
-        "envelope_kv": 3.18182,
         "t_us": 8.0,
         "u_trv_kv": 13.05756
       },
       {
-        "envelope_kv": 3.97727,
         "t_us": 10.0,
         "u_trv_kv": 14.59036
       },
       {
-        "envelope_kv": 4.77273,
         "t_us": 12.0,
         "u_trv_kv": 16.35979
       },
       {
-        "envelope_kv": 5.56818,
         "t_us": 14.0,
         "u_trv_kv": 18.31661
       },
       {
-        "envelope_kv": 6.36364,
         "t_us": 16.0,
         "u_trv_kv": 20.40849
       },
       {
-        "envelope_kv": 7.15909,
         "t_us": 18.0,
         "u_trv_kv": 22.58123
       },
       {
-        "envelope_kv": 7.95455,
         "t_us": 20.0,
         "u_trv_kv": 24.78004
       },
       {
-        "envelope_kv": 8.75,
         "t_us": 22.0,
         "u_trv_kv": 26.95081
       },
       {
-        "envelope_kv": 9.54545,
         "t_us": 24.0,
         "u_trv_kv": 29.04127
       },
       {
-        "envelope_kv": 10.34091,
         "t_us": 26.0,
         "u_trv_kv": 31.00218
       },
       {
-        "envelope_kv": 11.13636,
         "t_us": 28.0,
         "u_trv_kv": 32.78833
       },
       {
-        "envelope_kv": 11.93182,
         "t_us": 30.0,
         "u_trv_kv": 34.3595
       },
       {
-        "envelope_kv": 12.72727,
         "t_us": 32.0,
         "u_trv_kv": 35.68123
       },
       {
-        "envelope_kv": 13.52273,
         "t_us": 34.0,
         "u_trv_kv": 36.7255
       },
       {
-        "envelope_kv": 14.31818,
         "t_us": 36.0,
         "u_trv_kv": 37.47122
       },
       {
-        "envelope_kv": 15.11364,
         "t_us": 38.0,
         "u_trv_kv": 37.90453
       },
       {
-        "envelope_kv": 15.90909,
         "t_us": 40.0,
         "u_trv_kv": 38.01894
       },
       {
-        "envelope_kv": 16.70455,
         "t_us": 42.0,
         "u_trv_kv": 37.81539
       },
       {
-        "envelope_kv": 17.5,
         "t_us": 44.0,
         "u_trv_kv": 37.30197
       },
       {
-        "envelope_kv": 18.29545,
         "t_us": 46.0,
         "u_trv_kv": 36.49364
       },
       {
-        "envelope_kv": 19.09091,
         "t_us": 48.0,
         "u_trv_kv": 35.41173
       },
       {
-        "envelope_kv": 19.88636,
         "t_us": 50.0,
         "u_trv_kv": 34.08331
       },
       {
-        "envelope_kv": 20.68182,
         "t_us": 52.0,
         "u_trv_kv": 32.54044
       },
       {
-        "envelope_kv": 21.47727,
         "t_us": 54.0,
         "u_trv_kv": 30.81938
       },
       {
-        "envelope_kv": 22.27273,
         "t_us": 56.0,
         "u_trv_kv": 28.95963
       },
       {
-        "envelope_kv": 23.06818,
         "t_us": 58.0,
         "u_trv_kv": 27.00298
       },
       {
-        "envelope_kv": 23.86364,
         "t_us": 60.0,
         "u_trv_kv": 24.99256
       },
       {
-        "envelope_kv": 24.65909,
         "t_us": 62.0,
         "u_trv_kv": 22.97176
       },
       {
-        "envelope_kv": 25.45455,
         "t_us": 64.0,
         "u_trv_kv": 20.98331
       },
       {
-        "envelope_kv": 26.25,
         "t_us": 66.0,
         "u_trv_kv": 19.0683
       },
       {
-        "envelope_kv": 27.04545,
         "t_us": 68.0,
         "u_trv_kv": 17.26529
       },
       {
-        "envelope_kv": 27.84091,
         "t_us": 70.0,
         "u_trv_kv": 15.6095
       },
       {
-        "envelope_kv": 28.63636,
         "t_us": 72.0,
         "u_trv_kv": 14.13209
       },
       {
-        "envelope_kv": 29.43182,
         "t_us": 74.0,
         "u_trv_kv": 12.85953
       },
       {
-        "envelope_kv": 30.22727,
         "t_us": 76.0,
         "u_trv_kv": 11.81314
       },
       {
-        "envelope_kv": 31.02273,
         "t_us": 78.0,
         "u_trv_kv": 11.00868
       },
       {
-        "envelope_kv": 31.81818,
         "t_us": 80.0,
         "u_trv_kv": 10.45615
       },
       {
-        "envelope_kv": 32.61364,
         "t_us": 82.0,
         "u_trv_kv": 10.15966
       },
       {
-        "envelope_kv": 33.40909,
         "t_us": 84.0,
         "u_trv_kv": 10.11749
       },
       {
-        "envelope_kv": 34.20455,
         "t_us": 86.0,
         "u_trv_kv": 10.32226
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 88.0,
         "u_trv_kv": 10.76119
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 90.0,
         "u_trv_kv": 11.41655
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 92.0,
         "u_trv_kv": 12.26611
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 94.0,
         "u_trv_kv": 13.28382
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 96.0,
         "u_trv_kv": 14.4404
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 98.0,
         "u_trv_kv": 15.70412
       },
       {
-        "envelope_kv": 35.0,
         "t_us": 100.0,
         "u_trv_kv": 17.04157
       }
     ],
-    "trv_margin_percent": -1194.8609,
-    "trv_status": "niespelniony"
+    "trv_peak_kv": 38.01894
   },
   "uncertainty_sensitivity": {
     "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",

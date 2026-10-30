@@ -234,7 +234,9 @@ describe('StationConfigurator — karta uziemienia z modelu', () => {
     expect(dlawik.textContent).toContain('(dodatnie — niedokompensowanie)');
     // Wartość robocza B′0 pokazana dyskretnie, z powodem w podpowiedzi (zasada nr 4).
     const robocze = within(dlawik).getByTestId('station-earthing-b0-robocze');
-    expect(robocze.textContent).toContain('B′0 wartość robocza (Kabel 1, Kabel 2): 0.000088 S/km');
+    // Zapis liczby po polsku (ten sam co karta werdyktu) — dawniej surowy zapis JS „0.000088".
+    expect(robocze.textContent).toContain('B′0 wartość robocza (Kabel 1, Kabel 2): 0,000088 S/km');
+    expect(robocze.textContent).not.toMatch(/\d\.\d/);
     expect(within(robocze).getByText(/B′0 wartość robocza/)).toHaveAttribute(
       'title',
       'Kabel SN o polu promieniowym: B′0 = B′1. Zmień wartość: B′0 w parametrach odcinka.',

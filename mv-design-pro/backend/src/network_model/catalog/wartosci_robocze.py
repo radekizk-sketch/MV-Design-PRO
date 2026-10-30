@@ -2503,3 +2503,85 @@ def _wartosc_baterii_pl(parametr: str, wartosc: Any) -> str:
     if isinstance(wartosc, bool):
         return "tak" if wartosc else "nie"
     return str(wartosc)
+
+
+# ---------------------------------------------------------------------------
+# Niezawodność elementów sieci SN (analiza niezawodności V12.6, karta UX-04/
+# POLE-ZU-SKLADOWA-ZEROWA odcinek 3). Model ENM nie niesie danych niezawodnościowych
+# elementów; intensywność uszkodzeń i czas odnowy są założeniem inżynierskim (bez numeru
+# normy — IEEE Std 1366 definiuje WYŁĄCZNIE sposób liczenia wskaźników, nie dane elementów),
+# jawnym jako dana przyjęta ESTIMATED. Projektant zastępuje każdą wartość parametrem
+# ``reliability_data`` analizy (zasada nr 4 pkt 3). Dawny katalog „reliability-defaults”
+# API niósł dodatkowy wiersz transformatora SN/nN (0,008/rok, 48 h), którego most nigdy nie
+# czytał — fantom usunięty; katalog czyta odtąd TEN rejestr.
+# ---------------------------------------------------------------------------
+
+ElementNiezawodnosci = Literal["linia_napowietrzna_sn", "kabel_sn", "aparat_sn"]
+
+
+@dataclass(frozen=True)
+class PropozycjaNiezawodnosci:
+    """Wartość robocza niezawodności jednego rodzaju elementu (λ i czas odnowy)."""
+
+    element: ElementNiezawodnosci
+    nazwa_pl: str
+    #: Intensywność uszkodzeń: na km i rok (linia, kabel) albo na rok (aparat).
+    intensywnosc_uszkodzen: float
+    jednostka_intensywnosci: str
+    na_km: bool
+    czas_odnowy_h: float
+    odniesienie: str
+
+
+_ODNIESIENIE_NIEZAWODNOSCI = (
+    "założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości "
+    "spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 "
+    "definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów"
+)
+
+PROPOZYCJE_NIEZAWODNOSCI: Mapping[ElementNiezawodnosci, PropozycjaNiezawodnosci] = {
+    "linia_napowietrzna_sn": PropozycjaNiezawodnosci(
+        element="linia_napowietrzna_sn",
+        nazwa_pl="linia napowietrzna SN",
+        intensywnosc_uszkodzen=0.08,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=3.5,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "kabel_sn": PropozycjaNiezawodnosci(
+        element="kabel_sn",
+        nazwa_pl="linia kablowa SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=12.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "aparat_sn": PropozycjaNiezawodnosci(
+        element="aparat_sn",
+        nazwa_pl="aparat łączeniowy SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/rok",
+        na_km=False,
+        czas_odnowy_h=4.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+}
+
+#: Udział przerw krótkich (MAIFI) w liczbie przerw długich (SAIFI) — założenie inżynierskie
+#: (sieć bez danych o samoczynnym ponownym załączaniu); MAIFI = 0,12·SAIFI jest daną przyjętą.
+UDZIAL_MAIFI_DO_SAIFI = 0.12
+ODNIESIENIE_MAIFI = (
+    "założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie "
+    "niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich"
+)
+
+
+def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
+    """Rodzaj elementu rejestru niezawodności dla rodzaju gałęzi ENM (jedno odwzorowanie)."""
+    if rodzaj_galezi == "line_overhead":
+        return "linia_napowietrzna_sn"
+    if rodzaj_galezi == "cable":
+        return "kabel_sn"
+    return "aparat_sn"

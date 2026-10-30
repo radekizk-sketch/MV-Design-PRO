@@ -186,7 +186,7 @@ def test_detekcja_doziemna_kod_spoza_slownika_zostawia_zapis_solvera() -> None:
     krok = {
         "key": "earth_fault_method_selection",
         "data": {"neutral_grounding": "nowy_sposob", "relay_methods": ["wattmetric"]},
-        "result": {"recommended_method": "nowa_metoda", "available": True},
+        "result": {"recommended_method": "nowa_metoda", "required_functions": ["nowa_metoda"]},
         "result_pl": "zapis solvera",
     }
     (wzbogacony,) = wzbogac_kroki_latex([krok])
@@ -195,9 +195,10 @@ def test_detekcja_doziemna_kod_spoza_slownika_zostawia_zapis_solvera() -> None:
 
 
 def test_slowniki_detekcji_doziemnej_obejmuja_kazdy_kod_tabeli_solvera() -> None:
-    """Parytet z KODEM solvera (FROZEN): każdy sposób uziemienia z tabeli decyzyjnej,
-    każda metoda zalecana/alternatywna i każda domyślna metoda przekaźnika ma polską
-    nazwę — inaczej krok wracałby do zapisu kodami."""
+    """Parytet z KODEM solvera: każdy sposób uziemienia z tabeli decyzyjnej, każda metoda
+    zalecana/alternatywna i każda funkcja wyposażenia przekaźnika (``METODY_DETEKCJI_KOMPLET``
+    — metody proste i składowe 51N/67N/50N metod złożonych) ma polską nazwę — inaczej krok
+    wracałby do zapisu kodami."""
     import ast
     import inspect
     import textwrap
@@ -205,6 +206,10 @@ def test_slowniki_detekcji_doziemnej_obejmuja_kazdy_kod_tabeli_solvera() -> None
     from application.analyses.v126_wzory import (
         METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL,
         UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL,
+    )
+    from network_model.solvers.v126_academic import (
+        METODY_DETEKCJI_KOMPLET,
+        SKLADNIKI_METODY_DETEKCJI,
     )
 
     zrodlo = inspect.getsource(V126AcademicSolver._earth_fault_detection)
@@ -224,5 +229,10 @@ def test_slowniki_detekcji_doziemnej_obejmuja_kazdy_kod_tabeli_solvera() -> None
             metody_domyslne.extend(e.value for e in wezel.elts)  # type: ignore[union-attr]
     assert tabela, "nie znaleziono tabeli decyzyjnej solvera"
     assert set(tabela) == set(UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL)
-    metody = {m for para in tabela.values() for m in para if m is not None} | set(metody_domyslne)
+    metody = {m for para in tabela.values() for m in para if m is not None}
+    metody |= set(metody_domyslne) | set(METODY_DETEKCJI_KOMPLET)
     assert metody == set(METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL)
+    # Składowe metod złożonych należą do wyposażenia, które projektant wskazuje.
+    assert {f for s in SKLADNIKI_METODY_DETEKCJI.values() for f in s} <= set(
+        METODY_DETEKCJI_KOMPLET
+    )

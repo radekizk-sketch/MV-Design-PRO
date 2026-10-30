@@ -24,6 +24,7 @@ from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from network_model.catalog.wartosci_robocze import PROPOZYCJE_NIEZAWODNOSCI
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ValidationError
 from solver_input.v126_contracts import (
@@ -534,11 +535,18 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             {"u_m_kv": u_m, "bil_kv": bil, "short_duration_50hz_kv": w}
             for u_m, bil, w in POZIOMY_IZOLACJI_IEC60071
         ],
+        # Wartości robocze niezawodności — JEDNO źródło: rejestr `PROPOZYCJE_NIEZAWODNOSCI`
+        # (most ENM → V12.6 czyta ten sam rejestr); dawna kopia literałów z wierszem
+        # transformatora, którego most nie czytał, skasowana.
         "reliability-defaults": [
-            {"element": "linia_napowietrzna_sn", "lambda_per_km_year": 0.08, "mttr_h": 3.5},
-            {"element": "kabel_sn", "lambda_per_km_year": 0.015, "mttr_h": 12.0},
-            {"element": "transformator_sn_nn", "lambda_per_year": 0.008, "mttr_h": 48.0},
-            {"element": "pole_sn", "lambda_per_year": 0.015, "mttr_h": 4.0},
+            {
+                "element": p.element,
+                ("lambda_per_km_year" if p.na_km else "lambda_per_year"): (
+                    p.intensywnosc_uszkodzen
+                ),
+                "mttr_h": p.czas_odnowy_h,
+            }
+            for p in PROPOZYCJE_NIEZAWODNOSCI.values()
         ],
         "converter-modes": ["GFL", "GFM_droop", "VSM", "Grid_Supporting"],
     }

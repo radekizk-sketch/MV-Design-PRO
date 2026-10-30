@@ -2091,7 +2091,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `predicted_tov_kv` i `predicted_energy_kj_per_kv` (wejscie wiersza izolacji — U_TOV liczy
     # solver z k trybu; dwa wpisy zapadki `A:or:item.*` zdjete). PASS niezmieniony (zero
     # podstawien; `awsc.i_w_a or 0.0` w sladzie dlawika zastapione jawnym `None`).
-    assert "Pol kontraktow wejsciowych: 4484." in wyjscie, wyjscie
+    # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (werdykty V12.6 jako rekordy, warunek k > 1,4
+    # pojemnosci w Y0, kasacja mostu doziemienia, 2026-10-30): 4484 -> 4502 — POMIAR
+    # `contract_fields()` na `f2da569d3` (`git archive`: 4484, pin zgodny) i na drzewie karty
+    # (4502). Roznica zbiorow +22, -4. +22: rejestr zalozen kryteriow (`zalozenie`, `paragraf`,
+    # `praktyka_pl`, `limit_pl`, `powod_stosowalnosci_pl`, `metoda_wyniku`, `odcisk`), dane
+    # niezawodnosci z rejestru wartosci roboczych (`intensywnosc_uszkodzen`, `czas_odnowy_h`,
+    # `jednostka_intensywnosci`, `na_km`, `dane_przyjete_niezawodnosci`), tabliczka silnika
+    # (`rated_power_factor`, `rated_efficiency`), Z_Q szyny z modelu (`source_r_ohm`,
+    # `source_x_ohm`), kandydaci pojemnosci sieci zerowej (`b0_robocze`, `from_idx`, `to_idx`,
+    # `nazwa_od`, `nazwa_do`, `z_base_ohm`). -4: pola skasowanego mostu doziemienia
+    # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `pack_input`,
+    # `readiness_issues`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4502." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2410,7 +2422,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `network_model/solvers/doziemienie_sn.py` — solver doziemienia wg sposobu pracy punktu
         # neutralnego, +1 `enm/doziemienie_sieci.py` — wiersz doziemienia sieci). POMIAR guardem
         # na `0344668a0` (603) i na drzewie karty (605).
-        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
+        # Odcinek 3 tej karty (2026-10-30): 605 -> 604 (-2 skasowany pakiet mostu doziemienia
+        # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
+        # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
+        # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2833,7 +2849,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
         # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
+        # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

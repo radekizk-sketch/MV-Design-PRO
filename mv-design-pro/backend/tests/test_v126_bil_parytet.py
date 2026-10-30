@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pytest
 from api.main import app
+from application.analyses.v126_oceny import kompletnosc_wyniku, oceny_wyniku_v126
 from fastapi.testclient import TestClient
 from network_model.solvers.v126_academic import POZIOMY_IZOLACJI_IEC60071, V126AcademicSolver
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType, V126InsulationInput
@@ -37,6 +38,25 @@ def _wiersz_solvera(um_kv: float) -> dict[str, object]:
     wynik = V126AcademicSolver().run(V126AnalysisType.INSULATION_COORDINATION, model)["result"]
     (wiersz,) = wynik["arresters"]
     return wiersz
+
+
+def _ocena_marginesu(um_kv: float) -> tuple[dict[str, object], str | None]:
+    """Rekord kryterium marginesu ochrony izolacji i kompletność dowodu wyniku — ocena
+    z granicy wyniku (`v126_oceny`), nie status wiersza solvera."""
+    model = V126AcademicInput(
+        buses=[],
+        insulation=[
+            V126InsulationInput(location_bus_ref="B1", u_m_kv=um_kv, network_neutral="rezystor")
+        ],
+    )
+    wynik = V126AcademicSolver().run(V126AnalysisType.INSULATION_COORDINATION, model)["result"]
+    oceny = oceny_wyniku_v126(
+        "insulation_coordination", wynik, wersja_silnika=None, odcisk=None, nazwy={}
+    )
+    assert oceny is not None
+    (wymaganie,) = oceny
+    skladowe = {o["kryterium_id"]: o for o in wymaganie["oceny_skladowe"]}
+    return skladowe["v126.izolacja.margines_bil.B1"], kompletnosc_wyniku(wynik, oceny)
 
 
 def test_katalog_api_to_tabela_solvera() -> None:
@@ -81,7 +101,9 @@ def test_wiersz_solvera_z_tabeli(um_kv: float, bil: float, w50: float) -> None:
     wiersz = _wiersz_solvera(um_kv)
     assert wiersz["bil_protected_kv"] == bil
     assert wiersz["short_duration_50hz_kv"] == w50
-    assert wiersz["verification_status"] in ("spelniony", "niespelniony")
+    ocena, _ = _ocena_marginesu(um_kv)
+    assert ocena["status_maszynowy"] in ("SPELNIA", "NIE_SPELNIA")
+    assert ocena["wynik"]["wartosc"] == {"wartosc": wiersz["bil_margin_percent"], "jednostka": "%"}
 
 
 @pytest.mark.parametrize("um_kv", [145.0, 245.0])
@@ -89,6 +111,9 @@ def test_um_powyzej_tabeli_to_brak_podstawy_nazwany(um_kv: float) -> None:
     wiersz = _wiersz_solvera(um_kv)
     assert wiersz["bil_protected_kv"] is None
     assert wiersz["bil_margin_percent"] is None
-    assert wiersz["verification_status"] == "brak_podstawy"
     assert "powyżej tabeli poziomów izolacji" in str(wiersz["message_pl"])
-    assert wiersz["kompletnosc_dowodu"] == "NIEPELNY"
+    # Brak poziomu izolacji z tabeli ≠ spełnia: kryterium marginesu nieocenione z przyczyną.
+    ocena, kompletnosc = _ocena_marginesu(um_kv)
+    assert ocena["status_maszynowy"] == "NIE_OCENIONO"
+    assert "powyżej tabeli poziomów izolacji" in ocena["wyjasnienie"]["przyczyna_pl"]
+    assert kompletnosc == "NIEPELNY"

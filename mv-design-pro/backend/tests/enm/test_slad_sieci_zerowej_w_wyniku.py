@@ -9,8 +9,9 @@ a ``GET …/results/short-circuit`` przenosi go do klienta.
 
 Iloczyn cech (reguła KLASA, NIE INSTANCJA §2):
   {rodzaj zwarcia 1F, 2FG — ślad jest; 3F, 2F — klucza nie ma} ×
-  {sieć: TN z Dyn11 i kablem z Z0 / sieć izolowana z B0 kabla / sieć bez danych składowej
-   zerowej (odniesienie numeryczne bez wyniku w węzłach bloku)} ×
+  {sieć: TN z Dyn11 i kablem z Z0 / sieć izolowana z B0 kabla (krok warunku pojemności, bez
+   bocznika) / sieć z rezystorem i B0 kabla (k > 1,4 — bocznik pojemności w Y0) / sieć bez
+   danych składowej zerowej (odniesienie numeryczne bez wyniku w węzłach bloku)} ×
   {scenariusz MAX / MIN} ×
   {jedna prawda: ślad = ślad funkcji budującej z0_bus dla grafu i scenariusza biegu} ×
   {determinizm: dwa biegi → ten sam ślad} ×
@@ -122,6 +123,9 @@ def _siec(rodzaj_sieci: str) -> EnergyNetworkModel:
     elif rodzaj_sieci == "izolowana_b0":
         trafo = _transformator(lv_neutral=GroundingConfig(type="isolated"))
         kabel, zrodlo = _kabel(b0_siemens_per_km=2.5e-4), _zrodlo()
+    elif rodzaj_sieci == "rezystor_b0":
+        trafo = _transformator(lv_neutral=GroundingConfig(type="resistor_grounded", r_ohm=40.0))
+        kabel, zrodlo = _kabel(b0_siemens_per_km=2.5e-4), _zrodlo()
     elif rodzaj_sieci == "bez_danych_z0":
         trafo = _transformator(vector_group=None)
         kabel = _kabel(r0_ohm_per_km=None, x0_ohm_per_km=None)
@@ -138,10 +142,34 @@ def _siec(rodzaj_sieci: str) -> EnergyNetworkModel:
 
 
 #: Klucze kroków, które ślad sieci zerowej MUSI nieść dla danej sieci (rozbicie po elementach).
+#: Pojemność kabla jest w śladzie zawsze jako krok warunku IEC 60909-0 pkt 5.2 f)
+#: (`z0_warunek_pojemnosci`), a bocznikiem macierzy (`z0_line_shunt`) — wyłącznie w sieci
+#: uziemionej przez małą impedancję o k > 1,4 (tu rezystor 40 Ω); sieć izolowana nie ma węzła
+#: liczonego zwarciem IEC 60909, więc pojemność do Y0 zwarć nie wchodzi, a blok domyka kotwica.
 OCZEKIWANE_KROKI: dict[str, set[str]] = {
     "tn_dyn11": {"z0_source[src]", "z0_line[c1]", "tr_z0_parse[tr1]", "tr_z0_conn[tr1]"},
-    "izolowana_b0": {"z0_source[src]", "z0_line[c1]", "z0_line_shunt[c1]", "tr_z0_conn[tr1]"},
+    "izolowana_b0": {
+        "z0_source[src]",
+        "z0_line[c1]",
+        "z0_warunek_pojemnosci[1]",
+        "z0_numerical_reference",
+        "tr_z0_conn[tr1]",
+    },
+    "rezystor_b0": {
+        "z0_source[src]",
+        "z0_line[c1]",
+        "z0_warunek_pojemnosci[1]",
+        "z0_line_shunt[c1]",
+        "tr_z0_conn[tr1]",
+    },
     "bez_danych_z0": {"tr_z0_open[tr1]", "z0_numerical_reference"},
+}
+#: Klucze, których ślad danej sieci NIE może nieść (para do `OCZEKIWANE_KROKI`).
+ZAKAZANE_KROKI: dict[str, set[str]] = {
+    "tn_dyn11": {"z0_line_shunt[c1]", "z0_warunek_pojemnosci[1]"},
+    "izolowana_b0": {"z0_line_shunt[c1]"},
+    "rezystor_b0": {"z0_numerical_reference"},
+    "bez_danych_z0": {"z0_line_shunt[c1]"},
 }
 SIECI = tuple(OCZEKIWANE_KROKI)
 
@@ -186,6 +214,7 @@ def test_slad_sieci_zerowej_wylacznie_w_zwarciu_doziemnym(
     slad = raw["siec_zerowa"]
     klucze = {krok["key"] for krok in slad}
     assert OCZEKIWANE_KROKI[rodzaj_sieci] <= klucze, klucze
+    assert not (ZAKAZANE_KROKI[rodzaj_sieci] & klucze), klucze
     # Jedna prawda: ślad biegu to ślad złożenia macierzy, którą solver dostał jako z0_bus —
     # dla grafu solvera i scenariusza biegu (MIN ma inne Z_Q, więc i inne Z0 źródła).
     wejscie = zloz_wejscie_zwarcia(enm.model_dump(mode="json"), _opcje(rodzaj, scenariusz))

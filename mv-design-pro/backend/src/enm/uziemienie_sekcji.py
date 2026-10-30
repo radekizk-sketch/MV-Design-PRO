@@ -1142,8 +1142,8 @@ def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[
     robocze: list[tuple[str, str, float, str]] = []
     napiecia = napiecia_szyn_kv(enm)
     for galaz in galezie_sieci_sn(enm, szyny):
-        # B′0 z modelu albo wartość robocza odcinka SN — ten sam predykat co bocznik pojemności
-        # w sieci zerowej zwarć (``enm.mapping``) i wejście V12.6.
+        # B′0 z modelu albo wartość robocza odcinka SN — ta sama wartość co kandydat bocznika
+        # pojemności w sieci zerowej zwarć (``enm.mapping``, warunek pkt 5.2 f)) i wejście V12.6.
         skladowa = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref))
         if skladowa.b0_s_per_km is None:
             brak.append(galaz.ref_id)

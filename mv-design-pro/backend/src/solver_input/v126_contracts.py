@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
 from enm.bateria_kondensatorow import parametry_baterii
+from enm.mapping import impedancja_zrodla_sieciowego
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, zbuduj_indeks_nazw
 from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_bledu_walidacji
+from enm.tolerancja_nn import WyspaNn, wyspy_wezlow_nn
 from enm.uziemienie_sekcji import (
     UziemienieSekcji,
     b0_baterii_s,
@@ -17,10 +20,14 @@ from enm.uziemienie_sekcji import (
     uziemienie_sieci,
     uziemienie_szyny,
 )
-from network_model.catalog.wartosci_robocze import PARAMETR_BATERII_UKLAD
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_BATERII_UKLAD,
+    PROPOZYCJE_NIEZAWODNOSCI,
+    element_niezawodnosci,
+)
 from network_model.core.uziemienie import TRYB_DOZIEMIENIA_TYPU, TrybDoziemienia
 from network_model.core.voltage_factor import dobierz_c
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv, pasmo_napieciowe
@@ -34,7 +41,8 @@ from pydantic import (
     model_serializer,
 )
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
-from werdykt.kontrakt import DanaPrzyjeta
+from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
+from werdykt.proweniencja import FieldQuality
 
 
 class _WejscieV126(BaseModel):
@@ -74,6 +82,23 @@ class V126BusInput(_WejscieV126):
     generation_mvar: float = 0.0
     customer_count: int = Field(default=0, ge=0)
     fault_level_mva: float | None = Field(default=None, gt=0)
+    #: Impedancja zgodna zasilania systemowego Z_Q = R_Q + jX_Q [Ω] przyłączonego do szyny —
+    #: z JEDYNEGO źródła prawdy (`enm.mapping.impedancja_zrodla_sieciowego`, IEC 60909-0
+    #: §6.2.1 eq. 6: c·U_nQ²/S''_kQ, R/X z modelu). `None` = szyna bez źródła sieciowego
+    #: albo wejście zbudowane poza mostem ENM (solver przyjmuje wtedy podział mocy zwarciowej
+    #: ``fault_level_mva`` jako daną przyjętą). Pola addytywne — poza odciskiem, gdy `None`.
+    source_r_ohm: float | None = Field(default=None, ge=0)
+    source_x_ohm: float | None = Field(default=None, gt=0)
+
+    @model_serializer(mode="wrap")
+    def _bez_pustej_impedancji_zrodla(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        dane: dict[str, Any] = handler(self)
+        for pole in ("source_r_ohm", "source_x_ohm"):
+            if dane.get(pole) is None:
+                dane.pop(pole, None)
+        return dane
 
 
 class V126BranchInput(_WejscieV126):
@@ -81,9 +106,11 @@ class V126BranchInput(_WejscieV126):
     from_bus_ref: str
     to_bus_ref: str
     kind: str
-    length_km: float = Field(default=1.0, gt=0)
-    r_ohm_per_km: float = Field(default=0.18, ge=0)
-    x_ohm_per_km: float = Field(default=0.12, ge=0)
+    # Długość i impedancja jednostkowa — pola WYMAGANE: dawne wartości domyślne
+    # (1 km, 0,18 + j0,12 Ω/km) liczyły gałąź, której wejście nie opisało.
+    length_km: float = Field(gt=0)
+    r_ohm_per_km: float = Field(ge=0)
+    x_ohm_per_km: float = Field(ge=0)
     # Susceptancja doziemna składowej zgodnej [S/km]. `None` = model/katalog nie
     # niesie pojemności doczepnej tej gałęzi — to NIE JEST zero (karta
     # MOST-WEJSCIA-V126). Rozróżnienie ma skutek: decyzja o ryzyku
@@ -104,8 +131,13 @@ class V126BranchInput(_WejscieV126):
     # stopnia obciążenia, dotkliwości N-1 i zdolności przyłączeniowej. Warstwa,
     # która obciążalności potrzebuje, melduje teraz brak po polsku.
     ampacity_a: float | None = Field(default=None, gt=0)
-    failure_rate_per_year: float = Field(default=0.015, ge=0)
-    mttr_h: float = Field(default=12.0, ge=0)
+    # Intensywność uszkodzeń [1/rok] i czas odnowy [h] elementu. `None` = brak danej
+    # niezawodnościowej — element nie wchodzi do wskaźników przerw i jest nazwany w wyniku
+    # (dawne domyślne 0,015/rok i 12 h liczyły element bez danych). Most ENM podaje wartości
+    # robocze rejestru (`network_model.catalog.wartosci_robocze`, dane przyjęte ESTIMATED
+    # w `V126AcademicInput.dane_przyjete_niezawodnosci`).
+    failure_rate_per_year: float | None = Field(default=None, ge=0)
+    mttr_h: float | None = Field(default=None, ge=0)
     is_open: bool = False
 
 
@@ -180,34 +212,59 @@ class V126ConverterInput(_WejscieV126):
 
 
 class V126MotorInput(_WejscieV126):
+    """Silnik rozruchu bezpośredniego — dane projektanta (gotowość wymaga pól wymaganych
+    kontraktu, `v126_gotowosc._KLUCZE_SILNIKA_WYMAGANE` wyprowadza je z tej klasy).
+
+    Pola wymagane bez wartości domyślnych: dawne domyślne (k_LR = 6, cos φ_r = 0,22, t_r = 8 s,
+    t_utyku = 20 s, M_max = 2, s_k = 0,2, M_obc = 0,6) liczyły silnik, którego nikt nie opisał.
+    ``rated_power_factor``/``rated_efficiency`` — cos φ_n i η_n tabliczki; `None` = wartości
+    robocze rejestru maszyn (`wartosci_robocze.PROPOZYCJE_MASZYNY`, dane przyjęte ESTIMATED).
+    """
+
     ref: str
     bus_ref: str
     rated_kw: float = Field(gt=0)
     rated_voltage_kv: float = Field(gt=0)
-    locked_rotor_multiplier: float = Field(default=6.0, gt=0)
-    start_power_factor: float = Field(default=0.22, gt=0, le=1)
-    start_time_s: float = Field(default=8.0, gt=0)
-    allowable_locked_rotor_time_s: float = Field(default=20.0, gt=0)
-    max_torque_pu: float = Field(default=2.0, gt=0)
-    critical_slip: float = Field(default=0.2, gt=0, lt=1)
-    load_start_torque_pu: float = Field(default=0.6, ge=0)
+    locked_rotor_multiplier: float = Field(gt=0)
+    start_power_factor: float = Field(gt=0, le=1)
+    start_time_s: float = Field(gt=0)
+    allowable_locked_rotor_time_s: float = Field(gt=0)
+    max_torque_pu: float = Field(gt=0)
+    critical_slip: float = Field(gt=0, lt=1)
+    load_start_torque_pu: float = Field(ge=0)
+    rated_power_factor: float | None = Field(default=None, gt=0, le=1)
+    rated_efficiency: float | None = Field(default=None, gt=0, le=1)
+
+    @model_serializer(mode="wrap")
+    def _bez_pustych_danych_tabliczki(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        dane: dict[str, Any] = handler(self)
+        for pole in ("rated_power_factor", "rated_efficiency"):
+            if dane.get(pole) is None:
+                dane.pop(pole, None)
+        return dane
 
 
 class V126EarthingInput(_WejscieV126):
+    """Uziom stacji (IEEE Std 80) — dane projektanta. Pola liczone są WYMAGANE: dawne wartości
+    domyślne (ρ = 100 Ω·m, siatka 60 × 40 m, 10 kA, 0,5 s) liczyły uziom, którego nikt nie
+    opisał. ``rho2_ohm_m``/``h1_m`` (grunt dwuwarstwowy) solver tylko przenosi do wyniku."""
+
     gpz_ref: str = "GPZ"
-    rho1_ohm_m: float = Field(default=100.0, gt=0)
-    rho2_ohm_m: float = Field(default=500.0, gt=0)
-    h1_m: float = Field(default=0.5, gt=0)
-    length_m: float = Field(default=60.0, gt=0)
-    width_m: float = Field(default=40.0, gt=0)
-    mesh_spacing_m: float = Field(default=6.0, gt=0)
-    buried_depth_m: float = Field(default=0.6, gt=0)
-    rods_total_length_m: float = Field(default=40.0, ge=0)
-    split_factor: float = Field(default=0.65, gt=0, le=1)
-    fault_current_ka: float = Field(default=10.0, gt=0)
-    fault_clearing_time_s: float = Field(default=0.5, gt=0)
-    surface_layer_rho_ohm_m: float = Field(default=2500.0, gt=0)
-    surface_layer_derating: float = Field(default=0.74, gt=0)
+    rho1_ohm_m: float = Field(gt=0)
+    rho2_ohm_m: float | None = Field(default=None, gt=0)
+    h1_m: float | None = Field(default=None, gt=0)
+    length_m: float = Field(gt=0)
+    width_m: float = Field(gt=0)
+    mesh_spacing_m: float = Field(gt=0)
+    buried_depth_m: float = Field(gt=0)
+    rods_total_length_m: float = Field(ge=0)
+    split_factor: float = Field(gt=0, le=1)
+    fault_current_ka: float = Field(gt=0)
+    fault_clearing_time_s: float = Field(gt=0)
+    surface_layer_rho_ohm_m: float = Field(gt=0)
+    surface_layer_derating: float = Field(gt=0)
 
 
 class V126InsulationInput(_WejscieV126):
@@ -260,7 +317,10 @@ class V126ShuntCapacitorInput(_WejscieV126):
 #: Pola wejścia V12.6 DODANE PO ZAMROŻENIU odcisków ``input_hash`` — w postaci serializowanej
 #: występują WYŁĄCZNIE, gdy niosą treść (pusta lista = model bez takich elementów; odcisk
 #: wejścia bez baterii bit w bit jak przed kartą UX-04/POLE-BKR-MODEL).
-_POLA_V126_POZA_ODCISKIEM_GDY_PUSTE: tuple[str, ...] = ("shunt_capacitors",)
+_POLA_V126_POZA_ODCISKIEM_GDY_PUSTE: tuple[str, ...] = (
+    "shunt_capacitors",
+    "dane_przyjete_niezawodnosci",
+)
 
 
 class V126RezystorSnInput(_WejscieV126):
@@ -418,6 +478,10 @@ class V126AcademicInput(_WejscieV126):
     shunt_capacitors: list[V126ShuntCapacitorInput] = Field(default_factory=list)
     #: Uziemienie sieci SN z modelu — wyłącznie dla analiz z `ANALIZY_UZIEMIENIA_SN`.
     uziemienie_sn: V126UziemienieSnInput | None = None
+    #: Dane przyjęte niezawodności (wartości robocze rejestru — intensywność uszkodzeń i czas
+    #: odnowy elementów bez danych modelu), wypełniane przez most ENM; solver przenosi je do
+    #: wyniku analizy niezawodności (zasada nr 4: wynik na nich ma kompletność NIEPELNY).
+    dane_przyjete_niezawodnosci: list[DanaPrzyjeta] = Field(default_factory=list)
 
     @model_serializer(mode="wrap")
     def _bez_pustych_pol_addytywnych(
@@ -1233,6 +1297,152 @@ def odbiorcy_z_parametrow(parameters: dict[str, Any] | None) -> OdbiorcyZParamet
     return OdbiorcyZParametrow(liczby, tuple(bledne))
 
 
+def _impedancja_zrodla_szyny(
+    enm: EnergyNetworkModel, bus_ref: str, bus_kv: float, wyspy_nn: dict[str, WyspaNn]
+) -> dict[str, float]:
+    """Z_Q zasilania systemowego szyny z JEDYNEGO źródła prawdy impedancji źródła
+    (`enm.mapping.impedancja_zrodla_sieciowego`, IEC 60909-0:2016 §6.2.1 eq. 6, scenariusz
+    MAX) — kilka źródeł na szynie łączy się równolegle. Szyna bez źródła albo źródło bez
+    danych impedancji → brak pól (solver nie dostaje liczby zastępczej)."""
+    admitancja = 0j
+    for source in enm.sources:
+        if source.bus_ref != bus_ref:
+            continue
+        wyspa = wyspy_nn.get(bus_ref)
+        wynik = impedancja_zrodla_sieciowego(
+            source,
+            bus_kv,
+            "MAX",
+            tolerancja_nn=None if wyspa is None else wyspa.tolerancja,
+            tolerancja_nn_robocza=wyspa is not None and wyspa.robocza,
+        )
+        if wynik is not None and abs(wynik[0]) > 0.0:
+            admitancja += 1.0 / wynik[0]
+    if admitancja == 0j:
+        return {}
+    z_q = 1.0 / admitancja
+    return {"source_r_ohm": max(z_q.real, 0.0), "source_x_ohm": z_q.imag}
+
+
+#: Kod maszynowy odmowy parametru ``reliability_data`` (pole odmowy, nie treść zdania).
+KOD_DANE_NIEZAWODNOSCI_NIEPOPRAWNE = "v126.dane_niezawodnosci_niepoprawne"
+
+
+def niezawodnosc_z_parametrow(
+    parameters: dict[str, Any] | None,
+    nazwy_elementow: Mapping[str, str],
+) -> dict[str, dict[str, float]]:
+    """Parametr ``reliability_data`` (`{ref elementu: {failure_rate_per_year, mttr_h}}`) —
+    wartości projektanta zastępujące wartości robocze rejestru niezawodności (zasada nr 4
+    pkt 3). Intensywność uszkodzeń jest CAŁKOWITA dla elementu [1/rok] (nie na km).
+
+    ``nazwy_elementow`` — indeks ``ref → nazwa pokazywana`` modelu (`enm.nazwy_elementow`): zdanie
+    odmowy nazywa element nazwą z modelu, identyfikator i pole idą w ``dane`` odmowy.
+
+    Raises:
+        OdmowaNazwana: wpis niebędący liczbą nieujemną (kod
+            ``v126.dane_niezawodnosci_niepoprawne``) — zdanie nazywa element i pole.
+    """
+    if not isinstance(parameters, dict):
+        return {}
+    surowe = parameters.get("reliability_data")
+    if not isinstance(surowe, dict):
+        return {}
+    nazwy = {"failure_rate_per_year": "intensywność uszkodzeń", "mttr_h": "czas odnowy"}
+    wynik: dict[str, dict[str, float]] = {}
+    for ref, wpis in surowe.items():
+        nazwa = nazwy_elementow.get(str(ref), "spoza modelu")
+        if not isinstance(wpis, dict):
+            raise OdmowaNazwana(
+                f"Dane niezawodności elementu {nazwa} muszą podawać intensywność uszkodzeń "
+                "i czas odnowy.",
+                kod=KOD_DANE_NIEZAWODNOSCI_NIEPOPRAWNE,
+                dane={"ref": str(ref)},
+            )
+        wartosci: dict[str, float] = {}
+        for pole, nazwa_pl in nazwy.items():
+            if pole not in wpis:
+                continue
+            liczba = wpis[pole]
+            if isinstance(liczba, bool) or not isinstance(liczba, int | float) or liczba < 0:
+                raise OdmowaNazwana(
+                    f"Dane niezawodności elementu {nazwa}: {nazwa_pl} musi być liczbą "
+                    "nieujemną.",
+                    kod=KOD_DANE_NIEZAWODNOSCI_NIEPOPRAWNE,
+                    dane={"ref": str(ref), "pole": pole},
+                )
+            wartosci[pole] = float(liczba)
+        wynik[str(ref)] = wartosci
+    return wynik
+
+
+class _NiezawodnoscGalezi:
+    """λ i czas odnowy gałęzi: wartość projektanta (``reliability_data``) albo wartość robocza
+    rejestru (`wartosci_robocze.PROPOZYCJE_NIEZAWODNOSCI`) — dane przyjęte zbiera ta sama
+    klasa, która podstawia wartość (predykaty parami: dana przyjęta ⇔ wartość robocza).
+    Powód danej przyjętej wylicza elementy NAZWĄ z modelu (tekst czyta projektant)."""
+
+    def __init__(self, projektant: dict[str, dict[str, float]]) -> None:
+        self._projektant = projektant
+        self._robocze: dict[tuple[str, str], list[str]] = {}
+
+    def galaz(
+        self, ref: str, nazwa: str, rodzaj: str, dlugosc_km: float | None
+    ) -> dict[str, float | None]:
+        propozycja = PROPOZYCJE_NIEZAWODNOSCI[element_niezawodnosci(rodzaj)]
+        wpis = self._projektant.get(ref, {})
+        lam: float | None
+        if "failure_rate_per_year" in wpis:
+            lam = wpis["failure_rate_per_year"]
+        elif not propozycja.na_km:
+            lam = propozycja.intensywnosc_uszkodzen
+            self._robocze.setdefault((propozycja.element, "lambda"), []).append(nazwa)
+        elif dlugosc_km is None:
+            # Wartość robocza na km bez długości odcinka nie daje liczby — nazwany brak
+            # (gałąź poza wskaźnikami, `elementy_bez_danych_niezawodnosci`), nie λ na 1 km.
+            lam = None
+        else:
+            lam = propozycja.intensywnosc_uszkodzen * dlugosc_km
+            self._robocze.setdefault((propozycja.element, "lambda"), []).append(nazwa)
+        if "mttr_h" in wpis:
+            mttr = wpis["mttr_h"]
+        else:
+            mttr = propozycja.czas_odnowy_h
+            self._robocze.setdefault((propozycja.element, "mttr"), []).append(nazwa)
+        return {"failure_rate_per_year": lam, "mttr_h": mttr}
+
+    def dane_przyjete(self) -> list[DanaPrzyjeta]:
+        wynik: list[DanaPrzyjeta] = []
+        for element, propozycja in PROPOZYCJE_NIEZAWODNOSCI.items():
+            for wielkosc in ("lambda", "mttr"):
+                nazwy = self._robocze.get((element, wielkosc))
+                if not nazwy:
+                    continue
+                if wielkosc == "lambda":
+                    nazwa = f"Intensywność uszkodzeń — {propozycja.nazwa_pl}"
+                    wartosc = Wielkosc(
+                        wartosc=propozycja.intensywnosc_uszkodzen,
+                        jednostka=propozycja.jednostka_intensywnosci,
+                    )
+                else:
+                    nazwa = f"Czas odnowy zasilania — {propozycja.nazwa_pl}"
+                    wartosc = Wielkosc(wartosc=propozycja.czas_odnowy_h, jednostka="h")
+                wynik.append(
+                    DanaPrzyjeta(
+                        nazwa_pl=nazwa,
+                        wartosc=wartosc,
+                        powod_pl=(
+                            f"Model nie niesie danych niezawodnościowych elementów "
+                            f"({len(nazwy)}: {', '.join(sorted(nazwy))}) — przyjęto wartość "
+                            f"roboczą rejestru ({propozycja.odniesienie}); projektant podaje "
+                            "własną w danych niezawodności analizy."
+                        ),
+                        jakosc=FieldQuality.ESTIMATED,
+                    )
+                )
+        return wynik
+
+
 def pominiete_zrodla_v126(
     enm: EnergyNetworkModel, *, parameters: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
@@ -1290,6 +1500,7 @@ def build_v126_input_from_enm(
     # zafalszowany proporcja napiec — a ten prad wchodzi wprost do wstrzykniecia
     # harmonicznych, czyli do THD, TDD i oceny zgodnosci.
     napiecie_szyny_kv = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    wyspy_nn = wyspy_wezlow_nn(enm)
 
     jawne_widma = _widma_jawne_z_parametrow(parameters)
     # Karta B-02: liczba odbiorców szyny z jawnego parametru projektanta
@@ -1401,12 +1612,16 @@ def build_v126_input_from_enm(
             fault_level_mva=next(
                 (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
             ),
+            **_impedancja_zrodla_szyny(enm, bus.ref_id, bus.voltage_kv, wyspy_nn),
         )
         for bus in enm.buses
     ]
 
     branches: list[V126BranchInput] = []
     napiecia_szyn = napiecia_szyn_kv(enm)
+    niezawodnosc = _NiezawodnoscGalezi(
+        niezawodnosc_z_parametrow(parameters, zbuduj_indeks_nazw(enm))
+    )
     for branch in enm.branches:
         if getattr(branch, "status", "closed") == "open":
             is_open = True
@@ -1437,9 +1652,9 @@ def build_v126_input_from_enm(
                     b_siemens_per_km=(float(b_per_km) if b_per_km is not None else None),
                     b0_siemens_per_km=(float(b0_per_km) if b0_per_km is not None else None),
                     ampacity_a=_obciazalnosc_dlugotrwala_a(branch),
-                    failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015)
-                    * length_km,
-                    mttr_h=3.5 if branch.type == "line_overhead" else 12.0,
+                    **niezawodnosc.galaz(
+                        branch.ref_id, nazwa_elementu(branch, "branches"), branch.type, length_km
+                    ),
                     is_open=is_open,
                 )
             )
@@ -1457,8 +1672,9 @@ def build_v126_input_from_enm(
                     r_ohm_per_km=r_ohm / _DLUGOSC_JEDNOSTKOWA_APARATU_KM,
                     x_ohm_per_km=x_ohm / _DLUGOSC_JEDNOSTKOWA_APARATU_KM,
                     ampacity_a=_obciazalnosc_dlugotrwala_a(branch),
-                    failure_rate_per_year=0.015,
-                    mttr_h=4.0,
+                    **niezawodnosc.galaz(
+                        branch.ref_id, nazwa_elementu(branch, "branches"), branch.type, None
+                    ),
                     is_open=is_open,
                 )
             )
@@ -1496,6 +1712,7 @@ def build_v126_input_from_enm(
         insulation=build_v126_insulation_from_enm(enm),
         parameters=parameters or {},
         uziemienie_sn=(uziemienie_sn_v126(enm) if analysis_type in ANALIZY_UZIEMIENIA_SN else None),
+        dane_przyjete_niezawodnosci=niezawodnosc.dane_przyjete(),
         # Karta UX-04/POLE-BKR-MODEL: baterie kondensatorów z susceptancją zerową względem
         # ziemi (gwiazda uziemiona wnosi prąd pojemnościowy doziemienia, pozostałe układy nie).
         shunt_capacitors=[

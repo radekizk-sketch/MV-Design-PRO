@@ -159,10 +159,9 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         1,
         "próg odbudowy mocy czynnej po zwarciu (FRT)",
     ),
-    (
-        "network_model/solvers/v126_academic.py",
-        "i_n = motor.rated_kw / (math.sqrt(3) * motor.rated_voltage_kv * 0.9)",
-    ): (1, "η·cos φ silnika w rozruchu (moduł akademicki)"),
+    # Dawne zaszyte η·cos φ = 0,9 silnika (`v126_academic._motor_starting`) skasowane kartą
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA (odcinek 3): cos φ_n i η_n z tabliczki albo z rejestru
+    # maszyn `wartosci_robocze.PROPOZYCJE_MASZYNY` (dane przyjęte ESTIMATED).
     ("network_model/solvers/v126_academic.py", "if probability >= 0.95:"): (
         1,
         "poziom ufności Monte Carlo hosting capacity",

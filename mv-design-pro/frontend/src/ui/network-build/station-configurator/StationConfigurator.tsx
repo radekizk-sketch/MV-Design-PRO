@@ -50,6 +50,7 @@ import type { MeasurementRow } from './przekladnikiStacji';
 import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
 import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
+import { wielkoscPl } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
   canonicalFieldRole,
@@ -742,7 +743,7 @@ function StationEarthingPanel({
                   <li key={dana.nazwa_pl} title={dana.powod_pl}>
                     {dana.wartosc === null
                       ? dana.nazwa_pl
-                      : `${dana.nazwa_pl}: ${dana.wartosc.wartosc} ${dana.wartosc.jednostka}`}
+                      : `${dana.nazwa_pl}: ${wielkoscPl(dana.wartosc)}`}
                   </li>
                 ))}
               </ul>

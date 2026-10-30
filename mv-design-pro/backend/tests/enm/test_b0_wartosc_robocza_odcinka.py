@@ -172,13 +172,18 @@ def test_konsumenci_pojemnosci_z_jednej_reguly(dlugosci_m: tuple[int, ...]) -> N
     assert ZALOZENIE_ODCINKA_B0_KABEL_SN in dana.powod_pl
     assert siec.to_dict()["dane_przyjete_pojemnosci"][0]["jakosc"] == "ESTIMATED"
 
-    # Bocznik Y0 sieci zerowej zwarć IEC 60909 NIE jest konsumentem wartości roboczej B′0
-    # (IEC 60909-0:2016 pkt 5.2 f) i rozdz. 1 — ``enm.mapping``): żadnego kroku bocznika
-    # pojemności dla odcinków bez B′0 w modelu. Iloczyn sposobów pracy punktu neutralnego —
-    # ``test_bocznik_y0_zwarc_wylacznie_z_b0_modelu``.
+    # Konsument 2: bocznik Y0 sieci zerowej zwarć IEC 60909 — sieć uziemiona przez rezystor
+    # (k > 1,4, IEC 60909-0:2016 pkt 5.2 f)): B′0 z wartości roboczej wchodzi tym samym
+    # predykatem co B′0 modelu i jest daną przyjętą (``b0_robocze``). Iloczyn sposobów pracy
+    # punktu neutralnego × pochodzenie B′0 — ``test_bocznik_y0_zwarc_z_warunku_pojemnosci``.
     graf = map_enm_to_network_graph(enm)
-    slad = {k["key"]: k for k in zbuduj_siec_zerowa(enm, graf).slad}
-    assert not any(f"z0_line_shunt[{kabel.ref_id}]" in slad for kabel in kable)
+    siec_zerowa = zbuduj_siec_zerowa(enm, graf)
+    slad = {k["key"]: k for k in siec_zerowa.slad}
+    for kabel in kable:
+        krok = slad[f"z0_line_shunt[{kabel.ref_id}]"]
+        assert krok["inputs"]["b0_siemens_per_km"] == kabel.b_siemens_per_km
+        assert ZALOZENIE_ODCINKA_B0_KABEL_SN in krok["notes"]
+    assert set(siec_zerowa.b0_robocze) == {k.ref_id for k in kable}
 
     # Konsument 3: wejście i solver V12.6 — ta sama suma, dane przyjęte B′0 w wyniku.
     wejscie = build_v126_input_from_enm(enm, analysis_type=V126AnalysisType.NEUTRAL_EARTHING_DESIGN)
@@ -190,7 +195,13 @@ def test_konsumenci_pojemnosci_z_jednej_reguly(dlugosci_m: tuple[int, ...]) -> N
     assert wynik["capacitive_earth_fault_current_a"] == pytest.approx(
         siec.prad_pojemnosciowy_a, abs=1e-4
     )
-    assert wynik["kompletnosc_dowodu"] == "NIEPELNY"
+    # Kompletność dowodu wyniku — z granicy wyniku API (rekordy oceny, dane przyjęte).
+    from application.v126_artifacts import wynik_v126_dla_powierzchni
+
+    powierzchnia = wynik_v126_dla_powierzchni(
+        "neutral_earthing_design", {"result": wynik}, nazwy={}
+    )["result"]
+    assert powierzchnia["kompletnosc_dowodu"] == "NIEPELNY"
     assert any(d["nazwa_pl"].startswith("B′0 wartość robocza") for d in wynik["dane_przyjete"])
 
     # Konsument 4: gotowość V12.6 — warunek pojemności doziemnej spełniony z reguły.
@@ -228,11 +239,13 @@ def test_galaz_reczna_bez_b1_czyni_prad_pojemnosciowy_niewyznaczonym() -> None:
     assert "b0_siemens_per_km" in wynik["missing_fields"]
 
 
-def test_zbior_z0_roboczych_biegow_bez_b0() -> None:
-    """Zbiór gałęzi z wartością roboczą składowej zerowej biegów (zwarcie doziemne i rozpływ
-    niesymetryczny — ``galezie_z0_robocze``, jedno źródło ich założeń i wierszy) niesie R′0/X′0,
-    a NIGDY B′0: sieć zerowa zwarć czyta wyłącznie B′0 modelu, rozpływ pomija pojemności."""
+def test_zbior_z0_roboczych_biegow_b0_tylko_z_macierzy_y0() -> None:
+    """Zbiór gałęzi z wartością roboczą składowej zerowej biegów (``galezie_z0_robocze``, jedno
+    źródło założeń i wierszy) niesie B′0 WYŁĄCZNIE z gałęzi, których pojemność weszła do Y0
+    zwarć (``b0_galezi`` = ``WynikSieciZerowej.b0_robocze``); bez nich — rozpływ niesymetryczny,
+    który pojemności pomija — same R′0/X′0. Jeden rekord na gałąź z R′0/X′0 i B′0 razem."""
     from enm.dane_przyjete_galezi import galezie_z0_robocze, zalozenia_z0_galezi
+    from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 
     migawka = _magistrala_bez_b0((2000,))
     for galaz in migawka["branches"]:
@@ -245,6 +258,15 @@ def test_zbior_z0_roboczych_biegow_bez_b0() -> None:
     assert pola and "b0_siemens_per_km" not in pola
     for zalozenie in zalozenia_z0_galezi(enm, None):
         assert all("B′0" not in str(d) for d in zalozenie.get("dane_przyjete") or ())
+
+    b0_y0 = zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm)).b0_robocze
+    assert b0_y0
+    z_y0 = zalozenia_z0_galezi(enm, None, b0_galezi=b0_y0)
+    assert len(z_y0) == len(zalozenia_z0_galezi(enm, None))
+    for zalozenie in z_y0:
+        nazwy = [d["nazwa_pl"] for d in zalozenie["dane_przyjete"]]
+        assert (zalozenie["element_ref"] in b0_y0) is any(n.startswith("B′0") for n in nazwy)
+        assert any(n.startswith("R′0") for n in nazwy)
 
 
 def _skladowe_kabli(enm: EnergyNetworkModel) -> list[Any]:
@@ -279,63 +301,152 @@ TRYBY_WIERSZA_1F: dict[str, bool] = {
     "bezposrednie": True,
     "rezystor": True,
     "uzwojenie_tr": True,
+    "uzwojenie_tr_bezposrednie": True,
     "izolowany": False,
     "dlawik": False,
 }
 
 
+def _siec_wariantu(wariant: str) -> dict[str, Any]:
+    """Model sposobu pracy punktu neutralnego; ``uzwojenie_tr_bezposrednie`` — punkt neutralny
+    uzwojenia SN Dyn11 uziemiony bezpośrednio (Z0 rzędu Z_T: k ≤ 1,4 — jedyny wariant sieci
+    uziemionej przez małą impedancję, w którym warunek pkt 5.2 f) NIE włącza pojemności)."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.enm.test_skladowa_zerowa_zu import _siec
+
+    if wariant != "uzwojenie_tr_bezposrednie":
+        return _siec(wariant)
+    migawka = _siec("uzwojenie_tr")
+    tr = next(t for t in migawka["transformers"] if "/001/" in t["ref_id"])
+    wynik = execute_domain_operation(
+        enm_dict=migawka,
+        op_name="update_element_parameters",
+        payload={
+            "element_ref": tr["ref_id"],
+            "parameters": {"lv_neutral": {"type": "directly_grounded"}},
+        },
+    )
+    assert not wynik.get("error"), wynik.get("error")
+    return wynik["snapshot"]
+
+
+def _k_reczny(z1: complex, z0: complex) -> float:
+    """Wyrocznia współczynnika zwarcia doziemnego (IEC 60071-1), niezależna od kodu programu:
+    U_b/U_f = |a² − (Z0 − Z1)/(2·Z1 + Z0)|, U_c/U_f = |a − (Z0 − Z1)/(2·Z1 + Z0)|, Z_2 = Z_1."""
+    a = complex(-0.5, math.sqrt(3.0) / 2.0)
+    m = (z0 - z1) / (2.0 * z1 + z0)
+    return max(abs(a * a - m), abs(a - m))
+
+
+def _k_max_bez_pojemnosci(migawka: dict[str, Any]) -> float | None:
+    """max k węzłów liczonych zwarciem IEC 60909 sieci bez pojemności (B′0 = 0 w modelu) —
+    Z1 z sieci zwarciowej (``build_zbus``), Z0 z macierzy bez boczników B0."""
+    from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
+    from network_model.solvers.short_circuit_core import build_zbus
+
+    bez_c = {**migawka, "branches": [dict(g) for g in migawka["branches"]]}
+    for galaz in bez_c["branches"]:
+        if galaz.get("type") in ("cable", "line_overhead"):
+            galaz["b0_siemens_per_km"] = 0.0
+    enm = EnergyNetworkModel.model_validate(bez_c)
+    graf = map_enm_to_network_graph(enm)
+    siec = zbuduj_siec_zerowa(enm, graf)
+    builder, z1_bus = build_zbus(graf)
+    wartosci = [
+        _k_reczny(complex(z1_bus[idx, idx]), complex(siec.z0_bus[idx, idx]))
+        for wezel, idx in builder.node_id_to_index.items()
+        if wezel not in siec.przyczyny
+    ]
+    return max(wartosci, default=None)
+
+
 @pytest.mark.usefixtures("_czysty_stan_biegow")
 @pytest.mark.parametrize("wariant", sorted(TRYBY_WIERSZA_1F))
-@pytest.mark.parametrize("b0_modelu", [True, False], ids=["b0_model", "b0_brak"])
-def test_bocznik_y0_zwarc_wylacznie_z_b0_modelu(wariant: str, b0_modelu: bool) -> None:
+def test_bocznik_y0_zwarc_z_warunku_pojemnosci(wariant: str) -> None:
     """ILOCZYN: sposób pracy punktu neutralnego {bezpośrednio, rezystor zespołu, rezystor
-    uzwojenia TR, izolowany, dławik} × B′0 {w modelu, brak} × konsument {ślad Y0 sieci
-    zerowej, liczby wiersza 1F, dane przyjęte wiersza, założenia biegu, doziemienie sieci}.
+    uzwojenia TR, izolowany, dławik} × pochodzenie B′0 {model, wartość robocza tej samej
+    wartości} × skala B′1 {1, 2} × konsument {ślad Y0 sieci zerowej, liczby wiersza 1F, dane
+    przyjęte wiersza, założenia biegu, doziemienie sieci}.
 
-    Wartość robocza B′0 NIE wchodzi do sieci zerowej zwarć IEC 60909 (IEC 60909-0:2016
-    pkt 5.2 f): pojemności linii w składowej zerowej sieci uziemionej przez małą impedancję
-    tylko przy współczynniku zwarcia doziemnego > 1,4; rozdz. 1: sieć izolowana
-    i skompensowana poza zakresem). Wyrocznia niezmienności: podwojenie B′1 odcinków bez B′0
-    nie zmienia ani jednej liczby wiersza 1F (B′1 nie wchodzi do sieci zgodnej zwarć, karta
-    BEZ-POJEMNOSCI), a zmienia prąd pojemnościowy sieci (``doziemienie_sieci``) — jedynego
-    konsumenta wartości roboczej w biegu zwarciowym."""
-    from tests.enm.test_skladowa_zerowa_zu import B0_KABLA_S_PER_KM, _siec, _z_magistrala
-
-    def _model(skala_b1: float) -> dict[str, Any]:
-        migawka = _z_magistrala(_siec(wariant), (1500, 3500))
-        for galaz in migawka["branches"]:
-            if galaz.get("type") == "cable":
-                galaz["b0_siemens_per_km"] = B0_KABLA_S_PER_KM if b0_modelu else None
-                galaz["b_siemens_per_km"] = galaz["b_siemens_per_km"] * skala_b1
-        return migawka
-
-    migawka = _model(1.0)
-    enm = EnergyNetworkModel.model_validate(migawka)
+    Warunek IEC 60909-0:2016 pkt 5.2 f) (karta ZEROWA-POJEMNOSCI): B0 wchodzi do sieci zerowej
+    zwarć WYŁĄCZNIE w sieci uziemionej przez małą impedancję o k > 1,4 (wyrocznia: k z Z1
+    i Z0 sieci bez pojemności, wzór niezależny od programu); sieć izolowana i skompensowana —
+    poza zakresem (rozdz. 1). PREDYKAT JEDEN dla B′0 modelu i wartości roboczej: te same liczby
+    wiersza dla B′0 modelu = V i B′0 roboczego = V; różni je wyłącznie dana przyjęta B′0
+    (ESTIMATED), obecna wtedy i tylko wtedy, gdy wartość robocza weszła do Y0. Gdy B0 nie
+    wchodzi, podwojenie B′1 nie zmienia ani jednej liczby wiersza 1F (B′1 nie wchodzi też do
+    sieci zgodnej, karta BEZ-POJEMNOSCI), a podwaja prąd pojemnościowy doziemienia sieci.
+    Wariant z k ≤ 1,4 jest w iloczynie jawnie (``uzwojenie_tr_bezposrednie``)."""
     from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 
-    slad = {k["key"] for k in zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm)).slad}
-    kable = _kable_sn(enm)
-    assert len(kable) == 2
-    assert {f"z0_line_shunt[{k.ref_id}]" in slad for k in kable} == {b0_modelu}
+    from tests.enm.test_skladowa_zerowa_zu import _z_magistrala
 
-    wiersz, surowy = _wiersz_1f(migawka, f"b0-{wariant}-{b0_modelu}-1")
-    assert all("B′0" not in d["nazwa_pl"] for d in wiersz.get("dane_przyjete_galezi") or ())
-    assert "B′0" not in str(surowy.get("zalozenia") or "")
-    doziemienie = wiersz["doziemienie_sieci"]
-    nazwy_przyjete = [d["nazwa_pl"] for d in doziemienie.get("dane_przyjete") or ()]
-    assert any(n.startswith("B′0 wartość robocza") for n in nazwy_przyjete) is (not b0_modelu)
+    def _model(robocze: bool, skala_b1: float) -> dict[str, Any]:
+        # Uzwojenie uziemione bezpośrednio: magistrala 2 × 500 m (k ≈ 1,26); przy 1,5 + 3,5 km
+        # Z0 kabla (≈ 3·Z1) podnosi k na końcu magistrali do 1,43 (pomiar 2026-10-30).
+        dlugosci = (500, 500) if wariant == "uzwojenie_tr_bezposrednie" else (1500, 3500)
+        migawka = _z_magistrala(_siec_wariantu(wariant), dlugosci)
+        for galaz in migawka["branches"]:
+            if galaz.get("type") == "cable":
+                galaz["b_siemens_per_km"] = galaz["b_siemens_per_km"] * skala_b1
+                # Kabel SN: wartość robocza B′0 = B′1 — model niesie tę samą wartość jawnie.
+                galaz["b0_siemens_per_km"] = None if robocze else galaz["b_siemens_per_km"]
+        return migawka
+
+    k_max = _k_max_bez_pojemnosci(_model(False, 1.0))
+    wchodzi = TRYBY_WIERSZA_1F[wariant] and k_max is not None and k_max > 1.4
+    # Iloczyn nie jest pusty po żadnej stronie progu.
+    assert wchodzi is (wariant in ("bezposrednie", "rezystor", "uzwojenie_tr")), k_max
+    wiersze: dict[tuple[bool, float], dict[str, Any]] = {}
+    for robocze in (False, True):
+        for skala in (1.0, 2.0):
+            migawka = _model(robocze, skala)
+            enm = EnergyNetworkModel.model_validate(migawka)
+            siec = zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm))
+            slad = {k["key"]: k for k in siec.slad}
+            kable = _kable_sn(enm)
+            assert len(kable) == 2
+            assert {f"z0_line_shunt[{k.ref_id}]" in slad for k in kable} == {wchodzi}
+            (warunek,) = (k for key, k in slad.items() if key.startswith("z0_warunek"))
+            assert warunek["result"]["pojemnosci_w_y0"] is wchodzi
+            if TRYBY_WIERSZA_1F[wariant]:
+                assert warunek["result"]["k_max"] == pytest.approx(k_max, abs=1e-6)
+            else:
+                assert warunek["result"]["k_max"] is None
+            assert set(siec.b0_robocze) == (
+                {k.ref_id for k in kable} if wchodzi and robocze else set()
+            )
+
+            klucz = f"b0-{wariant}-{robocze}-{skala}"
+            wiersz, surowy = _wiersz_1f(migawka, klucz)
+            wiersze[(robocze, skala)] = wiersz
+            przyjete_b0 = [
+                d
+                for d in wiersz.get("dane_przyjete_galezi") or ()
+                if d["nazwa_pl"].startswith("B′0")
+            ]
+            assert bool(przyjete_b0) is (wchodzi and robocze)
+            assert all(d["jakosc"] == "ESTIMATED" for d in przyjete_b0)
+            assert ("B′0" in str(surowy.get("zalozenia") or "")) is (wchodzi and robocze)
+            doziemienie = wiersz["doziemienie_sieci"]
+            nazwy_przyjete = [d["nazwa_pl"] for d in doziemienie.get("dane_przyjete") or ()]
+            assert any(n.startswith("B′0 wartość robocza") for n in nazwy_przyjete) is robocze
+            if TRYBY_WIERSZA_1F[wariant]:
+                assert wiersz.get("brak_wyniku_zerowego") is None and wiersz["ikss_a"] is not None
+            else:
+                assert wiersz["ikss_a"] is None
+                assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "poza_zakresem_iec60909"
+
+    pola = ("ikss_a", "ip_a", "ith_a", "z0_ohm", "z1_ohm", "zkk_ohm")
+    for skala in (1.0, 2.0):
+        for pole in pola:
+            assert wiersze[(True, skala)].get(pole) == wiersze[(False, skala)].get(pole), pole
     if TRYBY_WIERSZA_1F[wariant]:
-        assert wiersz.get("brak_wyniku_zerowego") is None and wiersz["ikss_a"] is not None
-    else:
-        assert wiersz["ikss_a"] is None
-        assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "poza_zakresem_iec60909"
-
-    if b0_modelu:
-        return
-    wiersz_2, _ = _wiersz_1f(_model(2.0), f"b0-{wariant}-{b0_modelu}-2")
-    for pole in ("ikss_a", "ip_a", "ith_a", "z0_ohm", "z1_ohm", "zkk_ohm"):
-        assert wiersz_2.get(pole) == wiersz.get(pole), pole
-    i_c, i_c_2 = doziemienie.get("i_c_a"), wiersz_2["doziemienie_sieci"].get("i_c_a")
+        zmiana = any(wiersze[(True, 2.0)].get(p) != wiersze[(True, 1.0)].get(p) for p in pola)
+        assert zmiana is wchodzi
+    i_c = wiersze[(True, 1.0)]["doziemienie_sieci"].get("i_c_a")
+    i_c_2 = wiersze[(True, 2.0)]["doziemienie_sieci"].get("i_c_a")
     if i_c is not None:
         assert i_c_2 == pytest.approx(2.0 * i_c, rel=1e-9)
 
@@ -398,3 +509,53 @@ def test_model_minimalny_kabel_sn_i_linia_sn_razem() -> None:
         for g in galezie
     )
     assert b0 == pytest.approx(B1_S_PER_KM * 2.0 + 0.4 * B1_S_PER_KM / 30.0 * 5.0, rel=1e-12)
+
+
+@pytest.mark.parametrize(
+    "wariant,dlugosci_m",
+    [("rezystor", (1500, 3500)), ("uzwojenie_tr_bezposrednie", (500, 500))],
+    ids=["k_powyzej_progu", "k_ponizej_progu"],
+)
+def test_dane_przyjete_wielkosci_z_modelu_niosa_b0_z_macierzy_y0(
+    wariant: str, dlugosci_m: tuple[int, ...]
+) -> None:
+    """Wielkość liczona wprost z Z0 modelu (``dane_przyjete_wezla`` z ``ze_skladowa_zerowa``):
+    dana przyjęta B′0 z wartości roboczej wtedy i tylko wtedy, gdy pojemność weszła do Y0 —
+    to samo złożenie (``skladowe_i_b0_sieci_zerowej``) co macierz."""
+    from enm.dane_przyjete_galezi import dane_przyjete_wezla
+    from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
+
+    from tests.enm.test_skladowa_zerowa_zu import _z_magistrala
+
+    migawka = _z_magistrala(_siec_wariantu(wariant), dlugosci_m)
+    for galaz in migawka["branches"]:
+        if galaz.get("type") == "cable":
+            galaz["b0_siemens_per_km"] = None
+    enm = EnergyNetworkModel.model_validate(migawka)
+    b0_y0 = zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm)).b0_robocze
+    assert bool(b0_y0) is (wariant == "rezystor")
+    szyna = migawka["substations"][0]["gpz_sections"][0]["bus_ref"]
+    dane = dane_przyjete_wezla(enm, szyna, ze_skladowa_zerowa=True)
+    assert any(d["nazwa_pl"].startswith("B′0") for d in dane) is bool(b0_y0)
+    # Bez składowej zerowej (pętla nN, Z1 sieci zasilającej) — B′0 nigdy.
+    assert not any(
+        d["nazwa_pl"].startswith("B′0")
+        for d in dane_przyjete_wezla(enm, szyna, ze_skladowa_zerowa=False)
+    )
+
+
+def test_warunek_pojemnosci_deterministyczny() -> None:
+    """Dwa złożenia tej samej sieci: ten sam krok warunku (k węzłów, decyzja) i ten sam zbiór
+    gałęzi z B′0 roboczym w Y0."""
+    from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
+
+    def _zloz() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        enm = EnergyNetworkModel.model_validate(_magistrala_bez_b0((1500, 3500)))
+        siec = zbuduj_siec_zerowa(enm, map_enm_to_network_graph(enm))
+        return [k for k in siec.slad if "pojemnosci" in k["key"] or "shunt" in k["key"]], dict(
+            siec.b0_robocze
+        )
+
+    pierwszy, drugi = _zloz(), _zloz()
+    assert pierwszy == drugi
+    assert pierwszy[0] and pierwszy[1]

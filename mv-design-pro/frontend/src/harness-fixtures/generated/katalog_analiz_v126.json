@@ -36,45 +36,8 @@
           "symbol_latex": "Z(f)"
         }
       ],
-      "podstawa_oceny": [
-        {
-          "wielkosc_pl": "Odkształcenie napięcia",
-          "symbol": "THD_U",
-          "jednostka": "%",
-          "warunek_pl": "w każdym węźle modelu, dla sieci SN i nN",
-          "wartosc_graniczna": 8.0,
-          "zrodlo_pl": "PN-EN 50160",
-          "symbol_latex": "\\mathrm{THD}_U",
-          "warunek_latex": "\\mathrm{THD}_U \\leq 8\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Odkształcenie napięcia",
-          "symbol": "THD_U",
-          "jednostka": "%",
-          "warunek_pl": "w każdym węźle modelu (granica ostrzejsza)",
-          "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519",
-          "symbol_latex": "\\mathrm{THD}_U",
-          "warunek_latex": "\\mathrm{THD}_U \\leq 5\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Odkształcenie prądu odbiorcy",
-          "symbol": "TDD",
-          "jednostka": "%",
-          "warunek_pl": "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
-          "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519",
-          "symbol_latex": "\\mathrm{TDD}",
-          "warunek_latex": "\\mathrm{TDD} \\leq 5\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        }
-      ],
-      "bez_podstawy_pl": null,
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Ocena kompatybilności nie jest wykonywana — solver harmoniczny jest niezwalidowany (powody w uwagach metody), więc granice odkształcenia PN-EN 50160 i IEEE 519 (katalog odniesienia „harmonic-limits”) nie są stosowane do jego liczb.",
       "dane": {
         "z_modelu": [
           {
@@ -238,11 +201,11 @@
           "jednostka": "V",
           "warunek_pl": "wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg) — wzór obok",
           "wartosc_graniczna": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
-          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "zrodlo_pl": "założenie inżynierskie Z-4 programu — Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_{\\mathrm{dot}}",
           "warunek_latex": "U_{\\mathrm{dot}} \\leq U_{\\mathrm{dot,dop}}",
           "wzor_latex": "U_{\\mathrm{dot,dop}} = \\left(1000 + 1{,}5\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
-          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
         },
         {
           "wielkosc_pl": "Napięcie krokowe",
@@ -250,23 +213,11 @@
           "jednostka": "V",
           "warunek_pl": "wartość dopuszczalna liczona jak dla napięcia dotykowego, ze współczynnikiem 6 zamiast 1,5 — wzór obok",
           "wartosc_graniczna": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
-          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "zrodlo_pl": "założenie inżynierskie Z-5 programu — Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_{\\mathrm{kr}}",
           "warunek_latex": "U_{\\mathrm{kr}} \\leq U_{\\mathrm{kr,dop}}",
           "wzor_latex": "U_{\\mathrm{kr,dop}} = \\left(1000 + 6\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
-          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
-        },
-        {
-          "wielkosc_pl": "Przekroczenie tolerowane ze środkami dodatkowymi",
-          "symbol": "U/U_dop",
-          "jednostka": "-",
-          "warunek_pl": "przekroczenie do 25 % daje stan „wymaga ochrony\", powyżej — „niezgodny\"",
-          "wartosc_graniczna": 1.25,
-          "zrodlo_pl": "reguła solvera (klasyfikacja stanu)",
-          "symbol_latex": "U/U_{\\mathrm{dop}}",
-          "warunek_latex": "U/U_{\\mathrm{dop}} \\leq 1{,}25",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
         }
       ],
       "bez_podstawy_pl": null,
@@ -430,7 +381,7 @@
           "jednostka": "%",
           "warunek_pl": "M_BIL = (BIL − U_res)/U_res·100 ≥ granica, w każdym miejscu zainstalowania",
           "wartosc_graniczna": 20.0,
-          "zrodlo_pl": "IEC 60071 (koordynacja izolacji)",
+          "zrodlo_pl": "założenie inżynierskie Z-3 programu — Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "M_{\\mathrm{BIL}}",
           "warunek_latex": "M_{\\mathrm{BIL}} = \\dfrac{\\mathrm{BIL} - U_{\\mathrm{res}}}{U_{\\mathrm{res}}}\\cdot 100\\% \\geq 20\\%",
           "wzor_latex": "",
@@ -442,7 +393,7 @@
           "jednostka": "kV",
           "warunek_pl": "U_TOV = k·U_m/√3; sieć izolowana i kompensowana (doziemienie długotrwałe): U_c ≥ U_TOV; sieć z rezystorem i uziemiona bezpośrednio (doziemienie wyłączane): U_c ≥ U_m/√3 oraz wytrzymałość TOV 10 s ≥ U_TOV",
           "wartosc_graniczna": "k z solvera doziemienia sieci (sposób pracy punktu neutralnego)",
-          "zrodlo_pl": "IEC 60071-1 / IEC 60071-2 / IEC 60099-5",
+          "zrodlo_pl": "założenie inżynierskie Z-1 programu — Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; założenie inżynierskie Z-2 programu — Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_c",
           "warunek_latex": "U_c \\geq U_{\\mathrm{TOV}} \\ \\text{albo}\\ \\left(U_c \\geq \\dfrac{U_m}{\\sqrt{3}} \\wedge \\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}\\right)",
           "wzor_latex": "U_{\\mathrm{TOV}} = k\\,\\dfrac{U_m}{\\sqrt{3}}",
@@ -512,8 +463,21 @@
           "symbol_latex": "\\text{obsługa}"
         }
       ],
-      "podstawa_oceny": [],
-      "bez_podstawy_pl": "Tabela decyzyjna (praktyka sieci SN kompensowanych i uziemionych przez rezystor) — bez wartości granicznej; nastawy rozruchowe U0/P0/I5 nie są prezentowane, bo solver nie ma dla nich udokumentowanej podstawy.",
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Funkcje metody zalecanej w przekaźniku",
+          "symbol": "F_wym",
+          "jednostka": "-",
+          "warunek_pl": "każda funkcja metody zalecanej dla sposobu pracy punktu neutralnego jest w wyposażeniu przekaźnika wskazanym przez projektanta",
+          "wartosc_graniczna": "F_wym ⊆ F_przekaźnika",
+          "zrodlo_pl": "założenie inżynierskie Z-8 programu — Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
+          "symbol_latex": "F_{\\mathrm{wym}}",
+          "warunek_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\mathrm{przekaźnika}}",
+          "wzor_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\mathrm{przekaźnika}}",
+          "wzor_opis_pl": "F_wym — funkcje metody zalecanej (metoda złożona 51N+67N wymaga obu funkcji, 51N/50N — obu funkcji); F_przekaźnika — funkcje wskazane przez projektanta. Granica nie jest liczbą — jest porównaniem zbiorów."
+        }
+      ],
+      "bez_podstawy_pl": null,
       "dane": {
         "z_modelu": [
           {
@@ -524,10 +488,10 @@
         "od_uzytkownika": [
           {
             "klucz": "relay_methods",
-            "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
+            "nazwa_pl": "Funkcje detekcji doziemień dostępne w przekaźniku",
             "jednostka": "-",
-            "wymagane": true,
-            "opis_pl": "Wyposażenie przekaźnika pola — model go nie niesie."
+            "wymagane": false,
+            "opis_pl": "Wyposażenie przekaźnika pola — model go nie niesie. Bez niego dobór metody biegnie, a kryterium dostępności funkcji jest nieocenione (brak nazwany)."
           }
         ],
         "domyslne_solvera": []
@@ -535,7 +499,9 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": [],
+      "uwagi_metody_pl": [
+        "Nastawy rozruchowe U0/P0/I5 nie są prezentowane — solver nie ma dla nich udokumentowanej podstawy."
+      ],
       "zakres_oceny": "kryterium"
     },
     {
@@ -589,10 +555,10 @@
         {
           "wielkosc_pl": "Prąd resztkowy (sieć kompensowana)",
           "symbol": "I_res/I_C",
-          "jednostka": "-",
+          "jednostka": "%",
           "warunek_pl": "I_res = √(I_w² + (I_C − I_L)²) dławika modelu (I_L, I_w z impedancji punktów neutralnych w ruchu) ≤ udział prądu pojemnościowego",
-          "wartosc_graniczna": 0.1,
-          "zrodlo_pl": "kompensacja rezonansowa Petersena (ENEA Zeszyt 1 §16, Z.13) — kryterium metody V12.6, bez wartości normowej",
+          "wartosc_graniczna": 10.0,
+          "zrodlo_pl": "założenie inżynierskie Z-6 programu — Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
           "symbol_latex": "I_{\\mathrm{res}}/I_C",
           "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
           "wzor_latex": "",
@@ -604,7 +570,7 @@
           "jednostka": "J",
           "warunek_pl": "E_k = I_th²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora (I_th = I_R,k·√(m+n), I_R,k = c_max·U_f/|R + Z_0,TU/3|)",
           "wartosc_graniczna": "E ≤ E_n",
-          "zrodlo_pl": "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
+          "zrodlo_pl": "założenie inżynierskie Z-7 programu — Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "E",
           "warunek_latex": "E \\leq E_n",
           "wzor_latex": "E_k = I_{\\mathrm{th}}^2 \\cdot R \\cdot t_{\\text{wył}} \\leq E_n = I_n^2 \\cdot R \\cdot t_n\\text{,}\\quad I_{R,k} = \\dfrac{c_{\\max} U_f}{\\left|R + Z_{0,\\mathrm{TU}}/3\\right|}",
@@ -661,10 +627,10 @@
       "zakres_pl": "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
       "wielkosci_glowne": [
         {
-          "symbol": "M_TRV",
-          "nazwa_pl": "Najmniejszy margines napięcia powrotnego",
-          "jednostka": "%",
-          "symbol_latex": "M_{\\mathrm{TRV}}"
+          "symbol": "u_TRV_max",
+          "nazwa_pl": "Największa wartość napięcia powrotnego",
+          "jednostka": "kV",
+          "symbol_latex": "\\max u_{\\mathrm{TRV}}"
         },
         {
           "symbol": "I_2h/I_szczyt",
@@ -679,33 +645,8 @@
           "symbol_latex": "\\text{ferro}"
         }
       ],
-      "podstawa_oceny": [
-        {
-          "wielkosc_pl": "Margines napięcia powrotnego",
-          "symbol": "M_TRV",
-          "jednostka": "%",
-          "warunek_pl": "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
-          "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "obwiednia modelowa solvera (narost liniowy do 2·U_r w 88 µs) — nie obwiednia tabel IEC 62271-100",
-          "symbol_latex": "M_{\\mathrm{TRV}}",
-          "warunek_latex": "M_{\\mathrm{TRV}} = \\dfrac{\\text{obwiednia} - u_{\\mathrm{TRV}}}{\\text{obwiednia}}\\cdot 100\\% \\geq 10\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Blokada różnicowej od 2. harmonicznej",
-          "symbol": "I_2h/I_szczyt",
-          "jednostka": "%",
-          "warunek_pl": "udział ≥ granica ⇒ blokada 87T zalecana",
-          "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "reguła solvera (praktyka zabezpieczeń różnicowych)",
-          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}",
-          "warunek_latex": "I_{2h}/I_{\\mathrm{szczyt}} \\geq 10\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        }
-      ],
-      "bez_podstawy_pl": null,
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Obwiednia wytrzymałości wyłącznika na napięcie powrotne wynika z parametrów u_c, t_3 tablic IEC 62271-100 dla napięcia znamionowego wyłącznika — tablice nie są danymi programu, więc kryterium nie ma podstawy (rekord oceny „brak podstawy”); przebieg napięcia powrotnego jest wynikiem bez oceny.",
       "dane": {
         "z_modelu": [
           {
@@ -756,7 +697,9 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": [],
+      "uwagi_metody_pl": [
+        "Zalecenie blokady zabezpieczenia różnicowego od 2. harmonicznej (udział ≥ 10 % szczytu prądu załączania, udział szacowany zależnością 63 %/krotność) jest regułą solvera bez podstawy normowej — informacja, nie ocena kryterium."
+      ],
       "zakres_oceny": "kryterium"
     },
     {
@@ -767,7 +710,7 @@
         "nazwa_pl": "Aparatura i stany przejściowe"
       },
       "pytanie_pl": "Czy silnik ruszy pod obciążeniem i czy jego rozruch nie zapadnie napięcia na szynie poniżej dopuszczalnego?",
-      "zakres_pl": "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na wskazanej szynie; impedancja źródła z mocy zwarciowej szyny albo z pierwszej gałęzi zasilającej.",
+      "zakres_pl": "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na wskazanej szynie, rozruch bezpośredni; zapad z impedancji zastępczej sieci w węźle silnika (przekątna macierzy impedancyjnej z impedancją zasilania systemowego); szyna zasilana przez transformator nie ma zapadu — macierz analizy nie ma przekładni transformatora (nazwany brak w wyniku).",
       "wielkosci_glowne": [
         {
           "symbol": "I_r",
@@ -788,10 +731,10 @@
           "symbol_latex": "M_r"
         },
         {
-          "symbol": "I²t",
-          "nazwa_pl": "Wykorzystanie dopuszczalnego czasu utyku",
+          "symbol": "t_r/t_utyku",
+          "nazwa_pl": "Czas rozruchu odniesiony do dopuszczalnego czasu utyku",
           "jednostka": "-",
-          "symbol_latex": "I^{2} t"
+          "symbol_latex": "t_r / t_{\\mathrm{utyku}}"
         }
       ],
       "podstawa_oceny": [
@@ -801,34 +744,34 @@
           "jednostka": "%",
           "warunek_pl": "ΔU ≤ granica przy prądzie rozruchowym k_LR·I_n",
           "wartosc_graniczna": 15.0,
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "zrodlo_pl": "założenie inżynierskie Z-9 programu — Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
           "symbol_latex": "\\Delta U",
           "warunek_latex": "\\Delta U \\leq 15\\%",
           "wzor_latex": "",
           "wzor_opis_pl": ""
         },
         {
-          "wielkosc_pl": "Wskaźnik cieplny rozruchu",
-          "symbol": "I²t",
-          "jednostka": "-",
-          "warunek_pl": "k_LR²·t_rozruchu/t_utyku ≤ granica",
-          "wartosc_graniczna": 1.0,
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
-          "symbol_latex": "I^{2} t",
-          "warunek_latex": "k_{LR}^2 \\cdot \\dfrac{t_{\\mathrm{rozruchu}}}{t_{\\mathrm{utyku}}} \\leq 1",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
+          "wielkosc_pl": "Czas rozruchu",
+          "symbol": "t_r",
+          "jednostka": "s",
+          "warunek_pl": "t_r ≤ t_utyku (dopuszczalny czas utyku podany przy prądzie zablokowanego wirnika)",
+          "wartosc_graniczna": "t_r ≤ t_utyku",
+          "zrodlo_pl": "założenie inżynierskie Z-10 programu — Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
+          "symbol_latex": "t_r",
+          "warunek_latex": "t_r \\leq t_{\\mathrm{utyku}}",
+          "wzor_latex": "t_r \\leq t_{\\mathrm{utyku}}",
+          "wzor_opis_pl": "t_r — czas rozruchu napędu [s]; t_utyku — dopuszczalny czas utyku silnika z karty silnika [s]. Granica jest daną silnika, nie stałą liczbą."
         },
         {
           "wielkosc_pl": "Moment rozruchowy",
           "symbol": "M_r",
           "jednostka": "j.w.",
-          "warunek_pl": "M_r > M_obciążenia przy rozruchu",
-          "wartosc_graniczna": "M_r > M_obc",
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "warunek_pl": "M_r ≥ M_obciążenia przy rozruchu",
+          "wartosc_graniczna": "M_r ≥ M_obc",
+          "zrodlo_pl": "założenie inżynierskie Z-11 programu — Warunek ruszenia napędu — bez wartości normowej.",
           "symbol_latex": "M_r",
-          "warunek_latex": "M_r > M_{\\mathrm{obc}}",
-          "wzor_latex": "M_r > M_{\\mathrm{obc}}",
+          "warunek_latex": "M_r \\geq M_{\\mathrm{obc}}",
+          "wzor_latex": "M_r \\geq M_{\\mathrm{obc}}",
           "wzor_opis_pl": "M_r — moment rozruchowy silnika w jednostkach względnych; M_obc — moment obciążenia napędzanego mechanizmu przy rozruchu, w tych samych jednostkach. Granica nie jest stałą liczbą — jest porównaniem dwóch wielkości z tego samego biegu."
         }
       ],
@@ -836,8 +779,8 @@
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Moc zwarciowa szyny albo impedancja gałęzi zasilającej",
-            "elementy_pl": "szyny, gałęzie"
+            "nazwa_pl": "Impedancje gałęzi i impedancja zasilania systemowego Z_Q (sieć zasilająca)",
+            "elementy_pl": "linie, kable, aparaty łączeniowe, źródło sieci nadrzędnej"
           }
         ],
         "od_uzytkownika": [
@@ -917,6 +860,20 @@
             "jednostka": "j.w.",
             "wymagane": true,
             "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].rated_power_factor",
+            "nazwa_pl": "Znamionowy współczynnik mocy cos φ_n",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana przyjęta wyniku)."
+          },
+          {
+            "klucz": "motors[].rated_efficiency",
+            "nazwa_pl": "Sprawność znamionowa η_n",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana przyjęta wyniku)."
           }
         ],
         "domyslne_solvera": []
@@ -986,22 +943,36 @@
             "jednostka": "-",
             "wymagane": true,
             "opis_pl": "Model sieci nie niesie liczby odbiorców — projektant podaje ją dla szyn zasilających odbiorców (identyfikator szyny → liczba odbiorców); wskaźniki SAIDI/SAIFI/CAIDI są tą liczbą ważone."
+          },
+          {
+            "klucz": "reliability_data",
+            "nazwa_pl": "Dane niezawodności elementu (intensywność uszkodzeń, czas odnowy)",
+            "jednostka": "1/rok, h",
+            "wymagane": false,
+            "opis_pl": "Identyfikator gałęzi → całkowita intensywność uszkodzeń elementu [1/rok] i czas odnowy [h]; zastępuje wartość roboczą rejestru niezawodności dla tego elementu."
           }
         ],
         "domyslne_solvera": [
           {
             "klucz": "failure_rate_per_year",
             "nazwa_pl": "Intensywność uszkodzeń elementu",
-            "wartosc": "0,08 (linia napowietrzna) / 0,015 (kabel) na km i rok; 0,015 na rok (aparat)",
+            "wartosc": "0,08 1/(km·rok) (linia napowietrzna SN); 0,015 1/(km·rok) (linia kablowa SN); 0,015 1/rok (aparat łączeniowy SN)",
             "jednostka": "1/rok",
-            "uzasadnienie_pl": "Wartości typowe z katalogu danych odniesienia „reliability-defaults”; model nie niesie danych niezawodnościowych elementów."
+            "uzasadnienie_pl": "Wartość robocza rejestru niezawodności programu — założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów. Model nie niesie danych niezawodnościowych elementów; każda wartość robocza jest daną przyjętą wyniku (kompletność dowodu NIEPEŁNY), a projektant zastępuje ją w danych niezawodności analizy."
           },
           {
             "klucz": "mttr_h",
             "nazwa_pl": "Czas odtworzenia zasilania po awarii elementu",
-            "wartosc": "3,5 (linia napowietrzna) / 12 (kabel) / 4 (aparat)",
+            "wartosc": "3,5 h (linia napowietrzna SN); 12 h (linia kablowa SN); 4 h (aparat łączeniowy SN)",
             "jednostka": "h",
-            "uzasadnienie_pl": "Wartości typowe z katalogu danych odniesienia „reliability-defaults”."
+            "uzasadnienie_pl": "Wartość robocza rejestru niezawodności programu (założenie inżynierskie, bez wartości normowej) — dana przyjęta wyniku; projektant zastępuje ją w danych niezawodności analizy."
+          },
+          {
+            "klucz": "maifi_udzial",
+            "nazwa_pl": "Udział przerw krótkich w liczbie przerw długich",
+            "wartosc": 0.12,
+            "jednostka": "1",
+            "uzasadnienie_pl": "MAIFI = 0,12·SAIFI — założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich; dana przyjęta wyniku."
           }
         ]
       },

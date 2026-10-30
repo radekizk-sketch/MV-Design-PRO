@@ -1227,9 +1227,11 @@ def zloz_wejscie_zwarcia(
     brak_wyniku_zerowego: dict[str, BrakWynikuZerowego] = {}
     siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
     sekcje_sn_wezlow: dict[str, Any] = {}
+    b0_robocze_y0: dict[str, tuple[tuple[str, str, str, float], ...]] = {}
     if _short_circuit_requires_z0(short_circuit_type):
         siec_zerowa = zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc)
         z0_bus = siec_zerowa.z0_bus
+        b0_robocze_y0 = siec_zerowa.b0_robocze
         brak_wyniku_zerowego = siec_zerowa.przyczyny
         siec_zerowa_trace = siec_zerowa.slad
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
@@ -1290,9 +1292,11 @@ def zloz_wejscie_zwarcia(
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: bocznik zespołu uziemiającego z wartości
     # roboczej (stan AWSC przypadku) — ten sam mechanizm i ten sam predykat składowej sieci
-    # zerowej co R′0/X′0 gałęzi z założenia katalogu.
+    # zerowej co R′0/X′0 gałęzi z założenia katalogu. Karta ZEROWA-POJEMNOSCI: B′0 z wartości
+    # roboczej gałęzi, której pojemność weszła do Y0 (warunek pkt 5.2 f) jej sieci zerowej), jest
+    # daną przyjętą tego samego rekordu gałęzi — z TEGO SAMEGO złożenia co ``z0_bus``.
     zalozenia_z0 = (
-        zalozenia_z0_galezi(enm, scenario_c)
+        zalozenia_z0_galezi(enm, scenario_c, b0_galezi=b0_robocze_y0)
         + zalozenia_zespolow_uziemiajacych(enm, scenario_c, stan_awsc)
         if _short_circuit_requires_z0(short_circuit_type)
         else ()

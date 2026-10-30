@@ -78,8 +78,9 @@ BACKEND_PLIKI = (
 #:   (b) 3x `v126_katalog.py` pola NIGDY nie renderowane jako surowy tekst:
 #:       `wartosc_graniczna` (str) uzywane wylacznie gdy `typeof === 'number'`
 #:       jest false, a wtedy UI renderuje `wzor_latex`+`wzor_opis_pl`, NIE tę
-#:       wartosc (linie 581, 601); `DanaZModelu.nazwa_pl` to lista wymaganych
-#:       pol karty katalogowej (prosty tekst opisowy, nie wzor — linia 690).
+#:       wartosc (kryteria U_dot,dop i U_kr,dop karty uziomu); `DanaZModelu.nazwa_pl`
+#:       to lista wymaganych pol karty katalogowej ogranicznikow (prosty tekst
+#:       opisowy, nie wzor). Numerow linii tu nie podajemy — dryfuja przy edycji.
 #: Nie podnosic bez pomiaru; obnizyc przy kazdej naprawie rezydualnego
 #: wystapienia (nawet spoza karty V12.7 — kolejna karta obejmujaca dany ekran).
 PIN = 9
@@ -228,7 +229,7 @@ WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset(
         # trzy uzycia, wszystkie w `key={...}`), nigdy nie renderowany jako
         # tekst. Widoczny zapis symbolu idzie WYLACZNIE przez `symbol_latex`
         # (pole obok, patrz `WielkoscGlowna.to_dict`).
-        ("backend/src/application/analyses/v126_katalog.py", 458),
+        ("backend/src/application/analyses/v126_katalog.py", 479),
     }
 )
 

@@ -970,7 +970,13 @@ def test_v126_rezystor_z_modelu_z_danymi_przyjetymi(wariant: str, t_wyl_s: float
 
     wynik = V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, wejscie)["result"]
     assert wynik["neutral_earthing_type"] == "resistor_grounded"
-    assert wynik["kompletnosc_dowodu"] == "NIEPELNY"
+    # Kompletność dowodu wyniku — z granicy wyniku API (rekordy oceny, dane przyjęte).
+    from application.v126_artifacts import wynik_v126_dla_powierzchni
+
+    powierzchnia = wynik_v126_dla_powierzchni(
+        "neutral_earthing_design", {"result": wynik}, nazwy={}
+    )["result"]
+    assert powierzchnia["kompletnosc_dowodu"] == "NIEPELNY"
     assert wynik["resistor_ohm"] == pytest.approx(R_N, abs=1e-4)
     # Wyrocznia jawna (warunek odbioru 2026-10-29): I_N = U_f/(Z_N + Z_0/3), I_ef = |I_N + j·I_C|
     # — impedancja zerowa transformatora uziemiającego (albo Z_T0 uzwojenia) wchodzi do R_N/X_N,

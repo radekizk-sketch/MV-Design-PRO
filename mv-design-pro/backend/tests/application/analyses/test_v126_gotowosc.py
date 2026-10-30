@@ -95,7 +95,9 @@ _OCZEKIWANE_STANY_ZLOTA_SIEC: dict[V126AnalysisType, str] = {
     V126AnalysisType.RELIABILITY_CONTINGENCY: GOTOWOSC_NIEPOTWIERDZONA,
     V126AnalysisType.EARTHING_SAFETY: GOTOWOSC_NIEPOTWIERDZONA,
     V126AnalysisType.INSULATION_COORDINATION: GOTOWOSC_NIEPOTWIERDZONA,
-    V126AnalysisType.EARTH_FAULT_DETECTION: GOTOWOSC_NIEPOTWIERDZONA,
+    # Zasada nr 4: wyposażenie przekaźnika jest uwagą, nie blokerem — sposób uziemienia złotej
+    # sieci jest w modelu, więc dobór metody biegnie (kryterium funkcji przekaźnika NIE_OCENIONO).
+    V126AnalysisType.EARTH_FAULT_DETECTION: GOTOWOSC_POTWIERDZONA,
     V126AnalysisType.TRANSIENT_TRV: GOTOWOSC_NIEPOTWIERDZONA,
     V126AnalysisType.MOTOR_STARTING: GOTOWOSC_NIEPOTWIERDZONA,
     V126AnalysisType.HOSTING_CAPACITY: GOTOWOSC_WYCOFANA,
@@ -918,3 +920,19 @@ def test_lista_wszystkich_rodzajow_jest_zgodna_z_wynikiem_scalania_per_rodzaj(
     ]
     for a, b in zip(bez_scalania, ze_scalaniem, strict=True):
         assert a.to_dict() == b.to_dict(), a.kod
+
+
+@pytest.mark.parametrize("metody", [None, [], ["wattmetric"]], ids=["brak", "pusta", "podane"])
+def test_wyposazenie_przekaznika_jest_uwaga_nie_blokerem(metody: list[str] | None) -> None:
+    """Zasada nr 4 × stan parametru {brak, pusta lista, podane}: warunek `parametr.relay_methods`
+    nigdy nie blokuje biegu; niespełniony jest uwagą z kluczem parametru do uzupełnienia."""
+    parametry = {} if metody is None else {"relay_methods": metody}
+    wynik = ocen_gotowosc_v126(
+        build_golden_enm(), V126AnalysisType.EARTH_FAULT_DETECTION, parametry
+    )
+    (warunek,) = (w for w in wynik.warunki if w.kod == "parametr.relay_methods")
+    assert warunek.blokujacy is False
+    assert warunek.spelniony is bool(metody)
+    assert warunek.klucz_parametru == "relay_methods"
+    assert (warunek in wynik.uwagi) is (not metody)
+    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA

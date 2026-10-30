@@ -144,7 +144,7 @@ def test_ferrorezonans_bez_uziemienia_nieoceniony_nie_brak_przeslanek(uziemienie
     assert "nieustalony" in ferro["recommendation"]
     assert fragment in ferro["brak_danych"]
     # TRV wyłącznika nie zależy od punktu neutralnego — liczony mimo braku.
-    assert wynik["trv_margin_percent"] is not None
+    assert wynik["trv_peak_kv"] is not None
 
 
 @pytest.mark.parametrize(
@@ -164,29 +164,56 @@ def test_ferrorezonans_z_wariantu_modelu(wariant: str, ryzyko: bool) -> None:
 
 @pytest.mark.parametrize("wariant", ["izolowany", "dlawik", "rezystor", "bezposrednie"])
 @pytest.mark.parametrize(
-    "metody", [None, ["wattmetric"]], ids=["bez-danych-przekaznika", "metody-projektanta"]
+    "metody",
+    [None, ["wattmetric"], ["51N"], ["51N", "67N"], ["51N", "50N"]],
+    ids=[
+        "bez-danych-przekaznika",
+        "watometryczna",
+        "51N-bez-67N-i-50N",
+        "51N-z-67N",
+        "51N-z-50N",
+    ],
 )
 def test_detekcja_doziemien_dane_przyjete_przekaznika(wariant: str, metody: list | None):
-    """Zasada nr 4: brak wyposażenia przekaźnika nie blokuje doboru metody — komplet metod
-    przyjęty jawnie (ESTIMATED, kompletność NIEPEŁNY); metody projektanta — bez danej przyjętej.
-    Nastawy startowe niosą podstawę (praktyka, bez wartości normowej)."""
+    """Zasada nr 4: brak wyposażenia przekaźnika nie blokuje doboru metody ani nastaw (bieg
+    się wykonuje); kryterium „przekaźnik ma każdą funkcję metody zalecanej” jest wtedy
+    NIE_OCENIONO z nazwanym brakiem — dawna wartość robocza „komplet metod” rozstrzygała
+    kryterium samym założeniem. Metody projektanta → rozstrzygnięcie względem funkcji
+    WYMAGANYCH (składowe metody złożonej 51N+67N / 51N/50N, bez dawnego zaliczania metody
+    ze znakiem „+” albo „/”). Nastawy startowe niosą podstawę (praktyka, bez wartości normowej)."""
+    from application.analyses.v126_oceny import kompletnosc_wyniku, oceny_wyniku_v126
+
     parametry = {} if metody is None else {"relay_methods": metody}
     wynik = _bieg(
         V126AnalysisType.EARTH_FAULT_DETECTION, _siec(_uziemienie(wariant, False), parametry)
     )["result"]
     assert "bez wartości normowej" in wynik["settings_podstawa_pl"]
+    assert "relay_support_status" not in wynik and "dane_przyjete" not in wynik
+    oceny = oceny_wyniku_v126(
+        "earth_fault_detection", wynik, wersja_silnika=None, odcisk=None, nazwy={}
+    )
+    assert oceny is not None
+    (ocena,) = oceny
+    assert ocena["podstawa"]["jednostka_redakcyjna"] == "§ Z-8"
+    assert kompletnosc_wyniku(wynik, oceny) == "NIEPELNY"
     if metody is None:
-        (dana,) = wynik["dane_przyjete"]
-        assert dana["jakosc"] == "ESTIMATED"
-        assert dana["nazwa_pl"] == "Metody detekcji dostępne w przekaźniku"
-        assert wynik["kompletnosc_dowodu"] == "NIEPELNY"
-        assert wynik["relay_support_status"] == "spelniony"
-    else:
-        assert wynik["dane_przyjete"] == []
-        assert wynik["kompletnosc_dowodu"] == "PELNY"
-        oczekiwany = (
-            "spelniony"
-            if wynik["recommended_method"] in metody or wariant in ("rezystor", "bezposrednie")
-            else "brak_w_przekazniku"
+        assert wynik["relay_methods_podane"] is False
+        assert ocena["status_maszynowy"] == "NIE_OCENIONO"
+        assert (
+            "wyposażenie przekaźnika nie zostało wskazane" in ocena["wyjasnienie"]["przyczyna_pl"]
         )
-        assert wynik["relay_support_status"] == oczekiwany
+    else:
+        assert wynik["relay_methods_podane"] is True
+        oczekiwany = "SPELNIA" if set(wynik["required_functions"]) <= set(metody) else "NIE_SPELNIA"
+        assert ocena["status_maszynowy"] == oczekiwany
+        # Wyrocznia ręczna (tabela Z-8): sieć izolowana → watometryczna; dławik bez regulacji
+        # nadążnej → admitancyjna; rezystor → 51N + 67N; bezpośrednie → 51N + 50N (dawniej
+        # metody złożone zaliczane samym znakiem „+”/„/” — przekaźnik z samym 51N „spełniał”).
+        wymagane_z_tabeli = {
+            "izolowany": {"wattmetric"},
+            "dlawik": {"admittance"},
+            "rezystor": {"51N", "67N"},
+            "bezposrednie": {"51N", "50N"},
+        }[wariant]
+        assert set(wynik["required_functions"]) == wymagane_z_tabeli
+        assert oczekiwany == ("SPELNIA" if wymagane_z_tabeli <= set(metody) else "NIE_SPELNIA")

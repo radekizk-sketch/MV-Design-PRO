@@ -56,6 +56,17 @@ def _i_th_kwadrat_razy_t(i_k: float, z: complex, t: float) -> float:
     return i_k**2 * (m + 1.0) * t
 
 
+def _oceny(wynik: dict) -> dict[str, dict]:
+    """Rekordy oceny kryteriów (granica wyniku `v126_oceny`) po identyfikatorze."""
+    from application.analyses.v126_oceny import oceny_wyniku_v126
+
+    oceny = oceny_wyniku_v126(
+        "neutral_earthing_design", wynik, wersja_silnika=None, odcisk=None, nazwy={}
+    )
+    assert oceny is not None
+    return {o.get("kryterium_id") or o["wymaganie_id"]: o for o in oceny}
+
+
 @pytest.mark.parametrize("wariant", ["rezystor", "uzwojenie_tr"])
 @pytest.mark.parametrize("t_wyl_s", [None, 0.5, 3.0])
 def test_cieplo_rezystora_z_wyroczni(wariant: str, t_wyl_s: float | None) -> None:
@@ -88,13 +99,21 @@ def test_cieplo_rezystora_z_wyroczni(wariant: str, t_wyl_s: float | None) -> Non
         assert cieplo["status"] == "dane niekompletne"
         assert cieplo["missing_fields"] == ["ner_clearing_time_s"]
         assert "energy_dissipated_j" not in cieplo and "thermal_ok" not in cieplo
+        ocena = _oceny(wynik["result"])[f"v126.uziemienie.energia.{rez.ref}"]
+        assert ocena["status_maszynowy"] == "NIE_OCENIONO"
     else:
         assert wiersz["i_thermal_a"] == pytest.approx(oczekiwane["i_th"], rel=1e-6)
         assert wiersz["energy_dissipated_j"] == pytest.approx(oczekiwane["e_k"], rel=1e-6)
-        # Kryterium energetyczne i czasowe są równoważne (I_th(t)²·t rośnie z t).
-        assert wiersz["thermal_ok"] is (t_wyl_s <= t_dop)
-        assert cieplo["thermal_ok"] is wiersz["thermal_ok"]
-        assert cieplo["status"] == ("zgodny" if wiersz["thermal_ok"] else "niezgodny")
+        # Kryterium energetyczne i czasowe są równoważne (I_th(t)²·t rośnie z t); ocenę
+        # wystawia rekord werdyktu na granicy wyniku (założenie Z-7), nie wiersz solvera.
+        assert "thermal_ok" not in wiersz and "status" not in cieplo
+        ocena = _oceny(wynik["result"])[f"v126.uziemienie.energia.{rez.ref}"]
+        assert ocena["status_maszynowy"] == ("SPELNIA" if t_wyl_s <= t_dop else "NIE_SPELNIA")
+        assert ocena["wynik"]["wartosc"]["wartosc"] == pytest.approx(
+            wiersz["energy_dissipated_j"], rel=1e-9
+        )
+        assert ocena["limit"]["wartosc"]["wartosc"] == pytest.approx(e_n, rel=1e-6)
+        assert ocena["podstawa"]["jednostka_redakcyjna"] == "§ Z-7"
         assert cieplo["clearing_time_s"] == t_wyl_s
     # Ślad WHITE BOX: czas dopuszczalny zawsze; krok energii wyłącznie z czasem wyłączenia,
     # bez niego krok braku danych nazwanych.
@@ -116,7 +135,13 @@ def test_dwa_rezystory_jednej_sieci_rozstrzyga_najkrotszy_czas() -> None:
     assert cieplo["permissible_time_s"] == rozstrzygajacy["permissible_time_s"]
     assert cieplo["i_resistor_a"] == rozstrzygajacy["i_resistor_a"]
     assert cieplo["energy_dissipated_j"] == rozstrzygajacy["energy_dissipated_j"]
-    assert cieplo["thermal_ok"] is all(w["thermal_ok"] for w in cieplo["resistors"])
+    # Werdykt: każdy rezystor osobnym rekordem — żaden nie znika w agregacie.
+    oceny = _oceny(_bieg(wejscie)["result"])
+    for wiersz in cieplo["resistors"]:
+        ocena = oceny[f"v126.uziemienie.energia.{wiersz['ref']}"]
+        assert ocena["status_maszynowy"] == (
+            "SPELNIA" if 1.0 <= wiersz["permissible_time_s"] else "NIE_SPELNIA"
+        )
 
 
 def test_brak_c_max_to_odmowa_nazwana_bez_liczby() -> None:
