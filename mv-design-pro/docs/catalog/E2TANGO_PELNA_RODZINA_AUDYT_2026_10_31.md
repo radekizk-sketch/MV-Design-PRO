@@ -5,6 +5,8 @@
 
 ## 1. Zakres i źródła: stan źródeł ≠ konfiguracja obiektu
 
+**Źródło kontrolne zakresu 2026:** [Katalog Rozwiązania Elektrometal K-0.2.12, 04/2026](https://elektrometal-energetyka.pl/wp-content/uploads/2026/04/Katalog-Rozwiazania-0.2.12.pdf) — oficjalny wykaz jedenastu modeli SN/nN (50, 100, 150, 200, 250, 400, 450, 600, 800, 1000, 1200), rodzina 2000 WN oraz odmiany detektora 50. To źródło nadrzędne dla kompletności typoszeregu, ale nie dla konfiguracji każdej sztuki.
+
 Wiodąca publiczna oferta producenta: https://elektrometal-energetyka.pl/sterowniki-polowe-e%C2%B2tango/ .
 Osobny produkt e²TANGO-50 to **detektor zwarć**, nie zamiennik kompletnego przekaźnika EAZ.
 Wersje e²TANGO-2000 są specjalizowanymi zespołami WN, a SZR/PPZ aplikacją automatyki opartą na platformie, nie nowym aparatem o jednym uniwersalnym SKU.
