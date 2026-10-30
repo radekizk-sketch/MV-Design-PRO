@@ -7,7 +7,7 @@ Dwie klasy wpisów, których NIE wolno mieszać:
 - **Rodzina producenta:** dopuszczalne kombinacje z publikacji producenta. Dopóki nie ma osobnego numeru zamówieniowego/DTR, status nadal REFERENCYJNY_V1. NIE nazywamy jej potwierdzonym wyrobem.
 
 W bazie wyjściowej było **14 przekładników CT** (12 modeli referencyjnych plus 2 sieciowe ENEA 5/B) oraz **13 VT**.
-Po tej gałęzi: **50 CT** (36 nowych ENEA 5/A-D), **28 VT** (6 nowych ENEA 5/E-F i 9 ABB UDZ 24-1) oraz **5 Ferranti 3I0** w osobnym katalogu.
+Po tej gałęzi: **51 CT** (36 nowych ENEA 5/A-D i 1 ABB TPU), **28 VT** (6 nowych ENEA 5/E-F i 9 ABB UDZ 24-1) oraz **5 Ferranti 3I0** w osobnym katalogu.
 Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
 
 ## ENEA Operator — przekładniki prądowe
@@ -65,11 +65,11 @@ Nie wszystkie czujniki CSH mają potwierdzone dodatkowe złącze wymagane przez 
 
 ## Technika wdrożenia i Ubuntu
 
-- `get_default_mv_catalog().list_ct_types()`: 50 modeli CT fazowych/profili wymagań.
+- `get_default_mv_catalog().list_ct_types()`: 51 modeli CT fazowych/profili wymagań.
 - `get_default_mv_catalog().list_vt_types()`: 28 VT.
 - `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0.
 - Nowe opcjonalne pola `secondary_cores`, `core_count`, `um_kv`, `primary_taps_a`, `secondary_windings`, `primary_connection` są przekazywane `from_dict → to_dict → REST` bez naruszania starych rekordów.
 - Dotychczasowe ID CT/VT nie są zmieniane, tylko dodano nowe.
 - Odbiór: `bash scripts/catalog_audit_ubuntu.sh` (wymaga Python 3.11 i zależności repo).
 
-**Nie oznaczać 50 CT jako 50 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
+**Nie oznaczać 51 CT jako 51 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
