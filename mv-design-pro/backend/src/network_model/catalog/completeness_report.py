@@ -42,6 +42,7 @@ MINIMUM: dict[str, tuple[str, ...]] = {
     "source_system_types": ("voltage_rating_kv", "sk3_mva", "ik3_ka", "rx_ratio"),
     "ct_types": ("ratio_primary_a", "ratio_secondary_a", "accuracy_class"),
     "vt_types": ("ratio_primary_v", "ratio_secondary_v", "accuracy_class"),
+    "mv_apparatus_types": ("name",),
     "lv_apparatus_types": ("device_kind", "u_n_kv", "i_n_a"),
     "lv_breaker_mcb_types": ("in_a", "curve_class", "icn_ka"),
     "lv_fuse_link_types": ("in_a", "fuse_class", "size", "breaking_capacity_ka"),
