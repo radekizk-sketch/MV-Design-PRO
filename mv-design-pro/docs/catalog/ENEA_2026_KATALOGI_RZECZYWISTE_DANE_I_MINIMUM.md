@@ -70,6 +70,80 @@ pozostałe rdzenie wymagają DTR. Nie przypisano fikcyjnego producenta.
 W szczególności **FS5** dotyczy rdzenia pomiarowego; nie należy go
 automatycznie stosować do rdzenia zabezpieczeniowego 5P.
 
+## Zasięg standardu ENEA — ważna korekta projektowa
+
+**Standard katalogowy ENEA obowiązuje podczas projektowania własnej sieci i urządzeń
+OSD, w zakresie wynikającym z konkretnego dokumentu. Nie oznacza to, że instalacja
+odbiorcy od punktu przyłączenia do jego stacji SN/nN jest ograniczona do trzech
+przekrojów wskazanych w tab. 3.** Po stronie odbiorcy należy dopuścić wszystkie
+wyroby odpowiednie do napięcia, sposobu ułożenia i obliczeń, z uwzględnieniem
+warunków przyłączenia, ochrony i norm. Jeżeli granica własności i eksploatacji
+nie pokrywa się z punktem przyłączenia — zastosowanie wymaga oceny konkretnego
+odcinka; nie można klasyfikować go wyłącznie po nazwie „przyłącze”.
+
+### Rozszerzenie wyboru SN — NKT i Tele-Fonika
+
+Wszystkie poniższe pozycje są w **jednym** istniejącym
+`get_default_mv_catalog().list_cable_types()`, bez osobnego frontendowego
+katalogu; istniejące typy zachowują ID:
+
+- **NKT XRUHAKXS1 12/20 kV**: pełna tabela **16 wariantów przekroju żyły
+  roboczej / żyły powrotnej**, w tym 50/16, 120/25, 120/50,
+  150/50, 240/50, 300/25/50, 400/25/50, 500/25, 630/25/35/50.
+  Trzy z nich (70/25, 150/25, 240/25) są już wśród 6 wariantów ENEA,
+  więc dodano **13 nowych** bez dublowania rekordów.
+  Źródło: NKT `CTL00109 rev. 4`:
+  https://sklep.enexon.pl/amfile/file/download/file/708137/product/8814/
+- **Tele-Fonika XRUHAKXS (Al) i XRUHKXS (Cu) 12/20(24) kV**:
+  **27 nowych wariantów**: Al 50–1000 mm² (13 wierszy),
+  Cu 35–1000 mm² (14 wierszy), z konkretnymi ekranami 16/25/35/50 mm².
+  R20, R20 ekranu, C, L, Iz i Ith pochodzą z odpowiednich wierszy
+  `TFK WIND ENERGY CABLES, Clean Energy Edition II, 2025`,
+  strony drukowane 40–45. Wariant referencyjny obciążalności:
+  trójkąt, ekrany uziemione obustronnie, grunt 20°C, 0,7 m, 1 K·m/W.
+  https://www.tele-fonika.com/storage/file/core_files/2025/3/27/7459739d043ef898b9ecd655bc593b07/Clean%20Energy%20ENG.pdf
+
+**To nie jest deklaracja pełnego światowego asortymentu producentów.**
+Dla innych napięć SN, konstrukcji i ekranów nie tworzy się nowych
+„produktów NKT/TFK” przez zmianę samej nazwy. Wymagane są odpowiadające
+im karty producenta. W szczególności nie wolno utożsamiać wariantu
+12/20 kV z 18/30 kV.
+
+### Rozszerzenie nN — rzeczywiste tablice NKT
+
+Zamiast 17 typów są **54 typy** w istniejącym katalogu nN:
+17 dotychczasowych, **19 NKT YKXSżo Cu/XLPE** oraz
+**18 NKT YAKXSżo Al/XLPE**. Są to rodziny 4- i 5-żyłowe,
+z R20, L→X przy 50 Hz, Iz w ziemi i w powietrzu, Ith(1s),
+temperaturami i żyłą PE/PEN.
+
+- YKXS, katalog NKT, str. druk. 64–65:
+  https://www.elektrykasklep.pl/file,470067,ykxs.pdf
+- YAKXS, katalog NKT, str. druk. 79–80:
+  https://www.elektrykasklep.pl/file,553320,przewody-i-kable-elektroenergetyczne_201532.pdf
+
+**Nie publikujemy Al 4×10 jako 3L+PEN**: żyła PEN aluminiowa musi mieć
+co najmniej 16 mm². Przy 4 żyłach N/PE oraz 5 żyłach projektant nadal
+musi poprawnie zadeklarować układ sieci i przypisanie funkcji żył.
+`Iz` dotyczy dokładnie podanych warunków odniesienia producenta;
+nie jest dopuszczalnym prądem każdego sposobu ułożenia.
+Reaktancja żyły powrotnej w modelu wielożyłowym jest jawnym
+założeniem geometrycznym, a nie osobnym pomiarem NKT.
+
+### Zakres weryfikacji
+
+- 6 wariantów NKT z typoszeregu ENEA 2026;
+- 13 dalszych NKT XRUHAKXS1 do projektów odbiorcy;
+- 27 TFK XRUHAKXS/XRUHKXS SN do projektów odbiorcy;
+- 37 dalszych NKT nN.
+
+Są to rekordy o **niepustym minimum projektowym**, nie gwarancja, że
+każdy wariant ma osobno potwierdzone R0/X0 dla dowolnego sposobu
+uziemienia ekranów lub obciążalność po zmianie warunków ułożenia.
+Takich wartości nie wolno wymyślać. Priorytetem dalszych aktualizacji
+są kolejne tabele producentów, szczególnie Tele-Fonika nN oraz
+NKT i TFK 8,7/15 i 18/30 kV.
+
 ## Hierarchia danych — globalnie
 
 1. **Wyrób producenta:** dokładna karta konkretnego typu i wersji, jednostki,
