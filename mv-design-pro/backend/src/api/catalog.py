@@ -756,6 +756,16 @@ def list_elektrometal_etango_family() -> list[dict[str, Any]]:
     return list_etango_family_references()
 
 
+@router.get("/elektrometal-etango-expansions")
+def list_elektrometal_etango_expansions() -> dict[str, Any]:
+    """Źródłowa wiedza o kartach i peryferiach; nie wybór obsady ani nastawy."""
+    from network_model.catalog.elektrometal_etango_family import (
+        list_etango_expansion_peripherals,
+    )
+
+    return list_etango_expansion_peripherals()
+
+
 @router.get("/mv-protection-device-types")
 def list_mv_protection_device_types() -> list[dict[str, Any]]:
     """Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`).
