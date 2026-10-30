@@ -23,7 +23,14 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
 
     for item in vt_types:
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
+        if data["id"].startswith("vt-abb-udz24-1-"):
+            # Dane rodziny producenta są potwierdzone, lecz kombinacja uzwojeń
+            # pozostaje konfiguracją doborową, nie zweryfikowaną kartą SKU.
+            assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+            assert data["secondary_windings"]
+            assert "new.abb.com" in data["source_reference"]
+        else:
+            assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
         assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
         assert data["source_reference"]
         assert data["contract_version"] == "2.0"
