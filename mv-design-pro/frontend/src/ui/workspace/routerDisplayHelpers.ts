@@ -78,7 +78,6 @@ const PROOF_TYPE_TAGS: Record<string, string> = {
   LOAD_CURRENTS_OVERLOAD: 'Obciążalność',
   LOSSES_ENERGY: 'Straty',
   PROTECTION_OVERCURRENT: 'Zabezpieczenia',
-  EARTHING_GROUND_FAULT_SN: 'Ziemnozwarciowe SN',
 };
 
 export function publicProofTypeTag(value: string): string {

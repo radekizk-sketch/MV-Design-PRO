@@ -2636,6 +2636,53 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "P0",
     ),
     *_fe_def("ui2/wyniki/stabilnosc/strings.ts", "KRYTERIUM_PL kryteriumPL", "P0"),
+    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5, 2026-10-30): pakiet dowodu P19
+    # (uziemienie / doziemienie SN) — 0 producentow w `backend/src`, fizyka w silniku dowodow
+    # (I_E = U_0/Z_E, U_d = I_u·R_u „uproszczone”), dubel dowodu bezpieczenstwa uziomu V12.6
+    # (EN 50522 tab. 1 + IEEE 80). Razem z nim: reguly normatywne NR_P19 i ich progi, karta
+    # „Tor ziemnozwarciowy” listy paczek uzasadnien, etykieta i galaz warstwy zerowej.
+    _be_sciezka(f"{_PE}/packs/earthing_ground_fault_sn.py", "ZU5"),
+    *_be_def(
+        f"{_PE}/packs/earthing_ground_fault_sn.py",
+        "EarthingGroundFaultPackInput generate_earthing_ground_fault_pack serialize_earthing_pack",
+        "ZU5",
+    ),
+    *_be_def(f"{_PE}/types.py", "EarthingGroundFaultInput", "ZU5"),
+    *_be_def(f"{_PE}/types.py", "ProofType.EARTHING_GROUND_FAULT_SN", "ZU5", zasieg="plik"),
+    *_be_def(
+        f"{_PE}/proof_generator.py",
+        "generate_earthing_ground_fault_proof _create_earth_current_step "
+        "_create_earth_distribution_step _create_earth_touch_step",
+        "ZU5",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EQ_EARTH_001 EQ_EARTH_002 EQ_EARTH_003 EARTH_EQUATIONS EARTH_STEP_ORDER "
+        "get_earth_equations get_earth_step_order",
+        "ZU5",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EquationRegistry.EARTH_EQUATIONS EquationRegistry.EARTH_STEP_ORDER",
+        "ZU5",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/normative/evaluator.py",
+        "_evaluate_touch_voltage_rule _evaluate_earth_current_rule",
+        "ZU5",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/normative/models.py",
+        "NormativeConfig.touch_voltage_warn_v NormativeConfig.touch_voltage_fail_v "
+        "NormativeConfig.earth_current_warn_a NormativeConfig.earth_current_fail_a",
+        "ZU5",
+        zasieg="plik",
+    ),
+    *_fe_wzorzec("ui/workspace/WorkspaceSurfaceRouter.tsx", ("EARTHING_GROUND_FAULT_SN",), "ZU5"),
+    *_fe_wzorzec("ui/workspace/routerDisplayHelpers.ts", ("EARTHING_GROUND_FAULT_SN",), "ZU5"),
+    *_fe_wzorzec("ui/shell/V12OverlayModeController.tsx", ("EARTHING_GROUND_FAULT_SN",), "ZU5"),
 )
 
 _PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
@@ -2701,6 +2748,7 @@ KARTY_WPISOW_SPOZA_INWENTARZA: dict[str, str] = {
     "H0": "AB-H0 (O-53)",
     "135": "karta #135",
     "P0": "AB-1a Pakiet 0",
+    "ZU5": "UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5)",
 }
 
 

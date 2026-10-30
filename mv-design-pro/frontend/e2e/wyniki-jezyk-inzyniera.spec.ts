@@ -685,6 +685,16 @@ const SCENY: Record<string, Prowadzenie> = {
     }
   },
   'wyniki-skladowe': zwykla,
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5): ta sama sieć w czterech sposobach pracy
+  // punktu neutralnego — scena bez `sposob` to sieć izolowana, pozostałe trzy otwierane jawnie.
+  'wyniki-skladowe-doziemienie': async (page, pomiar) => {
+    await zwykla(page, pomiar);
+    for (const sposob of ['kompensowany', 'rezystor', 'bezposrednie']) {
+      await otworz(page, 'wyniki-skladowe-doziemienie', `&sposob=${sposob}`);
+      await page.waitForTimeout(500);
+      await zbierz(page, pomiar, `sposób ${sposob}`);
+    }
+  },
   'wyniki-zbieznosc': zwykla,
   'wyniki-stan-fazowy': zwykla,
   'sila-sieci': zwykla,
@@ -808,8 +818,8 @@ async function wypelnijParametry(page: Page, rodzaj: string): Promise<boolean> {
     } else if (klucz === 'motors') {
       const silniki = wartosc as Record<string, unknown>[];
       for (let i = 0; i < silniki.length; i += 1) {
-        await page.getByTestId('mvd-akad-dodaj-wiersz').click();
-        const wiersz = page.getByTestId(`mvd-akad-lista-wiersz-${i}`);
+        await page.getByTestId('mvd-akad-dodaj-wiersz-motors').click();
+        const wiersz = page.getByTestId(`mvd-akad-lista-motors-wiersz-${i}`);
         for (const [pole, v] of Object.entries(silniki[i])) {
           const kontrolka = wiersz.getByTestId(`mvd-akad-pole-${pole}`);
           if ((await kontrolka.evaluate((el) => el.tagName)) === 'SELECT') await kontrolka.selectOption(String(v));
@@ -819,8 +829,8 @@ async function wypelnijParametry(page: Page, rodzaj: string): Promise<boolean> {
     } else if (klucz === 'customer_counts') {
       const liczby = Object.entries(wartosc as Record<string, number>);
       for (let i = 0; i < liczby.length; i += 1) {
-        await page.getByTestId('mvd-akad-dodaj-wiersz').click();
-        const wiersz = page.getByTestId(`mvd-akad-lista-wiersz-${i}`);
+        await page.getByTestId('mvd-akad-dodaj-wiersz-customer_counts').click();
+        const wiersz = page.getByTestId(`mvd-akad-lista-customer_counts-wiersz-${i}`);
         await wiersz.getByTestId('mvd-akad-pole-bus_ref').selectOption(liczby[i][0]);
         await wiersz.getByTestId('mvd-akad-pole-liczba').fill(String(liczby[i][1]));
       }
@@ -828,8 +838,8 @@ async function wypelnijParametry(page: Page, rodzaj: string): Promise<boolean> {
       let i = 0;
       for (const [generator, widmo] of Object.entries(wartosc as Record<string, Record<string, number>>)) {
         for (const [rzad, procent] of Object.entries(widmo)) {
-          await page.getByTestId('mvd-akad-dodaj-wiersz').click();
-          const wiersz = page.getByTestId(`mvd-akad-lista-wiersz-${i}`);
+          await page.getByTestId('mvd-akad-dodaj-wiersz-harmonic_spectra').click();
+          const wiersz = page.getByTestId(`mvd-akad-lista-harmonic_spectra-wiersz-${i}`);
           await wiersz.getByTestId('mvd-akad-pole-generator_ref').fill(generator);
           await wiersz.getByTestId('mvd-akad-pole-rzad').fill(rzad);
           await wiersz.getByTestId('mvd-akad-pole-procent').fill(String(procent));

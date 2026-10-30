@@ -204,10 +204,15 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   return `${T.aparatBrak}.`;
 }
 
-/** Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. */
+/**
+ * Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. Symbol
+ * (i jednostka niosąca symbole bazy p.u.) to wzór `$…$` z pól `*_latex` rejestru — składa go
+ * `TekstZWzorami` pola; identyfikator `symbol` nie trafia na ekran (`ui_math_guard`).
+ */
 function etykietaParametruMaszyny(opis: ParametrMaszynyRejestru): string {
-  const jednostka = opis.jednostka === '1' ? '' : ` [${opis.jednostka}]`;
-  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} ${opis.symbol}${jednostka}`;
+  const jednostkaEkranu = opis.jednostka_latex !== '' ? `$${opis.jednostka_latex}$` : opis.jednostka;
+  const jednostka = opis.jednostka === '1' ? '' : ` [${jednostkaEkranu}]`;
+  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} $${opis.symbol_latex}$${jednostka}`;
 }
 
 /** Podpowiedź pola maszyny: co obliczenie przyjmie, gdy projektant nie poda wartości. */

@@ -24,6 +24,20 @@ Moduł liściowy (``models`` i rejestr wartości roboczych katalogu): konsumenci
 zwarć doziemnych), ``application.eligibility_service`` (kwalifikowalność analizy) i walidator
 kreatora sieci (rekordy słownikowe przez ``skladowa_zerowa_odcinka``) — biorą R′0/X′0 stąd,
 więc predykat „składowa zerowa znana” jest jeden dla bramki i dla obliczenia.
+
+Susceptancja zerowa B′0 (pojemność doziemna) — to samo jedno źródło, osobne pola
+(``b0_s_per_km``, ``robocze_b0``, ``brak_b0_pl``): odcinek SN bez B′0 w modelu dostaje wartość
+roboczą z pojemności roboczej (kabel B′0 = B′1 — pole promieniowe; linia B′0 = 0,4·B′1 — metoda
+odbić zwierciadlanych dla typowych słupów SN, ``wartosci_robocze.wyprowadz_susceptancje_zerowa_sn``).
+Konsumenci B′0 (z wartością roboczą): prąd pojemnościowy sieci SN (``enm.uziemienie_sekcji``),
+wejście i gotowość projektu uziemienia V12.6 (``solver_input.v126_contracts``,
+``application.analyses.v126_gotowosc``) i pojemność sieci IT
+(``application.analyses.fault_loop.tt_it`` — pasmo nN, więc odmowa nazwana bez danej modelu).
+Bocznik pojemności sieci zerowej zwarć IEC 60909 (``enm.mapping``) czyta B′0 modelu i wartość
+roboczą JEDNYM predykatem: wchodzi, gdy sieć zerowa gałęzi jest uziemiona przez małą impedancję
+o współczynniku zwarcia doziemnego k > 1,4 (IEC 60909-0:2016 pkt 5.2 f), karta
+ZEROWA-POJEMNOSCI); wartość robocza, która weszła, jest daną przyjętą wiersza zwarcia.
+Rozpływ niesymetryczny B′0 nie czyta (admitancje poprzeczne pominięte z założeniem nazwanym).
 """
 
 from __future__ import annotations
@@ -32,10 +46,12 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from network_model.catalog.wartosci_robocze import (
+    ETYKIETA_B0,
     POLA_SKLADOWEJ_ZEROWEJ,
     pola_z0_robocze,
     wyprowadz_skladowa_zerowa,
     wyprowadz_skladowa_zerowa_kabla_nn,
+    wyprowadz_susceptancje_zerowa_sn,
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
@@ -60,6 +76,14 @@ class SkladowaZerowaOdcinka:
     x0_ohm_per_km: float | None
     robocze: tuple[tuple[str, str, str, float], ...] = ()
     brak_podstawy_pl: str | None = None
+    #: Susceptancja zerowa (pojemność doziemna) B′0 [S/km] z modelu albo z wartości roboczej
+    #: (``None`` = nieznana i bez podstawy — ``brak_b0_pl``). Osobno od R′0/X′0: wchodzi
+    #: WYŁĄCZNIE tam, gdzie liczy się pojemność doziemna (prąd pojemnościowy sieci, projekt
+    #: uziemienia; bocznik sieci zerowej zwarć — pod warunkiem pkt 5.2 f)), nie do rozpływu
+    #: niesymetrycznego.
+    b0_s_per_km: float | None = None
+    robocze_b0: tuple[tuple[str, str, str, float], ...] = ()
+    brak_b0_pl: str | None = None
 
     @property
     def znana(self) -> bool:
@@ -154,6 +178,46 @@ def skladowa_zerowa_odcinka(
     )
 
 
+def _brak_podstawy_b0(*, napiecie_kv: float | None, b1: float | None) -> str:
+    """Przyczyna braku wartości roboczej B′0 — kolejność reguły wyprowadzenia."""
+    pasmo = pasmo_napieciowe(napiecie_kv)
+    if pasmo is None:
+        return "napięcie szyny odcinka nieznane — pasma sieci (SN albo nN) nie da się ustalić"
+    if pasmo == "WN":
+        return (
+            f"odcinek sieci {napiecie_kv:g} kV — B′0 linii WN wyznacza geometria słupa albo "
+            "dana operatora"
+        )
+    if pasmo == "nN":
+        return (
+            "odcinek nN — pojemność doziemna kabla nN (żyły bez ekranów) zależy od budowy "
+            "kabla: dana producenta albo pomiar"
+        )
+    if b1 is None or b1 <= 0:
+        return "B′1 odcinka nieznane albo niedodatnie (B′0 kabla = B′1, linii = 0,4·B′1)"
+    return "B′0 nieznane"
+
+
+def susceptancja_zerowa_odcinka(
+    *, kabel: bool, napiecie_kv: float | None, b1: float | None, b0: float | None
+) -> tuple[float | None, tuple[tuple[str, str, str, float], ...], str | None]:
+    """B′0 odcinka z prymitywów: (wartość [S/km] albo ``None``, pola przyjęte wartością
+    roboczą, przyczyna braku). Model ma pierwszeństwo; bez B′0 w modelu — reguła pasma SN
+    (``wyprowadz_susceptancje_zerowa_sn``: kabel B′0 = B′1, linia B′0 = 0,4·B′1); poza SN,
+    przy napięciu nieznanym albo bez B′1 — odmowa nazwana."""
+    if b0 is not None:
+        return b0, (), None
+    pochodne = (
+        wyprowadz_susceptancje_zerowa_sn(kabel=kabel, b1=b1)
+        if pasmo_napieciowe(napiecie_kv) == "SN"
+        else ()
+    )
+    if not pochodne:
+        return None, (), _brak_podstawy_b0(napiecie_kv=napiecie_kv, b1=b1)
+    pole, wartosc, zalozenie = pochodne[0]
+    return wartosc, ((pole, ETYKIETA_B0, zalozenie, wartosc),), None
+
+
 def skladowa_zerowa_galezi(
     galaz: Cable | OverheadLine, napiecie_kv: float | None
 ) -> SkladowaZerowaOdcinka:
@@ -182,7 +246,19 @@ def skladowa_zerowa_galezi(
     }
     z_katalogu = pola_z0_robocze(galaz.materialized_params, wartosci_galezi)
     robocze = sorted((*z_katalogu, *z_modelu.robocze), key=lambda p: _KOLEJNOSC_POL[p[0]])
-    return replace(z_modelu, robocze=tuple(robocze))
+    b0, robocze_b0, brak_b0 = susceptancja_zerowa_odcinka(
+        kabel=isinstance(galaz, Cable),
+        napiecie_kv=napiecie_kv,
+        b1=galaz.b_siemens_per_km,
+        b0=galaz.b0_siemens_per_km,
+    )
+    return replace(
+        z_modelu,
+        robocze=tuple(robocze),
+        b0_s_per_km=b0,
+        robocze_b0=robocze_b0,
+        brak_b0_pl=brak_b0,
+    )
 
 
 def napiecia_szyn_kv(enm: EnergyNetworkModel) -> dict[str, float]:

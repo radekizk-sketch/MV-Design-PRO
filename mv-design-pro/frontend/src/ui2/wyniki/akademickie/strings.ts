@@ -249,9 +249,18 @@ export const AKADEMICKIE_STRINGS = {
     + 'nie ma czego ważyć i uruchomienie jest niedostępne.',
   parametryDodajOdbiorcow: 'Dodaj szynę z odbiorcami',
   parametryUsunOdbiorcow: 'Usuń wiersz',
-  parametryMetodyTytul: 'Metody dostępne w przekaźniku',
+  parametryNiezawodnoscTytul: 'Dane niezawodności elementów',
+  parametryNiezawodnoscOpis:
+    'Model nie niesie danych niezawodności elementów — obliczenie przyjmuje wartości robocze '
+    + 'rejestru niezawodności (widoczne w wyniku jako dane przyjęte). Wiersz zastępuje je dla '
+    + 'wskazanego elementu danymi projektanta albo operatora.',
+  parametryDodajNiezawodnosc: 'Dodaj dane niezawodności elementu',
+  parametryUsunNiezawodnosc: 'Usuń wiersz',
+  parametryMetodyTytul: 'Funkcje detekcji doziemień dostępne w przekaźniku',
   parametrySzynaWybierz: 'wybierz szynę modelu',
   parametrySzynaBrak: 'model nie zawiera szyn',
+  parametryGalazWybierz: 'wybierz element sieci modelu',
+  parametryGalazBrak: 'model nie zawiera gałęzi',
   parametryPrzeksztaltnikDomyslny: 'pierwszy przekształtnik z kartą katalogową',
   parametryPrzeksztaltnikBrak: 'model nie zawiera przekształtnika z kartą katalogową',
   // Karta V12.7 §0.4: podsumowanie formularza — liczby z ODPOWIEDZI GOTOWOŚCI
@@ -288,8 +297,6 @@ export const AKADEMICKIE_STRINGS = {
   ocenaTytul: 'Ocena',
   audytPowodyTytul: 'Stan solvera (ustalenia audytu)',
   werdyktBrak: 'Solver nie wystawił oceny dla tej analizy',
-  werdyktZbiorczy: (spelnione: number, lacznie: number, obiekty: string): string =>
-    `kryterium spełnione dla ${spelnione} z ${lacznie} ${obiekty}`,
   werdyktWartosc: 'wielkość wynikowa (bez progu normatywnego)',
   podstawaEtykieta: 'Podstawa oceny',
   wielkosciTytul: 'Wielkości wynikowe',
@@ -300,6 +307,9 @@ export const AKADEMICKIE_STRINGS = {
   nastepnyKrokTytul: 'Wniosek projektowy — następny krok',
 
   // Uczciwy stan niekompletny (solver melduje brak danych)
+  danePrzyjeteTytul: 'Dane przyjęte (wartości robocze)',
+  danePrzyjeteNiepelny: 'Wynik policzony na wartościach roboczych albo z brakiem danych — '
+    + 'dowód niepełny; każdą wartość możesz zmienić w modelu i przeliczyć.',
   brakiTytul: 'Brakujące dane wejściowe',
   brakiLista: 'Solver nie wystawił oceny, bo w modelu brakuje:',
 
@@ -369,8 +379,7 @@ export const AKADEMICKIE_STRINGS = {
     `napięcie udarowe piorunowe (BIL) ${bil} kV; napięcie wytrzymywane 50 Hz ${u50} kV`,
   odnElementLinia: 'Linia napowietrzna SN',
   odnElementKabel: 'Kabel SN',
-  odnElementTransformator: 'Transformator SN/nN',
-  odnElementPole: 'Pole SN',
+  odnElementAparat: 'Aparat łączeniowy SN',
   odnJednostkaNaKmRok: '1/(km·rok)',
   odnJednostkaNaRok: '1/rok',
   odnNiezawodnoscWartosc: (intensywnosc: string, mttr: string): string =>

@@ -68,12 +68,11 @@ const ZERO_SEQ_CONDITIONAL_MODES: ReadonlySet<WorkMode> = Object.freeze(
 
 /**
  * Sprawdza, czy overlay payload zawiera dane sieci kolejności zerowej.
- * Pozytywny: analysis_type === 'EARTHING_GROUND_FAULT_SN' albo elementy mają
- * numeric_badges z i0_a / u0_kv.
+ * Pozytywny: elementy mają numeric_badges z i0_a / u0_kv (dawny rodzaj analizy
+ * pakietu dowodu uziemienia SN skasowany razem z pakietem — nie miał producenta).
  */
 export function payloadHasZeroSequence(overlay: OverlayPayloadV1 | null): boolean {
   if (!overlay) return false;
-  if (overlay.analysis_type === 'EARTHING_GROUND_FAULT_SN') return true;
   return overlay.elements.some(
     (el) => el.numeric_badges?.i0_a !== undefined || el.numeric_badges?.u0_kv !== undefined,
   );

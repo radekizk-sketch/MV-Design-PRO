@@ -63,11 +63,6 @@ COMPLETENESS_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "thermal_ok",
         "selectivity_ok",
     ),
-    ProofType.EARTHING_GROUND_FAULT_SN.value: (
-        "i_earth_a",
-        "earthing_mode",
-        "computed_status",
-    ),
 }
 
 

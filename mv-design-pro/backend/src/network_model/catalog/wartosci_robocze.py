@@ -115,9 +115,15 @@ class OpisParametru:
     parametr: str
     nazwa_pl: str
     symbol: str
+    #: Ten sam symbol jako LaTeX — postać ekranowa (`MathInline`/`$…$`); `symbol` zostaje
+    #: identyfikatorem prozy śladu i raportu (`ui_math_guard`, karta UX-04/POLE-ZU).
+    symbol_latex: str
     jednostka: str
     dopuszczalne_od: float
     dopuszczalne_do: float
+    #: Jednostka jako LaTeX, gdy niesie symbole (`p.u.` na bazie `S_rG`, `U_rG`); pusta, gdy
+    #: jednostka jest zwykłym tekstem (`MVA`, `s`) — ekran pokazuje wtedy `jednostka`.
+    jednostka_latex: str = ""
     #: Parametr przyjmuje wyłącznie wartości całkowite (liczba par biegunów maszyny).
     calkowita: bool = False
 
@@ -129,6 +135,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_CZAS_WLASNY,
         nazwa_pl="czas własny wyłączania wyłącznika",
         symbol="t_b",
+        symbol_latex=r"t_b",
         jednostka="s",
         dopuszczalne_od=0.005,
         dopuszczalne_do=0.3,
@@ -137,6 +144,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_TH,
         nazwa_pl="prąd krótkotrwały wytrzymywany",
         symbol="I_k",
+        symbol_latex=r"I_k",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=100.0,
@@ -145,6 +153,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_T_TH,
         nazwa_pl="znamionowy czas trwania zwarcia",
         symbol="t_k",
+        symbol_latex=r"t_k",
         jednostka="s",
         dopuszczalne_od=0.1,
         dopuszczalne_do=5.0,
@@ -153,6 +162,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_DYN,
         nazwa_pl="prąd szczytowy wytrzymywany",
         symbol="I_p",
+        symbol_latex=r"I_p",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=250.0,
@@ -1284,6 +1294,36 @@ ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
     "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
 )
 
+# Susceptancja ZEROWA (pojemność doziemna) odcinka SN bez B′0 w modelu. Katalog kabli niesie
+# pojemność roboczą C′1 (materializacja: B′1 = 2πf·C′1 przy częstotliwości studium), katalog
+# linii — susceptancję B′1; pojemności doziemnej nie podaje żadna pozycja. Bez B′0 prąd
+# pojemnościowy sieci (I_C), rozstrojenie dławika, projekt uziemienia i bocznik pojemności
+# w sieci zerowej zwarć są nieoznaczalne — zasada nr 4: wartość robocza z relacji pierwszych
+# zasad, dana przyjęta ESTIMATED.
+#
+# Kabel SN: każda żyła ma własny ekran nad izolacją (pole promieniowe — budowa kabli SN wg
+# IEC 60502-2), więc jedyną pojemnością żyły jest pojemność żyła–ekran (ekran uziemiony):
+# macierz pojemności faz jest diagonalna, C′0 = C′1, stąd B′0 = B′1 (ta sama częstotliwość).
+# Linia SN bez przewodu odgromowego: metoda odbić zwierciadlanych daje
+# C′0/C′1 = ln(D/r) / (ln(D/r) + 3·ln(2h/D)); dla typowej geometrii słupów SN (wysokość
+# zawieszenia 8–11 m, odstęp faz 0,6–1,4 m, przewody 6–15 mm) solver parametrów linii tego
+# repozytorium (``network_model.solvers.parametry_linii_napowietrznej``) daje 0,34–0,45 —
+# wartość robocza B′0 = 0,4·B′1 (rozrzut ±15 % wobec geometrii rzeczywistej, jawnie w założeniu).
+#: Stosunek C′0/C′1 linii SN bez przewodu odgromowego (wartość robocza, uzasadnienie wyżej).
+STOSUNEK_B0_B1_LINII_SN: Final[float] = 0.4
+
+ZALOZENIE_ODCINKA_B0_KABEL_SN = (
+    "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; "
+    "jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1)"
+)
+ZALOZENIE_ODCINKA_B0_LINIA_SN = (
+    "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych "
+    "C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; "
+    "rozrzut ±15 % wobec geometrii rzeczywistej)"
+)
+
 #: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
 #: nie „wartością z katalogu” (``dana_przyjeta_z0``).
 ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
@@ -1293,8 +1333,39 @@ ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
         ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
         ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
         ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_B0_KABEL_SN,
+        ZALOZENIE_ODCINKA_B0_LINIA_SN,
     }
 )
+
+#: Pole susceptancji zerowej gałęzi i jego etykieta (dana przyjęta, ślad, komunikaty).
+POLE_B0: Final[str] = "b0_siemens_per_km"
+ETYKIETA_B0: Final[str] = "B′0"
+
+#: Jednostka pola składowej zerowej w danej przyjętej.
+JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {
+    "r0_ohm_per_km": "Ω/km",
+    "x0_ohm_per_km": "Ω/km",
+    POLE_B0: "S/km",
+}
+
+
+def wyprowadz_susceptancje_zerowa_sn(
+    *, kabel: bool, b1: float | None
+) -> tuple[tuple[str, float, str], ...]:
+    """B′0 odcinka SN do przyjęcia wartością roboczą: krotka (pole, wartość [S/km], założenie).
+
+    JEDNA reguła dla każdego konsumenta pojemności doziemnej (sieć zerowa zwarć, prąd
+    pojemnościowy sieci, projekt uziemienia V12.6, gotowość V12.6): kabel SN B′0 = B′1, linia
+    SN B′0 = 0,4·B′1. Pusta krotka, gdy B′1 nieznane albo niedodatnie — pojemności doziemnej
+    nie da się oprzeć na pojemności roboczej, której nie ma. Wołający stosuje regułę
+    WYŁĄCZNIE do odcinków pasma SN (nN i WN — odmowa nazwana u wołającego).
+    """
+    if b1 is None or b1 <= 0:
+        return ()
+    if kabel:
+        return ((POLE_B0, b1, ZALOZENIE_ODCINKA_B0_KABEL_SN),)
+    return ((POLE_B0, round(STOSUNEK_B0_B1_LINII_SN * b1, 15), ZALOZENIE_ODCINKA_B0_LINIA_SN),)
 
 
 def wyprowadz_skladowa_zerowa_kabla_nn(
@@ -1428,14 +1499,15 @@ def pola_z0_robocze(
 
 
 def dana_przyjeta_z0(
-    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+    *, pole: str, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
     """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
-    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4)."""
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4); jednostka
+    z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km)."""
     zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
         nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
-        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        wartosc=Wielkosc(wartosc=wartosc, jednostka=JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ[pole]),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
             "albo pomiar)."
@@ -1517,6 +1589,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_POZORNA_MASZYNY,
         nazwa_pl="moc pozorna znamionowa jednej maszyny",
         symbol="S_rG",
+        symbol_latex=r"S_{rG}",
         jednostka="MVA",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_POZORNA_MASZYNY_MAX_MVA,
@@ -1525,6 +1598,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
         nazwa_pl="moc znamionowa (mechaniczna) jednej maszyny",
         symbol="P_rM",
+        symbol_latex=r"P_{rM}",
         jednostka="MW",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_ZNAMIONOWA_MASZYNY_MAX_MW,
@@ -1533,7 +1607,9 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_XD,
         nazwa_pl="reaktancja podprzejściowa nasycona",
         symbol="x″d",
+        symbol_latex=r"x''_{d}",
         jednostka="p.u. (S_rG, U_rG)",
+        jednostka_latex=r"\mathrm{p.u.}\ (S_{rG},\ U_{rG})",
         dopuszczalne_od=0.05,
         dopuszczalne_do=0.5,
     ),
@@ -1541,6 +1617,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_COS_PHI_MASZYNY,
         nazwa_pl="znamionowy współczynnik mocy",
         symbol="cos φ_r",
+        symbol_latex=r"\cos\varphi_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1549,6 +1626,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_PARY_BIEGUNOW,
         nazwa_pl="liczba par biegunów",
         symbol="p",
+        symbol_latex=r"p",
         jednostka="1",
         dopuszczalne_od=1.0,
         dopuszczalne_do=float(PARY_BIEGUNOW_MAX),
@@ -1558,6 +1636,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_KROTNOSC_I_LR,
         nazwa_pl="krotność prądu zablokowanego wirnika",
         symbol="I_LR/I_rM",
+        symbol_latex=r"I_{LR}/I_{rM}",
         jednostka="1",
         dopuszczalne_od=2.0,
         dopuszczalne_do=10.0,
@@ -1566,6 +1645,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_SPRAWNOSC,
         nazwa_pl="sprawność znamionowa",
         symbol="η_r",
+        symbol_latex=r"\eta_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1762,6 +1842,8 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
                     "parametr": parametr,
                     "nazwa_pl": OPISY_PARAMETROW_MASZYNY[parametr].nazwa_pl,
                     "symbol": OPISY_PARAMETROW_MASZYNY[parametr].symbol,
+                    "symbol_latex": OPISY_PARAMETROW_MASZYNY[parametr].symbol_latex,
+                    "jednostka_latex": OPISY_PARAMETROW_MASZYNY[parametr].jednostka_latex,
                     "jednostka": OPISY_PARAMETROW_MASZYNY[parametr].jednostka,
                     "dopuszczalne_od": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_od,
                     "dopuszczalne_do": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_do,
@@ -2441,3 +2523,85 @@ def _wartosc_baterii_pl(parametr: str, wartosc: Any) -> str:
     if isinstance(wartosc, bool):
         return "tak" if wartosc else "nie"
     return str(wartosc)
+
+
+# ---------------------------------------------------------------------------
+# Niezawodność elementów sieci SN (analiza niezawodności V12.6, karta UX-04/
+# POLE-ZU-SKLADOWA-ZEROWA odcinek 3). Model ENM nie niesie danych niezawodnościowych
+# elementów; intensywność uszkodzeń i czas odnowy są założeniem inżynierskim (bez numeru
+# normy — IEEE Std 1366 definiuje WYŁĄCZNIE sposób liczenia wskaźników, nie dane elementów),
+# jawnym jako dana przyjęta ESTIMATED. Projektant zastępuje każdą wartość parametrem
+# ``reliability_data`` analizy (zasada nr 4 pkt 3). Dawny katalog „reliability-defaults”
+# API niósł dodatkowy wiersz transformatora SN/nN (0,008/rok, 48 h), którego most nigdy nie
+# czytał — fantom usunięty; katalog czyta odtąd TEN rejestr.
+# ---------------------------------------------------------------------------
+
+ElementNiezawodnosci = Literal["linia_napowietrzna_sn", "kabel_sn", "aparat_sn"]
+
+
+@dataclass(frozen=True)
+class PropozycjaNiezawodnosci:
+    """Wartość robocza niezawodności jednego rodzaju elementu (λ i czas odnowy)."""
+
+    element: ElementNiezawodnosci
+    nazwa_pl: str
+    #: Intensywność uszkodzeń: na km i rok (linia, kabel) albo na rok (aparat).
+    intensywnosc_uszkodzen: float
+    jednostka_intensywnosci: str
+    na_km: bool
+    czas_odnowy_h: float
+    odniesienie: str
+
+
+_ODNIESIENIE_NIEZAWODNOSCI = (
+    "założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości "
+    "spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 "
+    "definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów"
+)
+
+PROPOZYCJE_NIEZAWODNOSCI: Mapping[ElementNiezawodnosci, PropozycjaNiezawodnosci] = {
+    "linia_napowietrzna_sn": PropozycjaNiezawodnosci(
+        element="linia_napowietrzna_sn",
+        nazwa_pl="linia napowietrzna SN",
+        intensywnosc_uszkodzen=0.08,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=3.5,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "kabel_sn": PropozycjaNiezawodnosci(
+        element="kabel_sn",
+        nazwa_pl="linia kablowa SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=12.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "aparat_sn": PropozycjaNiezawodnosci(
+        element="aparat_sn",
+        nazwa_pl="aparat łączeniowy SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/rok",
+        na_km=False,
+        czas_odnowy_h=4.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+}
+
+#: Udział przerw krótkich (MAIFI) w liczbie przerw długich (SAIFI) — założenie inżynierskie
+#: (sieć bez danych o samoczynnym ponownym załączaniu); MAIFI = 0,12·SAIFI jest daną przyjętą.
+UDZIAL_MAIFI_DO_SAIFI = 0.12
+ODNIESIENIE_MAIFI = (
+    "założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie "
+    "niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich"
+)
+
+
+def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
+    """Rodzaj elementu rejestru niezawodności dla rodzaju gałęzi ENM (jedno odwzorowanie)."""
+    if rodzaj_galezi == "line_overhead":
+        return "linia_napowietrzna_sn"
+    if rodzaj_galezi == "cable":
+        return "kabel_sn"
+    return "aparat_sn"

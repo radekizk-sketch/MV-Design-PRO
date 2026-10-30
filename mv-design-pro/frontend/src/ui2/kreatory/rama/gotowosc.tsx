@@ -10,6 +10,7 @@
 import type { ReactNode } from 'react';
 
 import type { StatusPobrania, WierszGotowosci } from './model';
+import { TekstZWzorami } from './tekstZWzorami';
 
 // -------------------------------------------------- Rząd wartości (read-only)
 
@@ -23,7 +24,7 @@ export interface RzadWartosciProps {
 export function RzadWartosci({ etykieta, wartosc, ton, testid }: RzadWartosciProps) {
   return (
     <div className="mvd-rzad" data-testid={testid}>
-      <span className="mvd-rzad-etykieta">{etykieta}</span>
+      <span className="mvd-rzad-etykieta"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-rzad-wartosc" data-ton={ton}>{wartosc}</span>
     </div>
   );
@@ -56,7 +57,7 @@ export function KreatorPodsumowanie({
           <p className="mvd-podsum-komunikat">Trwa obliczanie podsumowania z danych wejściowych.</p>
         ) : null}
         {komunikat ? (
-          <p className="mvd-podsum-komunikat" data-ton={komunikatTon}>{komunikat}</p>
+          <p className="mvd-podsum-komunikat" data-ton={komunikatTon}><TekstZWzorami tekst={komunikat} /></p>
         ) : null}
         {children}
       </div>
@@ -84,7 +85,7 @@ export function KreatorGotowosc({ tytul, wiersze, testid }: KreatorGotowoscProps
       <div className="mvd-gotowosc-head">{tytul}</div>
       {wiersze.map((w) => (
         <div className="mvd-gotowosc-wiersz" key={w.etykieta} data-testid={`${testid ?? 'mvd-gotowosc'}-${w.etykieta}`}>
-          <span className="mvd-gotowosc-etykieta">{w.etykieta}</span>
+          <span className="mvd-gotowosc-etykieta"><TekstZWzorami tekst={w.etykieta} /></span>
           <span className="mvd-gotowosc-stan" data-stan={w.stan}>
             <span className="mvd-gotowosc-kropka" aria-hidden="true" />
             {w.wartosc || STAN_ETYKIETA[w.stan]}
@@ -113,7 +114,7 @@ export function KreatorNastepnyKrok({
   return (
     <div className="mvd-kreator-nastepny" data-testid={testid}>
       <span className="mvd-kreator-nastepny-eyebrow">{eyebrow}</span>
-      <p>{opis}</p>
+      <p><TekstZWzorami tekst={opis} /></p>
       {children}
     </div>
   );

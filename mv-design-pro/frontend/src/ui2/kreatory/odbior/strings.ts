@@ -64,18 +64,18 @@ export const ODBIOR_STRINGS = {
 
   // Uziom instalacji odbiorczej (karta W5-E-TTIT) — pole `Load.earth_electrode_r_ohm`.
   uziomTytul: 'Uziom instalacji odbiorczej (układ TT)',
-  uziomRa: 'Rezystancja uziomu instalacji R_A',
+  uziomRa: 'Rezystancja uziomu instalacji $R_A$',
   uziomRaPomoc:
     'Czyta ją pętla doziemna układu TT (IEC 60364-4-41 §411.5): prąd zwarcia doziemnego płynie '
-    + 'przez uziom instalacji R_A i uziom stacji R_B, a napięcie dotykowe to R_A·I_Δn wyłącznika '
+    + 'przez uziom instalacji $R_A$ i uziom stacji $R_B$, a napięcie dotykowe to $R_A \\cdot I_{\\Delta n}$ wyłącznika '
     + 'różnicowoprądowego. Puste = analiza TT odmawia nazwanym kodem (nie podstawia wartości); '
     + 'w układach TN pole nie jest czytane.',
   uziomNiePodano: 'nie podano — pętla TT odmówi kodem nn.brak_r_a',
-  wierszUziom: 'Uziom instalacji R_A',
+  wierszUziom: 'Uziom instalacji $R_A$',
 
   // Model obciążenia (ZIP) — współczynniki czytane przez rozpływ mocy.
   zipTytul: 'Model obciążenia (ZIP)',
-  zipNota: 'a + b + c = 1 osobno dla P i dla Q',
+  zipNota: '$a + b + c = 1$ osobno dla $P$ i dla $Q$',
   zipPomoc:
     'Model określa, jak pobór zmienia się z napięciem: udział stałoimpedancyjny (a) '
     + 'maleje z kwadratem napięcia, stałoprądowy (b) liniowo, stałomocowy (c) jest od '
@@ -83,14 +83,14 @@ export const ODBIOR_STRINGS = {
     + 'rozpływ do tej pory. Wybór typu z katalogu wypełnia model wartościami pozycji.',
   zipNaglowekP: 'Moc czynna P',
   zipNaglowekQ: 'Moc bierna Q',
-  zipAP: 'Udział stałoimpedancyjny P (a_P)',
-  zipBP: 'Udział stałoprądowy P (b_P)',
-  zipCP: 'Udział stałomocowy P (c_P)',
-  zipAQ: 'Udział stałoimpedancyjny Q (a_Q)',
-  zipBQ: 'Udział stałoprądowy Q (b_Q)',
-  zipCQ: 'Udział stałomocowy Q (c_Q)',
-  zipKPf: 'Wrażliwość częstotliwościowa P (k_pf)',
-  zipKQf: 'Wrażliwość częstotliwościowa Q (k_qf)',
+  zipAP: 'Udział stałoimpedancyjny $P$ ($a_P$)',
+  zipBP: 'Udział stałoprądowy $P$ ($b_P$)',
+  zipCP: 'Udział stałomocowy $P$ ($c_P$)',
+  zipAQ: 'Udział stałoimpedancyjny $Q$ ($a_Q$)',
+  zipBQ: 'Udział stałoprądowy $Q$ ($b_Q$)',
+  zipCQ: 'Udział stałomocowy $Q$ ($c_Q$)',
+  zipKPf: 'Wrażliwość częstotliwościowa $P$ ($k_{pf}$)',
+  zipKQf: 'Wrażliwość częstotliwościowa $Q$ ($k_{qf}$)',
   zipKPomoc:
     'Względna zmiana poboru na jednostkę względnej zmiany częstotliwości '
     + '(0 = pobór niezależny od częstotliwości).',

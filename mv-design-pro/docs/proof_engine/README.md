@@ -25,8 +25,8 @@ Ten pakiet zawiera **kanoniczne źródła wiedzy** dla systemu dowodów matematy
 | `P14_PROOF_AUDIT_AND_COVERAGE.md` | Warstwa audytu pokrycia i Coverage Matrix Proof Packów | **BINDING** |
 | `P15_LOAD_CURRENTS_OVERLOAD.md` | P15: Prądy robocze i przeciążenia | **BINDING** |
 | `P17_LOSSES_ENERGY_PROFILE.md` | P17: Energia strat (profil czasowy) | **BINDING** |
-| `P18_PROTECTION_PROOF.md` | P18: Zabezpieczenia nadprądowe i selektywność | **BINDING** |
-| `P19_EARTHING_GROUND_FAULT_SN.md` | P19: Doziemienia / uziemienia SN | **BINDING** |
+| `P18_PROTECTION_PROOF.md` | P18: Zabezpieczenia nadprądowe i selektywność | SKASOWANY (karta AB-1a Pakiet L, 2026-09-23 — 0 wołających; wskrzeszenie pilnuje `legacy_public_path_guard`) |
+| `P19_EARTHING_GROUND_FAULT_SN.md` | P19: Doziemienia / uziemienia SN | SKASOWANY (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5, 2026-10-30 — 0 producentów, dubel dowodu bezpieczeństwa uziomu V12.6; wskrzeszenie pilnuje `legacy_public_path_guard`, wiersz ZU5) |
 | `P20_NORMATIVE_COMPLETION.md` | P20: Normative Completion (PASS/FAIL) | **BINDING** |
 | `P32_LOAD_FLOW_VOLTAGE_PROOF.md` | P32: Load Flow i spadki napięć | **BINDING** |
 | `PROOF_SCHEMAS.md` | Kanoniczne schematy JSON (ProofDocument, ProofStep) | **BINDING** |

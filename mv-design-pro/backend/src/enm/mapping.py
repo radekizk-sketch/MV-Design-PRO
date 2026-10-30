@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -66,7 +66,12 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.uziemienie import ETYKIETA_PL_WARIANTU_UZIEMIENIA, StanAwsc
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
+    TRYBY_IEC60909,
+    StanAwsc,
+    tryb_doziemienia_typu,
+)
 from network_model.core.voltage_factor import (
     Scenario,
     TolerancjaNapieciaNn,
@@ -104,6 +109,7 @@ from .models import (
     EnergyNetworkModel,
     FuseBranch,
     Generator,
+    GroundingConfig,
     OverheadLine,
     Source,
     SwitchBranch,
@@ -538,6 +544,30 @@ class SiecZerowa:
     y0_bus: np.ndarray
     trace: list[dict]
     przyczyny: dict[str, BrakWynikuZerowego]
+    #: Węzeł grafu → sieć SN (``enm.uziemienie_sekcji.UziemienieSekcji``) — źródło trybu
+    #: doziemienia wiersza zwarcia jednofazowego (``doziemienie_sieci``); węzły poza SN — brak.
+    sekcje_wezlow: dict[str, Any] = field(default_factory=dict)
+    #: Gałąź → pola wartości roboczej B′0 (``skladowa_zerowa_galezi.robocze_b0``) gałęzi, której
+    #: pojemność doziemna z wartości roboczej WESZŁA do Y0 (warunek pkt 5.2 f) spełniony w jej
+    #: sieci zerowej) — jedno źródło danych przyjętych B′0 wierszy zwarć doziemnych.
+    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class _KandydatB0:
+    """Pojemność doziemna B0 linii albo kabla w ruchu z Z0 w sieci zerowej — kandydat bocznika,
+    o którego wejściu do Y0 rozstrzyga warunek pkt 5.2 f) jego sieci zerowej."""
+
+    ref_id: str
+    nazwa_pl: str
+    from_idx: int
+    to_idx: int
+    z_base_ohm: float
+    b0_s_per_km: float
+    length_km: float
+    nazwa_od: str
+    nazwa_do: str
+    robocze_b0: tuple[tuple[str, str, str, float], ...]
 
 
 #: Rodzaj bocznika składowej zerowej w węźle — klasyfikacja przyczyn braku wyniku zerowego.
@@ -547,6 +577,15 @@ class SiecZerowa:
 _BOCZNIK_REZYSTANCYJNY = "rezystancyjny"
 _BOCZNIK_DLAWIK = "dlawik"
 _BOCZNIK_POJEMNOSC = "pojemnosc"
+
+
+def _rodzaj_bocznika_uzwojenia(konfiguracja: GroundingConfig | None) -> str:
+    """Rodzaj bocznika punktu neutralnego uzwojenia transformatora z trybu doziemienia jego
+    konfiguracji (``tryb_doziemienia_typu`` — ten sam predykat ``TRYBY_IEC60909`` co zespół
+    uziemiający): bezpośrednio i przez rezystor — rezystancyjny; przez dławik — dławik
+    (sieć skompensowana, prąd doziemny poza zakresem IEC 60909-0)."""
+    tryb = tryb_doziemienia_typu(None if konfiguracja is None else konfiguracja.type)
+    return _BOCZNIK_REZYSTANCYJNY if tryb in TRYBY_IEC60909 else _BOCZNIK_DLAWIK
 
 
 def _assemble_zero_sequence_y0(
@@ -564,7 +603,9 @@ def _assemble_zero_sequence_y0(
     grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
     przerwie / boczniku do ziemi prądu zerowego. Zespoły uziemiające SN (karta
     UX-04/POLE-ZU-SKLADOWA-ZEROWA) — bocznik Z_0,TU + 3·Z_N z ``enm.uziemienie_sekcji``
-    w stanie AWSC przypadku (``stan_awsc``). Źródło w paśmie SN nie wnosi Z0 (uziemienie
+    w stanie AWSC przypadku (``stan_awsc``). Pojemności doziemne B0 linii i kabli — PO złożeniu
+    pozostałych boczników, pod warunkiem IEC 60909-0:2016 pkt 5.2 f) sieci zerowej (karta
+    ZEROWA-POJEMNOSCI, ``_warunek_pojemnosci_zerowej``). Źródło w paśmie SN nie wnosi Z0 (uziemienie
     sieci SN opisuje wyłącznie zespół albo uzwojenie transformatora —
     ``impedancja_zerowa_zrodla_dozwolona``).
     """
@@ -580,8 +621,9 @@ def _assemble_zero_sequence_y0(
 
     builder = AdmittanceMatrixBuilder(graph)
     # Sieć zwarciowa składowej zgodnej: z niej bierze się mapa węzłów scalonych, na której
-    # składa się Y0 — te same indeksy co w Z_1/Z_2 tego samego biegu zwarciowego.
-    builder.build(siec_zwarciowa=True)
+    # składa się Y0 — te same indeksy co w Z_1/Z_2 tego samego biegu zwarciowego; Z_1 z niej
+    # wchodzi do współczynnika zwarcia doziemnego warunku pojemności (pkt 5.2 f)).
+    y1_bus = builder.build(siec_zwarciowa=True)
     node_index = builder.node_id_to_index
     size = len(set(node_index.values()))
     y0_bus = np.zeros((size, size), dtype=complex)
@@ -593,6 +635,7 @@ def _assemble_zero_sequence_y0(
     nazwa_szyny = {bus.ref_id: nazwa_elementu(bus, "buses") for bus in enm.buses}
 
     boczniki: dict[int, set[str]] = {}
+    kandydaci_b0: list[_KandydatB0] = []
     # Gałęzie w ruchu BEZ danych składowej zerowej (R′0/X′0) i bez podstawy wartości roboczej
     # (``enm.skladowa_zerowa_galezi.brak_podstawy_pl``): nie wchodzą do Y0 (zero fabrykacji),
     # ale węzeł, który odcięły od uziemienia, dostaje przyczynę ``brak_danych``.
@@ -667,57 +710,45 @@ def _assemble_zero_sequence_y0(
             ),
         )
 
-        # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
-        # bocznik do ziemi w modelu π (podział /2 na każdy koniec — ten sam co
-        # dla susceptancji zgodnej w `AdmittanceMatrixBuilder._get_branch_admittances_pu`).
-        # Sieć zgodna i przeciwna zwarć NIE ma tej susceptancji (karta BEZ-POJEMNOSCI,
-        # `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`: IEC 60909-0:2016 pkt 5.2 f)),
-        # więc B0 tutaj jest JEDYNĄ pojemnością linii w obliczeniu zwarciowym. B0 wchodzi
-        # dziś BEZWARUNKOWO; pkt 5.2 f) każe uwzględniać pojemności linii w składowej
-        # zerowej w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia
-        # doziemnego > 1,4 (ustalenie właściciela 2026-10-22) — ten warunek wdroży karta
-        # rdzenia ZEROWA-POJEMNOSCI; do tego czasu B0 stoi tu dla każdego sposobu
-        # uziemienia punktu neutralnego.
-        # Przed kartą fali F B0 było CAŁKOWICIE pomijane w sieci
-        # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
-        # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ
-        # drogą powrotu prądu doziemnego (fizycznie: prąd pojemnościowy,
-        # IEC 60909-0 / PN-EN 50522), więc jej brak fałszywie eliminował
-        # jedyną realną ścieżkę I0 (macierz osobliwa lub Z0 zaniżone o brakujący
-        # bocznik). ``b0_siemens_per_km`` jest już w S/km (NIE μS/km — w
-        # odróżnieniu od ``b_us_per_km`` zgodnej, patrz nazwa pola i
-        # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
-        # Zero fabrykacji: gdy b0 brak, bocznik pomijany (bez zmiany, jak dla
-        # r0/x0 wyżej) — NIE podstawiamy zera znaczącego fizycznie.
-        if branch.b0_siemens_per_km is not None:
-            y0_shunt_total_s = branch.b0_siemens_per_km * branch.length_km
-            y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
-            y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
-            y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
-            y0_bus[to_idx, to_idx] += y0_shunt_per_end_pu
+        # Pojemność doziemna linii/kabla (B0) — bocznik do ziemi w modelu π (podział /2 na każdy
+        # koniec, ten sam co dla susceptancji zgodnej w budowniczym rozpływu). Sieć zgodna
+        # i przeciwna zwarć NIE ma tej susceptancji (karta BEZ-POJEMNOSCI,
+        # ``ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH``), a do składowej zerowej B0 wchodzi
+        # WYŁĄCZNIE pod warunkiem IEC 60909-0:2016 pkt 5.2 f) (karta ZEROWA-POJEMNOSCI): sieć
+        # zerowa uziemiona przez małą impedancję o współczynniku zwarcia doziemnego k > 1,4,
+        # wyznaczonym z Y0 BEZ pojemności (``_warunek_pojemnosci_zerowej`` niżej, po złożeniu
+        # pozostałych boczników). Tu gałąź zostaje kandydatem. JEDEN predykat dla B′0 modelu
+        # i wartości roboczej (``skladowa_zerowa_galezi``: model ma pierwszeństwo; kabel SN
+        # B′0 = B′1, linia SN B′0 = 0,4·B′1): o wejściu decyduje warunek sieci, nie pochodzenie
+        # danej — wartość robocza, która weszła, jest daną przyjętą wiersza (``b0_robocze``).
+        # B′0 nieznane i bez podstawy wartości roboczej — kandydata nie ma (zero fabrykacji);
+        # B′0 = 0 — pojemności nie ma, więc nie ma też drogi pojemnościowej ani kandydata.
+        # ``b0_siemens_per_km`` jest w S/km (NIE μS/km jak ``b_us_per_km`` zgodnej).
+        if skladowa.b0_s_per_km is not None and skladowa.b0_s_per_km < 0.0:
+            raise OdmowaDanychError(
+                f"Gałąź {nazwa_elementu(branch, 'branches')}: susceptancja doziemna B′0 = "
+                f"{skladowa.b0_s_per_km:.6g} S/km jest ujemna — pojemność doziemna odcinka nie "
+                "może być ujemna. Popraw B′0 w parametrach odcinka."
+            )
+        if skladowa.b0_s_per_km is not None and skladowa.b0_s_per_km > 0.0:
+            kandydaci_b0.append(
+                _KandydatB0(
+                    ref_id=branch.ref_id,
+                    nazwa_pl=nazwa_elementu(branch, "branches"),
+                    from_idx=from_idx,
+                    to_idx=to_idx,
+                    z_base_ohm=z_base_ohm,
+                    b0_s_per_km=skladowa.b0_s_per_km,
+                    length_km=branch.length_km,
+                    nazwa_od=nazwa_szyny[branch.from_bus_ref],
+                    nazwa_do=nazwa_szyny[branch.to_bus_ref],
+                    robocze_b0=skladowa.robocze_b0,
+                )
+            )
+            # Klasyfikacja przyczyn braku wyniku zerowego widzi FIZYCZNĄ drogę pojemnościową
+            # (sieć izolowana ma pojemności doziemne niezależnie od decyzji o macierzy zwarć).
             boczniki.setdefault(from_idx, set()).add(_BOCZNIK_POJEMNOSC)
             boczniki.setdefault(to_idx, set()).add(_BOCZNIK_POJEMNOSC)
-            tracer.add(
-                key=f"z0_line_shunt[{branch.ref_id}]",
-                title=(
-                    f"Gałąź {nazwa_elementu(branch, 'branches')}: pojemność doziemna "
-                    "(bocznik B0, model π)"
-                ),
-                formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
-                inputs={
-                    "ref_id": branch.ref_id,
-                    "b0_siemens_per_km": branch.b0_siemens_per_km,
-                    "length_km": branch.length_km,
-                    "z_base_ohm": z_base_ohm,
-                },
-                substitution=(
-                    f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
-                    f"{y0_shunt_total_s:.6g} S; Y0 na każdym końcu = "
-                    f"j{y0_shunt_per_end_pu.imag:.6g} pu (na {nazwa_szyny[branch.from_bus_ref]} "
-                    f"i {nazwa_szyny[branch.to_bus_ref]})"
-                ),
-                result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
-            )
 
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
@@ -900,17 +931,22 @@ def _assemble_zero_sequence_y0(
                 y0_bus[lv_idx, lv_idx] += y_pu
         elif model.connection == ZeroSeqConnection.HV_SHUNT_GROUND:
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
-            boczniki.setdefault(node_index[hv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
+            boczniki.setdefault(node_index[hv_id], set()).add(
+                _rodzaj_bocznika_uzwojenia(trafo.hv_neutral)
+            )
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
-            boczniki.setdefault(node_index[lv_id], set()).add(_BOCZNIK_REZYSTANCYJNY)
+            boczniki.setdefault(node_index[lv_id], set()).add(
+                _rodzaj_bocznika_uzwojenia(trafo.lv_neutral)
+            )
 
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające sieci SN — bocznik
     # Z_0 = Z_0,TU + 3·Z_N (IEC 60909-0: impedancja punktu neutralnego wchodzi do obwodu
     # zerowego jako 3·Z_N) z JEDYNEJ prawdy o uziemieniu sekcji (``uziemienie_sieci``).
     # Ślad niesie OBA stany AWSC (Z.13: jX w spoczynku, R‖jX po załączeniu), Y0 — stan
     # przypadku obliczeniowego.
-    for sekcja in uziemienie_sieci(enm) if enm.zespoly_uziemiajace else ():
+    sekcje_sn = uziemienie_sieci(enm)
+    for sekcja in sekcje_sn:
         for punkt in sekcja.punkty:
             if punkt.rodzaj != "zespol_uziemiajacy":
                 continue
@@ -974,6 +1010,22 @@ def _assemble_zero_sequence_y0(
             **{t.ref_id: nazwa_elementu(t, "transformers") for t in enm.transformers},
         },
     )
+    _przyczyny_trybu_sieci_sn(
+        przyczyny,
+        sekcje=sekcje_sn,
+        stan_awsc=stan_awsc,
+        ref_to_node_id=ref_to_node_id,
+        node_index=node_index,
+    )
+
+    slad_pojemnosci, b0_robocze = _warunek_pojemnosci_zerowej(
+        y0_bus,
+        y1_bus,
+        kandydaci=kandydaci_b0,
+        przyczyny=przyczyny,
+        node_index=node_index,
+        graph=graph,
+    )
 
     # Kotwica numeryczna WYŁĄCZNIE dla węzłów składowych bez żadnego bocznika (droga prądu
     # zerowego zablokowana grupą połączeń, podsieć pływająca): ich blok Y0 jest osobliwy,
@@ -1023,8 +1075,15 @@ def _assemble_zero_sequence_y0(
         node_index=node_index,
         size=size,
         y0_bus=y0_bus,
-        trace=tracer.to_list() + transformer_trace + slad_odniesienia.to_list(),
+        trace=(tracer.to_list() + slad_pojemnosci + transformer_trace + slad_odniesienia.to_list()),
         przyczyny=przyczyny,
+        sekcje_wezlow={
+            wezel: sekcja
+            for sekcja in sekcje_sn
+            for szyna in sekcja.szyny
+            if (wezel := ref_to_node_id.get(szyna)) is not None and wezel in node_index
+        },
+        b0_robocze=b0_robocze,
     )
 
 
@@ -1101,7 +1160,15 @@ def _przyczyny_braku_zerowej(
             continue
         zrodla_bez_danych.setdefault(int(etykiety[node_index[wezel_zrodla]]), []).append(ref)
     wynik: dict[str, BrakWynikuZerowego] = {}
-    kotwice = tuple(idx for idx in range(size) if not rodzaje.get(int(etykiety[idx])))
+    # Bocznik pojemnościowy (B0) klasyfikuje drogę, ale nie domyka macierzy: B0 wchodzi do Y0
+    # wyłącznie w sieci zerowej z węzłem liczonym zwarciem IEC 60909 — a ten wymaga bocznika
+    # rezystancyjnego (``_warunek_pojemnosci_zerowej``), więc składowa bez innego bocznika
+    # niż pojemność nie ma w macierzy żadnego bocznika.
+    kotwice = tuple(
+        idx
+        for idx in range(size)
+        if not (rodzaje.get(int(etykiety[idx]), set()) - {_BOCZNIK_POJEMNOSC})
+    )
     for wezel, idx in sorted(node_index.items()):
         skladowa = int(etykiety[idx])
         zbior = rodzaje.get(skladowa, set())
@@ -1203,6 +1270,261 @@ def _przyczyny_braku_zerowej(
     return wynik, kotwice
 
 
+def _diagonala_odwrotnosci(
+    y_bus: np.ndarray, etykiety: np.ndarray, indeksy: list[int]
+) -> dict[int, complex]:
+    """Elementy diagonalne odwrotności macierzy admitancyjnej w ``indeksy`` — z bloku składowej
+    spójnej każdego indeksu (``etykiety``: składowe spójne tej samej macierzy). Blok osobliwy
+    (składowa bez bocznika do ziemi) nie ma odwrotności: jego indeksy nie mają wpisu."""
+    wynik: dict[int, complex] = {}
+    for etykieta in sorted({int(etykiety[idx]) for idx in indeksy}):
+        blok = [int(i) for i in np.flatnonzero(etykiety == etykieta)]
+        podmacierz = y_bus[np.ix_(blok, blok)]
+        if np.linalg.matrix_rank(podmacierz) < len(blok):
+            continue
+        try:
+            odwrotnosc = np.linalg.inv(podmacierz)
+        except np.linalg.LinAlgError:
+            continue
+        pozycja = {idx: n for n, idx in enumerate(blok)}
+        for idx in indeksy:
+            if int(etykiety[idx]) == etykieta:
+                wynik[idx] = complex(odwrotnosc[pozycja[idx], pozycja[idx]])
+    return wynik
+
+
+def _warunek_pojemnosci_zerowej(
+    y0_bus: np.ndarray,
+    y1_bus: np.ndarray,
+    *,
+    kandydaci: list[_KandydatB0],
+    przyczyny: dict[str, BrakWynikuZerowego],
+    node_index: dict[str, int],
+    graph: NetworkGraph,
+) -> tuple[list[dict], dict[str, tuple[tuple[str, str, str, float], ...]]]:
+    """Warunek IEC 60909-0:2016 pkt 5.2 f) dla pojemności linii w składowej zerowej (karta
+    ZEROWA-POJEMNOSCI) — rozstrzyga i WSTAWIA boczniki B0 do ``y0_bus``.
+
+    Sieć zerowa = składowa spójna Y0 (elementy szeregowe). Dla każdej sieci z kandydatami B0:
+    węzły liczone zwarciem IEC 60909 (bez przyczyny braku wyniku zerowego — sieć uziemiona przez
+    małą impedancję, ``_przyczyny_braku_zerowej`` i ``_przyczyny_trybu_sieci_sn``) dostają
+    współczynnik zwarcia doziemnego k z Z_1 (sieć zwarciowa składowej zgodnej, Z_2 = Z_1)
+    i Z_0 macierzy BEZ pojemności (wszystkie pozostałe boczniki już wstawione); B0 wszystkich
+    kandydatów sieci wchodzi, gdy max k > 1,4 (``pojemnosci_w_skladowej_zerowej``, k
+    zaokrąglone do 6 miejsc — wartość w śladzie jest wartością decyzji). Sieć bez węzła
+    liczonego (izolowana, skompensowana, bez drogi, bez danych) — B0 nie wchodzi: jej
+    doziemienie nie jest zwarciem IEC 60909 (rozdz. 1), pojemności liczy doziemienie sieci.
+
+    Zwraca kroki śladu (jeden na sieć z kandydatami, potem krok bocznika każdej gałęzi, której
+    B0 weszło) i gałęzie z wartością roboczą B′0 w macierzy (dane przyjęte wierszy).
+    """
+    from network_model.solvers.doziemienie_sn import (
+        PODSTAWA_WARUNKU_POJEMNOSCI_ZEROWEJ_PL,
+        PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO,
+        pojemnosci_w_skladowej_zerowej,
+        wspolczynnik_zwarcia_doziemnego,
+    )
+    from network_model.whitebox.tracer import WhiteBoxTracer
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    if not kandydaci:
+        return [], {}
+    _, etykiety0 = connected_components(csr_matrix(y0_bus != 0), directed=False)
+    _, etykiety1 = connected_components(csr_matrix(y1_bus != 0), directed=False)
+    # Węzeł reprezentujący indeks macierzy (węzły scalone łącznikiem dzielą indeks): najmniejszy
+    # identyfikator — porządek deterministyczny; liczony, gdy ŻADEN węzeł indeksu nie ma
+    # przyczyny braku wyniku zerowego.
+    wezly_indeksu: dict[int, list[str]] = {}
+    for wezel, idx in sorted(node_index.items()):
+        wezly_indeksu.setdefault(idx, []).append(wezel)
+    liczone = {
+        idx for idx, wezly in wezly_indeksu.items() if not any(w in przyczyny for w in wezly)
+    }
+    sieci: dict[int, list[_KandydatB0]] = {}
+    for kandydat in kandydaci:
+        sieci.setdefault(int(etykiety0[kandydat.from_idx]), []).append(kandydat)
+    porzadek = sorted(sieci, key=lambda e: min(wezly_indeksu[i][0] for i in _indeksy(etykiety0, e)))
+    slad = WhiteBoxTracer()
+    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = {}
+    for numer, etykieta in enumerate(porzadek, start=1):
+        galezie = sorted(sieci[etykieta], key=lambda k: k.ref_id)
+        indeksy = [i for i in _indeksy(etykiety0, etykieta) if i in liczone]
+        z0 = _diagonala_odwrotnosci(y0_bus, etykiety0, indeksy)
+        z1 = _diagonala_odwrotnosci(y1_bus, etykiety1, indeksy)
+        wezly_k: list[dict[str, Any]] = []
+        for idx in indeksy:
+            if idx not in z0 or idx not in z1:
+                continue
+            k = round(wspolczynnik_zwarcia_doziemnego(z1[idx], z1[idx], z0[idx]), 6)
+            wezly_k.append(
+                {
+                    "wezel": nazwa_elementu(graph.nodes[wezly_indeksu[idx][0]], "buses"),
+                    "z1_pu": _z_sladu(z1[idx]),
+                    "z0_pu": _z_sladu(z0[idx]),
+                    "k": k,
+                }
+            )
+        k_max = max((w["k"] for w in wezly_k), default=None)
+        wchodzi = k_max is not None and pojemnosci_w_skladowej_zerowej(k_max)
+        nazwy_galezi = ", ".join(g.nazwa_pl for g in galezie)
+        if k_max is None:
+            podstawienie = (
+                f"Sieć zerowa gałęzi {nazwy_galezi}: brak węzła liczonego zwarciem IEC 60909 "
+                + (
+                    "(sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego)"
+                    if not indeksy
+                    else "(impedancja Z_1 albo Z_0 węzłów nieoznaczalna — sieć bez zasilania)"
+                )
+                + " — pojemności B0 nie wchodzą do macierzy Y0 zwarć."
+            )
+        else:
+            wezel_max = next(w["wezel"] for w in wezly_k if w["k"] == k_max)
+            relacja = ">" if wchodzi else "≤"
+            skutek = "WCHODZĄ do macierzy Y0." if wchodzi else "nie wchodzą do macierzy Y0."
+            # Zapis liczb po polsku (przecinek dziesiętny) — podstawienie czyta projektant.
+            k_tekst = f"{k_max:.6g}".replace(".", ",")
+            prog = f"{PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO:g}".replace(".", ",")
+            podstawienie = (
+                f"max k = {k_tekst} ({wezel_max}) {relacja} {prog} "
+                f"— pojemności B0 gałęzi {nazwy_galezi} {skutek}"
+            )
+        slad.add(
+            key=f"z0_warunek_pojemnosci[{numer}]",
+            title=(
+                "Pojemności linii w składowej zerowej: warunek współczynnika zwarcia "
+                "doziemnego (IEC 60909-0 pkt 5.2 f))"
+            ),
+            formula_latex=(
+                r"k = \max\left(\left|a^2 - \frac{Z_0 - Z_1}{2 Z_1 + Z_0}\right|,"
+                r"\left|a - \frac{Z_0 - Z_1}{2 Z_1 + Z_0}\right|\right),\ Z_2 = Z_1;\quad "
+                r"\max_i k_i > 1{,}4 \Rightarrow Y_{0,sh} = j B_0 \ell"
+            ),
+            inputs={
+                "galezie": [
+                    {
+                        "ref_id": g.ref_id,
+                        "nazwa_pl": g.nazwa_pl,
+                        "b0_s": g.b0_s_per_km * g.length_km,
+                        "zrodlo_b0": "wartosc_robocza" if g.robocze_b0 else "model",
+                    }
+                    for g in galezie
+                ],
+                "wezly": wezly_k,
+                "prog_k": PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO,
+            },
+            substitution=podstawienie,
+            result={"k_max": k_max, "pojemnosci_w_y0": wchodzi},
+            notes=PODSTAWA_WARUNKU_POJEMNOSCI_ZEROWEJ_PL,
+        )
+        if not wchodzi:
+            continue
+        for g in galezie:
+            y_s = g.b0_s_per_km * g.length_km
+            y_konca_pu = complex(0.0, y_s * g.z_base_ohm) / 2.0
+            y0_bus[g.from_idx, g.from_idx] += y_konca_pu
+            y0_bus[g.to_idx, g.to_idx] += y_konca_pu
+            if g.robocze_b0:
+                b0_robocze[g.ref_id] = g.robocze_b0
+            slad.add(
+                key=f"z0_line_shunt[{g.ref_id}]",
+                title=f"Gałąź {g.nazwa_pl}: pojemność doziemna (bocznik B0, model π)",
+                formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
+                inputs={
+                    "ref_id": g.ref_id,
+                    "b0_siemens_per_km": g.b0_s_per_km,
+                    "length_km": g.length_km,
+                    "z_base_ohm": g.z_base_ohm,
+                },
+                substitution=(
+                    f"B0={g.b0_s_per_km:.6g} S/km · {g.length_km:.6g} km = {y_s:.6g} S; "
+                    f"Y0 na każdym końcu = j{y_konca_pu.imag:.6g} pu (na {g.nazwa_od} "
+                    f"i {g.nazwa_do})"
+                ),
+                result={"y0_shunt_per_end_pu": y_konca_pu},
+                notes=(
+                    "Wartość robocza (zasada nr 4): "
+                    + "; ".join(
+                        f"{etykieta} = {wartosc:.6g} S/km — {zalozenie}"
+                        for _, etykieta, zalozenie, wartosc in g.robocze_b0
+                    )
+                    + "."
+                    if g.robocze_b0
+                    else None
+                ),
+            )
+    return slad.to_list(), b0_robocze
+
+
+def _indeksy(etykiety: np.ndarray, etykieta: int) -> list[int]:
+    return [int(i) for i in np.flatnonzero(etykiety == etykieta)]
+
+
+def _przyczyny_trybu_sieci_sn(
+    przyczyny: dict[str, BrakWynikuZerowego],
+    *,
+    sekcje: tuple[Any, ...],
+    stan_awsc: StanAwsc,
+    ref_to_node_id: dict[str, str],
+    node_index: dict[str, int],
+) -> None:
+    """Węzły sieci SN izolowanej i skompensowanej NIE są liczone jako zwarcie IEC 60909 —
+    niezależnie od tego, czy ich składowa Y0 styka się z bocznikiem rezystancyjnym (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru 2026-10-29: sposób pracy punktu
+    neutralnego nie przechodzi przez jeden model Z1 + Z2 + Z0).
+
+    Klasyfikacja składowych Y0 (``_przyczyny_braku_zerowej``) widzi bocznik, nie sieć:
+    punkt neutralny uzwojenia YNyn przez dławik łączy sieć SN szeregowo z uziemioną siecią
+    110 kV, więc składowa ma bocznik rezystancyjny źródła i węzeł SN byłby liczony prądem
+    zwarciowym przez 3·jX_L. Tryb doziemienia sieci SN (``UziemienieSekcji.tryb_doziemienia``
+    — ten sam predykat ``TRYBY_IEC60909`` co rodzaj bocznika) rozstrzyga o węzłach SN:
+    tryb izolowany/kompensowany → ``poza_zakresem_iec60909`` (także zamiast ``brak_drogi`` —
+    sieć SN ma pojemności doziemne, a brak ich danych nazywa wynik doziemienia). Przyczyna
+    ``brak_danych`` zostaje (brak danych składowej zerowej to brak podstawy, nie tryb).
+    Sieć z odmową nazwaną punktu uziemienia nie ma trybu — klasyfikacja bez zmian."""
+    from .uziemienie_sekcji import KOD_PRZYCZYNY_BRAKU_ZEROWEJ, STATUS_PRZYCZYNY_BRAKU_ZEROWEJ
+
+    for sekcja in sekcje:
+        if sekcja.odmowy:
+            continue
+        tryb = sekcja.tryb_doziemienia(stan_awsc)
+        if tryb in TRYBY_IEC60909:
+            continue
+        opis = (
+            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem "
+            "pojemnościowym sieci I_C"
+            if tryb == "izolowany"
+            else "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania "
+            "składowej czynnej): prąd doziemienia jest prądem resztkowym "
+            "√(I_w² + (I_C − I_L)²)"
+        )
+        brak = BrakWynikuZerowego(
+            przyczyna="poza_zakresem_iec60909",
+            kod=KOD_PRZYCZYNY_BRAKU_ZEROWEJ["poza_zakresem_iec60909"],
+            status=STATUS_PRZYCZYNY_BRAKU_ZEROWEJ["poza_zakresem_iec60909"],
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    f"{opis}, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione "
+                    "przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu "
+                    "pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+                ),
+                przyczyna_pl=(
+                    "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych "
+                    "i skompensowanych."
+                ),
+            ),
+            elementy=(),
+        )
+        for szyna in sekcja.szyny:
+            wezel = ref_to_node_id.get(szyna)
+            if wezel is None or wezel not in node_index:
+                continue
+            obecna = przyczyny.get(wezel)
+            if obecna is not None and obecna.przyczyna == "brak_danych":
+                continue
+            przyczyny[wezel] = brak
+
+
 @dataclass(frozen=True)
 class WynikSieciZerowej:
     """Z0-bus sieci składowej zerowej i nazwane przyczyny braku wyniku zerowego per węzeł
@@ -1217,6 +1539,10 @@ class WynikSieciZerowej:
     #: stanami AWSC, pominięte Z0 źródeł na szynie SN i domknięcie bloków bez drogi do ziemi.
     #: Bieg doziemny publikuje go jako ``raw_result["siec_zerowa"]``.
     slad: tuple[dict, ...] = ()
+    #: Węzeł grafu → sieć SN (tryb doziemienia wiersza zwarcia jednofazowego).
+    sekcje_wezlow: dict[str, Any] = field(default_factory=dict)
+    #: Gałęzie z wartością roboczą B′0 w macierzy Y0 (``SiecZerowa.b0_robocze``).
+    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(default_factory=dict)
 
 
 def zbuduj_siec_zerowa(
@@ -1232,6 +1558,8 @@ def zbuduj_siec_zerowa(
         z0_bus=_odwroc_y0(siec.size, siec.y0_bus),
         przyczyny=dict(siec.przyczyny),
         slad=tuple(siec.trace),
+        sekcje_wezlow=dict(siec.sekcje_wezlow),
+        b0_robocze=dict(siec.b0_robocze),
     )
 
 
@@ -1311,6 +1639,29 @@ def _odwroc_y0(size: int, y0_bus: np.ndarray) -> np.ndarray:
         raise OdmowaDanychError(KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA) from exc
 
 
+def skladowe_i_b0_sieci_zerowej(
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    *,
+    scenario: Scenario = "MAX",
+    stan_awsc: StanAwsc = "spoczynek",
+) -> tuple[dict[str, int], dict[str, tuple[tuple[str, str, str, float], ...]]]:
+    """Składowe sieci zerowej (``skladowe_sieci_zerowej``) i gałęzie z wartością roboczą B′0
+    w macierzy Y0 (``SiecZerowa.b0_robocze``) z JEDNEGO złożenia Y0 — dane przyjęte wielkości
+    liczonych wprost z Z0 modelu."""
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    siec = _assemble_zero_sequence_y0(enm, graph, scenario, stan_awsc=stan_awsc)
+    if siec.size == 0:
+        return {}, dict(siec.b0_robocze)
+    _, etykiety = connected_components(csr_matrix(siec.y0_bus != 0), directed=False)
+    return (
+        {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(siec.node_index.items())},
+        dict(siec.b0_robocze),
+    )
+
+
 def skladowe_sieci_zerowej(
     enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
 ) -> dict[str, int]:
@@ -1323,14 +1674,7 @@ def skladowe_sieci_zerowej(
     np. Z0 kabla SN nie wchodzi do zwarcia 1F po stronie nN transformatora Dyn (karta LINIA-110,
     pkt 2: dane przyjęte składowej zerowej per punkt zwarcia, nie per bieg).
     """
-    from scipy.sparse import csr_matrix
-    from scipy.sparse.csgraph import connected_components
-
-    siec = _assemble_zero_sequence_y0(enm, graph, scenario)
-    if siec.size == 0:
-        return {}
-    _, etykiety = connected_components(csr_matrix(siec.y0_bus != 0), directed=False)
-    return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(siec.node_index.items())}
+    return skladowe_i_b0_sieci_zerowej(enm, graph, scenario=scenario)[0]
 
 
 # G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909

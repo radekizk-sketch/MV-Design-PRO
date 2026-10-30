@@ -16,7 +16,7 @@ export const SSCI_STRINGS = {
   tytul: 'Stabilność SSCI',
   opisWstep:
     'Stabilność podsynchronicznej interakcji regulacyjnej (SSCI) wg kryterium '
-    + 'impedancyjnego Nyquista (Sun 2011 / Wen 2016). Impedancja sieci Z_grid(f) jest dziś '
+    + 'impedancyjnego Nyquista (Sun 2011 / Wen 2016). Impedancja sieci $Z_{\\mathrm{grid}}(f)$ jest dziś '
     + 'liczona bez przekładni transformatora, dlatego ocena nie jest wykonywana — ekran '
     + 'pokazuje powód, wskaźnik strefy ujemnej rezystancji przekształtnika i metryki '
     + 'kryterium jako materiał audytowy.',
@@ -33,7 +33,8 @@ export const SSCI_STRINGS = {
   uruchomPonownie: 'Uruchom ponownie',
   uruchomOpis:
     'Analiza powstaje z committed ENM aktywnego przypadku: pola karty falownika '
-    + '(pasma regulatora prądu, PLL, filtr) tworzą Z_conv, a moc zwarciowa węzła — Z_grid.',
+    + '(pasma regulatora prądu, PLL, filtr) tworzą $Z_{\\mathrm{conv}}$, a moc zwarciowa węzła — '
+    + '$Z_{\\mathrm{grid}}$.',
 
   // Stany biegu
   ladowanie: 'Trwa analiza stabilności SSCI…',
@@ -45,23 +46,23 @@ export const SSCI_STRINGS = {
 
   // Metryki kryterium impedancyjnego (sekcja audytowa)
   metrykiTytul: 'Metryki kryterium impedancyjnego',
-  metrMaxGain: 'Maks. wzmocnienie pętli max|L|',
-  metrMaxGainOpis: '|L|=1 ⟺ przecięcie modułów |Z_grid|=|Z_conv| (granica stabilności bezwarunkowej).',
-  metrMargines: 'Najgorszy margines różnicy faz Δφ',
-  metrMarginesOpis: 'Δφ = 180° − |∠L| w paśmie przecięcia; Δφ → 0 oznacza okrążenie punktu −1.',
+  metrMaxGain: 'Maks. wzmocnienie pętli $\\max |L|$',
+  metrMaxGainOpis: '$|L| = 1 \\iff |Z_{\\mathrm{grid}}| = |Z_{\\mathrm{conv}}|$ — przecięcie modułów (granica stabilności bezwarunkowej).',
+  metrMargines: 'Najgorszy margines różnicy faz $\\Delta\\varphi$',
+  metrMarginesOpis: '$\\Delta\\varphi = 180^{\\circ} - |\\angle L|$ w paśmie przecięcia; $\\Delta\\varphi \\to 0$ oznacza okrążenie punktu $-1$.',
   metrCzestWinna: 'Częstotliwość winna',
-  metrCzestWinnaOpis: 'Częstotliwość najgorszego marginesu w paśmie |L| ≥ 1.',
+  metrCzestWinnaOpis: 'Częstotliwość najgorszego marginesu w paśmie $|L| \\geq 1$.',
   metrOdlegloscMinusJeden: 'Odległość od punktu −1',
-  metrOdlegloscOpis: 'Najmniejsza odległość przebiegu L(jω) od punktu −1 (kryterium Nyquista).',
+  metrOdlegloscOpis: 'Najmniejsza odległość przebiegu $L(j\\omega)$ od punktu $-1$ (kryterium Nyquista).',
   metrOkrazenia: 'Okrążenia punktu −1',
-  metrRezystancjaUjemna: 'Strefa ujemnej rezystancji przekształtnika Re(Z_conv) < 0',
+  metrRezystancjaUjemna: 'Strefa ujemnej rezystancji przekształtnika $\\mathrm{Re}(Z_{\\mathrm{conv}}) < 0$',
   metrRezystancjaOpis:
     'Wskaźnik zależy wyłącznie od modelu przekształtnika (pasma regulatora prądu i PLL) '
     + '— informacja o mechanizmie umożliwiającym SSCI, nie ocena interakcji z siecią.',
   metrRezystancjaObecna: 'obecna',
   metrRezystancjaBrak: 'brak',
-  metrPrzyF: 'przy f',
-  metrReMin: 'Re_min',
+  metrPrzyF: 'przy $f$',
+  metrReMin: '$\\mathrm{Re}_{\\min}$',
 
   // Panel proweniencji
   provTytul: 'Proweniencja danych przekształtnika',
@@ -74,19 +75,19 @@ export const SSCI_STRINGS = {
   brakiTytul: 'Brak tablic impedancji',
   brakiOpis:
     'Bez przekształtnika/DER lub przy niekompletnych polach karty falownika kryterium '
-    + 'impedancyjne nie ma tablic Z_grid/Z_conv/L — solver niczego nie zmyśla.',
+    + 'impedancyjne nie ma tablic $Z_{\\mathrm{grid}}$, $Z_{\\mathrm{conv}}$ i $L$ — solver niczego nie zmyśla.',
   brakiPola: 'Brakujące pola',
 
   // Ślad WHITE BOX (tryb ekspercki)
   sladTytul: 'Ślad obliczeń SSCI (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
-  sladKolSymbol: 'Wielkość',
+  sladKolWzor: 'Wzór',
   sladKolPodstawienie: 'Podstawienie',
   sladKolWynik: 'Wynik',
   sladKolJednostka: 'Kontrola jednostek',
   ekspAnalizaId: 'Identyfikator analizy',
-  ekspProgGain: 'Granica przecięcia modułów |L|',
+  ekspProgGain: 'Granica przecięcia modułów $|L|$',
 
   // Jednostki i wartości puste
   jednStopnie: '°',

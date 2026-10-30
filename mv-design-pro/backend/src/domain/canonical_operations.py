@@ -3135,19 +3135,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
     ),
-    # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
-    "earthing.electrode_data_missing": ReadinessCodeSpec(
-        code="earthing.electrode_data_missing",
-        area=ReadinessArea.STATIONS,
-        priority=3,
-        level=ReadinessLevel.WARNING,
-        message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
-        fix_navigation={
-            "panel": "inspector",
-            "tab": "uziemienie",
-            "focus": "earth_electrode",
-        },
-    ),
     # Study Case / Analysis
     "study_case.missing_base_snapshot": ReadinessCodeSpec(
         code="study_case.missing_base_snapshot",
@@ -3246,23 +3233,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "transformator"},
     ),
-    # Pomiar W5-D (2026-09-16): FROZEN `power_flow_unbalanced.py` liczy straty gałęzi jako
-    # |I_φ|²·Z_s (impedancja WŁASNA), bez wyrazu wzajemnego Z_m·I_φ·ΣI_q* — dla obciążenia
-    # symetrycznego i Z0 = 3·Z1 (katalog) straty kabla są 5/3 strat NR (0,000687 vs
-    # 0,000412 MW na sieci testowej). Założenie NAZWANE w biegu, gdy jakakolwiek gałąź
-    # ma Z_m ≠ 0; korekta formuły to zmiana rdzenia FROZEN (B-01 — decyzja właściciela).
-    "power_flow.unbalanced_losses_self_impedance": ReadinessCodeSpec(
-        code="power_flow.unbalanced_losses_self_impedance",
-        area=ReadinessArea.ANALYSIS,
-        priority=4,
-        level=ReadinessLevel.WARNING,
-        message_pl=(
-            "Założenie biegu: straty gałęzi liczone z impedancji własnej |I|²·R_s — solver "
-            "BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone "
-            "(napięcia i prądy bez zmian)"
-        ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
-    ),
     "power_flow.unbalanced_transformer_series_model": ReadinessCodeSpec(
         code="power_flow.unbalanced_transformer_series_model",
         area=ReadinessArea.ANALYSIS,
@@ -3338,8 +3308,9 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.INFO,
         message_pl=(
-            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, "
-            "X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; katalog bez danej "
+            "Składowa zerowa (R′0, X′0, B′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, "
+            "X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; pojemność doziemna "
+            "SN: kabel B′0 = B′1, linia napowietrzna B′0 = 0,4·B′1; katalog bez danej "
             "producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty "
             "producenta albo z pomiaru w parametrach odcinka i przelicz"
         ),

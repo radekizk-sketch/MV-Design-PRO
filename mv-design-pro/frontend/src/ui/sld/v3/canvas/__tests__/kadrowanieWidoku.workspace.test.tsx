@@ -10,7 +10,9 @@
  *    klawisze F / Shift+F / Alt+← · poziom mini-ścieżki · poprzednia/następna
  *    stacja · wskazanie ze sklepu (przed i po montażu) · „Cały arkusz";
  *  - zaznaczenie: brak · jedno pole · element nienarysowany;
- *  - tor zasilania: drogi pewne i warunkowe · brak drogi · błąd HTTP · brak przypadku;
+ *  - tor zasilania: drogi pewne i warunkowe · brak drogi · błąd HTTP · brak przypadku ×
+ *    planista {zwykły, oddający wątek po każdej jednostce pracy}; asercje kadru czekają na
+ *    WARUNEK (kadr zmieniony / żądanie toru zakończone), nie na upływ czasu;
  *  - historia: kadr → „Wstecz" przywraca DOKŁADNIE poprzedni viewBox i ścieżkę;
  *  - klik obiektu (UI-02b): kanwa nie dostaje zasłony prawego pasa — przy kadrze
  *    (kadr bez zmian) × bez kadru (obiekt w pasie dawnej szuflady, widok bez zmian);
@@ -459,7 +461,26 @@ describe('wskazanie ze sklepu selekcji', () => {
   });
 });
 
-describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () => {
+/**
+ * Planista Reacta (`scheduler`) dzieli pracę na plasterki ~5 ms mierzone `performance.now()`
+ * i po przekroczeniu oddaje wątek. Na obciążonym procesorze render kanwy przekracza plasterek,
+ * więc render z komunikatem i render z nowym kadrem kamery (efekt na `zadanieKadru.seq`) trafiają
+ * do RÓŻNYCH zadań makro — odczyt „zaraz po komunikacie" łapał viewBox sprzed przeliczenia
+ * (czerwony w pełnej bramce, zielony w biegu samodzielnym). Tryb „planista oddający wątek"
+ * odtwarza to DETERMINISTYCZNIE: każdy odczyt zegara planisty przesuwa czas o 50 ms, więc planista
+ * oddaje wątek po każdej jednostce pracy — bez zależności od faktycznego obciążenia maszyny.
+ */
+const TRYBY_PLANISTY = [
+  ['zwykły planista', false],
+  ['planista oddający wątek po każdej jednostce pracy (obciążony procesor)', true],
+] as const;
+
+describe.each(TRYBY_PLANISTY)('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie) — %s', (_tryb, oddajeWatek) => {
+  beforeEach(() => {
+    if (!oddajeWatek) return;
+    let zegar = performance.now();
+    vi.spyOn(performance, 'now').mockImplementation(() => (zegar += 50));
+  });
   const elementToru = (ref: string, stacja: string | null) => ({
     ref_id: ref,
     rodzaj: 'pole' as const,
@@ -494,6 +515,17 @@ describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () 
     },
     ...nadpisz,
   });
+  /**
+   * Koniec żądania toru: pozycja „Tor zasilania" menu znów aktywna (`torWToku` zdjęte w `finally`
+   * po obsłużeniu odpowiedzi). Warunek STANU, nie czasu — po nim nie ma już w toku żadnej
+   * odpowiedzi, która mogłaby ruszyć kamerę, więc „kamera stoi" jest sprawdzeniem, a nie odczytem
+   * sprzed przeliczenia. Menu zamykane z powrotem, żeby nie zmieniać dalszego przebiegu testu.
+   */
+  const czekajNaKoniecToru = async () => {
+    const menu = otworzMenu();
+    await waitFor(() => expect(within(menu).getByTestId('sld-v3-dopasuj-do-tor')).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId('sld-v3-dopasuj-do-toggle'));
+  };
   const odpowiedz = (status: number, body: unknown) =>
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })));
 
@@ -525,7 +557,11 @@ describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () 
       'Droga warunkowa od źródła src/B — łączniki o nieustalonym stanie: Q7.',
     );
     expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'ostrzezenie');
-    expect(viewBox(container)).not.toBe(przed);
+    // Komunikat i żądanie kadru wchodzą w JEDNYM renderze, a kamera przelicza kadr dopiero w efekcie
+    // kanwy (`SldCanvasV3`, efekt na `zadanieKadru.seq`) — następny render. Pod obciążeniem procesora
+    // planista Reacta oddaje wątek między nimi i odczyt zaraz po pojawieniu się komunikatu łapał
+    // viewBox sprzed przeliczenia. Czekamy więc na SAM warunek: kadr kamery się zmienił.
+    await waitFor(() => expect(viewBox(container)).not.toBe(przed));
     expect(etykietySciezki()).toEqual(['Sieć', `Tor zasilania: ${POLE.name}`]);
   });
 
@@ -571,6 +607,7 @@ describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () 
     expect(screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent).toContain('brak drogi od źródła sieciowego');
     expect(screen.getByTestId('sld-v3-komunikat-kadru-szczegoly').textContent).toContain('Łącznik Q3 otwarty');
     expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'ostrzezenie');
+    await czekajNaKoniecToru();
     expect(viewBox(container)).toBe(przed);
   });
 
@@ -582,6 +619,7 @@ describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () 
     fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-tor'));
     await waitFor(() => expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'blad'));
     expect(screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent).toContain('HTTP 500');
+    await czekajNaKoniecToru();
     expect(viewBox(container)).toBe(przed);
     fireEvent.click(screen.getByTestId('sld-v3-komunikat-kadru-zamknij'));
     expect(screen.queryByTestId('sld-v3-komunikat-kadru')).toBeNull();

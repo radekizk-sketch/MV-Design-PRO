@@ -49,7 +49,7 @@ export const ESTYMACJA_STRINGS = {
   pomiaryTytul: 'Pomiary telemetryczne (SCADA/PMU)',
   pomiaryOpis:
     'Wartości w jednostkach względnych (pu) na tej samej bazie mocy co Y-bus. '
-    + 'Odchylenie standardowe σ musi być dodatnie. Pomiary przepływu (P_ij, Q_ij) '
+    + 'Odchylenie standardowe σ musi być dodatnie. Pomiary przepływu ($P_{ij}$, $Q_{ij}$) '
     + 'wymagają węzła „do" gałęzi.',
   pomiarTyp: 'Typ pomiaru',
   pomiarWezel: 'Węzeł',
@@ -136,9 +136,9 @@ export const ESTYMACJA_STRINGS = {
   kolWezelPomiaru: 'Węzeł',
   kolWezelJ: 'Węzeł „do"',
   kolWartoscPomiaru: 'Wartość',
-  kolSigma: 'σ',
-  kolRezyduum: 'Rezyduum r',
-  kolRezyduumZnorm: 'Rezyduum znorm. r_N',
+  kolSigma: '$\\sigma$',
+  kolRezyduum: 'Rezyduum $r$',
+  kolRezyduumZnorm: 'Rezyduum znorm. $r_N$',
   kolFlaga: 'Flaga',
   flagaPodejrzany: 'podejrzany',
   flagaOk: '—',

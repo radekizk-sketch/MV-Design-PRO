@@ -66,8 +66,11 @@ def _oczekiwana_przyczyna(
             elementy.add("odc1")
         return "brak_danych", elementy
     if szyna == "hv" and pasmo == "nN":
-        # Szyna SN stacji: źródło w paśmie SN nie niesie Z0, uzwojenie D — bez drogi.
-        return "brak_drogi", set()
+        # Szyna SN stacji: źródło w paśmie SN nie niesie Z0, uzwojenie D, brak zespołu
+        # uziemiającego — sieć SN z punktem neutralnym izolowanym; prąd doziemienia jest prądem
+        # pojemnościowym, poza zakresem IEC 60909-0 (warunek odbioru właściciela 2026-10-29,
+        # dokument karty §3.17; dawniej ``brak_drogi`` z modelu Z1+Z2+Z0).
+        return "poza_zakresem_iec60909", set()
     return None, set()
 
 

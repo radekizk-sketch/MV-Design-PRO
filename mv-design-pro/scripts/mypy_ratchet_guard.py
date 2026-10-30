@@ -251,7 +251,12 @@ BACKEND = ROOT / "backend"
 # 169/22) i na drzewie scalonym (167/21); roznica zbiorow (plik, komunikat): scalone minus
 # program = 0, scalone minus UI/UX = 0, program minus scalone = dokladnie 2 bledy `assignment`
 # w `enm/catalog_completion.py`, zdjete przez karte W5-B (wyzej). Zero nowych.
-BASELINE_ERRORS = 167
+# Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (2026-10-30): 167/21 -> 163/21. POMIAR `mypy src`
+# na HEAD karty i na drzewie commitu (multizbior (plik, komunikat)): zniknely dokladnie 4 bledy
+# `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
+# — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
+# pliki zostaja (inne bledy). Zero nowych.
+BASELINE_ERRORS = 163
 BASELINE_FILES = 21
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")

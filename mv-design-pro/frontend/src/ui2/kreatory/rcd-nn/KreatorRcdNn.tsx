@@ -52,7 +52,7 @@ function idnMa(rcd: LVRcdType): string {
 /** Etykieta pozycji katalogu: `nazwa · I_Δn w mA · typ · In`. */
 function etykietaTypu(rcd: LVRcdType): string {
   const rodzaj = rcd.selective ? `${rcd.rcd_type} ${T.typSelektywny}` : rcd.rcd_type;
-  return `${rcd.name} · ${idnMa(rcd)} · typ ${rodzaj} · In ${fmt(rcd.in_a, 'A', 0)}`;
+  return `${rcd.name} · ${idnMa(rcd)} · typ ${rodzaj} · $I_n$ ${fmt(rcd.in_a, 'A', 0)}`;
 }
 
 export function KreatorRcdNn() {

@@ -471,15 +471,6 @@
     },
     {
       "area": "STATIONS",
-      "code": "earthing.electrode_data_missing",
-      "fix_navigation": {
-        "focus": "earth_electrode",
-        "panel": "inspector",
-        "tab": "uziemienie"
-      }
-    },
-    {
-      "area": "STATIONS",
       "code": "earthing.network_grounding_warning",
       "fix_navigation": {
         "focus": "dlawik",
@@ -952,15 +943,6 @@
       "code": "power_flow.unbalanced_load_phases_unsupported",
       "fix_navigation": {
         "focus": "phases",
-        "panel": "inspector",
-        "tab": "parametry"
-      }
-    },
-    {
-      "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_losses_self_impedance",
-      "fix_navigation": {
-        "focus": "r0_ohm_per_km",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1574,7 +1556,7 @@
       }
     }
   ],
-  "count": 184,
+  "count": 182,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

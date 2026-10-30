@@ -111,7 +111,7 @@ class Wyspa:
     @property
     def ma_odniesienie(self) -> bool:
         """Impedancja do odniesienia w zwarciu: źródło sieciowe albo maszyna
-        (``canonical_analysis._wezly_bez_impedancji_do_odniesienia``, CI-PARYTET-5)."""
+        (``NetworkGraph.wezly_bez_impedancji_do_odniesienia``, CI-PARYTET-5)."""
         return bool(self.zrodla_sieciowe or self.maszyny)
 
 

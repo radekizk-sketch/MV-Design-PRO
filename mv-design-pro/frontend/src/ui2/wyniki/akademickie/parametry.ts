@@ -27,6 +27,12 @@
  * niesie liczby odbiorców zasilanych z szyny, a wskaźniki niezawodności są nią
  * ważone. Bez wpisu gotowość analizy odmawia uruchomienia (`parametr.customer_counts`)
  * zamiast liczyć wskaźniki z zerowej liczby odbiorców.
+ *
+ * TRZECI WYJĄTEK JAWNY (karta UX-04, odcinek 3): `reliability_data` (rodzaj
+ * `reliability_contingency`, `POLA_NIEZAWODNOSCI`) — czytany przez MOST
+ * (`niezawodnosc_z_parametrow` → `V126BranchInput.failure_rate_per_year/mttr_h`): model ENM
+ * nie niesie danych niezawodnościowych elementów, więc most bierze wartości robocze rejestru
+ * niezawodności (dane przyjęte ESTIMATED), a wiersz projektanta zastępuje je dla elementu.
  */
 
 import type { RodzajAnalizy } from './api';
@@ -42,7 +48,14 @@ import type { RodzajAnalizy } from './api';
  * zbiór wejścia solvera) — w obu przypadkach projektant wybiera NAZWĘ, referencja modelu
  * jest wyłącznie wartością opcji (karta #145).
  */
-export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody' | 'szyna' | 'przeksztaltnik';
+export type RodzajPola =
+  | 'liczba'
+  | 'tekst'
+  | 'wybor'
+  | 'metody'
+  | 'szyna'
+  | 'galaz'
+  | 'przeksztaltnik';
 
 /** Opcja pola wyboru (wartość kontraktu + etykieta PL). */
 export interface OpcjaPola {
@@ -61,17 +74,30 @@ export interface DefinicjaPola {
   readonly opcje?: readonly OpcjaPola[];
 }
 
-/** Metody detekcji doziemienia dostępne w przekaźniku (`relay_methods`). */
+/**
+ * Funkcje detekcji doziemień dostępne w przekaźniku (`relay_methods`) — komplet słownika
+ * solvera `METODY_DETEKCJI_KOMPLET` (metody proste i funkcje składowe metod złożonych
+ * 51N+67N, 51N/50N; parytet pilnowany testem
+ * `backend/tests/ci/test_v126_rodzaje_parytet.py::test_funkcje_detekcji_formularza_sa_slownikiem_solvera`).
+ */
 export const METODY_DETEKCJI: readonly OpcjaPola[] = [
-  { wartosc: 'wattmetric', etykieta: 'wattmetryczna' },
+  { wartosc: 'wattmetric', etykieta: 'watometryczna' },
   { wartosc: 'admittance', etykieta: 'admitancyjna' },
-  { wartosc: 'transient_directional', etykieta: 'kierunkowa przejściowa' },
+  { wartosc: 'transient_directional', etykieta: 'kierunkowa stanów przejściowych' },
   { wartosc: 'fifth_harmonic', etykieta: '5. harmoniczna' },
+  { wartosc: '51N', etykieta: 'nadprądowa ziemnozwarciowa zwłoczna 51N' },
+  { wartosc: '67N', etykieta: 'kierunkowa ziemnozwarciowa 67N' },
+  { wartosc: '50N', etykieta: 'nadprądowa ziemnozwarciowa bezzwłoczna 50N' },
 ];
 
 /** Pola obiektu `earthing` (`V126EarthingInput`) — wejście uziomu stacji. */
 export const POLA_UZIOMU: readonly DefinicjaPola[] = [
-  { klucz: 'gpz_ref', etykieta: 'Oznaczenie stacji', rodzaj: 'tekst' },
+  {
+    klucz: 'bus_ref',
+    etykieta: 'Szyna stacji',
+    rodzaj: 'szyna',
+    opis: 'Szyna stacji w modelu — z niej solver bierze sieci SN i WN stacji, których zwarcie doziemne odprowadza uziom.',
+  },
   { klucz: 'rho1_ohm_m', etykieta: 'Rezystywność warstwy górnej', rodzaj: 'liczba', jednostka: 'Ω·m' },
   { klucz: 'rho2_ohm_m', etykieta: 'Rezystywność warstwy dolnej', rodzaj: 'liczba', jednostka: 'Ω·m' },
   { klucz: 'h1_m', etykieta: 'Grubość warstwy górnej', rodzaj: 'liczba', jednostka: 'm' },
@@ -81,7 +107,13 @@ export const POLA_UZIOMU: readonly DefinicjaPola[] = [
   { klucz: 'buried_depth_m', etykieta: 'Głębokość ułożenia', rodzaj: 'liczba', jednostka: 'm' },
   { klucz: 'rods_total_length_m', etykieta: 'Sumaryczna długość prętów', rodzaj: 'liczba', jednostka: 'm' },
   { klucz: 'split_factor', etykieta: 'Współczynnik podziału prądu', rodzaj: 'liczba' },
-  { klucz: 'fault_current_ka', etykieta: 'Prąd zwarcia doziemnego', rodzaj: 'liczba', jednostka: 'kA' },
+  {
+    klucz: 'fault_current_ka',
+    etykieta: 'Prąd zwarcia doziemnego (nadpisanie)',
+    rodzaj: 'liczba',
+    jednostka: 'kA',
+    opis: 'Puste — prąd z modelu wg sposobu pracy punktu neutralnego (EN 50522 tab. 1); wpisana wartość zastępuje go jako dana przyjęta.',
+  },
   { klucz: 'fault_clearing_time_s', etykieta: 'Czas wyłączenia zwarcia', rodzaj: 'liczba', jednostka: 's' },
   {
     klucz: 'surface_layer_rho_ohm_m',
@@ -114,6 +146,18 @@ export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'max_torque_pu', etykieta: 'Moment maksymalny', rodzaj: 'liczba', jednostka: 'j.w.' },
   { klucz: 'critical_slip', etykieta: 'Poślizg krytyczny', rodzaj: 'liczba' },
   { klucz: 'load_start_torque_pu', etykieta: 'Moment obciążenia przy rozruchu', rodzaj: 'liczba', jednostka: 'j.w.' },
+  {
+    klucz: 'rated_power_factor',
+    etykieta: 'Znamionowy współczynnik mocy $\\cos\\varphi_n$',
+    rodzaj: 'liczba',
+    opis: 'Z tabliczki maszyny. Puste = wartość robocza rejestru maszyn (dana przyjęta w wyniku).',
+  },
+  {
+    klucz: 'rated_efficiency',
+    etykieta: 'Sprawność znamionowa $\\eta_n$',
+    rodzaj: 'liczba',
+    opis: 'Z tabliczki maszyny. Puste = wartość robocza rejestru maszyn (dana przyjęta w wyniku).',
+  },
 ];
 
 /**
@@ -158,6 +202,31 @@ export const POLA_ODBIORCOW: readonly DefinicjaPola[] = [
   },
 ];
 
+/**
+ * Pola wiersza danych niezawodności elementu (`reliability_data`, karta UX-04 odcinek 3):
+ * gałąź modelu + całkowita intensywność uszkodzeń elementu [1/rok] i czas odnowy [h].
+ * Agregowane do mapy `{ref gałęzi: {failure_rate_per_year, mttr_h}}` w `zbudujParametry` —
+ * kształt czytany przez most `niezawodnosc_z_parametrow`. Pole puste = wartość robocza
+ * rejestru niezawodności dla tej wielkości.
+ */
+export const POLA_NIEZAWODNOSCI: readonly DefinicjaPola[] = [
+  { klucz: 'element_ref', etykieta: 'Element sieci', rodzaj: 'galaz' },
+  {
+    klucz: 'failure_rate_per_year',
+    etykieta: 'Intensywność uszkodzeń elementu',
+    rodzaj: 'liczba',
+    jednostka: '1/rok',
+    opis: 'Całkowita dla elementu (nie na km). Puste = wartość robocza rejestru niezawodności.',
+  },
+  {
+    klucz: 'mttr_h',
+    etykieta: 'Czas odnowy zasilania',
+    rodzaj: 'liczba',
+    jednostka: 'h',
+    opis: 'Puste = wartość robocza rejestru niezawodności.',
+  },
+];
+
 /** Pola wiersza referencji benchmarkowej (`benchmark_references`). */
 export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
   { klucz: 'network', etykieta: 'Sieć odniesienia', rodzaj: 'tekst' },
@@ -169,7 +238,12 @@ export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
 ];
 
 /** Listy złożone obsługiwane przez formularz (poza polami prostymi). */
-export type ListaZlozona = 'motors' | 'benchmark_references' | 'harmonic_spectra' | 'customer_counts';
+export type ListaZlozona =
+  | 'motors'
+  | 'benchmark_references'
+  | 'harmonic_spectra'
+  | 'customer_counts'
+  | 'reliability_data';
 
 /** Zestaw parametrów rodzaju analizy. */
 export interface ZestawParametrow {
@@ -177,13 +251,13 @@ export interface ZestawParametrow {
   readonly pola: readonly DefinicjaPola[];
   /** Czy rodzaj przyjmuje obiekt `earthing` (uziom stacji). */
   readonly uziom: boolean;
-  /** Lista złożona przyjmowana przez rodzaj (albo brak). */
-  readonly lista: ListaZlozona | null;
+  /** Listy złożone przyjmowane przez rodzaj (każda z własnym formularzem wierszowym). */
+  readonly listy: readonly ListaZlozona[];
   /** Czy rodzaj przyjmuje wybór metod detekcji (`relay_methods`). */
   readonly metodyDetekcji: boolean;
 }
 
-const PUSTY: ZestawParametrow = { pola: [], uziom: false, lista: null, metodyDetekcji: false };
+const PUSTY: ZestawParametrow = { pola: [], uziom: false, listy: [], metodyDetekcji: false };
 
 /**
  * Parametry projektowe wg rodzaju analizy. Źródło każdej pozycji to miejsce odczytu
@@ -194,7 +268,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   // przekształtnika, ALBO z jawnego wejścia tutaj (`harmonic_spectra`, karta
   // W2-C) — proweniencja RECZNE nadpisuje proweniencję KATALOG. Puste = solver
   // liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
-  power_quality_harmonics: { pola: [], uziom: false, lista: 'harmonic_spectra', metodyDetekcji: false },
+  power_quality_harmonics: { pola: [], uziom: false, listy: ['harmonic_spectra'], metodyDetekcji: false },
 
   // `_ssci_impedance`: model.parameters["ssci_converter_ref"] — wskazanie przekształtnika.
   // Bez wskazania solver bierze PIERWSZY przekształtnik wejścia (`_ssci_select_converter`:
@@ -209,18 +283,24 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       },
     ],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: false,
   },
 
   voltage_stability: PUSTY,
 
   // Most `odbiorcy_z_parametrow` (karta B-02): liczba odbiorców per szyna —
-  // model jej nie niesie, a wskaźniki SAIDI/SAIFI/CAIDI są nią ważone.
-  reliability_contingency: { pola: [], uziom: false, lista: 'customer_counts', metodyDetekcji: false },
+  // model jej nie niesie, a wskaźniki SAIDI/SAIFI/CAIDI są nią ważone. Most
+  // `niezawodnosc_z_parametrow`: dane niezawodności elementu zastępujące wartość roboczą.
+  reliability_contingency: {
+    pola: [],
+    uziom: false,
+    listy: ['customer_counts', 'reliability_data'],
+    metodyDetekcji: false,
+  },
 
   // `_earthing`: model.earthing albo model.parameters["earthing"].
-  earthing_safety: { pola: [], uziom: true, lista: null, metodyDetekcji: false },
+  earthing_safety: { pola: [], uziom: true, listy: [], metodyDetekcji: false },
 
   // Ograniczniki pochodzą z aparatów pierwotnych modelu (most ENM) — bez formularza.
   insulation_coordination: PUSTY,
@@ -231,7 +311,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   earth_fault_detection: {
     pola: [],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: true,
   },
 
@@ -244,7 +324,8 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
         etykieta: 'Napięcie znamionowe łącznika',
         rodzaj: 'liczba',
         jednostka: 'kV',
-        opis: 'Puste = najwyższe napięcie znamionowe szyny modelu.',
+        opis: 'Puste = napięcie najwyższe urządzenia $U_m$ sieci SN modelu (IEC 60038 tab. 3–5; '
+          + '$U_r$ aparatu równe $U_m$, IEC 62271-1).',
       },
       {
         klucz: 'trv_natural_frequency_hz',
@@ -260,12 +341,12 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       },
     ],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: false,
   },
 
   // `_motor_starting`: model.motors (payload `motors` walidowany w API).
-  motor_starting: { pola: [], uziom: false, lista: 'motors', metodyDetekcji: false },
+  motor_starting: { pola: [], uziom: false, listy: ['motors'], metodyDetekcji: false },
 
   // `_hosting_capacity`: parameters["hosting_monte_carlo_n"].
   hosting_capacity: {
@@ -277,7 +358,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       },
     ],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: false,
   },
 
@@ -297,7 +378,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       { klucz: 'co2_kg_per_kwh', etykieta: 'Wskaźnik emisyjności energii', rodzaj: 'liczba', jednostka: 'kg/kWh' },
     ],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: false,
   },
 
@@ -305,7 +386,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   benchmark_validation: {
     pola: [],
     uziom: false,
-    lista: 'benchmark_references',
+    listy: ['benchmark_references'],
     metodyDetekcji: false,
   },
 
@@ -314,15 +395,11 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   // `_neutral_earthing_design` + `_petersen_design` + `_ner_design`. Schemat (dławik albo
   // rezystor) wynika z wariantu zespołu uziemiającego modelu, nie z formularza; rezystor
   // (R, prąd znamionowy, dopuszczalny czas przepływu) jest daną zespołu w modelu — dawne pola
-  // „docelowy prąd doziemienia" i „wytrzymałość cieplna rezystora" nadpisywały model.
+  // „docelowy prąd doziemienia" i „wytrzymałość cieplna rezystora" nadpisywały model. Tak samo
+  // dawne „stopień rozstrojenia" i „tłumienie prądu resztkowego": prąd resztkowy liczy się dla
+  // DŁAWIKA MODELU (impedancje punktów neutralnych w ruchu), nie z liczb formularza.
   neutral_earthing_design: {
     pola: [
-      { klucz: 'petersen_detuning', etykieta: 'Stopień rozstrojenia dławika', rodzaj: 'liczba' },
-      {
-        klucz: 'petersen_residual_damping',
-        etykieta: 'Składowa tłumienia prądu resztkowego',
-        rodzaj: 'liczba',
-      },
       {
         klucz: 'ner_clearing_time_s',
         etykieta: 'Czas wyłączenia zwarcia doziemnego (rezystor)',
@@ -331,7 +408,7 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
       },
     ],
     uziom: false,
-    lista: null,
+    listy: [],
     metodyDetekcji: false,
   },
 };
@@ -344,7 +421,7 @@ export function zestawParametrow(kod: string): ZestawParametrow {
 /** Czy rodzaj przyjmuje jakiekolwiek parametry projektowe. */
 export function maParametry(kod: string): boolean {
   const zestaw = zestawParametrow(kod);
-  return zestaw.pola.length > 0 || zestaw.uziom || zestaw.lista !== null || zestaw.metodyDetekcji;
+  return zestaw.pola.length > 0 || zestaw.uziom || zestaw.listy.length > 0 || zestaw.metodyDetekcji;
 }
 
 // ---------------------------------------------------------------------------
@@ -414,6 +491,31 @@ function wierszeOdbiorcowDoMapy(
   return Object.keys(mapa).length === 0 ? null : mapa;
 }
 
+/**
+ * Agreguje wiersze (element, λ, czas odnowy) do mapy `{ref elementu: {failure_rate_per_year,
+ * mttr_h}}` oczekiwanej przez most (`reliability_data`). Wiersz bez elementu albo bez żadnej
+ * z dwóch wielkości jest POMIJANY (nic do zastąpienia); wartość trafia tak, jak ją wpisano —
+ * poprawność (liczba nieujemna) ocenia most, który nazywa błędny wpis odmową danych.
+ */
+function wierszeNiezawodnosciDoMapy(
+  wiersze: readonly WierszListy[],
+): Record<string, Record<string, number>> | null {
+  const mapa: Record<string, Record<string, number>> = {};
+  wiersze.forEach((wiersz) => {
+    const ref = (wiersz.element_ref ?? '').trim();
+    if (ref === '') return;
+    const wpis: Record<string, number> = {};
+    (['failure_rate_per_year', 'mttr_h'] as const).forEach((pole) => {
+      const tekst = (wiersz[pole] ?? '').trim();
+      if (tekst === '') return;
+      const liczba = Number(tekst.replace(',', '.'));
+      if (Number.isFinite(liczba)) wpis[pole] = liczba;
+    });
+    if (Object.keys(wpis).length > 0) mapa[ref] = { ...(mapa[ref] ?? {}), ...wpis };
+  });
+  return Object.keys(mapa).length === 0 ? null : mapa;
+}
+
 function wierszDoObiektu(
   definicje: readonly DefinicjaPola[],
   wiersz: WierszListy,
@@ -432,8 +534,12 @@ export interface WejscieParametrow {
   readonly pola: StanPol;
   readonly uziom: StanPol;
   readonly metody: readonly string[];
-  readonly wiersze: readonly WierszListy[];
+  /** Wiersze KAŻDEJ listy złożonej rodzaju (brak klucza = lista bez wierszy). */
+  readonly wiersze: WierszeList;
 }
+
+/** Wiersze list złożonych formularza — osobno dla każdej listy. */
+export type WierszeList = Readonly<Partial<Record<ListaZlozona, readonly WierszListy[]>>>;
 
 /**
  * Buduje ładunek `V126RunRequest.parameters` ze stanu formularza. Pola puste są
@@ -458,19 +564,25 @@ export function zbudujParametry(wejscie: WejscieParametrow): Record<string, unkn
     parametry.relay_methods = [...wejscie.metody];
   }
 
-  if (zestaw.lista === 'harmonic_spectra') {
-    const mapa = wierszeWidmaDoMapy(wejscie.wiersze);
-    if (mapa !== null) parametry.harmonic_spectra = mapa;
-  } else if (zestaw.lista === 'customer_counts') {
-    const mapa = wierszeOdbiorcowDoMapy(wejscie.wiersze);
-    if (mapa !== null) parametry.customer_counts = mapa;
-  } else if (zestaw.lista !== null) {
-    const definicje = zestaw.lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
-    const wiersze = wejscie.wiersze
-      .map((wiersz) => wierszDoObiektu(definicje, wiersz))
-      .filter((wiersz): wiersz is Record<string, unknown> => wiersz !== null);
-    if (wiersze.length > 0) parametry[zestaw.lista] = wiersze;
-  }
+  zestaw.listy.forEach((lista) => {
+    const wiersze = wejscie.wiersze[lista] ?? [];
+    if (lista === 'harmonic_spectra') {
+      const mapa = wierszeWidmaDoMapy(wiersze);
+      if (mapa !== null) parametry.harmonic_spectra = mapa;
+    } else if (lista === 'customer_counts') {
+      const mapa = wierszeOdbiorcowDoMapy(wiersze);
+      if (mapa !== null) parametry.customer_counts = mapa;
+    } else if (lista === 'reliability_data') {
+      const mapa = wierszeNiezawodnosciDoMapy(wiersze);
+      if (mapa !== null) parametry.reliability_data = mapa;
+    } else {
+      const definicje = lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
+      const obiekty = wiersze
+        .map((wiersz) => wierszDoObiektu(definicje, wiersz))
+        .filter((wiersz): wiersz is Record<string, unknown> => wiersz !== null);
+      if (obiekty.length > 0) parametry[lista] = obiekty;
+    }
+  });
 
   return parametry;
 }

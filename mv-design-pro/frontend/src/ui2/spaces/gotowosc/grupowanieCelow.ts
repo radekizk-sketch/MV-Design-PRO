@@ -396,7 +396,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)
-  'earthing.electrode_data_missing': 'stacje',
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
@@ -445,7 +444,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',
   'power_flow.unbalanced_load_phases_unsupported': 'wspolne',
-  'power_flow.unbalanced_losses_self_impedance': 'wspolne',
   'power_flow.unbalanced_magnetising_branch_omitted': 'wspolne',
   'power_flow.unbalanced_no_zero_sequence_path': 'wspolne',
   'power_flow.unbalanced_requires_radial': 'wspolne',

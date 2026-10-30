@@ -21,17 +21,31 @@ z karty (T1-T4) oraz dodatkowy test wiążący `seed_bus` z ziarnem modelu
 from __future__ import annotations
 
 import network_model.solvers.v126_academic as v126_academic
+import pytest
 from network_model.solvers.v126_academic import TraceBuilder, V126AcademicSolver
-from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType, V126BusInput
+from solver_input.v126_contracts import (
+    V126AcademicInput,
+    V126AnalysisType,
+    V126BranchInput,
+    V126BusInput,
+    V126EarthingInput,
+    V126MotorInput,
+    V126TransformerInput,
+)
 
 
 def _bus(ref: str, *, fault_level_mva: float = 100.0, load_mw: float = 1.0) -> V126BusInput:
+    """Szyna 15 kV z impedancją zastępczą sieci Z_th = U_n²/S_k (R/X = 0,1) — dana wejścia
+    testu (w biegu z modelu Z_th liczy most kanonicznym budowniczym sieci zwarciowej).
+    """
+    z = 15.0**2 / fault_level_mva
     return V126BusInput(
         ref=ref,
         name=ref,
         nominal_kv=15.0,
         load_mw=load_mw,
-        fault_level_mva=fault_level_mva,
+        thevenin_r_ohm=0.1 * z,
+        thevenin_x_ohm=z,
     )
 
 
@@ -113,12 +127,12 @@ def test_t1_permutacja_kolejnosci_szyn_nie_zmienia_wynikow() -> None:
 #
 # CZEGO TEN TEST NIE DOWODZI: że dołożenie szyny do PRAWDZIWEGO wywołania
 # (bez podmiany `_hash`) zostawia ziarno modelu bez zmian — nie zostawia,
-# bo ziarno modelu to odcisk CAŁEJ treści modelu (świadomie, żeby zmiana
-# JAKIEJKOLWIEK danej wejściowej odświeżała losowanie — patrz test
-# `test_seed_bus_zalezy_od_tresci_modelu_nie_tylko_od_referencji` niżej).
-# Dołożenie szyny WŁAŚCIWIE zmienia wyniki WSZYSTKICH szyn (bo to inny
-# model) — to jest udokumentowana, zamierzona konsekwencja, nie ta klasa
-# błędu, którą naprawia ta karta.
+# bo ziarno modelu to odcisk pól CZYTANYCH przez analizę (`POLA_HOSTINGU_*`,
+# karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — dawniej odcisk CAŁEGO modelu), a szyna
+# jest takim polem — patrz `test_seed_bus_zalezy_od_tresci_modelu_nie_tylko_od_referencji`
+# i iloczyn pól czytanych/nieczytanych na końcu pliku. Dołożenie szyny
+# WŁAŚCIWIE zmienia wyniki WSZYSTKICH szyn (bo to inna sieć) — udokumentowana,
+# zamierzona konsekwencja, nie ta klasa błędu, którą naprawia ta karta.
 
 
 def test_t2_izolacja_strumieni_przy_ustalonym_ziarnie_modelu(monkeypatch) -> None:
@@ -255,3 +269,253 @@ def test_seed_bus_zalezy_od_tresci_modelu_nie_tylko_od_referencji() -> None:
 
     assert krok_1["data"]["seed_model"] != krok_2["data"]["seed_model"]
     assert krok_1["data"]["seeds_by_bus"]["X"] != krok_2["data"]["seeds_by_bus"]["X"]
+
+
+# ---------------------------------------------------------------------------
+# Ziarno z pól CZYTANYCH (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, decyzja B-01): ILOCZYN CECH
+# pole {czytane, nieczytane} × element {szyna, gałąź, transformator, parametr biegu, sekcja
+# innej analizy (silnik, uziom)} — pole nieczytane nie zmienia ani ziarna, ani wyniku; pole
+# czytane zmienia ziarno. Parytet projekcji: obliczenie na projekcji = obliczenie na pełnym
+# wejściu (projekcja nie gubi żadnego pola, które analiza czyta — inaczej dostałaby wartość
+# domyślną kontraktu po cichu).
+# ---------------------------------------------------------------------------
+
+
+def _bogaty_model(**zmiany: object) -> V126AcademicInput:
+    """Sieć GPZ → kabel → stacja z transformatorem SN/nN; każde pole niedomyślne."""
+    szyny = [
+        V126BusInput(
+            ref="GPZ",
+            name="GPZ",
+            nominal_kv=15.0,
+            voltage_pu=1.02,
+            load_mw=0.4,
+            load_mvar=0.1,
+            generation_mw=0.2,
+            generation_mvar=0.05,
+            customer_count=40,
+            fault_level_mva=250.0,
+            source_r_ohm=0.09,
+            source_x_ohm=0.89,
+            thevenin_r_ohm=0.09,
+            thevenin_x_ohm=0.89,
+        ),
+        V126BusInput(
+            ref="ST1",
+            name="Stacja 1",
+            nominal_kv=15.0,
+            voltage_pu=1.0,
+            load_mw=1.2,
+            load_mvar=0.3,
+            customer_count=120,
+            thevenin_r_ohm=0.708,
+            thevenin_x_ohm=1.244,
+        ),
+        V126BusInput(
+            ref="NN1",
+            name="nN stacji 1",
+            nominal_kv=0.4,
+            load_mw=0.3,
+            customer_count=60,
+            thevenin_r_ohm=0.0049,
+            thevenin_x_ohm=0.0157,
+        ),
+    ]
+    galaz = V126BranchInput(
+        ref="K1",
+        from_bus_ref="GPZ",
+        to_bus_ref="ST1",
+        kind="cable",
+        length_km=3.0,
+        r_ohm_per_km=0.206,
+        x_ohm_per_km=0.118,
+        b_siemens_per_km=8.0e-5,
+        b0_siemens_per_km=8.0e-5,
+        ampacity_a=245.0,
+        failure_rate_per_year=0.045,
+        mttr_h=12.0,
+    )
+    trafo = V126TransformerInput(
+        ref="TR1",
+        hv_bus_ref="ST1",
+        lv_bus_ref="NN1",
+        sn_mva=0.63,
+        uhv_kv=15.0,
+        ulv_kv=0.42,
+        uk_percent=6.0,
+        pk_kw=6.5,
+        p0_kw=0.9,
+        vector_group="Dyn11",
+    )
+    dane: dict = {
+        "base_frequency_hz": 50.0,
+        "buses": szyny,
+        "branches": [galaz],
+        "transformers": [trafo],
+        "motors": [
+            V126MotorInput(
+                ref="M1",
+                bus_ref="ST1",
+                rated_kw=315.0,
+                rated_voltage_kv=15.0,
+                locked_rotor_multiplier=6.0,
+                start_power_factor=0.22,
+                start_time_s=8.0,
+                allowable_locked_rotor_time_s=20.0,
+                max_torque_pu=2.0,
+                critical_slip=0.2,
+                load_start_torque_pu=0.6,
+            )
+        ],
+        "earthing": V126EarthingInput(
+            bus_ref="B1",
+            rho1_ohm_m=100.0,
+            length_m=60.0,
+            width_m=40.0,
+            mesh_spacing_m=6.0,
+            buried_depth_m=0.6,
+            rods_total_length_m=40.0,
+            split_factor=0.65,
+            fault_current_ka=10.0,
+            fault_clearing_time_s=0.5,
+            surface_layer_rho_ohm_m=2500.0,
+            surface_layer_derating=0.74,
+        ),
+        "parameters": {"hosting_monte_carlo_n": 48, "breaker_rated_voltage_kv": 17.5},
+    }
+    dane.update(zmiany)
+    return V126AcademicInput(**dane)
+
+
+def _zmien_szyne(model: V126AcademicInput, ref: str, **pola: object) -> V126AcademicInput:
+    szyny = [b.model_copy(update=pola) if b.ref == ref else b for b in model.buses]
+    return model.model_copy(update={"buses": szyny})
+
+
+def _zmien_galaz(model: V126AcademicInput, **pola: object) -> V126AcademicInput:
+    return model.model_copy(update={"branches": [model.branches[0].model_copy(update=pola)]})
+
+
+def _zmien_trafo(model: V126AcademicInput, **pola: object) -> V126AcademicInput:
+    return model.model_copy(
+        update={"transformers": [model.transformers[0].model_copy(update=pola)]}
+    )
+
+
+_ZMIANY_NIECZYTANE = {
+    "szyna.name": lambda m: _zmien_szyne(m, "ST1", name="Stacja przemianowana"),
+    # Impedancja zasilania i moc zwarciowa szyny wchodzą do Z_th w moście (kanoniczny
+    # budowniczy sieci zwarciowej) — analiza czyta Z_th, nie składniki.
+    "szyna.fault_level_mva": lambda m: _zmien_szyne(m, "GPZ", fault_level_mva=500.0),
+    "szyna.source_r_ohm": lambda m: _zmien_szyne(m, "GPZ", source_r_ohm=0.2),
+    "szyna.source_x_ohm": lambda m: _zmien_szyne(m, "GPZ", source_x_ohm=1.5),
+    "galaz.from_bus_ref": lambda m: _zmien_galaz(m, from_bus_ref="NN1"),
+    "galaz.length_km": lambda m: _zmien_galaz(m, length_km=5.0),
+    "galaz.r": lambda m: _zmien_galaz(m, r_ohm_per_km=0.3),
+    "galaz.x": lambda m: _zmien_galaz(m, x_ohm_per_km=0.2),
+    "galaz.b": lambda m: _zmien_galaz(m, b_siemens_per_km=1.0e-5),
+    "trafo.ref": lambda m: _zmien_trafo(m, ref="TR9"),
+    "trafo.hv_bus_ref": lambda m: _zmien_trafo(m, hv_bus_ref="GPZ"),
+    "trafo.lv_bus_ref": lambda m: _zmien_trafo(m, lv_bus_ref="ST1"),
+    "trafo.sn_mva": lambda m: _zmien_trafo(m, sn_mva=1.0),
+    "trafo.uhv_kv": lambda m: _zmien_trafo(m, uhv_kv=15.75),
+    "trafo.uk_percent": lambda m: _zmien_trafo(m, uk_percent=4.5),
+    "trafo.pk_kw": lambda m: _zmien_trafo(m, pk_kw=8.0),
+    "szyna.load_mvar": lambda m: _zmien_szyne(m, "ST1", load_mvar=0.9),
+    "szyna.generation_mw": lambda m: _zmien_szyne(m, "GPZ", generation_mw=1.5),
+    "szyna.generation_mvar": lambda m: _zmien_szyne(m, "GPZ", generation_mvar=0.7),
+    "szyna.customer_count": lambda m: _zmien_szyne(m, "ST1", customer_count=999),
+    "galaz.kind": lambda m: _zmien_galaz(m, kind="line_overhead"),
+    "galaz.b0": lambda m: _zmien_galaz(m, b0_siemens_per_km=1.0e-6),
+    "galaz.failure_rate": lambda m: _zmien_galaz(m, failure_rate_per_year=0.5),
+    "galaz.mttr": lambda m: _zmien_galaz(m, mttr_h=48.0),
+    "trafo.ulv_kv": lambda m: _zmien_trafo(m, ulv_kv=0.4),
+    "trafo.p0_kw": lambda m: _zmien_trafo(m, p0_kw=2.0),
+    "trafo.vector_group": lambda m: _zmien_trafo(m, vector_group="Yzn5"),
+    "silnik": lambda m: m.model_copy(
+        update={"motors": [m.motors[0].model_copy(update={"rated_kw": 900.0})]}
+    ),
+    "uziom": lambda m: m.model_copy(
+        update={"earthing": m.earthing.model_copy(update={"rho1_ohm_m": 400.0})}
+    ),
+    "parametr_innej_analizy": lambda m: m.model_copy(
+        update={"parameters": {**m.parameters, "breaker_rated_voltage_kv": 24.0}}
+    ),
+}
+
+_ZMIANY_CZYTANE = {
+    "szyna.nominal_kv": lambda m: _zmien_szyne(m, "ST1", nominal_kv=20.0),
+    "szyna.voltage_pu": lambda m: _zmien_szyne(m, "ST1", voltage_pu=0.98),
+    "szyna.load_mw": lambda m: _zmien_szyne(m, "ST1", load_mw=2.0),
+    "szyna.thevenin_r_ohm": lambda m: _zmien_szyne(m, "ST1", thevenin_r_ohm=0.9),
+    "szyna.thevenin_x_ohm": lambda m: _zmien_szyne(m, "NN1", thevenin_x_ohm=0.02),
+    "galaz.to_bus_ref": lambda m: _zmien_galaz(m, to_bus_ref="NN1"),
+    "galaz.is_open": lambda m: _zmien_galaz(m, is_open=True),
+    "galaz.ampacity": lambda m: _zmien_galaz(m, ampacity_a=180.0),
+    "monte_carlo_n": lambda m: m.model_copy(
+        update={"parameters": {**m.parameters, "hosting_monte_carlo_n": 49}}
+    ),
+}
+
+
+def test_zbiory_zmian_pokrywaja_kazde_pole_kontraktu() -> None:
+    """Inwentarz klasy: każde pole szyny, gałęzi i transformatora jest w dokładnie jednym
+    zbiorze (czytane = `POLA_HOSTINGU_*` bez referencji) — nowe pole kontraktu bez decyzji
+    „czytane czy nie” czerwieni ten test."""
+    for klasa, pola, prefiks in (
+        (V126BusInput, v126_academic.POLA_HOSTINGU_SZYNY, "szyna."),
+        (V126BranchInput, v126_academic.POLA_HOSTINGU_GALEZI, "galaz."),
+        # Transformatory nie są czytane wprost — wchodzą do Z_th szyn w moście.
+        (V126TransformerInput, (), "trafo."),
+    ):
+        nieczytane = set(klasa.model_fields) - set(pola)
+        czytane = set(pola) - {"ref"}
+        skroty = {
+            "r_ohm_per_km": "r",
+            "x_ohm_per_km": "x",
+            "b_siemens_per_km": "b",
+            "b0_siemens_per_km": "b0",
+            "failure_rate_per_year": "failure_rate",
+            "mttr_h": "mttr",
+            "ampacity_a": "ampacity",
+        }
+        pokryte_n = {k.removeprefix(prefiks) for k in _ZMIANY_NIECZYTANE if k.startswith(prefiks)}
+        pokryte_c = {k.removeprefix(prefiks) for k in _ZMIANY_CZYTANE if k.startswith(prefiks)}
+        assert {skroty.get(p, p) for p in nieczytane} == pokryte_n, klasa.__name__
+        assert {skroty.get(p, p) for p in czytane} == pokryte_c, klasa.__name__
+
+
+@pytest.mark.parametrize("zmiana", sorted(_ZMIANY_NIECZYTANE))
+def test_pole_nieczytane_nie_zmienia_ziarna_ani_wyniku(zmiana: str) -> None:
+    bazowy = _bogaty_model()
+    zmieniony = _ZMIANY_NIECZYTANE[zmiana](bazowy)
+    assert zmieniony != bazowy
+    wynik_b, krok_b = _hosting(bazowy)
+    wynik_z, krok_z = _hosting(zmieniony)
+    assert krok_z["data"]["seed_model"] == krok_b["data"]["seed_model"], zmiana
+    assert wynik_z == wynik_b, zmiana
+
+
+@pytest.mark.parametrize("zmiana", sorted(_ZMIANY_CZYTANE))
+def test_pole_czytane_zmienia_ziarno(zmiana: str) -> None:
+    bazowy = _bogaty_model()
+    _, krok_b = _hosting(bazowy)
+    _, krok_z = _hosting(_ZMIANY_CZYTANE[zmiana](bazowy))
+    assert krok_z["data"]["seed_model"] != krok_b["data"]["seed_model"], zmiana
+
+
+@pytest.mark.parametrize("czestotliwosc_hz", [50.0, 60.0])
+def test_obliczenie_na_projekcji_rowne_obliczeniu_na_pelnym_wejsciu(
+    monkeypatch: pytest.MonkeyPatch, czestotliwosc_hz: float
+) -> None:
+    """Parytet projekcji: z projekcją wyłączoną (tożsamość) analiza liczy na pełnym wejściu
+    i daje ten sam wynik — projekcja nie podstawia wartości domyślnej kontraktu w miejsce
+    pola, które analiza czyta (np. częstotliwości sieci)."""
+    model = _bogaty_model(base_frequency_hz=czestotliwosc_hz)
+    z_projekcja, krok_p = _hosting(model)
+    monkeypatch.setattr(
+        V126AcademicSolver, "_projekcja_hostingu", staticmethod(lambda wejscie: wejscie)
+    )
+    bez_projekcji, krok_b = _hosting(model)
+    assert bez_projekcji == z_projekcja
+    assert krok_b["data"]["seed_model"] == krok_p["data"]["seed_model"]

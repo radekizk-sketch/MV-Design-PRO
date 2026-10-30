@@ -53,7 +53,7 @@ Ten dokument zawiera **kanoniczne schematy JSON** dla wszystkich struktur danych
     },
     "proof_type": {
       "type": "string",
-      "enum": ["SC3F_IEC60909", "VDROP", "LOAD_FLOW_VOLTAGE", "SC1F_IEC60909", "SC2F_IEC60909", "SC2FG_IEC60909", "Q_U_REGULATION", "LOAD_CURRENTS_OVERLOAD", "EARTHING_GROUND_FAULT_SN"],
+      "enum": ["SC3F_IEC60909", "VDROP", "LOAD_FLOW_VOLTAGE", "SC1F_IEC60909", "SC2F_IEC60909", "SC2FG_IEC60909", "Q_U_REGULATION", "LOAD_CURRENTS_OVERLOAD"],
       "description": "Typ dowodu"
     },
     "title_pl": {
@@ -784,13 +784,11 @@ def test_id_stability():
     E_{loss} = \int P_{loss} \, dt
     $$
 
-### TODO-P19-001 (PLANNED) — P19: Earthing / Ground Fault Proof Pack (SN) [FUTURE PACK]
-- Priority: MUST
-- Inputs: TraceArtifact, Catalog
-- Output: ProofPack P19 (ProofDocument: Doziemienia / uziemienia SN)
-- DoD:
-  - [ ] Jeśli SN: prądy doziemne z uwzględnieniem impedancji uziemienia i rozdziału prądu.
-  - [ ] Tryb uproszczonych napięć dotykowych z wyraźnymi zastrzeżeniami.
-  - [ ] Terminologia w ProofDocument: 1F-Z, 2F, 2F-Z oraz BoundaryNode – węzeł przyłączenia.
+### P19 — Earthing / Ground Fault Proof Pack (SN) — SKASOWANY
+Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5, 2026-10-30): pakiet nie miał producenta w
+`backend/src`, liczył fizykę w silniku dowodów (I_E = U_0/Z_E, U_d = I_u·R_u „uproszczone”)
+i dublował dowód bezpieczeństwa uziomu V12.6. Prąd zwarcia doziemnego stacji wg EN 50522
+tab. 1 (z modelu: I_C, I_res, √(I_L² + I_res²), I″k1) i napięcia rażeniowe niesie ślad White
+Box biegu `earthing_safety` (krok `en50522_prad_uziomowy`) i jego dowód V12.6.
 
 **END OF PROOF SCHEMAS**

@@ -27,12 +27,27 @@ export function uziomSceny(): Record<string, string | number> {
   return parametrySceny().earthing_safety.earthing as Record<string, string | number>;
 }
 
-/** Wypełnia formularz uziomu stacji polami z fixtury i czeka na gotowość POTWIERDZONĄ. */
-export async function wypelnijUziomIPotwierdz(page: Page): Promise<void> {
+/**
+ * Wypełnia formularz uziomu stacji polami z fixtury i czeka na gotowość POTWIERDZONĄ.
+ *
+ * `nadpisania` — pola spoza sceny akademickiej: spec na WŁASNEJ sieci podaje szynę stacji
+ * swojego modelu (`bus_ref` to lista wyboru szyn modelu — szyna sceny `bus_sn_main` w innej
+ * sieci nie istnieje), pozostałe dane uziomu zostają z fixtury backendu.
+ */
+export async function wypelnijUziomIPotwierdz(
+  page: Page,
+  nadpisania: Readonly<Record<string, string | number>> = {},
+): Promise<void> {
   const formularz = page.getByTestId('mvd-akad-uziom');
   await expect(formularz).toBeVisible({ timeout: 15000 });
-  for (const [klucz, wartosc] of Object.entries(uziomSceny())) {
-    await formularz.getByTestId(`mvd-akad-pole-${klucz}`).fill(String(wartosc));
+  for (const [klucz, wartosc] of Object.entries({ ...uziomSceny(), ...nadpisania })) {
+    const pole = formularz.getByTestId(`mvd-akad-pole-${klucz}`);
+    // Szyna stacji jest listą wyboru szyn modelu — projektant ją WYBIERA, nie wpisuje.
+    if ((await pole.evaluate((element) => element.tagName)) === 'SELECT') {
+      await pole.selectOption(String(wartosc));
+    } else {
+      await pole.fill(String(wartosc));
+    }
   }
   await expect(page.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', 'POTWIERDZONA', {
     timeout: 30000,

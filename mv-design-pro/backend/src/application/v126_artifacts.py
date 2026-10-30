@@ -7,7 +7,8 @@ from typing import Any
 
 from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE
 from analysis.ssci_stability.models import SOLVER_INCOMPLETE_STATUS, ocena_ssci_niewykonana
-from application.ocena_niewykonana import STATUS_NIE_OCENIONO, ocena_niewykonana, rekord_json
+from application.analyses.v126_oceny import kompletnosc_wyniku, oceny_wyniku_v126
+from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from werdykt import ClaimKind, EvidenceTier, PodstawaWymagania, Przedmiot, ZakresWaznosci
 
 JsonDict = dict[str, Any]
@@ -237,18 +238,11 @@ def _sanity_z_etykieta_pasma(sanity: Any) -> Any:
 def _jakosc_energii_bez_werdyktu(ladunek: Mapping[str, Any]) -> JsonDict:
     """Wynik jakości energii bez werdyktu: ocena niewykonana + liczby w sekcji audytowej.
 
-    Status kompatybilności węzła staje się `NIE_OCENIONO` (dawniej „zgodny" także dla szyny
-    bez danych harmonicznych), a lista „przekroczonych limitów" znika — to były werdykty
-    liczone z liczb niezwalidowanych. Liczby (THD, TDD, K, U_h, skan Z, „rezonanse") i blok
+    Węzeł nie niesie statusu kompatybilności ani listy „przekroczonych limitów" (solver ich
+    nie wystawia od wersji 1.4 — były werdyktami z liczb niezwalidowanych). Liczby (THD, TDD, K, U_h, skan Z, „rezonanse") i blok
     wiarygodności trafiają WYŁĄCZNIE do sekcji audytowej z nagłówkiem o niezwalidowaniu.
     """
-    wezly: list[JsonDict] = []
-    for wezel in ladunek.get("nodes") or []:
-        if not isinstance(wezel, Mapping):
-            continue
-        bez_werdyktu = {k: v for k, v in wezel.items() if k != "violated_limits"}
-        bez_werdyktu["compatibility_status"] = STATUS_NIE_OCENIONO
-        wezly.append(bez_werdyktu)
+    wezly = [dict(wezel) for wezel in ladunek.get("nodes") or [] if isinstance(wezel, Mapping)]
     reszta = {k: v for k, v in ladunek.items() if k not in ("nodes", "sanity")}
     return {
         **reszta,
@@ -280,7 +274,10 @@ def wynik_v126_dla_powierzchni(
       - `reliability_contingency`: ranking N-1/N-2 zdjęty (`bez_rankingu_n1`, karta W3-E);
       - `power_quality_harmonics`: ocena niewykonana, liczby w sekcji audytowej;
       - `ssci_impedance`: ocena niewykonana (Z_grid bez przekładni transformatora) — ten
-        sam rekord co widok stabilności SSCI.
+        sam rekord co widok stabilności SSCI;
+      - rodzaje z kryteriami (`v126_oceny.RODZAJE_Z_OCENAMI`): rekordy werdyktu
+        wyjaśnialnego `oceny` (kryteria z rejestru założeń inżynierskich);
+      - KAŻDY rodzaj: `kompletnosc_dowodu` z rekordów albo z danych przyjętych wyniku.
     Wołana w `enm/canonical_analysis.py::_execute_v126` (ścieżka API) i w generatorze fixtury
     strażnika prezentacji (`tests/ci/generuj_odpowiedzi_v126.py`) — fixtura jest odciskiem
     ODPOWIEDZI API, nie surowego solvera. `nazwy` — indeks `ref_id -> nazwa` migawki modelu
@@ -305,6 +302,18 @@ def wynik_v126_dla_powierzchni(
             tablice_obecne=ladunek.get("status") != SOLVER_INCOMPLETE_STATUS,
             braki_danych=[str(pole) for pole in ladunek.get("missing_fields") or []],
         )
+    oceny = oceny_wyniku_v126(
+        analysis_type,
+        ladunek,
+        wersja_silnika=_tekst_lub_brak(envelope.get("solver_version")),
+        odcisk=_tekst_lub_brak(envelope.get("deterministic_hash")),
+        nazwy=nazwy,
+    )
+    if oceny is not None:
+        ladunek["oceny"] = oceny
+    kompletnosc = kompletnosc_wyniku(ladunek, oceny)
+    if kompletnosc is not None:
+        ladunek["kompletnosc_dowodu"] = kompletnosc
     return {**envelope, "result": ladunek}
 
 

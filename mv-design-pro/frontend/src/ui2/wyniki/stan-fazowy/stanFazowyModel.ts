@@ -217,7 +217,7 @@ export interface WierszSzynyNiesymetrycznej {
   nazwa: string;
   unKv: string;
   /** `null` = szyna poza wyspą zasiloną (wiersz z jawnym opisem braku). */
-  fazy: { uA: string; uB: string; uC: string; vuf: string } | null;
+  fazy: { uA: string; uB: string; uC: string; vuf: string; uNPe: string } | null;
   /** Wskazanie szyny o największym VUF (z podsumowania solvera, nie z porównania w UI). */
   najwiekszyVuf: boolean;
 }
@@ -237,6 +237,8 @@ export function naWierszeSzynNiesymetrycznych(
             uB: fmtLubKreska(szyna.faza_b.u_kv, 3),
             uC: fmtLubKreska(szyna.faza_c.u_kv, 3),
             vuf: fmtLubKreska(szyna.voltage_unbalance_factor_pct, 2),
+            // Napięcie N–PE liczy solver wyłącznie dla szyn nN; brak pola → kreska (nie „0 V").
+            uNPe: fmtLubKreska(szyna.u_n_pe_v, 1),
           }
         : null,
     najwiekszyVuf: maxBus !== null && szyna.bus_id === maxBus,
@@ -252,6 +254,8 @@ export interface WierszGaleziNiesymetrycznej {
   iC: string;
   /** Prąd znamionowy; kontrakt: `null` = brak danej → kreska (nigdy „0 A"). */
   iN: string;
+  /** Prąd przewodu N gałęzi nN z solvera; gałąź poza nN → kreska (nigdy „0 A"). */
+  iPrzewoduN: string;
   stratyKw: string;
 }
 
@@ -271,6 +275,7 @@ export function naWierszeGaleziNiesymetrycznych(
     iB: fmtLubKreska(galaz.faza_b.i_a, 1),
     iC: fmtLubKreska(galaz.faza_c.i_a, 1),
     iN: fmtLubKreska(galaz.rated_current_a, 0),
+    iPrzewoduN: fmtLubKreska(galaz.prad_n_a, 1),
     stratyKw: fmtLubKreska(mwNaKw(galaz.losses_p_mw), 3),
   }));
 }
@@ -310,7 +315,39 @@ export function naPodsumowanieNiesymetrii(
       wartosc: szynaMax ? szynaMax.name || szynaMax.element_id : s.max_voltage_unbalance_bus_id ?? T.kreska,
     },
     { etykieta: T.rnSzynyRozwiazane, wartosc: `${s.solved_bus_count} / ${s.bus_count}` },
+    ...pozycjePrzewoduN(wyniki),
   ];
+}
+
+/**
+ * Przewód N sieci nN (pola addytywne podsumowania solvera): pozycje pojawiają się wyłącznie,
+ * gdy wynik ma szyny albo gałęzie nN — sieć bez nN nie dostaje „0 V" ani „0 A".
+ */
+function pozycjePrzewoduN(wyniki: WynikiRozplywuNiesymetrycznego): PozycjaPodsumowaniaNiesymetrii[] {
+  const s = wyniki.summary;
+  if (!s) return [];
+  const pozycje: PozycjaPodsumowaniaNiesymetrii[] = [];
+  if (s.max_u_n_pe_v !== undefined) {
+    const szyna = wyniki.buses.find((b) => b.bus_id === s.max_u_n_pe_bus_id);
+    pozycje.push(
+      { etykieta: T.rnMaxUNPe, wartosc: fmtLubKreska(s.max_u_n_pe_v, 1), jednostka: T.jednV },
+      {
+        etykieta: T.rnMaxUNPeSzyna,
+        wartosc: szyna ? szyna.name || szyna.element_id : s.max_u_n_pe_bus_id ?? T.kreska,
+      },
+    );
+  }
+  if (s.max_prad_n_a !== undefined) {
+    const galaz = wyniki.branches.find((g) => g.branch_id === s.max_prad_n_branch_id);
+    pozycje.push(
+      { etykieta: T.rnMaxPradN, wartosc: fmtLubKreska(s.max_prad_n_a, 1), jednostka: T.jednA },
+      {
+        etykieta: T.rnMaxPradNGalaz,
+        wartosc: galaz ? galaz.name || galaz.element_id : s.max_prad_n_branch_id ?? T.kreska,
+      },
+    );
+  }
+  return pozycje;
 }
 
 export interface WierszZalozeniaBiegu {

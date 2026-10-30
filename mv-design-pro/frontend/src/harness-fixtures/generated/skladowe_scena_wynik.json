@@ -40,7 +40,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -48,12 +48,104 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego.",
-          "przyczyna_pl": "Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję.",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
         },
         "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
       },
       "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_binding": {
@@ -403,7 +495,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -411,12 +503,104 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego.",
-          "przyczyna_pl": "Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję.",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
         },
         "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
       },
       "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_binding": {
@@ -480,7 +664,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -488,12 +672,104 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć izolowana albo skompensowana (droga prądu zerowego wyłącznie przez pojemności doziemne i/lub dławik gaszący) — prąd doziemienia nie jest prądem zwarciowym IEC 60909-0 (sieci uziemione przez małą impedancję; założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu neutralnego.",
-          "przyczyna_pl": "Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję.",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
         },
         "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
       },
       "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_binding": {
@@ -554,26 +830,6 @@
       "notes": null
     },
     {
-      "key": "z0_line_shunt[cab_main_b]",
-      "title": "Gałąź Kabel SN 1: pojemność doziemna (bocznik B0, model π)",
-      "formula_latex": "Y_{0,sh} = j B_0 \\cdot \\ell;\\quad Y_{0,sh,end} = Y_{0,sh}/2",
-      "inputs": {
-        "ref_id": "cab_main_b",
-        "b0_siemens_per_km": 4.1e-05,
-        "length_km": 2.4,
-        "z_base_ohm": 2.25
-      },
-      "substitution": "B0=4.1e-05 S/km · 2.4 km = 9.84e-05 S; Y0 na każdym końcu = j0.0001107 pu (na Szyna SN i Stacja B SN)",
-      "substitution_latex": null,
-      "result": {
-        "y0_shunt_per_end_pu": {
-          "re": 0.0,
-          "im": 0.0001107
-        }
-      },
-      "notes": null
-    },
-    {
       "key": "z0_line[line_b_c]",
       "title": "Gałąź Linia SN 1: impedancja zerowa (szeregowa)",
       "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
@@ -613,6 +869,36 @@
         }
       },
       "notes": null
+    },
+    {
+      "key": "z0_warunek_pojemnosci[1]",
+      "title": "Pojemności linii w składowej zerowej: warunek współczynnika zwarcia doziemnego (IEC 60909-0 pkt 5.2 f))",
+      "formula_latex": "k = \\max\\left(\\left|a^2 - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|,\\left|a - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|\\right),\\ Z_2 = Z_1;\\quad \\max_i k_i > 1{,}4 \\Rightarrow Y_{0,sh} = j B_0 \\ell",
+      "inputs": {
+        "galezie": [
+          {
+            "ref_id": "cab_main_b",
+            "nazwa_pl": "Kabel SN 1",
+            "b0_s": 9.84e-05,
+            "zrodlo_b0": "model"
+          },
+          {
+            "ref_id": "line_b_c",
+            "nazwa_pl": "Linia SN 1",
+            "b0_s": 3.72e-06,
+            "zrodlo_b0": "wartosc_robocza"
+          }
+        ],
+        "wezly": [],
+        "prog_k": 1.4
+      },
+      "substitution": "Sieć zerowa gałęzi Kabel SN 1, Linia SN 1: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+      "substitution_latex": null,
+      "result": {
+        "k_max": null,
+        "pojemnosci_w_y0": false
+      },
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
     },
     {
       "key": "tr_z0_parse[tr_hv_sn]",
@@ -775,6 +1061,24 @@
         }
       },
       "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+    },
+    {
+      "key": "z0_numerical_reference",
+      "title": "Węzły bez drogi prądu zerowego: domknięcie macierzy, bez wyniku zwarcia",
+      "formula_latex": "Y_{0,ii} = 10^{6}\\ \\text{pu} \\Rightarrow \\text{blok rozprzężony, bez wyniku zwarcia doziemnego}",
+      "inputs": {
+        "wezly": [
+          "Stacja B SN",
+          "Stacja C SN",
+          "Szyna SN"
+        ]
+      },
+      "substitution": "Stacja B SN, Stacja C SN, Szyna SN: żaden element sieci nie łączy tych węzłów z ziemią w składowej zerowej; macierz Y0 dostaje w nich odniesienie numeryczne 10⁶ pu wyłącznie po to, by dała się odwrócić.",
+      "substitution_latex": null,
+      "result": {
+        "liczba_wezlow": 3
+      },
+      "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
     }
   ],
   "zalozenia": [
@@ -871,7 +1175,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "7f4ab5c121ff521f6cd702e40ee3e641988b176127730986dd28f10326d2016b",
+      "result_hash": "a8d5e4cca53ebf668dfa4db2e32e9b9c271134ec084bef03bf22a1a19b589932",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

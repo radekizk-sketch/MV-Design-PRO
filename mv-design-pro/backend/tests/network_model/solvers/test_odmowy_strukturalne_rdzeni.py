@@ -620,6 +620,8 @@ def _model_strat_v126(p0_kw: tuple[float | None, float | None]) -> V126AcademicI
                     "to_bus_ref": "B2",
                     "kind": "cable",
                     "length_km": 1.5,
+                    "r_ohm_per_km": 0.18,
+                    "x_ohm_per_km": 0.12,
                     "ampacity_a": 245.0,
                 }
             ],

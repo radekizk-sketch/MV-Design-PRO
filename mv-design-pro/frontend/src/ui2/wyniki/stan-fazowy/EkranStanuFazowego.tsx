@@ -26,6 +26,7 @@
  * ZERO mutacji modelu. Stylowanie tokenami --mvd-* (oba motywy z automatu).
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import './stan-fazowy.css';
 
 import { useEffect, useState } from 'react';
@@ -199,26 +200,29 @@ export function EkranStanuFazowego() {
 
           <section className="mvd-fazowy-sekcja" aria-label={T.rnSzynyTytul}>
             <h4>{T.rnSzynyTytul}</h4>
-            <p className="mvd-fazowy-nota">{T.rnSzynyNota}</p>
+            <p className="mvd-fazowy-nota"><TekstZWzorami tekst={T.rnSzynyNota} /></p>
             <div className="mvd-fazowy-tabela-wrap">
               <table className="mvd-fazowy-tabela" data-testid="mvd-fazowy-rn-szyny">
                 <thead>
                   <tr>
                     <th>{T.rnKolSzyna}</th>
                     <th>
-                      {T.rnKolUn} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                      <TekstZWzorami tekst={T.rnKolUn} /> <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
                     </th>
                     <th>
-                      {T.rnKolUA} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                      <TekstZWzorami tekst={T.rnKolUA} /> <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
                     </th>
                     <th>
-                      {T.rnKolUB} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                      <TekstZWzorami tekst={T.rnKolUB} /> <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
                     </th>
                     <th>
-                      {T.rnKolUC} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                      <TekstZWzorami tekst={T.rnKolUC} /> <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
                     </th>
                     <th>
                       {T.rnKolVuf} <span className="mvd-fazowy-jedn">[{T.jednProcent}]</span>
+                    </th>
+                    <th>
+                      <TekstZWzorami tekst={T.rnKolUNPe} /> <span className="mvd-fazowy-jedn">[{T.jednV}]</span>
                     </th>
                   </tr>
                 </thead>
@@ -233,9 +237,12 @@ export function EkranStanuFazowego() {
                           <td className="mvd-num">{s.fazy.uB}</td>
                           <td className="mvd-num">{s.fazy.uC}</td>
                           <td className="mvd-num">{s.fazy.vuf}</td>
+                          <td className="mvd-num" data-testid="mvd-fazowy-rn-u-n-pe">
+                            {s.fazy.uNPe}
+                          </td>
                         </>
                       ) : (
-                        <td colSpan={4} className="mvd-fazowy-nota">
+                        <td colSpan={5} className="mvd-fazowy-nota">
                           {T.rnNierozwiazana}
                         </td>
                       )}
@@ -248,7 +255,7 @@ export function EkranStanuFazowego() {
 
           <section className="mvd-fazowy-sekcja" aria-label={T.rnGalezieTytul}>
             <h4>{T.rnGalezieTytul}</h4>
-            <p className="mvd-fazowy-nota">{T.rnGalezieNota}</p>
+            <p className="mvd-fazowy-nota"><TekstZWzorami tekst={T.rnGalezieNota} /></p>
             <div className="mvd-fazowy-tabela-wrap">
               <table className="mvd-fazowy-tabela" data-testid="mvd-fazowy-rn-galezie">
                 <thead>
@@ -256,16 +263,19 @@ export function EkranStanuFazowego() {
                     <th>{T.rnKolGalaz}</th>
                     <th>{T.rnKolRodzaj}</th>
                     <th>
-                      {T.rnKolIA} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                      <TekstZWzorami tekst={T.rnKolIA} /> <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
                     </th>
                     <th>
-                      {T.rnKolIB} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                      <TekstZWzorami tekst={T.rnKolIB} /> <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
                     </th>
                     <th>
-                      {T.rnKolIC} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                      <TekstZWzorami tekst={T.rnKolIC} /> <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
                     </th>
                     <th>
-                      {T.rnKolIn} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                      <TekstZWzorami tekst={T.rnKolIn} /> <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
+                      <TekstZWzorami tekst={T.rnKolIPrzewoduN} /> <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
                     </th>
                     <th>
                       {T.rnKolStraty} <span className="mvd-fazowy-jedn">[{T.jednKW}]</span>
@@ -281,6 +291,9 @@ export function EkranStanuFazowego() {
                       <td className="mvd-num">{g.iB}</td>
                       <td className="mvd-num">{g.iC}</td>
                       <td className="mvd-num">{g.iN}</td>
+                      <td className="mvd-num" data-testid="mvd-fazowy-rn-i-przewodu-n">
+                        {g.iPrzewoduN}
+                      </td>
                       <td className="mvd-num">{g.stratyKw}</td>
                     </tr>
                   ))}
