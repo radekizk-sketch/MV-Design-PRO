@@ -100,6 +100,19 @@ def get_all_enea_ct_profiles() -> list[dict[str, Any]]:
                 burden_va=5.0, ith_ka=ith, core_count=cores,
                 construction="SUPPORT", local_metering=False,
             ))
+    # Zał. 5/B: przekładniki na słupach linii SN (odbiorca/wytwórca)
+    for primary, ith in ((5, 2.0), (15, 8.0)):
+        records.append(_enea_ct(
+            annex="B", place="slup-odbiorca", primary_a=primary,
+            burden_va=5.0, ith_ka=ith, core_count=1,
+            construction="SUPPORT", local_metering=False,
+        ))
+    for primary in (50, 100):
+        records.append(_enea_ct(
+            annex="B", place="slup-wytworca", primary_a=primary,
+            burden_va=5.0, ith_ka=8.0, core_count=1,
+            construction="SUPPORT", local_metering=False,
+        ))
     # Zał. 5/A: rozdzielcze wsporcze, BKR, linie, transformator
     for count in (2, 3):
         records.append(_enea_ct(
@@ -128,6 +141,12 @@ def get_all_enea_ct_profiles() -> list[dict[str, Any]]:
             construction="RING_PHASE_CT", local_metering=(count == 3),
         ))
     for primary in (200, 400):
+        # Zał. 5/C dopuszcza także wariant 200–400/5 z jednym rdzeniem.
+        records.append(_enea_ct(
+            annex="C", place="linia", primary_a=primary,
+            burden_va=10.0, ith_ka=16.0, core_count=1,
+            construction="RING_PHASE_CT", local_metering=False,
+        ))
         for count in (2, 3):
             records.append(_enea_ct(
                 annex="C", place="linia", primary_a=primary,
