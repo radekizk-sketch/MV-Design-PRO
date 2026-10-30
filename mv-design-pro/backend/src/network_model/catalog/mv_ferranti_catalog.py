@@ -59,8 +59,7 @@ def get_all_ferranti_types() -> list[dict[str, Any]]:
             "turns_ratio": "1/470",
             "secondary_interface": "SEPAM_CSH_DIRECT",
             "secondary_current_a": None,
-            "test_winding": False,
-            "um_kv": 0.72,
+            "test_winding": None,
             "source_reference": SOURCE_SE + " || " + SOURCE_SE_INSTALL + " || " + SOURCE_SE_SCREENS,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
@@ -69,8 +68,9 @@ def get_all_ferranti_types() -> list[dict[str, Any]]:
                 "przewód uziemiający ekrany poprowadzić zgodnie z instrukcją "
                 "czujnika, zachować osiowość. Jest to czujnik z wejściem "
                 "dopasowanym do Sepam, nie klasyczny CT 1 A/5 A. "
-                "Um=0,72 kV dotyczy izolacji czujnika; obwód SN musi "
-                "mieć własną izolację. Dla innych przekaźników zweryfikować "
+                "Producent wymaga kabli z własną izolacją SN; czujnik "
+                "ma izolację niskonapięciową, bez przypisania sztucznego Um. "
+                "Dla innych przekaźników zweryfikować "
                 "zgodność albo użyć interfejsu ACE990. "
                 "W standardzie ENEA dla GPZ wymagane jest osobne złącze testowe; "
                 "karta CSH nie potwierdza takiego złącza."
