@@ -15,13 +15,8 @@
 
 import { PrzegladDowodu } from '../dowod';
 import { useNazwaObiektu } from '../wzorzec';
-import type {
-  DowodCieplnyResponse,
-  NormaCieplna,
-  PozycjaCieplna,
-  StatusWarunku,
-} from './api';
-import { ikonaWarunku, ocenaWarunkuPL } from './jakoscModel';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../wzorzec/KartaWerdyktu';
+import type { DowodCieplnyResponse, NormaCieplna, PozycjaCieplna } from './api';
 import { JAKOSC_STRINGS, fmtLiczba, fmtWartosc } from './strings';
 
 export interface PanelDowoduCieplnegoProps {
@@ -32,15 +27,6 @@ export interface PanelDowoduCieplnegoProps {
   ladowanie: boolean;
   /** Prowadzi do gałęzi na schemacie (pętla decyzji wynik → model). */
   onPokazNaSchemacie: () => void;
-}
-
-function Werdykt({ status }: { status: StatusWarunku }) {
-  // Ikona + tekst: sam kolor nie może nieść werdyktu (uwaga 9).
-  return (
-    <span className={`mvd-cieplny-werdykt mvd-cieplny-werdykt--${status.toLowerCase()}`}>
-      <span aria-hidden="true">{ikonaWarunku(status)}</span> {ocenaWarunkuPL(status)}
-    </span>
-  );
 }
 
 /** Energia zwarcia ma rząd 10⁷ A²·s — skala „mln" zamiast piętnastu cyfr. */
@@ -68,7 +54,12 @@ export function PanelDowoduCieplnego({
         <h3 className="mvd-cieplny-dowod-tytul">
           {JAKOSC_STRINGS.dowodTytul} — {nazwaObiektu(pozycja.branch_id, pozycja.branch_name)}
         </h3>
-        <Werdykt status={pozycja.status} />
+        {/* Etykieta i kolor WYŁĄCZNIE z rekordu backendu (kontrakt werdyktu §9). */}
+        <EtykietaWerdyktu
+          etykieta={pozycja.ocena.etykieta}
+          status={pozycja.ocena.status_maszynowy}
+          testid="mvd-jakosc-cieplna-etykieta"
+        />
         <button
           type="button"
           className="mvd-cieplny-akcja"
@@ -78,6 +69,9 @@ export function PanelDowoduCieplnego({
           {JAKOSC_STRINGS.pokazNaSchemacie}
         </button>
       </header>
+
+      {/* --- Rekord werdyktu: co oceniono, wobec czego, podstawa, margines, dowód --- */}
+      <KartaWerdyktu rekord={pozycja.ocena} />
 
       {/* --- Pełny bilans (uwaga 2) --- */}
       <dl className="mvd-cieplny-bilans" data-testid="mvd-jakosc-cieplna-bilans">
@@ -150,7 +144,11 @@ export function PanelDowoduCieplnego({
                       : `${fmtWartosc(kryterium.granica)} ${kryterium.jednostka}`}
                   </td>
                   <td>
-                    <Werdykt status={kryterium.status} />
+                    <EtykietaWerdyktu
+                      etykieta={kryterium.ocena.etykieta}
+                      status={kryterium.ocena.status_maszynowy}
+                      zwarta
+                    />
                   </td>
                 </tr>
               ))}
@@ -206,7 +204,7 @@ export function PanelDowoduCieplnego({
                 <th>{JAKOSC_STRINGS.kolumnaParametr}</th>
                 <th>{JAKOSC_STRINGS.kolumnaWartosc}</th>
                 <th>{JAKOSC_STRINGS.kolumnaWykorzystanie}</th>
-                <th>Werdykt przy tej wartości</th>
+                <th>{JAKOSC_STRINGS.kolumnaZapas}</th>
               </tr>
             </thead>
             <tbody>
@@ -217,9 +215,8 @@ export function PanelDowoduCieplnego({
                     {fmtWartosc(punkt.wartosc)} {punkt.jednostka}
                   </td>
                   <td className="mvd-num">{fmtWartosc(punkt.wykorzystanie * 100)} %</td>
-                  <td>
-                    <Werdykt status={punkt.wykorzystanie <= 1 ? 'PASS' : 'FAIL'} />
-                  </td>
+                  {/* Zapas z backendu (ujemny = przekroczenie granicy) — bez progu w UI. */}
+                  <td className="mvd-num">{fmtWartosc(punkt.zapas_procent)} %</td>
                 </tr>
               ))}
             </tbody>

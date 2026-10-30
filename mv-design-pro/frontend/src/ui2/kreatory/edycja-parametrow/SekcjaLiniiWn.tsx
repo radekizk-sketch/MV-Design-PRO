@@ -31,6 +31,7 @@ import {
   type PolozenieFormularza,
   type TrybOdgromowych,
 } from './geometriaLiniiWn';
+import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
 
 export interface SekcjaLiniiWnProps {
@@ -260,7 +261,13 @@ export function SekcjaLiniiWn({
               <RzadWartosci
                 etykieta={p.nazwa_pl}
                 wartosc={`${liczbaPodgladu(p.wartosc)} ${p.jednostka}`}
-                ton={p.w_pasmie ? 'ok' : 'warn'}
+              />
+              {/* Etykieta i kolor WYŁĄCZNIE z rekordu backendu — bez tonu liczonego w UI. */}
+              <EtykietaWerdyktu
+                etykieta={p.ocena.etykieta}
+                status={p.ocena.status_maszynowy}
+                testid={`mvd-kreator-edycja-linia-wn-pasmo-etykieta-${p.parametr}`}
+                zwarta
               />
               <KreatorInfo>
                 {p.wyjasnienie_pl} {p.podstawa_pl}

@@ -91,6 +91,8 @@ class TestBusVoltageBounds:
             "deviation_pct",
             "in_range",
             "status",
+            "ocena",
+            "wyjasnienie",
             "why_pl",
         }
 
@@ -209,6 +211,8 @@ class TestBranchLoadingBounds:
             "loading_pct",
             "in_range",
             "status",
+            "ocena",
+            "wyjasnienie",
             "why_pl",
             "zacisk_decydujacy",
             "current_od_ka",
@@ -295,6 +299,8 @@ class TestNetworkLossesBounds:
             "threshold_why_pl",
             "in_range",
             "status",
+            "ocena",
+            "wyjasnienie",
             "why_pl",
         }
 

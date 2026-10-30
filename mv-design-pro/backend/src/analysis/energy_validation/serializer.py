@@ -31,6 +31,8 @@ def item_to_dict(item: EnergyValidationItem) -> dict[str, Any]:
         "limit_fail": (float(item.limit_fail) if item.limit_fail is not None else None),
         "margin_pct": (float(item.margin_pct) if item.margin_pct is not None else None),
         "status": item.status.value,
+        "ocena": item.ocena.model_dump(mode="json"),
+        "wyjasnienie": item.wyjasnienie.model_dump(mode="json"),
         "why_pl": item.why_pl,
         "white_box": list(item.white_box),
     }

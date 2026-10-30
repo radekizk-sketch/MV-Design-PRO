@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { SekcjaWalidacji, SekcjaWiarygodnosci } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
-import { WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
+import { R, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, kRekord, przebiegTestowy } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { WalidacjaResponse } from '../api';
@@ -154,7 +154,11 @@ describe('SekcjaWalidacji — stany', () => {
     fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
     const szczegol = screen.getByTestId('mvd-jakosc-walidacja-szczegol');
     expect(within(szczegol).getByText(WALIDACJA_FIXTURE.items[2].why_pl)).toBeTruthy();
-    expect(within(szczegol).getByText('Przekroczenie')).toBeTruthy();
+    // Etykieta z rekordu K pozycji + karta werdyktu z wyjaśnieniem (bez słownika statusów).
+    expect(
+      within(szczegol).getAllByText(WALIDACJA_FIXTURE.items[2].ocena.etykieta.etykieta_pl).length,
+    ).toBeGreaterThan(0);
+    expect(within(szczegol).getByText(WALIDACJA_FIXTURE.items[2].ocena.wyjasnienie.zdanie_pl)).toBeTruthy();
   });
 });
 
@@ -226,6 +230,8 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
           observed_value: 0.82,
           limit_fail: 0.95,
           status: 'FAIL',
+          // Rekord naruszony wygenerowany backendem (status jest jego projekcją).
+          ...kRekord(R.walidacja_nie_spelnia),
         },
       ],
     };
@@ -261,7 +267,8 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
       ...WALIDACJA_FIXTURE,
       items: [
         { ...WALIDACJA_FIXTURE.items[2] }, // VOLTAGE_DEVIATION / FAIL / bus-B (element-level)
-        { ...WALIDACJA_FIXTURE.items[3], status: 'FAIL' }, // LOSS_BUDGET / target_id="siec"
+        // LOSS_BUDGET / target_id="siec" — rekord naruszony z backendu, status jego projekcją.
+        { ...WALIDACJA_FIXTURE.items[3], status: 'FAIL', ...kRekord(R.walidacja_nie_spelnia) },
       ],
     };
     mockedWalidacja.mockResolvedValue(fixtura);

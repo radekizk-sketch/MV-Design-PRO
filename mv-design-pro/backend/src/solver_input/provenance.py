@@ -374,6 +374,58 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta E21-4; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="przewod.wytrzymalosc_cieplna_zwarciowa",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Wytrzymałość cieplna zwarciowa żyły: prąd zastępczy cieplny I_th gałęzi z biegu "
+                "IEC 60909 i czas wyłączenia porównane z prądem dopuszczalnym "
+                "I_th(1 s)/√t (nagrzewanie adiabatyczne, PN-HD 60364-4-43 434.5.2, IEC 60949) "
+                "(network_model/solvers/conductor_thermal_withstand.py). Zgodności z przykładem "
+                "normy ani pomiarem nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta F-K1; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="przylaczenie.warunki_osd",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Moc czynna i cosφ wymieniane w punkcie przyłączenia odczytane z węzła "
+                "bilansującego biegu rozpływu mocy i porównane z warunkami przyłączenia OSD "
+                "wpisanymi do projektu (application/analyses/warunki_przylaczenia.py). "
+                "Zgodności rozpływu z pomiarem w punkcie przyłączenia nie wykazano — wynik nie "
+                "jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta F-K2; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="rozplyw.walidacja_energetyczna",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Walidacja energetyczna wyniku rozpływu mocy: obciążenie gałęzi i transformatorów "
+                "(prąd zacisku wobec prądu znamionowego), odchylenie napięcia szyn, budżet strat "
+                "i cosφ węzła bilansującego porównane z progami walidacji "
+                "(analysis/energy_validation). Zgodności rozpływu z pomiarem ani z siecią "
+                "referencyjną nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta D2 walidacji energetycznej; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="wiarygodnosc.pasma_wyniku",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Pasma wiarygodności wyniku solvera: Ik'' per poziom napięcia, napięcie szyny "
+                "Un ± 10 %, obciążenie gałęzi do 100 % prądu znamionowego zacisku, straty "
+                "czynne do progu, parametry jednostkowe linii 110 kV (analysis/sanity_bounds). "
+                "Pasmo stwierdza fizyczną możliwość liczby, nie jej poprawność — nie jest "
+                "dowodem regulacyjnym ani walidacją solvera."
+            ),
+            audit_ref="karta K-08 / W3-G2; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="kabel.starzenie_izolacji",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

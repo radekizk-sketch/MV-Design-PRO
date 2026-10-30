@@ -9,6 +9,8 @@
  * These types mirror backend catalog structures for UI consumption.
  */
 
+import type { OcenaKryterium, WyjasnienieWerdyktu } from '../../ui2/wyniki/wzorzec/werdykt';
+
 /**
  * Base type for all catalog types.
  */
@@ -95,8 +97,12 @@ export interface PasmoParametruLiniiWn {
   jednostka: string;
   dolna: number;
   gorna: number;
+  /** Projekcja rekordu `ocena` (kod zastany trójstanu wiarygodności). */
   w_pasmie: boolean;
   ocena_wiarygodnosci: string;
+  /** Rekord werdyktu wyjaśnialnego pasma (`analysis/sanity_bounds/parametry_linii_bounds.py`). */
+  ocena: OcenaKryterium;
+  wyjasnienie: WyjasnienieWerdyktu;
   wyjasnienie_pl: string;
   podstawa_pl: string;
 }

@@ -11,30 +11,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWarunkowPrzylaczenia } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
-import { przebiegTestowy } from './fixtures';
+import { R, przebiegTestowy } from './fixtures';
 import type { OcenaWarunkow, WarunkiPrzylaczeniaResponse } from '../api';
 
 const fetchMock = vi.fn();
 
-function odpowiedz(ocena: Partial<OcenaWarunkow>): WarunkiPrzylaczeniaResponse {
+/** Odpowiedź końcówki z oceną WYGENEROWANĄ backendem (`ocen_warunki_przylaczenia`). */
+function odpowiedz(ocena: unknown): WarunkiPrzylaczeniaResponse {
   return {
     run_id: 'pf-1',
     case_id: 'case-1',
     analysis_type: 'PF',
-    ocena: {
-      punkt_przylaczenia: 'BUS-GPZ-SN',
-      p_mw: -6.2,
-      q_mvar: 0,
-      s_mva: 6.2,
-      cos_phi: 1,
-      kierunek: 'oddawanie',
-      status_ogolny: 'FAIL',
-      pozycje: [],
-      readiness_codes: [],
-      formula_ref: 'cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit',
-      zalozenia: [],
-      ...ocena,
-    } as OcenaWarunkow,
+    ocena: ocena as OcenaWarunkow,
   };
 }
 
@@ -62,23 +50,7 @@ function odpowiedzOk(body: unknown) {
 
 describe('SekcjaWarunkowPrzylaczenia — realna ścieżka do końcówki', () => {
   it('woła właściwą końcówkę z identyfikatorem przebiegu', async () => {
-    fetchMock.mockResolvedValue(
-      odpowiedzOk(
-        odpowiedz({
-          pozycje: [
-            {
-              kryterium: 'moc_w_punkcie_przylaczenia',
-              status: 'FAIL',
-              wartosc: 6.2,
-              wymagana: 5,
-              jednostka: 'MW',
-              opis_pl: 'Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony).',
-              readiness_codes: [],
-            },
-          ],
-        }),
-      ),
-    );
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_nie_spelnia)));
     render(<SekcjaWarunkowPrzylaczenia {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki')).toBeTruthy());
     // WYSZUKANIE PO ADRESIE, NIE PO KOLEJNOSCI (V12K-265). Asercja celowala
@@ -113,123 +85,95 @@ describe('SekcjaWarunkowPrzylaczenia — realna ścieżka do końcówki', () => 
   });
 });
 
-describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
-  it('przekroczony limit mocy pokazuje wartość zmierzoną i wymaganą', async () => {
-    fetchMock.mockResolvedValue(
-      odpowiedzOk(
-        odpowiedz({
-          pozycje: [
-            {
-              kryterium: 'moc_w_punkcie_przylaczenia',
-              status: 'FAIL',
-              wartosc: 6.2,
-              wymagana: 5,
-              jednostka: 'MW',
-              opis_pl: 'Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony).',
-              readiness_codes: [],
-            },
-            {
-              kryterium: 'cos_phi_w_punkcie_przylaczenia',
-              status: 'PASS',
-              wartosc: 0.99,
-              wymagana: 0.95,
-              jednostka: '-',
-              opis_pl: 'cosfi w punkcie 0.9900 wobec wymaganego 0.9500 (dotrzymany).',
-              readiness_codes: [],
-            },
-          ],
-        }),
-      ),
-    );
+/** Wszystkie teksty rekordów (zdanie, przyczyna, braki, etykiety) — do kontroli języka. */
+function tekstyRekordu(rekord: {
+  wyjasnienie: { zdanie_pl: string; przyczyna_pl?: string | null; czego_brakuje?: readonly string[] };
+  etykieta: { etykieta_pl: string };
+}): string[] {
+  return [
+    rekord.wyjasnienie.zdanie_pl,
+    rekord.wyjasnienie.przyczyna_pl ?? '',
+    ...(rekord.wyjasnienie.czego_brakuje ?? []),
+    rekord.etykieta.etykieta_pl,
+  ];
+}
+
+const SUROWE_KODY = /\b(SPELNIA|NIE_SPELNIA|NIE_OCENIONO|BRAK_PODSTAWY|BRAK_DOWODU|PASS|FAIL|UNAVAILABLE|None|True|False|undefined|null)\b/;
+
+describe('SekcjaWarunkowPrzylaczenia — werdykt (iloczyn: spełnia × narusza × brak warunków × brak rozpływu × częściowo)', () => {
+  it('naruszenie: etykiety kryteriów i agregatu wyłącznie z rekordów backendu', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_nie_spelnia)));
     render(<SekcjaWarunkowPrzylaczenia {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki')).toBeTruthy());
 
-    // Kryteria po polsku, nie klucze techniczne.
     expect(screen.getByText(JAKOSC_STRINGS.kryteriumMoc)).toBeTruthy();
     expect(screen.getByText(JAKOSC_STRINGS.kryteriumCosPhi)).toBeTruthy();
-    // Werdykty: naruszone i spełnione obok siebie.
-    expect(screen.getByText(JAKOSC_STRINGS.ocenaNaruszone)).toBeTruthy();
-    expect(screen.getByText(JAKOSC_STRINGS.ocenaSpelnione)).toBeTruthy();
-    // Punkt przyłączenia w założeniach — projektant musi wiedzieć, GDZIE zmierzono.
-    expect(screen.getByText('BUS-GPZ-SN')).toBeTruthy();
+    const pozycje = R.warunki_nie_spelnia.pozycje;
+    expect(pozycje.map((p) => p.ocena.status_maszynowy)).toEqual(['NIE_SPELNIA', 'NIE_SPELNIA']);
+    expect(screen.getAllByText(pozycje[0].ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
+    // Agregat W prowadzi do karty z wyjaśnieniem (nie sam status).
+    expect(screen.getAllByText(R.warunki_nie_spelnia.ocena_wymagania.etykieta.etykieta_pl).length).toBeGreaterThan(0);
+    expect(screen.getByText('BUS-PWP')).toBeTruthy();
+  });
+
+  it('spełnienie: etykieta rekordu „spełnione — dowód niepełny", nie skrót „spełnione"', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_spelnia)));
+    render(<SekcjaWarunkowPrzylaczenia {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki')).toBeTruthy());
+    const etykieta = R.warunki_spelnia.pozycje[0].ocena.etykieta.etykieta_pl;
+    expect(R.warunki_spelnia.pozycje[0].ocena.kompletnosc_dowodu).toBe('NIEPELNY');
+    expect(screen.getAllByText(etykieta).length).toBeGreaterThanOrEqual(2);
   });
 
   it('stan trzeci: brak warunków OSD nie jest spełnieniem ani błędem', async () => {
-    // Wszystkie pozycje NIESPRAWDZONE => sekcja pokazuje uczciwy stan z akcją
-    // naprawczą, a NIE tabelę sugerującą, że coś oceniono.
-    fetchMock.mockResolvedValue(
-      odpowiedzOk(
-        odpowiedz({
-          status_ogolny: 'UNAVAILABLE',
-          p_mw: null,
-          q_mvar: null,
-          s_mva: null,
-          cos_phi: null,
-          kierunek: null,
-          readiness_codes: ['connection.power_limit_missing'],
-          pozycje: [
-            {
-              kryterium: 'moc_w_punkcie_przylaczenia',
-              status: 'UNAVAILABLE',
-              wartosc: null,
-              wymagana: null,
-              jednostka: 'MW',
-              opis_pl: 'Nie mozna ocenic mocy w punkcie przylaczenia — brak danych.',
-              readiness_codes: ['connection.power_limit_missing'],
-            },
-            {
-              kryterium: 'cos_phi_w_punkcie_przylaczenia',
-              status: 'UNAVAILABLE',
-              wartosc: null,
-              wymagana: null,
-              jednostka: '-',
-              opis_pl: 'Nie mozna ocenic cosfi w punkcie przylaczenia — brak danych.',
-              readiness_codes: ['connection.cos_phi_required_missing'],
-            },
-          ],
-        }),
-      ),
-    );
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_brak_warunkow)));
     render(<SekcjaWarunkowPrzylaczenia {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki-bez-danych')).toBeTruthy());
     expect(screen.getByText(JAKOSC_STRINGS.warunkiBrakWarunkow)).toBeTruthy();
-    // Komunikat wskazuje, GDZIE uzupełnić dane (jawny następny krok).
     expect(screen.getByText(JAKOSC_STRINGS.warunkiBrakWarunkowOpis)).toBeTruthy();
-    // Nie wolno pokazać tabeli werdyktu, gdy nic nie zostało ocenione.
     expect(screen.queryByTestId('mvd-jakosc-warunki')).toBeNull();
   });
 
-  it('częściowa ocena pokazuje tabelę z jawnym stanem niesprawdzonym', async () => {
-    fetchMock.mockResolvedValue(
-      odpowiedzOk(
-        odpowiedz({
-          status_ogolny: 'PASS',
-          pozycje: [
-            {
-              kryterium: 'moc_w_punkcie_przylaczenia',
-              status: 'PASS',
-              wartosc: 4.5,
-              wymagana: 5,
-              jednostka: 'MW',
-              opis_pl: 'Moc oddawana do sieci 4.500 MW wobec limitu 5.000 MW (dotrzymany).',
-              readiness_codes: [],
-            },
-            {
-              kryterium: 'cos_phi_w_punkcie_przylaczenia',
-              status: 'UNAVAILABLE',
-              wartosc: null,
-              wymagana: null,
-              jednostka: '-',
-              opis_pl: 'Brak wymaganego cosfi w warunkach OSD.',
-              readiness_codes: ['connection.cos_phi_required_missing'],
-            },
-          ],
-        }),
-      ),
-    );
+  it('brak przepływu w punkcie to INNY brak niż brak warunków — tabela z oceną niewykonaną', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_brak_rozplywu)));
     render(<SekcjaWarunkowPrzylaczenia {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki')).toBeTruthy());
-    expect(screen.getByText(JAKOSC_STRINGS.ocenaSpelnione)).toBeTruthy();
-    expect(screen.getByText(JAKOSC_STRINGS.ocenaNiesprawdzone)).toBeTruthy();
+    const pozycja = R.warunki_brak_rozplywu.pozycje[0];
+    expect(pozycja.ocena.status_maszynowy).toBe('NIE_OCENIONO');
+    expect(screen.getAllByText(pozycja.ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('mvd-jakosc-warunki-bez-danych')).toBeNull();
+  });
+
+  it('częściowa ocena: agregat nie jest spełnieniem, gdy jedno kryterium nie ma podstawy', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz(R.warunki_czesciowe)));
+    render(<SekcjaWarunkowPrzylaczenia {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki')).toBeTruthy());
+    const [moc, cosPhi] = R.warunki_czesciowe.pozycje;
+    expect(moc.ocena.status_maszynowy).toBe('SPELNIA');
+    expect(cosPhi.ocena.status_maszynowy).toBe('BRAK_PODSTAWY');
+    // Brak danych ≠ spełnia: agregat W nie jest „spełnione".
+    expect(R.warunki_czesciowe.ocena_wymagania.status_maszynowy).not.toBe('SPELNIA');
+    expect(screen.getAllByText(moc.ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(cosPhi.ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
+  });
+
+  it('język rekordów: bez surowych kodów, bez None/True, liczby z przecinkiem', () => {
+    const sceny = [
+      R.warunki_spelnia,
+      R.warunki_nie_spelnia,
+      R.warunki_brak_warunkow,
+      R.warunki_brak_rozplywu,
+      R.warunki_czesciowe,
+    ];
+    for (const scena of sceny) {
+      const rekordy = [scena.ocena_wymagania, ...scena.pozycje.map((p) => p.ocena)];
+      for (const rekord of rekordy) {
+        for (const tekst of tekstyRekordu(rekord)) {
+          expect(tekst).not.toMatch(SUROWE_KODY);
+          expect(tekst).not.toMatch(/\d\.\d+\s?(MW|Mvar|MVA)\b/);
+        }
+      }
+      for (const p of scena.pozycje) expect(p.opis_pl).not.toMatch(/\d\.\d/);
+    }
   });
 });

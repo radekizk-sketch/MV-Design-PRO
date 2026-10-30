@@ -137,11 +137,19 @@ def test_walidacja_energetyczna(p: Przypadek) -> None:
     (pozycja,) = (i for i in widok.items if i.check_type == typ)
     assert pozycja.observed_value == pytest.approx(p.obciazenie_pct, rel=1e-9)
     assert pozycja.observed_value == _obciazenie_referencyjne(p)
-    # Semantyka progu walidacji: >= limit FAIL (na progu = FAIL), >= ostrzeżenie WARNING.
+    # Semantyka progu walidacji (karta WERDYKT-MIGRACJA-190): kryterium ε ≤ ε_limit jak każda
+    # relacja NIE_WIECEJ pakietu werdyktu — na progu SPEŁNIA (I = I_r jest dopuszczalne,
+    # PN-HD 60364-4-43 433.1: I_B ≤ I_n ≤ I_z), więc kod WARNING (≥ próg ostrzeżenia);
+    # FAIL wyłącznie powyżej limitu. Ta sama granica co pasmo wiarygodności obciążenia
+    # (``evaluate_branch_loading``: ≤ 100 % w paśmie) — dawniej dwa moduły rozstrzygały
+    # wartość 100 % przeciwnie (predykaty parami z jednego źródła).
     oczekiwany = (
         EnergyValidationStatus.FAIL
-        if pozycja.observed_value >= config.loading_fail_pct
+        if pozycja.observed_value > config.loading_fail_pct
         else EnergyValidationStatus.WARNING
+    )
+    assert pozycja.ocena.status_maszynowy == (
+        "NIE_SPELNIA" if oczekiwany is EnergyValidationStatus.FAIL else "SPELNIA"
     )
     assert pozycja.status == oczekiwany
     if p.prog == "powyzej":
@@ -149,7 +157,9 @@ def test_walidacja_energetyczna(p: Przypadek) -> None:
     if p.prog == "ponizej":
         assert pozycja.status == EnergyValidationStatus.WARNING
     if p.dokladnie_na_progu:
-        assert pozycja.status == EnergyValidationStatus.FAIL
+        # Dokładnie 100 %: kryterium spełnione (ε = ε_limit), kod WARNING — ta sama granica co
+        # pasmo wiarygodności niżej (``CREDIBLE`` na progu).
+        assert pozycja.status == EnergyValidationStatus.WARNING
     # Ślad White Box nazywa oba zaciski i zacisk decydujący.
     assert r"\max" in pozycja.white_box[0]["latex"]
     # Karta #145: zacisk nazwany po polsku (początkowy/końcowy), nie kodem `od`/`do`.

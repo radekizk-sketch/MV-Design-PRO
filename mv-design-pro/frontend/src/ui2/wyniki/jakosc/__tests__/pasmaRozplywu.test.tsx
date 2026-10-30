@@ -132,7 +132,11 @@ describe('SekcjaPasmRozplywu — sekcja Straty sieciowe', () => {
     render(<SekcjaPasmRozplywu {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     const blok = screen.getByTestId('mvd-jakosc-pasma-straty');
-    expect(within(blok).getByText('w paśmie wiarygodności')).toBeTruthy();
+    // Etykieta z rekordu K strat (EtykietaWerdyktu) + karta z wyjaśnieniem.
+    expect(
+      within(blok).getAllByText(PASMA_ROZPLYWU_FIXTURE.straty.ocena.etykieta.etykieta_pl).length,
+    ).toBeGreaterThan(0);
+    expect(within(blok).getByText(PASMA_ROZPLYWU_FIXTURE.straty.ocena.wyjasnienie.zdanie_pl)).toBeTruthy();
     expect(within(blok).getByText(PASMA_ROZPLYWU_FIXTURE.straty.why_pl)).toBeTruthy();
     const uzasadnienie = screen.getByTestId('mvd-jakosc-pasma-straty-uzasadnienie');
     expect(uzasadnienie.textContent).toContain(PASMA_ROZPLYWU_FIXTURE.straty.threshold_why_pl);
@@ -149,7 +153,9 @@ describe('SekcjaPasmRozplywu — bieg niezbieżny (uczciwość, zero fabrykacji)
     expect(screen.queryByText('w paśmie wiarygodności')).toBeNull();
     expect(screen.queryByText('poza zakresem wiarygodności')).toBeNull();
     const straty = screen.getByTestId('mvd-jakosc-pasma-straty');
-    expect(within(straty).getByText('dane niekompletne')).toBeTruthy();
+    const ocenaStrat = PASMA_ROZPLYWU_NIEZBIEZNY_FIXTURE.straty.ocena;
+    expect(ocenaStrat.status_maszynowy).toBe('NIE_OCENIONO');
+    expect(within(straty).getAllByText(ocenaStrat.etykieta.etykieta_pl).length).toBeGreaterThan(0);
   });
 
   it('bieg zbieżny → brak banera niezbieżności', async () => {

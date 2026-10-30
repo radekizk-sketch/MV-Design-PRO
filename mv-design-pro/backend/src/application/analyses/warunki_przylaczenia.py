@@ -46,13 +46,29 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.odmowa_danych import OdmowaDanychError
-from werdykt import format_liczba
+from solver_input.provenance import classify_dynamic_capability
+from werdykt import (
+    OcenaKryterium,
+    OdnosnikSladu,
+    Przedmiot,
+    WyjasnienieWerdyktu,
+    WynikWymagania,
+    ZakresWaznosci,
+    format_liczba,
+)
+from werdykt.porownanie import (
+    Porownanie,
+    ocena_porownania,
+    podstawa_osd,
+    projekcja_statusu,
+    wymaganie_z_ocen,
+)
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONNECTION_LIMIT_MISSING = "connection.power_limit_missing"
@@ -69,20 +85,57 @@ KRYTERIUM_COS_PHI = "cos_phi_w_punkcie_przylaczenia"
 KIERUNEK_POBOR = "pobor"
 KIERUNEK_ODDAWANIE = "oddawanie"
 
-# Tolerancja porownan doborowych — spojna z pozostalymi analizami (der_sn_validation).
-_EPS = 1e-9
+ZDOLNOSC_WARUNKOW: Final = "przylaczenie.warunki_osd"
+WYMAGANIE_WARUNKOW: Final = "przylaczenie.warunki_osd"
+
+_PODSTAWA_WARUNKOW: Final = podstawa_osd(
+    "Warunki przyłączenia wydane przez operatora systemu dystrybucyjnego",
+    "moc przyłączeniowa i wymagany współczynnik mocy w miejscu przyłączenia",
+    wydanie="wpis projektu (warunki przyłączenia w nagłówku modelu)",
+)
+_ZAKRES_WARUNKOW: Final = ZakresWaznosci(
+    rodzaj_analizy="POWER_FLOW",
+    opis_pl=(
+        "Stan ustalony jednego biegu rozpływu mocy: moc i cosφ w węźle bilansującym "
+        "(zasilanie z sieci OSD) przy obciążeniach i generacji zapisanych w modelu."
+    ),
+    wykluczenia=(
+        "inne stany pracy niż zapisany w modelu (obciążenie szczytowe, minimalne, awaryjne)",
+        "wymagania jakości energii i rozruchu z warunków przyłączenia",
+    ),
+)
+_PRZEDMIOT: Final = Przedmiot(
+    element_ref=None,
+    nazwa_pl="punkt przyłączenia do sieci OSD",
+    opis_pl="Wymiana mocy projektu z siecią operatora w węźle bilansującym biegu rozpływu",
+)
+#: Opisy kodów gotowości jako braki rekordu (brak danych ≠ spełnia).
+_OPIS_BRAKU: Final[dict[str, str]] = {
+    READINESS_CONNECTION_LIMIT_MISSING: (
+        "Moc przyłączeniowa z warunków przyłączenia OSD (wpis projektu)."
+    ),
+    READINESS_CONNECTION_COS_PHI_MISSING: (
+        "Wymagany współczynnik mocy z warunków przyłączenia OSD (wpis projektu)."
+    ),
+    READINESS_CONNECTION_FLOW_MISSING: (
+        "Zbieżny bieg rozpływu mocy z wynikiem w węźle bilansującym (punkt przyłączenia)."
+    ),
+}
 
 
 @dataclass(frozen=True)
 class PozycjaOceny:
-    """Jedna pozycja werdyktu: kryterium, wartosc zmierzona, wartosc wymagana.
+    """Jedna pozycja oceny: kryterium, wartosc z rozplywu, wartosc wymagana.
 
-    ``status`` = UNAVAILABLE znaczy BRAK PODSTAWY do oceny (patrz ``readiness_codes``),
-    nie spelnienie kryterium.
+    ``ocena`` — rekord werdyktu wyjasnialnego (poziom K), ``wyjasnienie`` jego wyjasnienie.
+    ``status`` jest PROJEKCJA statusu rekordu (``PASS``/``FAIL``; ``UNAVAILABLE`` znaczy BRAK
+    PODSTAWY do oceny — patrz ``readiness_codes`` — nie spelnienie kryterium).
     """
 
     kryterium: str
     status: str
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     wartosc: float | None
     wymagana: float | None
     jednostka: str
@@ -97,6 +150,8 @@ class PozycjaOceny:
         return {
             "kryterium": self.kryterium,
             "status": self.status,
+            "ocena": self.ocena.model_dump(mode="json"),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "wartosc": self.wartosc,
             "wymagana": self.wymagana,
             "jednostka": self.jednostka,
@@ -107,8 +162,14 @@ class PozycjaOceny:
 
 @dataclass(frozen=True)
 class OcenaWarunkowPrzylaczenia:
-    """Werdykt warunkow przylaczenia (WHITE BOX: wielkosci zmierzone + zalozenia)."""
+    """Ocena warunkow przylaczenia (WHITE BOX: wielkosci z rozplywu + zalozenia).
 
+    ``ocena_wymagania`` — rekord W nad kryteriami pozycji, ``wyjasnienie`` jego wyjasnienie;
+    ``status_ogolny`` jest jego projekcja (jedno zrodlo rozstrzygniecia).
+    """
+
+    ocena_wymagania: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     punkt_przylaczenia: str | None
     p_mw: float | None
     q_mvar: float | None
@@ -134,12 +195,10 @@ class OcenaWarunkowPrzylaczenia:
 
     @property
     def status_ogolny(self) -> str:
-        """FAIL gdy dowolne kryterium naruszone; UNAVAILABLE gdy zadne nie ma podstawy."""
-        if any(p.status == STATUS_FAIL for p in self.pozycje):
-            return STATUS_FAIL
-        if any(p.status == STATUS_PASS for p in self.pozycje):
-            return STATUS_PASS
-        return STATUS_UNAVAILABLE
+        """Projekcja rekordu W: FAIL gdy ktorekolwiek kryterium naruszone; PASS tylko gdy
+        KAZDE kryterium spelnione na liczbach; inaczej UNAVAILABLE (brak danych ≠ spelnia —
+        dawniej jedno kryterium spelnione przy drugim nieocenionym dawalo PASS)."""
+        return _kod(self.ocena_wymagania.oceny_skladowe)
 
     @property
     def readiness_codes(self) -> tuple[str, ...]:
@@ -157,6 +216,8 @@ class OcenaWarunkowPrzylaczenia:
             "cos_phi": self.cos_phi,
             "kierunek": self.kierunek,
             "status_ogolny": self.status_ogolny,
+            "ocena_wymagania": self.ocena_wymagania.model_dump(mode="json"),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "pozycje": [p.to_dict() for p in self.pozycje],
             "readiness_codes": list(self.readiness_codes),
             "formula_ref": self.formula_ref,
@@ -205,16 +266,43 @@ def _wielkosci_punktu(
     return szukany, None, None
 
 
-def _pozycja_niedostepna(
-    kryterium: str, jednostka: str, opis: str, kody: list[str]
+def _kod(oceny: tuple[OcenaKryterium, ...]) -> str:
+    return projekcja_statusu(
+        oceny, spelnia=STATUS_PASS, nie_spelnia=STATUS_FAIL, nierozstrzygniete=STATUS_UNAVAILABLE
+    )
+
+
+def _pozycja(
+    porownanie: Porownanie, *, kody: list[str], opis_pl: str, jednostka: str
 ) -> PozycjaOceny:
+    """Pozycja z rekordem K porownania; kod ``status`` jest projekcja rekordu."""
+    ocena = ocena_porownania(
+        porownanie,
+        przedmiot=_PRZEDMIOT,
+        podstawa=_PODSTAWA_WARUNKOW,
+        zdolnosc=classify_dynamic_capability(ZDOLNOSC_WARUNKOW),
+        zakres=_ZAKRES_WARUNKOW,
+        slad=(
+            ()
+            if porownanie.wynik is None
+            else (
+                OdnosnikSladu(
+                    krok="power_flow_slack_bus",
+                    opis_pl="Moce wstrzyknięte w węźle bilansującym biegu rozpływu",
+                ),
+            )
+        ),
+        odniesienie="application/analyses/warunki_przylaczenia.py",
+    )
     return PozycjaOceny(
-        kryterium=kryterium,
-        status=STATUS_UNAVAILABLE,
-        wartosc=None,
-        wymagana=None,
+        kryterium=porownanie.kryterium_id,
+        status=_kod((ocena,)),
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
+        wartosc=porownanie.wynik,
+        wymagana=porownanie.limit,
         jednostka=jednostka,
-        opis_pl=opis,
+        opis_pl=opis_pl,
         readiness_codes=tuple(dict.fromkeys(kody)),
     )
 
@@ -257,35 +345,44 @@ def ocen_warunki_przylaczenia(
         braki_mocy.append(READINESS_CONNECTION_LIMIT_MISSING)
     if p_mw is None:
         braki_mocy.append(READINESS_CONNECTION_FLOW_MISSING)
-    if braki_mocy:
-        pozycje.append(
-            _pozycja_niedostepna(
-                KRYTERIUM_MOC,
-                "MW",
-                "Nie można ocenić mocy w punkcie przyłączenia — brak danych wejściowych.",
-                braki_mocy,
-            )
-        )
-    else:
-        assert p_mw is not None and limit_mw is not None
-        modul_p = abs(p_mw)
-        przekroczony = modul_p > limit_mw + _EPS
-        opis = (
-            f"Moc {'oddawana do sieci' if kierunek == KIERUNEK_ODDAWANIE else 'pobierana z sieci'}"
-            f" {format_liczba(round(modul_p, 3))} MW wobec limitu "
-            f"{format_liczba(round(limit_mw, 3))} MW"
-            f" (limit {'przekroczony' if przekroczony else 'dotrzymany'})."
-        )
-        pozycje.append(
-            PozycjaOceny(
-                kryterium=KRYTERIUM_MOC,
-                status=STATUS_FAIL if przekroczony else STATUS_PASS,
-                wartosc=_round6(modul_p),
-                wymagana=_round6(limit_mw),
+    # Porownanie na wartosciach opublikowanych (6 miejsc w MW = rozdzielczosc 1 W) — rekord
+    # i pozycja pokazuja te same liczby, ktore rozstrzygaja; szum zmiennoprzecinkowy rozplywu
+    # ponizej rozdzielczosci nie przesuwa rozstrzygniecia.
+    # Wynik bez limitu zostaje w rekordzie jako informacyjny (regula daje BRAK_PODSTAWY
+    # z nazwanym brakiem limitu); limit bez wyniku — NIE_OCENIONO z nazwanym brakiem biegu.
+    modul_p = None if p_mw is None else _round6(abs(p_mw))
+    pozycje.append(
+        _pozycja(
+            Porownanie(
+                kryterium_id=KRYTERIUM_MOC,
+                opis_pl="Moc czynna wymieniana z siecią nie większa od mocy przyłączeniowej",
+                warunek_latex=r"|P| \le P_{\text{limit}}",
+                relacja="NIE_WIECEJ",
+                wielkosc_pl=(
+                    "moc czynna oddawana do sieci"
+                    if kierunek == KIERUNEK_ODDAWANIE
+                    else "moc czynna pobierana z sieci"
+                ),
+                symbol_latex="|P|",
                 jednostka="MW",
-                opis_pl=opis,
-            )
+                wynik=modul_p,
+                limit=_round6(limit_mw),
+                limit_pl="moc przyłączeniowa z warunków przyłączenia (oba kierunki)",
+                braki=tuple(_OPIS_BRAKU[kod] for kod in braki_mocy),
+            ),
+            kody=braki_mocy,
+            jednostka="MW",
+            opis_pl=(
+                "Nie można ocenić mocy w punkcie przyłączenia — brak danych wejściowych."
+                if modul_p is None or limit_mw is None
+                else (
+                    f"Moc {'oddawana do sieci' if kierunek == KIERUNEK_ODDAWANIE else 'pobierana z sieci'}"
+                    f" {format_liczba(round(modul_p, 3))} MW wobec limitu "
+                    f"{format_liczba(round(limit_mw, 3))} MW."
+                )
+            ),
         )
+    )
 
     # --- Kryterium 2: cosfi w punkcie wobec wymagania OSD ---------------------
     braki_cos: list[str] = []
@@ -293,36 +390,49 @@ def ocen_warunki_przylaczenia(
         braki_cos.append(READINESS_CONNECTION_COS_PHI_MISSING)
     if cos_phi is None:
         braki_cos.append(READINESS_CONNECTION_FLOW_MISSING)
-    if braki_cos:
-        pozycje.append(
-            _pozycja_niedostepna(
-                KRYTERIUM_COS_PHI,
-                "-",
-                "Nie można ocenić cosφ w punkcie przyłączenia — brak danych wejściowych.",
-                braki_cos,
-            )
+    # Wymaganie OSD jest DOLNYM ograniczeniem: im nizszy cosfi, tym wieksza moc bierna
+    # wymieniana z siecia przy tej samej mocy czynnej.
+    cos_publikowany = _round6(cos_phi)
+    pozycje.append(
+        _pozycja(
+            Porownanie(
+                kryterium_id=KRYTERIUM_COS_PHI,
+                opis_pl="Współczynnik mocy w punkcie przyłączenia nie mniejszy od wymaganego",
+                warunek_latex=r"\cos\varphi \ge \cos\varphi_{\text{wym}}",
+                relacja="NIE_MNIEJ",
+                wielkosc_pl="współczynnik mocy cosφ w punkcie przyłączenia",
+                symbol_latex=r"\cos\varphi",
+                jednostka="1",
+                wynik=cos_publikowany,
+                limit=_round6(cos_phi_wymagany),
+                limit_pl="wymagany współczynnik mocy z warunków przyłączenia",
+                braki=tuple(_OPIS_BRAKU[kod] for kod in braki_cos),
+            ),
+            kody=braki_cos,
+            jednostka="-",
+            opis_pl=(
+                "Nie można ocenić cosφ w punkcie przyłączenia — brak danych wejściowych."
+                if cos_publikowany is None or cos_phi_wymagany is None
+                else (
+                    f"cosφ w punkcie {format_liczba(round(cos_publikowany, 4))} wobec wymaganego "
+                    f"{format_liczba(round(cos_phi_wymagany, 4))}."
+                )
+            ),
         )
-    else:
-        assert cos_phi is not None and cos_phi_wymagany is not None
-        # Wymaganie OSD jest DOLNYM ograniczeniem: im nizszy cosfi, tym wieksza moc
-        # bierna wymieniana z siecia przy tej samej mocy czynnej.
-        naruszony = cos_phi < cos_phi_wymagany - _EPS
-        pozycje.append(
-            PozycjaOceny(
-                kryterium=KRYTERIUM_COS_PHI,
-                status=STATUS_FAIL if naruszony else STATUS_PASS,
-                wartosc=_round6(cos_phi),
-                wymagana=_round6(cos_phi_wymagany),
-                jednostka="-",
-                opis_pl=(
-                    f"cosφ w punkcie {format_liczba(round(cos_phi, 4))} wobec wymaganego "
-                    f"{format_liczba(round(cos_phi_wymagany, 4))}"
-                    f" (wymaganie {'niedotrzymane' if naruszony else 'dotrzymane'})."
-                ),
-            )
-        )
+    )
 
+    ocena_wymagania = wymaganie_z_ocen(
+        wymaganie_id=WYMAGANIE_WARUNKOW,
+        nazwa_pl="Warunki przyłączenia OSD w punkcie przyłączenia",
+        podstawa=_PODSTAWA_WARUNKOW,
+        oceny=tuple(p.ocena for p in pozycje),
+        zdolnosc=classify_dynamic_capability(ZDOLNOSC_WARUNKOW),
+        zakres=_ZAKRES_WARUNKOW,
+        odniesienie="application/analyses/warunki_przylaczenia.py",
+    )
     return OcenaWarunkowPrzylaczenia(
+        ocena_wymagania=ocena_wymagania,
+        wyjasnienie=ocena_wymagania.wyjasnienie,
         punkt_przylaczenia=punkt,
         p_mw=_round6(p_mw),
         q_mvar=_round6(q_mvar),

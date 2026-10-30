@@ -18,6 +18,7 @@ from analysis.energy_validation.models import (
     EnergyValidationSummary,
     EnergyValidationView,
 )
+from analysis.energy_validation.oceny import ocena_pozycji, status_pozycji
 from analysis.energy_validation.serializer import STATUS_ORDER
 from analysis.obciazenie_galezi import (
     obciazenie_galezi,
@@ -61,6 +62,12 @@ def _znana_zespolona(wartosc: complex | None) -> complex | None:
     if wartosc is None or not (math.isfinite(wartosc.real) and math.isfinite(wartosc.imag)):
         return None
     return wartosc
+
+
+#: Progi bilansu mocy biernej (cosφ węzła bilansującego) — założenie projektowe programu,
+#: podstawa w ``analysis.energy_validation.oceny``.
+_COS_PHI_LIMIT = 0.8
+_COS_PHI_OSTRZEZENIE = 0.9
 
 
 class EnergyValidationBuilder:
@@ -147,7 +154,7 @@ class EnergyValidationBuilder:
             ),
         )
         if wynik.obciazenie_pct is None:
-            return EnergyValidationItem(
+            return _pozycja(
                 check_type=check_type,
                 target_id=branch_id,
                 target_name=nazwa_elementu(
@@ -159,11 +166,10 @@ class EnergyValidationBuilder:
                 limit_warn=config.loading_warn_pct,
                 limit_fail=config.loading_fail_pct,
                 margin_pct=None,
-                status=EnergyValidationStatus.NOT_COMPUTED,
-                why_pl=wynik.powod_braku_pl or "",
+                why_pl=wynik.powod_braku_pl or "Brak danych do wyznaczenia obciążenia gałęzi.",
             )
         loading_pct = wynik.obciazenie_pct
-        status, why = _threshold_check(
+        why = _opis_progowy(
             loading_pct,
             config.loading_warn_pct,
             config.loading_fail_pct,
@@ -182,7 +188,7 @@ class EnergyValidationBuilder:
             if isinstance(branch, TransformerBranch)
             else "obciążalność gałęzi"
         )
-        return EnergyValidationItem(
+        return _pozycja(
             check_type=check_type,
             target_id=branch_id,
             target_name=nazwa_elementu(
@@ -194,7 +200,6 @@ class EnergyValidationBuilder:
             limit_warn=config.loading_warn_pct,
             limit_fail=config.loading_fail_pct,
             margin_pct=loading_pct - config.loading_fail_pct,
-            status=status,
             why_pl=why,
             white_box=_white_box_progowe(
                 "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
@@ -229,7 +234,7 @@ class EnergyValidationBuilder:
 
             if u_kv is None or u_nom_kv <= 0:
                 items.append(
-                    EnergyValidationItem(
+                    _pozycja(
                         check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                         target_id=node_id,
                         target_name=nazwa_elementu(node, "buses"),
@@ -238,14 +243,13 @@ class EnergyValidationBuilder:
                         limit_warn=config.voltage_warn_pct,
                         limit_fail=config.voltage_fail_pct,
                         margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
                         why_pl="Brak danych napięciowych.",
                     )
                 )
                 continue
 
             delta_pct = abs((u_kv - u_nom_kv) / u_nom_kv) * 100.0
-            status, why = _threshold_check(
+            why = _opis_progowy(
                 delta_pct,
                 config.voltage_warn_pct,
                 config.voltage_fail_pct,
@@ -255,7 +259,7 @@ class EnergyValidationBuilder:
             margin = delta_pct - config.voltage_fail_pct
 
             items.append(
-                EnergyValidationItem(
+                _pozycja(
                     check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                     target_id=node_id,
                     target_name=nazwa_elementu(node, "buses"),
@@ -264,7 +268,6 @@ class EnergyValidationBuilder:
                     limit_warn=config.voltage_warn_pct,
                     limit_fail=config.voltage_fail_pct,
                     margin_pct=margin,
-                    status=status,
                     why_pl=why,
                     white_box=_white_box_progowe(
                         "odchylenie = |U − U_n| / U_n · 100 %",
@@ -294,7 +297,7 @@ class EnergyValidationBuilder:
 
         if straty_pu is None or moc_slack_pu is None or abs(p_slack_pu) < 1e-12:
             return [
-                EnergyValidationItem(
+                _pozycja(
                     check_type=EnergyCheckType.LOSS_BUDGET,
                     target_id="network",
                     target_name="Sieć",
@@ -303,7 +306,6 @@ class EnergyValidationBuilder:
                     limit_warn=config.loss_warn_pct,
                     limit_fail=config.loss_fail_pct,
                     margin_pct=None,
-                    status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
                         "Bilans strat nieoznaczony w wyniku rozpływu (wartość nieokreślona)."
                         if (straty_pu is None or moc_slack_pu is None)
@@ -313,7 +315,7 @@ class EnergyValidationBuilder:
             ]
 
         loss_pct = abs(p_loss_pu / p_slack_pu) * 100.0
-        status, why = _threshold_check(
+        why = _opis_progowy(
             loss_pct,
             config.loss_warn_pct,
             config.loss_fail_pct,
@@ -323,7 +325,7 @@ class EnergyValidationBuilder:
         margin = loss_pct - config.loss_fail_pct
 
         return [
-            EnergyValidationItem(
+            _pozycja(
                 check_type=EnergyCheckType.LOSS_BUDGET,
                 target_id="network",
                 target_name="Sieć",
@@ -332,7 +334,6 @@ class EnergyValidationBuilder:
                 limit_warn=config.loss_warn_pct,
                 limit_fail=config.loss_fail_pct,
                 margin_pct=margin,
-                status=status,
                 why_pl=why,
                 white_box=_white_box_progowe(
                     "straty = |P_strat / P_bil| · 100 %",
@@ -360,7 +361,7 @@ class EnergyValidationBuilder:
 
         if moc_slack_pu is None or abs(p_slack_pu) < 1e-12:
             return [
-                EnergyValidationItem(
+                _pozycja(
                     check_type=EnergyCheckType.REACTIVE_BALANCE,
                     target_id=pf.slack_node_id,
                     target_name="Węzeł bilansujący",
@@ -369,7 +370,6 @@ class EnergyValidationBuilder:
                     limit_warn=None,
                     limit_fail=None,
                     margin_pct=None,
-                    status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
                         "Moc węzła bilansującego nieoznaczona w wyniku rozpływu (wartość "
                         "nieokreślona)."
@@ -382,27 +382,22 @@ class EnergyValidationBuilder:
         tan_phi = abs(q_slack_pu / p_slack_pu) if abs(p_slack_pu) > 1e-12 else 0.0
         cos_phi = math.cos(math.atan(tan_phi)) if tan_phi < 1e6 else 0.0
 
-        if cos_phi >= 0.9:
-            status = EnergyValidationStatus.PASS
-            why = f"cosφ = {_pl(cos_phi, 3)} ≥ 0,9 — bilans mocy biernej prawidłowy."
-        elif cos_phi >= 0.8:
-            status = EnergyValidationStatus.WARNING
-            why = f"cosφ = {_pl(cos_phi, 3)} — bilans mocy biernej na granicy akceptowalności."
-        else:
-            status = EnergyValidationStatus.FAIL
-            why = f"cosφ = {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
+        # Jedno zdanie liczbowe dla kazdego stanu — rozstrzygniecie niesie rekord ``ocena``.
+        why = (
+            f"cosφ = {_pl(cos_phi, 3)} wobec limitu {_pl(_COS_PHI_LIMIT, 1)} "
+            f"(próg ostrzeżenia {_pl(_COS_PHI_OSTRZEZENIE, 1)})."
+        )
 
         return [
-            EnergyValidationItem(
+            _pozycja(
                 check_type=EnergyCheckType.REACTIVE_BALANCE,
                 target_id=pf.slack_node_id,
                 target_name="Węzeł bilansujący",
                 observed_value=cos_phi,
                 unit="cos(phi)",
-                limit_warn=0.9,
-                limit_fail=0.8,
+                limit_warn=_COS_PHI_OSTRZEZENIE,
+                limit_fail=_COS_PHI_LIMIT,
                 margin_pct=None,
-                status=status,
                 why_pl=why,
                 white_box=(
                     _krok(
@@ -417,11 +412,53 @@ class EnergyValidationBuilder:
                         f"Wynik: tgφ = {_pl(tan_phi, 4)}, cosφ = {_pl(cos_phi, 3)}",
                         rf"\tan\varphi = {tan_phi:.4f} \Rightarrow \cos\varphi = {cos_phi:.3f}",
                     ),
-                    _krok("Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8"),
+                    _krok(
+                        f"Progi: ostrzeżenie cosφ < {_pl(_COS_PHI_OSTRZEZENIE, 1)}, "
+                        f"przekroczenie cosφ < {_pl(_COS_PHI_LIMIT, 1)}"
+                    ),
                     _krok(f"Porównanie z progami: {why}"),
                 ),
             )
         ]
+
+
+def _pozycja(
+    *,
+    check_type: EnergyCheckType,
+    target_id: str,
+    target_name: str | None,
+    observed_value: float | None,
+    unit: str,
+    limit_warn: float | None,
+    limit_fail: float | None,
+    margin_pct: float | None,
+    why_pl: str,
+    white_box: tuple[dict, ...] = (),
+) -> EnergyValidationItem:
+    """Pozycja z rekordem K (``analysis.energy_validation.oceny``); ``status`` jest projekcja
+    rekordu. ``observed_value is None`` — wielkosci nie wyznaczono, ``why_pl`` nazywa brak."""
+    ocena = ocena_pozycji(
+        check_type=check_type,
+        nazwa_pl=target_name or target_id,
+        wynik=observed_value,
+        limit=limit_fail,
+        braki=() if observed_value is not None else (why_pl,),
+    )
+    return EnergyValidationItem(
+        check_type=check_type,
+        target_id=target_id,
+        target_name=target_name,
+        observed_value=observed_value,
+        unit=unit,
+        limit_warn=limit_warn,
+        limit_fail=limit_fail,
+        margin_pct=margin_pct,
+        status=status_pozycji(ocena, wynik=observed_value, prog_ostrzezenia=limit_warn),
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
+        why_pl=why_pl,
+        white_box=white_box,
+    )
 
 
 def _pl(wartosc: float, cyfry: int) -> str:
@@ -464,26 +501,19 @@ def _white_box_progowe(
     )
 
 
-def _threshold_check(
+def _opis_progowy(
     value: float,
     warn: float,
     fail: float,
     label: str,
     unit: str,
-) -> tuple[EnergyValidationStatus, str]:
-    if value >= fail:
-        return (
-            EnergyValidationStatus.FAIL,
-            f"{label} {_pl(value, 2)} {unit} przekracza limit {_pl(fail, 1)} {unit}.",
-        )
-    if value >= warn:
-        return (
-            EnergyValidationStatus.WARNING,
-            f"{label} {_pl(value, 2)} {unit} zbliża się do limitu {_pl(fail, 1)} {unit}.",
-        )
+) -> str:
+    """Zdanie liczbowe pozycji progowej — JEDNO dla kazdego stanu (wielkosc, limit, prog
+    ostrzezenia). Slowa rozstrzygniecia nie ma: niesie je rekord ``ocena`` (kontrakt werdyktu
+    wyjasnialnego), wiec tekst nie moze rozjechac sie z rekordem."""
     return (
-        EnergyValidationStatus.PASS,
-        f"{label} {_pl(value, 2)} {unit} poniżej limitu {_pl(warn, 1)} {unit}.",
+        f"{label} {_pl(value, 2)} {unit} wobec limitu {_pl(fail, 1)} {unit} "
+        f"(próg ostrzeżenia {_pl(warn, 1)} {unit})."
     )
 
 

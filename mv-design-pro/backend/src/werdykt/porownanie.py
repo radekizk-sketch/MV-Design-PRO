@@ -104,6 +104,18 @@ def podstawa_katalogu(pozycja_pl: str, parametr_pl: str) -> PodstawaWymagania:
     )
 
 
+def podstawa_osd(dokument: str, jednostka_redakcyjna: str, *, wydanie: str) -> PodstawaWymagania:
+    """Podstawa z dokumentu operatora systemu dystrybucyjnego (warunki przyłączenia, IRiESD)
+    wpisanego do projektu — stan ``WSKAZANE`` (treść dokumentu nie jest w repozytorium)."""
+    return PodstawaWymagania(
+        rodzaj="OSD",
+        dokument=dokument,
+        wydanie=wydanie,
+        jednostka_redakcyjna=jednostka_redakcyjna,
+        status="WSKAZANE",
+    )
+
+
 def podstawa_zalozenia(
     dokument: str,
     jednostka_redakcyjna: str,
@@ -360,3 +372,29 @@ def projekcja_statusu(
     if wynik is None:
         return nierozstrzygniete
     return spelnia if wynik == "SPELNIA" else nie_spelnia
+
+
+#: Znak relacji w podstawieniu WHITE BOX: (spełnia, nie spełnia) dla relacji jednostronnych.
+_ZNAK_RELACJI_LATEX: Final[dict[str, tuple[str, str]]] = {
+    "NIE_WIECEJ": (r"\le", r">"),
+    "NIE_MNIEJ": (r"\ge", r"<"),
+    "OBWIEDNIA_GORNA": (r"\le", r">"),
+    "OBWIEDNIA_DOLNA": (r"\ge", r"<"),
+}
+
+
+def relacja_latex(ocena: OcenaKryterium) -> str:
+    """Znak relacji wyniku wobec limitu w podstawieniu śladu — wyprowadzony z REKORDU (jedno
+    źródło rozstrzygnięcia), nie z drugiej kopii warunku liczbowego w solverze.
+
+    Relacja jednostronna rozstrzygnięta: znak spełnienia albo naruszenia; nierozstrzygnięta
+    (brak wyniku, brak podstawy, niejednoznaczna) albo pasmo/logiczna: ``\\lessgtr`` — ślad nie
+    twierdzi relacji, której rekord nie rozstrzygnął.
+    """
+    znaki = _ZNAK_RELACJI_LATEX.get(ocena.kryterium.relacja)
+    if znaki is None:
+        return r"\lessgtr"
+    rozstrzygniete = rozstrzygniecie((ocena,))
+    if rozstrzygniete is None:
+        return r"\lessgtr"
+    return znaki[0] if rozstrzygniete == "SPELNIA" else znaki[1]

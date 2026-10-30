@@ -10,10 +10,51 @@ import type {
   ExecutionRun,
 } from '../../../../ui/study-cases/types';
 import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
+  KryteriumCieplne,
   PasmaRozplywuResponse,
+  PozycjaCieplna,
+  PunktWrazliwosci,
+  StatusWarunku,
   WarunkiPrzylaczeniaResponse,
   WytrzymaloscCieplnaResponse,
 } from '../api';
+import type {
+  OcenaKryterium,
+  WyjasnienieWerdyktu,
+  WynikWymagania,
+} from '../../wzorzec/werdykt';
+// Rekordy werdyktu wyjaśnialnego wygenerowane BACKENDEM
+// (`scripts/eksport_fixtur_harnessu.py::jakosc_scena_rekordy`) — bez ręcznych atrap rekordu.
+import REKORDY from '../../../../harness-fixtures/generated/jakosc_scena_rekordy.json';
+
+export const R = REKORDY;
+
+/** Rekord K z odpowiedzi backendu (pole `ocena`) + jego wyjaśnienie. */
+export function kRekord(zrodlo: { ocena: unknown }): {
+  ocena: OcenaKryterium;
+  wyjasnienie: WyjasnienieWerdyktu;
+} {
+  const ocena = zrodlo.ocena as OcenaKryterium;
+  return { ocena, wyjasnienie: ocena.wyjasnienie };
+}
+
+/** Rekord W z odpowiedzi backendu (pole `ocena`) + jego wyjaśnienie. */
+export function wRekord(zrodlo: { ocena: unknown }): {
+  ocena: WynikWymagania;
+  wyjasnienie: WyjasnienieWerdyktu;
+} {
+  const ocena = zrodlo.ocena as WynikWymagania;
+  return { ocena, wyjasnienie: ocena.wyjasnienie };
+}
+
+/** Agregat W warunków przyłączenia (`ocena_wymagania`) + jego wyjaśnienie. */
+export function wRekordWarunkow(zrodlo: { ocena_wymagania: unknown }): {
+  ocena_wymagania: WynikWymagania;
+  wyjasnienie: WyjasnienieWerdyktu;
+} {
+  const ocena = zrodlo.ocena_wymagania as WynikWymagania;
+  return { ocena_wymagania: ocena, wyjasnienie: ocena.wyjasnienie };
+}
 
 export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
   analysis_id: '11111111-1111-1111-1111-111111111111',
@@ -37,6 +78,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       upper_ka: 50.0,
       in_range: true,
       status: 'w paśmie wiarygodności',
+      ...kRekord(R.pasmo_zwarcia_spelnia),
       why_pl: "Ik'' = 12.5 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
       blocks_osd_package: false,
     },
@@ -51,6 +93,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       upper_ka: 50.0,
       in_range: false,
       status: 'poza zakresem wiarygodności',
+      ...kRekord(R.pasmo_zwarcia_poza),
       why_pl:
         "Ik'' = 116.0 kA przekracza górną granicę wiarygodności 50.0 kA dla SN (15.0 kV) — wartość fizycznie wątpliwa. Zablokowane przed wejściem do pakietu OSD.",
       blocks_osd_package: true,
@@ -66,6 +109,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       upper_ka: null,
       in_range: false,
       status: 'dane niekompletne',
+      ...kRekord(R.pasmo_zwarcia_brak_danych),
       why_pl: "Brak poprawnego napięcia lub Ik'' do oceny wiarygodności.",
       blocks_osd_package: false,
     },
@@ -106,6 +150,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 100.0,
       margin_pct: 35.0,
       status: 'PASS',
+      ...kRekord(R.walidacja_spelnia),
       why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
     },
     {
@@ -118,6 +163,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 100.0,
       margin_pct: 8.0,
       status: 'WARNING',
+      ...kRekord(R.walidacja_ostrzezenie),
       why_pl: 'Obciążenie transformatora 92% — powyżej progu ostrzeżenia 80%.',
     },
     {
@@ -130,6 +176,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 10.0,
       margin_pct: -2.0,
       status: 'FAIL',
+      ...kRekord(R.walidacja_nie_spelnia),
       why_pl: 'Odchylenie napięcia 12,00 % przekracza limit 10,0 %.',
       // Ślad WHITE BOX per pozycja (R2-A; struktura R3-D) — kształt 1:1 z buildera.
       white_box: [
@@ -160,6 +207,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 10.0,
       margin_pct: 36.0,
       status: 'PASS',
+      ...kRekord(R.walidacja_spelnia),
       why_pl: 'Budżet strat 3.2% — poniżej progu ostrzeżenia 5%.',
     },
     {
@@ -172,6 +220,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: null,
       margin_pct: null,
       status: 'NOT_COMPUTED',
+      ...kRekord(R.walidacja_brak_danych),
       why_pl: 'Bilans mocy biernej nie został policzony — brak danych wejściowych.',
     },
   ],
@@ -324,6 +373,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         deviation_pct: 1.3333,
         in_range: true,
         status: 'w paśmie wiarygodności',
+        ...kRekord(R.pasmo_napiecia_spelnia),
         why_pl: 'U = 15.2 kV mieści się w paśmie [13.500; 16.500] kV (Un = 15.0 kV ± 10 %).',
       },
       {
@@ -336,6 +386,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         deviation_pct: 33.3333,
         in_range: false,
         status: 'poza zakresem wiarygodności',
+        ...kRekord(R.pasmo_napiecia_poza),
         why_pl:
           'U = 20.0 kV jest poza pasmem [13.500; 16.500] kV (Un = 15.0 kV ± 10 %, odchylenie '
           + '33.33 %) — wynik fizycznie wątpliwy (błąd modelu/jednostek?).',
@@ -357,6 +408,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         loading_pct: 25.0,
         in_range: true,
         status: 'w paśmie wiarygodności',
+        ...kRekord(R.pasmo_napiecia_spelnia),
         why_pl: 'I = 0.1000 kA nie przekracza In = 0.4000 kA (obciążenie 25.0 %).',
       },
       {
@@ -367,6 +419,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         loading_pct: null,
         in_range: false,
         status: 'dane niekompletne',
+        ...kRekord(R.pasmo_strat_brak_danych),
         why_pl: 'Brak danych katalogowych o prądzie znamionowym (In) gałęzi.',
       },
     ],
@@ -384,6 +437,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
       + 'impedancja gałęzi, błędna topologia), a nie rzeczywistą fizykę sieci.',
     in_range: true,
     status: 'w paśmie wiarygodności',
+    ...kRekord(R.pasmo_strat_spelnia),
     why_pl:
       'Straty czynne 0.0500 MW = 1.00 % sumy mocy czynnej odbiorów (5.0000 MW) — poniżej progu '
       + 'wiarygodności 10.0 %.',
@@ -404,6 +458,7 @@ export const PASMA_ROZPLYWU_NIEZBIEZNY_FIXTURE: PasmaRozplywuResponse = {
       deviation_pct: null,
       in_range: false,
       status: 'dane niekompletne',
+      ...kRekord(R.pasmo_strat_brak_danych),
       why_pl:
         'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
         + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
@@ -419,6 +474,7 @@ export const PASMA_ROZPLYWU_NIEZBIEZNY_FIXTURE: PasmaRozplywuResponse = {
       loading_pct: null,
       in_range: false,
       status: 'dane niekompletne',
+      ...kRekord(R.pasmo_strat_brak_danych),
       why_pl:
         'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
         + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
@@ -433,6 +489,7 @@ export const PASMA_ROZPLYWU_NIEZBIEZNY_FIXTURE: PasmaRozplywuResponse = {
     threshold_why_pl: PASMA_ROZPLYWU_FIXTURE.straty.threshold_why_pl,
     in_range: false,
     status: 'dane niekompletne',
+    ...kRekord(R.pasmo_strat_brak_danych),
     why_pl:
       'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
       + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
@@ -474,10 +531,12 @@ export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
     cos_phi: 0.990047,
     kierunek: 'oddawanie',
     status_ogolny: 'PASS',
+    ...wRekordWarunkow(R.warunki_spelnia),
     pozycje: [
       {
         kryterium: 'moc_w_punkcie_przylaczenia',
         status: 'PASS',
+        ...kRekord(R.warunki_spelnia.pozycje[0]),
         wartosc: 4.5,
         wymagana: 5,
         jednostka: 'MW',
@@ -487,6 +546,7 @@ export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
       {
         kryterium: 'cos_phi_w_punkcie_przylaczenia',
         status: 'PASS',
+        ...kRekord(R.warunki_spelnia.pozycje[1]),
         wartosc: 0.990047,
         wymagana: 0.95,
         jednostka: '-',
@@ -538,6 +598,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
         branch_id: 'cable_A',
         branch_name: 'Magistrala L-01',
         status: 'PASS',
+        ...wRekord(R.cieplna_spelnia),
         i_fault_a: 15000,
         i_permissible_a: 22560,
         utilization: 0.665,
@@ -572,6 +633,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
             granica: 127238400,
             jednostka: 'A²·s',
             status: 'PASS',
+            ...kRekord(R.cieplna_spelnia.kryteria[1]),
           },
           {
             kod: 'przekroj_minimalny',
@@ -581,6 +643,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
             granica: 79.8,
             jednostka: 'mm²',
             status: 'PASS',
+            ...kRekord(R.cieplna_spelnia.kryteria[2]),
           },
         ],
         powod_decyzji_pl: 'I²·t = 56,25·10⁶ A²·s ≤ k²·S² = 127,24·10⁶ A²·s — zapas 55,8 %.',
@@ -592,3 +655,36 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },
   },
 };
+
+type BezRekordu<T> = Omit<T, 'ocena' | 'wyjasnienie'>;
+type KryteriumBezRekordu = BezRekordu<KryteriumCieplne>;
+type PozycjaBezRekordu = Omit<BezRekordu<PozycjaCieplna>, 'kryteria' | 'wrazliwosc'> &
+  Partial<Pick<PozycjaCieplna, 'ocena' | 'wyjasnienie'>> & {
+  readonly kryteria: readonly (KryteriumBezRekordu | KryteriumCieplne)[];
+  readonly wrazliwosc: readonly PunktWrazliwosci[];
+};
+
+const SCENA_CIEPLNA: Record<StatusWarunku, typeof R.cieplna_spelnia> = {
+  PASS: R.cieplna_spelnia,
+  FAIL: R.cieplna_nie_spelnia,
+  UNAVAILABLE: R.cieplna_brak_danych,
+};
+
+/**
+ * Pozycja cieplna z rekordem werdyktu wygenerowanym backendem dla stanu `status`
+ * (spełnia / nie spełnia / brak danych). Kryteria cząstkowe dostają rekord K kryterium
+ * prądowego sceny o tym samym stanie — test nie pisze rekordu ręcznie. Rekord podany jawnie
+ * (np. gałąź poza drogą zwarcia) ma pierwszeństwo.
+ */
+export function zRekordemCieplnym(pozycja: PozycjaBezRekordu): PozycjaCieplna {
+  const scena = SCENA_CIEPLNA[pozycja.status];
+  return {
+    ...wRekord(scena),
+    ...pozycja,
+    kryteria: pozycja.kryteria.map((k) =>
+      'ocena' in k
+        ? k
+        : { ...k, ...kRekord({ ocena: SCENA_CIEPLNA[k.status].ocena.oceny_skladowe[0] }) },
+    ),
+  };
+}

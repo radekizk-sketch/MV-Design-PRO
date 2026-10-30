@@ -36,7 +36,7 @@
           "element_nazwa": null,
           "element_rodzaj": "szyna",
           "wynik": "BRAK_PODSTAW",
-          "wartosc": null,
+          "wartosc": 0.746632,
           "odniesienie": null,
           "odniesienie_dolne": null,
           "odniesienie_ostrzegawcze": null,
@@ -87,7 +87,7 @@
           "element_nazwa": null,
           "element_rodzaj": "szyna",
           "wynik": "BRAK_PODSTAW",
-          "wartosc": null,
+          "wartosc": 0.995169,
           "odniesienie": null,
           "odniesienie_dolne": null,
           "odniesienie_ostrzegawcze": null,
@@ -147,7 +147,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięcia 1,09 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 1,09 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 1,087 % mieści się w granicy 10 %; zapas 8,913 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -168,7 +168,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięcia 0,48 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,48 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,479 % mieści się w granicy 10 %; zapas 9,521 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -189,7 +189,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -210,7 +210,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -231,7 +231,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,00 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0 % mieści się w granicy 10 %; zapas 10 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -282,7 +282,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciążenie 15,05 % poniżej limitu 80,0 %.",
+          "uzasadnienie_pl": "Obciążenie 15,05 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 15,051 % mieści się w granicy 100 %; zapas 84,949 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -303,7 +303,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciążenie 0,20 % poniżej limitu 80,0 %.",
+          "uzasadnienie_pl": "Obciążenie 0,20 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 0,201 % mieści się w granicy 100 %; zapas 99,799 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -354,7 +354,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciążenie 25,37 % poniżej limitu 80,0 %.",
+          "uzasadnienie_pl": "Obciążenie 25,37 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 25,373 % mieści się w granicy 100 %; zapas 74,627 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -375,7 +375,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciążenie 3,00 % poniżej limitu 80,0 %.",
+          "uzasadnienie_pl": "Obciążenie 3,00 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 3,001 % mieści się w granicy 100 %; zapas 96,999 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -426,7 +426,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Straty sieciowe 0,45 % poniżej limitu 5,0 %.",
+          "uzasadnienie_pl": "Straty sieciowe 0,45 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "wniosek_pl": "Straty mocy czynnej względem mocy przesyłanej 0,451 % mieści się w granicy 10 %; zapas 9,549 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -477,7 +477,7 @@
           "margines_jednostka": "%",
           "margines_wzor_latex": "\\delta = \\dfrac{\\text{wartość} - \\text{granica}}{\\text{granica}}\\cdot 100\\%",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "cosφ = 0,995 ≥ 0,9 — bilans mocy biernej prawidłowy.",
+          "uzasadnienie_pl": "cosφ = 0,995 wobec limitu 0,8 (próg ostrzeżenia 0,9).",
           "wniosek_pl": "Współczynnik mocy w węźle bilansującym 0,995 osiąga wartość wymaganą 0,8; zapas 24,396 %.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -661,7 +661,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 8.970 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
+          "uzasadnienie_pl": "Ik'' = 8,970 kA wobec pasma wiarygodności [0,1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -682,7 +682,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 13.987 kA mieści się w zakresie [0.5; 63] kA dla WN (110 kV).",
+          "uzasadnienie_pl": "Ik'' = 13,987 kA wobec pasma wiarygodności [0,5; 63] kA dla WN (110 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 13,987 kA mieści się w paśmie wiarygodności [0,5; 63] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -703,7 +703,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 21.093 kA mieści się w zakresie [0.05; 150] kA dla nN (0.4 kV).",
+          "uzasadnienie_pl": "Ik'' = 21,093 kA wobec pasma wiarygodności [0,05; 150] kA dla nN (0,4 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 21,093 kA mieści się w paśmie wiarygodności [0,05; 150] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -724,7 +724,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 8.970 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
+          "uzasadnienie_pl": "Ik'' = 8,970 kA wobec pasma wiarygodności [0,1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -745,7 +745,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 4.612 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
+          "uzasadnienie_pl": "Ik'' = 4,612 kA wobec pasma wiarygodności [0,1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 4,612 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",

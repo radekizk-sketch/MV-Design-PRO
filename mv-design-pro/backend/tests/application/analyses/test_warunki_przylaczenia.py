@@ -62,8 +62,11 @@ def test_przekroczony_limit_mocy_oddawanej_daje_fail() -> None:
     assert pozycja.wymagana == pytest.approx(5.0)
     assert ocena.kierunek == KIERUNEK_ODDAWANIE
     assert ocena.status_ogolny == STATUS_FAIL
-    # Karta #145: zdanie dla inżyniera — polski zapis liczb i słowny stan limitu.
-    assert pozycja.opis_pl == "Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony)."
+    # Karta #145: zdanie dla inżyniera — polski zapis liczb. Słowo rozstrzygnięcia niesie
+    # rekord werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190), nie opis pozycji.
+    assert pozycja.opis_pl == "Moc oddawana do sieci 6,2 MW wobec limitu 5 MW."
+    assert pozycja.ocena.status_maszynowy == "NIE_SPELNIA"
+    assert "1,2 MW" in (pozycja.wyjasnienie.przyczyna_pl or "")
 
 
 def test_limit_dotrzymany_w_obu_kierunkach() -> None:
@@ -173,9 +176,15 @@ def test_brak_danej_daje_niesprawdzone_a_nie_pass(
     pozycja = _pozycja(ocena, kryterium)
     assert pozycja.status == STATUS_UNAVAILABLE
     assert oczekiwany_kod in pozycja.readiness_codes
-    assert pozycja.wartosc is None
-    assert pozycja.wymagana is None
+    assert pozycja.wymagana is None or pozycja.wartosc is None
     assert pozycja.is_conclusive is False
+    # Rekord: brak limitu = BRAK_PODSTAWY (wynik informacyjny), brak biegu = NIE_OCENIONO;
+    # oba z nazwanym brakiem — nigdy SPELNIA.
+    oczekiwany = (
+        "NIE_OCENIONO" if oczekiwany_kod == READINESS_CONNECTION_FLOW_MISSING else "BRAK_PODSTAWY"
+    )
+    assert pozycja.ocena.status_maszynowy == oczekiwany
+    assert pozycja.wyjasnienie.czego_brakuje
 
 
 def test_brak_wszystkich_danych_daje_werdykt_niesprawdzony() -> None:

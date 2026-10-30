@@ -34,6 +34,11 @@
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
+import type {
+  OcenaKryterium,
+  WyjasnienieWerdyktu,
+  WynikWymagania,
+} from '../wzorzec/werdykt';
 
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
@@ -63,8 +68,11 @@ export interface WiarygodnoscItem {
   readonly lower_ka: number | null;
   readonly upper_ka: number | null;
   readonly in_range: boolean;
-  /** Gotowy status polski wprost z backendu (patrz `strings.STATUS_WIARYGODNOSCI`). */
+  /** Projekcja rekordu `ocena` — gotowy tekst polski z backendu (trójstan wiarygodności). */
   readonly status: string;
+  /** Rekord werdyktu wyjaśnialnego pasma (`analysis/sanity_bounds/oceny.py`). */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly why_pl: string;
   /** True ⇒ wynik nie wchodzi do pakietu OSD bez decyzji projektanta. */
   readonly blocks_osd_package: boolean;
@@ -109,6 +117,8 @@ export interface NapieciePasmoItem {
   readonly deviation_pct: number | null;
   readonly in_range: boolean;
   readonly status: string;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly why_pl: string;
 }
 
@@ -123,6 +133,8 @@ export interface ObciazeniePasmoItem {
   readonly loading_pct: number | null;
   readonly in_range: boolean;
   readonly status: string;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly why_pl: string;
   /**
    * Pola ADDYTYWNE (decyzja O-51, klasa P9): zacisk decydujący oraz prądy i prądy
@@ -145,6 +157,8 @@ export interface StratyPasmoWerdykt {
   readonly threshold_why_pl: string;
   readonly in_range: boolean;
   readonly status: string;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly why_pl: string;
 }
 
@@ -207,7 +221,11 @@ export interface WalidacjaItem {
   readonly limit_warn: number | null;
   readonly limit_fail: number | null;
   readonly margin_pct: number | null;
+  /** Projekcja rekordu `ocena` (+ sygnał bliskości progu ostrzeżenia `WARNING`). */
   readonly status: StatusWalidacji;
+  /** Rekord werdyktu wyjaśnialnego pozycji (`analysis/energy_validation/oceny.py`). */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly why_pl: string;
   /** Ślad WHITE BOX per pozycja (R2-A / K3-G1; struktura R3-D): kroki
    * {tekst, latex} — wzór i podstawienie niosą LaTeX (render KaTeX, kanon
@@ -515,7 +533,11 @@ export type StatusWarunku = 'PASS' | 'FAIL' | 'UNAVAILABLE';
 /** Jedna pozycja werdyktu warunków przyłączenia (kryterium + wartość + wymagana). */
 export interface PozycjaWarunku {
   readonly kryterium: string;
+  /** Projekcja statusu maszynowego rekordu `ocena` (kod zastany). */
   readonly status: StatusWarunku;
+  /** Rekord werdyktu wyjaśnialnego kryterium (podstawa: dokument OSD z modelu). */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly wartosc: number | null;
   readonly wymagana: number | null;
   readonly jednostka: string;
@@ -525,6 +547,9 @@ export interface PozycjaWarunku {
 
 /** Ocena warunków przyłączenia w punkcie przyłączenia (PWP). */
 export interface OcenaWarunkow {
+  /** Rekord W — agregat kryteriów warunków przyłączenia (brak danych ≠ spełnia). */
+  readonly ocena_wymagania: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly punkt_przylaczenia: string | null;
   readonly p_mw: number | null;
   readonly q_mvar: number | null;
@@ -567,7 +592,11 @@ export function fetchWarunkiPrzylaczenia(runId: string): Promise<WarunkiPrzylacz
 export interface PozycjaCieplna {
   readonly branch_id: string;
   readonly branch_name: string;
+  /** Projekcja statusu maszynowego rekordu `ocena`. */
   readonly status: StatusWarunku;
+  /** Rekord W kryterium cieplnego gałęzi (prąd, energia, przekrój jako oceny składowe). */
+  readonly ocena: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly i_fault_a: number | null;
   readonly i_permissible_a: number | null;
   readonly utilization: number | null;
@@ -610,6 +639,9 @@ export interface KryteriumCieplne {
   readonly granica: number | null;
   readonly jednostka: string;
   readonly status: StatusWarunku;
+  /** Rekord K kryterium cząstkowego — etykieta i wyjaśnienie wyłącznie z niego. */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 /** Działanie naprawcze z wartością docelową — rekomendacja bez liczby jest bezużyteczna. */
@@ -631,6 +663,8 @@ export interface PunktWrazliwosci {
   readonly wartosc: number;
   readonly jednostka: string;
   readonly wykorzystanie: number;
+  /** Zapas do granicy przy tej wartości parametru [%] (ujemny = przekroczenie), z backendu. */
+  readonly zapas_procent: number;
 }
 
 /** Uzasadnienie współczynnika k — bez niego liczby nie da się zweryfikować. */

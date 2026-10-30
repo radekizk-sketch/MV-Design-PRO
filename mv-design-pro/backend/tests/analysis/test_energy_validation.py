@@ -868,7 +868,12 @@ class TestWhiteBoxTrace:
         # Karta #145: ostatni krok to porównanie z progami (liczby), nie etykieta statusu —
         # to samo zdanie co `why_pl`, bez mapy status → tekst poza słownikiem werdyktu.
         assert item.white_box[4]["tekst"] == f"Porównanie z progami: {item.why_pl}"
-        assert "zbliża się do limitu" in item.white_box[4]["tekst"]
+        # Zdanie liczbowe (wielkość, limit, próg ostrzeżenia) jest jedno dla każdego stanu —
+        # rozstrzygnięcie i jego wyjaśnienie niesie rekord ``ocena`` (karta
+        # WERDYKT-MIGRACJA-190), więc tekst nie rozjedzie się z rekordem.
+        assert "wobec limitu 100,0 %" in item.white_box[4]["tekst"]
+        assert item.ocena.status_maszynowy == "SPELNIA"
+        assert item.wyjasnienie == item.ocena.wyjasnienie
 
     def test_not_computed_item_has_empty_trace(self):
         graph = _build_simple_graph()

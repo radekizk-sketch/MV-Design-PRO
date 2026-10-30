@@ -11,8 +11,8 @@
  * (linia/kabel wobec In katalogu) i straty czynne sieci (próg jawny, z
  * uzasadnieniem inżynierskim). Status trójstanowy IDENTYCZNY jak Wiarygodność
  * zwarciowa (w paśmie wiarygodności / poza zakresem wiarygodności / dane niekompletne)
- * — reużywa `istotnoscWiarygodnosci`/`STATUS_WIARYGODNOSCI` (jedno źródło
- * prawdy wokabularza statusu, KLASA NIE INSTANCJA).
+ * — każda pozycja niesie rekord werdyktu wyjaśnialnego (`ocena`), a etykieta
+ * i kolor pochodzą wyłącznie z niego (`EtykietaWerdyktu`/`KartaWerdyktu`).
  *
  * ZERO fizyki, zero ocen lokalnych — wartości, pasma i progi (wraz z
  * proweniencją: cytat normy, uzasadnienie progu strat) pochodzą WYŁĄCZNIE z
@@ -30,13 +30,8 @@ import { useMemo, useState } from 'react';
 
 import { EkranAnalizy } from '../wzorzec';
 import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
-import {
-  Chip,
-  SekcjaProps,
-  StanSekcji,
-  TagStatusu,
-  useZasobJakosci,
-} from './EkranJakosci';
+import { Chip, SekcjaProps, StanSekcji, useZasobJakosci } from './EkranJakosci';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../wzorzec/KartaWerdyktu';
 import { useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import type { NazwaObiektu } from '../wzorzec';
 import { komorkaLiczba } from './jakoscModel';
@@ -47,7 +42,7 @@ import {
   type PasmaRozplywuResponse,
   type StratyPasmoWerdykt,
 } from './api';
-import { JAKOSC_STRINGS, fmtKA, fmtKV, fmtProcent, fmtWartosc, istotnoscWiarygodnosci } from './strings';
+import { JAKOSC_STRINGS, fmtKA, fmtKV, fmtProcent, fmtWartosc } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
 
 // ---------------------------------------------------------------------------
@@ -104,6 +99,7 @@ function SzczegolNapiecia({ item }: { item: NapieciePasmoItem | null }) {
   return (
     <div data-testid="mvd-jakosc-pasma-napiecia-szczegol">
       <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <KartaWerdyktu rekord={item.ocena} />
     </div>
   );
 }
@@ -153,6 +149,7 @@ function SzczegolObciazenia({ item }: { item: ObciazeniePasmoItem | null }) {
   return (
     <div data-testid="mvd-jakosc-pasma-obciazenia-szczegol">
       <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <KartaWerdyktu rekord={item.ocena} />
     </div>
   );
 }
@@ -170,7 +167,11 @@ function BlokStrat({ straty }: { straty: StratyPasmoWerdykt }) {
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-pasma-straty">
       <header className="mvd-jakosc-szczegol-head">
         <h3 className="mvd-jakosc-szczegol-tytul">{JAKOSC_STRINGS.pasmaSekcjaStrat}</h3>
-        <TagStatusu tekst={straty.status} istotnosc={istotnoscWiarygodnosci(straty.status)} />
+        <EtykietaWerdyktu
+          etykieta={straty.ocena.etykieta}
+          status={straty.ocena.status_maszynowy}
+          testid="mvd-jakosc-pasma-straty-etykieta"
+        />
       </header>
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
@@ -200,6 +201,7 @@ function BlokStrat({ straty }: { straty: StratyPasmoWerdykt }) {
       <p className="mvd-jakosc-szczegol-uwaga" data-testid="mvd-jakosc-pasma-straty-uzasadnienie">
         {JAKOSC_STRINGS.pasmaUzasadnienieProgu}: {straty.threshold_why_pl}
       </p>
+      <KartaWerdyktu rekord={straty.ocena} />
     </section>
   );
 }

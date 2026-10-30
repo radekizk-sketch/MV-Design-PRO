@@ -54,7 +54,8 @@ def test_linia_typowa_w_pasmie_z_podstawa_i_wyjasnieniem() -> None:
         assert ocena.w_pasmie
         assert ocena.ocena_wiarygodnosci == CREDIBLE
         assert ocena.podstawa_pl == PODSTAWA_PASM_PL
-        assert "mieści się w paśmie" in ocena.wyjasnienie_pl
+        assert "wobec pasma" in ocena.wyjasnienie_pl
+        assert ocena.ocena.status_maszynowy == "SPELNIA"
 
 
 def _wartosci_dla(parametr: str, wartosc: float) -> dict[str, float]:

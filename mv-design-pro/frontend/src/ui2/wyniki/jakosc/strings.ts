@@ -8,7 +8,7 @@
  * `Date.now`/losowości (Determinism Rule) — przecinek dziesiętny wg konwencji PL.
  */
 
-import type { RodzajKontroli, StatusWalidacji } from './api';
+import type { RodzajKontroli } from './api';
 import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../model/pasmaNapieciowe';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
@@ -57,9 +57,6 @@ export const JAKOSC_STRINGS = {
   kolOcena: 'Ocena',
   kryteriumMoc: 'Moc czynna w punkcie przyłączenia',
   kryteriumCosPhi: 'Współczynnik mocy cosφ w punkcie przyłączenia',
-  ocenaSpelnione: 'Spełnione',
-  ocenaNaruszone: 'Naruszone',
-  ocenaNiesprawdzone: 'Niesprawdzone — brak danych',
   warunkiKierunekPobor: 'pobór z sieci',
   warunkiKierunekOddawanie: 'oddawanie do sieci',
   warunkiBrakWarunkow: 'Nie podano warunków przyłączenia',
@@ -94,9 +91,6 @@ export const JAKOSC_STRINGS = {
   kolEnergiaCieplna: 'Energia I²·t',
   kolEnergiaCieplnaDop: 'Dopuszczalna k²·S²',
   kolWykorzystanieCieplne: 'Wykorzystanie',
-  ikonaSpelnione: '✔',
-  ikonaNaruszone: '✖',
-  ikonaNiesprawdzone: '—',
   sekcjaKryteria: 'Kryteria cząstkowe',
   sekcjaKryteriaOpis:
     'Ten sam warunek zapisany prądowo, energetycznie i przekrojowo — trzy zapisy muszą dać ten sam werdykt.',
@@ -120,6 +114,7 @@ export const JAKOSC_STRINGS = {
   kolumnaParametr: 'Parametr',
   kolumnaWartosc: 'Wartość',
   kolumnaWykorzystanie: 'Wykorzystanie',
+  kolumnaZapas: 'Zapas do granicy',
   kolumnaDzialanie: 'Działanie',
   kolumnaObecnie: 'Obecnie',
   kolumnaDocelowo: 'Docelowo',
@@ -402,56 +397,6 @@ export const RODZAJ_KONTROLI_PL: Record<RodzajKontroli, string> = {
 /** Polska nazwa rodzaju kontroli (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function rodzajKontroliPL(kod: RodzajKontroli): string {
   return etykietaZeSlownika(RODZAJ_KONTROLI_PL, kod);
-}
-
-/**
- * Słownik polskich etykiet statusu walidacji energetycznej. Klucze = pełny zbiór
- * `EnergyValidationStatus` (`models.py:31-35`).
- */
-export const STATUS_WALIDACJI_PL: Record<StatusWalidacji, string> = {
-  PASS: 'Zgodny',
-  WARNING: 'Ostrzeżenie',
-  FAIL: 'Przekroczenie',
-  NOT_COMPUTED: 'Nie obliczono',
-};
-
-/** Polska etykieta statusu walidacji (kod spoza słownika → uczciwe zdanie, nie kod). */
-export function statusWalidacjiPL(kod: StatusWalidacji): string {
-  return etykietaZeSlownika(STATUS_WALIDACJI_PL, kod);
-}
-
-/** Istotność statusu walidacji energetycznej (dobór koloru tagu). */
-export function istotnoscWalidacji(kod: StatusWalidacji): IstotnoscStatusu {
-  switch (kod) {
-    case 'PASS':
-      return 'ok';
-    case 'WARNING':
-      return 'warn';
-    case 'FAIL':
-      return 'err';
-    default:
-      return 'neutral';
-  }
-}
-
-/**
- * Gotowe statusy pasma wiarygodności — tekst polski JEST wprost z backendu
- * (`analysis/sanity_bounds/short_circuit_bounds.py`: `CREDIBLE`, `OUT_OF_RANGE`,
- * `INCOMPLETE`). Tu tylko utrwalone, aby wyznaczyć istotność tagu bez powielania
- * literałów. „W paśmie wiarygodności" (dawniej „zweryfikowany") mówi wyłącznie, że
- * liczba leży w paśmie fizycznie możliwym — nie jest weryfikacją wyrocznią.
- */
-export const STATUS_WIARYGODNOSCI = {
-  wPasmie: 'w paśmie wiarygodności',
-  pozaZakresem: 'poza zakresem wiarygodności',
-  niekompletne: 'dane niekompletne',
-} as const;
-
-/** Istotność statusu wiarygodności (dobór koloru tagu) — na bazie tekstu z backendu. */
-export function istotnoscWiarygodnosci(status: string): IstotnoscStatusu {
-  if (status === STATUS_WIARYGODNOSCI.wPasmie) return 'ok';
-  if (status === STATUS_WIARYGODNOSCI.pozaZakresem) return 'err';
-  return 'neutral';
 }
 
 // ---------------------------------------------------------------------------

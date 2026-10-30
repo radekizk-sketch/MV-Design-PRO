@@ -435,21 +435,6 @@
   font-size: 14px;
   font-weight: 600;
 }
-/* Werdykt niesie ikonę I tekst — kolor jest tylko wzmocnieniem, nigdy nośnikiem. */
-.mvd-cieplny-werdykt {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.mvd-cieplny-werdykt--pass {
-  color: var(--mvd-ok);
-}
-.mvd-cieplny-werdykt--fail {
-  color: var(--mvd-err);
-}
-.mvd-cieplny-werdykt--unavailable {
-  color: var(--mvd-muted);
-}
 .mvd-cieplny-akcja {
   margin-left: auto;
   padding: 4px 10px;

@@ -19,7 +19,11 @@ class TestShortCircuitBounds:
         assert v.status == OUT_OF_RANGE
         assert v.blocks_osd_package is True
         assert v.voltage_band == "SN"
-        assert "przekracza" in v.why_pl
+        # Rozstrzygnięcie niesie rekord (karta WERDYKT-MIGRACJA-190): naruszone pasmo z
+        # marginesem ujemnym; zdanie why_pl podaje liczby i skutek procesowy blokady.
+        assert v.ocena.status_maszynowy == "NIE_SPELNIA"
+        assert v.ocena.margines is not None and v.ocena.margines.wartosc.wartosc < 0
+        assert "116,920 kA" in v.why_pl and "zablokowany" in v.why_pl
 
     def test_typical_sn_value_is_credible(self) -> None:
         v = evaluate_short_circuit_current(15.0, 12.5)
@@ -76,4 +80,6 @@ class TestShortCircuitBounds:
             "status",
             "why_pl",
             "blocks_osd_package",
+            "ocena",
+            "wyjasnienie",
         }

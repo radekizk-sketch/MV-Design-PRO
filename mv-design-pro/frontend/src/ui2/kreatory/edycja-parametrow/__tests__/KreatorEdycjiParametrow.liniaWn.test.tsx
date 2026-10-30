@@ -13,6 +13,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
+import REKORDY from '../../../../harness-fixtures/generated/jakosc_scena_rekordy.json';
+
+const PASMO_X1 = REKORDY.parametry_linii[1];
+const PASMO_X0_X1 = REKORDY.parametry_linii[4];
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -81,7 +85,11 @@ const PODGLAD = {
     ],
   },
   pasma_wiarygodnosci: [
-    { parametr: 'x1_ohm_per_km', nazwa_pl: 'Reaktancja X′1', wartosc: 0.40901, jednostka: 'Ω/km', dolna: 0.3, gorna: 0.45, w_pasmie: true, ocena_wiarygodnosci: 'WIARYGODNY', wyjasnienie_pl: 'X′1 = 0,409 Ω/km mieści się w paśmie [0,3; 0,45] Ω/km', podstawa_pl: 'Kersting, rozdz. 4' },
+    // Ocena pasma X′1 WYGENEROWANA backendem (`ocen_parametry_linii_110kv`, karta
+    // WERDYKT-MIGRACJA-190) — z rekordem werdyktu, bez ręcznej atrapy.
+    PASMO_X1,
+    // Pasmo naruszone (X′0/X′1 poza pasmem) — etykieta i ton z rekordu.
+    PASMO_X0_X1,
   ],
 };
 
@@ -276,7 +284,15 @@ describe('KreatorEdycjiParametrow — linia napowietrzna 110 kV', () => {
     });
     expect(wynik).toHaveTextContent('Kompletność dowodu: niepełna');
     expect(wynik).toHaveTextContent('Reaktancja X′1');
-    expect(wynik).toHaveTextContent('X′1 = 0,409 Ω/km mieści się w paśmie');
+    expect(wynik).toHaveTextContent(PASMO_X1.wyjasnienie_pl);
+    // Etykieta pasma z rekordu (spełnione / naruszone), nie z flagi `w_pasmie` w UI.
+    expect(screen.getByTestId(`${S}-pasmo-etykieta-x1_ohm_per_km`)).toHaveTextContent(
+      PASMO_X1.ocena.etykieta.etykieta_pl,
+    );
+    expect(screen.getByTestId(`${S}-pasmo-etykieta-x0_do_x1`)).toHaveTextContent(
+      PASMO_X0_X1.ocena.etykieta.etykieta_pl,
+    );
+    expect(PASMO_X0_X1.ocena.status_maszynowy).toBe('NIE_SPELNIA');
     expect(screen.getByTestId(`${S}-skladowa-rezystywnosc_gruntu_ohm_m`)).toHaveTextContent('wartość robocza');
     // Podgląd niczego nie zapisuje.
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

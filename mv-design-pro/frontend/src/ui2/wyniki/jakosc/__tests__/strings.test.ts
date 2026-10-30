@@ -1,19 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import {
-  RODZAJ_KONTROLI_PL,
-  STATUS_WALIDACJI_PL,
-  STATUS_WIARYGODNOSCI,
-  fmtKA,
-  fmtKV,
-  fmtProcent,
-  fmtWartosc,
-  istotnoscWalidacji,
-  istotnoscWiarygodnosci,
-  rodzajKontroliPL,
-  statusWalidacjiPL,
-} from '../strings';
-import type { RodzajKontroli, StatusWalidacji } from '../api';
+import * as STRINGS from '../strings';
+import { RODZAJ_KONTROLI_PL, fmtKA, fmtKV, fmtProcent, fmtWartosc, rodzajKontroliPL } from '../strings';
+import type { RodzajKontroli } from '../api';
 
 describe('słowniki PL', () => {
   it('pokrywa pełny zbiór rodzajów kontroli energetycznej', () => {
@@ -31,39 +20,22 @@ describe('słowniki PL', () => {
     expect(Object.keys(RODZAJ_KONTROLI_PL)).toHaveLength(5);
   });
 
-  it('pokrywa pełny zbiór statusów walidacji', () => {
-    const kody: StatusWalidacji[] = ['PASS', 'WARNING', 'FAIL', 'NOT_COMPUTED'];
-    for (const kod of kody) {
-      expect(STATUS_WALIDACJI_PL[kod]).toBeTruthy();
-      expect(statusWalidacjiPL(kod)).toBe(STATUS_WALIDACJI_PL[kod]);
+  // Karta WERDYKT-MIGRACJA-190: statusy walidacji, warunków i pasm wiarygodności NIE mają
+  // już słowników w interfejsie — etykietę i kolor niesie rekord werdyktu z backendu.
+  // Strażnik werdyktu wyjaśnialnego (kat. 3a/6c) pilnuje kodu; ten test pilnuje eksportu.
+  it('nie eksportuje map „status → tekst/kolor" (etykieta wyłącznie z rekordu)', () => {
+    for (const nazwa of [
+      'STATUS_WALIDACJI_PL',
+      'statusWalidacjiPL',
+      'istotnoscWalidacji',
+      'STATUS_WIARYGODNOSCI',
+      'istotnoscWiarygodnosci',
+    ]) {
+      expect(nazwa in STRINGS, nazwa).toBe(false);
     }
-    expect(STATUS_WALIDACJI_PL.PASS).toBe('Zgodny');
-    expect(STATUS_WALIDACJI_PL.FAIL).toBe('Przekroczenie');
-  });
-
-  // Intencja zachowana: słownik statusów wiarygodności 1:1 z backendem.
-  // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): „zweryfikowany" →
-  // „w paśmie wiarygodności" (`short_circuit_bounds.CREDIBLE`) — kontrola pasma nie jest
-  // weryfikacją wyrocznią.
-  it('utrwala statusy wiarygodności zgodne z backendem', () => {
-    expect(STATUS_WIARYGODNOSCI.wPasmie).toBe('w paśmie wiarygodności');
-    expect(STATUS_WIARYGODNOSCI.pozaZakresem).toBe('poza zakresem wiarygodności');
-    expect(STATUS_WIARYGODNOSCI.niekompletne).toBe('dane niekompletne');
-  });
-});
-
-describe('istotność statusu (dobór koloru tagu)', () => {
-  it('walidacja: PASS→ok, WARNING→warn, FAIL→err, NOT_COMPUTED→neutral', () => {
-    expect(istotnoscWalidacji('PASS')).toBe('ok');
-    expect(istotnoscWalidacji('WARNING')).toBe('warn');
-    expect(istotnoscWalidacji('FAIL')).toBe('err');
-    expect(istotnoscWalidacji('NOT_COMPUTED')).toBe('neutral');
-  });
-
-  it('wiarygodność: w paśmie→ok, poza zakresem→err, inne→neutral', () => {
-    expect(istotnoscWiarygodnosci('w paśmie wiarygodności')).toBe('ok');
-    expect(istotnoscWiarygodnosci('poza zakresem wiarygodności')).toBe('err');
-    expect(istotnoscWiarygodnosci('dane niekompletne')).toBe('neutral');
+    for (const klucz of ['ocenaSpelnione', 'ocenaNaruszone', 'ocenaNiesprawdzone']) {
+      expect(klucz in STRINGS.JAKOSC_STRINGS, klucz).toBe(false);
+    }
   });
 });
 

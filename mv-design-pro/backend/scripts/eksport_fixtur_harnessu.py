@@ -52,6 +52,18 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
+from analysis.energy_validation.models import EnergyCheckType  # noqa: E402
+from analysis.energy_validation.oceny import ocena_pozycji, status_pozycji  # noqa: E402
+from analysis.sanity_bounds.parametry_linii_bounds import (  # noqa: E402
+    ocen_parametry_linii_110kv,
+)
+from analysis.sanity_bounds.power_flow_bounds import (  # noqa: E402
+    evaluate_bus_voltage,
+    evaluate_network_losses,
+)
+from analysis.sanity_bounds.short_circuit_bounds import (  # noqa: E402
+    evaluate_short_circuit_current,
+)
 from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
     build_branch_results_response,
@@ -140,6 +152,9 @@ from application.analyses.v126_gotowosc import (  # noqa: E402
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
+from application.analyses.warunki_przylaczenia import (  # noqa: E402
+    ocen_warunki_przylaczenia,
+)
 from application.analyses.werdykt_projektowy import (  # noqa: E402
     zbuduj_werdykt_projektowy,
 )
@@ -239,9 +254,15 @@ from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
     wielkosc_zwarciowa_lacznika_dotyczy,
 )
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn  # noqa: E402
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
+)
+from network_model.solvers.conductor_thermal_withstand import (  # noqa: E402
+    ConductorThermalInput,
+    check_conductor_thermal_withstand,
+    ocena_galezi_poza_droga_zwarcia,
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import NcRfgPtpireeRunRequest  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
@@ -1187,6 +1208,123 @@ def kryteria_wyposazenia_scena_rekordy() -> dict[str, Any]:
         "kabel_spelnia": kabel(80.0),
         "kabel_nie_spelnia": kabel(100.0),
         "kabel_brak_temperatury": kabel(None),
+    }
+
+
+def jakosc_scena_rekordy() -> dict[str, Any]:
+    """Rekordy werdyktu wyjaśnialnego okna „Jakość wyników" — iloczyn stanów: spełnia ×
+    nie spełnia × brak danych × wartość robocza dla wytrzymałości cieplnej przewodu, warunków
+    przyłączenia OSD, walidacji energetycznej i pasm wiarygodności (karta
+    WERDYKT-MIGRACJA-190). TE SAME funkcje rekordów, które wołają końcówki
+    (``check_conductor_thermal_withstand``, ``ocena_galezi_poza_droga_zwarcia``,
+    ``ocen_warunki_przylaczenia``, ``ocena_pozycji``/``status_pozycji``, ``evaluate_*``).
+    Karmi testy ``ui2/wyniki/jakosc`` — rekord renderowany wspólną kartą werdyktu, bez ręcznie
+    pisanych atrap rekordu."""
+
+    def cieplna(
+        ith_a: float | None, ith_1s_a: float | None, *, robocza: bool = False
+    ) -> dict[str, Any]:
+        wynik = check_conductor_thermal_withstand(
+            ConductorThermalInput(
+                ith_a=ith_a,
+                fault_duration_s=0.5,
+                ith_1s_a=ith_1s_a,
+                # Wartość robocza: bez I_th(1 s) i J_th(1 s) k wyprowadzane wzorem IEC 60949.
+                jth_1s_a_per_mm2=None if robocza else 94.0,
+                cross_section_mm2=120.0,
+                conductor_material="CU",
+                insulation="XLPE",
+                temp_operating_c=90.0,
+                temp_short_circuit_c=250.0,
+                nazwa_pl="kabel L1",
+            )
+        )
+        return {
+            "status": wynik.status,
+            "ocena": wynik.ocena.model_dump(mode="json"),
+            "kryteria": [dict(k) for k in wynik.criteria],
+            "wrazliwosc": [dict(p) for p in wynik.sensitivity],
+        }
+
+    poza_droga = ocena_galezi_poza_droga_zwarcia(
+        nazwa_pl="kabel L2", stan_pl="każdy wkład źródła do gałęzi jest pomijalny"
+    )
+
+    def rozplyw(p_mw: float, q_mvar: float) -> dict[str, Any]:
+        return {
+            "converged": True,
+            "slack_bus_id": "BUS-PWP",
+            "bus_results": [
+                {
+                    "bus_id": "BUS-PWP",
+                    "v_pu": 1.0,
+                    "angle_deg": 0.0,
+                    "p_injected_mw": p_mw,
+                    "q_injected_mvar": q_mvar,
+                    "status": "solved",
+                }
+            ],
+        }
+
+    def warunki(warunki_osd: dict[str, Any] | None, wynik: dict[str, Any] | None) -> Any:
+        return ocen_warunki_przylaczenia(
+            connection_conditions=warunki_osd, result_v1=wynik
+        ).to_dict()
+
+    def walidacja(wynik: float | None, *, limit: float, ostrzezenie: float) -> dict[str, Any]:
+        ocena = ocena_pozycji(
+            check_type=EnergyCheckType.BRANCH_LOADING,
+            nazwa_pl="linia L1",
+            wynik=wynik,
+            limit=limit,
+            braki=() if wynik is not None else ("Brak prądu znamionowego gałęzi w katalogu.",),
+        )
+        return {
+            "status": status_pozycji(ocena, wynik=wynik, prog_ostrzezenia=ostrzezenie).value,
+            "ocena": ocena.model_dump(mode="json"),
+            "wyjasnienie": ocena.wyjasnienie.model_dump(mode="json"),
+        }
+
+    robocza_nn = dana_przyjeta_tolerancji_nn(miejsce_pl="punkt zwarcia: szyna nN stacji S1")
+    warunki_osd = {"moc_przylaczeniowa_mw": 5.0, "wymagany_cos_phi": 0.9}
+    return {
+        "cieplna_spelnia": cieplna(5_000.0, 14_000.0),
+        "cieplna_nie_spelnia": cieplna(30_000.0, 14_000.0),
+        "cieplna_brak_danych": cieplna(None, 14_000.0),
+        "cieplna_robocza": cieplna(5_000.0, None, robocza=True),
+        "cieplna_poza_droga": {
+            "ocena": poza_droga.model_dump(mode="json"),
+        },
+        "warunki_spelnia": warunki(warunki_osd, rozplyw(-4.0, 0.5)),
+        "warunki_nie_spelnia": warunki(warunki_osd, rozplyw(-6.2, 4.0)),
+        "warunki_brak_warunkow": warunki(None, rozplyw(-4.0, 0.5)),
+        "warunki_czesciowe": warunki({"moc_przylaczeniowa_mw": 5.0}, rozplyw(-4.0, 0.5)),
+        "warunki_brak_rozplywu": warunki(warunki_osd, None),
+        "walidacja_spelnia": walidacja(50.0, limit=100.0, ostrzezenie=80.0),
+        "walidacja_ostrzezenie": walidacja(90.0, limit=100.0, ostrzezenie=80.0),
+        "walidacja_nie_spelnia": walidacja(120.0, limit=100.0, ostrzezenie=80.0),
+        "walidacja_brak_danych": walidacja(None, limit=100.0, ostrzezenie=80.0),
+        "pasmo_zwarcia_spelnia": evaluate_short_circuit_current(15.0, 10.0).to_dict(),
+        "pasmo_zwarcia_poza": evaluate_short_circuit_current(15.0, 80.0).to_dict(),
+        "pasmo_zwarcia_brak_danych": evaluate_short_circuit_current(None, 10.0).to_dict(),
+        "pasmo_zwarcia_robocza": evaluate_short_circuit_current(
+            0.4, 12.0, nazwa_pl="szyna nN stacji S1", dane_przyjete=(robocza_nn,)
+        ).to_dict(),
+        "pasmo_napiecia_spelnia": evaluate_bus_voltage(15.0, 15.3).to_dict(),
+        "pasmo_napiecia_poza": evaluate_bus_voltage(15.0, 17.5).to_dict(),
+        "pasmo_strat_spelnia": evaluate_network_losses(0.2, 10.0).to_dict(),
+        "pasmo_strat_brak_danych": evaluate_network_losses(None, 10.0).to_dict(),
+        "parametry_linii": [
+            o.to_dict()
+            for o in ocen_parametry_linii_110kv(
+                r1_ohm_per_km=0.12,
+                x1_ohm_per_km=0.39,
+                b1_s_per_km=2.9e-6,
+                r0_ohm_per_km=0.3,
+                x0_ohm_per_km=0.1,
+                b0_s_per_km=1.8e-6,
+            )
+        ],
     }
 
 
@@ -5328,6 +5466,7 @@ FIXTURY: dict[str, Any] = {
     "kody_metryk_wynikow": kody_metryk_wynikow,
     "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
     "kryteria_wyposazenia_scena_rekordy": kryteria_wyposazenia_scena_rekordy,
+    "jakosc_scena_rekordy": jakosc_scena_rekordy,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

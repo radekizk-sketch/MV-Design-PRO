@@ -37,7 +37,28 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
+
+from solver_input.provenance import classify_dynamic_capability
+from werdykt import (
+    DanaPrzyjeta,
+    OcenaKryterium,
+    OdnosnikSladu,
+    Przedmiot,
+    Wielkosc,
+    WyjasnienieWerdyktu,
+    WynikWymagania,
+    ZakresWaznosci,
+)
+from werdykt.porownanie import (
+    Porownanie,
+    ocena_porownania,
+    podstawa_katalogu,
+    podstawa_normy,
+    projekcja_statusu,
+    relacja_latex,
+    wymaganie_z_ocen,
+)
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
@@ -206,17 +227,293 @@ class ConductorThermalInput:
     # wyznacza utrata wytrzymalosci mechanicznej zyly i osprzet. Bez tego rozroznienia
     # dowod dla kazdej linii napowietrznej zglaszalby nieprawdziwy „brak izolacji".
     conductor_kind: str | None = None
+    #: Nazwa przewodu w rekordzie oceny (gałąź, obwód albo pozycja katalogowa).
+    nazwa_pl: str = "przewód"
+
+
+# --- Rekord werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190) ----------------------
+#
+# Kryterium cieplne jest JEDNYM warunkiem w trzech równoważnych zapisach (prądowym,
+# energetycznym, przekrojowym). Każdy zapis ma rekord K, wymaganie — rekord W; kody zastane
+# (``status`` wyniku i pozycji) są projekcją statusów maszynowych tych rekordów.
+
+ZDOLNOSC_CIEPLNA: Final = "przewod.wytrzymalosc_cieplna_zwarciowa"
+KRYTERIUM_PRADOWE: Final = "przewod.prad_dopuszczalny"
+KRYTERIUM_ENERGETYCZNE: Final = "przewod.energia_cieplna"
+KRYTERIUM_PRZEKROJU: Final = "przewod.przekroj_minimalny"
+
+_PODSTAWA_KRYTERIUM: Final = podstawa_normy(
+    "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+    "2012",
+    "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+)
+_PODSTAWA_IEC60949: Final = podstawa_normy(
+    "IEC 60949 (dopuszczalne prądy zwarciowe kabli)",
+    "1988 + A1:2008",
+    "§ 4 — współczynnik k z materiału żyły i pary temperatur (nagrzewanie adiabatyczne)",
+)
+_ZAKRES_CIEPLNY: Final = ZakresWaznosci(
+    rodzaj_analizy="SHORT_CIRCUIT",
+    opis_pl=(
+        "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th "
+        "z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s."
+    ),
+    wykluczenia=(
+        "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+        "żyły powrotne i żyły ekranów",
+    ),
+)
+_OPIS_BRAKU: Final[dict[str, str]] = {
+    READINESS_FAULT_CURRENT_MISSING: (
+        "Prąd zwarciowy zastępczy cieplny gałęzi I_th z biegu zwarciowego IEC 60909 "
+        "(rozbicie wkładów na gałęzie)."
+    ),
+    READINESS_FAULT_DURATION_MISSING: (
+        "Czas trwania zwarcia t — czas wyłączenia zabezpieczenia gałęzi albo czas założony "
+        "w przypadku obliczeniowym."
+    ),
+    READINESS_CONDUCTOR_THERMAL_DATA_MISSING: (
+        "Wytrzymałość cieplna żyły I_th(1 s) albo J_th(1 s) z karty katalogowej — albo materiał "
+        "żyły z parą temperatur do wyprowadzenia k wg IEC 60949."
+    ),
+}
+
+
+def _kod(oceny: tuple[OcenaKryterium, ...]) -> str:
+    """Kod zastany (``PASS``/``FAIL``/``UNAVAILABLE``) — projekcja statusów rekordów."""
+    return projekcja_statusu(
+        oceny, spelnia=STATUS_PASS, nie_spelnia=STATUS_FAIL, nierozstrzygniete=STATUS_UNAVAILABLE
+    )
+
+
+def _skladowa(ocena: WynikWymagania, kryterium_id: str) -> OcenaKryterium:
+    return next(o for o in ocena.oceny_skladowe if o.kryterium_id == kryterium_id)
+
+
+def _ocena_cieplna(
+    *,
+    nazwa_pl: str,
+    ith_a: float | None,
+    admissible_a: float | None,
+    i2t: float | None,
+    i2t_admissible: float | None,
+    required_section_mm2: float | None,
+    applied_section_mm2: float | None,
+    k_wyprowadzone: KDerivation | None,
+    braki: tuple[str, ...],
+) -> WynikWymagania:
+    """Rekord W kryterium cieplnego z rekordami K trzech równoważnych zapisów.
+
+    ``braki`` (kody gotowości) — wielkości nie wyznaczono: zapisy prądowy i energetyczny
+    są ``NIE_OCENIONO`` z nazwanym brakiem (brak danych ≠ spełnia). Zapis przekrojowy
+    powstaje tylko przy znanym S_min; bez przekroju zastosowanego nie dotyczy gałęzi
+    (wytrzymałość I_th(1 s) pozycji katalogowej odnosi się już do jej przekroju, więc ten
+    sam warunek rozstrzyga zapis prądowy).
+
+    ``k_wyprowadzone`` — k policzone wzorem IEC 60949 z materiału i pary temperatur, bo karta
+    katalogowa nie podaje I_th(1 s) ani J_th(1 s): wartość robocza (zasada nr 4) — jakość
+    ``ESTIMATED`` w ``dane_przyjete``, więc dowód każdego zapisu jest ``NIEPELNY``.
+    """
+    zdolnosc = classify_dynamic_capability(ZDOLNOSC_CIEPLNA)
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (
+        ()
+        if k_wyprowadzone is None
+        else (
+            DanaPrzyjeta(
+                nazwa_pl="współczynnik k żyły",
+                wartosc=Wielkosc(
+                    wartosc=round(k_wyprowadzone.k_a_s05_per_mm2, 3), jednostka="A·√s/mm²"
+                ),
+                powod_pl=(
+                    "karta katalogowa nie podaje I_th(1 s) ani J_th(1 s); k wyprowadzone "
+                    "wzorem IEC 60949 z materiału żyły i temperatur "
+                    f"{_liczba_pl(k_wyprowadzone.temp_initial_c, 0)} °C → "
+                    f"{_liczba_pl(k_wyprowadzone.temp_final_c, 0)} °C — wartość robocza do "
+                    "potwierdzenia kartą producenta"
+                ),
+                jakosc="ESTIMATED",
+            ),
+        )
+    )
+    przedmiot = Przedmiot(
+        element_ref=None, nazwa_pl=nazwa_pl, opis_pl="Żyła przewodu nagrzewana prądem zwarcia"
+    )
+    podstawa_limitu = (
+        _PODSTAWA_IEC60949
+        if k_wyprowadzone
+        else podstawa_katalogu(nazwa_pl, "wytrzymałość cieplna żyły I_th(1 s) albo J_th(1 s)")
+    )
+    opisy_brakow = tuple(_OPIS_BRAKU[kod] for kod in braki)
+    wyznaczono = not braki
+
+    def slad(krok: str, opis: str) -> tuple[OdnosnikSladu, ...]:
+        return (OdnosnikSladu(krok=krok, opis_pl=opis),) if wyznaczono else ()
+
+    oceny = [
+        ocena_porownania(
+            Porownanie(
+                kryterium_id=KRYTERIUM_PRADOWE,
+                opis_pl=(
+                    "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły "
+                    "dla czasu wyłączenia"
+                ),
+                warunek_latex=r"I_{th} \le I_{dop}(t) = \frac{I_{th(1s)}}{\sqrt{t}}",
+                relacja="NIE_WIECEJ",
+                wielkosc_pl="prąd zwarciowy zastępczy cieplny",
+                symbol_latex=r"I_{th}",
+                jednostka="A",
+                wynik=ith_a if wyznaczono else None,
+                limit=admissible_a,
+                limit_pl="prąd dopuszczalny żyły przy czasie wyłączenia t",
+                braki=opisy_brakow,
+            ),
+            przedmiot=przedmiot,
+            podstawa=_PODSTAWA_KRYTERIUM,
+            podstawa_limitu=podstawa_limitu,
+            dane_przyjete=dane_przyjete,
+            zdolnosc=zdolnosc,
+            zakres=_ZAKRES_CIEPLNY,
+            slad=slad(
+                "conductor_thermal_criterion", "Sprawdzenie kryterium cieplnego (zapis prądowy)"
+            ),
+        ),
+        ocena_porownania(
+            Porownanie(
+                kryterium_id=KRYTERIUM_ENERGETYCZNE,
+                opis_pl="Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła",
+                warunek_latex=r"I_{th}^2\,t \le k^2 S^2",
+                relacja="NIE_WIECEJ",
+                wielkosc_pl="energia cieplna zwarcia",
+                symbol_latex=r"I_{th}^2\,t",
+                jednostka="A²·s",
+                wynik=i2t if wyznaczono else None,
+                limit=i2t_admissible,
+                limit_pl="dopuszczalna energia cieplna żyły k²S²",
+                braki=opisy_brakow,
+            ),
+            przedmiot=przedmiot,
+            podstawa=_PODSTAWA_KRYTERIUM,
+            podstawa_limitu=podstawa_limitu,
+            dane_przyjete=dane_przyjete,
+            zdolnosc=zdolnosc,
+            zakres=_ZAKRES_CIEPLNY,
+            slad=slad("conductor_thermal_energy", "Bilans energii cieplnej zwarcia"),
+        ),
+    ]
+    if wyznaczono and required_section_mm2 is not None:
+        oceny.append(
+            ocena_porownania(
+                Porownanie(
+                    kryterium_id=KRYTERIUM_PRZEKROJU,
+                    opis_pl="Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego",
+                    warunek_latex=r"S \ge S_{min} = \frac{I_{th}\sqrt{t}}{k}",
+                    relacja="NIE_MNIEJ",
+                    wielkosc_pl="przekrój zastosowany żyły",
+                    symbol_latex="S",
+                    jednostka="mm²",
+                    wynik=applied_section_mm2,
+                    limit=required_section_mm2,
+                    limit_pl="minimalny przekrój z warunku cieplnego",
+                    dotyczy=applied_section_mm2 is not None,
+                    powod_stosowalnosci_pl=(
+                        "wielkość wyznaczona w biegu dla tego obiektu modelu"
+                        if applied_section_mm2 is not None
+                        else (
+                            "przekrój zastosowany nie jest daną gałęzi — wytrzymałość "
+                            "I_th(1 s) pozycji katalogowej odnosi się do jej przekroju, więc ten "
+                            "sam warunek rozstrzyga zapis prądowy"
+                        )
+                    ),
+                ),
+                przedmiot=przedmiot,
+                podstawa=_PODSTAWA_KRYTERIUM,
+                podstawa_limitu=podstawa_limitu,
+                dane_przyjete=dane_przyjete,
+                zdolnosc=zdolnosc,
+                zakres=_ZAKRES_CIEPLNY,
+                slad=(
+                    slad(
+                        "conductor_thermal_min_section",
+                        "Minimalny przekrój żyły z warunku cieplnego",
+                    )
+                    if applied_section_mm2 is not None
+                    else ()
+                ),
+            )
+        )
+    return wymaganie_z_ocen(
+        wymaganie_id="przewod.wytrzymalosc_cieplna_zwarciowa",
+        nazwa_pl="Wytrzymałość cieplna zwarciowa przewodu",
+        podstawa=_PODSTAWA_KRYTERIUM,
+        oceny=tuple(oceny),
+        zdolnosc=zdolnosc,
+        zakres=_ZAKRES_CIEPLNY,
+        odniesienie="network_model/solvers/conductor_thermal_withstand.py",
+    )
+
+
+KRYTERIUM_POZA_DROGA: Final = "przewod.poza_droga_zwarcia"
+
+
+def ocena_galezi_poza_droga_zwarcia(*, nazwa_pl: str, stan_pl: str) -> WynikWymagania:
+    """Rekord W gałęzi, przez którą nie płynie opublikowany wkład żadnego źródła.
+
+    Kryterium logiczne: każdy wkład źródła do gałęzi jest poniżej progu tolerancji
+    numerycznej rozbicia wkładów (``stan_pl`` nazywa próg i źródło stwierdzenia). Kryterium
+    cieplne jest wtedy spełnione z samej topologii przepływu, bez rachunku I²t — rekord mówi
+    to wprost (metoda: obliczenie rozpływu wkładów, poziom dowodowy zdolności cieplnej).
+    """
+    zdolnosc = classify_dynamic_capability(ZDOLNOSC_CIEPLNA)
+    przedmiot = Przedmiot(
+        element_ref=None, nazwa_pl=nazwa_pl, opis_pl="Żyła przewodu nagrzewana prądem zwarcia"
+    )
+    ocena = ocena_porownania(
+        Porownanie(
+            kryterium_id=KRYTERIUM_POZA_DROGA,
+            opis_pl=(
+                "Gałąź poza drogą zwarcia — prąd zwarciowy gałęzi pomijalny wobec wytrzymałości "
+                "cieplnej żyły"
+            ),
+            relacja="LOGICZNE",
+            wielkosc_pl="wkład źródeł do prądu zwarciowego gałęzi",
+            spelniony=True,
+            stan_pl=stan_pl,
+        ),
+        przedmiot=przedmiot,
+        podstawa=_PODSTAWA_KRYTERIUM,
+        zdolnosc=zdolnosc,
+        zakres=_ZAKRES_CIEPLNY,
+        slad=(
+            OdnosnikSladu(
+                krok="short_circuit_branch_contributions",
+                opis_pl="Zestawienie wkładów źródeł do gałęzi (wkłady pominięte)",
+            ),
+        ),
+    )
+    return wymaganie_z_ocen(
+        wymaganie_id="przewod.wytrzymalosc_cieplna_zwarciowa",
+        nazwa_pl="Wytrzymałość cieplna zwarciowa przewodu",
+        podstawa=_PODSTAWA_KRYTERIUM,
+        oceny=(ocena,),
+        zdolnosc=zdolnosc,
+        zakres=_ZAKRES_CIEPLNY,
+        odniesienie="network_model/solvers/conductor_thermal_withstand.py",
+    )
 
 
 @dataclass(frozen=True)
 class ConductorThermalResult:
     """Wynik sprawdzenia cieplnego przewodu (WHITE BOX).
 
-    ``status`` = UNAVAILABLE oznacza BRAK PODSTAWY do oceny (patrz ``readiness_codes``)
-    i nie wolno go czytac jako spelnienia kryterium.
+    ``ocena`` — rekord werdyktu wyjaśnialnego (poziom W) z kryteriami prądowym, energetycznym
+    i przekrojowym; ``wyjasnienie`` = jego wyjaśnienie. ``status`` jest PROJEKCJĄ statusów
+    maszynowych tego rekordu (``PASS``/``FAIL``; ``UNAVAILABLE`` = brak podstawy do oceny,
+    patrz ``readiness_codes`` — nie wolno go czytać jako spełnienia kryterium).
     """
 
     status: str
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     admissible_current_a: float | None
     utilization: float | None
     required_cross_section_mm2: float | None
@@ -305,8 +602,21 @@ def check_conductor_thermal_withstand(
         braki.append(READINESS_CONDUCTOR_THERMAL_DATA_MISSING)
 
     if braki:
+        ocena_braku = _ocena_cieplna(
+            nazwa_pl=data.nazwa_pl,
+            ith_a=None,
+            admissible_a=None,
+            i2t=None,
+            i2t_admissible=None,
+            required_section_mm2=None,
+            applied_section_mm2=None,
+            k_wyprowadzone=k_derivation,
+            braki=tuple(dict.fromkeys(braki)),
+        )
         return ConductorThermalResult(
-            status=STATUS_UNAVAILABLE,
+            status=_kod(ocena_braku.oceny_skladowe),
+            ocena=ocena_braku,
+            wyjasnienie=ocena_braku.wyjasnienie,
             admissible_current_a=None,
             utilization=None,
             required_cross_section_mm2=None,
@@ -324,8 +634,6 @@ def check_conductor_thermal_withstand(
 
     required_section = (ith * sqrt_t / jth) if jth is not None else None
 
-    status = STATUS_PASS if ith <= admissible else STATUS_FAIL
-
     # BILANS ENERGII — fizyczna tresc kryterium. I²t to calka Joule'a zwarcia,
     # k²S² to energia, ktora zyla przyjmie od temperatury roboczej do granicznej.
     # Prad dopuszczalny I_dop = I_th(1s)/sqrt(t) jest tylko przeliczeniem tej
@@ -334,8 +642,25 @@ def check_conductor_thermal_withstand(
     i2t_admissible = ith_1s * ith_1s  # k²S² = (Jth·S)² = I_th(1s)² dla t = 1 s
     margin_percent = (1.0 - utilization) * 100.0
 
+    # Rekord werdyktu wyjaśnialnego — JEDYNE źródło rozstrzygnięcia: kod ``status``, kryteria
+    # cząstkowe, znaki relacji w śladzie i zalecenia czytają statusy tego rekordu.
+    ocena = _ocena_cieplna(
+        nazwa_pl=data.nazwa_pl,
+        ith_a=ith,
+        admissible_a=admissible,
+        i2t=i2t,
+        i2t_admissible=i2t_admissible,
+        required_section_mm2=required_section,
+        applied_section_mm2=section,
+        k_wyprowadzone=k_derivation,
+        braki=(),
+    )
+    status = _kod(ocena.oceny_skladowe)
+
     return ConductorThermalResult(
         status=status,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
         admissible_current_a=admissible,
         utilization=utilization,
         required_cross_section_mm2=required_section,
@@ -351,12 +676,9 @@ def check_conductor_thermal_withstand(
             i2t_admissible=i2t_admissible,
             required_section_mm2=required_section,
             applied_section_mm2=section,
-            status=status,
+            ocena=ocena,
         ),
         decision_reason_pl=_decision_reason(
-            status=status,
-            ith_a=ith,
-            admissible_a=admissible,
             utilization=utilization,
             required_section_mm2=required_section,
             applied_section_mm2=section,
@@ -390,7 +712,7 @@ def check_conductor_thermal_withstand(
             jth_1s_a_per_mm2=jth,
             required_section_mm2=required_section,
             applied_section_mm2=_positive(data.cross_section_mm2),
-            status=status,
+            ocena=ocena,
             i2t=i2t,
             i2t_admissible=i2t_admissible,
             k_justification=_build_k_justification(data, jth, k_derivation),
@@ -438,7 +760,7 @@ def _build_white_box_trace(
     jth_1s_a_per_mm2: float | None,
     required_section_mm2: float | None,
     applied_section_mm2: float | None,
-    status: str,
+    ocena: WynikWymagania,
     i2t: float,
     i2t_admissible: float,
     k_justification: dict[str, Any],
@@ -449,6 +771,10 @@ def _build_white_box_trace(
     funkcji, wyliczonymi wyzej w tym samym solverze. Formatowanie i tekst sa
     prezentacja, fizyka zostaje w jednym miejscu.
     """
+    # Znaki relacji i opis rozstrzygnięcia pochodzą z REKORDU (``relacja_latex``) — ślad nie
+    # ma własnej kopii warunku ``≤``.
+    ocena_pradowa = _skladowa(ocena, KRYTERIUM_PRADOWE)
+    ocena_energii = _skladowa(ocena, KRYTERIUM_ENERGETYCZNE)
     material = k_justification.get("material_zyly") or "—"
     izolacja = k_justification.get("izolacja") or "—"
     rodzaj_pl = k_justification.get("rodzaj_przewodu_pl") or "—"
@@ -572,7 +898,8 @@ def _build_white_box_trace(
             "substitution_latex": (
                 _liczba_tex(ith_a)
                 + r"\ \mathrm{A} "
-                + (r"\le " if status == STATUS_PASS else r"> ")
+                + relacja_latex(ocena_pradowa)
+                + " "
                 + _liczba_tex(admissible_a)
                 + r"\ \mathrm{A} \quad\Rightarrow\quad "
                 + _liczba_tex(utilization * 100.0)
@@ -582,11 +909,7 @@ def _build_white_box_trace(
                 "utilization": _wartosc(utilization, "-", "Wykorzystanie wytrzymałości cieplnej"),
                 "margin_a": _wartosc(margin_a, "A", "Zapas do prądu dopuszczalnego"),
             },
-            "notes": (
-                "Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas."
-                if status == STATUS_PASS
-                else "Kryterium naruszone — przekrój nie wytrzyma zwarcia przez ten czas."
-            ),
+            "notes": ocena_pradowa.wyjasnienie.zdanie_pl,
         },
     ]
 
@@ -615,7 +938,8 @@ def _build_white_box_trace(
                 + r" = "
                 + _liczba_tex(i2t)
                 + r"\ \mathrm{A^2s} "
-                + (r"\le " if status == STATUS_PASS else r"> ")
+                + relacja_latex(ocena_energii)
+                + " "
                 + _liczba_tex(i2t_admissible)
                 + r"\ \mathrm{A^2s}"
             ),
@@ -645,7 +969,7 @@ def _build_white_box_trace(
             + r"\ \mathrm{mm^2}"
         )
         if applied_section_mm2 is not None:
-            znak = r"\ge" if applied_section_mm2 >= required_section_mm2 else r"<"
+            znak = relacja_latex(_skladowa(ocena, KRYTERIUM_PRZEKROJU))
             podstawienie += (
                 r" \quad ; \quad S = "
                 + _liczba_tex(applied_section_mm2)
@@ -726,94 +1050,103 @@ def _build_criteria(
     i2t_admissible: float,
     required_section_mm2: float | None,
     applied_section_mm2: float | None,
-    status: str,
+    ocena: WynikWymagania,
 ) -> tuple[dict[str, Any], ...]:
-    """Kryteria czastkowe z OSOBNYM werdyktem — ktore ograniczenie zdecydowalo.
+    """Kryteria czastkowe z OSOBNYM rekordem werdyktu — ktore ograniczenie zdecydowalo.
 
     Zapisy sa rownowazne matematycznie (ta sama nierownosc przeksztalcona), ale
     projektant czyta je w roznych jednostkach: pradowo, energetycznie i przekrojowo.
-    Rownowaznosc jest wlasnie dowodem spojnosci rachunku — trzy zapisy nie moga dac
-    trzech roznych werdyktow.
+    Kazda pozycja niesie rekord K (``ocena``) i jego wyjasnienie; ``status`` jest projekcja
+    statusu rekordu — warunek liczbowy istnieje WYLACZNIE w rekordzie.
     """
     pozycje: list[dict[str, Any]] = [
-        {
-            "kod": "prad_dopuszczalny",
-            "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
-            "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
-            "wartosc": round(ith_a, 6),
-            "granica": round(admissible_a, 6),
-            "jednostka": "A",
-            "status": STATUS_PASS if ith_a <= admissible_a else STATUS_FAIL,
-        },
-        {
-            "kod": "energia_cieplna",
-            "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
-            "warunek_pl": "I²·t ≤ k²·S²",
-            "wartosc": round(i2t, 3),
-            "granica": round(i2t_admissible, 3),
-            "jednostka": "A²·s",
-            "status": STATUS_PASS if i2t <= i2t_admissible else STATUS_FAIL,
-        },
+        _pozycja_kryterium(
+            ocena,
+            KRYTERIUM_PRADOWE,
+            nazwa_pl="Prąd zwarciowy wobec dopuszczalnego dla czasu t",
+            warunek_pl="I_th ≤ I_dop(t) = I_th(1s)/√t",
+            wartosc=round(ith_a, 6),
+            granica=round(admissible_a, 6),
+            jednostka="A",
+        ),
+        _pozycja_kryterium(
+            ocena,
+            KRYTERIUM_ENERGETYCZNE,
+            nazwa_pl="Energia zwarcia wobec wytrzymałości żyły",
+            warunek_pl="I²·t ≤ k²·S²",
+            wartosc=round(i2t, 3),
+            granica=round(i2t_admissible, 3),
+            jednostka="A²·s",
+        ),
     ]
-    if required_section_mm2 is not None and applied_section_mm2 is not None:
+    if required_section_mm2 is not None:
+        # Bez przekroju zastosowanego kryterium nie dotyczy gałęzi (rekord NIE_DOTYCZY z
+        # powodem) — kod pozycji jest wtedy ``UNAVAILABLE``, nigdy spełnieniem.
         pozycje.append(
-            {
-                "kod": "przekroj_minimalny",
-                "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
-                "wartosc": round(applied_section_mm2, 6),
-                "granica": round(required_section_mm2, 6),
-                "jednostka": "mm²",
-                "status": (
-                    STATUS_PASS if applied_section_mm2 >= required_section_mm2 else STATUS_FAIL
+            _pozycja_kryterium(
+                ocena,
+                KRYTERIUM_PRZEKROJU,
+                nazwa_pl="Przekrój zastosowany wobec minimalnego z warunku cieplnego",
+                warunek_pl="S ≥ S_min = √(I²·t)/k",
+                wartosc=(
+                    round(applied_section_mm2, 6) if applied_section_mm2 is not None else None
                 ),
-            }
-        )
-    elif required_section_mm2 is not None:
-        pozycje.append(
-            {
-                "kod": "przekroj_minimalny",
-                "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
-                "wartosc": None,
-                "granica": round(required_section_mm2, 6),
-                "jednostka": "mm²",
-                # Przekroju zastosowanego nie ma w modelu — kryterium jest
-                # NIESPRAWDZALNE, a nie spelnione.
-                "status": STATUS_UNAVAILABLE,
-            }
+                granica=round(required_section_mm2, 6),
+                jednostka="mm²",
+            )
         )
 
-    # Zapisy sa rownowazne, wiec rozjazd werdyktow oznaczalby blad rachunku.
-    werdykty = {poz["status"] for poz in pozycje if poz["status"] != STATUS_UNAVAILABLE}
-    assert werdykty <= {status}, f"kryteria cząstkowe rozjechały się z werdyktem: {werdykty}"
+    # Zapisy sa rownowazne, wiec rozjazd rozstrzygniec oznaczalby blad rachunku.
+    rozstrzygniecia = {poz["status"] for poz in pozycje if poz["status"] != STATUS_UNAVAILABLE}
+    assert (
+        len(rozstrzygniecia) <= 1
+    ), f"kryteria cząstkowe rozjechały się: {sorted(rozstrzygniecia)}"
     return tuple(pozycje)
+
+
+def _pozycja_kryterium(
+    ocena: WynikWymagania,
+    kryterium_id: str,
+    *,
+    nazwa_pl: str,
+    warunek_pl: str,
+    wartosc: float | None,
+    granica: float,
+    jednostka: str,
+) -> dict[str, Any]:
+    skladowa = _skladowa(ocena, kryterium_id)
+    return {
+        "kod": kryterium_id.removeprefix("przewod."),
+        "nazwa_pl": nazwa_pl,
+        "warunek_pl": warunek_pl,
+        "wartosc": wartosc,
+        "granica": granica,
+        "jednostka": jednostka,
+        "status": _kod((skladowa,)),
+        "ocena": skladowa.model_dump(mode="json"),
+        "wyjasnienie": skladowa.wyjasnienie.model_dump(mode="json"),
+    }
 
 
 def _decision_reason(
     *,
-    status: str,
-    ith_a: float,
-    admissible_a: float,
     utilization: float,
     required_section_mm2: float | None,
     applied_section_mm2: float | None,
 ) -> str:
-    """Jednozdaniowy POWOD werdyktu do kolumny tabeli (nie sam status)."""
-    if status == STATUS_PASS:
-        return (
-            f"Wykorzystanie wytrzymałości cieplnej {_liczba_pl(utilization * 100.0)} % "
-            f"(zapas {_liczba_pl(100.0 - utilization * 100.0)} %)."
-        )
-    if required_section_mm2 is not None and applied_section_mm2 is not None:
-        return (
-            f"Przekrój {_liczba_pl(applied_section_mm2, 0)} mm² jest mniejszy od wymaganego "
-            f"{_liczba_pl(required_section_mm2)} mm² z warunku cieplnego."
-        )
-    return (
-        f"Prąd zwarciowy {_liczba_pl(ith_a, 0)} A przekracza dopuszczalny "
-        f"{_liczba_pl(admissible_a, 0)} A dla tego czasu wyłączenia."
+    """Jednozdaniowy POWOD do kolumny tabeli: liczby rozstrzygajace (wykorzystanie z zapasem
+    ze znakiem, przekroj wobec minimalnego), bez slowa werdyktu — rozstrzygniecie i jego
+    wyjasnienie niesie rekord ``ocena`` (to samo zdanie dla kazdego statusu)."""
+    zdanie = (
+        f"Wykorzystanie wytrzymałości cieplnej {_liczba_pl(utilization * 100.0)} % "
+        f"(zapas {_liczba_pl(100.0 - utilization * 100.0)} %)"
     )
+    if required_section_mm2 is not None and applied_section_mm2 is not None:
+        zdanie += (
+            f"; przekrój {_liczba_pl(applied_section_mm2, 0)} mm² wobec minimalnego "
+            f"{_liczba_pl(required_section_mm2)} mm² z warunku cieplnego"
+        )
+    return zdanie + "."
 
 
 def _build_recommendations(
@@ -976,6 +1309,11 @@ def _build_sensitivity(
                     ),
                 }
             )
+    # Zapas do granicy wytrzymałości (100 % wykorzystania) — liczba ze znakiem, ujemna przy
+    # przekroczeniu. Tabela wrażliwości pokazuje ją zamiast słowa werdyktu: wariant „co
+    # jeśli" nie jest oceną przedmiotu (tę niesie rekord ``ocena`` wyniku).
+    for wariant in warianty:
+        wariant["zapas_procent"] = round((1.0 - wariant["wykorzystanie"]) * 100.0, 4)
     return tuple(warianty)
 
 

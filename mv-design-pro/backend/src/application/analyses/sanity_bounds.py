@@ -47,13 +47,15 @@ from analysis.sanity_bounds.power_flow_bounds import (
     DOMYSLNY_PROG_STRAT_PROCENT,
     NORMA_NAPIECIA_PL,
     PASMO_NAPIECIA_PROCENT,
-    UZASADNIENIE_PROGU_STRAT_PL,
     BranchLoadingSanityVerdict,
     NetworkLossesSanityVerdict,
     VoltageBandSanityVerdict,
     evaluate_branch_loading,
     evaluate_bus_voltage,
     evaluate_network_losses,
+    loading_verdict_bez_wyniku,
+    losses_verdict_bez_wyniku,
+    voltage_verdict_bez_wyniku,
 )
 from analysis.sanity_bounds.short_circuit_bounds import (
     CREDIBLE,
@@ -114,10 +116,6 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
-        verdict = evaluate_short_circuit_current(
-            voltage_by_target.get(str(target_id)),
-            row.get("ikss_ka"),
-        )
         # Dane przyjęte prądu punktu (tolerancja sieci nN z wartości roboczej — karta
         # TOLERANCJA-NN-WARTOSC-ROBOCZA; linie 110 kV z wartością roboczą geometrii — karta
         # LINIA-110): pasmo ocenia wynik liczony z tych danych. Addytywnie, gdy są.
@@ -131,6 +129,12 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             if row.get("tolerancja_nn_robocza")
             else ()
         ) + dane_przyjete_galezi_wiersza(row)
+        verdict = evaluate_short_circuit_current(
+            voltage_by_target.get(str(target_id)),
+            row.get("ikss_ka"),
+            nazwa_pl=opis_rodzaju_i_nazwy("szyna", nazwa_nadana(row.get("target_name"))),
+            dane_przyjete=dane,
+        )
         items.append(
             {
                 "target_id": target_id,
@@ -178,16 +182,7 @@ POWOD_NIEZBIEZNOSCI_PL = (
 def _voltage_verdict_niezbiezny(nominal_kv: float | None) -> VoltageBandSanityVerdict:
     """Werdykt napięcia przy niezbieżnym biegu — Un jest daną MODELU (znana
     niezależnie od zbieżności), wynik solvera (actual_kv) jest NIEZNANY."""
-    return VoltageBandSanityVerdict(
-        nominal_kv=nominal_kv,
-        actual_kv=None,
-        lower_kv=None,
-        upper_kv=None,
-        deviation_pct=None,
-        in_range=False,
-        status=INCOMPLETE,
-        why_pl=POWOD_NIEZBIEZNOSCI_PL,
-    )
+    return voltage_verdict_bez_wyniku(nominal_kv, POWOD_NIEZBIEZNOSCI_PL)
 
 
 def _loading_verdict_niezbiezny(
@@ -198,29 +193,13 @@ def _loading_verdict_niezbiezny(
     znamionowe = prady_znamionowe_zaciskow(galaz)
     ir_od = znamionowe.od_a if isinstance(znamionowe, PradyZnamionoweZaciskow) else None
     ir_do = znamionowe.do_a if isinstance(znamionowe, PradyZnamionoweZaciskow) else None
-    return BranchLoadingSanityVerdict(
-        current_ka=None,
-        rated_current_a=None,
-        loading_pct=None,
-        in_range=False,
-        status=INCOMPLETE,
-        why_pl=POWOD_NIEZBIEZNOSCI_PL,
-        rated_current_od_a=ir_od,
-        rated_current_do_a=ir_do,
+    return loading_verdict_bez_wyniku(
+        POWOD_NIEZBIEZNOSCI_PL, rated_current_od_a=ir_od, rated_current_do_a=ir_do
     )
 
 
 def _losses_verdict_niezbiezny(threshold_pct: float) -> NetworkLossesSanityVerdict:
-    return NetworkLossesSanityVerdict(
-        losses_active_mw=None,
-        load_active_total_mw=None,
-        losses_pct_of_load=None,
-        threshold_pct=threshold_pct,
-        threshold_why_pl=UZASADNIENIE_PROGU_STRAT_PL,
-        in_range=False,
-        status=INCOMPLETE,
-        why_pl=POWOD_NIEZBIEZNOSCI_PL,
-    )
+    return losses_verdict_bez_wyniku(POWOD_NIEZBIEZNOSCI_PL, threshold_pct=threshold_pct)
 
 
 def _pf_losses_active_mw(run: CanonicalRun) -> float | None:

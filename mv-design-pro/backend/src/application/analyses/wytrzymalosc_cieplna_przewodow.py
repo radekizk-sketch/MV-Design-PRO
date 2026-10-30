@@ -109,8 +109,12 @@ from network_model.solvers.conductor_thermal_withstand import (
     CONDUCTOR_KIND_BARE,
     CONDUCTOR_KIND_CABLE,
     STANDARD_REFS,
+    STATUS_FAIL,
+    STATUS_PASS,
+    STATUS_UNAVAILABLE,
     ConductorThermalInput,
     check_conductor_thermal_withstand,
+    ocena_galezi_poza_droga_zwarcia,
 )
 from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
@@ -119,6 +123,8 @@ from network_model.solvers.short_circuit_contributions import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+from werdykt.kontrakt import WyjasnienieWerdyktu, WynikWymagania
+from werdykt.porownanie import projekcja_statusu
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +135,13 @@ class ConductorThermalWithstandItem:
 
     branch_id: str
     branch_name: str
+    # Kod zastany PASS/FAIL/UNAVAILABLE — PROJEKCJA statusu rekordu ``ocena`` (filtry,
+    # liczniki); UNAVAILABLE = brak podstawy do oceny (``missing_codes``), nie spelnienie.
     status: str
+    # Rekord werdyktu wyjasnialnego (poziom W) i jego wyjasnienie — jedyne zrodlo
+    # rozstrzygniecia widocznego dla projektanta (kontrakt werdyktu wyjasnialnego).
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     i_fault_a: float | None
     i_permissible_a: float | None
     utilization: float | None
@@ -167,6 +179,8 @@ class ConductorThermalWithstandItem:
             "branch_id": self.branch_id,
             "branch_name": self.branch_name,
             "status": self.status,
+            "ocena": self.ocena.model_dump(mode="json"),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "i_fault_a": self.i_fault_a,
             "i_permissible_a": self.i_permissible_a,
             "utilization": self.utilization,
@@ -336,11 +350,25 @@ def build_conductor_thermal_withstand_view(
         # to z rachunku. Prad NIE jest zerem — pozycja nie podaje wartosci (None), tylko
         # granice w uzasadnieniu; solver fazy 1 slusznie nie przyjmuje pradu 0 jako danej.
         if galaz_bez_opublikowanego_wkladu(sc_result, branch_id):
+            ocena_poza_droga = ocena_galezi_poza_droga_zwarcia(
+                nazwa_pl=nazwa_elementu(branch, "branches"),
+                stan_pl=(
+                    f"każdy wkład źródła do gałęzi to {NAZWA_WKLADU_POMINIETEGO} — dla każdego "
+                    f"źródła {OPIS_PROGU_WKLADU_POMIJALNEGO}"
+                ),
+            )
             items.append(
                 ConductorThermalWithstandItem(
                     branch_id=branch_id,
                     branch_name=nazwa_elementu(branch, "branches"),
-                    status="PASS",
+                    status=projekcja_statusu(
+                        ocena_poza_droga.oceny_skladowe,
+                        spelnia=STATUS_PASS,
+                        nie_spelnia=STATUS_FAIL,
+                        nierozstrzygniete=STATUS_UNAVAILABLE,
+                    ),
+                    ocena=ocena_poza_droga,
+                    wyjasnienie=ocena_poza_droga.wyjasnienie,
                     i_fault_a=None,
                     i_permissible_a=None,
                     utilization=None,
@@ -376,6 +404,8 @@ def build_conductor_thermal_withstand_view(
                 branch_id=branch_id,
                 branch_name=nazwa_elementu(branch, "branches"),
                 status=result.status,
+                ocena=result.ocena,
+                wyjasnienie=result.wyjasnienie,
                 i_fault_a=i_fault_a,
                 i_permissible_a=result.admissible_current_a,
                 utilization=result.utilization,
@@ -396,9 +426,9 @@ def build_conductor_thermal_withstand_view(
         )
 
     summary = ConductorThermalWithstandSummary(
-        pass_count=sum(1 for item in items if item.status == "PASS"),
-        fail_count=sum(1 for item in items if item.status == "FAIL"),
-        unavailable_count=sum(1 for item in items if item.status == "UNAVAILABLE"),
+        pass_count=sum(1 for item in items if item.status == STATUS_PASS),
+        fail_count=sum(1 for item in items if item.status == STATUS_FAIL),
+        unavailable_count=sum(1 for item in items if item.status == STATUS_UNAVAILABLE),
     )
     return ConductorThermalWithstandView(items=tuple(items), summary=summary)
 
@@ -760,6 +790,8 @@ def zbuduj_dowod_cieplny(
         "branch_id": branch_id,
         "branch_name": pozycja.branch_name,
         "status": pozycja.status,
+        "ocena": pozycja.ocena.model_dump(mode="json"),
+        "wyjasnienie": pozycja.wyjasnienie.model_dump(mode="json"),
         "kroki": kroki,
     }
 

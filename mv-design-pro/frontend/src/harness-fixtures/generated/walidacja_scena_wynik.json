@@ -26,7 +26,155 @@
       "limit_fail": 100.0,
       "margin_pct": 624.916081821,
       "status": "FAIL",
-      "why_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.obciazenie_transformatora",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "TR 15/0.4",
+          "opis_pl": "Transformator w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego",
+          "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+          "status": "WSKAZANE",
+          "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "obciążenie transformatora (prąd strony wobec prądu znamionowego strony)",
+          "symbol_latex": "\\varepsilon",
+          "wartosc": {
+            "wartosc": 724.916081821,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "TR 15/0.4",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 100.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+            "status": "WSKAZANE",
+            "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia transformatora",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": -624.916081821,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "TR 15/0.4",
+          "skala": {
+            "wartosc": 100.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": -6.24916081821,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "NIE_SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0.4) — kryterium naruszone. Obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 724,9 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −624,9 pp, punkt: TR 15/0.4, względnie −624,9 % wartości granicznej).",
+          "przyczyna_pl": "obciążenie transformatora (prąd strony wobec prądu znamionowego strony) przekracza wartość graniczną o 624,9 pp (TR 15/0.4)",
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.transformer_loading",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0.4) — kryterium naruszone. Obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 724,9 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −624,9 pp, punkt: TR 15/0.4, względnie −624,9 % wartości granicznej).",
+        "przyczyna_pl": "obciążenie transformatora (prąd strony wobec prądu znamionowego strony) przekracza wartość graniczną o 624,9 pp (TR 15/0.4)",
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Obciążenie 724,92 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
@@ -45,7 +193,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Obciążenie 724,92 % przekracza limit 100,0 %.",
+          "tekst": "Porównanie z progami: Obciążenie 724,92 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "latex": null
         }
       ]
@@ -58,9 +206,157 @@
       "unit": "%",
       "limit_warn": 80.0,
       "limit_fail": 100.0,
-      "margin_pct": 60.003792297,
+      "margin_pct": 60.0037922971,
       "status": "FAIL",
-      "why_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.obciazenie_galezi",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Linia SN 1",
+          "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+          "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+          "status": "WSKAZANE",
+          "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)",
+          "symbol_latex": "\\varepsilon",
+          "wartosc": {
+            "wartosc": 160.003792297,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Linia SN 1",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 100.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": -60.0037922971,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Linia SN 1",
+          "skala": {
+            "wartosc": 100.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": -0.600037922971,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "NIE_SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia SN 1) — kryterium naruszone. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 160 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −60 pp, punkt: Linia SN 1, względnie −60 % wartości granicznej).",
+          "przyczyna_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego) przekracza wartość graniczną o 60 pp (Linia SN 1)",
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.branch_loading",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia SN 1) — kryterium naruszone. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 160 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −60 pp, punkt: Linia SN 1, względnie −60 % wartości granicznej).",
+        "przyczyna_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego) przekracza wartość graniczną o 60 pp (Linia SN 1)",
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Obciążenie 160,00 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
@@ -79,7 +375,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Obciążenie 160,00 % przekracza limit 100,0 %.",
+          "tekst": "Porównanie z progami: Obciążenie 160,00 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "latex": null
         }
       ]
@@ -88,13 +384,161 @@
       "check_type": "VOLTAGE_DEVIATION",
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "target_name": "Szyna nN",
-      "observed_value": 25.1670032061,
+      "observed_value": 25.1670032062,
       "unit": "%",
       "limit_warn": 5.0,
       "limit_fail": 10.0,
-      "margin_pct": 15.1670032061,
+      "margin_pct": 15.1670032062,
       "status": "FAIL",
-      "why_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Szyna nN",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NORMA",
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "wydanie": "2010",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "odchylenie napięcia od znamionowego",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "wartosc": 25.1670032062,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Szyna nN",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "NORMA",
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "wydanie": "2010",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "status": "WSKAZANE",
+            "uwagi_pl": null
+          },
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": -15.1670032062,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Szyna nN",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": -1.51670032062,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "NIE_SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN) — kryterium naruszone. Odchylenie napięcia od znamionowego: 25,17 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines −15,17 pp, punkt: Szyna nN, względnie −151,7 % wartości granicznej).",
+          "przyczyna_pl": "odchylenie napięcia od znamionowego przekracza wartość graniczną o 15,17 pp (Szyna nN)",
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN) — kryterium naruszone. Odchylenie napięcia od znamionowego: 25,17 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines −15,17 pp, punkt: Szyna nN, względnie −151,7 % wartości granicznej).",
+        "przyczyna_pl": "odchylenie napięcia od znamionowego przekracza wartość graniczną o 15,17 pp (Szyna nN)",
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Odchylenie napięcia 25,17 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
@@ -113,7 +557,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 25,17 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -122,13 +566,161 @@
       "check_type": "REACTIVE_BALANCE",
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "target_name": "Węzeł bilansujący",
-      "observed_value": 0.873445737521,
+      "observed_value": 0.873445737516,
       "unit": "cos(phi)",
       "limit_warn": 0.9,
       "limit_fail": 0.8,
       "margin_pct": null,
       "status": "WARNING",
-      "why_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.bilans_mocy_biernej",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Węzeł bilansujący",
+          "opis_pl": "Wymiana mocy z siecią zasilającą w węźle bilansującym"
+        },
+        "kryterium": {
+          "opis_pl": "Współczynnik mocy węzła bilansującego nie mniejszy od progu",
+          "warunek_latex": "\\cos\\varphi \\ge \\cos\\varphi_{\\text{limit}}",
+          "relacja": "NIE_MNIEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "bilans mocy biernej — próg współczynnika mocy węzła bilansującego",
+          "status": "WSKAZANE",
+          "uwagi_pl": "próg projektowy programu (przekroczenie cosφ < 0,8, ostrzeżenie cosφ < 0,9), nie wartość z taryfy operatora"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "współczynnik mocy cosφ w węźle bilansującym",
+          "symbol_latex": "\\cos\\varphi",
+          "wartosc": {
+            "wartosc": 0.873445737516,
+            "jednostka": "1"
+          },
+          "punkt_krytyczny_pl": "Węzeł bilansujący",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "bilans mocy biernej — próg współczynnika mocy węzła bilansującego",
+            "status": "WSKAZANE",
+            "uwagi_pl": "próg projektowy programu (przekroczenie cosφ < 0,8, ostrzeżenie cosφ < 0,9), nie wartość z taryfy operatora"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia bilansu mocy biernej",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 0.0734457375156,
+            "jednostka": "1"
+          },
+          "definicja_latex": "m = x - x_{\\lim}",
+          "punkt_pl": "Węzeł bilansujący",
+          "skala": {
+            "wartosc": 0.8,
+            "jednostka": "1"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.0918071718945,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Współczynnik mocy węzła bilansującego nie mniejszy od progu (Węzeł bilansujący) — kryterium spełnione. Współczynnik mocy cosφ w węźle bilansującym: 0,8734 wobec wymaganych ≥ 0,8 wg bilans mocy biernej — próg współczynnika mocy węzła bilansującego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +0,07345, punkt: Węzeł bilansujący, względnie +9,181 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, bilans mocy biernej — próg współczynnika mocy węzła bilansującego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.reactive_balance",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Współczynnik mocy węzła bilansującego nie mniejszy od progu (Węzeł bilansujący) — kryterium spełnione. Współczynnik mocy cosφ w węźle bilansującym: 0,8734 wobec wymaganych ≥ 0,8 wg bilans mocy biernej — próg współczynnika mocy węzła bilansującego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +0,07345, punkt: Węzeł bilansujący, względnie +9,181 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, bilans mocy biernej — próg współczynnika mocy węzła bilansującego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "cosφ = 0,873 wobec limitu 0,8 (próg ostrzeżenia 0,9).",
       "white_box": [
         {
           "tekst": "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
@@ -147,7 +739,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
+          "tekst": "Porównanie z progami: cosφ = 0,873 wobec limitu 0,8 (próg ostrzeżenia 0,9).",
           "latex": null
         }
       ]
@@ -156,13 +748,161 @@
       "check_type": "VOLTAGE_DEVIATION",
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "target_name": "Stacja C SN",
-      "observed_value": 7.98773488564,
+      "observed_value": 7.98773488566,
       "unit": "%",
       "limit_warn": 5.0,
       "limit_fail": 10.0,
-      "margin_pct": -2.01226511436,
+      "margin_pct": -2.01226511434,
       "status": "WARNING",
-      "why_pl": "Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Stacja C SN",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NORMA",
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "wydanie": "2010",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "odchylenie napięcia od znamionowego",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "wartosc": 7.98773488566,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Stacja C SN",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "NORMA",
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "wydanie": "2010",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "status": "WSKAZANE",
+            "uwagi_pl": null
+          },
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 2.01226511434,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Stacja C SN",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.201226511434,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja C SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 7,988 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +2,012 pp, punkt: Stacja C SN, względnie +20,12 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja C SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 7,988 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +2,012 pp, punkt: Stacja C SN, względnie +20,12 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Odchylenie napięcia 7,99 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
@@ -181,7 +921,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 7,99 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -190,13 +930,161 @@
       "check_type": "LOSS_BUDGET",
       "target_id": "network",
       "target_name": "Sieć",
-      "observed_value": 6.05513854159,
+      "observed_value": 6.05513854171,
       "unit": "%",
       "limit_warn": 5.0,
       "limit_fail": 10.0,
-      "margin_pct": -3.94486145841,
+      "margin_pct": -3.94486145829,
       "status": "WARNING",
-      "why_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.budzet_strat",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Sieć",
+          "opis_pl": "Cała sieć modelu w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Straty mocy czynnej sieci nie większe od progu budżetu strat",
+          "warunek_latex": "\\Delta P\\% \\le \\Delta P\\%_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "budżet strat mocy czynnej sieci",
+          "status": "WSKAZANE",
+          "uwagi_pl": "próg projektowy programu, nie wartość normowa"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "straty mocy czynnej odniesione do mocy węzła bilansującego",
+          "symbol_latex": "\\Delta P\\%",
+          "wartosc": {
+            "wartosc": 6.05513854171,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Sieć",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "budżet strat mocy czynnej sieci",
+            "status": "WSKAZANE",
+            "uwagi_pl": "próg projektowy programu, nie wartość normowa"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia budżetu strat",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 3.94486145829,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Sieć",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.394486145829,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Straty mocy czynnej sieci nie większe od progu budżetu strat (Sieć) — kryterium spełnione. Straty mocy czynnej odniesione do mocy węzła bilansującego: 6,055 % wobec wymaganych ≤ 10 % wg budżet strat mocy czynnej sieci „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +3,945 pp, punkt: Sieć, względnie +39,45 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, budżet strat mocy czynnej sieci (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.loss_budget",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Straty mocy czynnej sieci nie większe od progu budżetu strat (Sieć) — kryterium spełnione. Straty mocy czynnej odniesione do mocy węzła bilansującego: 6,055 % wobec wymaganych ≤ 10 % wg budżet strat mocy czynnej sieci „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +3,945 pp, punkt: Sieć, względnie +39,45 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, budżet strat mocy czynnej sieci (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Straty sieciowe 6,06 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: straty = |P_strat / P_bil| · 100 %",
@@ -215,7 +1103,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
+          "tekst": "Porównanie z progami: Straty sieciowe 6,06 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -224,13 +1112,161 @@
       "check_type": "VOLTAGE_DEVIATION",
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "target_name": "Stacja B SN",
-      "observed_value": 3.14514020274,
+      "observed_value": 3.14514020276,
       "unit": "%",
       "limit_warn": 5.0,
       "limit_fail": 10.0,
-      "margin_pct": -6.85485979726,
+      "margin_pct": -6.85485979724,
       "status": "PASS",
-      "why_pl": "Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Stacja B SN",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NORMA",
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "wydanie": "2010",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "odchylenie napięcia od znamionowego",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "wartosc": 3.14514020276,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Stacja B SN",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "NORMA",
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "wydanie": "2010",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "status": "WSKAZANE",
+            "uwagi_pl": null
+          },
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 6.85485979724,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Stacja B SN",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.685485979724,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja B SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 3,145 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +6,855 pp, punkt: Stacja B SN, względnie +68,55 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja B SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 3,145 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +6,855 pp, punkt: Stacja B SN, względnie +68,55 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Odchylenie napięcia 3,15 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
@@ -249,7 +1285,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,15 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -258,13 +1294,161 @@
       "check_type": "VOLTAGE_DEVIATION",
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "target_name": "Szyna SN",
-      "observed_value": 3.1443578338,
+      "observed_value": 3.14435783383,
       "unit": "%",
       "limit_warn": 5.0,
       "limit_fail": 10.0,
-      "margin_pct": -6.8556421662,
+      "margin_pct": -6.85564216617,
       "status": "PASS",
-      "why_pl": "Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Szyna SN",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NORMA",
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "wydanie": "2010",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "odchylenie napięcia od znamionowego",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "wartosc": 3.14435783383,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Szyna SN",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "NORMA",
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "wydanie": "2010",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "status": "WSKAZANE",
+            "uwagi_pl": null
+          },
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 6.85564216617,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Szyna SN",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.685564216617,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 3,144 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +6,856 pp, punkt: Szyna SN, względnie +68,56 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 3,144 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +6,856 pp, punkt: Szyna SN, względnie +68,56 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Odchylenie napięcia 3,14 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
@@ -283,7 +1467,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,14 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -298,7 +1482,155 @@
       "limit_fail": 10.0,
       "margin_pct": -10.0,
       "status": "PASS",
-      "why_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "GPZ 110 kV",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NORMA",
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "wydanie": "2010",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "odchylenie napięcia od znamionowego",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "wartosc": 0.0,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "GPZ 110 kV",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "NORMA",
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "wydanie": "2010",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "status": "WSKAZANE",
+            "uwagi_pl": null
+          },
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "GPZ 110 kV",
+          "skala": {
+            "wartosc": 10.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 1.0,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (GPZ 110 kV) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +10 pp, punkt: GPZ 110 kV, względnie +100 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (GPZ 110 kV) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +10 pp, punkt: GPZ 110 kV, względnie +100 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Odchylenie napięcia 0,00 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
@@ -317,7 +1649,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 0,00 % wobec limitu 10,0 % (próg ostrzeżenia 5,0 %).",
           "latex": null
         }
       ]
@@ -326,13 +1658,161 @@
       "check_type": "TRANSFORMER_LOADING",
       "target_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
       "target_name": "TR 110/15",
-      "observed_value": 52.6475158329,
+      "observed_value": 52.6475158322,
       "unit": "%",
       "limit_warn": 80.0,
       "limit_fail": 100.0,
-      "margin_pct": -47.3524841671,
+      "margin_pct": -47.3524841678,
       "status": "PASS",
-      "why_pl": "Obciążenie 52,65 % poniżej limitu 80,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.obciazenie_transformatora",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "TR 110/15",
+          "opis_pl": "Transformator w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego",
+          "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+          "status": "WSKAZANE",
+          "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "obciążenie transformatora (prąd strony wobec prądu znamionowego strony)",
+          "symbol_latex": "\\varepsilon",
+          "wartosc": {
+            "wartosc": 52.6475158322,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "TR 110/15",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 100.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+            "status": "WSKAZANE",
+            "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia transformatora",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 47.3524841678,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "TR 110/15",
+          "skala": {
+            "wartosc": 100.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.473524841678,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 110/15) — kryterium spełnione. Obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 52,65 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +47,35 pp, punkt: TR 110/15, względnie +47,35 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.transformer_loading",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 110/15) — kryterium spełnione. Obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 52,65 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +47,35 pp, punkt: TR 110/15, względnie +47,35 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Obciążenie 52,65 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
@@ -351,7 +1831,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Obciążenie 52,65 % poniżej limitu 80,0 %.",
+          "tekst": "Porównanie z progami: Obciążenie 52,65 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "latex": null
         }
       ]
@@ -366,7 +1846,155 @@
       "limit_fail": 100.0,
       "margin_pct": -99.7854927627,
       "status": "PASS",
-      "why_pl": "Obciążenie 0,21 % poniżej limitu 80,0 %.",
+      "ocena": {
+        "kryterium_id": "walidacja_energetyczna.obciazenie_galezi",
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Kabel SN 1",
+          "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+        },
+        "kryterium": {
+          "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+          "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+          "relacja": "NIE_WIECEJ",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+          "status": "WSKAZANE",
+          "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": {
+          "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)",
+          "symbol_latex": "\\varepsilon",
+          "wartosc": {
+            "wartosc": 0.214507237253,
+            "jednostka": "%"
+          },
+          "punkt_krytyczny_pl": "Kabel SN 1",
+          "chwila_s": null,
+          "metoda": "OBLICZENIE"
+        },
+        "limit": {
+          "wartosc": {
+            "wartosc": 100.0,
+            "jednostka": "%"
+          },
+          "pasmo": null,
+          "obwiednia": null,
+          "jednostka_obwiedni": null,
+          "podstawa": {
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "wydanie": "bieżący stan programu",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego"
+          },
+          "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi",
+          "wersja_profilu": null
+        },
+        "margines": {
+          "wartosc": {
+            "wartosc": 99.7854927627,
+            "jednostka": "pp"
+          },
+          "definicja_latex": "m = x_{\\lim} - x",
+          "punkt_pl": "Kabel SN 1",
+          "skala": {
+            "wartosc": 100.0,
+            "jednostka": "pp"
+          },
+          "skala_rodzaj": "LIMIT",
+          "wzgledny": 0.997854927627,
+          "niedefiniowalny": false,
+          "powod_pl": null
+        },
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        },
+        "status_maszynowy": "SPELNIA",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel SN 1) — kryterium spełnione. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 0,2145 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +99,79 pp, punkt: Kabel SN 1, względnie +99,79 % wartości granicznej).",
+          "przyczyna_pl": null,
+          "czego_brakuje": [],
+          "zastrzezenia": [
+            "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ]
+        },
+        "dowod": {
+          "metoda": "OBLICZENIE",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "ZWALIDOWANE",
+            "dane_przyjete": []
+          },
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": "POWER_FLOW",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        },
+        "slad": [
+          {
+            "run_id": null,
+            "wersja_silnika": null,
+            "krok": "energy_validation.branch_loading",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          }
+        ]
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel SN 1) — kryterium spełnione. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 0,2145 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +99,79 pp, punkt: Kabel SN 1, względnie +99,79 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "why_pl": "Obciążenie 0,21 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
       "white_box": [
         {
           "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
@@ -385,7 +2013,7 @@
           "latex": null
         },
         {
-          "tekst": "Porównanie z progami: Obciążenie 0,21 % poniżej limitu 80,0 %.",
+          "tekst": "Porównanie z progami: Obciążenie 0,21 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).",
           "latex": null
         }
       ]

@@ -28,6 +28,7 @@ import {
   usePoprawWModelu,
 } from '../wzorzec';
 import { PrzyciskAkcjiStanu } from '../wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../wzorzec/KartaWerdyktu';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
@@ -101,10 +102,7 @@ import {
   fmtWartosc,
   istotnoscArcFlash,
   istotnoscMigotania,
-  istotnoscWalidacji,
-  istotnoscWiarygodnosci,
   rodzajKontroliPL,
-  statusWalidacjiPL,
   type IstotnoscStatusu,
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
@@ -336,8 +334,13 @@ function SzczegolWiarygodnosci({
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-wiarygodnosc-szczegol">
       <header className="mvd-jakosc-szczegol-head">
         <h3 className="mvd-jakosc-szczegol-tytul">{nazwaObiektu(item.target_id, item.target_name)}</h3>
-        <TagStatusu tekst={item.status} istotnosc={istotnoscWiarygodnosci(item.status)} />
+        <EtykietaWerdyktu
+          etykieta={item.ocena.etykieta}
+          status={item.ocena.status_maszynowy}
+          testid="mvd-jakosc-wiarygodnosc-etykieta"
+        />
       </header>
+      <KartaWerdyktu rekord={item.ocena} />
       <InformacjeAudytowe
         szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-jakosc-wiarygodnosc-informacje-audytowe"
@@ -513,8 +516,13 @@ function SzczegolWalidacji({
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-walidacja-szczegol">
       <header className="mvd-jakosc-szczegol-head">
         <h3 className="mvd-jakosc-szczegol-tytul">{rodzajKontroliPL(item.check_type)}</h3>
-        <TagStatusu tekst={statusWalidacjiPL(item.status)} istotnosc={istotnoscWalidacji(item.status)} />
+        <EtykietaWerdyktu
+          etykieta={item.ocena.etykieta}
+          status={item.ocena.status_maszynowy}
+          testid="mvd-jakosc-walidacja-etykieta"
+        />
       </header>
+      <KartaWerdyktu rekord={item.ocena} />
       <InformacjeAudytowe
         szczegolyAudytowe={szczegolyAudytowe}
         testid="mvd-jakosc-walidacja-informacje-audytowe"
@@ -1352,7 +1360,9 @@ export function SekcjaWarunkowPrzylaczenia({
   const { ocena } = dane;
   // Brak warunków OSD to nie błąd i nie brak wyniku — to brak DANYCH WEJŚCIOWYCH
   // projektu. Mówimy wprost, czego brakuje i gdzie to uzupełnić (akcja naprawcza).
-  const brakWarunkow = ocena.pozycje.every((p) => p.status === 'UNAVAILABLE');
+  // Rozpoznanie z rekordu: każde kryterium bez podstawy limitu (brak dokumentu OSD
+  // w modelu) — brak przepływu w punkcie to inny brak i zostaje pokazany w tabeli.
+  const brakWarunkow = ocena.pozycje.every((p) => p.ocena.status_maszynowy === 'BRAK_PODSTAWY');
   if (brakWarunkow) {
     return (
       <StanSekcji
@@ -1376,6 +1386,8 @@ export function SekcjaWarunkowPrzylaczenia({
         onEksport={onEksport}
         szczegolyAudytowe={szczegolyAudytowe}
       />
+      {/* Agregat W z wyjaśnieniem (kryteria składowe pod kartą, brak danych ≠ spełnia). */}
+      <KartaWerdyktu rekord={ocena.ocena_wymagania} />
     </section>
   );
 }

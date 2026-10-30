@@ -16,12 +16,7 @@ import { describe, expect, it } from 'vitest';
 import { etykietaZeSlownika } from '../slownikWyliczen';
 import { WZORZEC_STRINGS } from '../strings';
 import { STAN_ZADZIALANIA_PL, stanZadzialaniaPL } from '../../porownanie/strings';
-import {
-  RODZAJ_KONTROLI_PL,
-  STATUS_WALIDACJI_PL,
-  rodzajKontroliPL,
-  statusWalidacjiPL,
-} from '../../jakosc/strings';
+import { RODZAJ_KONTROLI_PL, rodzajKontroliPL } from '../../jakosc/strings';
 import {
   RX_RATIO_ZRODLO_PL,
   TRYB_ZRODLA_BAZA_PL,
@@ -84,7 +79,6 @@ describe('funkcje etykiet ekranów — kod spoza słownika nigdy surowo', () => 
   it.each([
     ['stan zadziałania', stanZadzialaniaPL],
     ['rodzaj kontroli', (k: string) => rodzajKontroliPL(k as never)],
-    ['status walidacji', (k: string) => statusWalidacjiPL(k as never)],
     ['typ maszyny', typMaszynyPL],
     ['tryb danych źródła', trybZrodlaSiecowegoPL],
     ['pochodzenie R/X', rxRatioZrodloPL],
@@ -121,13 +115,12 @@ describe('słowniki = zbiory kodów backendu (parytet z kodem źródłowym)', ()
     expect([...zBackendu].sort()).toEqual(Object.keys(STAN_ZADZIALANIA_PL).sort());
   });
 
-  it('rodzaj kontroli i status walidacji energetycznej: enumy analizy', () => {
+  // Status walidacji energetycznej nie ma już słownika w interfejsie (karta
+  // WERDYKT-MIGRACJA-190): etykietę niesie rekord werdyktu pozycji (`ocena.etykieta`).
+  it('rodzaj kontroli energetycznej: enum analizy', () => {
     const tekst = zrodlo('analysis', 'energy_validation', 'models.py');
     expect(wartosciEnumu(tekst, 'EnergyCheckType').sort()).toEqual(
       Object.keys(RODZAJ_KONTROLI_PL).sort(),
-    );
-    expect(wartosciEnumu(tekst, 'EnergyValidationStatus').sort()).toEqual(
-      Object.keys(STATUS_WALIDACJI_PL).sort(),
     );
   });
 

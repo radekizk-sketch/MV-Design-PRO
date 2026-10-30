@@ -23,6 +23,7 @@ from analysis.normative.kryteria_napiecia import (
     KRYTERIUM_OSTRZEZENIE_PROCENT,
     KRYTERIUM_PRZEKROCZENIE_PROCENT,
 )
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
 
 
 class EnergyCheckType(StrEnum):
@@ -34,6 +35,10 @@ class EnergyCheckType(StrEnum):
 
 
 class EnergyValidationStatus(StrEnum):
+    """Kod zastany pozycji — PROJEKCJA rekordu ``ocena`` (``FAIL`` = kryterium naruszone,
+    ``PASS``/``WARNING`` = kryterium spelnione, ``WARNING`` gdy wielkosc przekroczyla prog
+    ostrzezenia, ``NOT_COMPUTED`` = brak rozstrzygniecia — nigdy spelnienie)."""
+
     PASS = "PASS"
     WARNING = "WARNING"
     FAIL = "FAIL"
@@ -51,6 +56,10 @@ class EnergyValidationItem:
     limit_fail: float | None
     margin_pct: float | None
     status: EnergyValidationStatus
+    #: Rekord werdyktu wyjasnialnego (poziom K) i jego wyjasnienie — jedyne zrodlo
+    #: rozstrzygniecia pozycji (``status`` jest jego projekcja).
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     why_pl: str
     # Slad WHITE BOX per pozycja (R2-A / K3-G1; struktura R3-D): krotka krokow
     # {"tekst": str, "latex": str | None}. `latex` obecny dla wzoru i

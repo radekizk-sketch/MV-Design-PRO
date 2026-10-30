@@ -28,7 +28,6 @@ import type {
   WynikArcFlash,
   OcenaWarunkow,
   PozycjaWarunku,
-  StatusWarunku,
   PodsumowanieCieplne,
   PodsumowanieCzasow,
   PozycjaCieplna} from './api';
@@ -44,7 +43,6 @@ import {
   fmtPst,
   fmtWartosc,
   rodzajKontroliPL,
-  statusWalidacjiPL,
 } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -237,7 +235,9 @@ export function mapujWierszWalidacji(
   index: number,
   nazwa: NazwaObiektu,
 ): WierszTabeli {
-  const przekroczony = item.status === 'WARNING' || item.status === 'FAIL';
+  // Podświetlenie wartości: rekord naruszony albo sygnał bliskości progu ostrzeżenia
+  // (`WARNING` — wyznaczany w backendzie na rekordzie spełnionym).
+  const przekroczony = item.ocena.status_maszynowy === 'NIE_SPELNIA' || item.status === 'WARNING';
   return {
     rodzaj: { wartosc: rodzajKontroliPL(item.check_type) },
     obiekt: {
@@ -250,7 +250,8 @@ export function mapujWierszWalidacji(
     progOstrz: komorkaLiczba(item.limit_warn, fmtWartosc, { jednostka: item.unit }),
     progPrzekr: komorkaLiczba(item.limit_fail, fmtWartosc, { jednostka: item.unit }),
     margines: komorkaLiczba(item.margin_pct, fmtProcent),
-    status: { wartosc: statusWalidacjiPL(item.status) },
+    // Etykieta WYŁĄCZNIE z rekordu backendu (kontrakt werdyktu §9) — bez mapy statusu.
+    status: { wartosc: item.ocena.etykieta.etykieta_pl },
     [KLUCZ_WALIDACJI_OBIEKT]: { wartosc: item.target_id },
     [KLUCZ_WIERSZA_WALIDACJI]: { wartosc: kluczWalidacji(item, index) },
   };
@@ -418,25 +419,19 @@ export function kryteriumWarunkuPL(kryterium: string): string {
   return kryterium;
 }
 
-/** Ocena po polsku. UNAVAILABLE to TRZECI stan — nigdy nie mylony ze spełnieniem. */
-export function ocenaWarunkuPL(status: StatusWarunku): string {
-  if (status === 'PASS') return JAKOSC_STRINGS.ocenaSpelnione;
-  if (status === 'FAIL') return JAKOSC_STRINGS.ocenaNaruszone;
-  return JAKOSC_STRINGS.ocenaNiesprawdzone;
-}
-
 /** Wiersze tabeli werdyktu — kolejność z backendu (deterministyczna). */
 export function naWierszeWarunkow(pozycje: readonly PozycjaWarunku[]): WierszTabeli[] {
   return pozycje.map((pozycja) => ({
     kryterium: { wartosc: kryteriumWarunkuPL(pozycja.kryterium) },
     zmierzona: komorkaLiczba(pozycja.wartosc, fmtWartosc, {
       jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
-      ostrzezenie: pozycja.status === 'FAIL',
+      ostrzezenie: pozycja.ocena.status_maszynowy === 'NIE_SPELNIA',
     }),
     wymagana: komorkaLiczba(pozycja.wymagana, fmtWartosc, {
       jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
     }),
-    ocena: { wartosc: ocenaWarunkuPL(pozycja.status) },
+    // Etykieta z rekordu K (brak danych → „nie oceniono"/„brak podstawy", nigdy spełnienie).
+    ocena: { wartosc: pozycja.ocena.etykieta.etykieta_pl },
   }));
 }
 
@@ -525,13 +520,6 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
  * Przy stanie NIESPRAWDZONE wielkości są puste, a ocena mówi wprost, że nic nie
  * policzono; przy gałęzi poza drogą zwarcia pokazujemy uzasadnienie zamiast liczb.
  */
-/** Ikona werdyktu — dublet znaczenia dla koloru (uwaga 9 właściciela). */
-export function ikonaWarunku(status: StatusWarunku): string {
-  if (status === 'PASS') return JAKOSC_STRINGS.ikonaSpelnione;
-  if (status === 'FAIL') return JAKOSC_STRINGS.ikonaNaruszone;
-  return JAKOSC_STRINGS.ikonaNiesprawdzone;
-}
-
 /**
  * Energia cieplna ma rząd 10⁷ A²·s — format skrócony (mln A²·s) zamiast
  * piętnastu cyfr, żeby kolumna dała się porównać wzrokiem.
@@ -556,12 +544,12 @@ export function naWierszeCieplne(
   return pozycje.map((pozycja) => ({
     przewod: { wartosc: nazwa(pozycja.branch_id, pozycja.branch_name) },
     pradCieplny: komorkaLiczba(pozycja.i_fault_a, fmtWartosc, {
-      ostrzezenie: pozycja.status === 'FAIL',
+      ostrzezenie: pozycja.ocena.status_maszynowy === 'NIE_SPELNIA',
     }),
     pradDopuszczalny: komorkaLiczba(pozycja.i_permissible_a, fmtWartosc),
     przekroj: komorkaLiczba(pozycja.applied_cross_section_mm2, fmtWartosc),
     przekrojWymagany: komorkaLiczba(pozycja.s_min_mm2, fmtWartosc, {
-      ostrzezenie: pozycja.status === 'FAIL',
+      ostrzezenie: pozycja.ocena.status_maszynowy === 'NIE_SPELNIA',
     }),
     czasWylaczenia: komorkaLiczba(pozycja.czas_wylaczenia?.tk_s ?? null, fmtWartosc),
     zrodloCzasu: { wartosc: zrodloCzasuPL(pozycja.czas_wylaczenia?.zrodlo) },
@@ -569,10 +557,10 @@ export function naWierszeCieplne(
     wykorzystanie: komorkaLiczba(
       pozycja.utilization === null ? null : pozycja.utilization * 100,
       fmtWartosc,
-      { ostrzezenie: pozycja.status === 'FAIL' },
+      { ostrzezenie: pozycja.ocena.status_maszynowy === 'NIE_SPELNIA' },
     ),
-    // Ikona + tekst: sam kolor nie może nieść werdyktu (dostępność).
-    ocena: { wartosc: `${ikonaWarunku(pozycja.status)} ${ocenaWarunkuPL(pozycja.status)}` },
+    // Etykieta z rekordu W gałęzi — tekst niesie znaczenie, kolor go tylko dubluje.
+    ocena: { wartosc: pozycja.ocena.etykieta.etykieta_pl },
     powodDecyzji: {
       wartosc: pozycja.powod_decyzji_pl ?? pozycja.uzasadnienie_pl ?? JAKOSC_STRINGS.kreska,
     },

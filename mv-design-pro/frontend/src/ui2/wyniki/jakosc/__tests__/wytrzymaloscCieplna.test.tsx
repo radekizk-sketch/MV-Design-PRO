@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
-import { przebiegTestowy } from './fixtures';
+import { R, przebiegTestowy, wRekord, zRekordemCieplnym } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type {
   DowodCieplnyResponse,
@@ -21,7 +21,8 @@ import type {
 const fetchMock = vi.fn();
 
 function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
-  return {
+  // Rekord werdyktu (ocena/wyjasnienie) dobiera backendowa fikstura wg stanu pozycji.
+  return zRekordemCieplnym({
     branch_id: 'cable_A',
     branch_name: 'Magistrala L-01',
     status: 'FAIL',
@@ -76,6 +77,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
         wartosc: 0.125,
         jednostka: 's',
         wykorzystanie: 0.806,
+        zapas_procent: 19.4,
       },
     ],
     uzasadnienie_k: {
@@ -96,7 +98,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       kompletne: true,
     },
     ...over,
-  };
+  });
 }
 
 function slad(over: Partial<SladCzasuWylaczenia> = {}): SladCzasuWylaczenia {
@@ -219,9 +221,8 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
     expect(screen.getByText('Magistrala L-01')).toBeTruthy();
     // Werdykt wystepuje w wierszu tabeli ORAZ w naglowku panelu dowodu — oba maja
     // niesc ikone i tekst, wiec sprawdzamy, ze pojawia sie co najmniej raz.
-    expect(
-      screen.getAllByText(new RegExp(JAKOSC_STRINGS.ocenaNaruszone)).length,
-    ).toBeGreaterThan(0);
+    // Etykieta WYŁĄCZNIE z rekordu backendu (W naruszone), bez mapy statusu w UI.
+    expect(screen.getAllByText(R.cieplna_nie_spelnia.ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
     // Wymagany przekrój (79,8) jest większy od zastosowanego (70) — projektant widzi,
     // CO ma zmienić, nie tylko że jest źle.
     // 79,8 mm² wystepuje w kolumnie „Wymagany min." oraz w zaleceniu naprawczym
@@ -239,6 +240,8 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
             branch_id: 'cable_B',
             branch_name: 'Odgałęzienie L-02',
             status: 'PASS',
+            // Rekord backendu gałęzi poza drogą zwarcia (kryterium logiczne wkładów).
+            ...wRekord(R.cieplna_poza_droga),
             i_fault_a: 0,
             i_permissible_a: null,
             utilization: null,
@@ -495,8 +498,10 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     const kryteria = await screen.findByTestId('mvd-jakosc-cieplna-kryteria');
     expect(kryteria.textContent).toContain('I_th ≤ I_dop(t) = I_th(1s)/√t');
     expect(kryteria.textContent).toContain('I²·t ≤ k²·S²');
-    // Ikona towarzyszy tekstowi — sam kolor nie może nieść werdyktu.
-    expect(kryteria.textContent).toContain(JAKOSC_STRINGS.ikonaNaruszone);
+    // Etykieta kryterium cząstkowego z jego rekordu K — tekst, nie sam kolor.
+    expect(kryteria.textContent).toContain(
+      R.cieplna_nie_spelnia.kryteria[0].ocena.etykieta.etykieta_pl,
+    );
   });
 
   it('dla naruszenia podaje działanie naprawcze z progiem liczbowym', async () => {
@@ -517,6 +522,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
 
     const wrazliwosc = await screen.findByTestId('mvd-jakosc-cieplna-wrazliwosc');
     expect(wrazliwosc.textContent).toContain('Czas wyłączenia');
+    // Zapas z backendu (`zapas_procent`) — UI nie wyznacza werdyktu progiem wykorzystania.
+    expect(wrazliwosc.textContent).toMatch(/19,40? %/);
+    expect(wrazliwosc.textContent).not.toMatch(/naruszon|spełnion/i);
 
     const material = screen.getByTestId('mvd-jakosc-cieplna-material');
     expect(material.textContent).toContain('143');

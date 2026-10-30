@@ -33,15 +33,26 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Final
 
-from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE, INCOMPLETE, OUT_OF_RANGE
+from analysis.sanity_bounds.oceny import CREDIBLE, OUT_OF_RANGE, kod_wiarygodnosci, ocena_pasma
 from network_model.pochodne import simens_na_mikrosimens
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
+from werdykt.porownanie import podstawa_zalozenia
 
 #: Podstawa wszystkich pasm (zdanie dla projektanta).
 PODSTAWA_PASM_PL = (
     "Założenie inżynierskie: pasmo wyprowadzone z klasycznych wzorów linii transponowanej "
     "(GMD/GMR, współczynniki potencjałowe, pierwszy wyraz Carsona) dla linii jednotorowej "
     "110 kV 50 Hz z przewodami 120–680 mm² wg PN-EN 50182, wiązką 1–2 przewodów i GMD 3–9 m."
+)
+
+
+#: Podstawa pasm jako rekord (ten sam tekst co ``PODSTAWA_PASM_PL``).
+_PODSTAWA_PASM: Final = podstawa_zalozenia(
+    "Pasma wiarygodności parametrów linii 110 kV programu",
+    "parametry jednostkowe linii jednotorowej 110 kV 50 Hz (GMD/GMR, Carson)",
+    uwagi_pl=PODSTAWA_PASM_PL,
 )
 
 
@@ -78,7 +89,10 @@ class OcenaParametruLinii:
     dolna: float
     gorna: float
     w_pasmie: bool
+    #: Kod trójstanu wiarygodności — projekcja rekordu ``ocena``.
     ocena_wiarygodnosci: str
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     wyjasnienie_pl: str
     podstawa_pl: str
 
@@ -92,6 +106,8 @@ class OcenaParametruLinii:
             "gorna": self.gorna,
             "w_pasmie": self.w_pasmie,
             "ocena_wiarygodnosci": self.ocena_wiarygodnosci,
+            "ocena": self.ocena.model_dump(mode="json"),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "wyjasnienie_pl": self.wyjasnienie_pl,
             "podstawa_pl": self.podstawa_pl,
         }
@@ -101,8 +117,37 @@ def _liczba(wartosc: float) -> str:
     return f"{wartosc:.4g}".replace(".", ",")
 
 
+#: Symbol parametru w LaTeX (rekord werdyktu wymaga symbolu wyniku liczbowego).
+_SYMBOL_LATEX: Final[dict[str, str]] = {
+    "r1_ohm_per_km": r"R'_1",
+    "x1_ohm_per_km": r"X'_1",
+    "b1_us_per_km": r"B'_1",
+    "r0_ohm_per_km": r"R'_0",
+    "x0_do_x1": r"X'_0 / X'_1",
+    "b0_do_b1": r"B'_0 / B'_1",
+}
+
+
 def _ocen(pasmo: PasmoParametruLinii, wartosc: float | None) -> OcenaParametruLinii:
-    if wartosc is None or not math.isfinite(wartosc):
+    znana = wartosc is not None and math.isfinite(wartosc)
+    ocena = ocena_pasma(
+        kryterium_id=f"wiarygodnosc.linia_110kv.{pasmo.parametr}",
+        opis_pl=f"{pasmo.nazwa_pl} w paśmie wiarygodności linii 110 kV",
+        warunek_latex=r"x_{\min} \le x \le x_{\max}",
+        wielkosc_pl=pasmo.nazwa_pl,
+        symbol_latex=_SYMBOL_LATEX[pasmo.parametr],
+        jednostka="1" if pasmo.jednostka == "—" else pasmo.jednostka,
+        relacja="PASMO",
+        wynik=wartosc if znana else None,
+        pasmo=(pasmo.dolna, pasmo.gorna),
+        nazwa_pl="linia 110 kV",
+        opis_przedmiotu_pl="Parametry jednostkowe linii 110 kV z geometrii słupa",
+        podstawa=_PODSTAWA_PASM,
+        rodzaj_analizy="POWER_FLOW",
+        braki=() if znana else (f"{pasmo.nazwa_pl}: skończona wartość z obliczenia geometrii.",),
+    )
+    kod = kod_wiarygodnosci(ocena)
+    if wartosc is None or not znana:
         return OcenaParametruLinii(
             parametr=pasmo.parametr,
             nazwa_pl=pasmo.nazwa_pl,
@@ -111,24 +156,24 @@ def _ocen(pasmo: PasmoParametruLinii, wartosc: float | None) -> OcenaParametruLi
             dolna=pasmo.dolna,
             gorna=pasmo.gorna,
             w_pasmie=False,
-            ocena_wiarygodnosci=INCOMPLETE,
+            ocena_wiarygodnosci=kod,
+            ocena=ocena,
+            wyjasnienie=ocena.wyjasnienie,
             wyjasnienie_pl=f"{pasmo.nazwa_pl}: brak skończonej wartości do oceny.",
             podstawa_pl=PODSTAWA_PASM_PL,
         )
-    w_pasmie = pasmo.dolna <= wartosc <= pasmo.gorna
     jednostka = "" if pasmo.jednostka == "—" else f" {pasmo.jednostka}"
     granice = f"[{_liczba(pasmo.dolna)}; {_liczba(pasmo.gorna)}]{jednostka}"
-    if w_pasmie:
-        zdanie = (
-            f"{pasmo.nazwa_pl} = {_liczba(wartosc)}{jednostka} mieści się w paśmie {granice} "
-            "dla linii 110 kV."
-        )
-    else:
+    # Jedno zdanie liczbowe; rozstrzygnięcie niesie rekord ``ocena``. Poza pasmem — wskazówka
+    # naprawcza z kierunkiem odchylenia (liczby, nie słowo werdyktu).
+    zdanie = (
+        f"{pasmo.nazwa_pl} = {_liczba(wartosc)}{jednostka} wobec pasma {granice} dla linii 110 kV."
+    )
+    if kod == OUT_OF_RANGE:
         kierunek = "powyżej" if wartosc > pasmo.gorna else "poniżej"
-        zdanie = (
-            f"{pasmo.nazwa_pl} = {_liczba(wartosc)}{jednostka} leży {kierunek} pasma {granice} "
-            "dla linii 110 kV — sprawdź geometrię słupa (jednostki, wysokości), przewód "
-            "i rezystywność gruntu."
+        zdanie += (
+            f" Wartość leży {kierunek} pasma — sprawdź geometrię słupa (jednostki, wysokości), "
+            "przewód i rezystywność gruntu."
         )
     return OcenaParametruLinii(
         parametr=pasmo.parametr,
@@ -137,8 +182,10 @@ def _ocen(pasmo: PasmoParametruLinii, wartosc: float | None) -> OcenaParametruLi
         jednostka=pasmo.jednostka,
         dolna=pasmo.dolna,
         gorna=pasmo.gorna,
-        w_pasmie=w_pasmie,
-        ocena_wiarygodnosci=CREDIBLE if w_pasmie else OUT_OF_RANGE,
+        w_pasmie=kod == CREDIBLE,
+        ocena_wiarygodnosci=kod,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
         wyjasnienie_pl=zdanie,
         podstawa_pl=PODSTAWA_PASM_PL,
     )

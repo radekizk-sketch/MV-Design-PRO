@@ -40,13 +40,8 @@ export {
 export {
   JAKOSC_STRINGS,
   RODZAJ_KONTROLI_PL,
-  STATUS_WALIDACJI_PL,
-  STATUS_WIARYGODNOSCI,
   WERDYKT_MIGOTANIA,
   rodzajKontroliPL,
-  statusWalidacjiPL,
-  istotnoscWalidacji,
-  istotnoscWiarygodnosci,
   istotnoscMigotania,
 } from './strings';
 export type { IstotnoscStatusu } from './strings';

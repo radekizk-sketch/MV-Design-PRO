@@ -23,7 +23,7 @@ import {
 } from '../jakoscModel';
 import type { WynikArcFlash } from '../api';
 import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../../model/pasmaNapieciowe';
-import { MIGOTANIE_FIXTURE, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE } from './fixtures';
+import { MIGOTANIE_FIXTURE, R, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE } from './fixtures';
 
 /** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
@@ -126,11 +126,14 @@ describe('adapter walidacji energetycznej', () => {
     ]);
   });
 
-  it('status mapowany na polski (statusy wyłącznie z backendu)', () => {
-    expect(wiersze[0].status.wartosc).toBe('Zgodny');
-    expect(wiersze[1].status.wartosc).toBe('Ostrzeżenie');
-    expect(wiersze[2].status.wartosc).toBe('Przekroczenie');
-    expect(wiersze[4].status.wartosc).toBe('Nie obliczono');
+  it('etykieta statusu wyłącznie z rekordu backendu (bez słownika statusów w UI)', () => {
+    WALIDACJA_FIXTURE.items.forEach((item, i) => {
+      expect(wiersze[i].status.wartosc).toBe(item.ocena.etykieta.etykieta_pl);
+    });
+    expect(wiersze[2].status.wartosc).toBe(R.walidacja_nie_spelnia.ocena.etykieta.etykieta_pl);
+    expect(wiersze[4].status.wartosc).toBe(R.walidacja_brak_danych.ocena.etykieta.etykieta_pl);
+    // Brak danych nigdy nie wygląda jak spełnienie.
+    expect(wiersze[4].status.wartosc).not.toBe(wiersze[0].status.wartosc);
   });
 
   it('tag ostrzeżenia tylko dla WARNING/FAIL, nie dla PASS/NOT_COMPUTED', () => {
