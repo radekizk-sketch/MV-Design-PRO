@@ -20,6 +20,11 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
             assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
             assert data["core_count"] == 2
             assert "zwarpol.com" in data["source_reference"]
+        elif data["id"].startswith("ct-abb-kokm1-"):
+            assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+            assert data["core_count"] == 1
+            assert data["construction"] == "RING_PHASE_CT"
+            assert "ABB-przekladniki" in data["source_reference"]
         elif data["id"].startswith("ct-abb-tpu-") or data["id"] == "ct-abb-tpu70-63-tabliczka-przyklad-2024":
             # Zidentyfikowana tabliczka w oficjalnej instrukcji ABB,
             # ale nie aktualny numer zamówieniowy konkretnego wyrobu.

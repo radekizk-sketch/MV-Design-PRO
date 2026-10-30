@@ -202,7 +202,20 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
                 accuracy_options=("0.2", "0.2S", "0.5", "0.5S", "1", "3", "5P", "10P"),
                 burden_options_va=(2.5, 5, 7.5, 10, 15, 20, 30, 40, 50, 60),
                 ith_range_ka=(2, 80)),
-        _family("KPB Intra", "CTS 25", "CT", KPB_HOME, mounting="INDOOR"),
+        _family("KPB Intra", "CTS 25", "CT",
+                "KPB Intra, CTS 25, producent — przekładnie zmieniane po "
+                "stronie pierwotnej lub wtórnej, dwa mostki śrubowe M8: "
+                "https://kpbintra.cz/en/produkty/pristrojovy-transformator-proudu-podperny-7/",
+                mounting="INDOOR", um_kv=25,
+                primary_a_min=5, primary_a_max=2500,
+                secondary_current_options_a=(1, 5),
+                accuracy_options=("0.2S", "0.2", "0.5S", "0.5", "1", "3", "5P", "10P", "PX"),
+                burden_options_va=(5, 10, 15, 20, 30, 40, 50, 60),
+                note="Producent potwierdza możliwość przełączenia "
+                     "pierwotnego przez dwa mostki M8 i wtórnego; "
+                     "NIE potwierdza konkretnie pary 200–400/5 A dla "
+                     "dowolnego wykonania. Dokładne zaczepy, rdzenie, "
+                     "Ith i FS należy przyjąć z DTR danego SKU."),
         _family("KPB Intra", "CTSO 17", "CT", KPB_HOME, mounting="OUTDOOR"),
         _family("KPB Intra", "VTS 25", "VT", KPB_VTS25_SOURCE,
                 mounting="INDOOR", um_kv=25, core_count_max=4,
@@ -334,6 +347,13 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
                 note="Izolację SN stanowi kabel; FS10 z archiwalnego źródła "
                      "NIE spełnia automatycznie wymogów nowych CT rozliczeniowych ENEA."),
     ])
+    # Capability rodziny, nie katalog gotowego aparatu do projektu.
+    for rodzina in families:
+        if rodzina["manufacturer"] == "KPB Intra" and rodzina["model_family"] == "CTS 25":
+            rodzina["primary_reconnection_supported"] = True
+            rodzina["secondary_reconnection_supported"] = True
+            rodzina["primary_reconnection_method"] = "TWO_M8_BRIDGES"
+            rodzina["specific_primary_tap_values_verified"] = False
     if len({f["id"] for f in families}) != len(families):
         raise ValueError("Duplikat ID w rodzinach CT/VT producentów")
     return families

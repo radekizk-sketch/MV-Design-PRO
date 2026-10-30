@@ -7,8 +7,17 @@ Dwie klasy wpisów, których NIE wolno mieszać:
 - **Rodzina producenta:** dopuszczalne kombinacje z publikacji producenta. Dopóki nie ma osobnego numeru zamówieniowego/DTR, status nadal REFERENCYJNY_V1. NIE nazywamy jej potwierdzonym wyrobem.
 
 W bazie wyjściowej było **14 przekładników CT** (12 modeli referencyjnych plus 2 sieciowe ENEA 5/B) oraz **13 VT**.
-Po tej gałęzi: **70 CT** (36 nowych ENEA 5/A-D oraz 18 ABB TPU i 2 ZWARPOL JSGO), **37 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB i 6 RITZ VES) oraz **5 Ferranti 3I0** w osobnym katalogu.
+Po aktualizacji PR #511: **103 CT** (70 wcześniej, 13 kanonicznych ENEA wieloprzekładniowych, 3 ENEA nN i 17 ABB KOKM 1), **37 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB i 6 RITZ VES) oraz **5 Ferranti 3I0** w osobnym katalogu.
 Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
+
+**Aktualizacja 30.10.2026:** zał. 5/A-D wymaga przekładników
+**50–100/5 i 200–400/5 A jako pojedynczych typów wieloprzekładniowych**,
+a nie dwóch osobnych SKU. Kanoniczne rekordy mają `primary_taps_a`;
+typy jednozakresowe zachowano pod tymi samymi ID, bez oznaczenia
+`LEGACY`. **Są poprawne dla istniejących urządzeń i innych funkcji**;
+ich zgodność z nowym PPE ENEA ocenia się osobno.
+Wybór aktywnego zaczepu i podkreślenie na SLD realizuje Opus, a nie
+katalog. Szczegóły i testy: [ENEA_CT_WIELOPRZEKLADNIOWE_I_ZACZEPY_2026.md](ENEA_CT_WIELOPRZEKLADNIOWE_I_ZACZEPY_2026.md).
 
 ## ENEA Operator — przekładniki prądowe
 
@@ -113,11 +122,11 @@ Szczegóły, źródła i zasady w:
 
 ## Technika wdrożenia i Ubuntu
 
-- `get_default_mv_catalog().list_ct_types()`: 70 modeli CT fazowych/profili wymagań.
+- `get_default_mv_catalog().list_ct_types()`: 103 modele CT fazowe/profile wymagań, w tym 13 wieloprzekładniowych z `primary_taps_a`.
 - `get_default_mv_catalog().list_vt_types()`: 37 VT.
 - `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0; 57 rodzin 15 producentów w katalogu doborowym.
 - Nowe opcjonalne pola `secondary_cores`, `core_count`, `um_kv`, `primary_taps_a`, `secondary_windings`, `primary_connection` są przekazywane `from_dict → to_dict → REST` bez naruszania starych rekordów.
 - Dotychczasowe ID CT/VT nie są zmieniane, tylko dodano nowe.
 - Odbiór: `bash scripts/catalog_audit_ubuntu.sh` (wymaga Python 3.11 i zależności repo).
 
-**Nie oznaczać 70 CT jako 68 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
+**Nie oznaczać 103 CT jako 103 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
